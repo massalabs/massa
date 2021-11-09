@@ -25,10 +25,9 @@ async fn test_thread_incompatibility() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -70,7 +69,7 @@ async fn test_thread_incompatibility() {
             .await;
 
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
 
@@ -113,7 +112,7 @@ async fn test_thread_incompatibility() {
             }
 
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
 
@@ -146,7 +145,7 @@ async fn test_thread_incompatibility() {
             }
 
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
 
@@ -195,10 +194,9 @@ async fn test_grandpa_incompatibility() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -248,7 +246,7 @@ async fn test_grandpa_incompatibility() {
             .await;
 
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
 
@@ -276,7 +274,7 @@ async fn test_grandpa_incompatibility() {
             let mut latest_extra_blocks = VecDeque::new();
             for extend_i in 0..33 {
                 let status = consensus_command_sender
-                    .get_block_graph_status()
+                    .get_block_graph_status(None, None)
                     .await
                     .expect("could not get block graph status");
                 let hash = tools::create_and_test_block(
@@ -298,7 +296,7 @@ async fn test_grandpa_incompatibility() {
 
             let latest_extra_blocks: HashSet<BlockId> = latest_extra_blocks.into_iter().collect();
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
             assert_eq!(status.max_cliques.len(), 1, "wrong cliques (len)");

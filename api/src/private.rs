@@ -10,11 +10,11 @@ use jsonrpc_http_server::tokio::sync::mpsc;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
     APIConfig, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
-    RollsInfo, TimeInterval,
+    TimeInterval,
 };
 use models::clique::Clique;
 use models::crypto::PubkeySig;
-use models::{Address, AlgoConfig, BlockId, EndorsementId, Operation, OperationId};
+use models::{Address, BlockId, EndorsementId, Operation, OperationId};
 use network::NetworkCommandSender;
 use std::net::{IpAddr, SocketAddr};
 
@@ -108,17 +108,7 @@ impl Endpoints for API<Private> {
         Box::pin(closure())
     }
 
-    fn get_algo_config(&self) -> BoxFuture<Result<AlgoConfig, ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
-    }
-
-    fn get_compensation_millis(&self) -> BoxFuture<Result<i64, ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
-    }
-
-    fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<RollsInfo>, ApiError>> {
+    fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<u64>, ApiError>> {
         let closure = async move || Err(WrongAPI);
         Box::pin(closure())
     }
@@ -139,7 +129,7 @@ impl Endpoints for API<Private> {
         Box::pin(closure())
     }
 
-    fn get_blocks(&self, _: Vec<BlockId>) -> BoxFuture<Result<Vec<BlockInfo>, ApiError>> {
+    fn get_block(&self, _: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>> {
         let closure = async move || Err(WrongAPI);
         Box::pin(closure())
     }

@@ -36,8 +36,8 @@
 ## Launch your Node
 
 -   Open Windows Power Shell
-    -   Type: `cd /massa`
-    -   Type: `cd /massa-node`
+    -   Type: `cd massa`
+    -   Type: `cd massa-node`
     -   Type: `cargo run --release`
 
 Your node is running. Once the process is finished, you should leave the
@@ -49,6 +49,6 @@ the staking process.
 ## Launch your Client
 
 -   Open Windows Power Shell
-    -   Type: `cd /massa`
-    -   Type: `cd /massa-client`
+    -   Type: `cd massa`
+    -   Type: `cd massa-client`
     -   Type: `cargo run --release`

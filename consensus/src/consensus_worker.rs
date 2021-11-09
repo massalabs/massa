@@ -7,11 +7,14 @@ use crypto::{
     hash::Hash,
     signature::{derive_public_key, PrivateKey, PublicKey},
 };
-use models::stats::ConsensusStats;
-use models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
+use models::{address::AddressCycleProductionStats, stats::ConsensusStats};
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
     BlockHashSet,
+};
+use models::{
+    clique::Clique,
+    timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
 };
 use models::{hhasher::BuildHHasher, ledger::LedgerData};
 use models::{
@@ -20,9 +23,8 @@ use models::{
     OperationHashSet, OperationSearchResult, SerializeCompact, Slot, StakersCycleProductionStats,
 };
 use pool::PoolCommandSender;
-use protocol::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
+use protocol_exports::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use std::{cmp::max, collections::HashSet, collections::VecDeque, convert::TryFrom};
-use storage::StorageAccess;
 use time::UTime;
 use tokio::{
     sync::{mpsc, mpsc::error::SendTimeoutError, oneshot},
@@ -34,7 +36,11 @@ use tracing::{debug, info, warn};
 #[derive(Debug)]
 pub enum ConsensusCommand {
     /// Returns through a channel current blockgraph without block operations.
-    GetBlockGraphStatus(oneshot::Sender<BlockGraphExport>),
+    GetBlockGraphStatus {
+        slot_start: Option<Slot>,
+        slot_end: Option<Slot>,
+        response_tx: oneshot::Sender<BlockGraphExport>,
+    },
     /// Returns through a channel full block with specified hash.
     GetActiveBlock {
         block_id: BlockId,
@@ -67,7 +73,7 @@ pub enum ConsensusCommand {
         response_tx: oneshot::Sender<OperationHashMap<OperationSearchResult>>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
-    GetActiveStakers(oneshot::Sender<Option<AddressHashMap<u64>>>),
+    GetActiveStakers(oneshot::Sender<AddressHashMap<u64>>),
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
     RemoveStakingAddresses(AddressHashSet),
     GetStakingAddressses(oneshot::Sender<AddressHashSet>),
@@ -79,6 +85,7 @@ pub enum ConsensusCommand {
         address: Address,
         response_tx: oneshot::Sender<BlockHashMap<Status>>,
     },
+    GetCliques(oneshot::Sender<Vec<Clique>>),
 }
 
 /// Events that are emitted by consensus.
@@ -103,8 +110,6 @@ pub struct ConsensusWorker {
     protocol_event_receiver: ProtocolEventReceiver,
     /// Associated Pool command sender.
     pool_command_sender: PoolCommandSender,
-    /// Associated storage command sender. If we want to have long term final blocks storage.
-    opt_storage_command_sender: Option<StorageAccess>,
     /// Database containing all information about blocks, the blockgraph and cliques.
     block_db: BlockGraph,
     /// Channel receiving consensus commands.
@@ -153,7 +158,6 @@ impl ConsensusWorker {
         protocol_command_sender: ProtocolCommandSender,
         protocol_event_receiver: ProtocolEventReceiver,
         pool_command_sender: PoolCommandSender,
-        opt_storage_command_sender: Option<StorageAccess>,
         block_db: BlockGraph,
         pos: ProofOfStake,
         controller_command_rx: mpsc::Receiver<ConsensusCommand>,
@@ -221,7 +225,6 @@ impl ConsensusWorker {
             genesis_public_key,
             protocol_command_sender,
             protocol_event_receiver,
-            opt_storage_command_sender,
             block_db,
             controller_command_rx,
             controller_event_tx,
@@ -316,13 +319,8 @@ impl ConsensusWorker {
                 // prune timer
                 _ = &mut prune_timer=> {
                     massa_trace!("consensus.consensus_worker.run_loop.prune_timer", {});
-                    // prune block db and send discarded final blocks to storage if present
-                    let discarded_final_blocks = self.block_db.prune()?;
-                    if let Some(storage_cmd) = &self.opt_storage_command_sender {
-                        for (d_id, d_active_block) in discarded_final_blocks.into_iter() {
-                            storage_cmd.add_block(d_id, d_active_block.block, d_active_block.operation_set).await?;
-                        }
-                    }
+                    // prune block db
+                    let _discarded_final_blocks = self.block_db.prune()?;
 
                     // reset timer
                     prune_timer.set(sleep( self.cfg.block_db_prune_interval.to_duration()))
@@ -698,13 +696,21 @@ impl ConsensusWorker {
         cmd: ConsensusCommand,
     ) -> Result<(), ConsensusError> {
         match cmd {
-            ConsensusCommand::GetBlockGraphStatus(response_tx) => {
+            ConsensusCommand::GetBlockGraphStatus {
+                slot_start,
+                slot_end,
+                response_tx,
+            } => {
                 massa_trace!(
                     "consensus.consensus_worker.process_consensus_command.get_block_graph_status",
                     {}
                 );
                 response_tx
-                    .send(BlockGraphExport::from(&self.block_db))
+                    .send(BlockGraphExport::extract_from(
+                        &self.block_db,
+                        slot_start,
+                        slot_end,
+                    ))
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
                             "could not send GetBlockGraphStatus answer: {:?}",
@@ -748,6 +754,20 @@ impl ConsensusWorker {
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
                             "could not send GetBlock Status answer: {:?}",
+                            err
+                        ))
+                    })
+            }
+            ConsensusCommand::GetCliques(response_tx) => {
+                massa_trace!(
+                    "consensus.consensus_worker.process_consensus_command.get_cliques",
+                    {}
+                );
+                response_tx
+                    .send(self.block_db.get_cliques())
+                    .map_err(|err| {
+                        ConsensusError::SendChannelError(format!(
+                            "could not send GetSelectionDraws response: {:?}",
                             err
                         ))
                     })
@@ -936,7 +956,7 @@ impl ConsensusWorker {
                     {}
                 );
                 response_tx
-                    .send(self.pos.get_stakers_production_stats(addrs))
+                    .send(self.pos.get_stakers_production_stats(&addrs))
                     .map_err(|err| {
                         ConsensusError::SendChannelError(format!(
                             "could not send get_staking addresses response: {:?}",
@@ -999,6 +1019,7 @@ impl ConsensusWorker {
             .filter(|t| **t >= timespan_start && **t < timespan_end)
             .count() as u64;
         let clique_count = self.block_db.get_clique_count() as u64;
+        let target_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         Ok(ConsensusStats {
             final_block_count,
             final_operation_count,
@@ -1006,10 +1027,11 @@ impl ConsensusWorker {
             clique_count,
             start_timespan: timespan_start,
             end_timespan: timespan_end,
+            staker_count: self.pos.get_stakers_count(target_cycle)?,
         })
     }
 
-    fn get_active_stakers(&self) -> Result<Option<AddressHashMap<u64>>, ConsensusError> {
+    fn get_active_stakers(&self) -> Result<AddressHashMap<u64>, ConsensusError> {
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         let mut res: AddressHashMap<u64> = AddressHashMap::default();
         for thread in 0..self.cfg.thread_count {
@@ -1017,11 +1039,10 @@ impl ConsensusWorker {
                 Ok(rolls) => {
                     res.extend(&rolls.0);
                 }
-                Err(ConsensusError::PosCycleUnavailable(_)) => return Ok(None),
                 Err(err) => return Err(err),
             }
         }
-        Ok(Some(res))
+        Ok(res)
     }
 
     fn get_addresses_info(
@@ -1036,7 +1057,12 @@ impl ConsensusWorker {
         let mut states = AddressHashMap::default();
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         let ledger_data = self.block_db.get_ledger_data_export(addresses)?;
+        let prod_stats = self.pos.get_stakers_production_stats(&addresses);
         for thread in 0..thread_count {
+            if addresses_by_thread[thread as usize].is_empty() {
+                continue;
+            }
+
             let lookback_data = match self.pos.get_lookback_roll_count(cur_cycle, thread) {
                 Ok(rolls) => Some(rolls),
                 Err(ConsensusError::PosCycleUnavailable(_)) => None,
@@ -1081,6 +1107,23 @@ impl ConsensusWorker {
                             .0
                             .get(&addr)
                             .map_or_else(|| LedgerData::default(), |v| v.clone()),
+                        production_stats: prod_stats
+                            .iter()
+                            .map(|cycle_stats| AddressCycleProductionStats {
+                                cycle: cycle_stats.cycle,
+                                is_final: cycle_stats.is_final,
+                                ok_count: cycle_stats
+                                    .ok_nok_counts
+                                    .get(&addr)
+                                    .unwrap_or_else(|| &(0, 0))
+                                    .0,
+                                nok_count: cycle_stats
+                                    .ok_nok_counts
+                                    .get(&addr)
+                                    .unwrap_or_else(|| &(0, 0))
+                                    .1,
+                            })
+                            .collect(),
                     },
                 );
             }
@@ -1145,17 +1188,8 @@ impl ConsensusWorker {
                                 Some(a_block.endorsement_ids.clone()),
                             )),
                         );
-                    } else if let Some(storage_command_sender) = &self.opt_storage_command_sender {
-                        if let Some(block) = storage_command_sender.get_block(block_hash).await? {
-                            massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_found", { "hash": block_hash});
-                            results.insert(block_hash, Some((block, None, None)));
-                        } else {
-                            // not found in given storage
-                            massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.storage_not_found", { "hash": block_hash});
-                            results.insert(block_hash, None);
-                        }
                     } else {
-                        // not found in consensus and no storage provided
+                        // not found in consensus
                         massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensu_not_found", { "hash": block_hash});
                         results.insert(block_hash, None);
                     }

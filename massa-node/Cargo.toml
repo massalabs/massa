@@ -20,11 +20,11 @@ pool = { path = "../pool" }
 api = { path = "../api" }
 bootstrap = { path = "../bootstrap" }
 network = { path = "../network" }
-protocol = { path = "../protocol" }
+protocol-exports = {path = "../protocol-exports"}
+protocol-worker = {path = "../protocol-worker"}
 consensus = { path = "../consensus" }
 logging = { path = "../logging" }
 models = { path = "../models" }
-storage = { path = "../storage" }
 time = { path = "../time" }
 
 [dev-dependencies]

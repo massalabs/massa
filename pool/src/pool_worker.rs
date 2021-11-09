@@ -8,7 +8,7 @@ use models::{
     Address, BlockId, Endorsement, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
     OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
-use protocol::{ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver};
+use protocol_exports::{ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver};
 use tokio::sync::{mpsc, oneshot};
 
 /// Commands that can be processed by pool.

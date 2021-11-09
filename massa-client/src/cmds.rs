@@ -1,12 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::net::IpAddr;
-use std::process;
-
 use console::style;
-use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
-use strum_macros::{EnumIter, EnumMessage, EnumProperty, EnumString, ToString};
-
 use crypto::generate_random_private_key;
 use crypto::signature::PrivateKey;
 use models::api::{AddressInfo, BlockInfo, EndorsementInfo, OperationInfo};
@@ -14,6 +8,10 @@ use models::timeslots::get_current_latest_block_slot;
 use models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
 };
+use std::net::IpAddr;
+use std::process;
+use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
+use strum_macros::{EnumIter, EnumMessage, EnumProperty, EnumString, ToString};
 use wallet::Wallet;
 
 use crate::rpc::Client;
@@ -94,7 +92,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "EndorsementId1 EndorsementId2 ...", implem = ""),
+        props(args = "EndorsementId1 EndorsementId2 ...", todo = ""),
         message = "show info about a list of endorsements (content, finality ...)"
     )]
     get_endorsements,
@@ -203,10 +201,10 @@ impl Command {
             if self.get_str("args").is_some() {
                 style(self.get_str("args").unwrap_or("")).yellow()
             } else {
-                style("no args").color256(8).italic() //grey
+                style("no args").color256(8).italic() // grey
             },
-            if self.get_str("implem").is_some() {
-                style("[not yet implemented]").red()
+            if self.get_str("todo").is_some() {
+                style("[not yet implemented] ").red()
             } else {
                 style("")
             },
@@ -219,6 +217,7 @@ impl Command {
         client: &Client,
         wallet: &mut Wallet,
         parameters: &Vec<String>,
+        is_interactive: bool,
     ) -> PrettyPrint {
         match self {
             Command::exit => process::exit(0),
@@ -478,13 +477,8 @@ impl Command {
 
                     let op = OperationType::RollBuy { roll_count };
 
-                    let cfg = match client.public.get_algo_config().await {
-                        Ok(x) => x,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    let compensation_millis = match client.public.get_compensation_millis().await {
-                        Ok(x) => x,
+                    let cfg = match client.public.get_status().await {
+                        Ok(x) => x.algo_config,
                         Err(e) => return repl_err!(e),
                     };
 
@@ -492,7 +486,7 @@ impl Command {
                         cfg.thread_count,
                         cfg.t0,
                         cfg.genesis_timestamp,
-                        compensation_millis,
+                        0,
                     ) {
                         Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
                         Err(e) => return repl_err!(e),
@@ -544,13 +538,8 @@ impl Command {
 
                     let op = OperationType::RollSell { roll_count };
 
-                    let cfg = match client.public.get_algo_config().await {
-                        Ok(x) => x,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    let compensation_millis = match client.public.get_compensation_millis().await {
-                        Ok(x) => x,
+                    let cfg = match client.public.get_status().await {
+                        Ok(x) => x.algo_config,
                         Err(e) => return repl_err!(e),
                     };
 
@@ -558,7 +547,7 @@ impl Command {
                         cfg.thread_count,
                         cfg.t0,
                         cfg.genesis_timestamp,
-                        compensation_millis,
+                        0,
                     ) {
                         Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
                         Err(e) => return repl_err!(e),
@@ -619,13 +608,8 @@ impl Command {
                         amount,
                     };
 
-                    let cfg = match client.public.get_algo_config().await {
-                        Ok(x) => x,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    let compensation_millis = match client.public.get_compensation_millis().await {
-                        Ok(x) => x,
+                    let cfg = match client.public.get_status().await {
+                        Ok(x) => x.algo_config,
                         Err(e) => return repl_err!(e),
                     };
 
@@ -633,7 +617,7 @@ impl Command {
                         cfg.thread_count,
                         cfg.t0,
                         cfg.genesis_timestamp,
-                        compensation_millis,
+                        0,
                     ) {
                         Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
                         Err(e) => return repl_err!(e),
@@ -660,7 +644,11 @@ impl Command {
                     };
 
                     match client.public.send_operations(vec![op]).await {
-                        Ok(x) => repl_ok!(format!("Sent operation id : {}", format_vec(&x))),
+                        Ok(x) => repl_ok!(if is_interactive {
+                            format!("Sent operation id : {}", format_vec(&x))
+                        } else {
+                            format_vec(&x)
+                        }),
                         Err(e) => repl_err!(e),
                     }
                 }

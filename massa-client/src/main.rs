@@ -15,6 +15,7 @@ mod cfg;
 mod cmds;
 mod repl;
 mod rpc;
+mod utils;
 
 #[derive(StructOpt)]
 struct Args {
@@ -79,7 +80,7 @@ fn main(args: Args) {
                 println!(
                     "{}",
                     args.command
-                        .run(&client, &mut wallet, &args.parameters)
+                        .run(&client, &mut wallet, &args.parameters, false)
                         .await
                 );
             }

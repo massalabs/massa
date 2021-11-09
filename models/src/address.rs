@@ -142,6 +142,14 @@ pub struct Addresses {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AddressCycleProductionStats {
+    pub cycle: u64,
+    pub is_final: bool,
+    pub ok_count: u64,
+    pub nok_count: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AddressState {
     pub final_rolls: u64,
     pub active_rolls: Option<u64>,
@@ -149,4 +157,5 @@ pub struct AddressState {
     pub locked_balance: Amount,
     pub candidate_ledger_data: LedgerData,
     pub final_ledger_data: LedgerData,
+    pub production_stats: Vec<AddressCycleProductionStats>,
 }

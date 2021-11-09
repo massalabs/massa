@@ -2,10 +2,10 @@
 
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::tools;
 use super::tools::protocol_test;
-use crate::ProtocolEvent;
 use models::{self, Address, Slot};
+use protocol_exports::tests::tools;
+use protocol_exports::ProtocolEvent;
 use serial_test::serial;
 
 #[tokio::test]

@@ -23,5 +23,4 @@ mod scenarios_pruning;
 mod scenarios_reward_split;
 mod scenarios_send_block;
 mod scenarios_wishlist;
-mod storage_scenarios;
 pub mod tools;

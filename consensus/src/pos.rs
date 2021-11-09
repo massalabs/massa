@@ -181,6 +181,10 @@ impl RollCounts {
         RollCounts(BTreeMap::new())
     }
 
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     // applies RollUpdates to self with compensations
     pub fn apply_updates(&mut self, updates: &RollUpdates) -> Result<(), ConsensusError> {
         for (addr, update) in updates.0.iter() {
@@ -607,6 +611,15 @@ impl ProofOfStake {
         self.watched_addresses = addrs;
     }
 
+    /// active stakers count
+    pub fn get_stakers_count(&self, target_cycle: u64) -> Result<u64, ConsensusError> {
+        let mut res: u64 = 0;
+        for thread in 0..self.cfg.thread_count {
+            res += self.get_lookback_roll_count(target_cycle, thread)?.0.len() as u64;
+        }
+        Ok(res)
+    }
+
     async fn get_initial_rolls(cfg: &ConsensusConfig) -> Result<Vec<RollCounts>, ConsensusError> {
         let mut res = vec![BTreeMap::<Address, u64>::new(); cfg.thread_count as usize];
         let addrs_map = serde_json::from_str::<AddressHashMap<u64>>(
@@ -966,7 +979,7 @@ impl ProofOfStake {
 
     pub fn get_stakers_production_stats(
         &self,
-        addrs: AddressHashSet,
+        addrs: &AddressHashSet,
     ) -> Vec<StakersCycleProductionStats> {
         let mut res: HashMap<u64, StakersCycleProductionStats> = HashMap::new();
         let mut completeness: HashMap<u64, u8> = HashMap::new();
@@ -994,7 +1007,7 @@ impl ProofOfStake {
                     false
                 };
 
-                for addr in &addrs {
+                for addr in addrs {
                     let (n_ok, n_nok) = thread_cycle_info
                         .production_stats
                         .get(&addr)

@@ -1,6 +1,3 @@
-!massa-client/config/info.adoc
-!massa-node/config/info.adoc
-!massa-node/storage/info.adoc
 .direnv
 .DS_Store
 .envrc
@@ -10,9 +7,12 @@
 **/Cargo.lock
 **/target
 lcov.info
-massa-client/config/
+massa-client/config/*
 massa-client/wallet.dat
-massa-node/config/
+massa-node/config/*
 massa-node/logs.txt
-massa-node/storage/
+massa-node/storage/*
 shell.nix
+!massa-client/config/info.md
+!massa-node/config/info.md
+!massa-node/storage/info.md

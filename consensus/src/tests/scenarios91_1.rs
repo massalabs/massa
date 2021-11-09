@@ -40,10 +40,9 @@ async fn test_ti() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -74,7 +73,7 @@ async fn test_ti() {
 
             // one click with 2 block compatible
             let block_graph = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap();
             let block1_clic = tools::get_cliques(&block_graph, valid_hasht0s1);
@@ -97,7 +96,7 @@ async fn test_ti() {
             // two clique with valid_hasht0s1 and valid_hasht1s1 in one and fork_block_hash, valid_hasht1s1 in the other
             // test the first clique hasn't changed.
             let block_graph = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap();
             let block1_clic = tools::get_cliques(&block_graph, valid_hasht0s1);
@@ -126,7 +125,7 @@ async fn test_ti() {
                 .await;
                 // validate the added block isn't in the forked block click.
                 let block_graph = consensus_command_sender
-                    .get_block_graph_status()
+                    .get_block_graph_status(None, None)
                     .await
                     .unwrap();
                 let block_clic = tools::get_cliques(&block_graph, block_hash);
@@ -154,7 +153,7 @@ async fn test_ti() {
             );
             // verify that the clique has been pruned.
             let block_graph = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap();
             let fork_clic = tools::get_cliques(&block_graph, fork_block_hash);
@@ -200,10 +199,9 @@ async fn test_gpi() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -235,7 +233,7 @@ async fn test_gpi() {
 
             // one click with 2 block compatible
             let block_graph = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap();
             let block1_clic = tools::get_cliques(&block_graph, valid_hasht0s1);
@@ -270,7 +268,7 @@ async fn test_gpi() {
 
             // * after processing the block in t1s2, the block of t0s2 is incompatible with block of t1s2 (link in gi)
             let block_graph = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap();
             let blockt1s2_clic = tools::get_cliques(&block_graph, valid_hasht1s2);
@@ -321,7 +319,7 @@ async fn test_gpi() {
             //   the block of minimum hash becomes final, the one of maximum hash becomes stale
             // verify that the clique has been pruned.
             let block_graph = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap();
             let fork_clic = tools::get_cliques(&block_graph, valid_hasht1s2);
@@ -370,10 +368,9 @@ async fn test_old_stale() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;

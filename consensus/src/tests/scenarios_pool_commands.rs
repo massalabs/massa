@@ -38,7 +38,6 @@ async fn test_update_current_slot_cmd_notification() {
         cfg.clone(),
         None,
         None,
-        None,
         async move |mut pool_controller,
                     protocol_controller,
                     consensus_command_sender,
@@ -113,7 +112,6 @@ async fn test_update_latest_final_block_cmd_notification() {
 
     tools::consensus_pool_test(
         cfg.clone(),
-        None,
         None,
         None,
         async move |mut pool_controller,
@@ -210,7 +208,6 @@ async fn test_new_final_ops() {
 
     tools::consensus_pool_test(
         cfg.clone(),
-        None,
         None,
         Some(boot_graph),
         async move |mut pool_controller,
@@ -331,7 +328,6 @@ async fn test_max_attempts_get_operations() {
 
     tools::consensus_pool_test(
         cfg.clone(),
-        None,
         None,
         Some(boot_graph),
         async move |mut pool_controller,
@@ -456,7 +452,6 @@ async fn test_max_batch_size_get_operations() {
 
     tools::consensus_pool_test(
         cfg.clone(),
-        None,
         None,
         Some(boot_graph),
         async move |mut pool_controller,

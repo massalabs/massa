@@ -1,10 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::address::AddressCycleProductionStats;
 use crate::node::NodeId;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
 use crate::{
-    Address, Amount, Block, BlockHashSet, BlockId, Endorsement, EndorsementHashSet, EndorsementId,
-    Operation, OperationHashSet, OperationId, Slot, Version,
+    Address, AlgoConfig, Amount, Block, BlockHashSet, BlockId, Endorsement, EndorsementHashSet,
+    EndorsementId, Operation, OperationHashSet, OperationId, Slot, Version,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -22,12 +23,14 @@ pub struct NodeStatus {
     pub roll_price: Amount,
     pub thread_count: u8,
     pub current_time: UTime,
+    pub current_cycle: u64,
     pub connected_nodes: HashMap<NodeId, IpAddr>,
     pub last_slot: Option<Slot>,
     pub next_slot: Slot,
     pub consensus_stats: ConsensusStats,
     pub pool_stats: PoolStats,
     pub network_stats: NetworkStats,
+    pub algo_config: AlgoConfig,
 }
 
 impl std::fmt::Display for NodeStatus {
@@ -53,6 +56,7 @@ impl std::fmt::Display for NodeStatus {
         writeln!(f)?;
 
         writeln!(f, "Current time: {}", self.current_time.to_utc_string())?;
+        writeln!(f, "Current cycle: {}", self.current_cycle)?;
         if self.last_slot.is_some() {
             writeln!(f, "Last slot: {}", self.last_slot.unwrap())?;
         }
@@ -147,37 +151,73 @@ pub struct AddressInfo {
     pub balance: BalanceInfo,
     pub rolls: RollsInfo,
     pub block_draws: HashSet<Slot>,
-    pub endorsement_draws: HashMap<Slot, u64>, // u64 is the index
+    pub endorsement_draws: HashMap<String, u64>, // u64 is the index
     pub blocks_created: BlockHashSet,
     pub involved_in_endorsements: EndorsementHashSet,
     pub involved_in_operations: OperationHashSet,
-    pub is_staking: bool,
+    pub production_stats: Vec<AddressCycleProductionStats>,
 }
 
 impl std::fmt::Display for AddressInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "Address: {}{}",
-            self.address,
-            display_if_true(self.is_staking, "staking"),
-        )?;
+        writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
         writeln!(f, "Balance:\n{}", self.balance)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
-        writeln!(f, "Block draws: {:?}", self.block_draws)?; // TODO
-        writeln!(f, "Endorsement draws: {:?}", self.endorsement_draws)?; // TODO
-        writeln!(f, "Blocks created: {:?}", self.blocks_created)?; // TODO
         writeln!(
             f,
-            "Involved in endorsements: {:?}",
+            "Block draws: {}",
+            self.block_draws
+                .iter()
+                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
+        )?;
+        writeln!(
+            f,
+            "Endorsement draws: {}",
+            self.endorsement_draws
+                .iter()
+                .map(|(slot, idx)| format!("    {}: index {}", slot, idx))
+                .fold("\n".to_string(), |acc, s| format!("{}{}", acc, s))
+        )?;
+        writeln!(
+            f,
+            "Blocks created: {}",
+            self.blocks_created
+                .iter()
+                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
+        )?;
+        writeln!(
+            f,
+            "Involved in endorsements: {}",
             self.involved_in_endorsements
-        )?; // TODO
+                .iter()
+                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
+        )?;
         writeln!(
             f,
-            "Involved in operations: {:?}",
+            "Involved in operations: {}",
             self.involved_in_operations
-        )?; // TODO
+                .iter()
+                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
+        )?;
+        writeln!(f, "Production stats:")?;
+        let mut sorted_production_stats = self.production_stats.clone();
+        sorted_production_stats.sort_unstable_by_key(|v| v.cycle);
+        for cycle_stat in sorted_production_stats.into_iter() {
+            writeln!(
+                f,
+                "\t produced {} and failed {} at cycle {} {}",
+                cycle_stat.ok_count,
+                cycle_stat.nok_count,
+                cycle_stat.cycle,
+                if cycle_stat.is_final {
+                    "(final)"
+                } else {
+                    "(non-final)"
+                }
+            )?;
+        }
+
         Ok(())
     }
 }
@@ -189,7 +229,6 @@ impl AddressInfo {
             thread: self.thread,
             balance: self.balance,
             rolls: self.rolls,
-            is_staking: self.is_staking,
         }
     }
 }
@@ -199,17 +238,11 @@ pub struct CompactAddressInfo {
     pub thread: u8,
     pub balance: BalanceInfo,
     pub rolls: RollsInfo,
-    pub is_staking: bool,
 }
 
 impl std::fmt::Display for CompactAddressInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "Address: {}{}",
-            self.address,
-            display_if_true(self.is_staking, "staking"),
-        )?;
+        writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
         writeln!(f, "Balance:\n{}", self.balance)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
@@ -316,4 +349,5 @@ pub struct APIConfig {
     pub draw_lookahead_period_count: u64,
     pub bind_private: SocketAddr,
     pub bind_public: SocketAddr,
+    pub max_arguments: u64,
 }

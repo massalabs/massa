@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
@@ -8,12 +8,11 @@ use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
 use crypto::signature::PrivateKey;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
-    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, RollsInfo,
-    TimeInterval,
+    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, TimeInterval,
 };
 use models::clique::Clique;
 use models::crypto::PubkeySig;
-use models::{Address, AlgoConfig, BlockId, EndorsementId, Operation, OperationId};
+use models::{Address, BlockId, EndorsementId, Operation, OperationId};
 
 // TODO: This crate should at some point be renamed `client`, `massa` or `massa-client`
 // and replace the previous one!
@@ -25,8 +24,10 @@ pub struct Client {
 
 impl Client {
     pub(crate) async fn new(ip: IpAddr, public_port: u16, private_port: u16) -> Client {
-        let public_url = format!("http://{}:{}", ip, public_port);
-        let private_url = format!("http://{}:{}", ip, private_port);
+        let public_socket_addr = SocketAddr::new(ip, public_port);
+        let private_socket_addr = SocketAddr::new(ip, private_port);
+        let public_url = format!("http://{}", public_socket_addr);
+        let private_url = format!("http://{}", private_socket_addr);
         Client {
             public: RpcClient::from_url(&public_url).await,
             private: RpcClient::from_url(&private_url).await,
@@ -136,23 +137,9 @@ impl RpcClient {
     // Debug (specific information)
 
     /// Returns the active stakers and their roll counts for the current cycle.
-    pub(crate) async fn _get_stakers(&self) -> RpcResult<AddressHashMap<RollsInfo>> {
+    pub(crate) async fn _get_stakers(&self) -> RpcResult<AddressHashMap<u64>> {
         self.0
-            .call_method("get_stakers", "AddressHashMap<RollsInfo>", ())
-            .await
-    }
-
-    /// Returns the algo config. // TODO: rename me please ... it hurts
-    pub(crate) async fn get_algo_config(&self) -> RpcResult<AlgoConfig> {
-        self.0
-            .call_method("get_algo_config", "AlgoConfig", ())
-            .await
-    }
-
-    /// Returns the compensation_millis.
-    pub(crate) async fn get_compensation_millis(&self) -> RpcResult<i64> {
-        self.0
-            .call_method("get_compensation_millis", "i64", ())
+            .call_method("get_stakers", "AddressHashMap<u64>", ())
             .await
     }
 

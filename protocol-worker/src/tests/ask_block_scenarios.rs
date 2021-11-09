@@ -1,12 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::tools;
 use super::tools::protocol_test;
-use crate::ProtocolEvent;
 use models::BlockHashSet;
 use network::NetworkCommand;
+use protocol_exports::tests::tools;
+use protocol_exports::tests::tools::{asked_list, assert_hash_asked_to_node};
+use protocol_exports::ProtocolEvent;
 use serial_test::serial;
-use tools::{asked_list, assert_hash_asked_to_node};
 
 #[tokio::test]
 #[serial]

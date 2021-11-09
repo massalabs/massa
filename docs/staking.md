@@ -37,7 +37,7 @@ Get the private key that has rolls in your wallet:
 
 Register your private key so that your node start to stake with it:
 
-    register_staking_keys <your_private_key>
+    node_add_staking_private_keys <your_private_key>
 
 Now you should wait some time so that your rolls become active: 3 cycles
 of 128 periods (one period is 32 blocks - 16 sec), so about 1h40
@@ -53,9 +53,11 @@ You should be selected to create blocks in the different threads.
 
 To check when your address is selected to stake, run this command:
 
-    next_draws <your_address>
+    get_addresses <your_address>
 
-Check that your balance increase, for each block or endorsement that you
+and look at the "next draws" section.
+
+Also check that your balance increases, for each block or endorsement that you
 create you should get a small reward.
 
 ## Selling rolls

@@ -11,7 +11,7 @@ use models::{ledger::LedgerData, EndorsementId};
 use models::{Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot};
 use models::{Endorsement, SerializeCompact};
 use pool::PoolCommand;
-use protocol::ProtocolCommand;
+use protocol_exports::ProtocolCommand;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -77,10 +77,9 @@ async fn test_genesis_block_creation() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let _genesis_ids = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -171,10 +170,9 @@ async fn test_block_creation_with_draw() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_ids = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -324,10 +322,9 @@ async fn test_interleaving_block_creation_with_reception() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let mut parents = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -478,7 +475,6 @@ async fn test_order_of_inclusion() {
 
     tools::consensus_pool_test(
         cfg.clone(),
-        None,
         None,
         None,
         async move |mut pool_controller,
@@ -640,7 +636,6 @@ async fn test_block_filling() {
 
     tools::consensus_pool_test(
         cfg.clone(),
-        None,
         None,
         None,
         async move |mut pool_controller,
