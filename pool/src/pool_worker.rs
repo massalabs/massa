@@ -10,6 +10,7 @@ use models::{
 };
 use protocol_exports::{ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver};
 use tokio::sync::{mpsc, oneshot};
+use tracing::warn;
 
 /// Commands that can be processed by pool.
 #[derive(Debug)]
@@ -172,41 +173,61 @@ impl PoolWorker {
                 batch_size,
                 max_size,
                 response_tx,
-            } => response_tx
-                .send(self.operation_pool.get_operation_batch(
-                    target_slot,
-                    exclude,
-                    batch_size,
-                    max_size,
-                )?)
-                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
+            } => {
+                if response_tx
+                    .send(self.operation_pool.get_operation_batch(
+                        target_slot,
+                        exclude,
+                        batch_size,
+                        max_size,
+                    )?)
+                    .is_err()
+                {
+                    warn!("pool: could not send get_operation_batch response");
+                }
+            }
             PoolCommand::GetOperations {
                 operation_ids,
                 response_tx,
-            } => response_tx
-                .send(self.operation_pool.get_operations(&operation_ids))
-                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
+            } => {
+                if response_tx
+                    .send(self.operation_pool.get_operations(&operation_ids))
+                    .is_err()
+                {
+                    warn!("pool: could not send get_operations response");
+                }
+            }
             PoolCommand::GetRecentOperations {
                 address,
                 response_tx,
-            } => response_tx
-                .send(
-                    self.operation_pool
-                        .get_operations_involving_address(&address)?,
-                )
-                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
+            } => {
+                if response_tx
+                    .send(
+                        self.operation_pool
+                            .get_operations_involving_address(&address)?,
+                    )
+                    .is_err()
+                {
+                    warn!("pool: could not send get_operations_involving_address response");
+                }
+            }
             PoolCommand::FinalOperations(ops) => self.operation_pool.new_final_operations(ops)?,
             PoolCommand::GetEndorsements {
                 target_slot,
                 parent,
                 creators,
                 response_tx,
-            } => response_tx
-                .send(
-                    self.endorsement_pool
-                        .get_endorsements(target_slot, parent, creators)?,
-                )
-                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
+            } => {
+                if response_tx
+                    .send(
+                        self.endorsement_pool
+                            .get_endorsements(target_slot, parent, creators)?,
+                    )
+                    .is_err()
+                {
+                    warn!("pool: could not send get_endorsements response");
+                }
+            }
             PoolCommand::AddEndorsements(mut endorsements) => {
                 let newly_added = self
                     .endorsement_pool
@@ -218,12 +239,17 @@ impl PoolWorker {
                         .await?;
                 }
             }
-            PoolCommand::GetStats(response_tx) => response_tx
-                .send(PoolStats {
-                    operation_count: self.operation_pool.len() as u64,
-                    endorsement_count: self.endorsement_pool.len() as u64,
-                })
-                .map_err(|e| PoolError::ChannelError(format!("could not send {:?}", e)))?,
+            PoolCommand::GetStats(response_tx) => {
+                if response_tx
+                    .send(PoolStats {
+                        operation_count: self.operation_pool.len() as u64,
+                        endorsement_count: self.endorsement_pool.len() as u64,
+                    })
+                    .is_err()
+                {
+                    warn!("pool: could not send PoolStats response");
+                }
+            }
         }
         Ok(())
     }
