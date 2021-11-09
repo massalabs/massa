@@ -10,8 +10,9 @@ rolls can be seen [there](https://test.massa.net/#staking).
 
 Rolls can be bought with Massa coins or sold to get the coins back. If
 you already have more than 100 Massa, you can continue this tutorial,
-otherwise, you can ask for coins from us in the
-[Discord](https://discord.com/invite/TnsJQzXkRN) testnet channel.
+otherwise, send your address to the faucet bot in the
+"testnet-faucet" channel of our
+Discord..
 
 ## Buying rolls
 
