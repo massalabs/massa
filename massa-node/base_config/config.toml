@@ -7,6 +7,7 @@ version = "DEVE.0.0"
     draw_lookahead_period_count = 10
     bind_private = "127.0.0.1:33034"
     bind_public = "0.0.0.0:33035"
+    max_arguments = 128
 
 [consensus]
     genesis_timestamp = 1626440641000
