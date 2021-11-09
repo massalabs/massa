@@ -8,7 +8,7 @@ use models::{
     Address, BlockId, Endorsement, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
     OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
-use protocol_exports::{ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver};
+use protocol_exports::{ProtocolInterface, ProtocolPoolEvent, ProtocolPoolEventReceiver};
 use tokio::sync::{mpsc, oneshot};
 
 /// Commands that can be processed by pool.
@@ -50,7 +50,7 @@ pub enum PoolManagementCommand {}
 /// Manages pool.
 pub struct PoolWorker {
     /// Associated protocol command sender.
-    protocol_command_sender: ProtocolCommandSender,
+    protocol_command_sender: Box<dyn ProtocolInterface>,
     /// Associated protocol pool event listener.
     protocol_pool_event_receiver: ProtocolPoolEventReceiver,
     /// Channel receiving pool commands.
@@ -79,7 +79,7 @@ impl PoolWorker {
         cfg: PoolConfig,
         thread_count: u8,
         operation_validity_periods: u64,
-        protocol_command_sender: ProtocolCommandSender,
+        protocol_command_sender: Box<dyn ProtocolInterface>,
         protocol_pool_event_receiver: ProtocolPoolEventReceiver,
         controller_command_rx: mpsc::Receiver<PoolCommand>,
         controller_manager_rx: mpsc::Receiver<PoolManagementCommand>,

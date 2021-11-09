@@ -11,7 +11,7 @@ mod protocol_controller;
 pub use config::{ProtocolConfig, CHANNEL_SIZE};
 pub use error::ProtocolError;
 pub use protocol_controller::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
+    ProtocolEvent, ProtocolEventReceiver, ProtocolInterface, ProtocolInterfaceClone,
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 

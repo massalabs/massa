@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use async_trait::async_trait;
 use crypto::hash::Hash;
 use itertools::Itertools;
 use logging::massa_trace;
@@ -12,10 +13,11 @@ use models::{
 use models::{Endorsement, EndorsementId};
 use network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use protocol_exports::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolConfig, ProtocolError, ProtocolEvent,
-    ProtocolEventReceiver, ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent,
+    ProtocolConfig, ProtocolError, ProtocolEvent, ProtocolEventReceiver, ProtocolInterface,
+    ProtocolInterfaceClone, ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent,
     ProtocolPoolEventReceiver, CHANNEL_SIZE,
 };
+use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use time::TimeError;
 use tokio::{
@@ -41,7 +43,7 @@ pub async fn start_protocol_controller(
     network_event_receiver: NetworkEventReceiver,
 ) -> Result<
     (
-        ProtocolCommandSender,
+        Box<dyn ProtocolInterface>,
         ProtocolEventReceiver,
         ProtocolPoolEventReceiver,
         ProtocolManager,
@@ -81,11 +83,160 @@ pub async fn start_protocol_controller(
     });
     debug!("protocol controller ready");
     Ok((
-        ProtocolCommandSender(command_tx),
+        Box::new(ProtocolCommandSender(command_tx)),
         ProtocolEventReceiver(event_rx),
         ProtocolPoolEventReceiver(pool_event_rx),
         ProtocolManager::new(join_handle, manager_tx),
     ))
+}
+
+/// Commands that protocol worker can process
+#[derive(Debug, Serialize)]
+pub enum ProtocolCommand {
+    /// Notify block integration of a given block.
+    IntegratedBlock {
+        block_id: BlockId,
+        block: Block,
+        operation_ids: OperationHashSet,
+        endorsement_ids: Vec<EndorsementId>,
+    },
+    /// A block, or it's header, amounted to an attempted attack.
+    AttackBlockDetected(BlockId),
+    /// Wishlist delta
+    WishlistDelta {
+        new: BlockHashSet,
+        remove: BlockHashSet,
+    },
+    /// The response to a ProtocolEvent::GetBlocks.
+    GetBlocksResults(
+        BlockHashMap<Option<(Block, Option<OperationHashSet>, Option<Vec<EndorsementId>>)>>,
+    ),
+    /// Propagate operations
+    PropagateOperations(OperationHashMap<Operation>),
+    /// Propagate endorsements
+    PropagateEndorsements(EndorsementHashMap<Endorsement>),
+}
+
+#[derive(Clone)]
+pub struct ProtocolCommandSender(pub mpsc::Sender<ProtocolCommand>);
+
+impl ProtocolInterfaceClone for ProtocolCommandSender {
+    fn clone_box(&self) -> Box<dyn ProtocolInterface> {
+        Box::new(self.clone())
+    }
+}
+
+#[async_trait]
+impl ProtocolInterface for ProtocolCommandSender {
+    /// Sends the order to propagate the header of a block
+    ///
+    /// # Arguments
+    /// * hash : hash of the block header
+    async fn integrated_block(
+        &mut self,
+        block_id: BlockId,
+        block: Block,
+        operation_ids: OperationHashSet,
+        endorsement_ids: Vec<EndorsementId>,
+    ) -> Result<(), ProtocolError> {
+        massa_trace!("protocol.command_sender.integrated_block", { "block_id": block_id, "block": block });
+        let res = self
+            .0
+            .send(ProtocolCommand::IntegratedBlock {
+                block_id,
+                block,
+                operation_ids,
+                endorsement_ids,
+            })
+            .await
+            .map_err(|_| ProtocolError::ChannelError("block_integrated command send error".into()));
+        res
+    }
+
+    /// Notify to protocol an attack attempt.
+    async fn notify_block_attack(&mut self, block_id: BlockId) -> Result<(), ProtocolError> {
+        massa_trace!("protocol.command_sender.notify_block_attack", {
+            "block_id": block_id
+        });
+        let res = self
+            .0
+            .send(ProtocolCommand::AttackBlockDetected(block_id))
+            .await
+            .map_err(|_| {
+                ProtocolError::ChannelError("notify_block_attack command send error".into())
+            });
+        res
+    }
+
+    /// Send the response to a ProtocolEvent::GetBlocks.
+    async fn send_get_blocks_results(
+        &mut self,
+        results: BlockHashMap<
+            Option<(Block, Option<OperationHashSet>, Option<Vec<EndorsementId>>)>,
+        >,
+    ) -> Result<(), ProtocolError> {
+        massa_trace!("protocol.command_sender.send_get_blocks_results", {
+            "results": results
+        });
+        let res = self
+            .0
+            .send(ProtocolCommand::GetBlocksResults(results))
+            .await
+            .map_err(|_| {
+                ProtocolError::ChannelError("send_get_blocks_results command send error".into())
+            });
+        res
+    }
+
+    async fn send_wishlist_delta(
+        &mut self,
+        new: BlockHashSet,
+        remove: BlockHashSet,
+    ) -> Result<(), ProtocolError> {
+        massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });
+        let res = self
+            .0
+            .send(ProtocolCommand::WishlistDelta { new, remove })
+            .await
+            .map_err(|_| {
+                ProtocolError::ChannelError("send_wishlist_delta command send error".into())
+            });
+        res
+    }
+
+    async fn propagate_operations(
+        &mut self,
+        operations: OperationHashMap<Operation>,
+    ) -> Result<(), ProtocolError> {
+        massa_trace!("protocol.command_sender.propagate_operations", {
+            "operations": operations
+        });
+        let res = self
+            .0
+            .send(ProtocolCommand::PropagateOperations(operations))
+            .await
+            .map_err(|_| {
+                ProtocolError::ChannelError("propagate_operation command send error".into())
+            });
+        res
+    }
+
+    async fn propagate_endorsements(
+        &mut self,
+        endorsements: EndorsementHashMap<Endorsement>,
+    ) -> Result<(), ProtocolError> {
+        massa_trace!("protocol.command_sender.propagate_endorsements", {
+            "endorsements": endorsements
+        });
+        let res = self
+            .0
+            .send(ProtocolCommand::PropagateEndorsements(endorsements))
+            .await
+            .map_err(|_| {
+                ProtocolError::ChannelError("propagate_endorsements command send error".into())
+            });
+        res
+    }
 }
 
 //put in a module to block private access from Protocol_worker.

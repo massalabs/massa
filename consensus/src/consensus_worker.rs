@@ -20,7 +20,7 @@ use models::{
     OperationHashSet, OperationSearchResult, SerializeCompact, Slot, StakersCycleProductionStats,
 };
 use pool::PoolCommandSender;
-use protocol_exports::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
+use protocol_exports::{ProtocolEvent, ProtocolEventReceiver, ProtocolInterface};
 use std::{cmp::max, collections::HashSet, collections::VecDeque, convert::TryFrom};
 use storage::StorageAccess;
 use time::UTime;
@@ -98,7 +98,7 @@ pub struct ConsensusWorker {
     /// Genesis blocks werecreated with that public key.
     genesis_public_key: PublicKey,
     /// Associated protocol command sender.
-    protocol_command_sender: ProtocolCommandSender,
+    protocol_command_sender: Box<dyn ProtocolInterface>,
     /// Associated protocol event listener.
     protocol_event_receiver: ProtocolEventReceiver,
     /// Associated Pool command sender.
@@ -150,7 +150,7 @@ impl ConsensusWorker {
     /// * controller_manager_rx: Channel receiving consensus management commands.
     pub async fn new(
         cfg: ConsensusConfig,
-        protocol_command_sender: ProtocolCommandSender,
+        protocol_command_sender: Box<dyn ProtocolInterface>,
         protocol_event_receiver: ProtocolEventReceiver,
         pool_command_sender: PoolCommandSender,
         opt_storage_command_sender: Option<StorageAccess>,

@@ -12,7 +12,7 @@ use models::{
     Address, BlockId, Endorsement, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
     OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
-use protocol_exports::{ProtocolCommandSender, ProtocolPoolEventReceiver};
+use protocol_exports::{ProtocolInterface, ProtocolPoolEventReceiver};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -23,13 +23,13 @@ use tracing::{debug, error, info};
 ///
 /// # Arguments
 /// * cfg: pool configuration
-/// * protocol_command_sender: a ProtocolCommandSender instance to send commands to Protocol.
+/// * protocol_command_sender: a Box<dyn ProtocolInterface> instance to send commands to Protocol.
 /// * protocol_pool_event_receiver: a ProtocolPoolEventReceiver instance to receive pool events from Protocol.
 pub async fn start_pool_controller(
     cfg: PoolConfig,
     thread_count: u8,
     operation_validity_periods: u64,
-    protocol_command_sender: ProtocolCommandSender,
+    protocol_command_sender: Box<dyn ProtocolInterface>,
     protocol_pool_event_receiver: ProtocolPoolEventReceiver,
 ) -> Result<(PoolCommandSender, PoolManager), PoolError> {
     debug!("starting pool controller");

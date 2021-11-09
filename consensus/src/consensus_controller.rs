@@ -18,7 +18,7 @@ use models::{
 };
 use models::{Address, Block, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats};
 use pool::PoolCommandSender;
-use protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
+use protocol_exports::{ProtocolEventReceiver, ProtocolInterface};
 use storage::StorageAccess;
 
 use crate::error::ConsensusError;
@@ -38,11 +38,11 @@ use tracing::{debug, error, info};
 ///
 /// # Arguments
 /// * cfg: consensus configuration
-/// * protocol_command_sender: a ProtocolCommandSender instance to send commands to Protocol.
+/// * protocol_command_sender: a Box<dyn ProtocolInterface> instance to send commands to Protocol.
 /// * protocol_event_receiver: a ProtocolEventReceiver instance to receive events from Protocol.
 pub async fn start_consensus_controller(
     cfg: ConsensusConfig,
-    protocol_command_sender: ProtocolCommandSender,
+    protocol_command_sender: Box<dyn ProtocolInterface>,
     protocol_event_receiver: ProtocolEventReceiver,
     pool_command_sender: PoolCommandSender,
     opt_storage_command_sender: Option<StorageAccess>,
