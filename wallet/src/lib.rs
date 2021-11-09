@@ -9,7 +9,6 @@ pub use error::WalletError;
 use models::address::{Address, AddressHashMap, AddressHashSet};
 use models::amount::Amount;
 use models::crypto::PubkeySig;
-use models::ledger::LedgerData;
 use models::Operation;
 use models::OperationContent;
 use models::SerializeCompact;
