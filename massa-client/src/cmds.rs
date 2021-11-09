@@ -3,7 +3,7 @@
 use console::style;
 use crypto::generate_random_private_key;
 use crypto::signature::PrivateKey;
-use models::api::{AddressInfo, BlockInfo, EndorsementInfo, OperationInfo};
+use models::api::{AddressInfo, EndorsementInfo, OperationInfo};
 use models::timeslots::get_current_latest_block_slot;
 use models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
@@ -85,10 +85,10 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "BlockId1 BlockId2 ..."),
-        message = "show info about a list of blocks (content, finality ...)"
+        props(args = "BlockId"),
+        message = "show info about a block (content, finality ...)"
     )]
-    get_blocks,
+    get_block,
 
     #[strum(
         ascii_case_insensitive,
@@ -346,13 +346,22 @@ impl Command {
                 Err(e) => repl_err!(e),
             },
 
-            Command::get_blocks => match parse_vec::<BlockId>(parameters) {
-                Ok(block_ids) => match client.public.get_blocks(block_ids).await {
-                    Ok(x) => repl_ok!(format_vec::<BlockInfo>(&x)),
-                    Err(e) => repl_err!(e),
-                },
-                Err(e) => repl_err!(e),
-            },
+            Command::get_block => {
+                if parameters.len() != 1 {
+                    repl_err!("Wrong param numbers") // TODO: print help
+                } else {
+                    // parse
+                    let b_id = match parameters[0].parse::<BlockId>() {
+                        Ok(b) => b,
+                        Err(e) => return repl_err!(e),
+                    };
+
+                    match client.public.get_block(b_id).await {
+                        Ok(x) => repl_ok!(format!("{}", x)),
+                        Err(e) => repl_err!(e),
+                    }
+                }
+            }
 
             Command::get_endorsements => match parse_vec::<EndorsementId>(parameters) {
                 Ok(endorsements) => match client.public.get_endorsements(endorsements).await {

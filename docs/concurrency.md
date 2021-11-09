@@ -50,7 +50,6 @@ via another, or multiple other, component(s).
     -   Sends commands to:
         -   Protocol
         -   Pool
-        -   Storage
     -   Receives commands from:
         -   Bootstrap
         -   Massa-node
@@ -62,10 +61,6 @@ via another, or multiple other, component(s).
     -   Receives commands from:
         -   Consensus
         -   Massa-node
--   Storage:
-    -   Receives commands from:
-        -   Consensus
-        -   API
 -   Protocol:
     -   Sends events to:
         -   Consensus
@@ -90,8 +85,7 @@ via another, or multiple other, component(s).
 -   API:
     -   Sends events to:
         -   Massa-node
-    -   Sends commands to:
-        -   Storage
+
 
 ## Blocking relationships
 
@@ -100,13 +94,12 @@ type of messages than the receiving component cannot block on the
 sender, which means that it cannot send `_Command` type of messages to
 it, even indirectly via another, or several other, component(s).
 
--   Storage cannot block on API and Consensus, blocks on nothing.
 -   Network cannot block on Protocol, Bootstrap, and Massa-node, blocks
     on Node(s).
 -   Protocol cannot block on Consensus and Pool, blocks on Network.
 -   Pool cannot block on Consensus and Massa-node, blocks on Protocol.
 -   Consensus cannot block on Bootstrap and Massa-node, blocks on
-    Protocol, Pool, and Storage.
--   API blocks on Storage and Massa-node.
+    Protocol, Pool.
+-   API blocks on Massa-node.
 -   Massa-node cannot block on API, blocks on Consensus, Pool, and
     Network.
