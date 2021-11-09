@@ -25,54 +25,63 @@ slot, timestamp), clique count, connected nodes count.
 - Return:
 
 ```javascript
-{
-    "node_id": String, // identifies the node
-    "node_ip": String or Null, // node's ip address, if provided
-    "version": String,
-    "genesis_timestamp": Number, // start of the network, in millis since 1st january 1970
-    "t0": Number, // number of millis between two slots in a thread (depends on thread_count)
-    "delta_f0": Number, // used to compute finality threshold
-    "roll_price": Number, // price in coins of a roll
-    "thread_count": Number, // number of threads in the network
-    "current_time": Number, // current time in millis since 1st january 1970
-    "current_cycle": Number,
-    "connected_nodes": Object{NodeId, IpAddr},
-    "last_slot": Null or {"period": Number, "thread", Number}, // last slot if avaible
-    "next_slot": {"period": Number, "thread", Number},
-    "consensus_stats": {
-        "start_timespan": Number, // start in millis since 1st january 1970 of that measurement
-        "end_timespan": Number, // end in millis since 1st january 1970 of that measurement
-        "final_block_count": Number,
-        "final_operation_count": Number,
-        "stale_block_count": Number,
-        "clique_count": Number,
-        "staker_count": Number, // current number of active stakers
-    },
-    "pool_stats": {
-        "operation_count": Number,
-        "endorsement_count": Number,
-    },
-    "network_stats": {
-        "in_connection_count": Number,
-        "out_connection_count": Number,
-        "known_peer_count": Number,
-        "banned_peer_count": Number,
-        "active_node_count": Number,
-     },
-     "algo_config": {
-        "genesis_timestamp": Number,
-        "end_timestamp": Null or Number,
-        "thread_count": Number,
-        "t0": Number,
-        "delta_f0": Number,
-        "operation_validity_periods": Number,
-        "periods_per_cycle": Number,
-        "pos_lookback_cycles": Number, // Proof of Stake lookback cycles: when drawing for cycle N, we use the rolls from cycle N - pos_lookback_cycles - 1
-        "pos_lock_cycles": Number, // Proof of Stake lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles
-        "block_reward": Amount,
-        "roll_price": Amount,
-    },
+ {
+  "algo_config": {
+    "block_reward": String, // represent an Amount in coins
+    "delta_f0": Number, // Used to compute finality thresold
+    "end_timestamp": null or Number, // millis since 1970-01-01 (only in tesnets)
+    "genesis_timestamp": Number, // millis since 1970-01-01
+    "operation_validity_periods": Number,
+    "periods_per_cycle": Number,
+    "pos_lock_cycles": Number,
+    "pos_lookback_cycles": Number,
+    "roll_price": String, // represent an Amount in coins
+    "t0": Number, // millis between to slots in the same thread
+    "thread_count": Number
+  },
+  "connected_nodes": {
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": String // Node id -> ip address
+  },
+  "consensus_stats": {
+    "clique_count": Number,
+    "end_timespan": Number,// stats time interval, millis since 1970-01-01
+    "final_block_count": Number,
+    "final_operation_count": Number,
+    "staker_count": Number,
+    "stale_block_count": Number,
+    "start_timespan": // stats time interval, millis since 1970-01-01
+  },
+  "current_cycle": Number,
+  "current_time": Number, // millis since 1970-01-01
+  "delta_f0": Number, // Used to compute finality thresold
+  "genesis_timestamp": Number, // millis since 1970-01-01
+  "last_slot": {
+    "period": Number,
+    "thread": Number
+  },
+  "network_stats": {
+    "active_node_count": Number,
+    "banned_peer_count": Number,
+    "in_connection_count": Number,
+    "known_peer_count": Number,
+    "out_connection_count": Number
+  },
+  "next_slot": {
+    "period": Number,
+    "thread": Number
+  },
+  "node_id": String,
+  "node_ip": null or String, // ip address if provided
+  "pool_stats": {
+    "endorsement_count": Number,
+    "operation_count": Number
+  },
+  "roll_price": String, // represent an Amount in coins
+  "t0": Number,
+  "thread_count": Number,
+  "version": String
 }
+
 ```
 
 ### `get_cliques`
@@ -84,11 +93,13 @@ Get cliques.
 - Return:
 
 ```javascript
-[{
-       "block_ids": [String], // strings are block ids
-       "fitness": Number,
-       "is_blockclique": Bool,
- }, ... ].
+[
+  {
+    "block_ids": [String],
+    "fitness": Number,
+    "is_blockclique": Boolean
+  }
+]
 ```
 
 ### `get_stakers`
@@ -100,7 +111,9 @@ Returns the active stakers and their roll counts for the current cycle.
 - Return:
 
 ```javascript
-{Address: Number, ... } // Dictionnary associating staker addresses to their active roll counts
+{
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": Number
+} // Dictionnary associating staker addresses to their active roll counts
 ```
 
 ### `get_operations`
@@ -116,22 +129,37 @@ Returns operations information associated to a given list of operations' IDs.
 - Return:
 
 ```javascript
-[{
-    "id": String, // string is an OperationId,
-    "in_pool": bool,
-    "in_blocks": [String], // string is a BlockId,
-    "is_final": bool,
+[
+  {
+    "id": String, // Operation id
+    "in_blocks": [String], // Block ids
+    "in_pool": Boolean,
+    "is_final": Boolean,
     "operation": {
-        "content":
-            "sender_public_key": String // string is a PublicKey,
-            "fee": Number, // in coins
-            "expire_period": Number,
-            "op": OperationType, // TODO not sure how this go in JSON
-
-        }
-        "signature": String,
+      "content": {
+        "expire_period": Number,
+        "fee": String, // represent an Amount in coins
+        "op": {
+          "Transaction": {
+            "amount": String, // represent an Amount in coins
+            "recipient_address": String
+          }
+          OR
+          "RollBuy": {
+            "roll_count": Number
+          }
+          OR
+          "RollSell": {
+            "roll_count": Number
+          }
+        },
+        "sender_public_key": String
+      },
+      "signature": String
     }
- }, ... ].
+  }
+]
+
 ```
 
 ### `get_endorsements`
@@ -149,19 +177,22 @@ Get endorsements (not yet implemented)
 ```javascript
 [{
     "id": String, // EndorsementId,
-    "in_pool": bool,
+    "in_pool": Boolean,
     "in_blocks": [String], // BlockId,
-    "is_final": bool,
+    "is_final": Boolean,
     "endorsement": {
         "content":{
-            "sender_public_key": PublicKey,
-            "slot": {"period": Number, "thread", Number},
+            "sender_public_key": String,
+            "slot": {
+                "period": Number,
+                "thread": Number
+            },
             "index": Number,
             "endorsed_block": String // BlockId,
         }
         "signature": String
     }
- }, ... ] // TODO
+ }]
 ```
 
 ### `get_block`
@@ -186,32 +217,54 @@ String // Block id
         "block": {
             "header": {
                 "content": {
-                    "creator": String // PublicKey,
-                    "slot": {"period": Number, "thread", Number},
-                    "parents": [String] // BlockId,
-                    "operation_merkle_root": String, // all operations hash
-                    "endorsements": [{
-                        "content":{
-                            "sender_public_key": PublicKey,
-                            "slot": {"period": Number, "thread", Number},
-                            "index": Number,
-                            "endorsed_block": String // BlockId,
-                        }
-                        "signature": String
-                     }, ... ], // TODO
+                  "endorsed_block": String, // Block id
+                  "index": Number,
+                  "sender_public_key": String, 
+                  "slot": { // endorsed block slot: deifferent from block's slot
+                    "period": Number,
+                    "thread": Number
+                  }
                 },
-                "signature": Signature,
-            },
-            operations: [{
-                "content": {
-                    "sender_public_key": String // string is a PublicKey,
-                    "fee": Number, // in coins
-                    "expire_period": Number,
-                    "op": OperationType, // TODO not sure how this go in JSON
-                }
-                "signature": String,
-             }, ... ], // TODO
+                "signature": String
+              }
+            ],
+            "operation_merkle_root": String, // Hash of all operations
+            "parents": [String], // Block ids, as many as thread count
+            "slot": {
+              "period": Number,
+              "thread": Number
+            }
+          },
+          "signature": String
         },
+        "operations": [
+          {
+            "content": {
+              "expire_period": Number,
+              "fee": String, // represent an Amount in coins
+              "op": {
+                "Transaction": {
+                  "amount": String, // represent an Amount in coins
+                  "recipient_address": String
+                }
+                OR
+                "RollBuy": {
+                  "roll_count": Number
+                }
+                OR
+                "RollSell": {
+                  "roll_count": Number
+                }
+              },
+              "sender_public_key": String
+            },
+            "signature": String
+          }
+        ]
+      },
+      "is_final": Boolean,
+      "is_in_blockclique": Boolean,
+      "is_stale": Boolean
     },
 }
 ```
@@ -224,23 +277,28 @@ Get the block graph within the specified time interval.
 
 ```javascript
 {
-    "start": Null or Number, // in millis since 1970-01-01
-    "end": Null or Number,// in millis since 1970-01-01
+    "start": null or Number, // in millis since 1970-01-01, field may be omitted
+    "end": null or Number,// in millis since 1970-01-01, field may be omitted
 }
 ```
 
 -   Return:
 
 ```javascript
-[{
-    "id": String // BlockId,
-    "is_final": bool,
-    "is_stale": bool,
-    "is_in_blockclique": bool,
-    "slot": {"period": Number, "thread", Number},
-    "creator":  String // Address,
-    "parents": [String] // BlockId,
- }, ... ] // TODO
+[
+  {
+    "creator": String, // public key
+    "id": String, // Block Id
+    "is_final": Boolean,
+    "is_in_blockclique": Boolean,
+    "is_stale": Boolean,
+    "parents": [String], // as many block Ids as there are threads
+    "slot": {
+      "period": Number,
+      "thread": Number
+    }
+  }
+]
 ```
 
 ### `get_addresses`
@@ -250,40 +308,52 @@ Get addresses.
 - Parameters:
 
 ```javascript
-[String]
+[
+  [String] // Addresses
+]
+
 ```
 
 - Return:
 
 ```javascript
-[{
-    "address": String // Address,
-    "thread": Number,
+[
+  {
+    "address": String,
     "balance": {
-        "final_balance": Number,
-        "candidate_balance": Number,
-        "locked_balance": Number,
-     },
-     "rolls": {
-        "active_rolls": Number,
-        "final_rolls": Number,
-        "candidate_rolls": Number,
-     },
-     "block_draws": [{"period": Number, "thread", Number }, ... ],
-     "endorsement_draws": {Slot: Number}, // number is the index
-     "blocks_created": [String], // Block ids
-     "involved_in_endorsements": [String], // Endorsement ids,
-     "involved_in_operations": [String], // Operation ids,
-     "production_stats": [
-         {
-             "cycle": Number,
-             "is_final": bool, // is this cycle final
-             "ok_count": Number, // number of blocks successfully produced and finalized in the cycle
-             "nok_count": Number, // number of blocks not produced or that failed to finalize in the cycle
-         },
-         ...
-     ]
- }, ... ]  // TODO
+      "candidate_balance": String, // represent an Amount in coins
+      "final_balance": String, // represent an Amount in coins
+      "locked_balance": String // represent an Amount in coins
+    },
+    "block_draws": [
+      {
+        "period": Number,
+        "thread": Number
+      },
+    ],
+    "blocks_created": [String], // Block ids
+    "endorsement_draws": {
+      "(period: 19387, thread: 19)": 8, // TODO wait for #447
+    },
+    "involved_in_endorsements": [], // TODO wait for #256
+    "involved_in_operations": [String], // Operation id
+    "production_stats": [ // as many items as cached cycles
+      {
+        "cycle": Number,
+        "is_final": Boolean,
+        "nok_count": Number,
+        "ok_count": Number
+      }
+    ],
+    "rolls": {
+      "active_rolls": Number,
+      "candidate_rolls": Number,
+      "final_rolls": Number
+    },
+    "thread": Number
+  }
+]
+
 ```
 
 ### `send_operations`
@@ -294,15 +364,30 @@ pool.
 - Parameters:
 
 ```javascript
-[{
+[[
+  {
     "content": {
-        "sender_public_key": String // string is a PublicKey,
-        "fee": Number, // in coins
-        "expire_period": Number,
-        "op": OperationType, // TODO not sure how this go in JSON
-    }
-    "signature": String,
-  }, ... ] // TODO
+      "expire_period": Number,
+      "fee": String, // represent an Amount in coins
+      "op": {
+        "Transaction": {
+          "amount": String, // represent an Amount in coins
+          "recipient_address": String
+        }
+        OR
+        "RollBuy": {
+          "roll_count": Number
+        }
+        OR
+        "RollSell": {
+          "roll_count": Number
+        }
+      },
+      "sender_public_key": String
+    },
+    "signature": String
+  }
+]]
 ```
 
 -   Return:
