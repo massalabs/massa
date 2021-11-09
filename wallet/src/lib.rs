@@ -9,7 +9,6 @@ pub use error::WalletError;
 use models::address::{Address, AddressHashMap, AddressHashSet};
 use models::amount::Amount;
 use models::crypto::PubkeySig;
-use models::ledger::LedgerData;
 use models::Operation;
 use models::OperationContent;
 use models::SerializeCompact;
@@ -129,32 +128,6 @@ impl Wallet {
     }
 }
 
-/// Contains the private keys created in the wallet.
-#[derive(Debug)]
-pub struct WalletInfo<'a> {
-    pub wallet: &'a Wallet,
-    pub balances: AddressHashMap<WrappedAddressState>,
-}
-
-impl<'a> std::fmt::Display for WalletInfo<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "WARNING: do not share your private keys")?;
-        for (addr, (public_key, key)) in &self.wallet.keys {
-            writeln!(f)?;
-            writeln!(f, "Private key: {}", key)?;
-            writeln!(f, "Public key: {}", public_key)?;
-            writeln!(f, "Address: {}", addr)?;
-            match self.balances.get(&addr) {
-                Some(balance) => {
-                    write!(f, "State: \n{}", balance)?;
-                }
-                None => writeln!(f, "No balance info available. Is your node running?")?,
-            }
-        }
-        Ok(())
-    }
-}
-
 impl std::fmt::Display for Wallet {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f)?;
@@ -181,36 +154,4 @@ pub struct ConsensusConfigData {
     pub operation_validity_periods: u64,
     pub periods_per_cycle: u64,
     pub roll_price: Amount,
-}
-
-impl<'a> std::fmt::Display for WrappedAddressState {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "    final balance: {}", self.final_ledger_data.balance)?;
-        writeln!(
-            f,
-            "    candidate balance: {}",
-            self.candidate_ledger_data.balance
-        )?;
-        writeln!(f, "    locked balance: {}", self.locked_balance)?;
-        writeln!(f, "    final rolls: {}", self.final_rolls)?;
-        writeln!(f, "    candidate rolls: {}", self.candidate_rolls)?;
-
-        if let Some(active) = self.active_rolls {
-            writeln!(f, "    active rolls: {}", active)?;
-        } else {
-            writeln!(f, "    No active roll")?;
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct WrappedAddressState {
-    pub final_rolls: u64,
-    pub active_rolls: Option<u64>,
-    pub candidate_rolls: u64,
-    pub locked_balance: Amount,
-    pub candidate_ledger_data: LedgerData,
-    pub final_ledger_data: LedgerData,
 }
