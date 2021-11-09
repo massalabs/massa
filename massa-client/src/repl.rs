@@ -30,6 +30,10 @@ pub(crate) async fn run(client: &Client, wallet: &mut Wallet) {
     println!("Use the Up/Down arrows to scroll through history");
     println!("Use the Right arrow or Tab to complete your command");
     println!("Use the Enter key to execute your command");
+    println!(
+        "{}",
+        Command::help.run(client, wallet, &Vec::new(), false).await
+    );
     println!();
     let mut history = MyHistory::default();
     let completion = MyCompletion::default();
