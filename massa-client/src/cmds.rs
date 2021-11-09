@@ -357,7 +357,7 @@ impl Command {
                     };
 
                     match client.public.get_block(b_id).await {
-                        Ok(x) => repl_ok!(format!("{:?}", x)),
+                        Ok(x) => repl_ok!(format!("{}", x)),
                         Err(e) => repl_err!(e),
                     }
                 }
