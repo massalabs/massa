@@ -166,11 +166,9 @@ impl RpcClient {
             .await
     }
 
-    /// Get information on a block given its hash
-    pub(crate) async fn get_blocks(&self, block_ids: Vec<BlockId>) -> RpcResult<Vec<BlockInfo>> {
-        self.0
-            .call_method("get_blocks", "BlockInfo", vec![block_ids])
-            .await
+    /// Get information on a block given its BlockId
+    pub(crate) async fn get_block(&self, block_id: BlockId) -> RpcResult<Vec<BlockInfo>> {
+        self.0.call_method("get_block", "BlockInfo", block_id).await
     }
 
     /// Get the block graph within the specified time interval.
