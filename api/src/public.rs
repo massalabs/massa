@@ -442,7 +442,9 @@ impl Endpoints for API<Public> {
                     endorsement_draws: Default::default(), // TODO: update wait for !238
                     blocks_created: blocks.remove(&address).ok_or(ApiError::NotFound)?,
                     involved_in_endorsements: Default::default(), // TODO: update wait for !238
-                    involved_in_operations: operations.remove(&address).ok_or(ApiError::NotFound)?,
+                    involved_in_operations: operations
+                        .remove(&address)
+                        .ok_or(ApiError::NotFound)?,
                     production_stats: state.production_stats,
                 })
             }
