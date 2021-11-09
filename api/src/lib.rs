@@ -6,7 +6,7 @@
 use consensus::{ConsensusCommandSender, ConsensusConfig};
 use crypto::signature::PrivateKey;
 use error::ApiError;
-use jsonrpc_core::{BoxFuture, IoHandler};
+use jsonrpc_core::{BoxFuture, IoHandler, Value};
 use jsonrpc_derive::rpc;
 use jsonrpc_http_server::{CloseHandle, ServerBuilder};
 use models::address::{AddressHashMap, AddressHashSet};
@@ -169,4 +169,8 @@ pub trait Endpoints {
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
     #[rpc(name = "send_operations")]
     fn send_operations(&self, _: Vec<Operation>) -> BoxFuture<Result<Vec<OperationId>, ApiError>>;
+}
+
+fn _jsonrpc_assert(_method: &str, _request: Value, _response: Value) {
+    // TODO: jsonrpc_client_transports::RawClient::call_method
 }
