@@ -1,5 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
-
+#![allow(clippy::too_many_arguments)]
 use crate::error::ApiError;
 use crate::error::ApiError::WrongAPI;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
@@ -148,7 +148,7 @@ impl Endpoints for API<Public> {
 
                 algo_config,
                 current_cycle: last_slot
-                    .unwrap_or(Slot::new(0, 0))
+                    .unwrap_or_else(|| Slot::new(0, 0))
                     .get_cycle(consensus_config.periods_per_cycle),
             })
         };
@@ -373,54 +373,49 @@ impl Endpoints for API<Public> {
             let (next_draws, states) = tokio::join!(next_draws, states);
             let (next_draws, mut states) = (next_draws?, states?);
 
-            // list created blocks
+            // endorsements info
+            // TODO: add get_endorsements_by_address consensus command -> wait for !238
+
+            // operations info
+            let mut operations: AddressHashMap<OperationHashSet> =
+                AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
             let mut blocks: AddressHashMap<BlockHashSet> =
                 AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
-            let mut block_futs = FuturesUnordered::new();
-
-            for &ad in addresses.iter() {
+            let mut blocks_futures = FuturesUnordered::new();
+            let mut operations_futures = FuturesUnordered::new();
+            for &address in addresses.iter() {
                 let cmd_snd = cmd_sender.clone();
-                block_futs.push(async move {
+                let mut pool_cmd_snd = pool_command_sender.clone();
+                blocks_futures.push(async move {
                     Result::<(Address, BlockHashSet), ApiError>::Ok((
-                        ad,
+                        address,
                         cmd_snd
-                            .get_block_ids_by_creator(ad)
+                            .get_block_ids_by_creator(address)
                             .await?
                             .into_keys()
                             .collect::<BlockHashSet>(),
                     ))
                 });
-            }
-            while let Some(res) = block_futs.next().await {
-                let (a, blks) = res?;
-                blocks.insert(a, blks);
-            }
-
-            // endorsements info
-            // TODO: add get_endorsements_by_address consensus command -> wait for !238
-
-            // operations info
-            let mut ops: AddressHashMap<OperationHashSet> =
-                AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
-            let mut op_futs = FuturesUnordered::new();
-            for &ad in addresses.iter() {
                 let cmd_snd = cmd_sender.clone();
-                let mut pool_cmd_snd = pool_command_sender.clone();
-                op_futs.push(async move {
-                    let get_pool_ops = pool_cmd_snd.get_operations_involving_address(ad);
-                    let get_consensus_ops = cmd_snd.get_operations_involving_address(ad);
+                operations_futures.push(async move {
+                    let get_pool_ops = pool_cmd_snd.get_operations_involving_address(address);
+                    let get_consensus_ops = cmd_snd.get_operations_involving_address(address);
                     let (get_pool_ops, get_consensus_ops) =
                         tokio::join!(get_pool_ops, get_consensus_ops);
                     let gathered: OperationHashSet = get_pool_ops?
                         .into_keys()
                         .chain(get_consensus_ops?.into_keys())
                         .collect();
-                    Result::<(Address, OperationHashSet), ApiError>::Ok((ad, gathered))
+                    Result::<(Address, OperationHashSet), ApiError>::Ok((address, gathered))
                 });
             }
-            while let Some(res) = op_futs.next().await {
+            while let Some(res) = blocks_futures.next().await {
                 let (a, op_set) = res?;
-                ops.insert(a, op_set);
+                blocks.insert(a, op_set);
+            }
+            while let Some(res) = operations_futures.next().await {
+                let (a, op_set) = res?;
+                operations.insert(a, op_set);
             }
 
             // compile everything per address
@@ -447,7 +442,7 @@ impl Endpoints for API<Public> {
                     endorsement_draws: Default::default(), // TODO: update wait for !238
                     blocks_created: blocks.remove(&address).ok_or(ApiError::NotFound)?,
                     involved_in_endorsements: Default::default(), // TODO: update wait for !238
-                    involved_in_operations: ops.remove(&address).ok_or(ApiError::NotFound)?,
+                    involved_in_operations: operations.remove(&address).ok_or(ApiError::NotFound)?,
                     production_stats: state.production_stats,
                 })
             }
