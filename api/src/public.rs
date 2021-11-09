@@ -3,7 +3,9 @@
 use crate::error::ApiError;
 use crate::error::ApiError::WrongAPI;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
-use consensus::{ConsensusCommandSender, ConsensusConfig, ExportBlockStatus, Status};
+use consensus::{
+    ConsensusCommandSender, ConsensusConfig, DiscardReason, ExportBlockStatus, Status,
+};
 use crypto::signature::PrivateKey;
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
@@ -24,7 +26,6 @@ use models::{
 use network::{NetworkCommandSender, NetworkConfig};
 use pool::PoolCommandSender;
 use std::net::{IpAddr, SocketAddr};
-use storage::StorageAccess;
 use time::UTime;
 
 impl API<Public> {
@@ -33,7 +34,6 @@ impl API<Public> {
         api_config: APIConfig,
         consensus_config: ConsensusConfig,
         pool_command_sender: PoolCommandSender,
-        storage_command_sender: Option<StorageAccess>,
         network_config: NetworkConfig,
         version: Version,
         network_command_sender: NetworkCommandSender,
@@ -45,7 +45,6 @@ impl API<Public> {
             consensus_config,
             api_config,
             pool_command_sender,
-            storage_command_sender,
             network_config,
             version,
             network_command_sender,
@@ -311,16 +310,18 @@ impl Endpoints for API<Public> {
                     parents: exported_block.header.content.parents,
                 });
             }
-            for (id, (_reason, header)) in graph.discarded_blocks.into_iter() {
-                res.push(BlockSummary {
-                    id,
-                    is_final: false,
-                    is_stale: true,
-                    is_in_blockclique: false,
-                    slot: header.content.slot,
-                    creator: Address::from_public_key(&header.content.creator)?,
-                    parents: header.content.parents,
-                });
+            for (id, (reason, header)) in graph.discarded_blocks.into_iter() {
+                if reason == DiscardReason::Stale {
+                    res.push(BlockSummary {
+                        id,
+                        is_final: false,
+                        is_stale: true,
+                        is_in_blockclique: false,
+                        slot: header.content.slot,
+                        creator: Address::from_public_key(&header.content.creator)?,
+                        parents: header.content.parents,
+                    });
+                }
             }
             Ok(res)
         };

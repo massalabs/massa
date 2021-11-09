@@ -64,8 +64,6 @@ pub enum ConsensusError {
     SendChannelError(String),
     /// Receive  channel error : {0}
     ReceiveChannelError(String),
-    /// Storage error : {0}
-    StorageError(#[from] storage::StorageError),
     /// pool error : {0}
     PoolError(#[from] pool::PoolError),
     /// sled error: {0}

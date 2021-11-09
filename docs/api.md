@@ -164,20 +164,20 @@ Get endorsements (not yet implemented)
  }, ... ] // TODO
 ```
 
-### `get_blocks`
+### `get_block`
 
 Get information on a block given its hash.
 
 - Parameters:
 
 ```javascript
-[String] // Block ids
+String // Block id
 ```
 
 - Return:
 
 ```javascript
-[{
+{
     "id": String // BlockId,
     "content": Null or {
         "is_final": bool,
@@ -213,7 +213,7 @@ Get information on a block given its hash.
              }, ... ], // TODO
         },
     },
- }, ... ] // TODO
+}
 ```
 
 ### `get_graph_interval`

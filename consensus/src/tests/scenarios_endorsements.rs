@@ -68,7 +68,6 @@ async fn test_endorsement_check() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let draws: HashMap<_, _> = consensus_command_sender
                 .get_selection_draws(Slot::new(1, 0), Slot::new(2, 0))

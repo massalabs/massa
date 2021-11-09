@@ -19,7 +19,6 @@ use models::{clique::Clique, stats::ConsensusStats};
 use models::{Address, Block, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats};
 use pool::PoolCommandSender;
 use protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
-use storage::StorageAccess;
 
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
@@ -45,7 +44,6 @@ pub async fn start_consensus_controller(
     protocol_command_sender: ProtocolCommandSender,
     protocol_event_receiver: ProtocolEventReceiver,
     pool_command_sender: PoolCommandSender,
-    opt_storage_command_sender: Option<StorageAccess>,
     boot_pos: Option<ExportProofOfStake>,
     boot_graph: Option<BootstrapableGraph>,
     clock_compensation: i64,
@@ -96,7 +94,6 @@ pub async fn start_consensus_controller(
             protocol_command_sender,
             protocol_event_receiver,
             pool_command_sender,
-            opt_storage_command_sender,
             block_db,
             pos,
             command_rx,

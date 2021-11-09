@@ -25,7 +25,6 @@ async fn test_thread_incompatibility() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status(None, None)
@@ -195,7 +194,6 @@ async fn test_grandpa_incompatibility() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis = consensus_command_sender
                 .get_block_graph_status(None, None)

@@ -25,7 +25,6 @@ protocol-worker = {path = "../protocol-worker"}
 consensus = { path = "../consensus" }
 logging = { path = "../logging" }
 models = { path = "../models" }
-storage = { path = "../storage" }
 time = { path = "../time" }
 
 [dev-dependencies]
