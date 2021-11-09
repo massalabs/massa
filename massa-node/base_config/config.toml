@@ -46,7 +46,7 @@ version = "DEVE.0.0"
     #stats
     stats_timespan = 60000
     block_db_prune_interval = 5000
-    max_item_return_count = 1000
+    max_item_return_count = 100
 
 [protocol]
     message_timeout = 5000
@@ -115,4 +115,4 @@ version = "DEVE.0.0"
     max_pool_size_per_thread = 100000
     max_operation_future_validity_start_periods = 100
     max_endorsement_count = 10000
-    max_item_return_count = 1000
+    max_item_return_count = 100
