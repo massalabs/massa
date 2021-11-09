@@ -153,7 +153,7 @@ pub trait Endpoints {
     ) -> BoxFuture<Result<Vec<EndorsementInfo>, ApiError>>;
 
     /// Get information on a block given its hash.
-    #[rpc(name = "get_blocks")]
+    #[rpc(name = "get_block")]
     fn get_block(&self, _: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>>;
 
     /// Get the block graph within the specified time interval.
