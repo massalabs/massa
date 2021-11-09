@@ -705,18 +705,17 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_consensus_command.get_block_graph_status",
                     {}
                 );
-                response_tx
+                if response_tx
                     .send(BlockGraphExport::extract_from(
                         &self.block_db,
                         slot_start,
                         slot_end,
                     ))
-                    .map_err(|err| {
-                        ConsensusError::SendChannelError(format!(
-                            "could not send GetBlockGraphStatus answer: {:?}",
-                            err
-                        ))
-                    })
+                    .is_err()
+                {
+                    warn!("consensus: could not send GetBlockGraphStatus answer");
+                }
+                Ok(())
             }
             // return full block with specified hash
             ConsensusCommand::GetActiveBlock {
@@ -727,18 +726,17 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_consensus_command.get_active_block",
                     {}
                 );
-                response_tx
+                if response_tx
                     .send(
                         self.block_db
                             .get_active_block(&block_id)
                             .map(|v| v.block.clone()),
                     )
-                    .map_err(|err| {
-                        ConsensusError::SendChannelError(format!(
-                            "could not send GetBlock answer: {:?}",
-                            err
-                        ))
-                    })
+                    .is_err()
+                {
+                    warn!("consensus: could not send GetBlock answer");
+                }
+                Ok(())
             }
             // return full block and status with specified hash
             ConsensusCommand::GetBlockStatus {
@@ -749,28 +747,23 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_consensus_command.get_block_status",
                     {}
                 );
-                response_tx
+                if response_tx
                     .send(self.block_db.get_export_block_status(&block_id))
-                    .map_err(|err| {
-                        ConsensusError::SendChannelError(format!(
-                            "could not send GetBlock Status answer: {:?}",
-                            err
-                        ))
-                    })
+                    .is_err()
+                {
+                    warn!("consensus: could not send GetBlock Status answer");
+                }
+                Ok(())
             }
             ConsensusCommand::GetCliques(response_tx) => {
                 massa_trace!(
                     "consensus.consensus_worker.process_consensus_command.get_cliques",
                     {}
                 );
-                response_tx
-                    .send(self.block_db.get_cliques())
-                    .map_err(|err| {
-                        ConsensusError::SendChannelError(format!(
-                            "could not send GetSelectionDraws response: {:?}",
-                            err
-                        ))
-                    })
+                if response_tx.send(self.block_db.get_cliques()).is_err() {
+                    warn!("consensus: could not send GetSelectionDraws response");
+                }
+                Ok(())
             }
             ConsensusCommand::GetSelectionDraws {
                 start,
@@ -815,12 +808,10 @@ impl ConsensusWorker {
                         }
                     }
                 };
-                response_tx.send(result).map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send GetSelectionDraws response: {:?}",
-                        err
-                    ))
-                })
+                if response_tx.send(result).is_err() {
+                    warn!("consensus: could not send GetSelectionDraws response");
+                }
+                Ok(())
             }
             ConsensusCommand::GetBootstrapState(response_tx) => {
                 massa_trace!(
@@ -831,12 +822,10 @@ impl ConsensusWorker {
                     self.pos.export(),
                     BootstrapableGraph::try_from(&self.block_db)?,
                 );
-                response_tx.send(resp).map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send GetBootstrapState answer: {:?}",
-                        err
-                    ))
-                })
+                if response_tx.send(resp).is_err() {
+                    warn!("consensus: could not send GetBootstrapState answer");
+                }
+                Ok(())
             }
             ConsensusCommand::GetAddressesInfo {
                 addresses,
@@ -846,14 +835,13 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_consensus_command.get_addresses_info",
                     { "addresses": addresses }
                 );
-                response_tx
+                if response_tx
                     .send(self.get_addresses_info(&addresses)?)
-                    .map_err(|err| {
-                        ConsensusError::SendChannelError(format!(
-                            "could not send GetAddressesInfo response: {:?}",
-                            err
-                        ))
-                    })
+                    .is_err()
+                {
+                    warn!("consensus: could not send GetAddressesInfo response");
+                }
+                Ok(())
             }
             ConsensusCommand::GetRecentOperations {
                 address,
@@ -864,14 +852,13 @@ impl ConsensusWorker {
                     { "address": address }
                 );
 
-                response_tx
+                if response_tx
                     .send(self.block_db.get_operations_involving_address(&address)?)
-                    .map_err(|err| {
-                        ConsensusError::SendChannelError(format!(
-                            "could not send GetRecentOPerations response: {:?}",
-                            err
-                        ))
-                    })
+                    .is_err()
+                {
+                    warn!("consensus: could not send GetRecentOPerations response");
+                }
+                Ok(())
             }
             ConsensusCommand::GetOperations {
                 operation_ids,
@@ -882,12 +869,10 @@ impl ConsensusWorker {
                     { "operation_ids": operation_ids }
                 );
                 let res = self.get_operations(&operation_ids).await;
-                response_tx.send(res).map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send get operations response: {:?}",
-                        err
-                    ))
-                })
+                if response_tx.send(res).is_err() {
+                    warn!("consensus: could not send get operations response");
+                }
+                Ok(())
             }
             ConsensusCommand::GetStats(response_tx) => {
                 massa_trace!(
@@ -895,12 +880,10 @@ impl ConsensusWorker {
                     {}
                 );
                 let res = self.get_stats()?;
-                response_tx.send(res).map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send get_stats response: {:?}",
-                        err
-                    ))
-                })
+                if response_tx.send(res).is_err() {
+                    warn!("consensus: could not send get_stats response");
+                }
+                Ok(())
             }
             ConsensusCommand::GetActiveStakers(response_tx) => {
                 massa_trace!(
@@ -908,12 +891,10 @@ impl ConsensusWorker {
                     {}
                 );
                 let res = self.get_active_stakers()?;
-                response_tx.send(res).map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send get_active_stakers response: {:?}",
-                        err
-                    ))
-                })
+                if response_tx.send(res).is_err() {
+                    warn!("consensus: could not send get_active_stakers response");
+                }
+                Ok(())
             }
             ConsensusCommand::RegisterStakingPrivateKeys(keys) => {
                 for key in keys.into_iter() {
@@ -941,40 +922,39 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_consensus_command.get_staking_addresses",
                     {}
                 );
-                response_tx
+                if response_tx
                     .send(self.staking_keys.keys().cloned().collect())
-                    .map_err(|err| {
-                        ConsensusError::SendChannelError(format!(
-                            "could not send get_staking addresses response: {:?}",
-                            err
-                        ))
-                    })
+                    .is_err()
+                {
+                    warn!("consensus: could not send get_staking addresses response");
+                }
+                Ok(())
             }
             ConsensusCommand::GetStakersProductionStats { addrs, response_tx } => {
                 massa_trace!(
                     "consensus.consensus_worker.process_consensus_command.get_stakers_production_stats",
                     {}
                 );
-                response_tx
+                if response_tx
                     .send(self.pos.get_stakers_production_stats(&addrs))
-                    .map_err(|err| {
-                        ConsensusError::SendChannelError(format!(
-                            "could not send get_staking addresses response: {:?}",
-                            err
-                        ))
-                    })
+                    .is_err()
+                {
+                    warn!("consensus: could not send get_staking addresses response");
+                }
+                Ok(())
             }
             ConsensusCommand::GetBlockIdsByCreator {
                 address,
                 response_tx,
-            } => response_tx
-                .send(self.block_db.get_block_ids_by_creator(&address))
-                .map_err(|err| {
-                    ConsensusError::SendChannelError(format!(
-                        "could not send get block ids by creator response: {:?}",
-                        err
-                    ))
-                }),
+            } => {
+                if response_tx
+                    .send(self.block_db.get_block_ids_by_creator(&address))
+                    .is_err()
+                {
+                    warn!("consensus: could not send get block ids by creator response");
+                }
+                Ok(())
+            }
         }
     }
 
