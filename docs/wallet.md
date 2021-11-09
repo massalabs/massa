@@ -65,7 +65,6 @@ click `Save wallet`, and next time directly do `Load wallet`.
 
 ## Next steps
 
--   Ask testnet coins from us in the
-    [Discord](https://discord.com/invite/TnsJQzXkRN) testnet channel.
+-   To get testnet coins, send your address to the faucet bot in the "testnet-faucet" channel of our [Discord](https://discord.com/invite/TnsJQzXkRN).
 -   [Staking](staking.md) your coins to receive rewards.
 -   [Sending transactions](transaction.md).

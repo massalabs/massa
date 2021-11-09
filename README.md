@@ -118,7 +118,7 @@ Here is a set of tutorials:
 -   [Routability tutorial](docs/routability.md)
 -   [Testnet rewards program](docs/testnet_rules.md)
 -   To get testnet coins, send your address to the faucet bot in the
-    "testnet-token-request" channel of our
+    "testnet-faucet" channel of our
     [Discord](https://discord.com/invite/TnsJQzXkRN).
 
 ## FAQ and Troubleshooting
