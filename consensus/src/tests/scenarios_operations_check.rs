@@ -92,7 +92,6 @@ async fn test_operations_check() {
             pool_command_sender,
             None,
             None,
-            None,
             0,
         )
         .await

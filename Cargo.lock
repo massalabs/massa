@@ -44,7 +44,6 @@ dependencies = [
  "network",
  "pool",
  "protocol-exports",
- "storage",
  "thiserror",
  "time 0.1.0",
  "tokio",
@@ -272,7 +271,6 @@ dependencies = [
  "serial_test",
  "sled",
  "stderrlog",
- "storage",
  "tempfile",
  "thiserror",
  "time 0.1.0",
@@ -1074,7 +1072,6 @@ dependencies = [
  "serde 1.0.130",
  "serde_json",
  "serial_test",
- "storage",
  "time 0.1.0",
  "tokio",
  "tokio-util",
@@ -2248,27 +2245,6 @@ dependencies = [
  "log",
  "termcolor",
  "thread_local",
-]
-
-[[package]]
-name = "storage"
-version = "0.1.0"
-dependencies = [
- "crypto",
- "displaydoc",
- "logging",
- "models",
- "pretty_assertions",
- "serde 1.0.130",
- "serde_json",
- "serial_test",
- "sled",
- "stderrlog",
- "tempfile",
- "thiserror",
- "time 0.1.0",
- "tokio",
- "tracing",
 ]
 
 [[package]]

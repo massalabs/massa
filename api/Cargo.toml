@@ -21,5 +21,4 @@ models = {path = "../models"}
 network = {path = "../network"}
 pool = {path = "../pool"}
 protocol-exports = {path = "../protocol-exports"}
-storage = {path = "../storage"}
 time = {path = "../time"}

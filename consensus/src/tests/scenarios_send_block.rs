@@ -28,7 +28,6 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let start_slot = 3;
             let genesis_hashes = consensus_command_sender
@@ -102,7 +101,6 @@ async fn test_consensus_block_not_found() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let start_slot = 3;
             let genesis_hashes = consensus_command_sender

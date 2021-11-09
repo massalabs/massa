@@ -690,7 +690,6 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             pool_command_sender,
             None,
             None,
-            None,
             0,
         )
         .await
