@@ -382,22 +382,16 @@ impl Endpoints for API<Public> {
             let mut blocks: AddressHashMap<BlockHashSet> =
                 AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
             let mut blocks_futures = FuturesUnordered::new();
-            let mut operations_futures = FuturesUnordered::new();
+            //let mut operations_futures = FuturesUnordered::new();
             for &address in addresses.iter() {
-                let cmd_snd = cmd_sender.clone();
                 let mut pool_cmd_snd = pool_command_sender.clone();
-                blocks_futures.push(async move {
-                    Result::<(Address, BlockHashSet), ApiError>::Ok((
-                        address,
-                        cmd_snd
-                            .get_block_ids_by_creator(address)
-                            .await?
-                            .into_keys()
-                            .collect::<BlockHashSet>(),
-                    ))
-                });
                 let cmd_snd = cmd_sender.clone();
-                operations_futures.push(async move {
+                blocks_futures.push(async move {
+                    let blocks = cmd_snd
+                        .get_block_ids_by_creator(address)
+                        .await?
+                        .into_keys()
+                        .collect::<BlockHashSet>();
                     let get_pool_ops = pool_cmd_snd.get_operations_involving_address(address);
                     let get_consensus_ops = cmd_snd.get_operations_involving_address(address);
                     let (get_pool_ops, get_consensus_ops) =
@@ -406,16 +400,15 @@ impl Endpoints for API<Public> {
                         .into_keys()
                         .chain(get_consensus_ops?.into_keys())
                         .collect();
-                    Result::<(Address, OperationHashSet), ApiError>::Ok((address, gathered))
+                    Result::<(Address, BlockHashSet, OperationHashSet), ApiError>::Ok((
+                        address, blocks, gathered,
+                    ))
                 });
             }
             while let Some(res) = blocks_futures.next().await {
-                let (a, op_set) = res?;
-                blocks.insert(a, op_set);
-            }
-            while let Some(res) = operations_futures.next().await {
-                let (a, op_set) = res?;
+                let (a, bl_set, op_set) = res?;
                 operations.insert(a, op_set);
+                blocks.insert(a, bl_set);
             }
 
             // compile everything per address
