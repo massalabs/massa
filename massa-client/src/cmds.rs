@@ -1,63 +1,20 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::repl::Output;
 use crate::rpc::Client;
 use anyhow::{bail, Result};
 use console::style;
-use erased_serde::{Serialize, Serializer};
-use models::api::{AddressInfo, EndorsementInfo, NodeStatus, OperationInfo};
 use models::timeslots::get_current_latest_block_slot;
 use models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
 };
 use signature::{generate_random_private_key, PrivateKey};
-use std::fmt::Display;
+use std::fmt::Debug;
 use std::net::IpAddr;
 use std::process;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
 use wallet::Wallet;
-
-pub trait Output: Serialize + Display {}
-impl dyn Output {
-    pub(crate) fn display(&self) {
-        println!("{}", self);
-    }
-    pub(crate) fn json(&self) -> Result<()> {
-        let json = &mut serde_json::Serializer::new(std::io::stdout());
-        let mut format: Box<dyn Serializer> = Box::new(<dyn Serializer>::erase(json));
-        self.erased_serialize(&mut format)?;
-        Ok(())
-    }
-}
-impl Output for String {}
-impl Output for &str {}
-impl Output for NodeStatus {} // TODO: move them close to types definition
-
-macro_rules! display {
-    ($expr: expr) => {
-        println!("{}", $expr)
-    };
-}
-
-macro_rules! output {
-    ($expr: expr) => {
-        Ok(Box::new($expr))
-    };
-}
-
-// TODO: ugly utilities functions
-fn parse_vec<T: std::str::FromStr>(args: &Vec<String>) -> Result<Vec<T>, T::Err> {
-    args.iter().map(|x| x.parse::<T>()).collect()
-}
-
-// TODO: should be removed to allow JSON outputs
-fn format_vec<T: std::fmt::Display>(output: &Vec<T>) -> String {
-    output
-        .iter()
-        .map(|x| format!("{}", x))
-        .collect::<Vec<String>>()
-        .join("\n")
-}
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
@@ -191,19 +148,14 @@ pub enum Command {
     send_transaction,
 }
 
-pub(crate) fn help() -> String {
-    format!(
-        "HELP of Massa client (list of available commands):\n{}",
-        Command::iter()
-            .map(|c| format!("{}", c.help()))
-            .collect::<Vec<String>>()
-            .join("\n")
-    )
+pub(crate) fn help() {
+    println!("HELP of Massa client (list of available commands):");
+    Command::iter().map(|c| c.help()).collect()
 }
 
 impl Command {
-    pub(crate) fn help(&self) -> String {
-        format!(
+    pub(crate) fn help(&self) {
+        println!(
             "- {} {}: {}{}",
             style(self.to_string()).green(),
             if self.get_str("args").is_some() {
@@ -225,53 +177,70 @@ impl Command {
         client: &Client,
         wallet: &mut Wallet,
         parameters: &Vec<String>,
+        json: bool,
     ) -> Result<Box<dyn Output>> {
         match self {
             Command::exit => process::exit(0),
 
             Command::help => {
-                output!(if !parameters.is_empty() {
-                    if let Ok(c) = parameters[0].parse::<Command>() {
-                        c.help()
+                if !json {
+                    if !parameters.is_empty() {
+                        if let Ok(c) = parameters[0].parse::<Command>() {
+                            c.help();
+                        } else {
+                            println!(
+                                "Command not found!\ntype \"help\" to get the list of commands"
+                            );
+                            help();
+                        }
                     } else {
-                        format!("Command not found!\ntype \"help\" to get the list of commands")
+                        help();
                     }
-                } else {
-                    help()
-                })
+                }
+                Ok(Box::new(()))
             }
 
             Command::unban => {
                 let ips = parse_vec::<IpAddr>(parameters)?;
                 match client.private.unban(ips).await {
-                    Ok(()) => output!("Request of unbanning successfully sent!"),
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of unbanning successfully sent!")
+                        }
+                    }
                     Err(e) => bail!("RpcError: {}", e),
-                }
+                };
+                Ok(Box::new(()))
             }
 
             Command::ban => {
                 let ips = parse_vec::<IpAddr>(parameters)?;
                 match client.private.ban(ips).await {
-                    Ok(()) => output!("Request of banning successfully sent!"),
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of banning successfully sent!")
+                        }
+                    }
                     Err(e) => bail!("RpcError: {}", e),
                 }
+                Ok(Box::new(()))
             }
 
-            Command::node_stop => match client.private.stop_node().await {
-                Ok(()) => output!("Request of stopping the Node successfully sent"),
-                Err(e) => bail!("RpcError: {}", e),
-            },
+            Command::node_stop => {
+                match client.private.stop_node().await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of stopping the Node successfully sent")
+                        }
+                    }
+                    Err(e) => bail!("RpcError: {}", e),
+                };
+                Ok(Box::new(()))
+            }
 
             Command::node_get_staking_addresses => {
                 match client.private.get_staking_addresses().await {
-                    Ok(staking_addresses) => output!(format!(
-                        // TODO
-                        "{}",
-                        staking_addresses
-                            .into_iter()
-                            .fold("".to_string(), |acc, a| format!("{}{}\n", acc, a)
-                                .to_string())
-                    )),
+                    Ok(staking_addresses) => Ok(Box::new(staking_addresses)),
                     Err(e) => bail!("RpcError: {}", e),
                 }
             }
@@ -279,22 +248,32 @@ impl Command {
             Command::node_remove_staking_addresses => {
                 let addresses = parse_vec::<Address>(parameters)?;
                 match client.private.remove_staking_addresses(addresses).await {
-                    Ok(()) => output!("Addresses successfully removed!"),
+                    Ok(()) => {
+                        if !json {
+                            println!("Addresses successfully removed!")
+                        }
+                    }
                     Err(e) => bail!("RpcError: {}", e),
                 }
+                Ok(Box::new(()))
             }
 
             Command::node_add_staking_private_keys => {
                 let private_keys = parse_vec::<PrivateKey>(parameters)?;
                 match client.private.add_staking_private_keys(private_keys).await {
-                    Ok(()) => output!("Private keys successfully added!"),
+                    Ok(()) => {
+                        if !json {
+                            println!("Private keys successfully added!")
+                        }
+                    }
                     Err(e) => bail!("RpcError: {}", e),
-                }
+                };
+                Ok(Box::new(()))
             }
 
             Command::node_testnet_rewards_program_ownership_proof => {
                 if parameters.len() != 2 {
-                    bail!("Wrong param numbers");
+                    bail!("wrong param numbers");
                 }
                 // parse
                 let addr = parameters[0].parse::<Address>()?;
@@ -305,42 +284,45 @@ impl Command {
                     match client.private.node_sign_message(msg).await {
                         // print concatenation
                         Ok(node_sig) => {
-                            display!("Enter the following in discord:");
-                            return output!(format!(
-                                "{}/{}/{}/{}", // TODO
-                                node_sig.public_key,
-                                node_sig.signature,
-                                addr_sig.public_key,
-                                addr_sig.signature
-                            ));
+                            if !json {
+                                println!("Enter the following in discord:");
+                                println!(
+                                    "{}/{}/{}/{}",
+                                    node_sig.public_key,
+                                    node_sig.signature,
+                                    addr_sig.public_key,
+                                    addr_sig.signature
+                                );
+                            }
                         }
                         Err(e) => bail!("RpcError: {}", e),
                     }
                 } else {
-                    bail!("Address not found")
+                    panic!("address not found")
                 }
+                Ok(Box::new(()))
             }
 
             Command::get_status => match client.public.get_status().await {
-                Ok(node_status) => output!(node_status),
+                Ok(node_status) => Ok(Box::new(node_status)),
                 Err(e) => bail!("RpcError: {}", e),
             },
 
             Command::get_addresses => {
                 let addresses = parse_vec::<Address>(parameters)?;
                 match client.public.get_addresses(addresses).await {
-                    Ok(addresses_info) => output!(format_vec::<AddressInfo>(&addresses_info)),
+                    Ok(addresses_info) => Ok(Box::new(addresses_info)),
                     Err(e) => bail!("RpcError: {}", e),
                 }
             }
 
             Command::get_block => {
                 if parameters.len() != 1 {
-                    bail!("Wrong param numbers")
+                    bail!("wrong param numbers")
                 }
                 let block_id = parameters[0].parse::<BlockId>()?;
                 match client.public.get_block(block_id).await {
-                    Ok(block_info) => output!(format!("{}", block_info)),
+                    Ok(block_info) => Ok(Box::new(block_info)),
                     Err(e) => bail!("RpcError: {}", e),
                 }
             }
@@ -348,9 +330,7 @@ impl Command {
             Command::get_endorsements => {
                 let endorsements = parse_vec::<EndorsementId>(parameters)?;
                 match client.public.get_endorsements(endorsements).await {
-                    Ok(endorsements_info) => {
-                        output!(format_vec::<EndorsementInfo>(&endorsements_info))
-                    }
+                    Ok(endorsements_info) => Ok(Box::new(endorsements_info)),
                     Err(e) => bail!("RpcError: {}", e),
                 }
             }
@@ -358,17 +338,14 @@ impl Command {
             Command::get_operations => {
                 let operations = parse_vec::<OperationId>(parameters)?;
                 match client.public.get_operations(operations).await {
-                    Ok(operations_info) => output!(format_vec::<OperationInfo>(&operations_info)),
+                    Ok(operations_info) => Ok(Box::new(operations_info)),
                     Err(e) => bail!("RpcError: {}", e),
                 }
             }
 
             Command::wallet_info => {
                 let full_wallet = wallet.get_full_wallet();
-                // TODO: maybe too much info in wallet_info
-
                 let mut res = "WARNING: do not share your private key\n\n".to_string();
-
                 match client
                     .public
                     .get_addresses(full_wallet.keys().copied().collect())
@@ -387,7 +364,6 @@ impl Command {
                                 info.compact()
                             ));
                         }
-                        output!(res)
                     }
                     Err(e) => {
                         res.push_str(&format!(
@@ -400,17 +376,20 @@ impl Command {
                                 priva, publ, ad
                             ));
                         }
-                        output!(res)
                     }
                 }
+                if !json {
+                    println!("{}", res);
+                }
+                Ok(Box::new(()))
             }
 
             Command::wallet_generate_private_key => {
                 let ad = wallet.add_private_key(generate_random_private_key())?;
-                output!(format!(
-                    "Generated {} address and added it to the wallet",
-                    ad
-                ))
+                if !json {
+                    println!("Generated {} address and added it to the wallet", ad);
+                }
+                Ok(Box::new(()))
             }
 
             Command::wallet_add_private_keys => {
@@ -419,7 +398,10 @@ impl Command {
                     let ad = wallet.add_private_key(key)?;
                     res.push_str(&format!("Derived and added address {} to the wallet\n", ad));
                 }
-                output!(res)
+                if !json {
+                    println!("{}", res);
+                }
+                Ok(Box::new(()))
             }
 
             Command::wallet_remove_addresses => {
@@ -434,12 +416,15 @@ impl Command {
                         }
                     }
                 }
-                output!(res)
+                if !json {
+                    println!("{}", res);
+                }
+                Ok(Box::new(()))
             }
 
             Command::buy_rolls => {
                 if parameters.len() != 3 {
-                    bail!("Wrong param numbers"); // TODO: print help buy roll
+                    bail!("wrong param numbers");
                 }
                 let addr = parameters[0].parse::<Address>()?;
                 let roll_count = parameters[1].parse::<u64>()?;
@@ -451,13 +436,14 @@ impl Command {
                     OperationType::RollBuy { roll_count },
                     fee,
                     addr,
+                    json,
                 )
                 .await
             }
 
             Command::sell_rolls => {
                 if parameters.len() != 3 {
-                    bail!("Wrong param numbers"); // TODO: print help sell roll
+                    bail!("wrong param numbers");
                 }
                 let addr = parameters[0].parse::<Address>()?;
                 let roll_count = parameters[1].parse::<u64>()?;
@@ -469,13 +455,14 @@ impl Command {
                     OperationType::RollSell { roll_count },
                     fee,
                     addr,
+                    json,
                 )
                 .await
             }
 
             Command::send_transaction => {
                 if parameters.len() != 4 {
-                    bail!("Wrong param numbers"); // TODO: print help transaction
+                    bail!("wrong param numbers");
                 }
                 let addr = parameters[0].parse::<Address>()?;
                 let recipient_address = parameters[1].parse::<Address>()?;
@@ -491,6 +478,7 @@ impl Command {
                     },
                     fee,
                     addr,
+                    json,
                 )
                 .await
             }
@@ -504,6 +492,7 @@ async fn send_operation(
     op: OperationType,
     fee: Amount,
     addr: Address,
+    json: bool,
 ) -> Result<Box<dyn Output>> {
     let cfg = match client.public.get_status().await {
         Ok(node_status) => node_status,
@@ -534,9 +523,16 @@ async fn send_operation(
 
     match client.public.send_operations(vec![op]).await {
         Ok(operation_ids) => {
-            display!("Sent operation IDs:");
-            output!(format_vec(&operation_ids))
+            if !json {
+                println!("Sent operation IDs:");
+            }
+            Ok(Box::new(operation_ids))
         }
         Err(e) => bail!("RpcError: {}", e),
     }
+}
+
+// TODO: ugly utilities functions
+pub fn parse_vec<T: std::str::FromStr>(args: &Vec<String>) -> anyhow::Result<Vec<T>, T::Err> {
+    args.iter().map(|x| x.parse::<T>()).collect()
 }
