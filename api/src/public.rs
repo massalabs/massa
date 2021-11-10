@@ -381,12 +381,11 @@ impl Endpoints for API<Public> {
                 AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
             let mut blocks: AddressHashMap<BlockHashSet> =
                 AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
-            let mut blocks_futures = FuturesUnordered::new();
-            //let mut operations_futures = FuturesUnordered::new();
+            let mut concurrent_getters = FuturesUnordered::new();
             for &address in addresses.iter() {
                 let mut pool_cmd_snd = pool_command_sender.clone();
                 let cmd_snd = cmd_sender.clone();
-                blocks_futures.push(async move {
+                concurrent_getters.push(async move {
                     let blocks = cmd_snd
                         .get_block_ids_by_creator(address)
                         .await?
@@ -405,7 +404,7 @@ impl Endpoints for API<Public> {
                     ))
                 });
             }
-            while let Some(res) = blocks_futures.next().await {
+            while let Some(res) = concurrent_getters.next().await {
                 let (a, bl_set, op_set) = res?;
                 operations.insert(a, op_set);
                 blocks.insert(a, bl_set);
