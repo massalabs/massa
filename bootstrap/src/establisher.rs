@@ -90,3 +90,10 @@ impl DefaultEstablisher {
         Ok(DefaultConnector(timeout_duration))
     }
 }
+
+#[cfg(not(test))]
+impl Default for DefaultEstablisher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
