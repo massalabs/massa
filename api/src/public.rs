@@ -11,8 +11,8 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
-    APIConfig, AddressInfo, BalanceInfo, BlockInfo, BlockInfoContent, BlockSummary,
-    EndorsementInfo, NodeStatus, OperationInfo, RollsInfo, TimeInterval,
+    APIConfig, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, NodeStatus,
+    OperationInfo, TimeInterval,
 };
 use models::clique::Clique;
 use models::crypto::PubkeySig;
@@ -424,16 +424,8 @@ impl Endpoints for API<Public> {
                 res.push(AddressInfo {
                     address,
                     thread: address.get_thread(cfg.thread_count),
-                    balance: BalanceInfo {
-                        final_balance: state.final_ledger_data.balance,
-                        candidate_balance: state.candidate_ledger_data.balance,
-                        locked_balance: state.locked_balance,
-                    },
-                    rolls: RollsInfo {
-                        active_rolls: state.active_rolls.unwrap_or_default(),
-                        final_rolls: state.final_rolls,
-                        candidate_rolls: state.candidate_rolls,
-                    },
+                    ledger_info: state.ledger_info,
+                    rolls: state.rolls,
                     block_draws: next_draws
                         .iter()
                         .filter(|(_, (ad, _))| *ad == address)

@@ -123,7 +123,8 @@ async fn test_operations_check() {
         .unwrap()
         .get(&address_1)
         .unwrap()
-        .candidate_ledger_data
+        .ledger_info
+        .candidate_ledger_info
         .clone();
     assert_eq!(res.balance, Amount::from_str("1").unwrap());
 
@@ -157,7 +158,8 @@ async fn test_operations_check() {
         .unwrap()
         .get(&address_2)
         .unwrap()
-        .candidate_ledger_data
+        .ledger_info
+        .candidate_ledger_info
         .clone();
     assert_eq!(res.balance, Amount::from_str("5").unwrap());
 

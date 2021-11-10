@@ -4,7 +4,7 @@ use crate::{u8_from_slice, Amount, DeserializeCompact, ModelsError, SerializeCom
 use core::usize;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct LedgerData {
     pub balance: Amount,
 }

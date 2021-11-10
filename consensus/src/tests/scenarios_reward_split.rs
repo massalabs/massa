@@ -74,13 +74,13 @@ async fn test_reward_split() {
 
             let addresse_a_state = addresses_state.get(&address_a).unwrap();
             assert_eq!(
-                addresse_a_state.candidate_ledger_data.balance,
+                addresse_a_state.ledger_info.candidate_ledger_info.balance,
                 Amount::from_str("10").unwrap()
             );
 
             let addresse_b_state = addresses_state.get(&address_b).unwrap();
             assert_eq!(
-                addresse_b_state.candidate_ledger_data.balance,
+                addresse_b_state.ledger_info.candidate_ledger_info.balance,
                 Amount::from_str("10").unwrap()
             );
 
@@ -285,10 +285,16 @@ async fn test_reward_split() {
                 });
 
             let state_a = addresses_state.get(&address_a).unwrap();
-            assert_eq!(state_a.candidate_ledger_data.balance, expected_a);
+            assert_eq!(
+                state_a.ledger_info.candidate_ledger_info.balance,
+                expected_a
+            );
 
             let state_b = addresses_state.get(&address_b).unwrap();
-            assert_eq!(state_b.candidate_ledger_data.balance, expected_b);
+            assert_eq!(
+                state_b.ledger_info.candidate_ledger_info.balance,
+                expected_b
+            );
 
             (
                 protocol_controller,
