@@ -4,14 +4,15 @@
 #![feature(destructuring_assignment)]
 #![doc = include_str!("../../README.md")]
 
+extern crate directories;
 extern crate logging;
-
 use api::{Private, Public, RpcServer, StopHandle, API};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use consensus::{
     start_consensus_controller, ConsensusCommandSender, ConsensusEvent, ConsensusEventReceiver,
     ConsensusManager,
 };
+use directories::ProjectDirs;
 use logging::massa_trace;
 use models::{init_serialization_context, SerializationContext};
 use network::{start_network_controller, Establisher, NetworkCommandSender, NetworkManager};
@@ -297,7 +298,7 @@ async fn stop(
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), std::io::Error> {
     // load config
     let config_path = "base_config/config.toml";
     let override_config_path = "config/config.toml";
@@ -323,5 +324,15 @@ async fn main() {
         })
         .init();
 
-    run(cfg).await
+    let project_dir = ProjectDirs::from("com", "massalabs", "massa-node").unwrap();
+    let cache_dir = project_dir.cache_dir();
+    let lock = cache_dir.join("lock");
+    if lock.exists() {
+        panic!("it's forbidden to run several massa nodes on the same machine")
+    }
+    std::fs::create_dir_all(&lock)?;
+    run(cfg).await;
+    std::fs::remove_dir(&lock)?;
+
+    Ok(())
 }
