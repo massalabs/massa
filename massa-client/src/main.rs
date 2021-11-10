@@ -76,7 +76,7 @@ async fn main(args: Args) -> Result<()> {
         // Non-Interactive mode
         match args
             .command
-            .run(&client, &mut wallet, &args.parameters)
+            .run(&client, &mut wallet, &args.parameters, args.json)
             .await
         {
             Ok(output) => {
@@ -85,7 +85,7 @@ async fn main(args: Args) -> Result<()> {
                         .json()
                         .expect("fail to serialize to JSON command output")
                 } else {
-                    output.display();
+                    output.pretty_print();
                 }
             }
             // TODO: Error should be also handled in JSON format
