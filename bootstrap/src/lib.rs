@@ -420,7 +420,7 @@ async fn manage_bootstrap(
             .into())
         }
         Ok(Err(e)) => return Err(e),
-        _ => {}
+        Ok(Ok(_)) => {}
     }
 
     // Second, send peers
@@ -438,7 +438,7 @@ async fn manage_bootstrap(
             .into())
         }
         Ok(Err(e)) => return Err(e),
-        _ => {}
+        Ok(Ok(_)) => {}
     }
 
     // Third, send consensus state.
@@ -459,7 +459,7 @@ async fn manage_bootstrap(
             .into())
         }
         Ok(Err(e)) => return Err(e),
-        _ => {}
+        Ok(Ok(_)) => {}
     }
 
     Ok(())
