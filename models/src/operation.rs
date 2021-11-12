@@ -70,7 +70,7 @@ enum OperationTypeId {
     Transaction = 0,
     RollBuy = 1,
     RollSell = 2,
-    ExecuteSC = 3
+    ExecuteSC = 3,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Operation {
@@ -158,7 +158,11 @@ impl std::fmt::Display for OperationType {
                 writeln!(f, "Sell rolls:")?;
                 write!(f, "\t- Roll count:{}", roll_count)?;
             }
-            OperationType::ExecuteSC { data: _, max_gas: _, gas_price: _ } => {
+            OperationType::ExecuteSC {
+                data: _,
+                max_gas: _,
+                gas_price: _,
+            } => {
                 writeln!(f, "ExecuteSC")?;
             }
         }
@@ -199,13 +203,20 @@ impl SerializeCompact for OperationType {
                 // roll_count
                 res.extend(&roll_count.to_varint_bytes());
             }
-            OperationType::ExecuteSC { data, max_gas, gas_price } => {
+            OperationType::ExecuteSC {
+                data,
+                max_gas,
+                gas_price,
+            } => {
+                // type id
+                res.extend(u32::from(OperationTypeId::ExecuteSC).to_varint_bytes());
+
                 // Max gas.
                 res.extend(&max_gas.to_bytes_compact()?);
-                
+
                 // Gas price.
                 res.extend(&gas_price.to_bytes_compact()?);
-                
+
                 // Contract data.
                 res.extend(data);
             }
@@ -264,16 +275,20 @@ impl DeserializeCompact for OperationType {
                 // Max gas.
                 let (max_gas, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
-                
+
                 // Gas price.
                 let (gas_price, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
-                
+
                 // Contract data.
                 let mut data = Vec::new();
                 data.extend(&buffer[cursor..]);
-                
-                OperationType::ExecuteSC { data, max_gas, gas_price }
+
+                OperationType::ExecuteSC {
+                    data,
+                    max_gas,
+                    gas_price,
+                }
             }
         };
         Ok((res, cursor))

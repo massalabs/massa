@@ -2,9 +2,7 @@ use crate::config::ExecutionConfig;
 use crate::error::ExecutionError;
 
 /// Commands sent to the `execution` component.
-pub enum ExecutionCommand {
-    
-}
+pub enum ExecutionCommand {}
 
 /// A sender of execution commands.
 #[derive(Clone)]
@@ -19,13 +17,7 @@ pub struct ExecutionManager;
 /// * cfg: execution configuration
 pub async fn start_consensus_controller(
     cfg: ExecutionConfig,
-) -> Result<
-    (
-        ExecutionCommandSender,
-        ExecutionManager,
-    ),
-    ExecutionError,
-> {
+) -> Result<(ExecutionCommandSender, ExecutionManager), ExecutionError> {
     // Note: use async or threads?
     // Share ledger and clique with consensus?
     Ok((ExecutionCommandSender, ExecutionManager))
