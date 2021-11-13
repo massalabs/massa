@@ -1,7 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 #![allow(clippy::too_many_arguments)]
 use crate::error::ApiError;
-use crate::error::ApiError::WrongAPI;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use consensus::{
     ConsensusCommandSender, ConsensusConfig, DiscardReason, ExportBlockStatus, Status,
@@ -63,38 +62,31 @@ impl RpcServer for API<Public> {
 #[doc(hidden)]
 impl Endpoints for API<Public> {
     fn stop_node(&self) -> BoxFuture<Result<(), ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
+        crate::wrong_api::<()>()
     }
 
     fn node_sign_message(&self, _: Vec<u8>) -> BoxFuture<Result<PubkeySig, ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
+        crate::wrong_api::<PubkeySig>()
     }
 
     fn add_staking_private_keys(&self, _: Vec<PrivateKey>) -> BoxFuture<Result<(), ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
+        crate::wrong_api::<()>()
     }
 
     fn remove_staking_addresses(&self, _: Vec<Address>) -> BoxFuture<Result<(), ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
+        crate::wrong_api::<()>()
     }
 
     fn get_staking_addresses(&self) -> BoxFuture<Result<AddressHashSet, ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
+        crate::wrong_api::<AddressHashSet>()
     }
 
     fn ban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
+        crate::wrong_api::<()>()
     }
 
     fn unban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
+        crate::wrong_api::<()>()
     }
 
     fn get_status(&self) -> BoxFuture<Result<NodeStatus, ApiError>> {
