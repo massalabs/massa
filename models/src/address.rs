@@ -1,8 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::api::{LedgerInfo, RollsInfo};
 use crate::hhasher::{HHashMap, HHashSet, PreHashed};
-use crate::ledger::LedgerData;
-use crate::{Amount, ModelsError};
+use crate::ModelsError;
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
     signature::PublicKey,
@@ -151,11 +151,7 @@ pub struct AddressCycleProductionStats {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AddressState {
-    pub final_rolls: u64,
-    pub active_rolls: Option<u64>,
-    pub candidate_rolls: u64,
-    pub locked_balance: Amount,
-    pub candidate_ledger_data: LedgerData,
-    pub final_ledger_data: LedgerData,
+    pub ledger_info: LedgerInfo,
+    pub rolls: RollsInfo,
     pub production_stats: Vec<AddressCycleProductionStats>,
 }

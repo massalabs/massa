@@ -7,6 +7,7 @@ use crypto::{
     hash::Hash,
     signature::{derive_public_key, PrivateKey, PublicKey},
 };
+use models::api::{LedgerInfo, RollsInfo};
 use models::{address::AddressCycleProductionStats, stats::ConsensusStats};
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
@@ -1069,24 +1070,31 @@ impl ConsensusWorker {
                 states.insert(
                     *addr,
                     AddressState {
-                        final_rolls: *final_data.roll_count.0.get(addr).unwrap_or(&0),
-                        active_rolls: lookback_data.map(|data| *data.0.get(addr).unwrap_or(&0)),
-                        candidate_rolls: *candidate_data.0 .0.get(addr).unwrap_or(&0),
-                        locked_balance: self
-                            .cfg
-                            .roll_price
-                            .checked_mul_u64(*locked_rolls.get(addr).unwrap_or(&0))
-                            .ok_or(ConsensusError::RollOverflowError)?,
-                        candidate_ledger_data: ledger_data
-                            .candidate_data
-                            .0
-                            .get(&addr)
-                            .map_or_else(|| LedgerData::default(), |v| v.clone()),
-                        final_ledger_data: ledger_data
-                            .final_data
-                            .0
-                            .get(&addr)
-                            .map_or_else(|| LedgerData::default(), |v| v.clone()),
+                        rolls: RollsInfo {
+                            final_rolls: *final_data.roll_count.0.get(addr).unwrap_or(&0),
+                            active_rolls: lookback_data
+                                .map(|data| *data.0.get(addr).unwrap_or(&0))
+                                .unwrap_or(0),
+                            candidate_rolls: *candidate_data.0 .0.get(addr).unwrap_or(&0),
+                        },
+                        ledger_info: LedgerInfo {
+                            locked_balance: self
+                                .cfg
+                                .roll_price
+                                .checked_mul_u64(*locked_rolls.get(addr).unwrap_or(&0))
+                                .ok_or(ConsensusError::RollOverflowError)?,
+                            candidate_ledger_info: ledger_data
+                                .candidate_data
+                                .0
+                                .get(&addr)
+                                .map_or_else(|| LedgerData::default(), |v| v.clone()),
+                            final_ledger_info: ledger_data
+                                .final_data
+                                .0
+                                .get(&addr)
+                                .map_or_else(|| LedgerData::default(), |v| v.clone()),
+                        },
+
                         production_stats: prod_stats
                             .iter()
                             .map(|cycle_stats| AddressCycleProductionStats {
