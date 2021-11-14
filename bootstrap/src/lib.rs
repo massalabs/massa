@@ -42,7 +42,7 @@ async fn get_state_internal(
     // connect
     let mut connector = establisher.get_connector(cfg.connect_timeout).await?;
     let socket = connector.connect(*bootstrap_addr).await?;
-    let mut client = BootstrapClientBinder::new(socket, bootstrap_public_key.clone());
+    let mut client = BootstrapClientBinder::new(socket, *bootstrap_public_key);
 
     // handshake
     let send_time_uncompensated = UTime::now(0)?;
@@ -352,9 +352,9 @@ impl BootstrapServer {
 
                     // launch bootstrap
                     let cfg_copy = self.cfg.clone();
-                    let private_key = self.private_key.clone();
-                    let compensation_millis = self.compensation_millis.clone();
-                    let version = self.version.clone();
+                    let private_key = self.private_key;
+                    let compensation_millis = self.compensation_millis;
+                    let version = self.version;
                     let (data_pos, data_graph, data_peers) = bootstrap_data.clone().unwrap();  // will not panic (checked above)
                     bootstrap_sessions.push(async move {
                         match manage_bootstrap(cfg_copy, dplx, data_pos, data_graph, data_peers, private_key, compensation_millis, version).await {
@@ -374,6 +374,7 @@ impl BootstrapServer {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn manage_bootstrap(
     cfg: BootstrapConfig,
     duplex: Duplex,
