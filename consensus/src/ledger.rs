@@ -216,6 +216,7 @@ impl OperationLedgerInterface for Operation {
             }
             // roll sale is handled separately with a delay
             models::OperationType::RollSell { .. } => {}
+            models::OperationType::ExecuteSC { .. } => {}
         }
 
         Ok(res)
