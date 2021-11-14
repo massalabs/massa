@@ -1,0 +1,35 @@
+[package]
+name = "consensus"
+version = "0.1.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bitvec = { version = "0.22", features = ["serde"] }
+displaydoc = "0.2"
+futures = { version = "0.3" }
+num = { version = "0.4", features = ["serde"] }
+rand = { version = "0.8"}
+rand_xoshiro = "0.6"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0" }
+sled = "0.34"
+thiserror = "1.0"
+tokio = { version = "1.11", features = ["full"] }
+tokio-util = { version = "0.6", features = ["codec"] }
+tracing = "0.1"
+# custom modules
+protocol-exports = {path = "../protocol-exports"}
+crypto = {path = "../crypto"}
+logging = { path = "../logging" }
+models = {path = "../models"}
+pool = { path = "../pool"}
+time = { path = "../time"}
+
+[dev-dependencies]
+pretty_assertions = "0.7"
+serial_test = "0.5"
+stderrlog = "0.5"
+tempfile = "3.2"

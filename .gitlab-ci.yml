@@ -1,0 +1,143 @@
+image: "rustlang/rust:nightly"
+
+sanity:
+  script:
+    - rustup component add rustfmt # TODO: clippy
+    - cargo fmt -- --check
+
+build:
+  script:
+    - RUSTFLAGS="-D warnings" cargo build
+
+test:
+  script:
+    - cargo test --lib
+
+doctest:
+  script:
+    - cargo test --doc
+
+coverage:
+  script:
+    - cargo install cargo-tarpaulin -f
+    - cargo tarpaulin --verbose --timeout 600 --run-types Tests Doctests --out Xml
+  artifacts:
+    reports:
+      cobertura:
+        - cobertura.xml
+  coverage: '/^\d+.\d+% coverage/'
+  only:
+    - dev@massalabs/massa
+    - testnet@massalabs/massa
+  allow_failure: true
+
+# docs:
+#   before_script:
+#     ## From: https://docs.gitlab.com/ee/ci/ssh_keys/
+#     ##
+#     ## Install ssh-agent if not already installed, it is required by Docker.
+#     ## (change apt-get to yum if you use an RPM-based image)
+#     ##
+#     - 'command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client rsync -y )'
+
+#     ##
+#     ## Run ssh-agent (inside the build environment)
+#     ##
+#     - eval $(ssh-agent -s)
+
+#     ##
+#     ## Add the SSH key stored in SSH_PRIVATE_KEY variable to the agent store
+#     ## We're using tr to fix line endings which makes ed25519 keys work
+#     ## without extra base64 encoding.
+#     ## https://gitlab.com/gitlab-examples/ssh-private-key/issues/1#note_48526556
+#     ##
+#     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+
+#     ##
+#     ## Create the SSH directory and give it the right permissions
+#     ##
+#     - mkdir -p ~/.ssh
+#     - chmod 700 ~/.ssh
+#   script:
+#     - cargo doc --no-deps
+#     - rsync -azP --delete target/doc/* docs@docs.massa.net:/var/www/html/docs
+#   only:
+#     - dev@massalabs/massa
+
+build-linux:
+  image: "massalabs/linux-ci"
+  rules:
+    - if: '$CI_COMMIT_TAG=~ /^TEST.[0-9]+\.[0-9]+$/'
+  artifacts:
+    name: "${CI_JOB_NAME}_${CI_COMMIT_REF_NAME}"
+    when: on_success
+    expire_in: 1 mos
+    paths:
+      - massa/
+  script:
+    - rustup update
+    - cargo update
+    - cargo build --release --target x86_64-unknown-linux-musl
+    - rm -rf massa/*
+    - mkdir -p massa/massa-node/
+    - cd massa/
+    - mkdir massa-client
+    - cp -v ../target/x86_64-unknown-linux-musl/release/massa-node ./massa-node/massa-node
+    - cp -rv ../massa-node/config ./massa-node/config
+    - cp -rv ../massa-node/base_config ./massa-node/base_config
+    - cp -rv ../massa-node/storage ./massa-node/storage
+    - cp -v ../target/x86_64-unknown-linux-musl/release/massa-client ./massa-client/massa-client
+    - cp -rv ../massa-client/config ./massa-client/config
+    - cp -rv ../massa-client/base_config ./massa-client/base_config
+
+build-darwin:
+  image: "massalabs/linux-ci"
+  rules:
+    - if: '$CI_COMMIT_TAG=~ /^TEST.[0-9]+\.[0-9]+$/'
+  artifacts:
+    name: "${CI_JOB_NAME}_${CI_COMMIT_REF_NAME}"
+    when: on_success
+    expire_in: 1 mos
+    paths:
+      - massa/
+  script:
+    - rustup update
+    - cargo update
+    - CC=o64-clang CXX=o64-clang++ cargo build --release --target x86_64-apple-darwin
+    - rm -rf massa/*
+    - mkdir -p massa/massa-node/
+    - cd massa/
+    - mkdir massa-client
+    - cp -v ../target/x86_64-apple-darwin/release/massa-node ./massa-node/massa-node
+    - cp -rv ../massa-node/config ./massa-node/config
+    - cp -rv ../massa-node/base_config ./massa-node/base_config
+    - cp -rv ../massa-node/storage ./massa-node/storage
+    - cp -v ../target/x86_64-apple-darwin/release/massa-client ./massa-client/massa-client
+    - cp -rv ../massa-client/config ./massa-client/config
+    - cp -rv ../massa-client/base_config ./massa-client/base_config
+
+build-windows:
+  image: "massalabs/linux-ci"
+  rules:
+    - if: '$CI_COMMIT_TAG=~ /^TEST.[0-9]+\.[0-9]+$/'
+  artifacts:
+    name: "${CI_JOB_NAME}_${CI_COMMIT_REF_NAME}"
+    when: on_success
+    expire_in: 1 mos
+    paths:
+      - massa/
+  script:
+    - rustup update
+    - cargo update
+    - cargo build --release --target x86_64-pc-windows-gnu
+    - rm -rf massa/*
+    - mkdir -p massa/massa-node/
+    - cd massa/
+    - mkdir massa-client
+    - cp -v ../target/x86_64-pc-windows-gnu/release/massa-node.exe ./massa-node/massa-node.exe
+    - cp -rv ../massa-node/config ./massa-node/config
+    - cp -rv ../massa-node/base_config ./massa-node/base_config
+    - cp -rv ../massa-node/storage ./massa-node/storage
+    - cp -v ../target/x86_64-pc-windows-gnu/release/massa-client.exe ./massa-client/massa-client.exe
+    - cp -rv ../massa-client/config ./massa-client/config
+    - cp -rv ../massa-client/base_config ./massa-client/base_config

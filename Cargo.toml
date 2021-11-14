@@ -1,0 +1,18 @@
+[workspace]
+
+members = [
+    "api",
+    "bootstrap",
+    "network",
+    "consensus",
+    "crypto",
+    "logging",
+    "massa-node",
+    "models",
+    "pool",
+    "massa-client",
+    "protocol-worker",
+    "protocol-exports",
+    "time",
+    "wallet",
+]
