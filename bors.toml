@@ -1,0 +1,6 @@
+status = [
+    "sanity",
+    "build",
+    "test",
+    "doctest",
+]
