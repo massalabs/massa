@@ -11,13 +11,13 @@ use models::{
 use std::net::IpAddr;
 use std::process;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
-use strum_macros::{EnumIter, EnumMessage, EnumProperty, EnumString, ToString};
+use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
 use wallet::Wallet;
 
 use crate::rpc::Client;
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, PartialEq, EnumIter, EnumMessage, EnumString, EnumProperty, ToString)]
+#[derive(Debug, PartialEq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
 pub enum Command {
     #[strum(ascii_case_insensitive, message = "exit the client gracefully")]
     exit,
