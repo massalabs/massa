@@ -26,7 +26,7 @@ models = { path = "../models" }
 time = { path = "../time" }
 
 [dev-dependencies]
-pretty_assertions = "0.7"
+pretty_assertions = "1.0"
 serial_test = "0.5.1"
 stderrlog = "0.5"
 tempfile = "3.2"

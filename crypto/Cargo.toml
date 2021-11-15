@@ -17,5 +17,5 @@ serde_json = { version = "1.0" }
 thiserror = "1.0"
 
 [dev-dependencies]
-pretty_assertions = "0.7"
+pretty_assertions = "1.0"
 serial_test = "0.5"

@@ -26,5 +26,5 @@ time = {path = "../time"}
 
 [dev-dependencies]
 bitvec = { version = "0.22", features = ["serde"] }
-pretty_assertions = "0.7"
+pretty_assertions = "1.0"
 serial_test = "0.5"
