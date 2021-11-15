@@ -1,0 +1,120 @@
+name: Rust-ci
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  sanity:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 20
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        override: true
+        components: rustfmt, rust-src
+    - name: Cargo fmt
+      run: cargo fmt -- --check
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 20
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        override: true
+    - name: Cargo build
+      run: RUSTFLAGS="-D warnings" cargo build
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 20
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        override: true
+    - name: Cargo test
+      run: |
+        cargo install cargo2junit
+        cargo test --lib -- -Z unstable-options --format json --report-time | tee results.json
+        cat results.json | cargo2junit > results.xml
+
+    - name: Archive junit results
+      uses: actions/upload-artifact@v2
+      with:
+        name: junit-report
+        path: results.xml
+
+  doctest:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 20
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        override: true
+    - name: Cargo doc test
+      run: |
+        cargo install cargo2junit
+        cargo test --doc -- -Z unstable-options --format json --report-time | tee results.json
+        cat results.json | cargo2junit > results.xml
+
+    - name: Archive junit results
+      uses: actions/upload-artifact@v2
+      with:
+        name: junit-report
+        path: results.xml
+
+  coverage:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/testnet'
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 20
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        override: true
+    - name: Coverage
+      run: |
+        cargo install cargo-tarpaulin -f
+        cargo tarpaulin --verbose --timeout 600 --run-types Tests Doctests --out Xml
+
+    - name: Archive coverage results
+      uses: actions/upload-artifact@v2
+      with:
+        name: code-coverage-report
+        path: cobertura.xml
