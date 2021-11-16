@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::address::AddressCycleProductionStats;
+use crate::ledger::LedgerData;
 use crate::node::NodeId;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
 use crate::{
@@ -113,16 +114,20 @@ impl std::fmt::Display for OperationInfo {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
-pub struct BalanceInfo {
-    pub final_balance: Amount,
-    pub candidate_balance: Amount,
+pub struct LedgerInfo {
+    pub final_ledger_info: LedgerData,
+    pub candidate_ledger_info: LedgerData,
     pub locked_balance: Amount,
 }
 
-impl std::fmt::Display for BalanceInfo {
+impl std::fmt::Display for LedgerInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Final balance: {}", self.final_balance)?;
-        writeln!(f, "Candidate balance: {}", self.candidate_balance)?;
+        writeln!(f, "Final balance: {}", self.final_ledger_info.balance)?;
+        writeln!(
+            f,
+            "Candidate balance: {}",
+            self.candidate_ledger_info.balance
+        )?;
         writeln!(f, "Locked balance: {}", self.locked_balance)?;
         Ok(())
     }
@@ -148,7 +153,7 @@ impl std::fmt::Display for RollsInfo {
 pub struct AddressInfo {
     pub address: Address,
     pub thread: u8,
-    pub balance: BalanceInfo,
+    pub ledger_info: LedgerInfo,
     pub rolls: RollsInfo,
     pub block_draws: HashSet<Slot>,
     pub endorsement_draws: HashMap<String, u64>, // u64 is the index
@@ -162,7 +167,7 @@ impl std::fmt::Display for AddressInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
-        writeln!(f, "Balance:\n{}", self.balance)?;
+        writeln!(f, "Balance:\n{}", self.ledger_info)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         writeln!(
             f,
@@ -227,7 +232,7 @@ impl AddressInfo {
         CompactAddressInfo {
             address: self.address,
             thread: self.thread,
-            balance: self.balance,
+            balance: self.ledger_info,
             rolls: self.rolls,
         }
     }
@@ -236,7 +241,7 @@ impl AddressInfo {
 pub struct CompactAddressInfo {
     pub address: Address,
     pub thread: u8,
-    pub balance: BalanceInfo,
+    pub balance: LedgerInfo,
     pub rolls: RollsInfo,
 }
 
