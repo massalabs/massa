@@ -1,6 +1,6 @@
 status = [
     "sanity",
-    "build",
+    "check",
     "test",
     "doctest",
 ]
