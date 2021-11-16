@@ -55,6 +55,9 @@ jobs:
     - uses: Swatinem/rust-cache@v1
     - uses: actions-rs/cargo@v1
       with:
+        command: build # needed by assert_cmd based tests
+    - uses: actions-rs/cargo@v1
+      with:
         command: test
         args: --lib
 
@@ -96,7 +99,6 @@ jobs:
     needs: [test, doctest]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    continue-on-error: true
     steps:
     - uses: actions/checkout@v2
     - uses: actions-rs/toolchain@v1
@@ -109,19 +111,26 @@ jobs:
         command: clean
     - uses: actions-rs/cargo@v1
       with:
+        command: build
+    - uses: actions-rs/cargo@v1
+      with:
         command: test
-        args: --all-features --no-fail-fast  # Customize args for your own needs
+        args: --all-features --no-fail-fast
       env:
         CARGO_INCREMENTAL: '0'
         RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
         RUSTDOCFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
+      continue-on-error: true
     - id: coverage  
       uses: actions-rs/grcov@v0.1
+      continue-on-error: true
     - uses: codecov/codecov-action@v1.0.2
       with:
         token: ${{secrets.CODECOV_TOKEN}}
+      continue-on-error: true
     - uses: coverallsapp/github-action@master
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         path-to-lcov: ${{ steps.coverage.outputs.report }}
-    - run: exit 0
+      continue-on-error: true
+    - run: exit 0 # I alaways want a green check even if code coverage fail ...
