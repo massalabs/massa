@@ -8,114 +8,99 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
   sanity:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        fetch-depth: 20
-    - uses: Swatinem/rust-cache@v1.3.0
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+    - uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly
-        profile: minimal
+        components: rustfmt
         override: true
-        components: rustfmt, rust-src
-    - name: Cargo fmt
-      run: cargo fmt -- --check
+    - uses: Swatinem/rust-cache@v1
+    - uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all -- --check
 
-  build:
+  check:
+    needs: sanity
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        fetch-depth: 20
-    - uses: Swatinem/rust-cache@v1.3.0
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+    - uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly
-        profile: minimal
         override: true
-    - name: Cargo build
-      run: RUSTFLAGS="-D warnings" cargo build
+    - uses: Swatinem/rust-cache@v1
+    - uses: actions-rs/cargo@v1
+      with:
+        command: check
 
   test:
+    needs: check
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        fetch-depth: 20
-    - uses: Swatinem/rust-cache@v1.3.0
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+    - uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly
-        profile: minimal
         override: true
-    - name: Cargo test
-      run: |
-        cargo install cargo2junit
-        cargo test --lib -- -Z unstable-options --format json --report-time | tee results.json
-        cat results.json | cargo2junit > results.xml
-    - name: Archive junit results
-      uses: actions/upload-artifact@v2
+    - uses: Swatinem/rust-cache@v1
+    - uses: actions-rs/cargo@v1
       with:
-        name: junit-report
-        path: results.xml
+        command: test
+        args: --lib
 
   doctest:
+    needs: check
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        fetch-depth: 20
-    - uses: Swatinem/rust-cache@v1.3.0
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+    - uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly
-        profile: minimal
         override: true
-    - name: Cargo doc test
-      run: |
-        cargo install cargo2junit
-        cargo test --doc -- -Z unstable-options --format json --report-time | tee results.json
-        cat results.json | cargo2junit > results.xml
-    - name: Archive junit results
-      uses: actions/upload-artifact@v2
+    - uses: Swatinem/rust-cache@v1
+    - uses: actions-rs/cargo@v1
       with:
-        name: junit-report
-        path: results.xml
+        command: test
+        args: --doc
+
+  clippy:
+    needs: check
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            components: clippy
+            override: true
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
 
   coverage:
+    needs: [test, doctest]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/testnet'
+    if: github.ref == 'refs/heads/main'
     continue-on-error: true
     steps:
     - uses: actions/checkout@v2
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-        fetch-depth: 20
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+    - uses: actions-rs/toolchain@v1
       with:
         toolchain: nightly
-        profile: minimal
         override: true
-    - name: Coverage
-      run: |
-        cargo install cargo-tarpaulin -f
-        cargo tarpaulin --verbose --timeout 600 --run-types Tests Doctests --out Xml
-    - name: Archive coverage results
-      uses: actions/upload-artifact@v2
+    - uses: actions-rs/tarpaulin@v0.1
       with:
-        name: code-coverage-report
-        path: cobertura.xml
+        version: '0.15.0'
+        args: '-- --test-threads 1'
+    - uses: codecov/codecov-action@v1.0.2
+      with:
+        token: ${{secrets.CODECOV_TOKEN}}
