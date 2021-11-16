@@ -1345,10 +1345,15 @@ impl ConsensusWorker {
         }
 
         // add stale blocks to stats
-        let new_stale_block_ids_slots = self.block_db.get_new_stale_blocks();
+        let new_stale_block_ids_creators_slots = self.block_db.get_new_stale_blocks();
         let timestamp = UTime::now(self.clock_compensation)?;
-        for (_b_id, _b_slot) in new_stale_block_ids_slots.into_iter() {
+        for (b_id, (b_creator, _b_slot)) in new_stale_block_ids_creators_slots.into_iter() {
             self.stale_block_stats.push_back(timestamp);
+
+            let creator_addr = Address::from_public_key(&b_creator)?;
+            if self.staking_keys.contains_key(&creator_addr) {
+                warn!("block {} that was produced by our address {} became stale. This is probably due to a temporary desynchronization.", b_id, creator_addr);
+            }
         }
 
         Ok(())
