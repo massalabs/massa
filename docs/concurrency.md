@@ -39,9 +39,7 @@ via another, or multiple other, component(s).
         -   Api
         -   Consensus
     -   Sends commands to:
-        -   Consensus
-        -   Pool
-        -   Network
+        -
 -   Consensus:
     -   Sends events to:
         -   Massa-node
@@ -52,7 +50,7 @@ via another, or multiple other, component(s).
         -   Pool
     -   Receives commands from:
         -   Bootstrap
-        -   Massa-node
+        -   Api
 -   Pool:
     -   Receives events from:
         -   Protocol
@@ -60,7 +58,7 @@ via another, or multiple other, component(s).
         -   Protocol
     -   Receives commands from:
         -   Consensus
-        -   Massa-node
+        -   Api
 -   Protocol:
     -   Sends events to:
         -   Consensus
@@ -81,10 +79,12 @@ via another, or multiple other, component(s).
     -   Receives commands from:
         -   Protocol
         -   Bootstrap
-        -   Massa-node
+        -   Api
 -   API:
-    -   Sends events to:
-        -   Massa-node
+    -   Sends commands to:
+        -   Consensus
+        -   Pool
+        -   Network
 
 
 ## Blocking relationships
