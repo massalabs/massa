@@ -1,4 +1,4 @@
-use crypto::signature::{PublicKey, Signature};
+use signature::{PublicKey, Signature};
 
 use serde::{Deserialize, Serialize};
 

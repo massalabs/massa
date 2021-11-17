@@ -15,4 +15,5 @@ tracing = "0.1"
 # custom modules
 crypto = {path = "../crypto"}
 models = {path = "../models"}
+signature = { path = "../signature" }
 time = { path = "../time" }

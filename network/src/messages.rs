@@ -1,6 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crypto::signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use models::{
     array_from_slice, with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact,
     DeserializeVarInt, Endorsement, ModelsError, Operation, SerializeCompact, SerializeVarInt,
@@ -8,6 +7,7 @@ use models::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
+use signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use std::{convert::TryInto, net::IpAddr};
 
 pub const HANDSHAKE_RANDOMNES_SIZE_BYTES: usize = 32;
@@ -276,6 +276,7 @@ mod tests {
 
     use rand::{prelude::StdRng, RngCore, SeedableRng};
     use serial_test::serial;
+    use signature::{derive_public_key, generate_random_private_key};
 
     use super::*;
 
@@ -310,8 +311,8 @@ mod tests {
         initialize_context();
         let mut random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut random_bytes);
-        let priv_key = crypto::generate_random_private_key();
-        let public_key = crypto::derive_public_key(&priv_key);
+        let priv_key = generate_random_private_key();
+        let public_key = derive_public_key(&priv_key);
         let msg = Message::HandshakeInitiation {
             public_key,
             random_bytes,

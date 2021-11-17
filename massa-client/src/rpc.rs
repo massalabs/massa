@@ -5,7 +5,6 @@ use std::net::{IpAddr, SocketAddr};
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
 
-use crypto::signature::PrivateKey;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
     AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, TimeInterval,
@@ -13,6 +12,7 @@ use models::api::{
 use models::clique::Clique;
 use models::crypto::PubkeySig;
 use models::{Address, BlockId, EndorsementId, Operation, OperationId};
+use signature::PrivateKey;
 
 // TODO: This crate should at some point be renamed `client`, `massa` or `massa-client`
 // and replace the previous one!

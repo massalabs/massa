@@ -6,6 +6,7 @@ use crate::tests::tools::{self, generate_ledger_file};
 use models::timeslots;
 use models::{BlockHashSet, BlockId, Slot};
 use serial_test::serial;
+use signature::{generate_random_private_key, PrivateKey};
 use std::collections::{HashMap, HashSet};
 use time::UTime;
 
@@ -18,9 +19,7 @@ async fn test_unsorted_block() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -155,9 +154,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -257,9 +254,7 @@ async fn test_too_many_blocks_in_the_future() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -363,9 +358,7 @@ async fn test_dep_in_back_order() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -538,9 +531,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -674,9 +665,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(

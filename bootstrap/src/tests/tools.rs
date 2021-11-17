@@ -12,7 +12,6 @@ use consensus::{
     RollCounts, RollUpdate, RollUpdates, ThreadCycleState,
 };
 use crypto::hash::Hash;
-use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use models::clique::Clique;
 use models::ledger::LedgerChange;
 use models::ledger::LedgerData;
@@ -21,6 +20,7 @@ use models::{
     Endorsement, EndorsementContent, Operation, OperationContent, SerializeCompact, Slot,
 };
 use network::{BootstrapPeers, NetworkCommand};
+use signature::{derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature};
 use time::UTime;
 
 use super::mock_establisher::Duplex;
@@ -35,19 +35,19 @@ pub fn get_dummy_block_id(s: &str) -> BlockId {
 }
 
 pub fn get_random_public_key() -> PublicKey {
-    let priv_key = crypto::generate_random_private_key();
-    crypto::derive_public_key(&priv_key)
+    let priv_key = generate_random_private_key();
+    derive_public_key(&priv_key)
 }
 
 pub fn get_random_address() -> Address {
-    let priv_key = crypto::generate_random_private_key();
-    let pub_key = crypto::derive_public_key(&priv_key);
+    let priv_key = generate_random_private_key();
+    let pub_key = derive_public_key(&priv_key);
     Address::from_public_key(&pub_key).unwrap()
 }
 
-pub fn get_dummy_signature(s: &str) -> crypto::signature::Signature {
-    let priv_key = crypto::generate_random_private_key();
-    crypto::sign(&Hash::hash(s.as_bytes()), &priv_key).unwrap()
+pub fn get_dummy_signature(s: &str) -> Signature {
+    let priv_key = generate_random_private_key();
+    sign(&Hash::hash(s.as_bytes()), &priv_key).unwrap()
 }
 
 pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig {
@@ -278,8 +278,8 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
 }
 
 pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
-    let private_key = crypto::generate_random_private_key();
-    let public_key = crypto::derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
 
     let mut ledger_subset = LedgerSubset::default();

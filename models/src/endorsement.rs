@@ -7,15 +7,12 @@ use crate::{
     },
     with_serialization_context, BlockId, ModelsError, Slot, BLOCK_ID_SIZE_BYTES,
 };
-use crypto::{
-    hash::{Hash, HASH_SIZE_BYTES},
-    sign,
-    signature::{
-        verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
-        SIGNATURE_SIZE_BYTES,
-    },
-};
+use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use serde::{Deserialize, Serialize};
+use signature::{
+    sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
+    SIGNATURE_SIZE_BYTES,
+};
 use std::str::FromStr;
 
 pub const ENDORSEMENT_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
@@ -226,6 +223,7 @@ impl DeserializeCompact for EndorsementContent {
 mod tests {
     use super::*;
     use serial_test::serial;
+    use signature::{derive_public_key, generate_random_private_key};
 
     #[test]
     #[serial]
@@ -250,8 +248,8 @@ mod tests {
         };
         crate::init_serialization_context(ctx);
 
-        let sender_priv = crypto::generate_random_private_key();
-        let sender_public_key = crypto::derive_public_key(&sender_priv);
+        let sender_priv = generate_random_private_key();
+        let sender_public_key = derive_public_key(&sender_priv);
 
         let content = EndorsementContent {
             sender_public_key,
@@ -260,7 +258,7 @@ mod tests {
             endorsed_block: BlockId(Hash::hash("blk".as_bytes())),
         };
         let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-        let signature = crypto::sign(&hash, &sender_priv).unwrap();
+        let signature = sign(&hash, &sender_priv).unwrap();
         let endorsement = Endorsement {
             content: content.clone(),
             signature,

@@ -14,6 +14,7 @@ use models::ledger::LedgerChange;
 use models::ledger::LedgerData;
 use models::{Address, Amount, Slot};
 use serial_test::serial;
+use signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use std::collections::HashMap;
 use std::str::FromStr;
 use time::UTime;
@@ -22,9 +23,7 @@ use time::UTime;
 #[serial]
 async fn test_ledger_init() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let cfg = tools::default_consensus_config(
@@ -40,9 +39,7 @@ async fn test_ledger_init() {
 #[serial]
 async fn test_ledger_initializes_get_latest_final_periods() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let cfg = tools::default_consensus_config(
@@ -64,9 +61,7 @@ async fn test_ledger_initializes_get_latest_final_periods() {
 #[serial]
 async fn test_ledger_final_balance_increment_new_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let cfg = tools::default_consensus_config(
@@ -76,8 +71,8 @@ async fn test_ledger_final_balance_increment_new_address() {
     );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
-    let private_key = crypto::generate_random_private_key();
-    let public_key = crypto::derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
     let thread = address.get_thread(cfg.thread_count);
 
@@ -113,9 +108,7 @@ async fn test_ledger_final_balance_increment_new_address() {
 #[serial]
 async fn test_ledger_final_balance_increment_address_above_max() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let cfg = tools::default_consensus_config(
@@ -125,8 +118,8 @@ async fn test_ledger_final_balance_increment_address_above_max() {
     );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
-    let private_key = crypto::generate_random_private_key();
-    let public_key = crypto::derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
     let thread = address.get_thread(cfg.thread_count);
 
@@ -175,9 +168,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
 #[serial]
 async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let cfg = tools::default_consensus_config(
@@ -187,8 +178,8 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
     );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
-    let private_key = crypto::generate_random_private_key();
-    let public_key = crypto::derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
     let thread = address.get_thread(cfg.thread_count);
 
@@ -250,9 +241,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
 #[serial]
 async fn test_ledger_final_balance_decrement_address_below_zero() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let cfg = tools::default_consensus_config(
@@ -262,8 +251,8 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
     );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
-    let private_key = crypto::generate_random_private_key();
-    let public_key = crypto::derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
     let thread = address.get_thread(cfg.thread_count);
 
@@ -339,9 +328,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
 #[serial]
 async fn test_ledger_final_balance_decrement_non_existing_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let cfg = tools::default_consensus_config(
@@ -351,8 +338,8 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
     );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
-    let private_key = crypto::generate_random_private_key();
-    let public_key = crypto::derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
     let thread = address.get_thread(cfg.thread_count);
 
@@ -375,9 +362,7 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
 #[serial]
 async fn test_ledger_final_balance_non_existing_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let cfg = tools::default_consensus_config(
@@ -387,8 +372,8 @@ async fn test_ledger_final_balance_non_existing_address() {
     );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
-    let private_key = crypto::generate_random_private_key();
-    let public_key = crypto::derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
 
     let final_datas = ledger
@@ -405,9 +390,7 @@ async fn test_ledger_final_balance_non_existing_address() {
 #[serial]
 async fn test_ledger_final_balance_duplicate_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let cfg = tools::default_consensus_config(
@@ -417,8 +400,8 @@ async fn test_ledger_final_balance_duplicate_address() {
     );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
-    let private_key = crypto::generate_random_private_key();
-    let public_key = crypto::derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
 
     // Same address twice.
@@ -439,9 +422,7 @@ async fn test_ledger_final_balance_duplicate_address() {
 #[serial]
 async fn test_ledger_final_balance_multiple_addresses() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let cfg = tools::default_consensus_config(
@@ -453,8 +434,8 @@ async fn test_ledger_final_balance_multiple_addresses() {
 
     let mut addresses = vec![];
     for _ in 0..5 {
-        let private_key = crypto::generate_random_private_key();
-        let public_key = crypto::derive_public_key(&private_key);
+        let private_key = generate_random_private_key();
+        let public_key = derive_public_key(&private_key);
         let address = Address::from_public_key(&public_key).unwrap();
         addresses.push(address);
     }
@@ -478,9 +459,7 @@ async fn test_ledger_final_balance_multiple_addresses() {
 #[serial]
 async fn test_ledger_clear() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let cfg = tools::default_consensus_config(
@@ -490,8 +469,8 @@ async fn test_ledger_clear() {
     );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
-    let private_key = crypto::generate_random_private_key();
-    let public_key = crypto::derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
     let thread = address.get_thread(cfg.thread_count);
 
@@ -538,9 +517,7 @@ async fn test_ledger_clear() {
 #[serial]
 async fn test_ledger_read_whole() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let cfg = tools::default_consensus_config(
@@ -550,8 +527,8 @@ async fn test_ledger_read_whole() {
     );
     let ledger = Ledger::new(cfg.clone(), None).unwrap();
 
-    let private_key = crypto::generate_random_private_key();
-    let public_key = crypto::derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
     let thread = address.get_thread(cfg.thread_count);
 
@@ -614,8 +591,8 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
 
     loop {
         // A
-        private_key_1 = crypto::generate_random_private_key();
-        public_key_1 = crypto::derive_public_key(&private_key_1);
+        private_key_1 = generate_random_private_key();
+        public_key_1 = derive_public_key(&private_key_1);
         address_1 = Address::from_public_key(&public_key_1).unwrap();
         if address_1.get_thread(thread_count) == 0 {
             break;
@@ -623,8 +600,8 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     }
     loop {
         // B
-        private_key_2 = crypto::generate_random_private_key();
-        public_key_2 = crypto::derive_public_key(&private_key_2);
+        private_key_2 = generate_random_private_key();
+        public_key_2 = derive_public_key(&private_key_2);
         address_2 = Address::from_public_key(&public_key_2).unwrap();
         if address_2.get_thread(thread_count) == 1 {
             break;
@@ -632,8 +609,8 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     }
     loop {
         // C
-        private_key_3 = crypto::generate_random_private_key();
-        public_key_3 = crypto::derive_public_key(&private_key_3);
+        private_key_3 = generate_random_private_key();
+        public_key_3 = derive_public_key(&private_key_3);
         address_3 = Address::from_public_key(&public_key_3).unwrap();
         if address_3.get_thread(thread_count) == 0 {
             break;
@@ -659,7 +636,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     );
 
     let ledger_file = generate_ledger_file(&ledger);
-    let staking_keys: Vec<crypto::signature::PrivateKey> = vec![private_key_1];
+    let staking_keys: Vec<PrivateKey> = vec![private_key_1];
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(

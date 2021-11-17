@@ -7,10 +7,6 @@ use tokio::{
     task::JoinHandle,
 };
 
-use crypto::{
-    derive_public_key,
-    signature::{PrivateKey, PublicKey},
-};
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
     BlockHashMap, OperationHashMap, OperationHashSet,
@@ -19,6 +15,7 @@ use models::{clique::Clique, stats::ConsensusStats};
 use models::{Address, Block, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats};
 use pool::PoolCommandSender;
 use protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
+use signature::{derive_public_key, PrivateKey, PublicKey};
 
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;

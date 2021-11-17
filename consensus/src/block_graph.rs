@@ -8,7 +8,6 @@ use crate::{
     pos::{OperationRollInterface, ProofOfStake, RollCounts, RollUpdate, RollUpdates},
 };
 use crypto::hash::Hash;
-use crypto::signature::{derive_public_key, PublicKey};
 use models::address::{AddressHashMap, AddressHashSet};
 use models::clique::Clique;
 use models::hhasher::BuildHHasher;
@@ -21,6 +20,7 @@ use models::{
     SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES, BLOCK_ID_SIZE_BYTES,
 };
 use serde::{Deserialize, Serialize};
+use signature::{derive_public_key, PublicKey};
 use std::mem;
 use std::{collections::HashSet, convert::TryInto, usize};
 use std::{
@@ -4106,9 +4106,9 @@ mod tests {
     use serial_test::serial;
     use tempfile::NamedTempFile;
 
-    use crypto::signature::{PrivateKey, PublicKey};
     use models::ledger::LedgerData;
     use models::{Amount, Endorsement, EndorsementContent};
+    use signature::{generate_random_private_key, PrivateKey, PublicKey, Signature};
     use time::UTime;
 
     use crate::tests::tools::get_dummy_block_id;
@@ -4119,7 +4119,7 @@ mod tests {
         let block = Block {
             header: BlockHeader {
                 content: BlockHeaderContent{
-                    creator: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
+                    creator: PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
                     operation_merkle_root: Hash::hash(&Vec::new()),
                     parents: vec![
                         get_dummy_block_id("parent1"),
@@ -4127,15 +4127,15 @@ mod tests {
                     ],
                     slot: Slot::new(1, 0),
                     endorsements: vec![ Endorsement{content: EndorsementContent{
-                        sender_public_key: crypto::signature::PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
+                        sender_public_key: PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
                         endorsed_block: get_dummy_block_id("parent1"),
                         index: 0,
                         slot: Slot::new(1, 0),
-                    }, signature: crypto::signature::Signature::from_bs58_check(
+                    }, signature: Signature::from_bs58_check(
                         "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
                     ).unwrap() }],
                 },
-                signature: crypto::signature::Signature::from_bs58_check(
+                signature: Signature::from_bs58_check(
                     "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
                 ).unwrap()
             },
@@ -4749,10 +4749,10 @@ mod tests {
     }
 
     fn example_consensus_config(initial_ledger_path: &Path) -> ConsensusConfig {
-        let genesis_key = crypto::generate_random_private_key();
+        let genesis_key = generate_random_private_key();
         let mut staking_keys = Vec::new();
         for _ in 0..2 {
-            staking_keys.push(crypto::generate_random_private_key());
+            staking_keys.push(generate_random_private_key());
         }
         let staking_file = generate_staking_keys_file(&staking_keys);
 

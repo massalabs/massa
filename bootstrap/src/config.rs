@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crypto::signature::PublicKey;
 use serde::Deserialize;
+use signature::PublicKey;
 use std::net::SocketAddr;
 use time::UTime;
 

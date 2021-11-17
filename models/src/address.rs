@@ -3,11 +3,9 @@
 use crate::api::{LedgerInfo, RollsInfo};
 use crate::hhasher::{HHashMap, HHashSet, PreHashed};
 use crate::ModelsError;
-use crypto::{
-    hash::{Hash, HASH_SIZE_BYTES},
-    signature::PublicKey,
-};
+use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use serde::{Deserialize, Serialize};
+use signature::PublicKey;
 use std::str::FromStr;
 
 pub const ADDRESS_SIZE_BYTES: usize = HASH_SIZE_BYTES;

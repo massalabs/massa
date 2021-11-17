@@ -10,6 +10,7 @@ use protocol_exports::tests::tools::{
     create_protocol_config, send_and_propagate_block,
 };
 use serial_test::serial;
+use signature::{derive_public_key, generate_random_private_key};
 use std::str::FromStr;
 
 #[tokio::test]
@@ -36,14 +37,14 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
             let creator_node = nodes.pop().expect("Failed to get node info.");
 
-            let mut private_key = crypto::generate_random_private_key();
-            let mut public_key = crypto::derive_public_key(&private_key);
+            let mut private_key = generate_random_private_key();
+            let mut public_key = derive_public_key(&private_key);
             let mut address = Address::from_public_key(&public_key).unwrap();
             let mut thread = address.get_thread(serialization_context.parent_count);
 
             while thread != 0 {
-                private_key = crypto::generate_random_private_key();
-                public_key = crypto::derive_public_key(&private_key);
+                private_key = generate_random_private_key();
+                public_key = derive_public_key(&private_key);
                 address = Address::from_public_key(&public_key).unwrap();
                 thread = address.get_thread(serialization_context.parent_count);
             }
@@ -121,7 +122,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     let (_, header) = BlockHeader::new_signed(
                         &creator_node.private_key,
                         BlockHeaderContent {
-                            creator: crypto::derive_public_key(&creator_node.private_key).clone(),
+                            creator: derive_public_key(&creator_node.private_key).clone(),
                             slot: slot_a,
                             parents: Vec::new(),
                             operation_merkle_root,

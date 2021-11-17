@@ -26,6 +26,7 @@ crypto = {path = "../crypto"}
 logging = { path = "../logging" }
 models = {path = "../models"}
 pool = { path = "../pool"}
+signature = { path = "../signature" }
 time = { path = "../time"}
 
 [dev-dependencies]

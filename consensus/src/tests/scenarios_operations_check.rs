@@ -14,6 +14,7 @@ use crate::{
 use models::{address::AddressHashSet, ledger::LedgerData};
 use models::{Address, Amount, Slot};
 use serial_test::serial;
+use signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -40,16 +41,16 @@ async fn test_operations_check() {
 
     // make sure that both threads are different
     loop {
-        private_key_1 = crypto::generate_random_private_key();
-        public_key_1 = crypto::derive_public_key(&private_key_1);
+        private_key_1 = generate_random_private_key();
+        public_key_1 = derive_public_key(&private_key_1);
         address_1 = Address::from_public_key(&public_key_1).unwrap();
         if address_1.get_thread(thread_count) == 0 {
             break;
         }
     }
     loop {
-        private_key_2 = crypto::generate_random_private_key();
-        public_key_2 = crypto::derive_public_key(&private_key_2);
+        private_key_2 = generate_random_private_key();
+        public_key_2 = derive_public_key(&private_key_2);
         address_2 = Address::from_public_key(&public_key_2).unwrap();
         if address_2.get_thread(thread_count) == 1 {
             break;
@@ -60,7 +61,7 @@ async fn test_operations_check() {
     ledger.insert(address_1, LedgerData::new(Amount::from_str("5").unwrap()));
 
     let ledger_file = generate_ledger_file(&ledger);
-    let staking_keys: Vec<crypto::signature::PrivateKey> = vec![private_key_1];
+    let staking_keys: Vec<PrivateKey> = vec![private_key_1];
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(

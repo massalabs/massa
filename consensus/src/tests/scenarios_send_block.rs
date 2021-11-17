@@ -5,15 +5,14 @@
 use crate::tests::tools::{self, generate_ledger_file};
 use models::Slot;
 use serial_test::serial;
+use signature::{generate_random_private_key, PrivateKey};
 use std::collections::HashMap;
 
 #[tokio::test]
 #[serial]
 async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
 
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -85,9 +84,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 #[serial]
 async fn test_consensus_block_not_found() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(

@@ -1,8 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::hash::Hash;
-use crate::error::CryptoError;
-use bs58;
+use crypto::hash::Hash;
+use crypto::CryptoError;
 use secp256k1::{Message, Secp256k1};
 use std::{convert::TryInto, str::FromStr};
 
@@ -758,7 +757,7 @@ pub fn verify_signature(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::hash::Hash;
+    use crypto::hash::Hash;
     use serial_test::serial;
 
     #[test]
@@ -767,7 +766,7 @@ mod tests {
         let private_key = generate_random_private_key();
         let public_key = derive_public_key(&private_key);
         let message = "Hello World!".as_bytes();
-        let hash = Hash::hash(&message);
+        let hash = Hash::hash(message);
         let signature = sign(&hash, &private_key).unwrap();
         assert!(verify_signature(&hash, &signature, &public_key).is_ok())
     }
@@ -800,7 +799,7 @@ mod tests {
     fn test_serde_signature() {
         let private_key = generate_random_private_key();
         let message = "Hello World!".as_bytes();
-        let hash = Hash::hash(&message);
+        let hash = Hash::hash(message);
         let signature = sign(&hash, &private_key).unwrap();
         let serialized =
             serde_json::to_string(&signature).expect("could not serialize signature key");
