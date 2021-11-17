@@ -32,15 +32,15 @@ operation to be made routable.
     address of your computer by opening <https://api.ipify.org>
 -   if the computer running the node is behind a router/NAT, you will
     need to configure your router:
--   if the router uses DHCP, the MAC address of the computer running the
-    node must be set to have a permanent DHCP lease (a local IP address
-    that never changes, usually of form 192.168.X.XX)
--   incoming connections on TCP ports 31244 and 31245 must be directed
-    towards the local IP address of the computer running the node
+    -   if the router uses DHCP, the MAC address of the computer running the
+        node must be set to have a permanent DHCP lease (a local IP address
+        that never changes, usually of form 192.168.X.XX)
+    -   incoming connections on TCP ports 31244 and 31245 must be directed
+        towards the local IP address of the computer running the node
 -   setup the firewall on your computer to allow incoming TCP
-    connections on ports 31244 and 31245 (ex:
-    `ufw allow 31244 && ufw allow 31245` on ubuntu, or set up the
-    windows firewall on windows)
+    connections on ports 31244 and 31245 (example:
+    `ufw allow 31244 && ufw allow 31245` on Ubuntu, or set up the
+    Windows Firewall on Windows)
 -   edit file `massa-node/config/config.toml` (create it if absent) with the following
     contents:
     ```toml
