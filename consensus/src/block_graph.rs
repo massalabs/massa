@@ -8,7 +8,7 @@ use crate::{
     pos::{OperationRollInterface, ProofOfStake, RollCounts, RollUpdate, RollUpdates},
 };
 use crypto::hash::Hash;
-use crypto::signature::derive_public_key;
+use crypto::signature::{derive_public_key, PublicKey};
 use models::address::{AddressHashMap, AddressHashSet};
 use models::clique::Clique;
 use models::hhasher::BuildHHasher;
@@ -856,7 +856,7 @@ pub struct BlockGraph {
     to_propagate: BlockHashMap<(Block, OperationHashSet, Vec<EndorsementId>)>,
     attack_attempts: Vec<BlockId>,
     new_final_blocks: BlockHashSet,
-    new_stale_blocks: BlockHashMap<Slot>,
+    new_stale_blocks: BlockHashMap<(PublicKey, Slot)>, // creator, slot
     ledger: Ledger,
 }
 
@@ -2032,7 +2032,8 @@ impl BlockGraph {
                         massa_trace!("consensus.block_graph.process.incoming_header.discarded", {"block_id": block_id, "reason": reason});
                         // count stales
                         if reason == DiscardReason::Stale {
-                            self.new_stale_blocks.insert(block_id, header.content.slot);
+                            self.new_stale_blocks
+                                .insert(block_id, (header.content.creator, header.content.slot));
                         }
                         // discard
                         self.block_statuses.insert(
@@ -2144,8 +2145,10 @@ impl BlockGraph {
                         massa_trace!("consensus.block_graph.process.incoming_block.discarded", {"block_id": block_id, "reason": reason});
                         // count stales
                         if reason == DiscardReason::Stale {
-                            self.new_stale_blocks
-                                .insert(block_id, block.header.content.slot);
+                            self.new_stale_blocks.insert(
+                                block_id,
+                                (block.header.content.creator, block.header.content.slot),
+                            );
                         }
                         // add to discard
                         self.block_statuses.insert(
@@ -3368,8 +3371,13 @@ impl BlockGraph {
                     "hash": stale_block_hash
                 });
                 // mark as stale
-                self.new_stale_blocks
-                    .insert(stale_block_hash, active_block.block.header.content.slot);
+                self.new_stale_blocks.insert(
+                    stale_block_hash,
+                    (
+                        active_block.block.header.content.creator,
+                        active_block.block.header.content.slot,
+                    ),
+                );
                 self.block_statuses.insert(
                     stale_block_hash,
                     BlockStatus::Discarded {
@@ -3926,7 +3934,8 @@ impl BlockGraph {
                 if let Some(reason) = reason_opt {
                     // add to stats if reason is Stale
                     if reason == DiscardReason::Stale {
-                        self.new_stale_blocks.insert(block_id, header.content.slot);
+                        self.new_stale_blocks
+                            .insert(block_id, (header.content.creator, header.content.slot));
                     }
                     // transition to Discarded only if there is a reason
                     self.block_statuses.insert(
@@ -4083,7 +4092,7 @@ impl BlockGraph {
 
     // Get the ids of blocks that became stale.
     // Must be called by the consensus worker within `block_db_changed`.
-    pub fn get_new_stale_blocks(&mut self) -> BlockHashMap<Slot> {
+    pub fn get_new_stale_blocks(&mut self) -> BlockHashMap<(PublicKey, Slot)> {
         mem::take(&mut self.new_stale_blocks)
     }
 }
