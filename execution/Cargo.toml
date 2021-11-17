@@ -12,3 +12,6 @@ models = {path = "../models"}
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
+
+[dev-dependencies]
+serial_test = "0.5"

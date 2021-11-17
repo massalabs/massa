@@ -524,6 +524,7 @@ dependencies = [
  "displaydoc",
  "models",
  "serde 1.0.130",
+ "serial_test",
  "thiserror",
  "tokio",
 ]
