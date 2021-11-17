@@ -10,7 +10,10 @@ use crate::{
 };
 use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use serde::{Deserialize, Serialize};
-use signature::*;
+use signature::{
+    sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
+    SIGNATURE_SIZE_BYTES,
+};
 use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::str::FromStr;
@@ -486,6 +489,7 @@ mod test {
     use super::*;
     use crate::EndorsementContent;
     use serial_test::serial;
+    use signature::{derive_public_key, generate_random_private_key};
 
     #[test]
     #[serial]

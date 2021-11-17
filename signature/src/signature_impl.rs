@@ -35,10 +35,10 @@ impl PrivateKey {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
+    /// # use signature::generate_random_private_key;
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
+    /// let private_key = generate_random_private_key();
     /// let serialized: String = private_key.to_bs58_check();
     /// ```
     pub fn to_bs58_check(&self) -> String {
@@ -49,10 +49,10 @@ impl PrivateKey {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
+    /// # use signature::generate_random_private_key;
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
+    /// let private_key = generate_random_private_key();
     /// let serialized = private_key.to_bytes();
     /// ```
     pub fn to_bytes(&self) -> [u8; PRIVATE_KEY_SIZE_BYTES] {
@@ -63,10 +63,10 @@ impl PrivateKey {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
+    /// # use signature::generate_random_private_key;
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
+    /// let private_key = generate_random_private_key();
     /// let serialized = private_key.into_bytes();
     /// ```
     pub fn into_bytes(self) -> [u8; PRIVATE_KEY_SIZE_BYTES] {
@@ -77,10 +77,10 @@ impl PrivateKey {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
+    /// # use signature::{PrivateKey, generate_random_private_key};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
+    /// let private_key = generate_random_private_key();
     /// let serialized: String = private_key.to_bs58_check();
     /// let deserialized: PrivateKey = PrivateKey::from_bs58_check(&serialized).unwrap();
     /// ```
@@ -105,10 +105,10 @@ impl PrivateKey {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
+    /// # use signature::{PrivateKey, generate_random_private_key};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
+    /// let private_key = generate_random_private_key();
     /// let serialized = private_key.to_bytes();
     /// let deserialized: PrivateKey = PrivateKey::from_bytes(&serialized).unwrap();
     /// ```
@@ -131,10 +131,9 @@ impl ::serde::Serialize for PrivateKey {
     ///
     /// Human readable serialization :
     /// ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
-    /// # use crypto::hash::Hash;
+    /// # use signature::generate_random_private_key;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
+    /// let private_key = generate_random_private_key();
     /// let serialized: String = serde_json::to_string(&private_key).unwrap();
     /// ```
     ///
@@ -157,10 +156,9 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
     ///
     /// Human readable deserialization :
     /// ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
-    /// # use crypto::hash::Hash;
+    /// # use signature::{PrivateKey, generate_random_private_key};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
+    /// let private_key = generate_random_private_key();
     /// let serialized = serde_json::to_string(&private_key).unwrap();
     /// let deserialized: PrivateKey = serde_json::from_str(&serialized).unwrap();
     /// ```
@@ -242,11 +240,10 @@ impl PublicKey {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey,  Signature};
-    /// # use crypto::hash::Hash;
+    /// # use signature::{derive_public_key, generate_random_private_key};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
-    /// let public_key = crypto::derive_public_key(&private_key);
+    /// let private_key = generate_random_private_key();
+    /// let public_key = derive_public_key(&private_key);
     ///
     /// let serialized: String = public_key.to_bs58_check();
     /// ```
@@ -258,11 +255,10 @@ impl PublicKey {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey,  Signature};
-    /// # use crypto::hash::Hash;
+    /// # use signature::{derive_public_key, generate_random_private_key};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
-    /// let public_key = crypto::derive_public_key(&private_key);
+    /// let private_key = generate_random_private_key();
+    /// let public_key = derive_public_key(&private_key);
     ///
     /// let serialize = public_key.to_bytes();
     /// ```
@@ -274,11 +270,10 @@ impl PublicKey {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey,  Signature};
-    /// # use crypto::hash::Hash;
+    /// # use signature::{derive_public_key, generate_random_private_key};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
-    /// let public_key = crypto::derive_public_key(&private_key);
+    /// let private_key = generate_random_private_key();
+    /// let public_key = derive_public_key(&private_key);
     ///
     /// let serialize = public_key.to_bytes();
     /// ```
@@ -290,11 +285,10 @@ impl PublicKey {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey,  Signature};
-    /// # use crypto::hash::Hash;
+    /// # use signature::{PublicKey, derive_public_key, generate_random_private_key};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
-    /// let public_key = crypto::derive_public_key(&private_key);
+    /// let private_key = generate_random_private_key();
+    /// let public_key = derive_public_key(&private_key);
     ///
     /// let serialized: String = public_key.to_bs58_check();
     /// let deserialized: PublicKey = PublicKey::from_bs58_check(&serialized).unwrap();
@@ -320,11 +314,10 @@ impl PublicKey {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
-    /// # use crypto::hash::Hash;
+    /// # use signature::{PublicKey, derive_public_key, generate_random_private_key};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
-    /// let public_key = crypto::derive_public_key(&private_key);
+    /// let private_key = generate_random_private_key();
+    /// let public_key = derive_public_key(&private_key);
     ///
     /// let serialized = public_key.into_bytes();
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
@@ -348,11 +341,10 @@ impl ::serde::Serialize for PublicKey {
     ///
     /// Human readable serialization :
     /// ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
-    /// # use crypto::hash::Hash;
+    /// # use signature::{derive_public_key, generate_random_private_key};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
-    /// let public_key = crypto::derive_public_key(&private_key);
+    /// let private_key = generate_random_private_key();
+    /// let public_key = derive_public_key(&private_key);
     ///
     /// let serialized: String = serde_json::to_string(&public_key).unwrap();
     /// ```
@@ -376,11 +368,10 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
     ///
     /// Human readable deserialization :
     /// ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
-    /// # use crypto::hash::Hash;
+    /// # use signature::{PublicKey, derive_public_key, generate_random_private_key};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
-    /// let public_key = crypto::derive_public_key(&private_key);
+    /// let private_key = generate_random_private_key();
+    /// let public_key = derive_public_key(&private_key);
     ///
     /// let serialized = serde_json::to_string(&public_key).unwrap();
     /// let deserialized: PublicKey = serde_json::from_str(&serialized).unwrap();
@@ -461,12 +452,12 @@ impl Signature {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
+    /// # use signature::{generate_random_private_key, sign};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
+    /// let private_key = generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = crypto::sign(&data, &private_key).unwrap();
+    /// let signature = sign(&data, &private_key).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
     /// ```
@@ -478,12 +469,12 @@ impl Signature {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
+    /// # use signature::{generate_random_private_key, sign};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
+    /// let private_key = generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = crypto::sign(&data, &private_key).unwrap();
+    /// let signature = sign(&data, &private_key).unwrap();
     ///
     /// let serialized = signature.to_bytes();
     /// ```
@@ -495,12 +486,12 @@ impl Signature {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
+    /// # use signature::{generate_random_private_key, sign};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
+    /// let private_key = generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = crypto::sign(&data, &private_key).unwrap();
+    /// let signature = sign(&data, &private_key).unwrap();
     ///
     /// let serialized = signature.into_bytes();
     /// ```
@@ -512,12 +503,12 @@ impl Signature {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey,  Signature};
+    /// # use signature::{generate_random_private_key, sign, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
+    /// let private_key = generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = crypto::sign(&data, &private_key).unwrap();
+    /// let signature = sign(&data, &private_key).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
     /// let deserialized: Signature = Signature::from_bs58_check(&serialized).unwrap();
@@ -543,12 +534,12 @@ impl Signature {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey,  Signature};
+    /// # use signature::{generate_random_private_key, sign, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
+    /// let private_key = generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = crypto::sign(&data, &private_key).unwrap();
+    /// let signature = sign(&data, &private_key).unwrap();
     ///
     /// let serialized = signature.to_bytes();
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
@@ -572,12 +563,12 @@ impl ::serde::Serialize for Signature {
     ///
     /// Human readable serialization :
     /// ```
-    /// # use crypto::signature::{PublicKey, PrivateKey,  Signature};
+    /// # use signature::{generate_random_private_key, sign};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
+    /// let private_key = generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = crypto::sign(&data, &private_key).unwrap();
+    /// let signature = sign(&data, &private_key).unwrap();
     ///
     /// let serialized: String = serde_json::to_string(&signature).unwrap();
     /// ```
@@ -601,12 +592,12 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
     ///
     /// Human readable deserialization :
     /// ```
-    /// # use crypto::signature::{PublicKey, PrivateKey,  Signature};
+    /// # use signature::{generate_random_private_key, sign, Signature};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
+    /// let private_key = generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = crypto::sign(&data, &private_key).unwrap();
+    /// let signature = sign(&data, &private_key).unwrap();
     ///
     /// let serialized = serde_json::to_string(&signature).unwrap();
     /// let deserialized: Signature = serde_json::from_str(&serialized).unwrap();
@@ -675,11 +666,10 @@ impl SignatureEngine {
     ///
     /// # Example
     /// ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
-    /// # use crypto::hash::Hash;
+    /// # use signature::{derive_public_key, generate_random_private_key};
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
-    /// let public_key: PublicKey = crypto::derive_public_key(&private_key);
+    /// let private_key = generate_random_private_key();
+    /// let public_key = derive_public_key(&private_key);
     /// ```
     fn derive_public_key(&self, private_key: &PrivateKey) -> PublicKey {
         PublicKey(secp256k1::key::PublicKey::from_secret_key(
@@ -693,13 +683,13 @@ impl SignatureEngine {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
+    /// # use signature::{derive_public_key, generate_random_private_key, sign, PublicKey};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
-    /// let public_key: PublicKey = crypto::derive_public_key(&private_key);
+    /// let private_key = generate_random_private_key();
+    /// let public_key: PublicKey = derive_public_key(&private_key);
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = crypto::sign(&data, &private_key).unwrap();
+    /// let signature = sign(&data, &private_key).unwrap();
     /// ```
     fn sign(&self, hash: &Hash, private_key: &PrivateKey) -> Result<Signature, CryptoError> {
         let message = Message::from_slice(&hash.to_bytes())?;
@@ -711,14 +701,14 @@ impl SignatureEngine {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::signature::{PublicKey, PrivateKey, Signature};
+    /// # use signature::{derive_public_key, generate_random_private_key, sign, verify_signature, PublicKey};
     /// # use crypto::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let private_key = crypto::generate_random_private_key();
-    /// let public_key: PublicKey = crypto::derive_public_key(&private_key);
+    /// let private_key = generate_random_private_key();
+    /// let public_key: PublicKey = derive_public_key(&private_key);
     /// let data = Hash::hash("Hello World!".as_bytes());
-    /// let signature = crypto::sign(&data, &private_key).unwrap();
-    /// let verification: bool = crypto::verify_signature(&data, &signature, &public_key).is_ok();
+    /// let signature = sign(&data, &private_key).unwrap();
+    /// let verification: bool = verify_signature(&data, &signature, &public_key).is_ok();
     /// ```
     fn verify(
         &self,
