@@ -47,7 +47,7 @@ pub fn get_random_address() -> Address {
 
 pub fn get_dummy_signature(s: &str) -> crypto::signature::Signature {
     let priv_key = crypto::generate_random_private_key();
-    crypto::sign(&Hash::hash(&s.as_bytes()), &priv_key).unwrap()
+    crypto::sign(&Hash::hash(s.as_bytes()), &priv_key).unwrap()
 }
 
 pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig {
@@ -204,7 +204,7 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
         "length mismatch"
     );
     for (id1, itm1) in v1.active_blocks.iter() {
-        let itm2 = v2.active_blocks.get(&id1).unwrap();
+        let itm2 = v2.active_blocks.get(id1).unwrap();
         assert_eq!(
             itm1.block.to_bytes_compact().unwrap(),
             itm2.block.to_bytes_compact().unwrap(),
@@ -329,7 +329,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     let boot_pos = ExportProofOfStake {
         cycle_states: vec![
             vec![cycle_state.clone()].into_iter().collect(),
-            vec![cycle_state.clone()].into_iter().collect(),
+            vec![cycle_state].into_iter().collect(),
         ],
     };
 
