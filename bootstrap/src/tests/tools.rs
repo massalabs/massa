@@ -20,7 +20,9 @@ use models::{
     Endorsement, EndorsementContent, Operation, OperationContent, SerializeCompact, Slot,
 };
 use network::{BootstrapPeers, NetworkCommand};
-use signature::{derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature};
+use signature::{
+    derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
+};
 use time::UTime;
 
 use super::mock_establisher::Duplex;
