@@ -5,3 +5,6 @@ mod worker;
 
 pub use config::ExecutionConfig;
 pub use controller::{start_controller, ExecutionCommandSender, ExecutionManager};
+
+#[cfg(test)]
+mod tests;
