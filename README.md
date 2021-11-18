@@ -4,7 +4,7 @@ Massa is a truly decentralized blockchain controlled by thousands of
 people. With the breakthrough multithreaded technology, we're set for
 mass adoption.
 
-[![CI](https://github.com/massalabs/massa/actions/workflows/ci.yml/badge.svg)](https://github.com/massalabs/massa/actions/workflows/ci.yml)
+[![CI](https://github.com/massalabs/massa/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/massalabs/massa/actions/workflows/ci.yml?query=branch%3Amain)
 [![Coverage Status](https://coveralls.io/repos/github/massalabs/massa/badge.svg?branch=main)](https://coveralls.io/github/massalabs/massa?branch=main)
 
 ## Introduction
