@@ -651,12 +651,24 @@ impl Command {
                         Err(e) => return repl_err!(e),
                     };
 
+                    let mut res = String::new();
+                    if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
+                        for info in addresses_info {
+                            if info.ledger_info.locked_balance > amount {
+                                res.push_str("Warning: this operation may be rejected due to insuffisant balance\n");
+                            }
+                        }
+                    };
                     match client.public.send_operations(vec![op]).await {
-                        Ok(x) => repl_ok!(if is_interactive {
-                            format!("Sent operation id : {}", format_vec(&x))
-                        } else {
-                            format_vec(&x)
-                        }),
+                        Ok(x) => repl_ok!(format!(
+                            "{}{}",
+                            res,
+                            if is_interactive {
+                                format!("Sent operation id : {}", format_vec(&x))
+                            } else {
+                                format_vec(&x)
+                            }
+                        )),
                         Err(e) => repl_err!(e),
                     }
                 }
