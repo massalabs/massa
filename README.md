@@ -110,6 +110,8 @@ Update Massa:
     git checkout testnet
     git pull
 
+test
+
 ## Tutorials
 
 Here is a set of tutorials:
