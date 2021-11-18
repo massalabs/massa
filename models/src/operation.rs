@@ -138,7 +138,7 @@ pub enum OperationType {
         /// Smart contract bytecode.
         data: Vec<u8>,
         /// The maximum amount of gas that the execution of the contract is allowed to cost.
-        max_gas: Amount,
+        max_gas: u64,
         /// Extra coins that are spent by consensus and are available in the execution context of the contract.
         coins: Amount,
         /// The price per unit of gas that the caller is willing to pay for the execution.
@@ -221,7 +221,7 @@ impl SerializeCompact for OperationType {
                 res.extend(u32::from(OperationTypeId::ExecuteSC).to_varint_bytes());
 
                 // Max gas.
-                res.extend(&max_gas.to_bytes_compact()?);
+                res.extend(max_gas.to_varint_bytes());
 
                 // Coins.
                 res.extend(&coins.to_bytes_compact()?);
@@ -285,7 +285,7 @@ impl DeserializeCompact for OperationType {
             }
             OperationTypeId::ExecuteSC => {
                 // Max gas.
-                let (max_gas, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
+                let (max_gas, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
                 cursor += delta;
 
                 // Coins.
