@@ -23,6 +23,7 @@ toml = { version = "0.5" }
 crypto = { path = "../crypto" }
 logging = { path = "../logging" }
 models = { path = "../models" }
+signature = { path = "../signature" }
 time = { path = "../time" }
 
 [dev-dependencies]

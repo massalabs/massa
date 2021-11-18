@@ -2,9 +2,7 @@
 
 #![doc = include_str!("../../docs/wallet.md")]
 
-use crypto::derive_public_key;
 use crypto::hash::Hash;
-use crypto::signature::{PrivateKey, PublicKey};
 pub use error::WalletError;
 use models::address::{Address, AddressHashMap, AddressHashSet};
 use models::amount::Amount;
@@ -13,6 +11,7 @@ use models::Operation;
 use models::OperationContent;
 use models::SerializeCompact;
 use serde::{Deserialize, Serialize};
+use signature::{derive_public_key, sign, PrivateKey, PublicKey};
 use std::path::PathBuf;
 use time::UTime;
 
@@ -36,7 +35,7 @@ impl Wallet {
         let keys = keys
             .iter()
             .map(|key| {
-                let pub_key = crypto::derive_public_key(key);
+                let pub_key = derive_public_key(key);
                 Ok((Address::from_public_key(&pub_key)?, (pub_key, *key)))
             })
             .collect::<Result<AddressHashMap<_>, WalletError>>()?;
@@ -48,7 +47,7 @@ impl Wallet {
 
     pub fn sign_message(&self, address: Address, msg: Vec<u8>) -> Option<PubkeySig> {
         if let Some((public_key, key)) = self.keys.get(&address) {
-            if let Ok(signature) = crypto::sign(&Hash::hash(&msg), key) {
+            if let Ok(signature) = sign(&Hash::hash(&msg), key) {
                 Some(PubkeySig {
                     public_key: *public_key,
                     signature,
@@ -64,7 +63,7 @@ impl Wallet {
     /// Adds a new private key to wallet, if it was missing
     pub fn add_private_key(&mut self, key: PrivateKey) -> Result<Address, WalletError> {
         if !self.keys.iter().any(|(_, (_, file_key))| file_key == &key) {
-            let pub_key = crypto::derive_public_key(&key);
+            let pub_key = derive_public_key(&key);
             let ad = Address::from_public_key(&pub_key)?;
             self.keys.insert(ad, (pub_key, key));
             self.save()?;
@@ -123,7 +122,7 @@ impl Wallet {
         let sender_priv = self
             .find_associated_private_key(address)
             .ok_or(WalletError::MissingKeyError(address))?;
-        let signature = crypto::sign(&hash, &sender_priv)?;
+        let signature = sign(&hash, &sender_priv)?;
         Ok(Operation { content, signature })
     }
 }

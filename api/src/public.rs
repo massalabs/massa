@@ -6,7 +6,6 @@ use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use consensus::{
     ConsensusCommandSender, ConsensusConfig, DiscardReason, ExportBlockStatus, Status,
 };
-use crypto::signature::PrivateKey;
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
 use models::address::{AddressHashMap, AddressHashSet};
@@ -25,6 +24,7 @@ use models::{
 };
 use network::{NetworkCommandSender, NetworkConfig};
 use pool::PoolCommandSender;
+use signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
 use time::UTime;
 

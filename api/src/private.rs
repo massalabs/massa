@@ -4,7 +4,6 @@ use crate::error::ApiError;
 use crate::error::ApiError::WrongAPI;
 use crate::{Endpoints, Private, RpcServer, StopHandle, API};
 use consensus::{ConsensusCommandSender, ConsensusConfig};
-use crypto::signature::PrivateKey;
 use jsonrpc_core::BoxFuture;
 use jsonrpc_http_server::tokio::sync::mpsc;
 use models::address::{AddressHashMap, AddressHashSet};
@@ -16,6 +15,7 @@ use models::clique::Clique;
 use models::crypto::PubkeySig;
 use models::{Address, BlockId, EndorsementId, Operation, OperationId};
 use network::NetworkCommandSender;
+use signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Private> {

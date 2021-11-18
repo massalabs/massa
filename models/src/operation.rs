@@ -8,14 +8,12 @@ use crate::{
     },
     Address, Amount, ModelsError, ADDRESS_SIZE_BYTES,
 };
-use crypto::{
-    hash::{Hash, HASH_SIZE_BYTES},
-    signature::{
-        verify_signature, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
-    },
-};
+use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
+use signature::{
+    verify_signature, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
+};
 use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::{ops::RangeInclusive, str::FromStr};
@@ -408,15 +406,16 @@ impl DeserializeCompact for Operation {
 mod tests {
     use super::*;
     use serial_test::serial;
+    use signature::{derive_public_key, generate_random_private_key, sign};
 
     #[test]
     #[serial]
     fn test_operation_type() {
-        let sender_priv = crypto::generate_random_private_key();
-        let sender_pub = crypto::derive_public_key(&sender_priv);
+        let sender_priv = generate_random_private_key();
+        let sender_pub = derive_public_key(&sender_priv);
 
-        let recv_priv = crypto::generate_random_private_key();
-        let recv_pub = crypto::derive_public_key(&recv_priv);
+        let recv_priv = generate_random_private_key();
+        let recv_pub = derive_public_key(&recv_priv);
 
         let op = OperationType::Transaction {
             recipient_address: Address::from_public_key(&recv_pub).unwrap(),
@@ -438,7 +437,7 @@ mod tests {
         assert_eq!(format!("{}", res_content), format!("{}", content));
 
         let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-        let signature = crypto::sign(&hash, &sender_priv).unwrap();
+        let signature = sign(&hash, &sender_priv).unwrap();
 
         let op = Operation {
             content: content.clone(),

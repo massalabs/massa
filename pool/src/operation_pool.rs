@@ -351,13 +351,14 @@ mod tests {
     use crypto::hash::Hash;
     use models::{Amount, Operation, OperationContent, OperationType};
     use serial_test::serial;
+    use signature::{derive_public_key, generate_random_private_key, sign};
     use std::str::FromStr;
 
     fn example_pool_config() -> (PoolConfig, u8, u64) {
         let mut nodes = Vec::new();
         for _ in 0..2 {
-            let private_key = crypto::generate_random_private_key();
-            let public_key = crypto::derive_public_key(&private_key);
+            let private_key = generate_random_private_key();
+            let public_key = derive_public_key(&private_key);
             nodes.push((public_key, private_key));
         }
         let thread_count: u8 = 2;
@@ -372,7 +373,7 @@ mod tests {
             parent_count: thread_count,
             max_peer_list_length: 128,
             max_message_size: 3 * 1024 * 1024,
-            max_block_size: max_block_size,
+            max_block_size,
             max_bootstrap_blocks: 100,
             max_bootstrap_cliques: 100,
             max_bootstrap_deps: 100,
@@ -399,11 +400,11 @@ mod tests {
     }
 
     fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
-        let sender_priv = crypto::generate_random_private_key();
-        let sender_pub = crypto::derive_public_key(&sender_priv);
+        let sender_priv = generate_random_private_key();
+        let sender_pub = derive_public_key(&sender_priv);
 
-        let recv_priv = crypto::generate_random_private_key();
-        let recv_pub = crypto::derive_public_key(&recv_priv);
+        let recv_priv = generate_random_private_key();
+        let recv_pub = derive_public_key(&recv_priv);
 
         let op = OperationType::Transaction {
             recipient_address: Address::from_public_key(&recv_pub).unwrap(),
@@ -416,7 +417,7 @@ mod tests {
             expire_period,
         };
         let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-        let signature = crypto::sign(&hash, &sender_priv).unwrap();
+        let signature = sign(&hash, &sender_priv).unwrap();
 
         (
             Operation { content, signature },

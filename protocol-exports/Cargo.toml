@@ -23,8 +23,9 @@ toml = { version = "0.5" }
 crypto = { path = "../crypto" }
 logging = { path = "../logging" }
 models = { path = "../models" }
-time = { path = "../time" }
 network = { path = "../network" }
+signature = { path = "../signature" }
+time = { path = "../time" }
 
 [dev-dependencies]
 pretty_assertions = "1.0"

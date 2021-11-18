@@ -7,6 +7,7 @@ use pool::PoolCommand;
 use protocol_exports::ProtocolCommand;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use serial_test::serial;
+use signature::{derive_public_key, generate_random_private_key};
 use std::collections::HashMap;
 use std::str::FromStr;
 use time::UTime;
@@ -38,22 +39,22 @@ async fn test_roll() {
     let thread_count = 2;
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
-    let mut priv_1 = crypto::generate_random_private_key();
-    let mut pubkey_1 = crypto::derive_public_key(&priv_1);
+    let mut priv_1 = generate_random_private_key();
+    let mut pubkey_1 = derive_public_key(&priv_1);
     let mut address_1 = Address::from_public_key(&pubkey_1).unwrap();
     while 0 != address_1.get_thread(thread_count) {
-        priv_1 = crypto::generate_random_private_key();
-        pubkey_1 = crypto::derive_public_key(&priv_1);
+        priv_1 = generate_random_private_key();
+        pubkey_1 = derive_public_key(&priv_1);
         address_1 = Address::from_public_key(&pubkey_1).unwrap();
     }
     assert_eq!(0, address_1.get_thread(thread_count));
 
-    let mut priv_2 = crypto::generate_random_private_key();
-    let mut pubkey_2 = crypto::derive_public_key(&priv_2);
+    let mut priv_2 = generate_random_private_key();
+    let mut pubkey_2 = derive_public_key(&priv_2);
     let mut address_2 = Address::from_public_key(&pubkey_2).unwrap();
     while 0 != address_2.get_thread(thread_count) {
-        priv_2 = crypto::generate_random_private_key();
-        pubkey_2 = crypto::derive_public_key(&priv_2);
+        priv_2 = generate_random_private_key();
+        pubkey_2 = derive_public_key(&priv_2);
         address_2 = Address::from_public_key(&pubkey_2).unwrap();
     }
     assert_eq!(0, address_2.get_thread(thread_count));
@@ -486,22 +487,22 @@ async fn test_roll_block_creation() {
     let thread_count = 2;
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
-    let mut priv_1 = crypto::generate_random_private_key();
-    let mut pubkey_1 = crypto::derive_public_key(&priv_1);
+    let mut priv_1 = generate_random_private_key();
+    let mut pubkey_1 = derive_public_key(&priv_1);
     let mut address_1 = Address::from_public_key(&pubkey_1).unwrap();
     while 0 != address_1.get_thread(thread_count) {
-        priv_1 = crypto::generate_random_private_key();
-        pubkey_1 = crypto::derive_public_key(&priv_1);
+        priv_1 = generate_random_private_key();
+        pubkey_1 = derive_public_key(&priv_1);
         address_1 = Address::from_public_key(&pubkey_1).unwrap();
     }
     assert_eq!(0, address_1.get_thread(thread_count));
 
-    let mut priv_2 = crypto::generate_random_private_key();
-    let mut pubkey_2 = crypto::derive_public_key(&priv_2);
+    let mut priv_2 = generate_random_private_key();
+    let mut pubkey_2 = derive_public_key(&priv_2);
     let mut address_2 = Address::from_public_key(&pubkey_2).unwrap();
     while 0 != address_2.get_thread(thread_count) {
-        priv_2 = crypto::generate_random_private_key();
-        pubkey_2 = crypto::derive_public_key(&priv_2);
+        priv_2 = generate_random_private_key();
+        pubkey_2 = derive_public_key(&priv_2);
         address_2 = Address::from_public_key(&pubkey_2).unwrap();
     }
     assert_eq!(0, address_2.get_thread(thread_count));
@@ -787,8 +788,8 @@ async fn test_roll_deactivation() {
     let mut pubkey_a0;
     let mut address_a0;
     loop {
-        privkey_a0 = crypto::generate_random_private_key();
-        pubkey_a0 = crypto::derive_public_key(&privkey_a0);
+        privkey_a0 = generate_random_private_key();
+        pubkey_a0 = derive_public_key(&privkey_a0);
         address_a0 = Address::from_public_key(&pubkey_a0).unwrap();
         if address_a0.get_thread(thread_count) == 0 {
             break;
@@ -798,8 +799,8 @@ async fn test_roll_deactivation() {
     let mut pubkey_b0;
     let mut address_b0;
     loop {
-        privkey_b0 = crypto::generate_random_private_key();
-        pubkey_b0 = crypto::derive_public_key(&privkey_b0);
+        privkey_b0 = generate_random_private_key();
+        pubkey_b0 = derive_public_key(&privkey_b0);
         address_b0 = Address::from_public_key(&pubkey_b0).unwrap();
         if address_b0.get_thread(thread_count) == 0 {
             break;
@@ -810,8 +811,8 @@ async fn test_roll_deactivation() {
     let mut pubkey_a1;
     let mut address_a1;
     loop {
-        privkey_a1 = crypto::generate_random_private_key();
-        pubkey_a1 = crypto::derive_public_key(&privkey_a1);
+        privkey_a1 = generate_random_private_key();
+        pubkey_a1 = derive_public_key(&privkey_a1);
         address_a1 = Address::from_public_key(&pubkey_a1).unwrap();
         if address_a1.get_thread(thread_count) == 1 {
             break;
@@ -821,8 +822,8 @@ async fn test_roll_deactivation() {
     let mut pubkey_b1;
     let mut address_b1;
     loop {
-        privkey_b1 = crypto::generate_random_private_key();
-        pubkey_b1 = crypto::derive_public_key(&privkey_b1);
+        privkey_b1 = generate_random_private_key();
+        pubkey_b1 = derive_public_key(&privkey_b1);
         address_b1 = Address::from_public_key(&pubkey_b1).unwrap();
         if address_b1.get_thread(thread_count) == 1 {
             break;

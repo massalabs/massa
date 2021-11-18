@@ -3,13 +3,10 @@
 use super::messages::BootstrapMessage;
 use crate::establisher::Duplex;
 use crate::{error::BootstrapError, messages::BOOTSTRAP_RANDOMNES_SIZE_BYTES};
-use crypto::{
-    hash::Hash,
-    signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES},
-    verify_signature,
-};
+use crypto::hash::Hash;
 use models::{with_serialization_context, DeserializeCompact, DeserializeMinBEInt};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
+use signature::{verify_signature, PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 

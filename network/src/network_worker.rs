@@ -11,7 +11,6 @@ use super::{
 };
 use crate::error::{HandshakeErrorType, NetworkError};
 use crypto::hash::Hash;
-use crypto::signature::{derive_public_key, sign, PrivateKey};
 use futures::{stream::FuturesUnordered, StreamExt};
 use logging::massa_trace;
 use models::stats::NetworkStats;
@@ -22,6 +21,7 @@ use models::{
 };
 use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use serde::{Deserialize, Serialize};
+use signature::{derive_public_key, sign, PrivateKey};
 use std::{
     collections::{hash_map, HashMap, HashSet},
     convert::TryInto,

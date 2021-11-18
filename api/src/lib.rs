@@ -4,7 +4,6 @@
 #![doc = include_str!("../../docs/api.md")]
 
 use consensus::{ConsensusCommandSender, ConsensusConfig};
-use crypto::signature::PrivateKey;
 use error::ApiError;
 use jsonrpc_core::{BoxFuture, IoHandler, Value};
 use jsonrpc_derive::rpc;
@@ -21,6 +20,7 @@ use models::operation::{Operation, OperationId};
 use models::{Address, BlockId, EndorsementId, Version};
 use network::{NetworkCommandSender, NetworkConfig};
 use pool::PoolCommandSender;
+use signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
 use std::thread;
 use std::thread::JoinHandle;

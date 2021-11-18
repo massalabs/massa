@@ -1,13 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use console::style;
-use crypto::generate_random_private_key;
-use crypto::signature::PrivateKey;
 use models::api::{AddressInfo, EndorsementInfo, OperationInfo};
 use models::timeslots::get_current_latest_block_slot;
 use models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
 };
+use signature::{generate_random_private_key, PrivateKey};
 use std::net::IpAddr;
 use std::process;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};

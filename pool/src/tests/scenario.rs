@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::tests::tools::{self, get_transaction_with_addresses, pool_test};
 use models::Address;
 use models::EndorsementHashMap;
 use models::Operation;
@@ -9,11 +10,10 @@ use models::OperationId;
 use models::SerializeCompact;
 use models::Slot;
 use protocol_exports::ProtocolCommand;
+use signature::{derive_public_key, generate_random_private_key};
 use std::collections::HashSet;
 use std::time::Duration;
 use tokio::time::sleep;
-
-use crate::tests::tools::{self, get_transaction_with_addresses, pool_test};
 
 use super::tools::{example_pool_config, get_transaction};
 use serial_test::serial;
@@ -361,22 +361,22 @@ async fn test_get_involved_operations() {
     let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_a = crypto::generate_random_private_key();
-    let mut pubkey_a = crypto::derive_public_key(&priv_a);
+    let mut priv_a = generate_random_private_key();
+    let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
     while 1 != address_a.get_thread(thread_count) {
-        priv_a = crypto::generate_random_private_key();
-        pubkey_a = crypto::derive_public_key(&priv_a);
+        priv_a = generate_random_private_key();
+        pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a).unwrap();
     }
     assert_eq!(1, address_a.get_thread(thread_count));
 
-    let mut priv_b = crypto::generate_random_private_key();
-    let mut pubkey_b = crypto::derive_public_key(&priv_b);
+    let mut priv_b = generate_random_private_key();
+    let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
     while 1 != address_b.get_thread(thread_count) {
-        priv_b = crypto::generate_random_private_key();
-        pubkey_b = crypto::derive_public_key(&priv_b);
+        priv_b = generate_random_private_key();
+        pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b).unwrap();
     }
     assert_eq!(1, address_b.get_thread(thread_count));
@@ -518,22 +518,22 @@ async fn test_new_final_ops() {
     let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_a = crypto::generate_random_private_key();
-    let mut pubkey_a = crypto::derive_public_key(&priv_a);
+    let mut priv_a = generate_random_private_key();
+    let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
     while 0 != address_a.get_thread(thread_count) {
-        priv_a = crypto::generate_random_private_key();
-        pubkey_a = crypto::derive_public_key(&priv_a);
+        priv_a = generate_random_private_key();
+        pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a).unwrap();
     }
     assert_eq!(0, address_a.get_thread(thread_count));
 
-    let mut priv_b = crypto::generate_random_private_key();
-    let mut pubkey_b = crypto::derive_public_key(&priv_b);
+    let mut priv_b = generate_random_private_key();
+    let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
     while 0 != address_b.get_thread(thread_count) {
-        priv_b = crypto::generate_random_private_key();
-        pubkey_b = crypto::derive_public_key(&priv_b);
+        priv_b = generate_random_private_key();
+        pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b).unwrap();
     }
     assert_eq!(0, address_b.get_thread(thread_count));

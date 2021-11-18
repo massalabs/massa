@@ -17,11 +17,12 @@ thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
 tracing = "0.1"
 # custom modules
-network = {path = "../network"}
 consensus = { path = "../consensus" }
 crypto = { path = "../crypto" }
 logging = {path = "../logging"}
 models = { path = "../models" }
+network = {path = "../network"}
+signature = { path = "../signature" }
 time = {path = "../time"}
 
 [dev-dependencies]

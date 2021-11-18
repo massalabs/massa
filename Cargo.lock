@@ -44,6 +44,7 @@ dependencies = [
  "network",
  "pool",
  "protocol-exports",
+ "signature",
  "thiserror",
  "time 0.1.0",
  "tokio",
@@ -151,6 +152,7 @@ dependencies = [
  "serde 1.0.130",
  "serde_json",
  "serial_test",
+ "signature",
  "thiserror",
  "time 0.1.0",
  "tokio",
@@ -197,9 +199,9 @@ checksum = "c4872d67bab6358e59559027aa3b9157c53d9358c51423c17554809a8858e0f8"
 
 [[package]]
 name = "cc"
-version = "1.0.71"
+version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79c2681d6594606957bbb8631c4b90a7fcaaa72cdb714743a437b156d6a7eedd"
+checksum = "22a9137b95ea06864e018375b72adfb7db6e6f68cfc8df5a04d00288050485ee"
 
 [[package]]
 name = "cfg-if"
@@ -295,6 +297,7 @@ dependencies = [
  "serde 1.0.130",
  "serde_json",
  "serial_test",
+ "signature",
  "sled",
  "stderrlog",
  "tempfile",
@@ -791,9 +794,9 @@ checksum = "6456b8a6c8f33fee7d958fcd1b60d55b11940a79e63ae87013e6d22e26034440"
 
 [[package]]
 name = "hyper"
-version = "0.14.14"
+version = "0.14.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b91bb1f221b6ea1f1e4371216b70f40748774c2fb5971b450c07773fb92d26b"
+checksum = "436ec0091e4f20e655156a30a0df3770fe2900aa301e548e08446ec794b6953c"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -1010,9 +1013,9 @@ dependencies = [
 
 [[package]]
 name = "kstring"
-version = "1.0.5"
+version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e8d7e992938cc9078c8db5fd5bdc400e7f9da6efa384c280902a8922b676221"
+checksum = "8b310ccceade8121d7d77fee406160e457c2f4e7c7982d589da3499bc7ea4526"
 dependencies = [
  "serde 1.0.130",
 ]
@@ -1038,9 +1041,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.106"
+version = "0.2.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a60553f9a9e039a333b4e9b20573b9e9b9c0bb3a11e201ccc48ef4283456d673"
+checksum = "fbe5e23404da5b4f555ef85ebed98fb4083e55a00c317800bc2a50ede9f3d219"
 
 [[package]]
 name = "linked-hash-map"
@@ -1084,7 +1087,6 @@ dependencies = [
  "atty",
  "config",
  "console",
- "crypto",
  "dialoguer",
  "futures 0.3.17",
  "jsonrpc-core-client",
@@ -1094,6 +1096,7 @@ dependencies = [
  "serde 1.0.130",
  "serde_json",
  "serial_test",
+ "signature",
  "structopt",
  "strum",
  "strum_macros",
@@ -1195,6 +1198,7 @@ dependencies = [
  "serde_json",
  "serde_qs",
  "serial_test",
+ "signature",
  "sled",
  "thiserror",
  "time 0.1.0",
@@ -1246,6 +1250,7 @@ dependencies = [
  "serde 1.0.130",
  "serde_json",
  "serial_test",
+ "signature",
  "stderrlog",
  "tempfile",
  "thiserror",
@@ -1430,9 +1435,9 @@ checksum = "28988d872ab76095a6e6ac88d99b54fd267702734fd7ffe610ca27f533ddb95a"
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.70"
+version = "0.9.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6517987b3f8226b5da3661dad65ff7f300cc59fb5ea8333ca191fc65fde3edf"
+checksum = "7df13d165e607909b363a4757a6f133f8a818a74e9d3a98d09c6128e15fa4c73"
 dependencies = [
  "autocfg 1.0.1",
  "cc",
@@ -1556,6 +1561,7 @@ dependencies = [
  "serde 1.0.130",
  "serde_json",
  "serial_test",
+ "signature",
  "thiserror",
  "time 0.1.0",
  "tokio",
@@ -1688,6 +1694,7 @@ dependencies = [
  "serde 1.0.130",
  "serde_json",
  "serial_test",
+ "signature",
  "stderrlog",
  "tempfile",
  "thiserror",
@@ -1716,6 +1723,7 @@ dependencies = [
  "serde 1.0.130",
  "serde_json",
  "serial_test",
+ "signature",
  "stderrlog",
  "tempfile",
  "thiserror",
@@ -1967,6 +1975,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "regex-automata"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c230d73fb8d8c1b9c0b3135c5142a8acee3a0558fb8db5cf1cb65f8d7862132"
+
+[[package]]
 name = "regex-syntax"
 version = "0.6.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2164,9 +2178,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.68"
+version = "1.0.70"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f690853975602e1bfe1ccbf50504d67174e3bcf340f23b5ea9992e0587a52d8"
+checksum = "e277c495ac6cd1a01a58d0a0c574568b4d1ddf14f59965c6a58b8d96400b54f3"
 dependencies = [
  "itoa",
  "ryu",
@@ -2247,6 +2261,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e51e73328dc4ac0c7ccbda3a494dfa03df1de2f46018127f60c693f2648455b0"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "signature"
+version = "0.1.0"
+dependencies = [
+ "bitcoin_hashes",
+ "bs58",
+ "crypto",
+ "displaydoc",
+ "pretty_assertions",
+ "rand 0.8.4",
+ "secp256k1",
+ "serde 1.0.130",
+ "serde_json",
+ "serial_test",
+ "thiserror",
 ]
 
 [[package]]
@@ -2474,9 +2505,9 @@ dependencies = [
 
 [[package]]
 name = "tinyvec"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f83b2a3d4d9091d0abd7eba4dc2710b1718583bd4d8992e2190720ea38f391f7"
+checksum = "2c1c1d5a42b6245520c249549ec267180beaffcc0615401ac8e31853d4b6d8d2"
 dependencies = [
  "tinyvec_macros",
 ]
@@ -2489,9 +2520,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.13.0"
+version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "588b2d10a336da58d877567cd8fb8a14b463e2104910f8132cd054b4b96e29ee"
+checksum = "70e992e41e0d2fb9f755b37446f20900f64446ef54874f40a60c78f021ac6144"
 dependencies = [
  "autocfg 1.0.1",
  "bytes",
@@ -2509,9 +2540,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-macros"
-version = "1.5.1"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "114383b041aa6212c579467afa0075fbbdd0718de036100bc0ba7961d8cb9095"
+checksum = "c9efc1aba077437943f7515666aa2b882dfabfbfdf89c819ea75a8d6e9eaba5e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2757,6 +2788,7 @@ dependencies = [
  "serde 1.0.130",
  "serde_json",
  "serde_qs",
+ "signature",
  "thiserror",
  "time 0.1.0",
  "tracing",
@@ -2920,6 +2952,6 @@ dependencies = [
 
 [[package]]
 name = "zeroize"
-version = "1.4.2"
+version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf68b08513768deaa790264a7fac27a58cbf2705cfcdc9448362229217d7e970"
+checksum = "d68d9dcec5f9b43a30d38c49f91dfedfaac384cb8f085faca366c26207dd1619"

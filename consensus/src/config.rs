@@ -1,9 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crypto::signature::PrivateKey;
 use models::{AlgoConfig, Amount};
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
+use signature::PrivateKey;
 use std::{default::Default, path::PathBuf, usize};
 use time::UTime;
 

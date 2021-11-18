@@ -8,10 +8,11 @@ use crate::node_worker::{NodeCommand, NodeEvent, NodeWorker};
 use crate::ConnectionClosureReason;
 use crate::NetworkEvent;
 use crate::PeerInfo;
-use crypto::{self, hash::Hash, signature};
+use crypto::{self, hash::Hash};
 use models::node::NodeId;
 use models::{BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use serial_test::serial;
+use signature::sign;
 use std::collections::HashMap;
 use std::{
     convert::TryInto,
@@ -898,8 +899,8 @@ async fn test_endorsements_messages() {
             .await;
             // let conn1_drain= tools::incoming_message_drain_start(conn1_r).await;
 
-            let sender_priv = crypto::generate_random_private_key();
-            let sender_public_key = crypto::derive_public_key(&sender_priv);
+            let sender_priv = signature::generate_random_private_key();
+            let sender_public_key = signature::derive_public_key(&sender_priv);
 
             let content = EndorsementContent {
                 sender_public_key,
@@ -908,7 +909,7 @@ async fn test_endorsements_messages() {
                 endorsed_block: BlockId(Hash::hash(&[])),
             };
             let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-            let signature = crypto::sign(&hash, &sender_priv).unwrap();
+            let signature = sign(&hash, &sender_priv).unwrap();
             let endorsement = Endorsement {
                 content: content.clone(),
                 signature,
@@ -938,8 +939,8 @@ async fn test_endorsements_messages() {
                 panic!("Timeout while waiting for endorsement event.");
             }
 
-            let sender_priv = crypto::generate_random_private_key();
-            let sender_public_key = crypto::derive_public_key(&sender_priv);
+            let sender_priv = signature::generate_random_private_key();
+            let sender_public_key = signature::derive_public_key(&sender_priv);
 
             let content = EndorsementContent {
                 sender_public_key,
@@ -948,7 +949,7 @@ async fn test_endorsements_messages() {
                 endorsed_block: BlockId(Hash::hash(&[])),
             };
             let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-            let signature = crypto::sign(&hash, &sender_priv).unwrap();
+            let signature = signature::sign(&hash, &sender_priv).unwrap();
             let endorsement = Endorsement {
                 content: content.clone(),
                 signature,
