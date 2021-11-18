@@ -93,6 +93,7 @@ pub async fn start_consensus_controller(
             protocol_command_sender,
             protocol_event_receiver,
             pool_command_sender,
+            _execution_command_sender,
             block_db,
             pos,
             command_rx,

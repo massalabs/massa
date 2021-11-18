@@ -3,6 +3,8 @@ use crate::error::ExecutionError;
 use crate::worker::{
     ExecutionCommand, ExecutionEvent, ExecutionManagementCommand, ExecutionWorker,
 };
+
+use models::{Block, BlockHashMap};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
@@ -23,9 +25,8 @@ impl ExecutionManager {
     pub async fn stop(self) -> Result<(), ExecutionError> {
         drop(self.manager_tx);
 
-        // TODO: conversion to ExecutionError.
         if self.join_handle.await.is_err() {
-            return Err(ExecutionError::Nothing);
+            return Err(ExecutionError::JoinError);
         };
 
         Ok(())
@@ -72,4 +73,26 @@ pub async fn start_controller(
             manager_tx,
         },
     ))
+}
+
+impl ExecutionCommandSender {
+    /// notify of a blockclique change
+    pub async fn update_blockclique(
+        &mut self,
+        finalized_blocks: BlockHashMap<Block>,
+        blockclique: BlockHashMap<Block>,
+    ) -> Result<(), ExecutionError> {
+        self.0
+            .send(ExecutionCommand::BlockCliqueChanged {
+                blockclique,
+                finalized_blocks,
+            })
+            .await
+            .map_err(|_err| {
+                ExecutionError::ChannelError(
+                    "could not send BlockCliqueChanged command to execution".into(),
+                )
+            })?;
+        Ok(())
+    }
 }

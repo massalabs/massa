@@ -2,6 +2,7 @@
 
 use crate::consensus_worker::ConsensusEvent;
 use displaydoc::Display;
+use execution::ExecutionError;
 use models::ModelsError;
 use protocol_exports::ProtocolError;
 use rand::distributions::WeightedError;
@@ -20,6 +21,8 @@ pub enum InternalError {
 pub enum ConsensusError {
     /// Our key is missing
     KeyError,
+    /// execution error: {0}
+    ExecutionError(#[from] ExecutionError),
     /// models error: {0}
     ModelsError(#[from] ModelsError),
     /// Could not create genesis block {0}

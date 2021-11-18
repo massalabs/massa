@@ -5,6 +5,8 @@ use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
 use massa_hash::hash::Hash;
 use models::api::{EndorsementInfo, LedgerInfo, RollsInfo};
+
+use execution::ExecutionCommandSender;
 use models::{address::AddressCycleProductionStats, stats::ConsensusStats};
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
@@ -116,6 +118,8 @@ pub struct ConsensusWorker {
     protocol_command_sender: ProtocolCommandSender,
     /// Associated protocol event listener.
     protocol_event_receiver: ProtocolEventReceiver,
+    /// Execution command sender.
+    execution_command_sender: ExecutionCommandSender,
     /// Associated Pool command sender.
     pool_command_sender: PoolCommandSender,
     /// Database containing all information about blocks, the blockgraph and cliques.
@@ -166,6 +170,7 @@ impl ConsensusWorker {
         protocol_command_sender: ProtocolCommandSender,
         protocol_event_receiver: ProtocolEventReceiver,
         pool_command_sender: PoolCommandSender,
+        execution_command_sender: ExecutionCommandSender,
         block_db: BlockGraph,
         pos: ProofOfStake,
         controller_command_rx: mpsc::Receiver<ConsensusCommand>,
@@ -237,6 +242,7 @@ impl ConsensusWorker {
             genesis_public_key,
             protocol_command_sender,
             protocol_event_receiver,
+            execution_command_sender,
             block_db,
             controller_command_rx,
             controller_event_tx,
@@ -1245,8 +1251,34 @@ impl ConsensusWorker {
             });
         }
 
-        // Process new final blocks
+        // get new final blocks
         let new_final_block_ids = self.block_db.get_new_final_blocks();
+
+        // get blockclique
+        let blockclique_set = self.block_db.get_blockclique();
+
+        // notify Execution
+        {
+            let finalized_blocks = new_final_block_ids
+                .iter()
+                .filter_map(|b_id| match self.block_db.get_active_block(b_id) {
+                    Some(b) => Some((*b_id, b.block.clone())),
+                    None => None,
+                })
+                .collect();
+            let blockclique = blockclique_set
+                .iter()
+                .filter_map(|b_id| match self.block_db.get_active_block(b_id) {
+                    Some(b) => Some((*b_id, b.block.clone())),
+                    None => None,
+                })
+                .collect();
+            self.execution_command_sender
+                .update_blockclique(finalized_blocks, blockclique)
+                .await?;
+        }
+
+        // Process new final blocks
         let mut new_final_ops: OperationHashMap<(u64, u8)> = OperationHashMap::default();
         let mut new_final_blocks = BlockHashMap::with_capacity_and_hasher(
             new_final_block_ids.len(),
@@ -1317,7 +1349,7 @@ impl ConsensusWorker {
         // Produce endorsements
         if !self.cfg.disable_block_creation {
             // iterate on all blockclique blocks
-            for block_id in self.block_db.get_blockclique().into_iter() {
+            for block_id in blockclique_set.into_iter() {
                 let block_slot = match self.block_db.get_active_block(&block_id) {
                     Some(b) => b.block.header.content.slot,
                     None => continue,
