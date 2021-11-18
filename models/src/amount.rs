@@ -11,6 +11,13 @@ pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);
 
+impl std::ops::Add for Amount {
+    type Output = Amount;
+    fn add(self, rhs: Self) -> Self::Output {
+        Amount(self.0 + rhs.0)
+    }
+}
+
 impl Amount {
     pub fn to_raw(&self) -> u64 {
         self.0
