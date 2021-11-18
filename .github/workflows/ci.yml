@@ -98,7 +98,7 @@ jobs:
   coverage:
     needs: [test, doctest]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging'
     steps:
     - uses: actions/checkout@v2
     - uses: actions-rs/toolchain@v1
@@ -120,17 +120,8 @@ jobs:
         CARGO_INCREMENTAL: '0'
         RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
         RUSTDOCFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
-      continue-on-error: true
-    - id: coverage  
-      uses: actions-rs/grcov@v0.1
-      continue-on-error: true
-    - uses: codecov/codecov-action@v1.0.2
-      with:
-        token: ${{secrets.CODECOV_TOKEN}}
-      continue-on-error: true
+    - uses: actions-rs/grcov@v0.1
     - uses: coverallsapp/github-action@master
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         path-to-lcov: ${{ steps.coverage.outputs.report }}
-      continue-on-error: true
-    - run: exit 0 # I alaways want a green check even if code coverage fail ...
