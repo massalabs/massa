@@ -5,14 +5,14 @@ bi-directional communication between components on bounded channels,
 which comes with a risk of deadlock. To manage this risk, a distinction
 is made between two types of messages:
 
--   Events
-    -   Examples are: `NetworkEvent`, and `ProtocolEvent`. These are
+- Events
+    - Examples are: `NetworkEvent`, and `ProtocolEvent`. These are
         messages that can be dropped if they haven't been received, or
         added to the channel buffer, before a timeout. Care should be
         taken to ensure that dropping one of these does not result in
         livelock.
--   Commands
-    -   Examples are: `ProtocolCommand` and `NetworkCommand`. Those
+- Commands
+    - Examples are: `ProtocolCommand` and `NetworkCommand`. Those
         cannot be dropped.
 
 ## How is deadlock prevented?
@@ -34,57 +34,56 @@ via another, or multiple other, component(s).
 
 ## Current state of communication links
 
--   Massa-node:
-    -   Receives events from:
-        -   Api
-        -   Consensus
-    -   Sends commands to:
-        -
--   Consensus:
-    -   Sends events to:
-        -   Massa-node
-    -   Receives events from:
-        -   Protocol
-    -   Sends commands to:
-        -   Protocol
-        -   Pool
-    -   Receives commands from:
-        -   Bootstrap
-        -   Api
--   Pool:
-    -   Receives events from:
-        -   Protocol
-    -   Sends commands to:
-        -   Protocol
-    -   Receives commands from:
-        -   Consensus
-        -   Api
--   Protocol:
-    -   Sends events to:
-        -   Consensus
-        -   Pool
-    -   Receives events from:
-        -   Network
-    -   Sends commands to:
-        -   Network
-    -   Receives commands from:
-        -   Consensus
-        -   Pool
--   Network:
-    -   Sends events to:
-        -   Protocol
-        -   Node
-    -   Receives events from:
-        -   Node
-    -   Receives commands from:
-        -   Protocol
-        -   Bootstrap
-        -   Api
--   API:
-    -   Sends commands to:
-        -   Consensus
-        -   Pool
-        -   Network
+- Massa-node:
+    - Receives events from:
+        - Api
+        - Consensus
+- Consensus:
+    - Sends events to:
+        - Massa-node
+    - Receives events from:
+        - Protocol
+    - Sends commands to:
+        - Protocol
+        - Pool
+    - Receives commands from:
+        - Bootstrap
+        - Api
+- Pool:
+    - Receives events from:
+        - Protocol
+    - Sends commands to:
+        - Protocol
+    - Receives commands from:
+        - Consensus
+        - Api
+- Protocol:
+    - Sends events to:
+        - Consensus
+        - Pool
+    - Receives events from:
+        - Network
+    - Sends commands to:
+        - Network
+    - Receives commands from:
+        - Consensus
+        - Pool
+- Network:
+    - Sends events to:
+        - Protocol
+        - Node
+    - Receives events from:
+        - Node
+    - Receives commands from:
+        - Protocol
+        - Bootstrap
+        - Api
+- API:
+    - Sends commands to:
+        - Consensus
+        - Pool
+        - Network
+
 
 
 ## Blocking relationships
@@ -94,12 +93,12 @@ type of messages than the receiving component cannot block on the
 sender, which means that it cannot send `_Command` type of messages to
 it, even indirectly via another, or several other, component(s).
 
--   Network cannot block on Protocol, Bootstrap, and Massa-node, blocks
+- Network cannot block on Protocol, Bootstrap, and Massa-node, blocks
     on Node(s).
--   Protocol cannot block on Consensus and Pool, blocks on Network.
--   Pool cannot block on Consensus and Massa-node, blocks on Protocol.
--   Consensus cannot block on Bootstrap and Massa-node, blocks on
+- Protocol cannot block on Consensus and Pool, blocks on Network.
+- Pool cannot block on Consensus and Massa-node, blocks on Protocol.
+- Consensus cannot block on Bootstrap and Massa-node, blocks on
     Protocol, Pool.
--   API blocks on Massa-node.
--   Massa-node cannot block on API, blocks on Consensus, Pool, and
+- API blocks on Massa-node.
+- Massa-node cannot block on API, blocks on Consensus, Pool, and
     Network.
