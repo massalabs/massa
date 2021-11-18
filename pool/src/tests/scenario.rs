@@ -1,6 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use communication::protocol::ProtocolCommand;
 use models::Address;
 use models::EndorsementHashMap;
 use models::Operation;
@@ -9,6 +8,7 @@ use models::OperationHashSet;
 use models::OperationId;
 use models::SerializeCompact;
 use models::Slot;
+use protocol_exports::ProtocolCommand;
 use std::collections::HashSet;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -359,7 +359,7 @@ async fn test_pool_add_old_endorsements() {
 #[serial]
 async fn test_get_involved_operations() {
     let thread_count = 2;
-    //define addresses use for the test
+    // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_a = crypto::generate_random_private_key();
     let mut pubkey_a = crypto::derive_public_key(&priv_a);
@@ -516,7 +516,7 @@ async fn test_get_involved_operations() {
 #[serial]
 async fn test_new_final_ops() {
     let thread_count = 2;
-    //define addresses use for the test
+    // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_a = crypto::generate_random_private_key();
     let mut pubkey_a = crypto::derive_public_key(&priv_a);

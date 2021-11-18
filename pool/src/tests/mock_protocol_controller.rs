@@ -1,9 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use communication::protocol::{
+use models::{Endorsement, EndorsementHashMap, Operation, OperationHashMap};
+use protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
-use models::{Endorsement, EndorsementHashMap, Operation, OperationHashMap};
 use time::UTime;
 use tokio::{sync::mpsc, time::sleep};
 

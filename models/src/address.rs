@@ -1,8 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::api::{LedgerInfo, RollsInfo};
 use crate::hhasher::{HHashMap, HHashSet, PreHashed};
-use crate::ledger::LedgerData;
-use crate::{Amount, ModelsError};
+use crate::ModelsError;
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
     signature::PublicKey,
@@ -12,7 +12,7 @@ use std::str::FromStr;
 
 pub const ADDRESS_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Address(Hash);
 
 pub type AddressHashMap<T> = HHashMap<Address, T>;
@@ -142,11 +142,16 @@ pub struct Addresses {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AddressCycleProductionStats {
+    pub cycle: u64,
+    pub is_final: bool,
+    pub ok_count: u64,
+    pub nok_count: u64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AddressState {
-    pub final_rolls: u64,
-    pub active_rolls: Option<u64>,
-    pub candidate_rolls: u64,
-    pub locked_balance: Amount,
-    pub candidate_ledger_data: LedgerData,
-    pub final_ledger_data: LedgerData,
+    pub ledger_info: LedgerInfo,
+    pub rolls: RollsInfo,
+    pub production_stats: Vec<AddressCycleProductionStats>,
 }

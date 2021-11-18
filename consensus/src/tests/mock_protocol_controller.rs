@@ -1,9 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use communication::protocol::{
+use models::{Block, BlockHeader, BlockId};
+use protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
-use models::{Block, BlockHeader, BlockId};
 use time::UTime;
 use tokio::{sync::mpsc, time::sleep};
 

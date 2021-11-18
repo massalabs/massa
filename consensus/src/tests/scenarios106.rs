@@ -34,15 +34,14 @@ async fn test_unsorted_block() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let start_period = 3;
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
-            //create test blocks
+            // create test blocks
 
             let (hasht0s1, t0s1, _) = tools::create_block(
                 &cfg,
@@ -97,10 +96,10 @@ async fn test_unsorted_block() {
                 staking_keys[0].clone(),
             );
 
-            //send blocks  t0s1, t1s1,
+            // send blocks  t0s1, t1s1,
             protocol_controller.receive_block(t0s1).await;
             protocol_controller.receive_block(t1s1).await;
-            //send blocks t0s3, t1s4, t0s4, t0s2, t1s3, t1s2
+            // send blocks t0s3, t1s4, t0s4, t0s2, t1s3, t1s2
             protocol_controller.receive_block(t0s3).await;
             protocol_controller.receive_block(t1s4).await;
             protocol_controller.receive_block(t0s4).await;
@@ -108,7 +107,7 @@ async fn test_unsorted_block() {
             protocol_controller.receive_block(t1s3).await;
             protocol_controller.receive_block(t1s2).await;
 
-            //block t0s1 and t1s1 are propagated
+            // block t0s1 and t1s1 are propagated
             let hash_list = vec![hasht0s1, hasht1s1];
             tools::validate_propagate_block_in_list(
                 &mut protocol_controller,
@@ -118,19 +117,19 @@ async fn test_unsorted_block() {
             .await;
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
-            //block t0s2 and t1s2 are propagated
+            // block t0s2 and t1s2 are propagated
             let hash_list = vec![hasht0s2, hasht1s2];
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
-            //block t0s3 and t1s3 are propagated
+            // block t0s3 and t1s3 are propagated
             let hash_list = vec![hasht0s3, hasht1s3];
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
-            //block t0s4 and t1s4 are propagated
+            // block t0s4 and t1s4 are propagated
             let hash_list = vec![hasht0s4, hasht1s4];
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
@@ -173,11 +172,10 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            //create test blocks
+            // create test blocks
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -235,7 +233,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
             // Check that the block has been silently dropped and not discarded for being too much in the future.
             let block_graph = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap();
             assert!(!block_graph.active_blocks.contains_key(&hash3));
@@ -277,11 +275,10 @@ async fn test_too_many_blocks_in_the_future() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            //get genesis block hashes
+            // get genesis block hashes
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -338,7 +335,7 @@ async fn test_too_many_blocks_in_the_future() {
             {}
             // ensure that the graph contains only what we expect
             let graph = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
             expected_clone.extend(graph.genesis_blocks);
@@ -384,15 +381,14 @@ async fn test_dep_in_back_order() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create test blocks
+            // create test blocks
             let (hasht0s1, t0s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1, 0),
@@ -446,7 +442,7 @@ async fn test_dep_in_back_order() {
                 staking_keys[0].clone(),
             );
 
-            //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
+            // send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
             protocol_controller.receive_block(t0s2).await; // not propagated and update wishlist
             tools::validate_wishlist(
                 &mut protocol_controller,
@@ -560,15 +556,14 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create test blocks
+            // create test blocks
 
             let (hasht0s1, t0s1, _) = tools::create_block(
                 &cfg,
@@ -610,7 +605,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
                 staking_keys[0].clone(),
             );
 
-            //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
+            // send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
             protocol_controller.receive_block(t0s2).await;
             tools::validate_wishlist(
                 &mut protocol_controller,
@@ -697,15 +692,14 @@ async fn test_add_block_that_depends_on_invalid_block() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create test blocks
+            // create test blocks
             let (hasht0s1, t0s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1, 0),
@@ -743,21 +737,21 @@ async fn test_add_block_that_depends_on_invalid_block() {
             );
 
             // add block in this order t0s1, t1s1, t0s3, t1s3, t3s2
-            //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
+            // send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
             protocol_controller.receive_block(t0s1).await;
             protocol_controller.receive_block(t1s1).await;
             protocol_controller.receive_block(t0s3).await;
             protocol_controller.receive_block(t1s3).await;
             protocol_controller.receive_block(t3s2).await;
 
-            //block t0s1 and t1s1 are propagated
+            // block t0s1 and t1s1 are propagated
             let hash_list = vec![hasht0s1, hasht1s1];
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
 
-            //block  t0s3, t1s3 are not propagated
+            // block  t0s3, t1s3 are not propagated
             let hash_list = vec![hasht0s3, hasht1s3];
             assert!(
                 !tools::validate_notpropagate_block_in_list(

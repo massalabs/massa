@@ -1,9 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::consensus_worker::ConsensusEvent;
-use communication::CommunicationError;
 use displaydoc::Display;
 use models::ModelsError;
+use protocol_exports::ProtocolError;
 use rand::distributions::WeightedError;
 use std::array::TryFromSliceError;
 use thiserror::Error;
@@ -44,8 +44,8 @@ pub enum ConsensusError {
     ConfigError(String),
     /// crypto error {0}
     CryptoError(#[from] crypto::CryptoError),
-    /// Communication error {0}
-    CommunicationError(#[from] CommunicationError),
+    /// Protocol error {0}
+    ProtocolError(#[from] ProtocolError),
     /// failed retrieving consensus controller event
     ControllerEventError,
     /// Join error {0}
@@ -64,8 +64,6 @@ pub enum ConsensusError {
     SendChannelError(String),
     /// Receive  channel error : {0}
     ReceiveChannelError(String),
-    /// Storage error : {0}
-    StorageError(#[from] storage::StorageError),
     /// pool error : {0}
     PoolError(#[from] pool::PoolError),
     /// sled error: {0}

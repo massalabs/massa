@@ -33,7 +33,7 @@ pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
 
 #[derive(Debug)]
 pub struct MockListener {
-    connection_listener_rx: mpsc::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>, //(controller, mock)
+    connection_listener_rx: mpsc::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>, // (controller, mock)
 }
 
 impl MockListener {
@@ -66,12 +66,12 @@ pub struct MockConnector {
 
 impl MockConnector {
     pub async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<Duplex> {
-        //task the controller connection if exist.
+        // task the controller connection if exist.
         let (duplex_controller, duplex_mock) = tokio::io::duplex(MAX_DUPLEX_BUFFER_SIZE);
-        //to see if the connection is accepted
+        // to see if the connection is accepted
         let (accept_tx, accept_rx) = oneshot::channel::<bool>();
 
-        //send new connection to mock
+        // send new connection to mock
         timeout(self.timeout_duration.to_duration(), async move {
             self.connection_connector_tx
                 .send((duplex_mock, addr, accept_tx))
@@ -121,7 +121,7 @@ impl MockEstablisher {
         &mut self,
         timeout_duration: UTime,
     ) -> std::io::Result<MockConnector> {
-        //create connector stream
+        // create connector stream
 
         Ok(MockConnector {
             connection_connector_tx: self.connection_connector_tx.clone(),

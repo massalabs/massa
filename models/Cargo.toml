@@ -2,7 +2,7 @@
 name = "models"
 version = "0.1.0"
 authors = ["Massa Labs <info@massa.net>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 displaydoc = "0.2"
@@ -23,6 +23,5 @@ crypto = {path = "../crypto"}
 time = {path = "../time"}
 
 [dev-dependencies]
-pretty_assertions = "0.7"
+pretty_assertions = "1.0"
 serial_test = "0.5"
-stderrlog = { version = "0.5" }

@@ -19,6 +19,7 @@ use rand_xoshiro::Xoshiro256PlusPlus;
 use serde::{Deserialize, Serialize};
 use std::collections::{btree_map, hash_map, BTreeMap, HashMap, VecDeque};
 use std::convert::TryInto;
+use tracing::warn;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct RollCompensation(pub u64);
@@ -180,6 +181,10 @@ impl RollCounts {
         RollCounts(BTreeMap::new())
     }
 
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     // applies RollUpdates to self with compensations
     pub fn apply_updates(&mut self, updates: &RollUpdates) -> Result<(), ConsensusError> {
         for (addr, update) in updates.0.iter() {
@@ -328,7 +333,7 @@ impl SerializeCompact for ExportProofOfStake {
         for thread_lst in self.cycle_states.iter() {
             let cycle_count: u32 = thread_lst.len().try_into().map_err(|err| {
                 ModelsError::SerializeError(format!(
-                    "too many cycles when serializing ExportProofOfStake: {:?}",
+                    "too many cycles when serializing ExportProofOfStake: {}",
                     err
                 ))
             })?;
@@ -382,7 +387,7 @@ impl SerializeCompact for ThreadCycleState {
         // roll count
         let n_entries: u32 = self.roll_count.0.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
-                "too many entries when serializing ExportThreadCycleState roll_count: {:?}",
+                "too many entries when serializing ExportThreadCycleState roll_count: {}",
                 err
             ))
         })?;
@@ -395,7 +400,7 @@ impl SerializeCompact for ThreadCycleState {
         // cycle updates
         let n_entries: u32 = self.cycle_updates.0.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
-                "too many entries when serializing ExportThreadCycleState cycle_updates: {:?}",
+                "too many entries when serializing ExportThreadCycleState cycle_updates: {}",
                 err
             ))
         })?;
@@ -408,7 +413,7 @@ impl SerializeCompact for ThreadCycleState {
         // rng seed
         let n_entries: u32 = self.rng_seed.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
-                "too many entries when serializing ExportThreadCycleState rng_seed: {:?}",
+                "too many entries when serializing ExportThreadCycleState rng_seed: {}",
                 err
             ))
         })?;
@@ -418,7 +423,7 @@ impl SerializeCompact for ThreadCycleState {
         // production stats
         let n_entries: u32 = self.production_stats.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
-                "too many entries when serializing ExportThreadCycleState production_stats: {:?}",
+                "too many entries when serializing ExportThreadCycleState production_stats: {}",
                 err
             ))
         })?;
@@ -604,6 +609,15 @@ impl ProofOfStake {
 
     pub fn set_watched_addresses(&mut self, addrs: AddressHashSet) {
         self.watched_addresses = addrs;
+    }
+
+    /// active stakers count
+    pub fn get_stakers_count(&self, target_cycle: u64) -> Result<u64, ConsensusError> {
+        let mut res: u64 = 0;
+        for thread in 0..self.cfg.thread_count {
+            res += self.get_lookback_roll_count(target_cycle, thread)?.0.len() as u64;
+        }
+        Ok(res)
     }
 
     async fn get_initial_rolls(cfg: &ConsensusConfig) -> Result<Vec<RollCounts>, ConsensusError> {
@@ -965,7 +979,7 @@ impl ProofOfStake {
 
     pub fn get_stakers_production_stats(
         &self,
-        addrs: AddressHashSet,
+        addrs: &AddressHashSet,
     ) -> Vec<StakersCycleProductionStats> {
         let mut res: HashMap<u64, StakersCycleProductionStats> = HashMap::new();
         let mut completeness: HashMap<u64, u8> = HashMap::new();
@@ -993,7 +1007,7 @@ impl ProofOfStake {
                     false
                 };
 
-                for addr in &addrs {
+                for addr in addrs {
                     let (n_ok, n_nok) = thread_cycle_info
                         .production_stats
                         .get(&addr)

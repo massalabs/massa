@@ -2,7 +2,7 @@
 name = "crypto"
 version = "0.1.0"
 authors = ["Massa Labs <info@massa.net>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -17,6 +17,5 @@ serde_json = { version = "1.0" }
 thiserror = "1.0"
 
 [dev-dependencies]
-pretty_assertions = "0.7"
+pretty_assertions = "1.0"
 serial_test = "0.5"
-stderrlog = { version = "0.5" }

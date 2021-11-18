@@ -1,20 +1,17 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 //! All information concerning blocks, the block graph and cliques is managed here.
-use std::mem;
-use std::{collections::HashSet, convert::TryInto, usize};
-use std::{
-    collections::{hash_map, BTreeSet, VecDeque},
-    convert::TryFrom,
+use super::config::ConsensusConfig;
+use crate::error::ConsensusError;
+use crate::{
+    ledger::{Ledger, LedgerChanges, LedgerSubset, OperationLedgerInterface},
+    pos::{OperationRollInterface, ProofOfStake, RollCounts, RollUpdate, RollUpdates},
 };
-
-use models::address::{AddressHashMap, AddressHashSet};
-use models::hhasher::BuildHHasher;
-use serde::{Deserialize, Serialize};
-
 use crypto::hash::Hash;
-use crypto::signature::derive_public_key;
+use crypto::signature::{derive_public_key, PublicKey};
+use models::address::{AddressHashMap, AddressHashSet};
 use models::clique::Clique;
+use models::hhasher::BuildHHasher;
 use models::ledger::LedgerChange;
 use models::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, Block, BlockHashMap,
@@ -24,14 +21,14 @@ use models::{
     OperationSearchResultStatus, SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
     BLOCK_ID_SIZE_BYTES,
 };
-
-use crate::error::ConsensusError;
-use crate::{
-    ledger::{Ledger, LedgerChanges, LedgerSubset, OperationLedgerInterface},
-    pos::{OperationRollInterface, ProofOfStake, RollCounts, RollUpdate, RollUpdates},
+use serde::{Deserialize, Serialize};
+use std::mem;
+use std::{collections::HashSet, convert::TryInto, usize};
+use std::{
+    collections::{hash_map, BTreeSet, VecDeque},
+    convert::TryFrom,
 };
-
-use super::config::ConsensusConfig;
+use tracing::{debug, error, info, warn};
 
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
@@ -161,17 +158,16 @@ impl SerializeCompact for ExportActiveBlock {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
-        //is_final
+        // is_final
         if self.is_final {
             res.push(1);
         } else {
             res.push(0);
         }
 
-        //block
+        // block
         res.extend(self.block.to_bytes_compact()?);
 
-        //parents
         // parents (note: there should be none if slot period=0)
         if self.parents.is_empty() {
             res.push(0);
@@ -183,15 +179,15 @@ impl SerializeCompact for ExportActiveBlock {
             res.extend(period.to_varint_bytes());
         }
 
-        //children
+        // children
         let children_count: u32 = self.children.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many children in ActiveBlock: {:?}", err))
+            ModelsError::SerializeError(format!("too many children in ActiveBlock: {}", err))
         })?;
         res.extend(children_count.to_varint_bytes());
         for map in self.children.iter() {
             let map_count: u32 = map.len().try_into().map_err(|err| {
                 ModelsError::SerializeError(format!(
-                    "too many entry in children map in ActiveBlock: {:?}",
+                    "too many entry in children map in ActiveBlock: {}",
                     err
                 ))
             })?;
@@ -202,16 +198,16 @@ impl SerializeCompact for ExportActiveBlock {
             }
         }
 
-        //dependencies
+        // dependencies
         let dependencies_count: u32 = self.dependencies.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many dependencies in ActiveBlock: {:?}", err))
+            ModelsError::SerializeError(format!("too many dependencies in ActiveBlock: {}", err))
         })?;
         res.extend(dependencies_count.to_varint_bytes());
         for dep in self.dependencies.iter() {
             res.extend(&dep.to_bytes());
         }
 
-        //block_ledger_change
+        // block_ledger_change
         let block_ledger_change_count: u32 =
             self.block_ledger_changes
                 .0
@@ -219,7 +215,7 @@ impl SerializeCompact for ExportActiveBlock {
                 .try_into()
                 .map_err(|err| {
                     ModelsError::SerializeError(format!(
-                        "too many block_ledger_change in ActiveBlock: {:?}",
+                        "too many block_ledger_change in ActiveBlock: {}",
                         err
                     ))
                 })?;
@@ -231,7 +227,7 @@ impl SerializeCompact for ExportActiveBlock {
 
         // roll updates
         let roll_updates_count: u32 = self.roll_updates.0.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many roll updates in ActiveBlock: {:?}", err))
+            ModelsError::SerializeError(format!("too many roll updates in ActiveBlock: {}", err))
         })?;
         res.extend(roll_updates_count.to_varint_bytes());
         for (addr, roll_update) in self.roll_updates.0.iter() {
@@ -243,7 +239,7 @@ impl SerializeCompact for ExportActiveBlock {
         let production_events_count: u32 =
             self.production_events.len().try_into().map_err(|err| {
                 ModelsError::SerializeError(format!(
-                    "too many creation events in ActiveBlock: {:?}",
+                    "too many creation events in ActiveBlock: {}",
                     err
                 ))
             })?;
@@ -271,12 +267,12 @@ impl DeserializeCompact for ExportActiveBlock {
                 )
             });
 
-        //is_final
+        // is_final
         let is_final_u8 = u8_from_slice(buffer)?;
         cursor += 1;
         let is_final = !(is_final_u8 == 0);
 
-        //block
+        // block
         let (block, delta) = Block::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 
@@ -302,7 +298,7 @@ impl DeserializeCompact for ExportActiveBlock {
             ));
         };
 
-        //children
+        // children
         let (children_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         let parent_count_u32: u32 = parent_count.into();
         if children_count > parent_count_u32 {
@@ -332,7 +328,7 @@ impl DeserializeCompact for ExportActiveBlock {
             children.push(map);
         }
 
-        //dependencies
+        // dependencies
         let (dependencies_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if dependencies_count > max_bootstrap_deps {
             return Err(ModelsError::DeserializeError(
@@ -350,9 +346,9 @@ impl DeserializeCompact for ExportActiveBlock {
             dependencies.insert(dep);
         }
 
-        //block_ledger_changes
+        // block_ledger_changes
         let (block_ledger_change_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        // TODO count check
+        // TODO: count check
         cursor += delta;
         let mut block_ledger_changes = LedgerChanges(AddressHashMap::with_capacity_and_hasher(
             block_ledger_change_count as usize,
@@ -388,7 +384,7 @@ impl DeserializeCompact for ExportActiveBlock {
 
         // production_events
         let (production_events_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        // TODO count check
+        // TODO: count check
         cursor += delta;
         let mut production_events: Vec<(u64, Address, bool)> =
             Vec::with_capacity(production_events_count as usize);
@@ -462,7 +458,6 @@ pub enum ExportBlockStatus {
     Active(Block),
     Final(Block),
     Discarded(DiscardReason),
-    Stored(Block), // todo remove with old api
 }
 
 impl<'a> From<&'a BlockStatus> for ExportBlockStatus {
@@ -488,7 +483,7 @@ impl<'a> From<&'a BlockStatus> for ExportBlockStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportCompiledBlock {
     /// Header of the corresponding block.
-    pub block: BlockHeader,
+    pub header: BlockHeader,
     /// For (i, set) in children,
     /// set contains the headers' hashes
     /// of blocks referencing exported block as a parent,
@@ -504,43 +499,71 @@ pub enum Status {
     Final,
 }
 
-impl<'a> From<&'a BlockGraph> for BlockGraphExport {
+impl<'a> BlockGraphExport {
     /// Conversion from blockgraph.
-    fn from(block_graph: &'a BlockGraph) -> Self {
+    pub fn extract_from(
+        block_graph: &'a BlockGraph,
+        slot_start: Option<Slot>,
+        slot_end: Option<Slot>,
+    ) -> Self {
         let mut export = BlockGraphExport {
             genesis_blocks: block_graph.genesis_hashes.clone(),
-            active_blocks: Default::default(),
-            discarded_blocks: Default::default(),
+            active_blocks: BlockHashMap::with_capacity_and_hasher(
+                block_graph.block_statuses.len(),
+                BuildHHasher::default(),
+            ),
+            discarded_blocks: BlockHashMap::with_capacity_and_hasher(
+                block_graph.block_statuses.len(),
+                BuildHHasher::default(),
+            ),
             best_parents: block_graph.best_parents.clone(),
             latest_final_blocks_periods: block_graph.latest_final_blocks_periods.clone(),
             gi_head: block_graph.gi_head.clone(),
             max_cliques: block_graph.max_cliques.clone(),
         };
 
+        let filter = |s| {
+            if let Some(s_start) = slot_start {
+                if s < s_start {
+                    return false;
+                }
+            }
+            if let Some(s_end) = slot_end {
+                if s >= s_end {
+                    return false;
+                }
+            }
+            true
+        };
+
         for (hash, block) in block_graph.block_statuses.iter() {
             match block {
                 BlockStatus::Discarded { header, reason, .. } => {
-                    export
-                        .discarded_blocks
-                        .insert(*hash, (reason.clone(), header.clone()));
+                    if filter(header.content.slot) {
+                        export
+                            .discarded_blocks
+                            .insert(*hash, (reason.clone(), header.clone()));
+                    }
                 }
-                BlockStatus::Active(block) => {
-                    export.active_blocks.insert(
-                        *hash,
-                        ExportCompiledBlock {
-                            block: block.block.header.clone(),
-                            children: block
-                                .children
-                                .iter()
-                                .map(|thread| thread.keys().copied().collect::<BlockHashSet>())
-                                .collect(),
-                            status: if block.is_final {
-                                Status::Final
-                            } else {
-                                Status::Active
+                BlockStatus::Active(a_block) => {
+                    if filter(a_block.block.header.content.slot) {
+                        export.active_blocks.insert(
+                            *hash,
+                            ExportCompiledBlock {
+                                header: a_block.block.header.clone(),
+                                children: a_block
+                                    .children
+                                    .iter()
+                                    .map(|thread| thread.keys().copied().collect::<BlockHashSet>())
+                                    .collect(),
+                                status: if a_block.is_final {
+                                    Status::Final
+                                } else {
+                                    Status::Active
+                                },
                             },
-                        },
-                    );
+                        );
+                    }
                 }
                 _ => continue,
             }
@@ -631,15 +654,15 @@ impl SerializeCompact for BootstrapableGraph {
             (context.max_bootstrap_blocks, context.max_bootstrap_cliques)
         });
 
-        //active_blocks
+        // active_blocks
         let blocks_count: u32 = self.active_blocks.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
-                "too many active blocks in BootstrapableGraph: {:?}",
+                "too many active blocks in BootstrapableGraph: {}",
                 err
             ))
         })?;
         if blocks_count > max_bootstrap_blocks {
-            return Err(ModelsError::SerializeError(format!("too many blocks in active_blocks for serialization context in BootstrapableGraph: {:?}", blocks_count)));
+            return Err(ModelsError::SerializeError(format!("too many blocks in active_blocks for serialization context in BootstrapableGraph: {}", blocks_count)));
         }
         res.extend(blocks_count.to_varint_bytes());
         for (hash, block) in self.active_blocks.iter() {
@@ -647,31 +670,28 @@ impl SerializeCompact for BootstrapableGraph {
             res.extend(block.to_bytes_compact()?);
         }
 
-        //best_parents
+        // best_parents
         for (parent_h, parent_period) in self.best_parents.iter() {
             res.extend(&parent_h.to_bytes());
             res.extend(&parent_period.to_varint_bytes());
         }
 
-        //latest_final_blocks_periods
+        // latest_final_blocks_periods
         for (hash, period) in self.latest_final_blocks_periods.iter() {
             res.extend(&hash.to_bytes());
             res.extend(period.to_varint_bytes());
         }
 
-        //gi_head
+        // gi_head
         let gi_head_count: u32 = self.gi_head.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!(
-                "too many gi_head in BootstrapableGraph: {:?}",
-                err
-            ))
+            ModelsError::SerializeError(format!("too many gi_head in BootstrapableGraph: {}", err))
         })?;
         res.extend(gi_head_count.to_varint_bytes());
         for (gihash, set) in self.gi_head.iter() {
             res.extend(&gihash.to_bytes());
             let set_count: u32 = set.len().try_into().map_err(|err| {
                 ModelsError::SerializeError(format!(
-                    "too many entry in gi_head set in BootstrapableGraph: {:?}",
+                    "too many entry in gi_head set in BootstrapableGraph: {}",
                     err
                 ))
             })?;
@@ -681,16 +701,16 @@ impl SerializeCompact for BootstrapableGraph {
             }
         }
 
-        //max_cliques
+        // max_cliques
         let max_cliques_count: u32 = self.max_cliques.len().try_into().map_err(|err| {
             ModelsError::SerializeError(format!(
-                "too many max_cliques in BootstrapableGraph (format): {:?}",
+                "too many max_cliques in BootstrapableGraph (format): {}",
                 err
             ))
         })?;
         if max_cliques_count > max_bootstrap_cliques {
             return Err(ModelsError::SerializeError(format!(
-                "too many max_cliques for serialization context in BootstrapableGraph: {:?}",
+                "too many max_cliques for serialization context in BootstrapableGraph: {}",
                 max_cliques_count
             )));
         }
@@ -718,10 +738,10 @@ impl DeserializeCompact for BootstrapableGraph {
                 )
             });
 
-        //active_blocks
+        // active_blocks
         let (active_blocks_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if active_blocks_count > max_bootstrap_blocks {
-            return Err(ModelsError::DeserializeError(format!("too many blocks in active_blocks for deserialization context in BootstrapableGraph: {:?}", active_blocks_count)));
+            return Err(ModelsError::DeserializeError(format!("too many blocks in active_blocks for deserialization context in BootstrapableGraph: {}", active_blocks_count)));
         }
         cursor += delta;
         let mut active_blocks = BlockHashMap::with_capacity_and_hasher(
@@ -736,7 +756,7 @@ impl DeserializeCompact for BootstrapableGraph {
             active_blocks.insert(hash, block);
         }
 
-        //best_parents
+        // best_parents
         let mut best_parents: Vec<(BlockId, u64)> = Vec::with_capacity(parent_count as usize);
         for _ in 0..parent_count {
             let parent_h = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
@@ -746,7 +766,7 @@ impl DeserializeCompact for BootstrapableGraph {
             best_parents.push((parent_h, parent_period));
         }
 
-        //latest_final_blocks_periods
+        // latest_final_blocks_periods
         let mut latest_final_blocks_periods: Vec<(BlockId, u64)> =
             Vec::with_capacity(parent_count as usize);
         for _ in 0..parent_count {
@@ -757,10 +777,13 @@ impl DeserializeCompact for BootstrapableGraph {
             latest_final_blocks_periods.push((hash, period));
         }
 
-        //gi_head
+        // gi_head
         let (gi_head_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if gi_head_count > max_bootstrap_blocks {
-            return Err(ModelsError::DeserializeError(format!("too many blocks in gi_head for deserialization context in BootstrapableGraph: {:?}", gi_head_count)));
+            return Err(ModelsError::DeserializeError(format!(
+                "too many blocks in gi_head for deserialization context in BootstrapableGraph: {}",
+                gi_head_count
+            )));
         }
         cursor += delta;
         let mut gi_head =
@@ -770,7 +793,7 @@ impl DeserializeCompact for BootstrapableGraph {
             cursor += BLOCK_ID_SIZE_BYTES;
             let (set_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
             if set_count > max_bootstrap_blocks {
-                return Err(ModelsError::DeserializeError(format!("too many blocks in a set in gi_head for deserialization context in BootstrapableGraph: {:?}", set_count)));
+                return Err(ModelsError::DeserializeError(format!("too many blocks in a set in gi_head for deserialization context in BootstrapableGraph: {}", set_count)));
             }
             cursor += delta;
             let mut set =
@@ -783,11 +806,11 @@ impl DeserializeCompact for BootstrapableGraph {
             gi_head.insert(gihash, set);
         }
 
-        //max_cliques
+        // max_cliques
         let (max_cliques_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if max_cliques_count > max_bootstrap_cliques {
             return Err(ModelsError::DeserializeError(format!(
-                "too many for deserialization context in BootstrapableGraph: {:?}",
+                "too many for deserialization context in BootstrapableGraph: {}",
                 max_cliques_count
             )));
         }
@@ -834,7 +857,7 @@ pub struct BlockGraph {
     to_propagate: BlockHashMap<(Block, OperationHashSet, Vec<EndorsementId>)>,
     attack_attempts: Vec<BlockId>,
     new_final_blocks: BlockHashSet,
-    new_stale_blocks: BlockHashMap<Slot>,
+    new_stale_blocks: BlockHashMap<(PublicKey, Slot)>, // creator, slot
     ledger: Ledger,
 }
 
@@ -943,7 +966,7 @@ impl BlockGraph {
         let mut genesis_block_ids = Vec::with_capacity(cfg.thread_count as usize);
         for thread in 0u8..cfg.thread_count {
             let (block_id, block) = create_genesis_block(&cfg, thread).map_err(|err| {
-                ConsensusError::GenesisCreationError(format!("genesis error {:?}", err))
+                ConsensusError::GenesisCreationError(format!("genesis error {}", err))
             })?;
             genesis_block_ids.push(block_id);
             block_statuses.insert(
@@ -1436,6 +1459,11 @@ impl BlockGraph {
         &self.best_parents
     }
 
+    /// Gets the list of cliques.
+    pub fn get_cliques(&self) -> Vec<Clique> {
+        self.max_cliques.clone()
+    }
+
     /// Returns the list of block IDs created by a given address, and their finality statuses
     pub fn get_block_ids_by_creator(&self, address: &Address) -> BlockHashMap<Status> {
         // iterate on active (final and non-final) blocks
@@ -1487,7 +1515,7 @@ impl BlockGraph {
             ),
             _ => {
                 return Err(ConsensusError::ContainerInconsistency(format!(
-                    "block missing or non-active: {:?}",
+                    "block missing or non-active: {}",
                     block_id
                 )));
             }
@@ -1504,7 +1532,7 @@ impl BlockGraph {
                 Some(BlockStatus::Active(a_block)) => a_block,
                 _ => {
                     return Err(ConsensusError::ContainerInconsistency(format!(
-                        "block missing or non-active: {:?}",
+                        "block missing or non-active: {}",
                         cur_block_id
                     )));
                 }
@@ -1533,7 +1561,7 @@ impl BlockGraph {
                 .get_final_roll_data(final_cycle, target_thread)
                 .ok_or_else(|| {
                     ConsensusError::ContainerInconsistency(format!(
-                        "final PoS cycle not available: {:?}",
+                        "final PoS cycle not available: {}",
                         final_cycle
                     ))
                 })?;
@@ -1584,7 +1612,7 @@ impl BlockGraph {
                 }
                 _ => {
                     return Err(ConsensusError::ContainerInconsistency(format!(
-                        "block missing or non-active: {:?}",
+                        "block missing or non-active: {}",
                         cur_block_id
                     )));
                 }
@@ -1618,7 +1646,7 @@ impl BlockGraph {
         address: &Address,
     ) -> Result<OperationHashMap<OperationSearchResult>, ConsensusError> {
         let mut res: OperationHashMap<OperationSearchResult> = Default::default();
-        for b_id in self.active_index.iter() {
+        'outer: for b_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(ActiveBlock {
                 addresses_to_operations,
                 is_final,
@@ -1631,7 +1659,7 @@ impl BlockGraph {
                     for op in ops.iter() {
                         let (idx, _) = operation_set.get(op).ok_or_else(|| {
                             ConsensusError::ContainerInconsistency(format!(
-                                "op {:?} should be here",
+                                "op {} should be here",
                                 op
                             ))
                         })?;
@@ -1649,6 +1677,9 @@ impl BlockGraph {
                             old_search.extend(&search);
                         } else {
                             res.insert(*op, search);
+                        }
+                        if res.len() >= self.cfg.max_item_return_count {
+                            break 'outer;
                         }
                     }
                 }
@@ -1935,7 +1966,7 @@ impl BlockGraph {
                     header
                 } else {
                     return Err(ConsensusError::ContainerInconsistency(format!(
-                        "inconsistency inside block statuses removing incoming header {:?}",
+                        "inconsistency inside block statuses removing incoming header {}",
                         block_id
                     )));
                 };
@@ -2002,7 +2033,8 @@ impl BlockGraph {
                         massa_trace!("consensus.block_graph.process.incoming_header.discarded", {"block_id": block_id, "reason": reason});
                         // count stales
                         if reason == DiscardReason::Stale {
-                            self.new_stale_blocks.insert(block_id, header.content.slot);
+                            self.new_stale_blocks
+                                .insert(block_id, (header.content.creator, header.content.slot));
                         }
                         // discard
                         self.block_statuses.insert(
@@ -2036,7 +2068,7 @@ impl BlockGraph {
                     (block, operation_set, endorsement_ids)
                 } else {
                     return Err(ConsensusError::ContainerInconsistency(format!(
-                        "inconsistency inside block statuses removing incoming block {:?}",
+                        "inconsistency inside block statuses removing incoming block {}",
                         block_id
                     )));
                 };
@@ -2114,8 +2146,10 @@ impl BlockGraph {
                         massa_trace!("consensus.block_graph.process.incoming_block.discarded", {"block_id": block_id, "reason": reason});
                         // count stales
                         if reason == DiscardReason::Stale {
-                            self.new_stale_blocks
-                                .insert(block_id, block.header.content.slot);
+                            self.new_stale_blocks.insert(
+                                block_id,
+                                (block.header.content.creator, block.header.content.slot),
+                            );
                         }
                         // add to discard
                         self.block_statuses.insert(
@@ -2163,7 +2197,7 @@ impl BlockGraph {
                     );
                     return Ok(reprocess);
                 } else {
-                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing waiting for slot block or header {:?}", block_id)));
+                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing waiting for slot block or header {}", block_id)));
                 };
             }
 
@@ -2194,7 +2228,7 @@ impl BlockGraph {
                     );
                     return Ok(reprocess);
                 } else {
-                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing waiting for slot header or block {:?}", block_id)));
+                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing waiting for slot header or block {}", block_id)));
                 }
             }
         };
@@ -2291,7 +2325,7 @@ impl BlockGraph {
                 continue; // already visited
             }
             BlockGraph::get_full_active_block(&self.block_statuses, visit_h)
-                .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses iterating through descendants of {:?} - missing {:?}", block_id, visit_h)))?
+                .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses iterating through descendants of {} - missing {}", block_id, visit_h)))?
                 .children
                 .iter()
                 .for_each(|thread_children| to_visit.extend(thread_children.keys()));
@@ -2400,8 +2434,11 @@ impl BlockGraph {
                 Some(BlockStatus::Discarded { reason, .. }) => {
                     // parent is discarded
                     return Ok(HeaderCheckOutcome::Discard(match reason {
-                        DiscardReason::Invalid(invalid_reason) => DiscardReason::Invalid(format!("discarded because a parent was discarded for the following reason: {:?}", invalid_reason)),
-                        r => r.clone()
+                        DiscardReason::Invalid(invalid_reason) => DiscardReason::Invalid(format!(
+                            "discarded because a parent was discarded for the following reason: {}",
+                            invalid_reason
+                        )),
+                        r => r.clone(),
                     }));
                 }
                 Some(BlockStatus::Active(parent)) => {
@@ -2457,7 +2494,7 @@ impl BlockGraph {
                 let (parent_h, parent_period) = parents[parent_i as usize];
                 let parent = self.get_active_block(&parent_h).ok_or_else(|| {
                     ConsensusError::ContainerInconsistency(format!(
-                        "inconsistency inside block statuses searching parent {:?} of block {:?}",
+                        "inconsistency inside block statuses searching parent {} of block {}",
                         parent_h, block_id
                     ))
                 })?;
@@ -2520,9 +2557,9 @@ impl BlockGraph {
         )
         .ok_or_else(|| {
             ConsensusError::ContainerInconsistency(format!(
-            "inconsistency inside block statuses searching parent {:?} in own thread of block {:?}",
-            parents[header.content.slot.thread as usize].0, block_id
-        ))
+                "inconsistency inside block statuses searching parent {} in own thread of block {}",
+                parents[header.content.slot.thread as usize].0, block_id
+            ))
         })?;
 
         // check endorsements
@@ -2550,7 +2587,7 @@ impl BlockGraph {
             let mut to_explore = vec![(0usize, header.content.parents[tau as usize])];
             while let Some((cur_gen, cur_h)) = to_explore.pop() {
                 let cur_b = BlockGraph::get_full_active_block(&self.block_statuses, cur_h)
-                    .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {:?} while checking grandpa incompatibility of block {:?}",cur_h,  block_id)))?;
+                    .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses searching {} while checking grandpa incompatibility of block {}",cur_h,  block_id)))?;
 
                 // traverse but do not check up to generation 1
                 if cur_gen <= 1 {
@@ -2570,7 +2607,7 @@ impl BlockGraph {
                 )
                 .ok_or_else(||
                     ConsensusError::ContainerInconsistency(
-                        format!("inconsistency inside block statuses searching {:?} check if the parent in tauB has a strictly lower period number than B's parent in tauB while checking grandpa incompatibility of block {:?}",
+                        format!("inconsistency inside block statuses searching {} check if the parent in tauB has a strictly lower period number than B's parent in tauB while checking grandpa incompatibility of block {}",
                         cur_b.block.header.content.parents[header.content.slot.thread as usize],
                         block_id)
                     ))?
@@ -2809,11 +2846,11 @@ impl BlockGraph {
 
             let mut current_block_id = block_to_check.header.content.parents[op_thread as usize]; // non-genesis => has parents
             loop {
-                //get block to process.
+                // get block to process.
                 let current_block = match self.block_statuses.get(&current_block_id) {
                     Some(block) => match block {
                         BlockStatus::Active(block) => block,
-                        _ => return Err(ConsensusError::ContainerInconsistency(format!("block {:?} is not active but is an ancestor of a potentially active block", current_block_id))),
+                        _ => return Err(ConsensusError::ContainerInconsistency(format!("block {} is not active but is an ancestor of a potentially active block", current_block_id))),
                     },
                     None => {
                         let mut missing_deps = BlockHashSet::with_capacity_and_hasher(1, BuildHHasher::default());
@@ -2843,7 +2880,7 @@ impl BlockGraph {
                 dependencies.insert(current_block_id);
 
                 if current_block.parents.is_empty() {
-                    //genesis block found
+                    // genesis block found
                     break;
                 }
 
@@ -2919,14 +2956,14 @@ impl BlockGraph {
                         < self.latest_final_blocks_periods[thread as usize].1
                     {
                         return Err(ConsensusError::ContainerInconsistency(format!(
-                            "asking for operations in thread {:?}, for which the given parent is older than the latest final block of that thread",
+                            "asking for operations in thread {}, for which the given parent is older than the latest final block of that thread",
                             thread
                         )));
                     }
                 }
                 _ => {
                     return Err(ConsensusError::ContainerInconsistency(format!(
-                        "parent block missing or in non-active state: {:?}",
+                        "parent block missing or in non-active state: {}",
                         parents[thread as usize]
                     )));
                 }
@@ -2948,7 +2985,7 @@ impl BlockGraph {
                 }
                 _ => {
                     return Err(ConsensusError::ContainerInconsistency(format!(
-                        "last final block missing or in non-active state: {:?}",
+                        "last final block missing or in non-active state: {}",
                         target_last_final_id
                     )));
                 }
@@ -2972,7 +3009,7 @@ impl BlockGraph {
                 Some(BlockStatus::Active(b)) => b,
                 _ => {
                     return Err(ConsensusError::ContainerInconsistency(format!(
-                        "missing or not active block during ancestry traversal: {:?}",
+                        "missing or not active block during ancestry traversal: {}",
                         scan_b_id
                     )));
                 }
@@ -3107,7 +3144,7 @@ impl BlockGraph {
                     .insert(add_block_id, add_block.header.content.slot.period);
             } else {
                 return Err(ConsensusError::ContainerInconsistency(format!(
-                    "inconsistency inside block statuses adding child {:?} of block {:?}",
+                    "inconsistency inside block statuses adding child {} of block {}",
                     add_block_id, parent_h
                 )));
             }
@@ -3181,9 +3218,9 @@ impl BlockGraph {
                     "consensus.block_graph.add_block_to_graph.clique_full_computing more than one clique",
                     { "cliques": self.max_cliques, "gi_head": self.gi_head }
                 );
-                //gi_head
+                // gi_head
                 debug!(
-                    "clique number went from {:?} to {:?} after adding {:?}",
+                    "clique number went from {} to {} after adding {}",
                     before, after, add_block_id
                 );
             }
@@ -3203,7 +3240,7 @@ impl BlockGraph {
                     clique.fitness = clique.fitness
                         .checked_add(
                             BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
-                                .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses computing fitness while adding {:?} - missing {:?}", add_block_id, block_h)))?
+                                .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses computing fitness while adding {} - missing {}", add_block_id, block_h)))?
                                 .fitness(),
                         )
                         .ok_or(ConsensusError::FitnessOverflow)?;
@@ -3234,7 +3271,7 @@ impl BlockGraph {
             let mut parents_updated = 0u8;
             for block_h in blockclique.block_ids.iter() {
                 let block_a = BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
-                    .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating best parents while adding {:?} - missing {:?}", add_block_id, block_h)))?;
+                    .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating best parents while adding {} - missing {}", add_block_id, block_h)))?;
                 if blockclique.block_ids.is_disjoint(
                     &block_a.children[block_a.block.header.content.slot.thread as usize]
                         .keys()
@@ -3292,7 +3329,7 @@ impl BlockGraph {
             {
                 self.active_index.remove(&stale_block_hash);
                 if active_block.is_final {
-                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {:?} - block {:?} was already final", add_block_id, stale_block_hash)));
+                    return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} was already final", add_block_id, stale_block_hash)));
                 }
 
                 // remove from gi_head
@@ -3335,8 +3372,13 @@ impl BlockGraph {
                     "hash": stale_block_hash
                 });
                 // mark as stale
-                self.new_stale_blocks
-                    .insert(stale_block_hash, active_block.block.header.content.slot);
+                self.new_stale_blocks.insert(
+                    stale_block_hash,
+                    (
+                        active_block.block.header.content.creator,
+                        active_block.block.header.content.slot,
+                    ),
+                );
                 self.block_statuses.insert(
                     stale_block_hash,
                     BlockStatus::Discarded {
@@ -3349,7 +3391,7 @@ impl BlockGraph {
                 );
                 self.discarded_index.insert(stale_block_hash);
             } else {
-                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {:?} - block {:?} is missing", add_block_id, stale_block_hash)));
+                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses removing stale blocks adding {} - block {} is missing", add_block_id, stale_block_hash)));
             }
         }
 
@@ -3473,7 +3515,7 @@ impl BlockGraph {
                 // update new final blocks list
                 self.new_final_blocks.insert(final_block_hash);
             } else {
-                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks adding {:?} - block {:?} is missing", add_block_id, final_block_hash)));
+                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks adding {} - block {} is missing", add_block_id, final_block_hash)));
             }
         }
 
@@ -3496,7 +3538,7 @@ impl BlockGraph {
             // Get the old block
             let old_block = match self.block_statuses.get(old_block_id) {
                 Some(BlockStatus::Active(latest)) => latest,
-                _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks - active old latest final block {:?} is missing in thread {:?}", old_block_id, changed_thread))),
+                _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks - active old latest final block {} is missing in thread {}", old_block_id, changed_thread))),
             };
 
             // Get the latest final in the same thread.
@@ -3529,7 +3571,7 @@ impl BlockGraph {
                 // get block, quit if not found or not active
                 let scan_b = match self.block_statuses.get(&scan_b_id) {
                     Some(BlockStatus::Active(b)) => b,
-                    _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks - block {:?} is missing", scan_b_id)))
+                    _ => return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating final blocks - block {} is missing", scan_b_id)))
                 };
 
                 // accumulate ledger changes
@@ -3641,7 +3683,7 @@ impl BlockGraph {
             for retain_h in retain_clone.into_iter() {
                 retain_active.extend(
                     self.get_active_block(&retain_h)
-                        .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses pruning and retaining the parents of the selected blocks - {:?} is missing", retain_h)))?
+                        .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses pruning and retaining the parents of the selected blocks - {} is missing", retain_h)))?
                         .parents
                         .iter()
                         .map(|(b_id, _p)| *b_id),
@@ -3657,7 +3699,7 @@ impl BlockGraph {
             for retain_h in retain_active.iter() {
                 let retain_slot = &self
                     .get_active_block(retain_h)
-                    .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses pruning and finding earliest kept slots in each thread - {:?} is missing", retain_h)))?
+                    .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses pruning and finding earliest kept slots in each thread - {} is missing", retain_h)))?
                     .block.header
                     .content
                     .slot;
@@ -3695,7 +3737,7 @@ impl BlockGraph {
                 self.active_index.remove(discard_active_h);
                 discarded_active
             } else {
-                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses pruning and removing unused final active blocks - {:?} is missing", discard_active_h)));
+                return Err(ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses pruning and removing unused final active blocks - {} is missing", discard_active_h)));
             };
 
             // remove from parent's children
@@ -3893,7 +3935,8 @@ impl BlockGraph {
                 if let Some(reason) = reason_opt {
                     // add to stats if reason is Stale
                     if reason == DiscardReason::Stale {
-                        self.new_stale_blocks.insert(block_id, header.content.slot);
+                        self.new_stale_blocks
+                            .insert(block_id, (header.content.creator, header.content.slot));
                     }
                     // transition to Discarded only if there is a reason
                     self.block_statuses.insert(
@@ -3982,7 +4025,7 @@ impl BlockGraph {
         let after = self.max_cliques.len();
         if before != after {
             debug!(
-                "clique number went from {:?} to {:?} after pruning",
+                "clique number went from {} to {} after pruning",
                 before, after
             );
         }
@@ -4050,7 +4093,7 @@ impl BlockGraph {
 
     // Get the ids of blocks that became stale.
     // Must be called by the consensus worker within `block_db_changed`.
-    pub fn get_new_stale_blocks(&mut self) -> BlockHashMap<Slot> {
+    pub fn get_new_stale_blocks(&mut self) -> BlockHashMap<(PublicKey, Slot)> {
         mem::take(&mut self.new_stale_blocks)
     }
 
@@ -4180,7 +4223,7 @@ mod tests {
         let mut cfg = example_consensus_config(ledger_file.path());
 
         cfg.block_reward = Amount::from_str("1").unwrap();
-        //to generate address and public keys
+        // to generate address and public keys
         /*        let private_key = generate_random_private_key();
         let public_key = derive_public_key(&private_key);
 
@@ -4193,7 +4236,7 @@ mod tests {
             add.get_thread(thread_count)
         ); */
 
-        //define addresses use for the test
+        // define addresses use for the test
         let pubkey_a =
             PublicKey::from_bs58_check("5UvFn66yoQerrEmikCxDVvhkLvCo9R2hJAYFMh2pZfYUQDMuCE")
                 .unwrap();
@@ -4235,15 +4278,15 @@ mod tests {
             roll_updates: Default::default(),
             production_events: vec![],
         };
-        //update ledger with initial content.
+        // update ledger with initial content.
         //   Thread 0  [at the output of block p0t0]:
         //   A 1000000000
         // Thread 1 [at the output of block p2t1]:
         //   B: 2000000000
 
-        //block reward: 1
+        // block reward: 1
 
-        //create block p1t0
+        // create block p1t0
         // block p1t0 [NON-FINAL]: creator A, parents [p0t0, p0t1] operations:
         //   A -> B : 2, fee 4
         //   => counted as [A += +1 - 2 - 4 + 4, B += +2]
@@ -4476,7 +4519,7 @@ mod tests {
 
         let block_graph = BlockGraph::new(cfg, Some(export_graph)).await.unwrap();
 
-        //Ledger at parents (p3t0, p3t1) for addresses A, B, C, D:
+        // Ledger at parents (p3t0, p3t1) for addresses A, B, C, D:
         let res = block_graph
             .get_ledger_at_parents(
                 &vec![
@@ -4505,7 +4548,7 @@ mod tests {
         assert_eq!(res.0[&address_c].balance, Amount::from_str("2048").unwrap());
         assert_eq!(res.0[&address_d].balance, Amount::from_str("0").unwrap());
 
-        //ask_ledger_at_parents for parents [p1t0, p1t1] for address A  => balance A = 1000000159
+        // ask_ledger_at_parents for parents [p1t0, p1t1] for address A  => balance A = 1000000159
         let res = block_graph
             .get_ledger_at_parents(
                 &vec![
@@ -4526,7 +4569,7 @@ mod tests {
             Amount::from_str("1000000160").unwrap()
         );
 
-        //ask_ledger_at_parents for parents [p1t0, p1t1] for addresses A, B => ERROR
+        // ask_ledger_at_parents for parents [p1t0, p1t1] for addresses A, B => ERROR
         let res = block_graph.get_ledger_at_parents(
             &vec![
                 get_dummy_block_id("blockp1t0"),
@@ -4543,7 +4586,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_bootsrapable_graph_serialize_compact() {
-        //test with 2 thread
+        // test with 2 thread
         models::init_serialization_context(models::SerializationContext {
             max_block_operations: 1024,
             parent_count: 2,
@@ -4569,7 +4612,6 @@ mod tests {
         let new_block = Block::from_bytes_compact(&bytes).unwrap();
 
         println!("{:?}", new_block);
-
         let b1_id = get_dummy_block_id("active11");
         let graph = BootstrapableGraph {
             /// Map of active blocks, were blocks are in their exported version.
@@ -4790,6 +4832,7 @@ mod tests {
             max_send_wait: 500.into(),
             endorsement_count: 8,
             block_db_prune_interval: 1000.into(),
+            max_item_return_count: 1000,
         }
     }
 }

@@ -65,7 +65,6 @@ async fn test_reward_split() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             // Check initial balances.
             let addresses_state = consensus_command_sender
@@ -75,13 +74,13 @@ async fn test_reward_split() {
 
             let addresse_a_state = addresses_state.get(&address_a).unwrap();
             assert_eq!(
-                addresse_a_state.candidate_ledger_data.balance,
+                addresse_a_state.ledger_info.candidate_ledger_info.balance,
                 Amount::from_str("10").unwrap()
             );
 
             let addresse_b_state = addresses_state.get(&address_b).unwrap();
             assert_eq!(
-                addresse_b_state.candidate_ledger_data.balance,
+                addresse_b_state.ledger_info.candidate_ledger_info.balance,
                 Amount::from_str("10").unwrap()
             );
 
@@ -103,7 +102,7 @@ async fn test_reward_split() {
 
             // Create, and propagate, block 1.
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap()
                 .best_parents
@@ -126,7 +125,7 @@ async fn test_reward_split() {
 
             // Create, and propagate, block 2.
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap()
                 .best_parents
@@ -242,7 +241,7 @@ async fn test_reward_split() {
                         // endorsement rewards
                         .saturating_add(
                             third // creator of ed 1
-                                .saturating_add(third), //creator of ed 3
+                                .saturating_add(third), // creator of ed 3
                         )
                 } else {
                     Default::default()
@@ -279,17 +278,23 @@ async fn test_reward_split() {
                         // endorsement rewards
                         .saturating_add(
                             third // creator of ed 1
-                                .saturating_add(third), //creator of ed 3
+                                .saturating_add(third), // creator of ed 3
                         )
                 } else {
                     Default::default()
                 });
 
             let state_a = addresses_state.get(&address_a).unwrap();
-            assert_eq!(state_a.candidate_ledger_data.balance, expected_a);
+            assert_eq!(
+                state_a.ledger_info.candidate_ledger_info.balance,
+                expected_a
+            );
 
             let state_b = addresses_state.get(&address_b).unwrap();
-            assert_eq!(state_b.candidate_ledger_data.balance, expected_b);
+            assert_eq!(
+                state_b.ledger_info.candidate_ledger_info.balance,
+                expected_b
+            );
 
             (
                 protocol_controller,

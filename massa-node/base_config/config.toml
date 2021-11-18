@@ -4,15 +4,10 @@ version = "DEVE.0.0"
     level = 2
 
 [api]
-    max_return_invalid_blocks = 10
-    selection_return_periods = 10
-    bind = "127.0.0.1:33033"
-    graph_latest_timespan = 132000
-
-[new_api]
     draw_lookahead_period_count = 10
     bind_private = "127.0.0.1:33034"
-    bind_public = "[::]:33035"
+    bind_public = "0.0.0.0:33035"
+    max_arguments = 128
 
 [consensus]
     genesis_timestamp = 1626440641000
@@ -20,7 +15,7 @@ version = "DEVE.0.0"
     t0 = 16000
     thread_count = 32
     genesis_key = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
-    max_discarded_blocks = 500
+    max_discarded_blocks = 100
     future_block_processing_max_periods = 100
     max_future_processing_blocks = 400
     max_dependency_blocks = 2048
@@ -51,6 +46,7 @@ version = "DEVE.0.0"
     #stats
     stats_timespan = 60000
     block_db_prune_interval = 5000
+    max_item_return_count = 100
 
 [protocol]
     message_timeout = 5000
@@ -89,14 +85,9 @@ version = "DEVE.0.0"
     max_send_wait = 500
     ban_timeout = 3600000
 
-[storage]
-    max_stored_blocks= 1000
-    path = "storage/block_store"
-    cache_capacity = 10000
-    reset_at_startup = true
-
 [bootstrap]
     bootstrap_list = [
+        ["149.202.86.103:31245", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3WYf6nj"],
         ["149.202.89.125:31245", "5wDwi2GYPniGLzpDfKjXJrmHV3p1rLRmm4bQ9TUWNVkpYmd4Zm"],
         ["158.69.120.215:31245", "5QbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c"],
         ["158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"]
@@ -124,3 +115,4 @@ version = "DEVE.0.0"
     max_pool_size_per_thread = 100000
     max_operation_future_validity_start_periods = 100
     max_endorsement_count = 10000
+    max_item_return_count = 100

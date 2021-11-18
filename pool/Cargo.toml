@@ -2,26 +2,24 @@
 name = "pool"
 version = "0.1.0"
 authors = ["Massa Labs <info@massa.net>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 displaydoc = "0.2"
 futures = { version = "0.3" }
-log = { version = "0.4" }
 num = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
+tracing = "0.1"
 # custom modules
-api-dto = { path = "../api-dto"}
-communication = { path = "../communication"}
+protocol-exports = {path = "../protocol-exports"}
 crypto = { path = "../crypto" }
 logging = { path = "../logging" }
-models = { path = "../models"}
+models = {path = "../models"}
 time = { path = "../time"}
 
 [dev-dependencies]
-pretty_assertions = "0.7"
+pretty_assertions = "1.0"
 serial_test = "0.5"
-stderrlog = { version = "0.5" }

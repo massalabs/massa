@@ -1,41 +1,35 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-// TODO:
-//   * `wallet_info`: Shows wallet info
-//   * `wallet_new_privkey`: Generates a new private key and adds it to the wallet. Returns the associated address.
-//   * `send_transaction`: sends a transaction from <from_address> to <to_address> (from_address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <from_address> <to_address> <amount> <fee>
-//   * `wallet_add_privkey`: Adds a list of private keys to the wallet. Returns the associated addresses. Parameters: list of private keys separated by ,  (no space).
-//   * `buy_rolls`: buy roll count for <address> (address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <address>  <roll count> <fee>
-//   * `sell_rolls`: sell roll count for <address> (address needs to be unlocked in the wallet). Returns the OperationId. Parameters: <address>  <roll count> <fee>
-//   * `cmd_testnet_rewards_program`: Returns rewards id. Parameter: <staking_address> <discord_ID>
+#![doc = include_str!("../../docs/wallet.md")]
 
-use serde::{Deserialize, Serialize};
-
+use crypto::derive_public_key;
 use crypto::hash::Hash;
 use crypto::signature::{PrivateKey, PublicKey};
+pub use error::WalletError;
 use models::address::{Address, AddressHashMap, AddressHashSet};
 use models::amount::Amount;
 use models::crypto::PubkeySig;
-use models::ledger::LedgerData;
+use models::Operation;
+use models::OperationContent;
+use models::SerializeCompact;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use time::UTime;
 
 mod error;
-
-pub use error::WalletError;
 
 /// Contains the private keys created in the wallet.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Wallet {
     keys: AddressHashMap<(PublicKey, PrivateKey)>,
-    wallet_path: String,
+    wallet_path: PathBuf,
 }
 
 impl Wallet {
     /// Generates a new wallet initialized with the provided json file content
-    pub fn new(json_file: &str) -> Result<Wallet, WalletError> {
-        let path = std::path::Path::new(json_file);
+    pub fn new(path: PathBuf) -> Result<Wallet, WalletError> {
         let keys = if path.is_file() {
-            serde_json::from_str::<Vec<PrivateKey>>(&std::fs::read_to_string(path)?)?
+            serde_json::from_str::<Vec<PrivateKey>>(&std::fs::read_to_string(&path)?)?
         } else {
             Vec::new()
         };
@@ -48,7 +42,7 @@ impl Wallet {
             .collect::<Result<AddressHashMap<_>, WalletError>>()?;
         Ok(Wallet {
             keys,
-            wallet_path: json_file.to_string(),
+            wallet_path: path,
         })
     }
 
@@ -68,14 +62,22 @@ impl Wallet {
     }
 
     /// Adds a new private key to wallet, if it was missing
-    pub fn add_private_key(&mut self, key: PrivateKey) -> Result<(), WalletError> {
+    pub fn add_private_key(&mut self, key: PrivateKey) -> Result<Address, WalletError> {
         if !self.keys.iter().any(|(_, (_, file_key))| file_key == &key) {
             let pub_key = crypto::derive_public_key(&key);
-            self.keys
-                .insert(Address::from_public_key(&pub_key)?, (pub_key, key));
+            let ad = Address::from_public_key(&pub_key)?;
+            self.keys.insert(ad, (pub_key, key));
             self.save()?;
+            Ok(ad)
+        } else {
+            // key already in wallet
+            Ok(*self
+                .keys
+                .iter()
+                .find(|(_, (_, file_key))| file_key == &key)
+                .unwrap()
+                .0)
         }
-        Ok(())
     }
 
     pub fn remove_address(&mut self, address: Address) -> Option<(PublicKey, PrivateKey)> {
@@ -85,6 +87,11 @@ impl Wallet {
     /// Finds the private key associated with given address
     pub fn find_associated_private_key(&self, address: Address) -> Option<&PrivateKey> {
         self.keys.get(&address).map(|(_pub_key, priv_key)| priv_key)
+    }
+
+    /// Finds the public key associated with given address
+    pub fn find_associated_public_key(&self, address: Address) -> Option<&PublicKey> {
+        self.keys.get(&address).map(|(pub_key, _priv_key)| pub_key)
     }
 
     pub fn get_wallet_address_list(&self) -> AddressHashSet {
@@ -106,50 +113,36 @@ impl Wallet {
     pub fn get_full_wallet(&self) -> &AddressHashMap<(PublicKey, PrivateKey)> {
         &self.keys
     }
+
+    pub fn create_operation(
+        &self,
+        content: OperationContent,
+        address: Address,
+    ) -> Result<Operation, WalletError> {
+        let hash = Hash::hash(&content.to_bytes_compact()?);
+        let sender_priv = self
+            .find_associated_private_key(address)
+            .ok_or(WalletError::MissingKeyError(address))?;
+        let signature = crypto::sign(&hash, &sender_priv)?;
+        Ok(Operation { content, signature })
+    }
 }
 
-/// Contains the private keys created in the wallet.
-#[derive(Debug)]
-pub struct WalletInfo<'a> {
-    pub wallet: &'a Wallet,
-    pub balances: AddressHashMap<WrappedAddressState>,
-}
-
-// TODO: remove fmt::Display for WalletInfo?
-impl<'a> std::fmt::Display for WalletInfo<'a> {
+impl std::fmt::Display for Wallet {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "WARNING: do not share your private keys")?;
-        for (addr, (public_key, key)) in &self.wallet.keys {
+        writeln!(f)?;
+        for key in &self.keys {
+            let private_key = key.1 .1; // TODO: ugly ...
+            let public_key = derive_public_key(&private_key);
+            let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
             writeln!(f)?;
-            writeln!(f, "Private key: {}", key)?;
+            writeln!(f, "Private key: {}", private_key)?;
             writeln!(f, "Public key: {}", public_key)?;
             writeln!(f, "Address: {}", addr)?;
-            match self.balances.get(&addr) {
-                Some(balance) => {
-                    write!(f, "State: \n{}", balance)?;
-                }
-                None => writeln!(f, "No balance info available. Is your node running?")?,
-            }
         }
         Ok(())
     }
 }
-
-// FIXME: dead code...
-// impl std::fmt::Display for Wallet {
-//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-//         writeln!(f)?;
-//         for key in &self.keys {
-//             let public_key = derive_public_key(key);
-//             let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
-//             writeln!(f)?;
-//             writeln!(f, "Private key: {}", key)?;
-//             writeln!(f, "Public key: {}", public_key)?;
-//             writeln!(f, "Address: {}", addr)?;
-//         }
-//         Ok(())
-//     }
-// }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ConsensusConfigData {
@@ -161,36 +154,4 @@ pub struct ConsensusConfigData {
     pub operation_validity_periods: u64,
     pub periods_per_cycle: u64,
     pub roll_price: Amount,
-}
-
-impl<'a> std::fmt::Display for WrappedAddressState {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "    final balance: {}", self.final_ledger_data.balance)?;
-        writeln!(
-            f,
-            "    candidate balance: {}",
-            self.candidate_ledger_data.balance
-        )?;
-        writeln!(f, "    locked balance: {}", self.locked_balance)?;
-        writeln!(f, "    final rolls: {}", self.final_rolls)?;
-        writeln!(f, "    candidate rolls: {}", self.candidate_rolls)?;
-
-        if let Some(active) = self.active_rolls {
-            writeln!(f, "    active rolls: {}", active)?;
-        } else {
-            writeln!(f, "    No active roll")?;
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct WrappedAddressState {
-    pub final_rolls: u64,
-    pub active_rolls: Option<u64>,
-    pub candidate_rolls: u64,
-    pub locked_balance: Amount,
-    pub candidate_ledger_data: LedgerData,
-    pub final_ledger_data: LedgerData,
 }

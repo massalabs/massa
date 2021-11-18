@@ -269,7 +269,6 @@ mod tests {
         let ser_content = content.to_bytes_compact().unwrap();
         let (res_content, _) = EndorsementContent::from_bytes_compact(&ser_content).unwrap();
         assert_eq!(format!("{:?}", res_content), format!("{:?}", content));
-
         let ser_endorsement = endorsement.to_bytes_compact().unwrap();
         let (res_endorsement, _) = Endorsement::from_bytes_compact(&ser_endorsement).unwrap();
         assert_eq!(

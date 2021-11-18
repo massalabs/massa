@@ -2,22 +2,22 @@
 name = "bootstrap"
 version = "0.1.0"
 authors = ["Massa Labs <info@massa.net>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 displaydoc = "0.2"
 futures = { version = "0.3" }
-log = { version = "0.4" }
 num_enum = "0.5"
 rand = { version = "0.8"}
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
+tracing = "0.1"
 # custom modules
-communication = {path = "../communication"}
+network = {path = "../network"}
 consensus = { path = "../consensus" }
 crypto = { path = "../crypto" }
 logging = {path = "../logging"}
@@ -26,6 +26,5 @@ time = {path = "../time"}
 
 [dev-dependencies]
 bitvec = { version = "0.22", features = ["serde"] }
-pretty_assertions = "0.7"
+pretty_assertions = "1.0"
 serial_test = "0.5"
-stderrlog = { version = "0.5" }

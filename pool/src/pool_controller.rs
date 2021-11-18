@@ -1,22 +1,23 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::pool_worker::PoolStats;
+use models::stats::PoolStats;
 
 use super::{
     config::{PoolConfig, CHANNEL_SIZE},
     error::PoolError,
     pool_worker::{PoolCommand, PoolManagementCommand, PoolWorker},
 };
-use communication::protocol::{ProtocolCommandSender, ProtocolPoolEventReceiver};
-use logging::{debug, massa_trace};
+use logging::massa_trace;
 use models::{
     Address, BlockId, Endorsement, EndorsementHashMap, EndorsementHashSet, EndorsementId,
     Operation, OperationHashMap, OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
+use protocol_exports::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
 };
+use tracing::{debug, error, info};
 
 /// Creates a new pool controller.
 ///
@@ -51,7 +52,7 @@ pub async fn start_pool_controller(
         .await;
         match res {
             Err(err) => {
-                error!("pool worker crashed: {:?}", err);
+                error!("pool worker crashed: {}", err);
                 Err(err)
             }
             Ok(v) => {
@@ -106,7 +107,7 @@ impl PoolCommandSender {
             .map_err(|_| PoolError::ChannelError("get_pool_stats command send error".into()))?;
         response_rx.await.map_err(|e| {
             PoolError::ChannelError(format!(
-                "pool command response read error in get_pool_stats {:?}",
+                "pool command response read error in get_pool_stats {}",
                 e
             ))
         })
@@ -169,7 +170,7 @@ impl PoolCommandSender {
 
         response_rx.await.map_err(|e| {
             PoolError::ChannelError(format!(
-                "pool command response read error in get_operation_batch {:?}",
+                "pool command response read error in get_operation_batch {}",
                 e
             ))
         })
@@ -198,7 +199,7 @@ impl PoolCommandSender {
 
         response_rx.await.map_err(|e| {
             PoolError::ChannelError(format!(
-                "pool command response read error in get_endorsements {:?}",
+                "pool command response read error in get_endorsements {}",
                 e
             ))
         })
@@ -223,7 +224,7 @@ impl PoolCommandSender {
 
         response_rx.await.map_err(|e| {
             PoolError::ChannelError(format!(
-                "pool command response read error in get_operations {:?}",
+                "pool command response read error in get_operations {}",
                 e
             ))
         })
@@ -252,7 +253,7 @@ impl PoolCommandSender {
 
         response_rx.await.map_err(|e| {
             PoolError::ChannelError(format!(
-                "pool command response read error in get_operations_involving_address {:?}",
+                "pool command response read error in get_operations_involving_address {}",
                 e
             ))
         })

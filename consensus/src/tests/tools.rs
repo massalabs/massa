@@ -11,35 +11,33 @@ use crate::{
     start_consensus_controller, BootstrapableGraph, ConsensusCommandSender, ConsensusEventReceiver,
     ExportProofOfStake,
 };
-use communication::protocol::ProtocolCommand;
 use crypto::{
     hash::Hash,
     signature::{PrivateKey, PublicKey},
 };
-use models::hhasher::BuildHHasher;
 use models::ledger::LedgerData;
 use models::{
     Address, Amount, Block, BlockHashSet, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
-    EndorsementContent, Operation, OperationContent, OperationHashMap, OperationType,
-    SerializeCompact, Slot,
+    EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,
 };
 use num::rational::Ratio;
 use pool::PoolCommand;
+use protocol_exports::ProtocolCommand;
 use std::str::FromStr;
 use std::{
     collections::{HashMap, HashSet},
     future::Future,
     path::Path,
 };
-use storage::{StorageAccess, StorageConfig};
 use tempfile::NamedTempFile;
 use time::UTime;
+use tracing::info;
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
     BlockId(Hash::hash(s.as_bytes()))
 }
 
-//return true if another block has been seen
+/// return true if another block has been seen
 pub async fn validate_notpropagate_block(
     protocol_controller: &mut MockProtocolController,
     not_propagated: BlockId,
@@ -57,7 +55,7 @@ pub async fn validate_notpropagate_block(
     }
 }
 
-//return true if another block has been seen
+/// return true if another block has been seen
 pub async fn validate_notpropagate_block_in_list(
     protocol_controller: &mut MockProtocolController,
     not_propagated: &Vec<BlockId>,
@@ -151,7 +149,7 @@ pub async fn validate_does_not_ask_for_block(
     match param {
         Some(new) => {
             if new.contains(hash) {
-                panic!("unexpected ask for block {:?}", hash);
+                panic!("unexpected ask for block {}", hash);
             }
         }
         None => {}
@@ -192,21 +190,6 @@ pub async fn validate_notify_block_attack_attempt(
         Some(hash) => assert_eq!(valid_hash, hash, "Attack attempt notified for wrong hash."),
         None => panic!("Attack attempt not notified before timeout."),
     }
-}
-
-pub fn start_storage() -> StorageAccess {
-    let tempdir = tempfile::tempdir().expect("cannot create temp dir");
-    let storage_config = StorageConfig {
-        /// Max number of bytes we want to store
-        max_stored_blocks: 50,
-        /// path to db
-        path: tempdir.path().to_path_buf(), //in target to be ignored by git and different file between test.
-        cache_capacity: 256,  //little to force flush cache
-        flush_interval: None, //defaut
-        reset_at_startup: true,
-    };
-    let (storage_command_tx, _storage_manager) = storage::start_storage(storage_config).unwrap();
-    storage_command_tx
 }
 
 pub async fn validate_block_found(
@@ -295,10 +278,10 @@ pub async fn propagate_block(
     let block_hash = block.header.compute_block_id().unwrap();
     protocol_controller.receive_block(block).await;
     if valid {
-        //see if the block is propagated.
+        // see if the block is propagated.
         validate_propagate_block(protocol_controller, block_hash, timeout_ms).await;
     } else {
-        //see if the block is propagated.
+        // see if the block is propagated.
         validate_notpropagate_block(protocol_controller, block_hash, timeout_ms).await;
     }
     block_hash
@@ -696,13 +679,13 @@ pub fn default_consensus_config(
         max_send_wait: 500.into(),
         endorsement_count: 0,
         block_db_prune_interval: 1000.into(),
+        max_item_return_count: 1000,
     }
 }
 
 /// Runs a consensus test, passing a mock pool controller to it.
 pub async fn consensus_pool_test<F, V>(
     cfg: ConsensusConfig,
-    opt_storage_command_sender: Option<StorageAccess>,
     boot_pos: Option<ExportProofOfStake>,
     boot_graph: Option<BootstrapableGraph>,
     test: F,
@@ -734,7 +717,6 @@ pub async fn consensus_pool_test<F, V>(
             protocol_command_sender,
             protocol_event_receiver,
             pool_command_sender,
-            opt_storage_command_sender,
             boot_pos,
             boot_graph,
             0,
@@ -768,11 +750,8 @@ pub async fn consensus_pool_test<F, V>(
 }
 
 /// Runs a consensus test, without passing a mock pool controller to it.
-pub async fn consensus_without_pool_test<F, V>(
-    cfg: ConsensusConfig,
-    opt_storage_command_sender: Option<StorageAccess>,
-    test: F,
-) where
+pub async fn consensus_without_pool_test<F, V>(cfg: ConsensusConfig, test: F)
+where
     F: FnOnce(MockProtocolController, ConsensusCommandSender, ConsensusEventReceiver) -> V,
     V: Future<
         Output = (
@@ -795,7 +774,6 @@ pub async fn consensus_without_pool_test<F, V>(
             protocol_command_sender,
             protocol_event_receiver,
             pool_command_sender,
-            opt_storage_command_sender,
             None,
             None,
             0,
@@ -827,16 +805,6 @@ pub fn get_cliques(graph: &BlockGraphExport, hash: BlockId) -> HashSet<usize> {
         if clique.block_ids.contains(&hash) {
             res.insert(i);
         }
-    }
-    res
-}
-
-pub fn get_operation_set(operations: &Vec<Operation>) -> OperationHashMap<(usize, u64)> {
-    let mut res =
-        OperationHashMap::with_capacity_and_hasher(operations.len(), BuildHHasher::default());
-    for (idx, op) in operations.iter().enumerate() {
-        let op_id = op.get_operation_id().unwrap();
-        res.insert(op_id, (idx, op.content.expire_period));
     }
     res
 }

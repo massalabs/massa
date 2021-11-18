@@ -1,17 +1,15 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use api::ApiConfig;
 use bootstrap::config::BootstrapConfig;
-use communication::network::NetworkConfig;
-use communication::protocol::ProtocolConfig;
 use consensus::ConsensusConfig;
+use models::api::APIConfig;
 use models::Version;
+use network::NetworkConfig;
 use pool::PoolConfig;
-use rpc_server::APIConfig;
+use protocol_exports::ProtocolConfig;
 use serde::Deserialize;
-use storage::StorageConfig;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct LoggingConfig {
     pub level: usize,
 }
@@ -22,9 +20,7 @@ pub struct Config {
     pub protocol: ProtocolConfig,
     pub network: NetworkConfig,
     pub consensus: ConsensusConfig,
-    pub api: ApiConfig,
-    pub new_api: APIConfig,
-    pub storage: StorageConfig,
+    pub api: APIConfig,
     pub bootstrap: BootstrapConfig,
     pub pool: PoolConfig,
     pub version: Version,

@@ -92,14 +92,13 @@ async fn test_operations_check() {
             pool_command_sender,
             None,
             None,
-            None,
             0,
         )
         .await
         .expect("could not start consensus controller");
 
     let genesis_ids = consensus_command_sender
-        .get_block_graph_status()
+        .get_block_graph_status(None, None)
         .await
         .expect("could not get block graph status")
         .genesis_blocks;
@@ -124,7 +123,8 @@ async fn test_operations_check() {
         .unwrap()
         .get(&address_1)
         .unwrap()
-        .candidate_ledger_data
+        .ledger_info
+        .candidate_ledger_info
         .clone();
     assert_eq!(res.balance, Amount::from_str("1").unwrap());
 
@@ -158,7 +158,8 @@ async fn test_operations_check() {
         .unwrap()
         .get(&address_2)
         .unwrap()
-        .candidate_ledger_data
+        .ledger_info
+        .candidate_ledger_info
         .clone();
     assert_eq!(res.balance, Amount::from_str("5").unwrap());
 

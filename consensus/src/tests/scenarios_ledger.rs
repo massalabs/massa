@@ -690,14 +690,13 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             pool_command_sender,
             None,
             None,
-            None,
             0,
         )
         .await
         .expect("could not start consensus controller");
 
     let genesis_ids = consensus_command_sender
-        .get_block_graph_status()
+        .get_block_graph_status(None, None)
         .await
         .expect("could not get block graph status")
         .genesis_blocks;
@@ -807,7 +806,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             ledger.0[&address_1].balance,
             Amount::from_str("991").unwrap(),
             "wrong address balance"
-        ); // TODO update balance with endorsement rewards
+        ); // TODO: update balance with endorsement rewards
         assert_eq!(
             ledger.0[&address_2].balance,
             Amount::from_str("2985").unwrap(),

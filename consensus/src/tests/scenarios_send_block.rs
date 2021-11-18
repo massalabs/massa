@@ -28,16 +28,15 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let start_slot = 3;
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create test blocks
+            // create test blocks
             let slot = Slot::new(1 + start_slot, 0);
             let draw = consensus_command_sender
                 .get_selection_draws(slot.clone(), Slot::new(2 + start_slot, 0))
@@ -56,7 +55,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
             // Send the actual block.
             protocol_controller.receive_block(t0s1).await;
 
-            //block t0s1 is propagated
+            // block t0s1 is propagated
             let hash_list = vec![hasht0s1];
             tools::validate_propagate_block_in_list(
                 &mut protocol_controller,
@@ -102,16 +101,15 @@ async fn test_consensus_block_not_found() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let start_slot = 3;
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create test blocks
+            // create test blocks
             let (hasht0s1, _, _) = tools::create_block(
                 &cfg,
                 Slot::new(1 + start_slot, 0),

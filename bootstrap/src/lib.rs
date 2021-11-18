@@ -3,17 +3,16 @@
 use crate::client_binder::BootstrapClientBinder;
 use crate::establisher::Duplex;
 use crate::server_binder::BootstrapServerBinder;
-use communication::network::{BootstrapPeers, NetworkCommandSender};
 use config::BootstrapConfig;
 use consensus::{BootstrapableGraph, ConsensusCommandSender, ExportProofOfStake};
 use crypto::signature::{PrivateKey, PublicKey};
 use error::BootstrapError;
 pub use establisher::Establisher;
 use futures::{stream::FuturesUnordered, StreamExt};
-use log::{debug, info, warn};
 use logging::massa_trace;
 use messages::BootstrapMessage;
 use models::Version;
+use network::{BootstrapPeers, NetworkCommandSender};
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use std::collections::{hash_map, HashMap};
 use std::net::SocketAddr;
@@ -21,6 +20,7 @@ use std::{convert::TryInto, net::IpAddr};
 use time::UTime;
 use tokio::time::Instant;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
+use tracing::{debug, info, warn};
 
 mod client_binder;
 pub mod config;
@@ -107,10 +107,7 @@ async fn get_state_internal(
         let compensation_millis: i64 = compensation_millis.try_into().map_err(|_| {
             BootstrapError::GeneralError("Failed to convert compensation time into i64".into())
         })?;
-        debug!(
-            "Server clock compensation set to: {:?}",
-            compensation_millis
-        );
+        debug!("Server clock compensation set to: {}", compensation_millis);
         compensation_millis
     } else {
         0
@@ -190,7 +187,7 @@ pub async fn get_state(
 
             match get_state_internal(&cfg, addr, pub_key, &mut establisher, version).await {
                 Err(e) => {
-                    warn!("error while bootstrapping: {:?}", e);
+                    warn!("error while bootstrapping: {}", e);
                     sleep(cfg.retry_delay.into()).await;
                 }
                 Ok((pos, graph, compensation, peers)) => {
@@ -279,6 +276,15 @@ impl BootstrapServer {
         let cache_timer = sleep(cache_timeout);
         let per_ip_min_interval = self.cfg.per_ip_min_interval.to_duration();
         tokio::pin!(cache_timer);
+        /*
+            select! without the "biased" modifier will randomly select the 1st branch to check,
+            then will check the next ones in the order they are written.
+            We choose this order:
+                * manager commands to avoid waiting too long to stop in case of contention
+                * cache timeout to avoid skipping timeouts cleanup tasks (they are relatively rare)
+                * bootstrap sessions (rare)
+                * listener: most frequent => last
+        */
         loop {
             massa_trace!("bootstrap.lib.run.select", {});
             tokio::select! {
@@ -353,7 +359,7 @@ impl BootstrapServer {
                     bootstrap_sessions.push(async move {
                         match manage_bootstrap(cfg_copy, dplx, data_pos, data_graph, data_peers, private_key, compensation_millis, version).await {
                             Ok(_) => info!("bootstrapped peer {}", remote_addr),
-                            Err(err) => debug!("bootstrap serving error for peer {}: {:?}", remote_addr, err),
+                            Err(err) => debug!("bootstrap serving error for peer {}: {}", remote_addr, err),
                         }
                     });
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});

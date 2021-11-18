@@ -9,7 +9,7 @@ use core::usize;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Clique {
     pub block_ids: BlockHashSet,
     pub fitness: u64,
@@ -63,7 +63,7 @@ impl SerializeCompact for Clique {
 
         // block_ids
         let block_ids_count: u32 = self.block_ids.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many blocks in in clique: {:?}", err))
+            ModelsError::SerializeError(format!("too many blocks in in clique: {}", err))
         })?;
         res.extend(&block_ids_count.to_varint_bytes());
         for b_id in self.block_ids.iter() {

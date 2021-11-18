@@ -1,10 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use communication::protocol::ProtocolCommand;
 use models::address::AddressHashSet;
 use models::{Address, Amount, BlockId, Slot};
 use num::rational::Ratio;
 use pool::PoolCommand;
+use protocol_exports::ProtocolCommand;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use serial_test::serial;
 use std::collections::HashMap;
@@ -88,13 +88,12 @@ async fn test_roll() {
         cfg.clone(),
         None,
         None,
-        None,
         async move |mut pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver| {
             let mut parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -155,11 +154,11 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
-            assert_eq!(addr_state.final_rolls, 0);
-            assert_eq!(addr_state.candidate_rolls, 1);
+            assert_eq!(addr_state.rolls.active_rolls, 0);
+            assert_eq!(addr_state.rolls.final_rolls, 0);
+            assert_eq!(addr_state.rolls.candidate_rolls, 1);
             assert_eq!(
-                addr_state.candidate_ledger_data.balance,
+                addr_state.ledger_info.candidate_ledger_info.balance,
                 Amount::from_str("9000").unwrap()
             );
 
@@ -194,10 +193,10 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
-            assert_eq!(addr_state.final_rolls, 0);
-            assert_eq!(addr_state.candidate_rolls, 0);
-            let balance = addr_state.candidate_ledger_data.balance;
+            assert_eq!(addr_state.rolls.active_rolls, 0);
+            assert_eq!(addr_state.rolls.final_rolls, 0);
+            assert_eq!(addr_state.rolls.candidate_rolls, 0);
+            let balance = addr_state.ledger_info.candidate_ledger_info.balance;
             assert_eq!(balance, Amount::from_str("9000").unwrap());
 
             let (id_2t, block2t2, _) =
@@ -219,7 +218,7 @@ async fn test_roll() {
 
             // cycle 2
 
-            //miss block 4
+            // miss block 4
 
             let (id_4t1, block4t1, _) =
                 create_block_with_operations(&cfg, Slot::new(4, 1), &parents, priv_1, vec![]);
@@ -287,9 +286,9 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(1));
-            assert_eq!(addr_state.final_rolls, 0);
-            assert_eq!(addr_state.candidate_rolls, 0);
+            assert_eq!(addr_state.rolls.active_rolls, 1);
+            assert_eq!(addr_state.rolls.final_rolls, 0);
+            assert_eq!(addr_state.rolls.candidate_rolls, 0);
 
             let (id_6t1, block6t1, _) = create_block_with_operations(
                 &cfg,
@@ -324,9 +323,9 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(1));
-            assert_eq!(addr_state.final_rolls, 0);
-            assert_eq!(addr_state.candidate_rolls, 0);
+            assert_eq!(addr_state.rolls.active_rolls, 1);
+            assert_eq!(addr_state.rolls.final_rolls, 0);
+            assert_eq!(addr_state.rolls.candidate_rolls, 0);
 
             let (id_7t1, block7t1, _) = create_block_with_operations(
                 &cfg,
@@ -362,10 +361,10 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
-            assert_eq!(addr_state.final_rolls, 0);
-            assert_eq!(addr_state.candidate_rolls, 2);
-            let balance = addr_state.candidate_ledger_data.balance;
+            assert_eq!(addr_state.rolls.active_rolls, 0);
+            assert_eq!(addr_state.rolls.final_rolls, 0);
+            assert_eq!(addr_state.rolls.candidate_rolls, 2);
+            let balance = addr_state.ledger_info.candidate_ledger_info.balance;
             assert_eq!(balance, Amount::from_str("7000").unwrap());
 
             let (id_8t1, block8t1, _) =
@@ -394,10 +393,10 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
-            assert_eq!(addr_state.final_rolls, 0);
-            assert_eq!(addr_state.candidate_rolls, 0);
-            let balance = addr_state.candidate_ledger_data.balance;
+            assert_eq!(addr_state.rolls.active_rolls, 0);
+            assert_eq!(addr_state.rolls.final_rolls, 0);
+            assert_eq!(addr_state.rolls.candidate_rolls, 0);
+            let balance = addr_state.ledger_info.candidate_ledger_info.balance;
             assert_eq!(balance, Amount::from_str("9000").unwrap());
 
             let (id_9t1, block9t1, _) =
@@ -423,9 +422,9 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
-            assert_eq!(addr_state.final_rolls, 2);
-            assert_eq!(addr_state.candidate_rolls, 0);
+            assert_eq!(addr_state.rolls.active_rolls, 0);
+            assert_eq!(addr_state.rolls.final_rolls, 2);
+            assert_eq!(addr_state.rolls.candidate_rolls, 0);
 
             let balance = consensus_command_sender
                 .get_addresses_info(addresses.clone())
@@ -433,7 +432,8 @@ async fn test_roll() {
                 .unwrap()
                 .get(&address_2)
                 .unwrap()
-                .candidate_ledger_data
+                .ledger_info
+                .candidate_ledger_info
                 .balance;
             assert_eq!(balance, Amount::from_str("10000").unwrap());
 
@@ -458,9 +458,9 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
-            assert_eq!(addr_state.final_rolls, 0);
-            assert_eq!(addr_state.candidate_rolls, 0);
+            assert_eq!(addr_state.rolls.active_rolls, 0);
+            assert_eq!(addr_state.rolls.final_rolls, 0);
+            assert_eq!(addr_state.rolls.candidate_rolls, 0);
             (
                 pool_controller,
                 protocol_controller,
@@ -550,7 +550,6 @@ async fn test_roll_block_creation() {
             pool_command_sender,
             None,
             None,
-            None,
             0,
         )
         .await
@@ -564,7 +563,7 @@ async fn test_roll_block_creation() {
     addresses.insert(address_2);
     let addresses = addresses;
 
-    //wait for first slot
+    // wait for first slot
     pool_controller
         .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
             PoolCommand::UpdateCurrentSlot(s) => {
@@ -638,9 +637,9 @@ async fn test_roll_block_creation() {
         .get(&address_2)
         .unwrap()
         .clone();
-    assert_eq!(addr_state.active_rolls, Some(0));
-    assert_eq!(addr_state.final_rolls, 0);
-    assert_eq!(addr_state.candidate_rolls, 1);
+    assert_eq!(addr_state.rolls.active_rolls, 0);
+    assert_eq!(addr_state.rolls.final_rolls, 0);
+    assert_eq!(addr_state.rolls.candidate_rolls, 1);
 
     let balance = consensus_command_sender
         .get_addresses_info(addresses.clone())
@@ -648,7 +647,8 @@ async fn test_roll_block_creation() {
         .unwrap()
         .get(&address_2)
         .unwrap()
-        .candidate_ledger_data
+        .ledger_info
+        .candidate_ledger_info
         .balance;
     assert_eq!(balance, Amount::from_str("9000").unwrap());
 
@@ -743,10 +743,10 @@ async fn test_roll_block_creation() {
         .get(&address_2)
         .unwrap()
         .clone();
-    assert_eq!(addr_state.active_rolls, Some(0));
-    assert_eq!(addr_state.final_rolls, 0);
-    assert_eq!(addr_state.candidate_rolls, 0);
-    let balance = addr_state.candidate_ledger_data.balance;
+    assert_eq!(addr_state.rolls.active_rolls, 0);
+    assert_eq!(addr_state.rolls.final_rolls, 0);
+    assert_eq!(addr_state.rolls.candidate_rolls, 0);
+    let balance = addr_state.ledger_info.candidate_ledger_info.balance;
     assert_eq!(balance, Amount::from_str("9000").unwrap());
 }
 
@@ -865,7 +865,6 @@ async fn test_roll_deactivation() {
             pool_command_sender,
             None,
             None,
-            None,
             0,
         )
         .await
@@ -873,14 +872,14 @@ async fn test_roll_deactivation() {
 
     let mut cur_slot = Slot::new(0, 0);
     let mut best_parents = consensus_command_sender
-        .get_block_graph_status()
+        .get_block_graph_status(None, None)
         .await
         .unwrap()
         .genesis_blocks;
     let mut cycle_draws = HashMap::new();
     let mut draws_cycle = None;
     'outer: loop {
-        //wait for slot info
+        // wait for slot info
         let latest_slot = pool_controller
             .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
                 PoolCommand::UpdateCurrentSlot(s) => Some(s),
@@ -985,23 +984,23 @@ async fn test_roll_deactivation() {
                 .clone();
             if cur_slot.period == (1 + cfg.pos_lookback_cycles) * cfg.periods_per_cycle {
                 if cur_slot.thread == 0 {
-                    assert_eq!(addrs_info[&address_a0].candidate_rolls, 0);
-                    assert_eq!(addrs_info[&address_b0].candidate_rolls, 1);
-                    assert_eq!(addrs_info[&address_a1].candidate_rolls, 1);
-                    assert_eq!(addrs_info[&address_b1].candidate_rolls, 1);
+                    assert_eq!(addrs_info[&address_a0].rolls.candidate_rolls, 0);
+                    assert_eq!(addrs_info[&address_b0].rolls.candidate_rolls, 1);
+                    assert_eq!(addrs_info[&address_a1].rolls.candidate_rolls, 1);
+                    assert_eq!(addrs_info[&address_b1].rolls.candidate_rolls, 1);
                 } else if cur_slot.thread == 1 {
-                    assert_eq!(addrs_info[&address_a0].candidate_rolls, 0);
-                    assert_eq!(addrs_info[&address_b0].candidate_rolls, 1);
-                    assert_eq!(addrs_info[&address_a1].candidate_rolls, 0);
-                    assert_eq!(addrs_info[&address_b1].candidate_rolls, 1);
+                    assert_eq!(addrs_info[&address_a0].rolls.candidate_rolls, 0);
+                    assert_eq!(addrs_info[&address_b0].rolls.candidate_rolls, 1);
+                    assert_eq!(addrs_info[&address_a1].rolls.candidate_rolls, 0);
+                    assert_eq!(addrs_info[&address_b1].rolls.candidate_rolls, 1);
                 } else {
                     break 'outer;
                 }
             } else {
-                assert_eq!(addrs_info[&address_a0].candidate_rolls, 1);
-                assert_eq!(addrs_info[&address_b0].candidate_rolls, 1);
-                assert_eq!(addrs_info[&address_a1].candidate_rolls, 1);
-                assert_eq!(addrs_info[&address_b1].candidate_rolls, 1);
+                assert_eq!(addrs_info[&address_a0].rolls.candidate_rolls, 1);
+                assert_eq!(addrs_info[&address_b0].rolls.candidate_rolls, 1);
+                assert_eq!(addrs_info[&address_a1].rolls.candidate_rolls, 1);
+                assert_eq!(addrs_info[&address_b1].rolls.candidate_rolls, 1);
             }
 
             cur_slot = cur_slot.get_next_slot(thread_count).unwrap();

@@ -1,121 +1,176 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-#![recursion_limit = "256"]
+#![feature(async_closure)]
+#![doc = include_str!("../../docs/api.md")]
 
-use communication::{network::NetworkConfig, protocol::ProtocolConfig};
-pub use config::ApiConfig;
-use config::CHANNEL_SIZE;
-use consensus::ConsensusConfig;
-pub use error::ApiError;
-use filters::get_filter;
-use filters::ApiManagementCommand;
-pub use filters::{ApiEvent, OperationIds, PrivateKeys};
-use logging::massa_trace;
-pub use models::address::Addresses;
-pub use models::crypto::PubkeySig;
-use models::Version;
-use pool::PoolConfig;
-use std::collections::VecDeque;
-use storage::StorageAccess;
+use consensus::{ConsensusCommandSender, ConsensusConfig};
+use crypto::signature::PrivateKey;
+use error::ApiError;
+use jsonrpc_core::{BoxFuture, IoHandler, Value};
+use jsonrpc_derive::rpc;
+use jsonrpc_http_server::{CloseHandle, ServerBuilder};
+use models::address::{AddressHashMap, AddressHashSet};
+use models::api::{
+    APIConfig, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
+    TimeInterval,
+};
+use models::clique::Clique;
+use models::crypto::PubkeySig;
+use models::node::NodeId;
+use models::operation::{Operation, OperationId};
+use models::{Address, BlockId, EndorsementId, Version};
+use network::{NetworkCommandSender, NetworkConfig};
+use pool::PoolCommandSender;
+use std::net::{IpAddr, SocketAddr};
+use std::thread;
+use std::thread::JoinHandle;
 use tokio::sync::mpsc;
+use tracing::{info, warn};
 
-mod config;
 mod error;
-mod filters;
+mod private;
+mod public;
 
-#[cfg(test)]
-mod tests;
-
-pub struct ApiEventReceiver(mpsc::Receiver<ApiEvent>);
-
-pub struct ApiManager {
-    join_handle: tokio::task::JoinHandle<()>,
-    manager_tx: mpsc::Sender<ApiManagementCommand>,
+pub struct Public {
+    pub consensus_command_sender: ConsensusCommandSender,
+    pub pool_command_sender: PoolCommandSender,
+    pub consensus_config: ConsensusConfig,
+    pub api_config: APIConfig,
+    pub network_config: NetworkConfig,
+    pub version: Version,
+    pub network_command_sender: NetworkCommandSender,
+    pub compensation_millis: i64,
+    pub node_id: NodeId,
 }
 
-/// Spawn API server.
-///
-pub async fn start_api_controller(
-    version: Version,
-    cfg: ApiConfig,
-    consensus_config: ConsensusConfig,
-    protocol_config: ProtocolConfig,
-    network_config: NetworkConfig,
-    pool_config: PoolConfig,
-    opt_storage_command_sender: Option<StorageAccess>,
-    clock_compensation: i64,
-) -> Result<(ApiEventReceiver, ApiManager), ApiError> {
-    let (event_tx, event_rx) = mpsc::channel::<ApiEvent>(CHANNEL_SIZE);
-    let (manager_tx, mut manager_rx) = mpsc::channel::<ApiManagementCommand>(1);
-    massa_trace!("api.lib.start_api_controller", {});
-    let bind = cfg.bind;
-    let (_, server) = warp::serve(get_filter(
-        version,
-        cfg,
-        consensus_config,
-        protocol_config,
-        network_config,
-        pool_config,
-        event_tx,
-        opt_storage_command_sender,
-        clock_compensation,
-    ))
-    .try_bind_with_graceful_shutdown(bind, async move {
-        loop {
-            massa_trace!("api.lib.start_api_controller.select", {});
-            tokio::select! {
-                cmd = manager_rx.recv() => {
-                    massa_trace!("api.lib.start_api_controller.manager", {});
-                    match cmd {
-                        None => break,
-                        Some(_) => {}
-                    }
-                }
-            }
+pub struct Private {
+    pub consensus_command_sender: ConsensusCommandSender,
+    pub network_command_sender: NetworkCommandSender,
+    pub consensus_config: ConsensusConfig,
+    pub api_config: APIConfig,
+    pub stop_node_channel: mpsc::Sender<()>,
+}
+
+pub struct API<T>(T);
+
+pub trait RpcServer: Endpoints {
+    fn serve(self, _: &SocketAddr) -> StopHandle;
+}
+
+fn serve(api: impl Endpoints, url: &SocketAddr) -> StopHandle {
+    let mut io = IoHandler::new();
+    io.extend_with(api.to_delegate());
+
+    let server = ServerBuilder::new(io)
+        .event_loop_executor(tokio::runtime::Handle::current())
+        .start_http(url)
+        .expect("Unable to start RPC server");
+
+    let close_handle = server.close_handle();
+    let join_handle = thread::spawn(|| server.wait());
+
+    StopHandle {
+        close_handle,
+        join_handle,
+    }
+}
+
+pub struct StopHandle {
+    close_handle: CloseHandle,
+    join_handle: JoinHandle<()>,
+}
+
+impl StopHandle {
+    pub fn stop(self) {
+        self.close_handle.close();
+        if let Err(err) = self.join_handle.join() {
+            warn!("API thread panicked: {:?}", err);
+        } else {
+            info!("API finished cleanly");
         }
-    })?;
-
-    let join_handle = tokio::task::spawn(server);
-
-    Ok((
-        ApiEventReceiver(event_rx),
-        ApiManager {
-            join_handle,
-            manager_tx,
-        },
-    ))
-}
-
-impl ApiEventReceiver {
-    /// Listen for ApiEvents
-    pub async fn wait_event(&mut self) -> Result<ApiEvent, ApiError> {
-        self.0
-            .recv()
-            .await
-            .ok_or_else(|| ApiError::SendChannelError("could not receive api event".to_string()))
-    }
-
-    /// drains remaining events and returns them in a VecDeque
-    /// note: events are sorted from oldest to newest
-    pub async fn drain(mut self) -> VecDeque<ApiEvent> {
-        let mut remaining_events: VecDeque<ApiEvent> = VecDeque::new();
-        while let Some(evt) = self.0.recv().await {
-            remaining_events.push_back(evt);
-        }
-        remaining_events
     }
 }
 
-impl ApiManager {
-    /// Stop the protocol controller
-    pub async fn stop(
-        self,
-        api_event_receiver: ApiEventReceiver,
-    ) -> Result<VecDeque<ApiEvent>, ApiError> {
-        massa_trace!("api.lib.stop", {});
-        drop(self.manager_tx);
-        let remaining_events = api_event_receiver.drain().await;
-        let _ = self.join_handle.await?;
-        Ok(remaining_events)
-    }
+#[rpc(server)]
+pub trait Endpoints {
+    /// Gracefully stop the node.
+    #[rpc(name = "stop_node")]
+    fn stop_node(&self) -> BoxFuture<Result<(), ApiError>>;
+
+    /// Sign message with node's key.
+    /// Returns the public key that signed the message and the signature.
+    #[rpc(name = "node_sign_message")]
+    fn node_sign_message(&self, _: Vec<u8>) -> BoxFuture<Result<PubkeySig, ApiError>>;
+
+    /// Add a vec of new private keys for the node to use to stake.
+    /// No confirmation to expect.
+    #[rpc(name = "add_staking_private_keys")]
+    fn add_staking_private_keys(&self, _: Vec<PrivateKey>) -> BoxFuture<Result<(), ApiError>>;
+
+    /// Remove a vec of addresses used to stake.
+    /// No confirmation to expect.
+    #[rpc(name = "remove_staking_addresses")]
+    fn remove_staking_addresses(&self, _: Vec<Address>) -> BoxFuture<Result<(), ApiError>>;
+
+    /// Return hashset of staking addresses.
+    #[rpc(name = "get_staking_addresses")]
+    fn get_staking_addresses(&self) -> BoxFuture<Result<AddressHashSet, ApiError>>;
+
+    /// Bans given IP address.
+    /// No confirmation to expect.
+    #[rpc(name = "ban")]
+    fn ban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+
+    /// Unbans given IP address.
+    /// No confirmation to expect.
+    #[rpc(name = "unban")]
+    fn unban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+
+    /// Summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count.
+    #[rpc(name = "get_status")]
+    fn get_status(&self) -> BoxFuture<Result<NodeStatus, ApiError>>;
+
+    /// Get cliques.
+    #[rpc(name = "get_cliques")]
+    fn get_cliques(&self) -> BoxFuture<Result<Vec<Clique>, ApiError>>;
+
+    /// Returns the active stakers and their active roll counts for the current cycle.
+    #[rpc(name = "get_stakers")]
+    fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<u64>, ApiError>>;
+
+    /// Returns operations information associated to a given list of operations' IDs.
+    #[rpc(name = "get_operations")]
+    fn get_operations(
+        &self,
+        _: Vec<OperationId>,
+    ) -> BoxFuture<Result<Vec<OperationInfo>, ApiError>>;
+
+    /// Get endorsements (not yet implemented).
+    #[rpc(name = "get_endorsements")]
+    fn get_endorsements(
+        &self,
+        _: Vec<EndorsementId>,
+    ) -> BoxFuture<Result<Vec<EndorsementInfo>, ApiError>>;
+
+    /// Get information on a block given its hash.
+    #[rpc(name = "get_block")]
+    fn get_block(&self, _: BlockId) -> BoxFuture<Result<BlockInfo, ApiError>>;
+
+    /// Get the block graph within the specified time interval.
+    /// Optional parameters: from `<time_start>` (included) and to `<time_end>` (excluded) millisecond timestamp
+    #[rpc(name = "get_graph_interval")]
+    fn get_graph_interval(&self, _: TimeInterval)
+        -> BoxFuture<Result<Vec<BlockSummary>, ApiError>>;
+
+    /// Get addresses.
+    #[rpc(name = "get_addresses")]
+    fn get_addresses(&self, _: Vec<Address>) -> BoxFuture<Result<Vec<AddressInfo>, ApiError>>;
+
+    /// Adds operations to pool. Returns operations that were ok and sent to pool.
+    #[rpc(name = "send_operations")]
+    fn send_operations(&self, _: Vec<Operation>) -> BoxFuture<Result<Vec<OperationId>, ApiError>>;
+}
+
+fn _jsonrpc_assert(_method: &str, _request: Value, _response: Value) {
+    // TODO: jsonrpc_client_transports::RawClient::call_method
 }

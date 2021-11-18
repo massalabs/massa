@@ -29,15 +29,14 @@ async fn test_wishlist_delta_with_empty_remove() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create test blocks
+            // create test blocks
             let slot = Slot::new(1, 0);
             let draw = consensus_command_sender
                 .get_selection_draws(slot.clone(), Slot::new(2, 0))
@@ -49,7 +48,7 @@ async fn test_wishlist_delta_with_empty_remove() {
             let (hasht0s1, t0s1, _) =
                 tools::create_block(&cfg, Slot::new(1, 0), genesis_hashes.clone(), creator);
 
-            //send header for block t0s1
+            // send header for block t0s1
             protocol_controller
                 .receive_header(t0s1.header.clone())
                 .await;
@@ -94,22 +93,21 @@ async fn test_wishlist_delta_remove() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create test blocks
+            // create test blocks
             let (hasht0s1, t0s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
                 staking_keys[0].clone(),
             );
-            //send header for block t0s1
+            // send header for block t0s1
             protocol_controller
                 .receive_header(t0s1.header.clone())
                 .await;

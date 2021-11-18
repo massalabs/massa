@@ -1,1 +1,6 @@
-default_node = "127.0.0.1:33033"
+history = 10
+
+[default_node]
+    ip = "127.0.0.1"
+    private_port = 33034
+    public_port = 33035
