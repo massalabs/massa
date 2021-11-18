@@ -1,7 +1,2 @@
-status = [
-    "sanity",
-    "check",
-    "test",
-    "doctest",
-]
+status = [ "success" ]
 delete_merged_branches = true

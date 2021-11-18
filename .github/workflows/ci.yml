@@ -11,6 +11,7 @@ env:
   RUST_BACKTRACE: full
 
 jobs:
+  # Quick tests on each commit/PR
   sanity:
     runs-on: ubuntu-latest
     steps:
@@ -28,14 +29,9 @@ jobs:
         args: --all -- --check
 
   check:
+    if: github.ref != 'refs/heads/staging'
     needs: sanity
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-          - macOS-latest
-          - windows-latest
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - uses: actions-rs/toolchain@v1
@@ -49,6 +45,7 @@ jobs:
         command: check
 
   test:
+    if: github.ref != 'refs/heads/staging'
     needs: check
     runs-on: ubuntu-latest
     steps:
@@ -68,6 +65,7 @@ jobs:
         args: --lib
 
   doctest:
+    if: github.ref != 'refs/heads/staging'
     needs: check
     runs-on: ubuntu-latest
     steps:
@@ -84,6 +82,7 @@ jobs:
         args: --doc
 
   clippy:
+    if: github.ref != 'refs/heads/staging'
     needs: check
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -101,10 +100,43 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
 
-  coverage:
-    needs: [test, doctest]
+  # Full cross-platform tests required by bors to merge on main branch
+  full:
+    if: github.ref == 'refs/heads/staging'
+    name: full
+    needs: sanity
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          # FIXME: - macOS-latest
+          - windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: nightly
+        override: true
+    - uses: Swatinem/rust-cache@v1
+    - uses: actions-rs/cargo@v1
+      with:
+        command: build
+    - uses: actions-rs/cargo@v1
+      with:
+        command: test
+
+  success: # quick hack because bors wrongly detect matrix jobs status
+    if: github.ref == 'refs/heads/staging'
+    needs: full
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging'
+    steps:
+    - run: exit 0
+
+  coverage:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     steps:
     - uses: actions/checkout@v2
     - uses: actions-rs/toolchain@v1
