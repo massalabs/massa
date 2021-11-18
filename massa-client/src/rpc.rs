@@ -1,10 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::net::{IpAddr, SocketAddr};
-
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
-
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
     AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, TimeInterval,
@@ -13,9 +10,7 @@ use models::clique::Clique;
 use models::crypto::PubkeySig;
 use models::{Address, BlockId, EndorsementId, Operation, OperationId};
 use signature::PrivateKey;
-
-// TODO: This crate should at some point be renamed `client`, `massa` or `massa-client`
-// and replace the previous one!
+use std::net::{IpAddr, SocketAddr};
 
 pub struct Client {
     pub public: RpcClient,
@@ -35,7 +30,6 @@ impl Client {
     }
 }
 
-// TODO: Did we crate 2 RpcClient structs? (to separate public/private calls in impl)
 pub struct RpcClient(TypedClient);
 
 /// This is required by `jsonrpc_core_client::transports::http::connect`

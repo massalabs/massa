@@ -30,6 +30,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.45"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee10e43ae4a853c0a3591d4e2ada1719e553be18199d9da9d4a83f5927c2f5c7"
+
+[[package]]
 name = "api"
 version = "0.1.0"
 dependencies = [
@@ -504,6 +510,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a74ea89a0a1b98f6332de42c95baff457ada66d1cb4030f9ff151b2041a1c746"
 dependencies = [
  "cfg-if 1.0.0",
+]
+
+[[package]]
+name = "erased-serde"
+version = "0.3.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3de9ad4541d99dc22b59134e7ff8dc3d6c988c89ecd7324bf10a8362b07a2afa"
+dependencies = [
+ "serde 1.0.130",
 ]
 
 [[package]]
@@ -1083,11 +1098,13 @@ dependencies = [
 name = "massa-client"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "assert_cmd",
  "atty",
  "config",
  "console",
  "dialoguer",
+ "erased-serde",
  "futures 0.3.17",
  "jsonrpc-core-client",
  "lazy_static",
