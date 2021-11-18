@@ -84,7 +84,25 @@ via another, or multiple other, component(s).
         - Pool
         - Network
 
-
+```mermaid
+graph LR
+   MN[Massa-node]
+   C[Consensus] -->|events| MN
+   C -->|commands| Pr[Protocol]
+   C -->|commands| Po[Pool]
+   Po -->|commands| Pr
+   Pr -->|events| C
+   Pr -->|events| Po
+   Pr -->|commands| N[Network]
+   N -->|events| Pr
+   N -->|events| No[Node]
+   No -->|events| N
+   A[Api] --> |commands| C
+   A[Api] --> |commands| Po
+   A[Api] --> |commands| N
+   B[Bootstrap] --> |commands| C
+   B[Bootstrap] --> |commands| N
+```
 
 ## Blocking relationships
 
