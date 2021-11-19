@@ -39,92 +39,19 @@ testnet discussions, in the testnet channel.
 For project announcements, we mainly use
 [Telegram](https://t.me/massanetwork).
 
-## Install
+## Tutorials to follow to join the testnet
 
-If you just wish to run a Massa node without compiling it yourself, you
-can run the latest binary:
-
--   [Windows
-    executable](https://gitlab.com/massalabs/massa/-/jobs/artifacts/testnet/download?job=build-windows)
--   [Linux
-    binary](https://gitlab.com/massalabs/massa/-/jobs/artifacts/testnet/download?job=build-linux)
--   [MacOS
-    binary](https://gitlab.com/massalabs/massa/-/jobs/artifacts/testnet/download?job=build-darwin)
-
-### On Windows
-
-Please go to the [Install and Run on Windows](docs/windows_install.md)
-page.
-
-### On Ubuntu / MacOS
-
--   on Ubuntu, these libs must be installed:
-    `sudo apt install pkg-config curl git build-essential libssl-dev`
--   install [rustup](https://www.rust-lang.org/tools/install):
-    `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
--   configure path: `source $HOME/.cargo/env`
--   check rust version: `rustc --version`
--   install
-    [nigthly](https://doc.rust-lang.org/edition-guide/rust-2018/rustup-for-managing-rust-versions.html):
-    `rustup toolchain install nightly`
--   set it as default: `rustup default nightly`
--   check rust version: `rustc --version`
--   clone this repo:
-    `git clone --branch testnet https://gitlab.com/massalabs/massa.git`
-
-## Run
-
-### Start the node
-
-On a first window:
-
-    cd massa/massa-node/
-
-Launch the node, on Ubuntu:
-
-    RUST_BACKTRACE=full cargo run --release |& tee logs.txt
-
-On macOS:
-
-    RUST_BACKTRACE=full cargo run --release > logs.txt 2>&1
-
-### Start the client
-
-On a second window:
-
-    cd massa/massa-client/
-    cargo run --release
-
-## Update
-
-If you use the binaries, simply download the latest binaries. Otherwise:
-
-Update Rust:
-
-    rustup update
-
-Update Massa:
-
-    cd massa/
-    git stash
-    git checkout testnet
-    git pull
-
-test
-
-## Tutorials
-
-Here is a set of tutorials:
-
+-   [Installing a node](docs/install.md)
+-   [Running a node](docs/run.md)
 -   [Creating a wallet](docs/wallet.md)
 -   [Staking](docs/staking.md)
+-   [Routability tutorial](docs/routability.md) (Optionnal)
+-   [Testnet rewards program](docs/testnet_rules.md) (Optionnal)
+
+## More tutorials
+
+-   [Updating the node](docs/Update.md)
 -   [Sending transactions](docs/transaction.md)
--   [Install and Run on Windows](docs/windows_install.md)
--   [Routability tutorial](docs/routability.md)
--   [Testnet rewards program](docs/testnet_rules.md)
--   To get testnet coins, send your address to the faucet bot in the
-    "testnet-faucet" channel of our
-    [Discord](https://discord.com/invite/TnsJQzXkRN).
 
 ## FAQ and Troubleshooting
 
