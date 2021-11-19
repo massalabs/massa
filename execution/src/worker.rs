@@ -4,6 +4,7 @@ use models::{address::AddressHashMap, Amount, Block, BlockHashMap, BlockId, Slot
 use tokio::sync::mpsc;
 
 /// Commands sent to the `execution` component.
+#[derive(Debug)]
 pub enum ExecutionCommand {
     /// The clique has changed,
     /// contains the blocks of the new blockclique

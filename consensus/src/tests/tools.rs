@@ -1,8 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 #![allow(clippy::ptr_arg)] // this allow &Vec<..> as function argument type
 
-use super::mock_pool_controller::{MockPoolController, PoolCommandSink};
-use super::mock_protocol_controller::MockProtocolController;
+use super::{
+    mock_execution_controller::MockExecutionController,
+    mock_pool_controller::{MockPoolController, PoolCommandSink},
+    mock_protocol_controller::MockProtocolController,
+};
 use crate::{
     block_graph::{BlockGraphExport, ExportActiveBlock},
     pos::{RollCounts, RollUpdate, RollUpdates},
@@ -703,11 +706,13 @@ pub async fn consensus_pool_test<F, V>(
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
+    let (mut _execution_controller, execution_command_sender) = MockExecutionController::new();
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
+            execution_command_sender,
             protocol_command_sender,
             protocol_event_receiver,
             pool_command_sender,
@@ -759,12 +764,14 @@ where
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
+    let (mut _execution_controller, execution_command_sender) = MockExecutionController::new();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
+            execution_command_sender,
             protocol_command_sender,
             protocol_event_receiver,
             pool_command_sender,
