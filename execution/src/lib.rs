@@ -8,6 +8,6 @@ pub use controller::{
     start_controller, ExecutionCommandSender, ExecutionEventReceiver, ExecutionManager,
 };
 pub use error::ExecutionError;
-
+pub use worker::ExecutionCommand;
 #[cfg(test)]
 mod tests;
