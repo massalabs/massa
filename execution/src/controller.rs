@@ -3,7 +3,6 @@ use crate::error::ExecutionError;
 use crate::worker::{
     ExecutionCommand, ExecutionEvent, ExecutionManagementCommand, ExecutionWorker,
 };
-
 use models::{Block, BlockHashMap};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
