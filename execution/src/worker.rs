@@ -12,6 +12,13 @@ pub enum ExecutionCommand {
     BlocksFinal(BlockHashMap<Block>),
 }
 
+// Events produced by the execution component.
+pub enum ExecutionEvent {
+    /// A coin transfer
+    /// from the SCE ledger to the CSS ledger.
+    TransferToConsensus,
+}
+
 /// Management commands sent to the `execution` component.
 pub enum ExecutionManagementCommand {}
 
@@ -22,11 +29,14 @@ pub struct ExecutionWorker {
     controller_command_rx: mpsc::Receiver<ExecutionCommand>,
     /// Receiver of management commands.
     controller_manager_rx: mpsc::Receiver<ExecutionManagementCommand>,
+    /// Sender of events.
+    _event_sender: mpsc::UnboundedSender<ExecutionEvent>,
 }
 
 impl ExecutionWorker {
     pub async fn new(
         cfg: ExecutionConfig,
+        event_sender: mpsc::UnboundedSender<ExecutionEvent>,
         controller_command_rx: mpsc::Receiver<ExecutionCommand>,
         controller_manager_rx: mpsc::Receiver<ExecutionManagementCommand>,
     ) -> Result<ExecutionWorker, ExecutionError> {
@@ -34,6 +44,7 @@ impl ExecutionWorker {
             _cfg: cfg,
             controller_command_rx,
             controller_manager_rx,
+            _event_sender: event_sender,
         };
 
         // TODO: start a thread to run the actual VM?

@@ -9,7 +9,8 @@ use super::{
 };
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
-use execution::ExecutionCommandSender;
+use execution::{ExecutionCommandSender, ExecutionEventReceiver};
+
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
     api::EndorsementInfo,
@@ -38,6 +39,7 @@ use tracing::{debug, error, info};
 pub async fn start_consensus_controller(
     cfg: ConsensusConfig,
     _execution_command_sender: ExecutionCommandSender,
+    _execution_event_receiver: ExecutionEventReceiver,
     protocol_command_sender: ProtocolCommandSender,
     protocol_event_receiver: ProtocolEventReceiver,
     pool_command_sender: PoolCommandSender,
