@@ -41,7 +41,7 @@ async fn test_thread_incompatibility() {
                 parents.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -52,7 +52,7 @@ async fn test_thread_incompatibility() {
                 parents.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -63,7 +63,7 @@ async fn test_thread_incompatibility() {
                 parents.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -95,7 +95,7 @@ async fn test_thread_incompatibility() {
 
             let mut current_period = 3;
             let mut parents = vec![hash_1, hash_2];
-            for _ in 0..3 as usize {
+            for _ in 0..3 {
                 let hash = tools::create_and_test_block(
                     &mut protocol_controller,
                     &cfg,
@@ -103,11 +103,11 @@ async fn test_thread_incompatibility() {
                     parents.clone(),
                     true,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
                 current_period += 1;
-                parents[0] = hash.clone();
+                parents[0] = hash;
             }
 
             let status = consensus_command_sender
@@ -121,17 +121,17 @@ async fn test_thread_incompatibility() {
                 panic!("missing block in clique")
             });
 
-            let mut parents = vec![status.best_parents[0].0.clone(), hash_2];
+            let mut parents = vec![status.best_parents[0].0, hash_2];
             let mut current_period = 8;
-            for _ in 0..30 as usize {
+            for _ in 0..30 {
                 let (hash, b, _) = tools::create_block(
                     &cfg,
                     Slot::new(current_period, 0),
                     parents.clone(),
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 );
                 current_period += 1;
-                parents[0] = hash.clone();
+                parents[0] = hash;
                 protocol_controller.receive_block(b).await;
 
                 // Note: higher timeout required.
@@ -159,7 +159,7 @@ async fn test_thread_incompatibility() {
                 parents.clone(),
                 false,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -205,7 +205,7 @@ async fn test_grandpa_incompatibility() {
                 vec![genesis[0], genesis[1]],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -216,7 +216,7 @@ async fn test_grandpa_incompatibility() {
                 vec![genesis[0], genesis[1]],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -227,7 +227,7 @@ async fn test_grandpa_incompatibility() {
                 vec![hash_1, genesis[1]],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -238,7 +238,7 @@ async fn test_grandpa_incompatibility() {
                 vec![genesis[0], hash_2],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -281,7 +281,7 @@ async fn test_grandpa_incompatibility() {
                     status.best_parents.iter().map(|(b, _p)| *b).collect(),
                     true,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
 

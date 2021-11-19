@@ -125,8 +125,7 @@ async fn test_operations_check() {
         .get(&address_1)
         .unwrap()
         .ledger_info
-        .candidate_ledger_info
-        .clone();
+        .candidate_ledger_info;
     assert_eq!(res.balance, Amount::from_str("1").unwrap());
 
     // receive block b with invalid operation (not enough coins)
@@ -160,8 +159,7 @@ async fn test_operations_check() {
         .get(&address_2)
         .unwrap()
         .ledger_info
-        .candidate_ledger_info
-        .clone();
+        .candidate_ledger_info;
     assert_eq!(res.balance, Amount::from_str("5").unwrap());
 
     // receive block with reused operation

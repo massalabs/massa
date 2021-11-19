@@ -38,7 +38,7 @@ async fn test_wishlist_delta_with_empty_remove() {
             // create test blocks
             let slot = Slot::new(1, 0);
             let draw = consensus_command_sender
-                .get_selection_draws(slot.clone(), Slot::new(2, 0))
+                .get_selection_draws(slot, Slot::new(2, 0))
                 .await
                 .expect("could not get selection draws.")[0]
                 .1
@@ -102,7 +102,7 @@ async fn test_wishlist_delta_remove() {
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             // send header for block t0s1
             protocol_controller

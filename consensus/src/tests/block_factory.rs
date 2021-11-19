@@ -44,7 +44,7 @@ impl BlockFactory {
                     &self
                         .operations
                         .iter()
-                        .map(|op| op.get_operation_id().unwrap().to_bytes().clone())
+                        .map(|op| op.get_operation_id().unwrap().to_bytes())
                         .flatten()
                         .collect::<Vec<_>>()[..],
                 ),

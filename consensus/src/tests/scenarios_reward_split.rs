@@ -216,11 +216,11 @@ async fn test_reward_split() {
                 .saturating_add(if pubkey_a == slot_one_pub_key {
                     // block 1 reward
                     cfg.block_reward
-                        .checked_mul_u64(1 + 0)
+                        .checked_mul_u64(1)
                         .unwrap()
                         .checked_div_u64((1 + cfg.endorsement_count).into())
                         .unwrap()
-                        .saturating_sub(third.checked_mul_u64(2 * 0).unwrap())
+                        .saturating_sub(third.checked_mul_u64(0).unwrap())
                         // endorsements reward
                         .saturating_add(
                             third // parent in ed 1
@@ -253,11 +253,11 @@ async fn test_reward_split() {
                 .saturating_add(if pubkey_b == slot_one_pub_key {
                     // block 1 reward
                     cfg.block_reward
-                        .checked_mul_u64(1 + 0)
+                        .checked_mul_u64(1)
                         .unwrap()
                         .checked_div_u64((1 + cfg.endorsement_count).into())
                         .unwrap()
-                        .saturating_sub(third.checked_mul_u64(2 * 0).unwrap())
+                        .saturating_sub(third.checked_mul_u64(0).unwrap())
                         // endorsements reward
                         .saturating_add(
                             third // parent in ed 1

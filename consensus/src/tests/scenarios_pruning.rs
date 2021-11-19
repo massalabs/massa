@@ -44,7 +44,7 @@ async fn test_pruning_of_discarded_blocks() {
                     parents.clone(),
                     false,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
             }
@@ -103,7 +103,7 @@ async fn test_pruning_of_awaiting_slot_blocks() {
                     parents.clone(),
                     false,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
             }
@@ -153,12 +153,8 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
                 .collect();
 
             // Too far into the future.
-            let (bad_parent, bad_block, _) = tools::create_block(
-                &cfg,
-                Slot::new(10000, 0),
-                parents.clone(),
-                staking_keys[0].clone(),
-            );
+            let (bad_parent, bad_block, _) =
+                tools::create_block(&cfg, Slot::new(10000, 0), parents.clone(), staking_keys[0]);
 
             for i in 1..4 {
                 // Sent several headers with the bad parent as dependency.
@@ -166,10 +162,10 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
                     &mut protocol_controller,
                     &cfg,
                     Slot::new(i, 0),
-                    vec![bad_parent.clone(), parents.clone()[0]],
+                    vec![bad_parent, parents.clone()[0]],
                     false,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
             }

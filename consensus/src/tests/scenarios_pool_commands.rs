@@ -215,7 +215,7 @@ async fn test_new_final_ops() {
                 vec![p0, p1],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -226,7 +226,7 @@ async fn test_new_final_ops() {
                 vec![p0, p1],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -237,7 +237,7 @@ async fn test_new_final_ops() {
                 vec![p0, p1],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
             // UpdateLatestFinalPeriods pool command filter
@@ -508,11 +508,11 @@ fn get_bootgraph(
     ledger: LedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
     let (genesis_0, g0_id) =
-        get_export_active_test_block(creator.clone(), vec![], vec![], Slot::new(0, 0), true);
+        get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 0), true);
     let (genesis_1, g1_id) =
-        get_export_active_test_block(creator.clone(), vec![], vec![], Slot::new(0, 1), true);
+        get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 1), true);
     let (p1t0, p1t0_id) = get_export_active_test_block(
-        creator.clone(),
+        creator,
         vec![(g0_id, 0), (g1_id, 0)],
         vec![operation],
         Slot::new(1, 0),
@@ -521,13 +521,9 @@ fn get_bootgraph(
     (
         BootstrapableGraph {
             /// Map of active blocks, where blocks are in their exported version.
-            active_blocks: vec![
-                (g0_id, genesis_0.clone()),
-                (g1_id, genesis_1.clone()),
-                (p1t0_id, p1t0.clone()),
-            ]
-            .into_iter()
-            .collect(),
+            active_blocks: vec![(g0_id, genesis_0), (g1_id, genesis_1), (p1t0_id, p1t0)]
+                .into_iter()
+                .collect(),
             /// Best parents hash in each thread.
             best_parents: vec![(p1t0_id, 1), (g1_id, 0)],
             /// Latest final period and block hash in each thread.

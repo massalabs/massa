@@ -53,7 +53,7 @@ async fn test_queueing() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -65,7 +65,7 @@ async fn test_queueing() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -78,7 +78,7 @@ async fn test_queueing() {
                     vec![valid_hasht0, valid_hasht1],
                     true,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
 
@@ -90,7 +90,7 @@ async fn test_queueing() {
                     vec![valid_hasht0, valid_hasht1],
                     true,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
             }
@@ -99,7 +99,7 @@ async fn test_queueing() {
                 &cfg,
                 Slot::new(32, 0),
                 vec![valid_hasht0, valid_hasht1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             // create 1 block in thread 0 slot 33 with missed block as parent
@@ -110,7 +110,7 @@ async fn test_queueing() {
                 vec![missed_hash, valid_hasht1],
                 false,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -123,7 +123,7 @@ async fn test_queueing() {
                     vec![valid_hasht0, valid_hasht1],
                     false,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
 
@@ -135,7 +135,7 @@ async fn test_queueing() {
                     vec![valid_hasht0, valid_hasht1],
                     false,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
             }
@@ -194,7 +194,7 @@ async fn test_doubles() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -206,7 +206,7 @@ async fn test_doubles() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -219,7 +219,7 @@ async fn test_doubles() {
                     vec![valid_hasht0, valid_hasht1],
                     true,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
 
@@ -231,7 +231,7 @@ async fn test_doubles() {
                     vec![valid_hasht0, valid_hasht1],
                     true,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
             }
@@ -244,7 +244,7 @@ async fn test_doubles() {
                 vec![valid_hasht0, valid_hasht1],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -310,7 +310,7 @@ async fn test_double_staking() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -322,7 +322,7 @@ async fn test_double_staking() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -335,7 +335,7 @@ async fn test_double_staking() {
                     vec![valid_hasht0, valid_hasht1],
                     true,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
 
@@ -347,7 +347,7 @@ async fn test_double_staking() {
                     vec![valid_hasht0, valid_hasht1],
                     true,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
             }
@@ -359,7 +359,7 @@ async fn test_double_staking() {
                 operation_merkle_root,
                 Slot::new(41, 0),
                 vec![valid_hasht0, valid_hasht1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             tools::propagate_block(&mut protocol_controller, block_1, true, 150).await;
 
@@ -370,7 +370,7 @@ async fn test_double_staking() {
                 operation_merkle_root,
                 Slot::new(41, 0),
                 vec![valid_hasht0, valid_hasht1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             tools::propagate_block(&mut protocol_controller, block_2, true, 150).await;
 
@@ -437,7 +437,7 @@ async fn test_test_parents() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -449,7 +449,7 @@ async fn test_test_parents() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -461,7 +461,7 @@ async fn test_test_parents() {
                 vec![valid_hasht0s1, valid_hasht1s1],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -473,7 +473,7 @@ async fn test_test_parents() {
                 vec![valid_hasht0s1, valid_hasht1s1],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -486,7 +486,7 @@ async fn test_test_parents() {
                 vec![valid_hasht0s2, genesis_hashes[1usize]],
                 false,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -498,7 +498,7 @@ async fn test_test_parents() {
                 vec![genesis_hashes[0usize], genesis_hashes[0usize]],
                 false,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
             (
