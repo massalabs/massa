@@ -41,7 +41,7 @@ use tracing::{debug, error, info};
 /// * protocol_event_receiver: a ProtocolEventReceiver instance to receive events from Protocol.
 pub async fn start_consensus_controller(
     cfg: ConsensusConfig,
-    _execution_command_sender: ExecutionCommandSender,
+    execution_command_sender: ExecutionCommandSender,
     _execution_event_receiver: ExecutionEventReceiver,
     protocol_command_sender: ProtocolCommandSender,
     protocol_event_receiver: ProtocolEventReceiver,
@@ -96,6 +96,7 @@ pub async fn start_consensus_controller(
             protocol_command_sender,
             protocol_event_receiver,
             pool_command_sender,
+            execution_command_sender,
             block_db,
             pos,
             command_rx,

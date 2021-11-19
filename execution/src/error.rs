@@ -5,6 +5,8 @@ use thiserror::Error;
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum ExecutionError {
-    /// Empty for now.
-    Nothing,
+    /// Channel error
+    ChannelError(String),
+    /// Join error
+    JoinError,
 }

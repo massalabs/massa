@@ -6,10 +6,12 @@ use tokio::sync::mpsc;
 /// Commands sent to the `execution` component.
 pub enum ExecutionCommand {
     /// The clique has changed,
-    /// contains the blocks of the current clique.
-    BlockCliqueChanged(BlockHashMap<Block>),
-    /// Some blocks have become final.
-    BlocksFinal(BlockHashMap<Block>),
+    /// contains the blocks of the new blockclique
+    /// and a list of blocks that became final
+    BlockCliqueChanged {
+        blockclique: BlockHashMap<Block>,
+        finalized_blocks: BlockHashMap<Block>,
+    },
 }
 
 // Events produced by the execution component.
@@ -76,37 +78,25 @@ impl ExecutionWorker {
     /// * cmd: command to process
     async fn process_command(&mut self, cmd: ExecutionCommand) -> Result<(), ExecutionError> {
         match cmd {
-            ExecutionCommand::BlockCliqueChanged(_new_clique) => {
-                // Spec: https://github.com/massalabs/massa/docs/execution.md#scecss-pipeline
-                //
-                // TODO: https://github.com/massalabs/massa/issues/1800
-                //
-                // 1. reset the Candidate ledger to the Final ledger
-                // 2.1 sort all blockclique blocks by increasing slot
-                // for each block B in that order,
-                // the SCE processes the ExecuteSC operations in the block in the order they appear in the block.
-                //
-                // For each such operation:
-                // 3.1 credit the block creator in the SCE ledger with op.max_gas * op.gas_price
-                // 3.2 execute the smart contract bytecode (rollback and ignore in case of failure, but to not reimburse gas fees
-            }
-            ExecutionCommand::BlocksFinal(_new_final_blocks) => {
-                // Spec: https://github.com/massalabs/massa/docs/execution.md#scecss-pipeline
-                //
-                // TODO: https://github.com/massalabs/massa/issues/1801
-                //
-                // 1. Determine if, based on those new final blocks as per consensus,
-                // there are any new blocks final from an execution perspective.
-                //
-                // Note: a slot is SCE-final if its immediate predecessor slot contains a block that is CSS-final
-                // or is empty but followed in its own thread by a CSS-final block.
-                //
-                // 2. For each new final block in execution:
-                // 2.1 update the Final SCE ledger by VM-executing the newly SCE-final block on top of the current Final SCE ledger .
-                // 2.2 if the block B requires transferring coins from the SCE ledger to the CSS ledger,
-                //     send a TransferToConsensus to the CSS
+            ExecutionCommand::BlockCliqueChanged {
+                blockclique,
+                finalized_blocks,
+            } => {
+                self.blockclique_changed(blockclique, finalized_blocks)?;
             }
         }
+        Ok(())
+    }
+
+    fn blockclique_changed(
+        &mut self,
+        blockclique: BlockHashMap<Block>,
+        finalized_blocks: BlockHashMap<Block>,
+    ) -> Result<(), ExecutionError> {
+        // TODO apply finalized blocks (note that they might not be SCE-final yet)
+
+        // TODO apply new blockclique
+
         Ok(())
     }
 }
