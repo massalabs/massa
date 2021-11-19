@@ -117,7 +117,7 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          # FIXME: - macOS-latest
+          - macOS-latest
           - windows-latest
     steps:
       - uses: actions/checkout@v2
