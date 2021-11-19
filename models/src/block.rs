@@ -5,8 +5,9 @@ use crate::{
     array_from_slice,
     hhasher::{HHashMap, HHashSet, PreHashed},
     u8_from_slice, with_serialization_context, DeserializeCompact, DeserializeMinBEInt,
-    DeserializeVarInt, Endorsement, ModelsError, Operation, OperationHashMap, OperationHashSet,
-    SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot, SLOT_KEY_SIZE,
+    DeserializeVarInt, Endorsement, EndorsementHashMap, EndorsementHashSet, ModelsError, Operation,
+    OperationHashMap, OperationHashSet, SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot,
+    SLOT_KEY_SIZE,
 };
 use crypto::{
     hash::{Hash, HASH_SIZE_BYTES},
@@ -125,6 +126,13 @@ impl Block {
                 Ok(())
             })?;
         Ok(addresses_to_operations)
+    }
+
+    pub fn addresses_to_endorsements(
+        &self,
+        endo: &EndorsementHashMap<u32>,
+    ) -> Result<AddressHashMap<EndorsementHashSet>, ModelsError> {
+        todo!()
     }
 }
 

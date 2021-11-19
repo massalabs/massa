@@ -21,7 +21,7 @@ pub enum ProtocolEvent {
         block_id: BlockId,
         block: Block,
         operation_set: OperationHashMap<(usize, u64)>, // (index, validity end period)
-        endorsement_ids: Vec<EndorsementId>,
+        endorsement_ids: EndorsementHashMap<u32>,
     },
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader {

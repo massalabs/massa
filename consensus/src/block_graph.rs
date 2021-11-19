@@ -33,7 +33,11 @@ use tracing::{debug, error, info, warn};
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
     Header(BlockHeader),
-    Block(Block, OperationHashMap<(usize, u64)>, Vec<EndorsementId>), // (index, validity end period)
+    Block(
+        Block,
+        OperationHashMap<(usize, u64)>,
+        EndorsementHashMap<u32>,
+    ),
 }
 
 impl HeaderOrBlock {
@@ -71,8 +75,9 @@ pub struct ActiveBlock {
     pub is_final: bool,
     pub block_ledger_changes: LedgerChanges,
     pub operation_set: OperationHashMap<(usize, u64)>, // index in the block, end of validity period
-    pub endorsement_ids: Vec<EndorsementId>,           // IDs of the endorsements
+    pub endorsement_ids: EndorsementHashMap<u32>,      // IDs of the endorsements to index in block
     pub addresses_to_operations: AddressHashMap<OperationHashSet>,
+    pub addresses_to_endorsements: AddressHashMap<EndorsementHashSet>,
     pub roll_updates: RollUpdates, // Address -> RollUpdate
     pub production_events: Vec<(u64, Address, bool)>, // list of (period, address, did_create) for all block/endorsement creation events
 }
@@ -130,10 +135,11 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
             .content
             .endorsements
             .iter()
-            .map(|endo| endo.compute_endorsement_id())
-            .collect::<Result<_, _>>()?;
+            .map(|endo| Ok((endo.compute_endorsement_id()?, endo.content.index)))
+            .collect::<Result<_, ConsensusError>>()?;
 
         let addresses_to_operations = block.block.involved_addresses(&operation_set)?;
+        let addresses_to_endorsements = block.block.addresses_to_endorsements(&endorsement_ids)?;
         Ok(ActiveBlock {
             creator_address: Address::from_public_key(&block.block.header.content.creator)?,
             block: block.block,
@@ -148,6 +154,7 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
             addresses_to_operations,
             roll_updates: block.roll_updates,
             production_events: block.production_events,
+            addresses_to_endorsements,
         })
     }
 
@@ -988,6 +995,7 @@ impl BlockGraph {
                     roll_updates: RollUpdates::default(), // no roll updates in genesis blocks
                     production_events: vec![],
                     block,
+                    addresses_to_endorsements: Default::default(),
                 }),
             );
         }
@@ -1830,7 +1838,7 @@ impl BlockGraph {
         block_id: BlockId,
         block: Block,
         operation_set: OperationHashMap<(usize, u64)>,
-        endorsement_ids: Vec<EndorsementId>,
+        endorsement_ids: EndorsementHashMap<u32>,
         pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<(), ConsensusError> {
@@ -2235,6 +2243,8 @@ impl BlockGraph {
 
         let valid_block_addresses_to_operations =
             valid_block.involved_addresses(&valid_block_operation_set)?;
+        let valid_block_addresses_to_endorsements =
+            valid_block.addresses_to_endorsements(&valid_block_endorsement_ids)?;
 
         // add block to graph
         self.add_block_to_graph(
@@ -2248,6 +2258,7 @@ impl BlockGraph {
             valid_block_operation_set,
             valid_block_endorsement_ids,
             valid_block_addresses_to_operations,
+            valid_block_addresses_to_endorsements,
             valid_block_roll_updates,
             valid_block_production_events,
         )?;
@@ -2262,7 +2273,7 @@ impl BlockGraph {
                 (
                     active.block.clone(),
                     active.operation_set.keys().copied().collect(),
-                    active.endorsement_ids.clone(),
+                    active.endorsement_ids.keys().copied().collect(),
                 ),
             );
             for itm_block_id in self.waiting_for_dependencies_index.iter() {
@@ -3108,8 +3119,9 @@ impl BlockGraph {
         inherited_incomp_count: usize,
         block_ledger_changes: LedgerChanges,
         operation_set: OperationHashMap<(usize, u64)>,
-        endorsement_ids: Vec<EndorsementId>,
+        endorsement_ids: EndorsementHashMap<u32>,
         addresses_to_operations: AddressHashMap<OperationHashSet>,
+        addresses_to_endorsements: AddressHashMap<EndorsementHashSet>,
         roll_updates: RollUpdates,
         production_events: Vec<(u64, Address, bool)>,
     ) -> Result<(), ConsensusError> {
@@ -3133,6 +3145,7 @@ impl BlockGraph {
                 addresses_to_operations,
                 roll_updates,
                 production_events,
+                addresses_to_endorsements,
             }),
         );
         self.active_index.insert(add_block_id);

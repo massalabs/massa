@@ -510,9 +510,10 @@ impl ConsensusWorker {
                 .get_endorsements(thread_parent_slot, thread_parent, endorsement_draws)
                 .await?
                 .into_iter()
+                .map(|(id, e)| ((id, e.content.index), e))
                 .unzip()
         } else {
-            (Vec::new(), Vec::new())
+            (EndorsementHashMap::default(), Vec::new())
         };
 
         massa_trace!("consensus.create_block.get_endorsements.result", {
@@ -1204,7 +1205,7 @@ impl ConsensusWorker {
                             Some((
                                 a_block.block.clone(),
                                 Some(a_block.operation_set.keys().copied().collect()),
-                                Some(a_block.endorsement_ids.clone()),
+                                Some(a_block.endorsement_ids.keys().copied().collect()),
                             )),
                         );
                     } else {
