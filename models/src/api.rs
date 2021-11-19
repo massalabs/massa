@@ -238,6 +238,19 @@ impl AddressInfo {
     }
 }
 
+/// When an address is drawn to create an endorsement it is selected for a specific index
+#[derive(Debug, Deserialize, Serialize)]
+pub struct IndexedSlot {
+    slot: Slot,
+    index: u64,
+}
+
+impl std::fmt::Display for IndexedSlot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
 pub struct CompactAddressInfo {
     pub address: Address,
     pub thread: u8,
