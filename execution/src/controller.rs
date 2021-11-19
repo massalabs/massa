@@ -1,12 +1,17 @@
 use crate::config::{ExecutionConfig, CHANNEL_SIZE};
 use crate::error::ExecutionError;
-use crate::worker::{ExecutionCommand, ExecutionManagementCommand, ExecutionWorker};
+use crate::worker::{
+    ExecutionCommand, ExecutionEvent, ExecutionManagementCommand, ExecutionWorker,
+};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
 /// A sender of execution commands.
 #[derive(Clone)]
 pub struct ExecutionCommandSender(pub mpsc::Sender<ExecutionCommand>);
+
+/// A receiver of execution events.
+pub struct ExecutionEventReceiver(pub mpsc::UnboundedReceiver<ExecutionEvent>);
 
 /// A sender of execution management commands.
 pub struct ExecutionManager {
@@ -36,11 +41,21 @@ impl ExecutionManager {
 /// to be able to send the `TransferToConsensus` message.
 pub async fn start_controller(
     cfg: ExecutionConfig,
-) -> Result<(ExecutionCommandSender, ExecutionManager), ExecutionError> {
+) -> Result<
+    (
+        ExecutionCommandSender,
+        ExecutionEventReceiver,
+        ExecutionManager,
+    ),
+    ExecutionError,
+> {
     let (command_tx, command_rx) = mpsc::channel::<ExecutionCommand>(CHANNEL_SIZE);
     let (manager_tx, manager_rx) = mpsc::channel::<ExecutionManagementCommand>(1);
 
-    let worker = ExecutionWorker::new(cfg, command_rx, manager_rx).await?;
+    // Unbounded, as execution is limited per metering already.
+    let (event_tx, event_rx) = mpsc::unbounded_channel::<ExecutionEvent>();
+
+    let worker = ExecutionWorker::new(cfg, event_tx, command_rx, manager_rx).await?;
 
     let join_handle = tokio::spawn(async move {
         match worker.run_loop().await {
@@ -51,6 +66,7 @@ pub async fn start_controller(
 
     Ok((
         ExecutionCommandSender(command_tx),
+        ExecutionEventReceiver(event_rx),
         ExecutionManager {
             join_handle,
             manager_tx,

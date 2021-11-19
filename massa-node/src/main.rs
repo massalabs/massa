@@ -119,7 +119,7 @@ async fn launch(
     .expect("could not start pool controller");
 
     // Launch execution controller.
-    let (execution_command_sender, execution_manager) =
+    let (execution_command_sender, execution_event_receiver, execution_manager) =
         execution::start_controller(execution::ExecutionConfig {})
             .await
             .expect("Could not start execution controller.");
@@ -129,6 +129,7 @@ async fn launch(
         start_consensus_controller(
             cfg.consensus.clone(),
             execution_command_sender,
+            execution_event_receiver,
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender.clone(),
