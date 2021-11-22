@@ -981,7 +981,7 @@ impl ConsensusWorker {
                 endorsements,
                 response_tx,
             } => response_tx
-                .send(self.block_db.get_endorsement_by_id(endorsements))
+                .send(self.block_db.get_endorsement_by_id(endorsements)?)
                 .map_err(|err| {
                     ConsensusError::SendChannelError(format!(
                         "could not send get endorsement by id response: {:?}",

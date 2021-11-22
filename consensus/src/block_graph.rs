@@ -4120,8 +4120,33 @@ impl BlockGraph {
     pub(crate) fn get_endorsement_by_id(
         &self,
         endorsements: EndorsementHashSet,
-    ) -> EndorsementHashMap<Endorsement> {
-        todo!()
+    ) -> Result<EndorsementHashMap<Endorsement>, ConsensusError> {
+        // iterate on active (final and non-final) blocks
+
+        let mut res = EndorsementHashMap::default();
+        for block_id in self.active_index.iter() {
+            if let Some(BlockStatus::Active(ActiveBlock {
+                endorsement_ids,
+                block,
+                ..
+            })) = self.block_statuses.get(block_id)
+            {
+                // list blocks with wanted endorsements
+                if endorsements
+                    .intersection(&endorsement_ids.keys().copied().collect())
+                    .collect::<HashSet<_>>()
+                    .is_empty()
+                {
+                    for e in block.header.content.endorsements.iter() {
+                        let id = e.compute_endorsement_id()?;
+                        if endorsements.contains(&id) {
+                            res.insert(id, e.clone());
+                        }
+                    }
+                }
+            }
+        }
+        Ok(res)
     }
 }
 
