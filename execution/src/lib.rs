@@ -1,6 +1,7 @@
 mod config;
 mod controller;
 mod error;
+mod vm;
 mod worker;
 
 pub use config::ExecutionConfig;
