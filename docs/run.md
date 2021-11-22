@@ -34,7 +34,7 @@ On a second window:
     -   Type: `cargo run --release`
 
 Your node is running. Once the process is finished, you should leave the
-Powershell opened.
+window opened.
 
 You can now launch your client and move toward the wallet creation then
 the staking process.
