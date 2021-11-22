@@ -28,7 +28,7 @@ On a second window:
 
 ### Start the Node
 
--   Open Windows Power Shell
+-   Open Windows Power Shell or Command Prompt on a first window
     -   Type: `cd massa`
     -   Type: `cd massa-node`
     -   Type: `cargo run --release`
@@ -41,7 +41,7 @@ the staking process.
 
 ### Start the Client
 
--   Open Windows Power Shell
+-   Open Windows Power Shell or Command Prompt on a second window
     -   Type: `cd massa`
     -   Type: `cd massa-client`
     -   Type: `cargo run --release`
