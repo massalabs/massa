@@ -3727,6 +3727,22 @@ impl BlockGraph {
             }
         }
 
+        // retain extra history according to the config
+        // this is useful to avoid desync on temporary connection loss
+        for a_block in self.active_index.iter() {
+            if let Some(BlockStatus::Active(ActiveBlock { block, .. })) =
+                self.block_statuses.get(a_block)
+            {
+                let (_b_id, latest_final_period) =
+                    self.latest_final_blocks_periods[block.header.content.slot.thread as usize];
+                if block.header.content.slot.period
+                    >= latest_final_period.saturating_sub(self.cfg.force_keep_final_periods)
+                {
+                    retain_active.insert(*a_block);
+                }
+            }
+        }
+
         // remove unused final active blocks
         let mut discarded_finals: BlockHashMap<ActiveBlock> = BlockHashMap::default();
         for discard_active_h in active_blocks.difference(&retain_active) {
@@ -4815,6 +4831,7 @@ mod tests {
             staking_keys_path: staking_file.path().to_path_buf(),
             end_timestamp: None,
             max_send_wait: 500.into(),
+            force_keep_final_periods: 0,
             endorsement_count: 8,
             block_db_prune_interval: 1000.into(),
             max_item_return_count: 1000,
