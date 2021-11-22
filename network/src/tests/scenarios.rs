@@ -311,6 +311,145 @@ async fn test_peer_ban() {
     .await;
 }
 
+// test peer ban by ip
+// add an advertised peer
+// accept controller's connection atttempt to that peer
+// establish a connection from that peer to controller
+// signal closure + ban of one of the connections
+// expect an event to signal the banning of the other one
+// close the other one
+// attempt to connect banned peer to controller : must fail
+// make sure there are no connection attempts incoming from peer
+#[tokio::test]
+#[serial]
+async fn test_peer_ban_by_ip() {
+    /*//setup logging
+    stderrlog::new()
+        .verbosity(4)
+        .timestamp(stderrlog::Timestamp::Millisecond)
+        .init()
+        .unwrap();*/
+
+    // test config
+    let bind_port: u16 = 50_000;
+
+    let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
+    // add advertised peer to controller
+    let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
+        ip: mock_addr.ip(),
+        banned: false,
+        bootstrap: false,
+        last_alive: None,
+        last_failure: None,
+        advertised: true,
+        active_out_connection_attempts: 0,
+        active_out_connections: 0,
+        active_in_connections: 0,
+    }]);
+
+    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    network_conf.wakeup_interval = 1000.into();
+
+    tools::network_test(
+        network_conf.clone(),
+        temp_peers_file,
+        async move |network_command_sender,
+                    mut network_event_receiver,
+                    network_manager,
+                    mut mock_interface| {
+            // accept connection from controller to peer
+            let (_, conn1_r, conn1_w) = tools::full_connection_from_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+            let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
+
+            trace!("test_peer_ban first connection done");
+
+            // connect peer to controller
+            let (_conn2_id, conn2_r, conn2_w) = tools::full_connection_to_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+            let conn2_drain = tools::incoming_message_drain_start(conn2_r).await;
+            trace!("test_peer_ban second connection done");
+
+            // ban connection1.
+            network_command_sender
+                .ban_ip(vec![mock_addr.ip()])
+                .await
+                .expect("error during send ban command.");
+
+            // make sure the ban message was processed
+            sleep(Duration::from_millis(200)).await;
+
+            // stop conn1 and conn2
+            tools::incoming_message_drain_stop(conn1_drain).await;
+            drop(conn1_w);
+            tools::incoming_message_drain_stop(conn2_drain).await;
+            drop(conn2_w);
+            sleep(Duration::from_millis(200)).await;
+
+            // drain all messages
+            let _ = tools::wait_network_event(&mut network_event_receiver, 500.into(), |_msg| {
+                Option::<()>::None
+            })
+            .await;
+
+            // attempt a new connection from peer to controller: should be rejected
+            tools::rejected_connection_to_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+
+            // unban connection1.
+            network_command_sender
+                .unban(vec![mock_addr.ip()])
+                .await
+                .expect("error during send unban command.");
+
+            // wait for new connection attempt
+            sleep(network_conf.wakeup_interval.to_duration()).await;
+
+            // accept connection from controller to peer after unban
+            let (_conn1_id, conn1_r, _conn1_w) = tools::full_connection_from_controller(
+                &mut network_event_receiver,
+                &mut mock_interface,
+                mock_addr,
+                1_000u64,
+                1_000u64,
+                1_000u64,
+            )
+            .await;
+            let conn1_drain_bis = tools::incoming_message_drain_start(conn1_r).await;
+
+            trace!("test_peer_ban unbanned connection done");
+            (
+                network_event_receiver,
+                network_manager,
+                mock_interface,
+                vec![conn1_drain_bis],
+            )
+        },
+    )
+    .await;
+}
+
 // test merge_advertised_peer_list, advertised and wakeup_interval:
 //   setup one non-advertised peer
 //   use merge_advertised_peer_list to add another peer (this one is advertised)
