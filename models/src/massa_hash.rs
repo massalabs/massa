@@ -10,4 +10,4 @@ pub struct PubkeySig {
     pub signature: Signature,
 }
 
-impl PreHashed for Hash {}
+impl PreHashed for massa_hash::hash::Hash {}

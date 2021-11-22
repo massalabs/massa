@@ -1,10 +1,17 @@
 use crate::config::ExecutionConfig;
 use crate::error::ExecutionError;
-use crypto::hash::Hash;
-use models::{
-    address::AddressHashMap, hhasher::HHashMap, Amount, Block, BlockHashMap, BlockId, Slot,
-};
+use crate::vm::VM;
+use massa_hash::hash::Hash;
+use models::address::AddressHashMap;
+use models::hhasher::{BuildHHasher, HHashMap};
+use models::{Address, Amount, Block, BlockHashMap, BlockId, OperationType, Slot};
+use parking_lot::{Condvar, Mutex};
+use std::collections::VecDeque;
+use std::mem;
+use std::sync::Arc;
+use std::thread::{self, JoinHandle};
 use tokio::sync::mpsc;
+use wasmer::{Module, Store};
 
 /// Commands sent to the `execution` component.
 #[derive(Debug)]
@@ -35,6 +42,13 @@ struct SCELedgerEntry {
     data: HHashMap<Hash, Vec<u8>>,
 }
 
+/// Execution queue.
+pub enum ExecutionQueue {
+    Running(Vec<Module>),
+    Shutdown,
+    Stopped,
+}
+
 pub struct ExecutionWorker {
     /// Configuration
     _cfg: ExecutionConfig,
@@ -56,6 +70,15 @@ pub struct ExecutionWorker {
     ordered_active_blocks: Vec<(BlockId, Block)>,
     /// pending CSS final blocks
     ordered_pending_css_final_blocks: Vec<(BlockId, Block)>,
+    /// Execution queue.
+    execution_queue: Arc<(Mutex<ExecutionQueue>, Condvar)>,
+    /// VM thread join handle.
+    vm_join_handle: JoinHandle<()>,
+    /// VM Store, shared with the VM.
+    store: Arc<Store>,
+    /// Ledger, shared with the VM.
+    /// TODO: use SCELedgerEntry and final/active concepts.
+    ledger: Arc<Mutex<AddressHashMap<Module>>>,
 }
 
 impl ExecutionWorker {
@@ -66,13 +89,64 @@ impl ExecutionWorker {
         controller_command_rx: mpsc::Receiver<ExecutionCommand>,
         controller_manager_rx: mpsc::Receiver<ExecutionManagementCommand>,
     ) -> Result<ExecutionWorker, ExecutionError> {
+        // Shared with the VM.
+        let execution_queue = Arc::new((
+            Mutex::new(ExecutionQueue::Running(Default::default())),
+            Condvar::new(),
+        ));
+        let execution_queue_clone = execution_queue.clone();
+
+        let ledger = Arc::new(Mutex::new(AddressHashMap::with_capacity_and_hasher(
+            1,
+            BuildHHasher::default(),
+        )));
+        let ledger_clone = ledger.clone();
+
+        let store = Arc::new(Store::default());
+        let store_clone = store.clone();
+
+        let vm_join_handle = thread::spawn(move || {
+            let vm = VM::new(store_clone, ledger_clone);
+            loop {
+                let modules = {
+                    // Scoping the lock.
+                    let &(ref lock, ref condvar) = &*execution_queue_clone;
+                    let mut queue = lock.lock();
+
+                    // Run until shutdown
+                    loop {
+                        condvar.wait(&mut queue);
+
+                        // Running normally.
+                        match *queue {
+                            ExecutionQueue::Running(ref mut queue) => {
+                                // Return the modules to run.
+                                break mem::take(queue);
+                            }
+                            ExecutionQueue::Stopped => panic!("Unexpected execution queue state."),
+                            ExecutionQueue::Shutdown => {
+                                // Confirm shutdown
+                                *queue = ExecutionQueue::Stopped;
+                                condvar.notify_one();
+
+                                // Dropping the lock.
+                                return;
+                            }
+                        }
+                    }
+                };
+
+                // Run stuff without holding the lock.
+                vm.run(&modules);
+            }
+        });
+
         let worker = ExecutionWorker {
             _cfg: cfg,
             thread_count,
             controller_command_rx,
             controller_manager_rx,
             _event_sender: event_sender,
-
             //TODO bootstrap or init
             last_final_slot: Slot::new(0, 0),
             last_active_slot: Slot::new(0, 0),
@@ -80,9 +154,11 @@ impl ExecutionWorker {
             active_ledger: Default::default(),
             ordered_active_blocks: Default::default(),
             ordered_pending_css_final_blocks: Default::default(),
+            execution_queue,
+            vm_join_handle,
+            store,
+            ledger,
         };
-
-        // TODO: start a thread to run the actual VM?
 
         Ok(worker)
     }
@@ -101,6 +177,25 @@ impl ExecutionWorker {
                 Some(cmd) = self.controller_command_rx.recv() => self.process_command(cmd).await?,
             }
         }
+
+        // Signal shutdown.
+        let &(ref lock, ref condvar) = &*self.execution_queue;
+        let mut queue = lock.lock();
+        *queue = ExecutionQueue::Shutdown;
+        condvar.notify_one();
+
+        // Wait for shutdown confirmation.
+        loop {
+            match *queue {
+                ExecutionQueue::Stopped => break,
+                _ => {}
+            }
+            condvar.wait(&mut queue);
+        }
+
+        // Join on the thread, once shutdown has been confirmed.
+        self.vm_join_handle.join();
+
         // end loop
         Ok(())
     }
@@ -136,6 +231,42 @@ impl ExecutionWorker {
                 self.blockclique_changed(blockclique, finalized_blocks)?;
             }
         }
+        Ok(())
+    }
+
+    /// Process blocks that are "ready for execution".
+    /// TODO: use when the blockclique has changed.
+    fn process_blocks(&mut self, blocks: BlockHashMap<Block>) -> Result<(), ExecutionError> {
+        // Add new SCE final blocks to the run queue.
+        let &(ref lock, ref condvar) = &*self.execution_queue;
+        let mut queue = lock.lock();
+        let mut ledger = self.ledger.lock();
+        match *queue {
+            ExecutionQueue::Running(ref mut queue) => {
+                // TODO: use Damir's code to get the blocks that are "ready for execution".
+                for (_, block) in blocks.into_iter() {
+                    for operation in block.operations {
+                        if let OperationType::ExecuteSC { data, .. } = operation.content.op {
+                            let address =
+                                Address::from_public_key(&operation.content.sender_public_key)
+                                    .unwrap();
+                            // Compile the module.
+                            let module =
+                                Module::new(&self.store, &data).expect("Failed to compile.");
+                            // Add compiled module to the ledger.
+                            ledger.insert(address, module.clone());
+                            // Add module to the run queue.
+                            queue.push(module);
+                        }
+                    }
+                }
+            }
+            _ => panic!("Unexpected state."),
+        }
+
+        // Notify the VM.
+        condvar.notify_one();
+
         Ok(())
     }
 
