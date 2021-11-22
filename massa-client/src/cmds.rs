@@ -472,11 +472,13 @@ impl Command {
                 match amount.checked_add(fee) {
                     Some(total) => {
                         if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
-                            if !addresses_info.is_empty()
-                                && addresses_info[0].ledger_info.candidate_ledger_info.balance
-                                    < total
-                            {
-                                println!("Warning: this operation may be rejected due to insuffisant balance");
+                            match addresses_info.get(0) {
+                                Some(info) => {
+                                    if info.ledger_info.candidate_ledger_info.balance < total {
+                                        println!("Warning: this operation may be rejected due to insuffisant balance");
+                                    }
+                                }
+                                None => println!("Warning: address {} not found", addr),
                             }
                         }
                     }
