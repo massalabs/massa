@@ -46,53 +46,53 @@ async fn test_unsorted_block() {
                 &cfg,
                 Slot::new(1 + start_period, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht1s1, t1s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1 + start_period, 1),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s2, t0s2, _) = tools::create_block(
                 &cfg,
                 Slot::new(2 + start_period, 0),
                 vec![hasht0s1, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s2, t1s2, _) = tools::create_block(
                 &cfg,
                 Slot::new(2 + start_period, 1),
                 vec![hasht0s1, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s3, t0s3, _) = tools::create_block(
                 &cfg,
                 Slot::new(3 + start_period, 0),
                 vec![hasht0s2, hasht1s2],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s3, t1s3, _) = tools::create_block(
                 &cfg,
                 Slot::new(3 + start_period, 1),
                 vec![hasht0s2, hasht1s2],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s4, t0s4, _) = tools::create_block(
                 &cfg,
                 Slot::new(4 + start_period, 0),
                 vec![hasht0s3, hasht1s3],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s4, t1s4, _) = tools::create_block(
                 &cfg,
                 Slot::new(4 + start_period, 1),
                 vec![hasht0s3, hasht1s3],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             // send blocks  t0s1, t1s1,
@@ -182,7 +182,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             protocol_controller.receive_block(block1).await;
             tools::validate_propagate_block(&mut protocol_controller, hash1, 2500).await;
@@ -200,7 +200,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
                 &cfg,
                 Slot::new(slot.period + 2, slot.thread),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             protocol_controller.receive_block(block2).await;
             assert!(
@@ -221,7 +221,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
                 &cfg,
                 Slot::new(slot.period + 1000, slot.thread),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             protocol_controller.receive_block(block3).await;
             assert!(
@@ -295,7 +295,7 @@ async fn test_too_many_blocks_in_the_future() {
                     &cfg,
                     Slot::new(max_period, slot.thread),
                     genesis_hashes.clone(),
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 );
                 protocol_controller.receive_block(block).await;
                 if period < 2 {
@@ -386,53 +386,53 @@ async fn test_dep_in_back_order() {
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht1s1, t1s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1, 1),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s2, t0s2, _) = tools::create_block(
                 &cfg,
                 Slot::new(2, 0),
                 vec![hasht0s1, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s2, t1s2, _) = tools::create_block(
                 &cfg,
                 Slot::new(2, 1),
                 vec![hasht0s1, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s3, t0s3, _) = tools::create_block(
                 &cfg,
                 Slot::new(3, 0),
                 vec![hasht0s2, hasht1s2],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s3, t1s3, _) = tools::create_block(
                 &cfg,
                 Slot::new(3, 1),
                 vec![hasht0s2, hasht1s2],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s4, t0s4, _) = tools::create_block(
                 &cfg,
                 Slot::new(4, 0),
                 vec![hasht0s3, hasht1s3],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s4, t1s4, _) = tools::create_block(
                 &cfg,
                 Slot::new(4, 1),
                 vec![hasht0s3, hasht1s3],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             // send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
@@ -560,40 +560,40 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht1s1, t1s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1, 1),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s2, t0s2, _) = tools::create_block(
                 &cfg,
                 Slot::new(2, 0),
                 vec![hasht0s1, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s2, t1s2, _) = tools::create_block(
                 &cfg,
                 Slot::new(2, 1),
                 vec![hasht0s1, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s3, t0s3, _) = tools::create_block(
                 &cfg,
                 Slot::new(3, 0),
                 vec![hasht0s2, hasht1s2],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s3, t1s3, _) = tools::create_block(
                 &cfg,
                 Slot::new(3, 1),
                 vec![hasht0s2, hasht1s2],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             // send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
@@ -693,14 +693,14 @@ async fn test_add_block_that_depends_on_invalid_block() {
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht1s1, t1s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1, 1),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             // blocks t3s2 with wrong thread and (t0s1, t1s1) parents.
@@ -708,7 +708,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
                 &cfg,
                 Slot::new(2, 3),
                 vec![hasht0s1, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             // blocks t0s3 and t1s3 with (t3s2, t1s2) parents.
@@ -716,13 +716,13 @@ async fn test_add_block_that_depends_on_invalid_block() {
                 &cfg,
                 Slot::new(3, 0),
                 vec![hasht3s2, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s3, t1s3, _) = tools::create_block(
                 &cfg,
                 Slot::new(3, 1),
                 vec![hasht3s2, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             // add block in this order t0s1, t1s1, t0s3, t1s3, t3s2

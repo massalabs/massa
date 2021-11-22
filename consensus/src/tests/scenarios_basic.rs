@@ -159,7 +159,7 @@ async fn test_queuing() {
             let (hash_1, _) = block_factory.create_and_receive_block(false).await;
 
             block_factory.slot = Slot::new(4, 0);
-            block_factory.best_parents = vec![hash_1.clone(), parents[1]];
+            block_factory.best_parents = vec![hash_1, parents[1]];
 
             block_factory.create_and_receive_block(false).await;
 
@@ -214,7 +214,7 @@ async fn test_double_staking_does_not_propagate() {
             let (_, mut block_1) = block_factory.create_and_receive_block(true).await;
 
             // Same creator, same slot, different block
-            block_1.header.content.operation_merkle_root = Hash::hash(&"hello world".as_bytes());
+            block_1.header.content.operation_merkle_root = Hash::hash("hello world".as_bytes());
             let block = block_factory.sign_header(block_1.header.content);
 
             // Note: currently does propagate, see #190.

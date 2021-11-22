@@ -1,4 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
+#![allow(clippy::ptr_arg)] // this allow &Vec<..> as function argument type
 
 use super::mock_pool_controller::{MockPoolController, PoolCommandSink};
 use super::mock_protocol_controller::MockProtocolController;
@@ -45,12 +46,12 @@ pub async fn validate_notpropagate_block(
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => Some(block_id),
             _ => None,
         })
         .await;
     match param {
-        Some(block_id) => !(not_propagated == block_id),
+        Some(block_id) => not_propagated != block_id,
         None => false,
     }
 }
@@ -63,7 +64,7 @@ pub async fn validate_notpropagate_block_in_list(
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => Some(block_id),
             _ => None,
         })
         .await;
@@ -80,7 +81,7 @@ pub async fn validate_propagate_block_in_list(
 ) -> BlockId {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => Some(block_id),
             _ => None,
         })
         .await;
@@ -100,7 +101,7 @@ pub async fn validate_ask_for_block(
 ) -> BlockId {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::WishlistDelta { new, .. } => return Some(new),
+            ProtocolCommand::WishlistDelta { new, .. } => Some(new),
             _ => None,
         })
         .await;
@@ -122,7 +123,7 @@ pub async fn validate_wishlist(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::WishlistDelta { new, remove } => return Some((new, remove)),
+            ProtocolCommand::WishlistDelta { new, remove } => Some((new, remove)),
             _ => None,
         })
         .await;
@@ -142,17 +143,14 @@ pub async fn validate_does_not_ask_for_block(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::WishlistDelta { new, .. } => return Some(new),
+            ProtocolCommand::WishlistDelta { new, .. } => Some(new),
             _ => None,
         })
         .await;
-    match param {
-        Some(new) => {
-            if new.contains(hash) {
-                panic!("unexpected ask for block {}", hash);
-            }
+    if let Some(new) = param {
+        if new.contains(hash) {
+            panic!("unexpected ask for block {}", hash);
         }
-        None => {}
     }
 }
 
@@ -182,7 +180,7 @@ pub async fn validate_notify_block_attack_attempt(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::AttackBlockDetected(hash) => return Some(hash),
+            ProtocolCommand::AttackBlockDetected(hash) => Some(hash),
             _ => None,
         })
         .await;
@@ -199,7 +197,7 @@ pub async fn validate_block_found(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::GetBlocksResults(results) => return Some(results),
+            ProtocolCommand::GetBlocksResults(results) => Some(results),
             _ => None,
         })
         .await;
@@ -225,7 +223,7 @@ pub async fn validate_block_not_found(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::GetBlocksResults(results) => return Some(results),
+            ProtocolCommand::GetBlocksResults(results) => Some(results),
             _ => None,
         })
         .await;
@@ -253,7 +251,7 @@ pub async fn create_and_test_block(
     trace: bool,
     creator: PrivateKey,
 ) -> BlockId {
-    let (block_hash, block, _) = create_block(&cfg, slot, best_parents, creator);
+    let (block_hash, block, _) = create_block(cfg, slot, best_parents, creator);
     if trace {
         info!("create block:{}", block_hash);
     }
@@ -457,10 +455,7 @@ pub fn create_endorsement(
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
     let signature = sign(&hash, &sender_priv).unwrap();
-    Endorsement {
-        content: content.clone(),
-        signature,
-    }
+    Endorsement { content, signature }
 }
 
 pub fn get_export_active_test_block(
@@ -479,7 +474,6 @@ pub fn get_export_active_test_block(
                         .get_operation_id()
                         .unwrap()
                         .to_bytes()
-                        .clone()
                     })
                     .flatten()
                     .collect::<Vec<_>>()[..]),
@@ -522,8 +516,7 @@ pub fn create_block_with_operations(
 
     let operation_merkle_root = Hash::hash(
         &operations.iter().fold(Vec::new(), |acc, v| {
-            let res = [acc, v.to_bytes_compact().unwrap()].concat();
-            res
+            [acc, v.to_bytes_compact().unwrap()].concat()
         })[..],
     );
 
@@ -605,7 +598,7 @@ pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<PrivateKey>) -> PrivateK
         let pub_key = derive_public_key(key);
         let address = Address::from_public_key(&pub_key).unwrap();
         if address == *draw {
-            return key.clone();
+            return *key;
         }
     }
     panic!("Matching key for draw not found.");

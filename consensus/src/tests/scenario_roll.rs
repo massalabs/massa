@@ -122,7 +122,7 @@ async fn test_roll() {
                 priv_1,
                 vec![rb_a1_r1_err],
             );
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 1, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 1, 0).await;
             // invalid because a1 has not enough coins to buy a roll
             propagate_block(&mut protocol_controller, block1_err1, false, 150).await;
 
@@ -166,7 +166,7 @@ async fn test_roll() {
             let (id_1t1, block1t1, _) =
                 create_block_with_operations(&cfg, Slot::new(1, 1), &parents, priv_1, vec![]);
 
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 1, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 1, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block1t1, true, 150).await;
             parents[1] = id_1t1;
@@ -182,7 +182,7 @@ async fn test_roll() {
                 vec![rs_a2_r1],
             );
 
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 2, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 2, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block2, true, 150).await;
             parents[0] = id_2;
@@ -202,7 +202,7 @@ async fn test_roll() {
 
             let (id_2t, block2t2, _) =
                 create_block_with_operations(&cfg, Slot::new(2, 1), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 2, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 2, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block2t2, true, 150).await;
             parents[1] = id_2t;
@@ -212,7 +212,7 @@ async fn test_roll() {
             // block 3 in thread 1
             let (id_3t1, block3t1, _) =
                 create_block_with_operations(&cfg, Slot::new(3, 1), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 3, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 3, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block3t1, true, 150).await;
             parents[1] = id_3t1;
@@ -223,21 +223,21 @@ async fn test_roll() {
 
             let (id_4t1, block4t1, _) =
                 create_block_with_operations(&cfg, Slot::new(4, 1), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 4, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 4, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block4t1, true, 150).await;
             parents[1] = id_4t1;
 
             let (id_5, block5, _) =
                 create_block_with_operations(&cfg, Slot::new(5, 0), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 5, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 5, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block5, true, 150).await;
             parents[0] = id_5;
 
             let (id_5t1, block5t1, _) =
                 create_block_with_operations(&cfg, Slot::new(5, 1), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 5, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 5, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block5t1, true, 150).await;
             parents[1] = id_5t1;
@@ -264,7 +264,7 @@ async fn test_roll() {
                 get_creator_for_draw(&other_addr, &vec![priv_1, priv_2]),
                 vec![],
             );
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 6, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 6, 0).await;
             // invalid: other_addr wasn't drawn for that block creation
             propagate_block(&mut protocol_controller, block6_err, false, 150).await;
 
@@ -299,7 +299,7 @@ async fn test_roll() {
                 vec![],
             );
 
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 6, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 6, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block6t1, true, 150).await;
             parents[1] = id_6t1;
@@ -312,7 +312,7 @@ async fn test_roll() {
                 vec![],
             );
 
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 7, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 7, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block7, true, 150).await;
             parents[0] = id_7;
@@ -336,7 +336,7 @@ async fn test_roll() {
                 vec![],
             );
 
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 7, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 7, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block7t1, true, 150).await;
             parents[1] = id_7t1;
@@ -350,7 +350,7 @@ async fn test_roll() {
                 priv_1,
                 vec![rb_a2_r2],
             );
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 8, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 8, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block8, true, 150).await;
             parents[0] = id_8;
@@ -370,7 +370,7 @@ async fn test_roll() {
 
             let (id_8t1, block8t1, _) =
                 create_block_with_operations(&cfg, Slot::new(8, 1), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 8, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 8, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block8t1, true, 150).await;
             parents[1] = id_8t1;
@@ -382,7 +382,7 @@ async fn test_roll() {
                 priv_1,
                 vec![rs_a2_r2],
             );
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 9, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 9, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block9, true, 150).await;
             parents[0] = id_9;
@@ -402,7 +402,7 @@ async fn test_roll() {
 
             let (id_9t1, block9t1, _) =
                 create_block_with_operations(&cfg, Slot::new(9, 1), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 9, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 9, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block9t1, true, 150).await;
             parents[1] = id_9t1;
@@ -411,7 +411,7 @@ async fn test_roll() {
 
             let (id_10, block10, _) =
                 create_block_with_operations(&cfg, Slot::new(10, 0), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 10, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 10, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block10, true, 150).await;
             parents[0] = id_10;
@@ -440,14 +440,14 @@ async fn test_roll() {
 
             let (id_10t1, block10t1, _) =
                 create_block_with_operations(&cfg, Slot::new(10, 1), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 10, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 10, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block10t1, true, 150).await;
             parents[1] = id_10t1;
 
             let (id_11, block11, _) =
                 create_block_with_operations(&cfg, Slot::new(11, 0), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 11, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 11, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block11, true, 150).await;
             parents[0] = id_11;
@@ -653,7 +653,7 @@ async fn test_roll_block_creation() {
         .balance;
     assert_eq!(balance, Amount::from_str("9000").unwrap());
 
-    wait_pool_slot(&mut &mut pool_controller, cfg.t0, 1, 1).await;
+    wait_pool_slot(&mut pool_controller, cfg.t0, 1, 1).await;
     // slot 1,1
     pool_controller
         .wait_command(300.into(), |cmd| match cmd {

@@ -36,7 +36,7 @@ async fn test_parent_in_the_future() {
                 &cfg,
                 Slot::new(4, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let _ = tools::create_and_test_block(
@@ -46,7 +46,7 @@ async fn test_parent_in_the_future() {
                 vec![hasht0s1],
                 false,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
             (
@@ -92,7 +92,7 @@ async fn test_parents() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -103,7 +103,7 @@ async fn test_parents() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -111,10 +111,10 @@ async fn test_parents() {
                 &mut protocol_controller,
                 &cfg,
                 Slot::new(3, 0),
-                vec![hasht1s1, genesis_hashes[0].clone()],
+                vec![hasht1s1, genesis_hashes[0]],
                 false,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
             (
@@ -159,7 +159,7 @@ async fn test_parents_in_incompatible_cliques() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -170,7 +170,7 @@ async fn test_parents_in_incompatible_cliques() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -183,7 +183,7 @@ async fn test_parents_in_incompatible_cliques() {
                 vec![hasht0s1, genesis_hashes[1]],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -195,7 +195,7 @@ async fn test_parents_in_incompatible_cliques() {
                 vec![hasht0s1, hasht0s2],
                 false,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
             (

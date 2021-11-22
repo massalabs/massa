@@ -184,7 +184,7 @@ async fn test_block_creation_with_draw() {
                 &cfg,
                 Slot::new(1, 0),
                 &genesis_ids,
-                staking_keys[0].clone(),
+                staking_keys[0],
                 vec![op1],
             );
             tools::propagate_block(&mut protocol_controller, block, true, 1000).await;
@@ -201,7 +201,7 @@ async fn test_block_creation_with_draw() {
                         cur_parents.clone(),
                         true,
                         false,
-                        staking_keys[0].clone(),
+                        staking_keys[0],
                     )
                     .await;
                     cur_parents[thread as usize] = res_block_id;
@@ -646,11 +646,10 @@ async fn test_block_filling() {
             // wait for slot
             let mut prev_blocks = Vec::new();
             for cur_slot in [Slot::new(1, 0), Slot::new(1, 1)] {
-                let cur_slot_clone = cur_slot.clone();
                 pool_controller
                     .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
                         PoolCommand::UpdateCurrentSlot(s) => {
-                            if s == cur_slot_clone {
+                            if s == cur_slot {
                                 Some(())
                             } else {
                                 None

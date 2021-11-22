@@ -25,13 +25,13 @@ async fn test_ledger_init() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys);
     let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
     );
-    let ledger = Ledger::new(cfg.clone(), None);
+    let ledger = Ledger::new(cfg, None);
     assert!(ledger.is_ok());
 }
 
@@ -41,13 +41,13 @@ async fn test_ledger_initializes_get_latest_final_periods() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys);
     let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
     );
-    let ledger = Ledger::new(cfg.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg, None).unwrap();
 
     for latest_final in ledger
         .get_latest_final_periods()
@@ -63,7 +63,7 @@ async fn test_ledger_final_balance_increment_new_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys);
     let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
@@ -78,7 +78,7 @@ async fn test_ledger_final_balance_increment_new_address() {
 
     let changes = LedgerChanges(
         vec![(
-            address.clone(),
+            address,
             LedgerChange {
                 balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: true,
@@ -110,7 +110,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys);
     let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
@@ -125,7 +125,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
 
     let changes = LedgerChanges(
         vec![(
-            address.clone(),
+            address,
             LedgerChange {
                 balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: true,
@@ -152,7 +152,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
 
     let changes = LedgerChanges(
         vec![(
-            address.clone(),
+            address,
             LedgerChange {
                 balance_delta: Amount::from_raw(u64::MAX),
                 balance_increment: true,
@@ -170,7 +170,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys);
     let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
@@ -186,7 +186,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
     // Increment.
     let changes = LedgerChanges(
         vec![(
-            address.clone(),
+            address,
             LedgerChange {
                 balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: true,
@@ -214,7 +214,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
     // Decrement.
     let changes = LedgerChanges(
         vec![(
-            address.clone(),
+            address,
             LedgerChange {
                 balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: false,
@@ -243,7 +243,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys);
     let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
@@ -259,7 +259,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
     // Increment.
     let changes = LedgerChanges(
         vec![(
-            address.clone(),
+            address,
             LedgerChange {
                 balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: true,
@@ -287,7 +287,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
     // Decrement.
     let changes = LedgerChanges(
         vec![(
-            address.clone(),
+            address,
             LedgerChange {
                 balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: false,
@@ -312,7 +312,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
     // Try to decrement again.
     let changes = LedgerChanges(
         vec![(
-            address.clone(),
+            address,
             LedgerChange {
                 balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: false,
@@ -330,7 +330,7 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys);
     let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
@@ -346,7 +346,7 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
     // Decrement.
     let changes = LedgerChanges(
         vec![(
-            address.clone(),
+            address,
             LedgerChange {
                 balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: false,
@@ -364,13 +364,13 @@ async fn test_ledger_final_balance_non_existing_address() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys);
     let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
     );
-    let ledger = Ledger::new(cfg.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg, None).unwrap();
 
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
@@ -398,7 +398,7 @@ async fn test_ledger_final_balance_duplicate_address() {
         roll_counts_file.path(),
         staking_file.path(),
     );
-    let ledger = Ledger::new(cfg.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg, None).unwrap();
 
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
@@ -424,13 +424,13 @@ async fn test_ledger_final_balance_multiple_addresses() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys);
     let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
         staking_file.path(),
     );
-    let ledger = Ledger::new(cfg.clone(), None).unwrap();
+    let ledger = Ledger::new(cfg, None).unwrap();
 
     let mut addresses = vec![];
     for _ in 0..5 {
@@ -461,7 +461,7 @@ async fn test_ledger_clear() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys);
     let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
@@ -476,7 +476,7 @@ async fn test_ledger_clear() {
 
     let changes = LedgerChanges(
         vec![(
-            address.clone(),
+            address,
             LedgerChange {
                 balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: true,
@@ -519,7 +519,7 @@ async fn test_ledger_read_whole() {
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
+    let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys);
     let cfg = tools::default_consensus_config(
         ledger_file.path(),
         roll_counts_file.path(),
@@ -534,7 +534,7 @@ async fn test_ledger_read_whole() {
 
     let changes = LedgerChanges(
         vec![(
-            address.clone(),
+            address,
             LedgerChange {
                 balance_delta: Amount::from_str("1").unwrap(),
                 balance_increment: true,
@@ -567,8 +567,7 @@ async fn test_ledger_read_whole() {
         .collect::<Vec<_>>()
         .pop()
         .expect("Couldn't find ledger data for address.")
-        .1
-        .clone();
+        .1;
     assert_eq!(address_data.balance, Amount::from_str("1").unwrap());
 }
 
