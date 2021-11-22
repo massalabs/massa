@@ -9,7 +9,9 @@ displaydoc = "0.2"
 integer-encoding = "3.0"
 lazy_static = "1.4"
 num_enum = "0.5"
+num-traits = "0.2"
 rand = "0.8"
+reqwest = { version = "0.11", features = ["blocking", "json"] }
 rust_decimal = "1.15"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.11", features = ["full"] }

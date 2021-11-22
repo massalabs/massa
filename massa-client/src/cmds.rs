@@ -469,14 +469,22 @@ impl Command {
                 let amount = parameters[2].parse::<Amount>()?;
                 let fee = parameters[3].parse::<Amount>()?;
 
-                let mut res = String::new();
-                if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
-                    for info in addresses_info {
-                        if info.ledger_info.candidate_ledger_info.balance < amount + fee {
-                            res.push_str("Warning: this operation may be rejected due to insuffisant balance\n");
+                match amount.checked_add(fee) {
+                    Some(total) => {
+                        if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
+                            if !addresses_info.is_empty()
+                                && addresses_info[0].ledger_info.candidate_ledger_info.balance
+                                    < total
+                            {
+                                println!("Warning: this operation may be rejected due to insuffisant balance");
+                            }
                         }
                     }
+                    None => {
+                        bail!("The total amount hit the limit overflow, operation rejected")
+                    }
                 }
+
                 send_operation(
                     client,
                     wallet,

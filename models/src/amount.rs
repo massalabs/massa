@@ -11,6 +11,12 @@ pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);
 
+impl num_traits::CheckedAdd for Amount {
+    fn checked_add(&self, v: &Self) -> Option<Self> {
+        self.0.checked_add(v.0).map(Amount)
+    }
+}
+
 impl std::ops::Add for Amount {
     type Output = Amount;
     fn add(self, rhs: Self) -> Self::Output {
