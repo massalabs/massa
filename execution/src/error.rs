@@ -9,4 +9,6 @@ pub enum ExecutionError {
     ChannelError(String),
     /// Join error
     JoinError,
+    /// crypto error: {0}
+    ModelsError(#[from] models::ModelsError),
 }
