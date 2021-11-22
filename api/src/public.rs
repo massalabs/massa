@@ -420,10 +420,7 @@ impl Endpoints for API<Public> {
                         .map(|(slot, (_, addrs))| {
                             addrs.iter().enumerate().filter_map(|(index, ad)| {
                                 if *ad == address {
-                                    Some(IndexedSlot {
-                                        slot: *slot,
-                                        index: index,
-                                    })
+                                    Some(IndexedSlot { slot: *slot, index })
                                 } else {
                                     None
                                 }
