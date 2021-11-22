@@ -1,11 +1,11 @@
 use crate::start_protocol_controller;
 use futures::Future;
 use protocol_exports::{
-    tests::mock_network_controller::MockNetworkController, ProtocolCommandSender, ProtocolConfig,
-    ProtocolEventReceiver, ProtocolManager, ProtocolPoolEventReceiver,
+    tests::mock_network_controller::MockNetworkController, ProtocolCommandSender,
+    ProtocolEventReceiver, ProtocolManager, ProtocolPoolEventReceiver, ProtocolSettings,
 };
 
-pub async fn protocol_test<F, V>(cfg: ProtocolConfig, test: F)
+pub async fn protocol_test<F, V>(protocol_settings: &'static ProtocolSettings, test: F)
 where
     F: FnOnce(
         MockNetworkController,
@@ -34,7 +34,7 @@ where
         protocol_pool_event_receiver,
         protocol_manager,
     ) = start_protocol_controller(
-        cfg.clone(),
+        &protocol_settings,
         5u64,
         network_command_sender,
         network_event_receiver,

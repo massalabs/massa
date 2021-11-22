@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::{config::PoolConfig, error::PoolError};
+use super::{error::PoolError, settings::PoolSettings};
 use crate::endorsement_pool::EndorsementPool;
 use crate::operation_pool::OperationPool;
 use models::stats::PoolStats;
@@ -69,7 +69,7 @@ impl PoolWorker {
     /// Initiates the random selector.
     ///
     /// # Arguments
-    /// * cfg: pool configuration.
+    /// * pool_settings: pool configuration.
     /// * thread_count: number of threads
     /// * operation_validity_periods : operation validity period
     /// * protocol_command_sender: associated protocol controller
@@ -77,7 +77,7 @@ impl PoolWorker {
     /// * controller_command_rx: Channel receiving pool commands.
     /// * controller_manager_rx: Channel receiving pool management commands.
     pub fn new(
-        cfg: PoolConfig,
+        pool_settings: &'static PoolSettings,
         thread_count: u8,
         operation_validity_periods: u64,
         protocol_command_sender: ProtocolCommandSender,
@@ -92,11 +92,11 @@ impl PoolWorker {
             controller_command_rx,
             controller_manager_rx,
             operation_pool: OperationPool::new(
-                cfg.clone(),
+                pool_settings,
                 thread_count,
                 operation_validity_periods,
             ),
-            endorsement_pool: EndorsementPool::new(cfg, thread_count),
+            endorsement_pool: EndorsementPool::new(pool_settings, thread_count),
         })
     }
 

@@ -2,4 +2,4 @@
 
 mod mock_protocol_controller;
 mod scenario;
-mod tools;
+pub(crate) mod tools;

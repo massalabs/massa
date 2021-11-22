@@ -5,10 +5,9 @@
 use super::tools::protocol_test;
 use models::{BlockHashMap, BlockHashSet};
 use network::NetworkCommand;
+use protocol_exports::tests::tools;
 use protocol_exports::{
-    tests::tools::{
-        create_and_connect_nodes, create_block, create_protocol_config, wait_protocol_event,
-    },
+    tests::tools::{create_and_connect_nodes, create_block, wait_protocol_event},
     ProtocolEvent,
 };
 use serial_test::serial;
@@ -17,10 +16,10 @@ use std::collections::HashSet;
 #[tokio::test]
 #[serial]
 async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
-    let protocol_config = create_protocol_config();
+    let protocol_settings = &tools::PROTOCOL_SETTINGS;
 
     protocol_test(
-        protocol_config,
+        &protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -109,9 +108,9 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_sends_blocks_when_asked_for() {
-    let protocol_config = create_protocol_config();
+    let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        protocol_config,
+        &protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -218,9 +217,9 @@ async fn test_protocol_sends_blocks_when_asked_for() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header_to_others() {
-    let protocol_config = create_protocol_config();
+    let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        protocol_config,
+        &protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -351,10 +350,10 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
 #[tokio::test]
 #[serial]
 async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
-    let protocol_config = create_protocol_config();
+    let protocol_settings = &tools::PROTOCOL_SETTINGS;
 
     protocol_test(
-        protocol_config,
+        &protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,
@@ -405,9 +404,9 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
 #[tokio::test]
 #[serial]
 async fn test_protocol_block_not_found() {
-    let protocol_config = create_protocol_config();
+    let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        protocol_config,
+        &protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,

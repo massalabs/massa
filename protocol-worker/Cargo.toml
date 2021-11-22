@@ -10,6 +10,7 @@ edition = "2021"
 displaydoc = "0.2"
 futures = "0.3"
 itertools = "0.10"
+lazy_static = "1.4.0"
 num_enum = "0.5"
 rand = { version = "0.8"}
 serde = { version = "1.0", features = ["derive"] }

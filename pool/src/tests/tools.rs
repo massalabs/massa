@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::mock_protocol_controller::MockProtocolController;
-use crate::{pool_controller, PoolCommandSender, PoolConfig, PoolManager};
+use crate::{pool_controller, PoolCommandSender, PoolManager, PoolSettings};
 use crypto::hash::Hash;
 use futures::Future;
 use models::{
@@ -12,7 +12,7 @@ use signature::{derive_public_key, generate_random_private_key, sign, PrivateKey
 use std::str::FromStr;
 
 pub async fn pool_test<F, V>(
-    cfg: PoolConfig,
+    pool_settings: &'static PoolSettings,
     thread_count: u8,
     operation_validity_periods: u64,
     test: F,
@@ -24,7 +24,7 @@ pub async fn pool_test<F, V>(
         MockProtocolController::new();
 
     let (pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
-        cfg.clone(),
+        pool_settings,
         thread_count,
         operation_validity_periods,
         protocol_command_sender,
@@ -37,51 +37,6 @@ pub async fn pool_test<F, V>(
         test(protocol_controller, pool_command_sender, pool_manager).await;
 
     pool_manager.stop().await.unwrap();
-}
-
-pub fn example_pool_config() -> (PoolConfig, u8, u64) {
-    let mut nodes = Vec::new();
-    for _ in 0..2 {
-        let private_key = generate_random_private_key();
-        let public_key = derive_public_key(&private_key);
-        nodes.push((public_key, private_key));
-    }
-    let thread_count: u8 = 2;
-    let operation_validity_periods: u64 = 50;
-    let max_block_size = 1024 * 1024;
-    let max_operations_per_block = 1024;
-
-    // Init the serialization context with a default,
-    // can be overwritten with a more specific one in the test.
-    models::init_serialization_context(models::SerializationContext {
-        max_block_operations: max_operations_per_block,
-        parent_count: thread_count,
-        max_peer_list_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_block_size,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_endorsements_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-        max_bootstrap_pos_entries: 1000,
-        max_bootstrap_pos_cycles: 5,
-        max_block_endorsments: 8,
-    });
-
-    (
-        PoolConfig {
-            max_pool_size_per_thread: 100000,
-            max_operation_future_validity_start_periods: 200,
-            max_endorsement_count: 1000,
-            max_item_return_count: 1000,
-        },
-        thread_count,
-        operation_validity_periods,
-    )
 }
 
 pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {

@@ -2,8 +2,8 @@
 
 use super::mock_network_controller::MockNetworkController;
 use crate::{
-    ProtocolConfig, ProtocolEvent, ProtocolEventReceiver, ProtocolPoolEvent,
-    ProtocolPoolEventReceiver,
+    ProtocolEvent, ProtocolEventReceiver, ProtocolPoolEvent, ProtocolPoolEventReceiver,
+    ProtocolSettings,
 };
 use crypto::hash::Hash;
 use models::node::NodeId;
@@ -204,8 +204,12 @@ pub fn create_operation_with_expire_period(
     Operation { content, signature }
 }
 
+lazy_static::lazy_static! {
+    pub static ref PROTOCOL_SETTINGS: ProtocolSettings = create_protocol_settings();
+}
+
 // create a ProtocolConfig with typical values
-pub fn create_protocol_config() -> ProtocolConfig {
+pub fn create_protocol_settings() -> ProtocolSettings {
     // Init the serialization context with a default,
     // can be overwritten with a more specific one in the test.
     models::init_serialization_context(models::SerializationContext {
@@ -227,7 +231,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         max_block_endorsments: 8,
     });
 
-    ProtocolConfig {
+    ProtocolSettings {
         ask_block_timeout: 500.into(),
         max_node_known_blocks_size: 100,
         max_node_wanted_blocks_size: 100,

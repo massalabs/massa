@@ -3,9 +3,9 @@
 use models::stats::PoolStats;
 
 use super::{
-    config::{PoolConfig, CHANNEL_SIZE},
     error::PoolError,
     pool_worker::{PoolCommand, PoolManagementCommand, PoolWorker},
+    settings::{PoolSettings, CHANNEL_SIZE},
 };
 use logging::massa_trace;
 use models::{
@@ -22,11 +22,11 @@ use tracing::{debug, error, info};
 /// Creates a new pool controller.
 ///
 /// # Arguments
-/// * cfg: pool configuration
+/// * pool_settings: pool configuration
 /// * protocol_command_sender: a ProtocolCommandSender instance to send commands to Protocol.
 /// * protocol_pool_event_receiver: a ProtocolPoolEventReceiver instance to receive pool events from Protocol.
 pub async fn start_pool_controller(
-    cfg: PoolConfig,
+    pool_settings: &'static PoolSettings,
     thread_count: u8,
     operation_validity_periods: u64,
     protocol_command_sender: ProtocolCommandSender,
@@ -40,7 +40,7 @@ pub async fn start_pool_controller(
     let (manager_tx, manager_rx) = mpsc::channel::<PoolManagementCommand>(1);
     let join_handle = tokio::spawn(async move {
         let res = PoolWorker::new(
-            cfg,
+            pool_settings,
             thread_count,
             operation_validity_periods,
             protocol_command_sender,

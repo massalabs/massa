@@ -1,12 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::str::FromStr;
-
+use super::mock_establisher::Duplex;
+use crate::settings::BootstrapSettings;
 use bitvec::prelude::*;
 use consensus::ledger::LedgerChanges;
-use tokio::{sync::mpsc::Receiver, time::sleep};
-
 use consensus::{
     BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportProofOfStake, LedgerSubset,
     RollCounts, RollUpdate, RollUpdates, ThreadCycleState,
@@ -23,12 +20,12 @@ use network::{BootstrapPeers, NetworkCommand};
 use signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
 };
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::str::FromStr;
 use time::UTime;
-
-use super::mock_establisher::Duplex;
-use crate::config::BootstrapConfig;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
+use tokio::{sync::mpsc::Receiver, time::sleep};
 
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
@@ -52,7 +49,7 @@ pub fn get_dummy_signature(s: &str) -> Signature {
     sign(&Hash::hash(s.as_bytes()), &priv_key).unwrap()
 }
 
-pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig {
+pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSettings {
     // Init the serialization context with a default,
     // can be overwritten with a more specific one in the test.
     models::init_serialization_context(models::SerializationContext {
@@ -74,7 +71,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         max_block_endorsments: 8,
     });
 
-    BootstrapConfig {
+    BootstrapSettings {
         bind: Some("0.0.0.0:31244".parse().unwrap()),
         connect_timeout: 200.into(),
         retry_delay: 200.into(),

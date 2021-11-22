@@ -1,8 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::cfg::Settings;
 use crate::cmds::Command;
 use crate::rpc::Client;
+use crate::settings::SETTINGS;
 use crate::utils::longest_common_prefix;
 use console::style;
 use dialoguer::{theme::ColorfulTheme, Completion, History, Input};
@@ -67,9 +67,8 @@ struct CommandHistory {
 
 impl Default for CommandHistory {
     fn default() -> Self {
-        let settings = Settings::load();
         CommandHistory {
-            max: settings.history,
+            max: SETTINGS.history,
             history: VecDeque::new(),
         }
     }
