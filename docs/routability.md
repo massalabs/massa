@@ -61,4 +61,4 @@ operation to be made routable.
 you have to register with your Discord account. Write something in the
 `testnet-rewards` channel of our
 [Discord](https://discord.com/invite/TnsJQzXkRN) and our bot will DM you
-instructions. More info here: [Testnet rewards program](docs/testnet_rules.md)
+instructions. More info here: [Testnet rewards program](testnet_rules.md)
