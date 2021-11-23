@@ -48,4 +48,4 @@ the staking process.
 
 ## Next step
 
--   [Creating a wallet](docs/wallet.md)
+-   [Creating a wallet](wallet.md)

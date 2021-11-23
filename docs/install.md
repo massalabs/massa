@@ -65,4 +65,4 @@ Otherwise, if you wish to run a Massa node from source code, here are the steps 
 
 ### Next step
 
--   [Running a node](docs/run.md)
+-   [Running a node](run.md)
