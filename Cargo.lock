@@ -521,6 +521,7 @@ dependencies = [
 name = "execution"
 version = "0.1.0"
 dependencies = [
+ "crypto",
  "displaydoc",
  "models",
  "serde 1.0.130",
