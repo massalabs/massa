@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::{PoolConfig, PoolError};
+use crate::{PoolError, PoolSettings};
 use models::{
     Address, BlockId, Endorsement, EndorsementContent, EndorsementHashMap, EndorsementHashSet,
     EndorsementId, Slot,
@@ -10,14 +10,14 @@ pub struct EndorsementPool {
     endorsements: EndorsementHashMap<Endorsement>,
     latest_final_periods: Vec<u64>,
     current_slot: Option<Slot>,
-    cfg: PoolConfig,
+    pool_settings: &'static PoolSettings,
 }
 
 impl EndorsementPool {
-    pub fn new(cfg: PoolConfig, thread_count: u8) -> EndorsementPool {
+    pub fn new(pool_settings: &'static PoolSettings, thread_count: u8) -> EndorsementPool {
         EndorsementPool {
             endorsements: Default::default(),
-            cfg,
+            pool_settings,
             current_slot: None,
             latest_final_periods: vec![0; thread_count as usize],
         }
@@ -120,8 +120,9 @@ impl EndorsementPool {
     fn prune(&mut self) -> EndorsementHashSet {
         let mut removed = EndorsementHashSet::default();
 
-        if self.endorsements.len() > self.cfg.max_endorsement_count as usize {
-            let excess = self.endorsements.len() - self.cfg.max_endorsement_count as usize;
+        if self.endorsements.len() > self.pool_settings.max_endorsement_count as usize {
+            let excess =
+                self.endorsements.len() - self.pool_settings.max_endorsement_count as usize;
             let mut candidates: Vec<_> = self.endorsements.clone().into_iter().collect();
             let thread_count = self.latest_final_periods.len() as u8;
             let current_slot_index = self.current_slot.map_or(0u64, |s| {

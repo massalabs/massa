@@ -362,7 +362,7 @@ pub struct TimeInterval {
 }
 
 #[derive(Debug, Deserialize, Clone, Copy)]
-pub struct APIConfig {
+pub struct APISettings {
     pub draw_lookahead_period_count: u64,
     pub bind_private: SocketAddr,
     pub bind_public: SocketAddr,

@@ -7,6 +7,7 @@ use super::{
         wait_consensus_command, wait_network_command,
     },
 };
+use crate::BootstrapSettings;
 use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, assert_eq_thread_cycle_states},
@@ -15,15 +16,23 @@ use consensus::{ConsensusCommand, ConsensusCommandSender};
 use models::Version;
 use network::{NetworkCommand, NetworkCommandSender};
 use serial_test::serial;
+use signature::PrivateKey;
 use std::str::FromStr;
 use time::UTime;
 use tokio::sync::mpsc;
 
+lazy_static::lazy_static! {
+    pub static ref BOOTSTRAP_SETTINGS_PRIVATE_KEY: (BootstrapSettings, PrivateKey) = {
+        let (private_key, public_key) = get_keys();
+        (get_bootstrap_config(public_key), private_key)
+    };
+}
+
 #[tokio::test]
 #[serial]
 async fn test_bootstrap_server() {
-    let (private_key, public_key) = get_keys();
-    let cfg = get_bootstrap_config(public_key);
+    let (bootstrap_settings, private_key): &(BootstrapSettings, PrivateKey) =
+        &BOOTSTRAP_SETTINGS_PRIVATE_KEY;
 
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
@@ -32,9 +41,9 @@ async fn test_bootstrap_server() {
     let bootstrap_manager = start_bootstrap_server(
         ConsensusCommandSender(consensus_cmd_tx),
         NetworkCommandSender(network_cmd_tx),
-        cfg.clone(),
+        &bootstrap_settings,
         bootstrap_establisher,
-        private_key,
+        *private_key,
         0,
         Version::from_str("TEST.1.2").unwrap(),
     )
@@ -44,10 +53,9 @@ async fn test_bootstrap_server() {
 
     // launch the get_state process
     let (remote_establisher, mut remote_interface) = mock_establisher::new();
-    let cfg_copy = cfg.clone();
     let get_state_h = tokio::spawn(async move {
         get_state(
-            cfg_copy,
+            &bootstrap_settings,
             remote_establisher,
             Version::from_str("TEST.1.2").unwrap(),
             UTime::now(0).unwrap().saturating_sub(1000.into()),
@@ -65,7 +73,7 @@ async fn test_bootstrap_server() {
     .await
     .expect("timeout waiting for connection attempt from remote")
     .expect("error receiving connection attempt from remote");
-    let expect_conn_addr = cfg.bootstrap_list[0].0;
+    let expect_conn_addr = bootstrap_settings.bootstrap_list[0].0;
     assert_eq!(
         conn_addr, expect_conn_addr,
         "client connected to wrong bootstrap ip"

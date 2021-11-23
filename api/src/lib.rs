@@ -11,7 +11,7 @@ use jsonrpc_derive::rpc;
 use jsonrpc_http_server::{CloseHandle, ServerBuilder};
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
-    APIConfig, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
+    APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
     TimeInterval,
 };
 use models::clique::Clique;
@@ -35,9 +35,9 @@ mod public;
 pub struct Public {
     pub consensus_command_sender: ConsensusCommandSender,
     pub pool_command_sender: PoolCommandSender,
-    pub consensus_config: ConsensusConfig,
-    pub api_config: APIConfig,
-    pub network_config: NetworkConfig,
+    pub consensus_settings: &'static ConsensusConfig,
+    pub api_settings: &'static APISettings,
+    pub network_settings: &'static NetworkConfig,
     pub version: Version,
     pub network_command_sender: NetworkCommandSender,
     pub compensation_millis: i64,
@@ -47,8 +47,8 @@ pub struct Public {
 pub struct Private {
     pub consensus_command_sender: ConsensusCommandSender,
     pub network_command_sender: NetworkCommandSender,
-    pub consensus_config: ConsensusConfig,
-    pub api_config: APIConfig,
+    pub consensus_settings: &'static ConsensusConfig,
+    pub api_settings: &'static APISettings,
     pub stop_node_channel: mpsc::Sender<()>,
 }
 

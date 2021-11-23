@@ -6,18 +6,27 @@ use super::tools::protocol_test;
 use models::{self, Address, Slot};
 use protocol_exports::tests::tools;
 use protocol_exports::ProtocolEvent;
+use protocol_exports::ProtocolSettings;
 use serial_test::serial;
+
+lazy_static::lazy_static! {
+    pub static ref CUSTOM_PROTOCOL_SETTINGS: ProtocolSettings = {
+        let mut protocol_settings = tools::PROTOCOL_SETTINGS.clone();
+
+        // Set max_node_known_blocks_size to zero.
+        protocol_settings.max_node_known_blocks_size = 0;
+
+        protocol_settings
+    };
+}
 
 #[tokio::test]
 #[serial]
 async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size() {
-    let mut protocol_config = tools::create_protocol_config();
-
-    // Set max_node_known_blocks_size to zero.
-    protocol_config.max_node_known_blocks_size = 0;
+    let protocol_settings = &CUSTOM_PROTOCOL_SETTINGS;
 
     protocol_test(
-        protocol_config,
+        &protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,

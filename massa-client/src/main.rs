@@ -2,8 +2,8 @@
 
 #![feature(str_split_whitespace_as_str)]
 
-use crate::cfg::Settings;
 use crate::rpc::Client;
+use crate::settings::SETTINGS;
 use anyhow::Result;
 use atty::Stream;
 use cmds::Command;
@@ -13,10 +13,10 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 use wallet::Wallet;
 
-mod cfg;
 mod cmds;
 mod repl;
 mod rpc;
+mod settings;
 mod utils;
 
 #[cfg(test)]
@@ -56,7 +56,7 @@ struct Args {
 #[tokio::main]
 async fn main(args: Args) -> Result<()> {
     // TODO: Move settings loading in another crate
-    let settings = Settings::load();
+    let settings = SETTINGS.clone();
     let address = match args.ip {
         Some(ip) => ip,
         None => settings.default_node.ip,

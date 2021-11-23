@@ -7,7 +7,7 @@ use jsonrpc_core::BoxFuture;
 use jsonrpc_http_server::tokio::sync::mpsc;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
-    APIConfig, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
+    APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
     TimeInterval,
 };
 use models::clique::Clique;
@@ -21,16 +21,16 @@ impl API<Private> {
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         network_command_sender: NetworkCommandSender,
-        api_config: APIConfig,
-        consensus_config: ConsensusConfig,
+        api_settings: &'static APISettings,
+        consensus_settings: &'static ConsensusConfig,
     ) -> (Self, mpsc::Receiver<()>) {
         let (stop_node_channel, rx) = mpsc::channel(1);
         (
             API(Private {
                 consensus_command_sender,
                 network_command_sender,
-                consensus_config,
-                api_config,
+                consensus_settings,
+                api_settings,
                 stop_node_channel,
             }),
             rx,

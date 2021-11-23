@@ -9,7 +9,7 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
-    APIConfig, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
+    APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
     IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
 };
 use models::clique::Clique;
@@ -30,10 +30,10 @@ use time::UTime;
 impl API<Public> {
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
-        api_config: APIConfig,
-        consensus_config: ConsensusConfig,
+        api_settings: &'static APISettings,
+        consensus_settings: &'static ConsensusConfig,
         pool_command_sender: PoolCommandSender,
-        network_config: NetworkConfig,
+        network_settings: &'static NetworkConfig,
         version: Version,
         network_command_sender: NetworkCommandSender,
         compensation_millis: i64,
@@ -41,10 +41,10 @@ impl API<Public> {
     ) -> Self {
         API(Public {
             consensus_command_sender,
-            consensus_config,
-            api_config,
+            consensus_settings,
+            api_settings,
             pool_command_sender,
-            network_config,
+            network_settings,
             version,
             network_command_sender,
             compensation_millis,
@@ -92,19 +92,19 @@ impl Endpoints for API<Public> {
     fn get_status(&self) -> BoxFuture<Result<NodeStatus, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let network_command_sender = self.0.network_command_sender.clone();
-        let network_config = self.0.network_config.clone();
+        let network_config = self.0.network_settings.clone();
         let version = self.0.version;
-        let consensus_config = self.0.consensus_config.clone();
+        let consensus_settings = self.0.consensus_settings.clone();
         let compensation_millis = self.0.compensation_millis;
         let mut pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
-        let algo_config = consensus_config.to_algo_config();
+        let algo_config = consensus_settings.to_algo_config();
         let closure = async move || {
             let now = UTime::now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
-                consensus_config.thread_count,
-                consensus_config.t0,
-                consensus_config.genesis_timestamp,
+                consensus_settings.thread_count,
+                consensus_settings.t0,
+                consensus_settings.genesis_timestamp,
                 now,
             )?;
 
@@ -118,11 +118,11 @@ impl Endpoints for API<Public> {
                 node_id,
                 node_ip: network_config.routable_ip,
                 version,
-                genesis_timestamp: consensus_config.genesis_timestamp,
-                t0: consensus_config.t0,
-                delta_f0: consensus_config.delta_f0,
-                roll_price: consensus_config.roll_price,
-                thread_count: consensus_config.thread_count,
+                genesis_timestamp: consensus_settings.genesis_timestamp,
+                t0: consensus_settings.t0,
+                delta_f0: consensus_settings.delta_f0,
+                roll_price: consensus_settings.roll_price,
+                thread_count: consensus_settings.thread_count,
                 current_time: now,
                 connected_nodes: peers?
                     .peers
@@ -133,7 +133,7 @@ impl Endpoints for API<Public> {
                 last_slot,
                 next_slot: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))
-                    .get_next_slot(consensus_config.thread_count)?,
+                    .get_next_slot(consensus_settings.thread_count)?,
                 consensus_stats: consensus_stats?,
                 network_stats: network_stats?,
                 pool_stats: pool_stats?,
@@ -141,7 +141,7 @@ impl Endpoints for API<Public> {
                 algo_config,
                 current_cycle: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))
-                    .get_cycle(consensus_config.periods_per_cycle),
+                    .get_cycle(consensus_settings.periods_per_cycle),
             })
         };
         Box::pin(closure())
@@ -163,7 +163,7 @@ impl Endpoints for API<Public> {
         &self,
         ops: Vec<OperationId>,
     ) -> BoxFuture<Result<Vec<OperationInfo>, ApiError>> {
-        let api_cfg = self.0.api_config;
+        let api_cfg = self.0.api_settings;
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let mut pool_command_sender = self.0.pool_command_sender.clone();
         let closure = async move || {
@@ -277,13 +277,13 @@ impl Endpoints for API<Public> {
         time: TimeInterval,
     ) -> BoxFuture<Result<Vec<BlockSummary>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let consensus_config = self.0.consensus_config.clone();
+        let consensus_settings = self.0.consensus_settings.clone();
         let closure = async move || {
             // filter blocks from graph_export
             let (start_slot, end_slot) = time_range_to_slot_range(
-                consensus_config.thread_count,
-                consensus_config.t0,
-                consensus_config.genesis_timestamp,
+                consensus_settings.thread_count,
+                consensus_settings.t0,
+                consensus_settings.genesis_timestamp,
                 time.start,
                 time.end,
             )?;
@@ -330,8 +330,8 @@ impl Endpoints for API<Public> {
         addresses: Vec<Address>,
     ) -> BoxFuture<Result<Vec<AddressInfo>, ApiError>> {
         let cmd_sender = self.0.consensus_command_sender.clone();
-        let cfg = self.0.consensus_config.clone();
-        let api_cfg = self.0.api_config;
+        let cfg = self.0.consensus_settings.clone();
+        let api_cfg = self.0.api_settings;
         let pool_command_sender = self.0.pool_command_sender.clone();
         let compensation_millis = self.0.compensation_millis;
         let closure = async move || {
@@ -446,7 +446,7 @@ impl Endpoints for API<Public> {
         ops: Vec<Operation>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
-        let api_cfg = self.0.api_config;
+        let api_cfg = self.0.api_settings;
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));

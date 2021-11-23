@@ -4,15 +4,15 @@
 #![feature(drain_filter)]
 #![feature(ip)]
 
-mod config;
 mod error;
 mod protocol_controller;
+mod settings;
 
-pub use config::{ProtocolConfig, CHANNEL_SIZE};
 pub use error::ProtocolError;
 pub use protocol_controller::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
+pub use settings::{ProtocolSettings, CHANNEL_SIZE};
 
 pub mod tests;
