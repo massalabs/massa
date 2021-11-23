@@ -24,6 +24,7 @@ pub enum ExecutionEvent {
 /// Management commands sent to the `execution` component.
 pub enum ExecutionManagementCommand {}
 
+#[derive(Debug, Clone)]
 struct SCELedgerEntry {
     balance: Amount,
     bytecode: Vec<u8>,
@@ -68,6 +69,7 @@ impl ExecutionWorker {
             controller_manager_rx,
             _event_sender: event_sender,
         };
+        //TODO bootstrap or init
 
         // TODO: start a thread to run the actual VM?
 
@@ -89,6 +91,24 @@ impl ExecutionWorker {
             }
         }
         // end loop
+        Ok(())
+    }
+
+    fn apply_final_slot(
+        &mut self,
+        slot: Slot,
+        opt_block: Option<(BlockId, &Block)>,
+    ) -> Result<(), ExecutionError> {
+        // TODO
+        Ok(())
+    }
+
+    fn apply_active_slot(
+        &mut self,
+        slot: Slot,
+        opt_block: Option<(BlockId, &Block)>,
+    ) -> Result<(), ExecutionError> {
+        // TODO
         Ok(())
     }
 
@@ -136,13 +156,12 @@ impl ExecutionWorker {
             if block_slot <= self.last_final_slot {
                 continue;
             }
-
             loop {
                 let next_final_slot = self.last_final_slot.get_next_slot(self.thread_count)?;
                 if block_slot == next_final_slot {
-                    //TODO apply block to self.final_ledger
+                    self.apply_final_slot(next_final_slot, Some((b_id, &block)))?;
                 } else if next_final_slot < max_thread_slot[next_final_slot.thread as usize] {
-                    //TODO apply miss to self.final_ledger
+                    self.apply_final_slot(next_final_slot, None)?;
                 } else {
                     self.ordered_pending_css_final_blocks.push((b_id, block));
                     break;
@@ -151,7 +170,7 @@ impl ExecutionWorker {
             }
         }
 
-        // apply remaining CSS finals + new blockclique to obtain candidate state
+        // list remaining CSS finals + new blockclique
         self.ordered_active_blocks = self
             .ordered_pending_css_final_blocks
             .iter()
@@ -162,9 +181,25 @@ impl ExecutionWorker {
                     .filter(|(_b_id, b)| b.header.content.slot > self.last_final_slot),
             )
             .collect();
+
+        // sort active blocks
         self.ordered_active_blocks
             .sort_unstable_by_key(|(_b_id, b)| b.header.content.slot);
-        // TODO apply self.ordered_active_blocks to self.final_ledger to obtain self.candidate_ledger
+
+        // apply active blocks and misses to the active ledger
+        self.active_ledger = self.final_ledger.clone();
+        self.last_active_slot = self.last_final_slot;
+        for (b_id, block) in self.ordered_active_blocks.iter() {
+            // process misses
+            if self.last_active_slot == self.last_final_slot {
+                self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
+            }
+            while self.last_active_slot < block.header.content.slot {
+                self.apply_active_slot(self.last_active_slot, None)?;
+                self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
+            }
+            self.apply_active_slot(self.last_active_slot, Some((*b_id, block)))?;
+        }
 
         Ok(())
     }
