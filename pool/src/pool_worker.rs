@@ -3,7 +3,6 @@
 use super::{config::PoolConfig, error::PoolError};
 use crate::endorsement_pool::EndorsementPool;
 use crate::operation_pool::OperationPool;
-use models::api::EndorsementInfo;
 use models::stats::PoolStats;
 use models::{
     Address, BlockId, Endorsement, EndorsementHashMap, EndorsementHashSet, EndorsementId,
@@ -262,11 +261,25 @@ impl PoolWorker {
             PoolCommand::GetEndorsementsByAddress {
                 response_tx,
                 address,
-            } => todo!(),
+            } => {
+                if response_tx
+                    .send(self.endorsement_pool.get_endorsement_by_address(address))
+                    .is_err()
+                {
+                    warn!("pool: could not send PoolStats response");
+                }
+            }
             PoolCommand::GetEndorsementsById {
                 response_tx,
                 endorsements,
-            } => todo!(),
+            } => {
+                if response_tx
+                    .send(self.endorsement_pool.get_endorsement_by_id(endorsements))
+                    .is_err()
+                {
+                    warn!("pool: could not send PoolStats response");
+                }
+            }
         }
         Ok(())
     }

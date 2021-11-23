@@ -152,4 +152,24 @@ impl EndorsementPool {
         massa_trace!("pool.endorsement_pool.prune", { "removed": removed });
         removed
     }
+
+    pub fn get_endorsement_by_address(&self, address: Address) -> EndorsementHashMap<Endorsement> {
+        todo!()
+    }
+
+    pub fn get_endorsement_by_id(
+        &self,
+        endorsements: EndorsementHashSet,
+    ) -> EndorsementHashMap<Endorsement> {
+        self.endorsements
+            .iter()
+            .filter_map(|(id, ed)| {
+                if endorsements.contains(id) {
+                    Some((*id, ed.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 }
