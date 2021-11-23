@@ -8,17 +8,15 @@ edition = "2021"
 
 [dependencies]
 displaydoc = "0.2"
-futures = { version = "0.3" }
+futures = "0.3"
 itertools = "0.10"
-tracing = "0.1"
 num_enum = "0.5"
-rand = { version = "0.8"}
+rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0" }
+serde_json = "1.0"
 thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
-tokio-util = { version = "0.6", features = ["codec"] }
-toml = { version = "0.5" }
+tracing = "0.1"
 # custom modules
 crypto = { path = "../crypto" }
 logging = { path = "../logging" }

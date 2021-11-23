@@ -23,10 +23,10 @@ strum = "0.22"
 strum_macros = "0.22"
 tokio = { version = "1", features = ["full"] }
 # custom modules
-models = {path = "../models"}
+models = { path = "../models" }
 signature = { path = "../signature" }
-time = {path = "../time"}
-wallet = {path = "../wallet"}
+time = { path = "../time" }
+wallet = { path = "../wallet" }
 
 [dev-dependencies]
 assert_cmd = "2.0"
