@@ -4113,8 +4113,26 @@ impl BlockGraph {
     pub(crate) fn get_endorsement_by_address(
         &self,
         address: Address,
-    ) -> EndorsementHashMap<Endorsement> {
-        todo!()
+    ) -> Result<EndorsementHashMap<Endorsement>, ConsensusError> {
+        let mut res: EndorsementHashMap<Endorsement> = Default::default();
+        for b_id in self.active_index.iter() {
+            if let Some(BlockStatus::Active(ActiveBlock {
+                addresses_to_endorsements,
+                block,
+                ..
+            })) = self.block_statuses.get(b_id)
+            {
+                if let Some(eds) = addresses_to_endorsements.get(&address) {
+                    for e in block.header.content.endorsements.iter() {
+                        let id = e.compute_endorsement_id()?;
+                        if eds.contains(&id) {
+                            res.insert(id, e.clone());
+                        }
+                    }
+                }
+            }
+        }
+        Ok(res)
     }
 
     pub(crate) fn get_endorsement_by_id(

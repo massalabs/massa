@@ -970,7 +970,7 @@ impl ConsensusWorker {
                 address,
                 response_tx,
             } => response_tx
-                .send(self.block_db.get_endorsement_by_address(address))
+                .send(self.block_db.get_endorsement_by_address(address)?)
                 .map_err(|err| {
                     ConsensusError::SendChannelError(format!(
                         "could not send get endorsement by address response: {:?}",
