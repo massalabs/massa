@@ -58,12 +58,8 @@ Otherwise, if you wish to run a Massa node from source code, here are the steps 
 #### Clone the Massa Git Repository
 
 -   Open Windows Power Shell
-    -   If the massa folder does not exist type:
-        `git clone https://gitlab.com/massalabs/massa.git`
-    -   Type: `cd massa`
-    -   Type: `git stash`
-    -   Type: `git checkout testnet`
-    -   Type: `git pull`
+    - To clone the latest distributed version, type: `git clone --branch testnet https://github.com/massalabs/massa.git`
+
 -   Change default Rust to nightly
     -   Type: `rustup default nightly`
 
