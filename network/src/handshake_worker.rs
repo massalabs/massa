@@ -9,14 +9,12 @@ use crate::{
     error::{HandshakeErrorType, NetworkError},
     ReadHalf, WriteHalf,
 };
-use crypto::{
-    hash::Hash,
-    signature::{sign, verify_signature, PrivateKey},
-};
+use crypto::hash::Hash;
 use futures::future::try_join;
 use models::node::NodeId;
 use models::Version;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
+use signature::{sign, verify_signature, PrivateKey};
 use time::UTime;
 use tokio::time::timeout;
 

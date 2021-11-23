@@ -7,18 +7,19 @@ edition = "2021"
 
 [dependencies]
 displaydoc = "0.2"
+futures = "0.3"
 jsonrpc-core = "18.0.0"
 jsonrpc-derive = "18.0.0"
 jsonrpc-http-server = "18.0.0"
 thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
 tracing = "0.1"
-futures = { version = "0.3" }
 # custom modules
-consensus = {path = "../consensus"}
-crypto = {path = "../crypto"}
-models = {path = "../models"}
-network = {path = "../network"}
-pool = {path = "../pool"}
-protocol-exports = {path = "../protocol-exports"}
-time = {path = "../time"}
+consensus = { path = "../consensus" }
+crypto = { path = "../crypto" }
+models = { path = "../models" }
+network = { path = "../network" }
+pool = { path = "../pool" }
+protocol-exports = { path = "../protocol-exports" }
+signature = { path = "../signature" }
+time = { path = "../time" }

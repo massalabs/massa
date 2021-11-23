@@ -6,6 +6,7 @@ use crate::tests::tools::{self, generate_ledger_file};
 use crypto::hash::Hash;
 use models::{BlockId, Slot};
 use serial_test::serial;
+use signature::{generate_random_private_key, PrivateKey};
 use std::collections::HashMap;
 use time::UTime;
 
@@ -21,9 +22,7 @@ async fn test_ti() {
     .unwrap(); */
 
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -55,7 +54,7 @@ async fn test_ti() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -67,7 +66,7 @@ async fn test_ti() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -88,7 +87,7 @@ async fn test_ti() {
                 Hash::hash("Other hash!".as_bytes()),
                 Slot::new(2, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             protocol_controller.receive_block(block).await;
@@ -120,7 +119,7 @@ async fn test_ti() {
                     vec![parentt0sn_hash, valid_hasht1s1],
                     true,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
                 // validate the added block isn't in the forked block click.
@@ -140,7 +139,7 @@ async fn test_ti() {
                 &cfg,
                 Slot::new(2, 1),
                 vec![fork_block_hash, valid_hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             protocol_controller.receive_block(block).await;
             assert!(
@@ -179,9 +178,7 @@ async fn test_gpi() {
     .unwrap();*/
 
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -215,7 +212,7 @@ async fn test_gpi() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -227,7 +224,7 @@ async fn test_gpi() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -251,7 +248,7 @@ async fn test_gpi() {
                 vec![valid_hasht0s1, genesis_hashes[1]],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
             // * create 1 block in t1s2 with parents of slots (t0s0, t1s1)
@@ -262,7 +259,7 @@ async fn test_gpi() {
                 vec![genesis_hashes[0], valid_hasht1s1],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -298,7 +295,7 @@ async fn test_gpi() {
                     vec![parentt0sn_hash, valid_hasht1s1],
                     true,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
                 parentt0sn_hash = block_hash;
@@ -311,7 +308,7 @@ async fn test_gpi() {
                 vec![valid_hasht0s1, valid_hasht1s2],
                 false,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -348,9 +345,7 @@ async fn test_old_stale() {
     //     .unwrap();
 
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -384,7 +379,7 @@ async fn test_old_stale() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -396,7 +391,7 @@ async fn test_old_stale() {
                 genesis_hashes.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -409,7 +404,7 @@ async fn test_old_stale() {
                     vec![valid_hasht0, valid_hasht1],
                     true,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
 
@@ -421,7 +416,7 @@ async fn test_old_stale() {
                     vec![valid_hasht0, valid_hasht1],
                     true,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
             }
@@ -434,7 +429,7 @@ async fn test_old_stale() {
                 genesis_hashes.clone(),
                 false,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
             (

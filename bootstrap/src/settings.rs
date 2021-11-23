@@ -1,12 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crypto::signature::PublicKey;
 use serde::Deserialize;
+use signature::PublicKey;
 use std::net::SocketAddr;
 use time::UTime;
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct BootstrapConfig {
+pub struct BootstrapSettings {
     /// Ip address of our bootstrap nodes and their public key.
     pub bootstrap_list: Vec<(SocketAddr, PublicKey)>,
     /// Port to listen if we choose to allow other nodes to use us as bootstrap node.

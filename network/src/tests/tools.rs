@@ -10,11 +10,12 @@ use crate::{
     NetworkCommandSender, NetworkConfig, NetworkEvent, NetworkEventReceiver, NetworkManager,
     PeerInfo,
 };
-use crypto::{derive_public_key, generate_random_private_key, hash::Hash};
+use crypto::hash::Hash;
 use models::node::NodeId;
 use models::{
     Address, Amount, BlockId, Operation, OperationContent, OperationType, SerializeCompact, Version,
 };
+use signature::{derive_public_key, generate_random_private_key, sign};
 use std::str::FromStr;
 use std::{
     future::Future,
@@ -358,11 +359,11 @@ pub async fn incoming_message_drain_stop(
 }
 
 pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
-    let sender_priv = crypto::generate_random_private_key();
-    let sender_pub = crypto::derive_public_key(&sender_priv);
+    let sender_priv = generate_random_private_key();
+    let sender_pub = derive_public_key(&sender_priv);
 
-    let recv_priv = crypto::generate_random_private_key();
-    let recv_pub = crypto::derive_public_key(&recv_priv);
+    let recv_priv = generate_random_private_key();
+    let recv_pub = derive_public_key(&recv_priv);
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
@@ -375,7 +376,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
         expire_period,
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-    let signature = crypto::sign(&hash, &sender_priv).unwrap();
+    let signature = sign(&hash, &sender_priv).unwrap();
 
     (
         Operation { content, signature },

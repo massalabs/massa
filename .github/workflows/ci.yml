@@ -11,6 +11,7 @@ env:
   RUST_BACKTRACE: full
 
 jobs:
+  # Quick tests on each commit/PR
   sanity:
     runs-on: ubuntu-latest
     steps:
@@ -28,6 +29,7 @@ jobs:
         args: --all -- --check
 
   check:
+    if: github.ref != 'refs/heads/staging'
     needs: sanity
     runs-on: ubuntu-latest
     steps:
@@ -43,6 +45,7 @@ jobs:
         command: check
 
   test:
+    if: github.ref != 'refs/heads/staging'
     needs: check
     runs-on: ubuntu-latest
     steps:
@@ -62,6 +65,7 @@ jobs:
         args: --lib
 
   doctest:
+    if: github.ref != 'refs/heads/staging'
     needs: check
     runs-on: ubuntu-latest
     steps:
@@ -78,6 +82,7 @@ jobs:
         args: --doc
 
   clippy:
+    if: github.ref != 'refs/heads/staging'
     needs: check
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -95,8 +100,41 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
 
+  # Full cross-platform tests required by bors to merge on main branch
+  full:
+    if: github.ref == 'refs/heads/staging'
+    name: full
+    needs: sanity
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          # FIXME: - macOS-latest
+          - windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: nightly
+        override: true
+    - uses: Swatinem/rust-cache@v1
+    - uses: actions-rs/cargo@v1
+      with:
+        command: build
+    - uses: actions-rs/cargo@v1
+      with:
+        command: test
+
+  success: # quick hack because bors wrongly detect matrix jobs status
+    if: github.ref == 'refs/heads/staging'
+    needs: full
+    runs-on: ubuntu-latest
+    steps:
+    - run: exit 0
+
   coverage:
-    needs: [test, doctest]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -120,17 +158,9 @@ jobs:
         CARGO_INCREMENTAL: '0'
         RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
         RUSTDOCFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
-      continue-on-error: true
     - id: coverage  
       uses: actions-rs/grcov@v0.1
-      continue-on-error: true
-    - uses: codecov/codecov-action@v1.0.2
-      with:
-        token: ${{secrets.CODECOV_TOKEN}}
-      continue-on-error: true
     - uses: coverallsapp/github-action@master
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         path-to-lcov: ${{ steps.coverage.outputs.report }}
-      continue-on-error: true
-    - run: exit 0 # I alaways want a green check even if code coverage fail ...

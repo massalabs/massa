@@ -9,23 +9,23 @@ edition = "2021"
 [dependencies]
 bitvec = { version = "0.22", features = ["serde"] }
 displaydoc = "0.2"
-futures = { version = "0.3" }
+futures = "0.3"
 num = { version = "0.4", features = ["serde"] }
-rand = { version = "0.8"}
+rand ="0.8"
 rand_xoshiro = "0.6"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0" }
+serde_json = "1.0"
 sled = "0.34"
 thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
-tokio-util = { version = "0.6", features = ["codec"] }
 tracing = "0.1"
 # custom modules
-protocol-exports = {path = "../protocol-exports"}
-crypto = {path = "../crypto"}
+crypto = { path = "../crypto" }
 logging = { path = "../logging" }
 models = {path = "../models"}
 pool = { path = "../pool"}
+protocol-exports = { path = "../protocol-exports" }
+signature = { path = "../signature" }
 time = { path = "../time"}
 
 [dev-dependencies]

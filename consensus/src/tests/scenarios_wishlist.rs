@@ -5,6 +5,7 @@
 use crate::tests::tools::{self, generate_ledger_file};
 use models::Slot;
 use serial_test::serial;
+use signature::{generate_random_private_key, PrivateKey};
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
@@ -12,9 +13,7 @@ use std::iter::FromIterator;
 #[serial]
 async fn test_wishlist_delta_with_empty_remove() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
 
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -39,7 +38,7 @@ async fn test_wishlist_delta_with_empty_remove() {
             // create test blocks
             let slot = Slot::new(1, 0);
             let draw = consensus_command_sender
-                .get_selection_draws(slot.clone(), Slot::new(2, 0))
+                .get_selection_draws(slot, Slot::new(2, 0))
                 .await
                 .expect("could not get selection draws.")[0]
                 .1
@@ -76,9 +75,7 @@ async fn test_wishlist_delta_with_empty_remove() {
 #[serial]
 async fn test_wishlist_delta_remove() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
 
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -105,7 +102,7 @@ async fn test_wishlist_delta_remove() {
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             // send header for block t0s1
             protocol_controller

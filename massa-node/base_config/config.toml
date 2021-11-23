@@ -33,6 +33,7 @@ version = "DEVE.0.0"
     initial_ledger_path = "base_config/initial_ledger.json"
     operation_batch_size = 1024
     max_send_wait = 500
+    force_keep_final_periods = 50
     #POS
     initial_rolls_path = "base_config/initial_rolls.json"
     initial_draw_seed = "massa_genesis_seed"

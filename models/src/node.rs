@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crypto::signature::PublicKey;
 use serde::{Deserialize, Serialize};
+use signature::PublicKey;
 
 /// NodeId wraps a public key to uniquely identify a node.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]

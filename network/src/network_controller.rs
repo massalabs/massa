@@ -12,10 +12,10 @@ use tokio::{
 };
 use tracing::{debug, error, info, warn};
 
-use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use models::stats::NetworkStats;
 use models::{crypto::PubkeySig, node::NodeId};
 use models::{Block, BlockHeader, BlockId, Endorsement, Operation, Version};
+use signature::{derive_public_key, generate_random_private_key, PrivateKey};
 
 use crate::error::NetworkError;
 

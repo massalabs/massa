@@ -1,16 +1,15 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::{collections::VecDeque, path::Path};
-
-use tokio::{
-    sync::{mpsc, oneshot},
-    task::JoinHandle,
+use super::{
+    block_graph::*,
+    config::{ConsensusConfig, CHANNEL_SIZE},
+    consensus_worker::{
+        ConsensusCommand, ConsensusEvent, ConsensusManagementCommand, ConsensusWorker,
+    },
+    pos::ProofOfStake,
 };
-
-use crypto::{
-    derive_public_key,
-    signature::{PrivateKey, PublicKey},
-};
+use crate::error::ConsensusError;
+use crate::pos::ExportProofOfStake;
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
     BlockHashMap, Endorsement, EndorsementHashMap, EndorsementHashSet, OperationHashMap,
@@ -20,17 +19,11 @@ use models::{clique::Clique, stats::ConsensusStats};
 use models::{Address, Block, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats};
 use pool::PoolCommandSender;
 use protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
-
-use crate::error::ConsensusError;
-use crate::pos::ExportProofOfStake;
-
-use super::{
-    block_graph::*,
-    config::{ConsensusConfig, CHANNEL_SIZE},
-    consensus_worker::{
-        ConsensusCommand, ConsensusEvent, ConsensusManagementCommand, ConsensusWorker,
-    },
-    pos::ProofOfStake,
+use signature::{derive_public_key, PrivateKey, PublicKey};
+use std::{collections::VecDeque, path::Path};
+use tokio::{
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
 };
 use tracing::{debug, error, info};
 

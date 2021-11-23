@@ -1,20 +1,20 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::repl::Output;
+use crate::rpc::Client;
+use anyhow::{bail, Result};
 use console::style;
-use crypto::generate_random_private_key;
-use crypto::signature::PrivateKey;
-use models::api::{AddressInfo, EndorsementInfo, OperationInfo};
 use models::timeslots::get_current_latest_block_slot;
 use models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
 };
+use signature::{generate_random_private_key, PrivateKey};
+use std::fmt::Debug;
 use std::net::IpAddr;
 use std::process;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
 use wallet::Wallet;
-
-use crate::rpc::Client;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
@@ -39,10 +39,6 @@ pub enum Command {
     )]
     ban,
 
-    // TODO:
-    // #[strum(ascii_case_insensitive, message = "start a node")]
-    // node_start,
-    //
     #[strum(ascii_case_insensitive, message = "stops the node")]
     node_stop,
 
@@ -152,50 +148,14 @@ pub enum Command {
     send_transaction,
 }
 
-// TODO: -> Result<Box<dyn std::fmt::Display + serde::Serialize<S>>>;
-type PrettyPrint = Box<dyn std::fmt::Display>;
-
-// TODO: Should be implement as a custom Err value (for JSON output compatibility)
-macro_rules! repl_err {
-    ($err: expr) => {
-        Box::new(style(format!("Error: {:?}", $err)).red())
-    };
-}
-
-macro_rules! repl_ok {
-    ($ok: expr) => {
-        Box::new($ok)
-    };
-}
-
-// TODO: ugly utilities functions
-fn parse_vec<T: std::str::FromStr>(args: &Vec<String>) -> Result<Vec<T>, T::Err> {
-    args.iter().map(|x| x.parse::<T>()).collect()
-}
-
-fn format_vec<T: std::fmt::Display>(output: &Vec<T>) -> String {
-    output
-        .iter()
-        .map(|x| format!("{}", x))
-        .collect::<Vec<String>>()
-        .join("\n")
+pub(crate) fn help() {
+    println!("HELP of Massa client (list of available commands):");
+    Command::iter().map(|c| c.help()).collect()
 }
 
 impl Command {
-    pub(crate) fn not_found() -> PrettyPrint {
-        repl_ok!("Command not found!\ntype \"help\" to get the list of commands")
-    }
-
-    pub(crate) fn _wrong_parameters(&self) -> PrettyPrint {
-        repl_ok!(format!(
-            "{} given is not well formed...\ntype \"help {}\" to more info",
-            self.get_str("args").unwrap(),
-            self.to_string()
-        ))
-    }
-
-    pub(crate) fn help(&self) -> PrettyPrint {
-        repl_ok!(format!(
+    pub(crate) fn help(&self) {
+        println!(
             "- {} {}: {}{}",
             style(self.to_string()).green(),
             if self.get_str("args").is_some() {
@@ -209,7 +169,7 @@ impl Command {
                 style("")
             },
             self.get_message().unwrap()
-        ))
+        )
     }
 
     pub(crate) async fn run(
@@ -217,172 +177,174 @@ impl Command {
         client: &Client,
         wallet: &mut Wallet,
         parameters: &Vec<String>,
-        is_interactive: bool,
-    ) -> PrettyPrint {
+        json: bool,
+    ) -> Result<Box<dyn Output>> {
         match self {
             Command::exit => process::exit(0),
 
             Command::help => {
-                if !parameters.is_empty() {
-                    if let Ok(c) = parameters[0].parse::<Command>() {
-                        c.help()
+                if !json {
+                    if !parameters.is_empty() {
+                        if let Ok(c) = parameters[0].parse::<Command>() {
+                            c.help();
+                        } else {
+                            println!(
+                                "Command not found!\ntype \"help\" to get the list of commands"
+                            );
+                            help();
+                        }
                     } else {
-                        Command::not_found()
+                        help();
                     }
-                } else {
-                    repl_ok!(format!(
-                        "HELP of Massa client (list of available commands):\n{}",
-                        Command::iter()
-                            .map(|c| format!("{}", c.help()))
-                            .collect::<Vec<String>>()
-                            .join("\n")
-                    ))
                 }
+                Ok(Box::new(()))
             }
 
-            Command::unban => match parse_vec::<IpAddr>(parameters) {
-                Ok(ips) => match client.private.unban(ips).await {
-                    Ok(_) => repl_ok!("Request of unbanning successfully sent!"),
-                    Err(e) => repl_err!(e),
-                },
-                Err(e) => repl_err!(e),
-            },
+            Command::unban => {
+                let ips = parse_vec::<IpAddr>(parameters)?;
+                match client.private.unban(ips).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of unbanning successfully sent!")
+                        }
+                    }
+                    Err(e) => bail!("RpcError: {}", e),
+                };
+                Ok(Box::new(()))
+            }
 
-            Command::ban => match parse_vec::<IpAddr>(parameters) {
-                Ok(ips) => match client.private.ban(ips).await {
-                    Ok(_) => repl_ok!("Request of banning successfully sent!"),
-                    Err(e) => repl_err!(e),
-                },
-                Err(e) => repl_err!(e),
-            },
+            Command::ban => {
+                let ips = parse_vec::<IpAddr>(parameters)?;
+                match client.private.ban(ips).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of banning successfully sent!")
+                        }
+                    }
+                    Err(e) => bail!("RpcError: {}", e),
+                }
+                Ok(Box::new(()))
+            }
 
-            // TODO: process spawn should be detached
-            // Command::node_start => match process::Command::new("massa-node").spawn() {
-            //     Ok(_) => repl_ok!("Node successfully started!"),
-            //     Err(e) => repl_err!(e),
-            // },
-            //
-            Command::node_stop => match client.private.stop_node().await {
-                Ok(_) => repl_ok!("Request of stopping the Node successfully sent"),
-                Err(e) => repl_err!(e),
-            },
+            Command::node_stop => {
+                match client.private.stop_node().await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of stopping the Node successfully sent")
+                        }
+                    }
+                    Err(e) => bail!("RpcError: {}", e),
+                };
+                Ok(Box::new(()))
+            }
 
             Command::node_get_staking_addresses => {
                 match client.private.get_staking_addresses().await {
-                    Ok(x) => repl_ok!(format!(
-                        "{}",
-                        x.into_iter()
-                            .fold("".to_string(), |acc, a| format!("{}{}\n", acc, a)
-                                .to_string())
-                    )), // TODO
-                    Err(e) => repl_err!(e),
+                    Ok(staking_addresses) => Ok(Box::new(staking_addresses)),
+                    Err(e) => bail!("RpcError: {}", e),
                 }
             }
 
-            Command::node_remove_staking_addresses => match parse_vec::<Address>(parameters) {
-                Ok(addresses) => match client.private.remove_staking_addresses(addresses).await {
-                    Ok(_) => repl_ok!("Addresses successfully removed!"),
-                    Err(e) => repl_err!(e),
-                },
-                Err(e) => repl_err!(e),
-            },
-
-            Command::node_add_staking_private_keys => match parse_vec::<PrivateKey>(parameters) {
-                Ok(private_keys) => {
-                    match client.private.add_staking_private_keys(private_keys).await {
-                        Ok(_) => repl_ok!("Private keys successfully added!"),
-                        Err(e) => repl_err!(e),
+            Command::node_remove_staking_addresses => {
+                let addresses = parse_vec::<Address>(parameters)?;
+                match client.private.remove_staking_addresses(addresses).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Addresses successfully removed!")
+                        }
                     }
+                    Err(e) => bail!("RpcError: {}", e),
                 }
-                Err(e) => repl_err!(e),
-            },
+                Ok(Box::new(()))
+            }
+
+            Command::node_add_staking_private_keys => {
+                let private_keys = parse_vec::<PrivateKey>(parameters)?;
+                match client.private.add_staking_private_keys(private_keys).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Private keys successfully added!")
+                        }
+                    }
+                    Err(e) => bail!("RpcError: {}", e),
+                };
+                Ok(Box::new(()))
+            }
 
             Command::node_testnet_rewards_program_ownership_proof => {
                 if parameters.len() != 2 {
-                    repl_err!("Wrong param numbers") // TODO: print help
-                } else {
-                    // parse
-                    let addr = match parameters[0].parse::<Address>() {
-                        Ok(a) => a,
-                        Err(e) => return repl_err!(e),
-                    };
-                    let msg = parameters[1].as_bytes().to_vec();
-
-                    // get address signature
-                    let addr_sig = match wallet.sign_message(addr, msg.clone()) {
-                        Some(sig) => sig,
-                        None => {
-                            return repl_err!("Address not found");
-                        }
-                    };
-
-                    // get node signature
-                    let node_sig = match client.private.node_sign_message(msg).await {
-                        Ok(x) => x,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    // print concatenation
-                    repl_ok!(format!(
-                        "Enter the following in discord: {}/{}/{}/{}",
-                        node_sig.public_key,
-                        node_sig.signature,
-                        addr_sig.public_key,
-                        addr_sig.signature
-                    ))
+                    bail!("wrong param numbers");
                 }
+                // parse
+                let addr = parameters[0].parse::<Address>()?;
+                let msg = parameters[1].as_bytes().to_vec();
+                // get address signature
+                if let Some(addr_sig) = wallet.sign_message(addr, msg.clone()) {
+                    // get node signature
+                    match client.private.node_sign_message(msg).await {
+                        // print concatenation
+                        Ok(node_sig) => {
+                            if !json {
+                                println!("Enter the following in discord:");
+                                println!(
+                                    "{}/{}/{}/{}",
+                                    node_sig.public_key,
+                                    node_sig.signature,
+                                    addr_sig.public_key,
+                                    addr_sig.signature
+                                );
+                            }
+                        }
+                        Err(e) => bail!("RpcError: {}", e),
+                    }
+                } else {
+                    panic!("address not found")
+                }
+                Ok(Box::new(()))
             }
 
             Command::get_status => match client.public.get_status().await {
-                Ok(x) => repl_ok!(x),
-                Err(e) => repl_err!(e),
+                Ok(node_status) => Ok(Box::new(node_status)),
+                Err(e) => bail!("RpcError: {}", e),
             },
 
-            Command::get_addresses => match parse_vec::<Address>(parameters) {
-                Ok(addresses) => match client.public.get_addresses(addresses).await {
-                    Ok(x) => repl_ok!(format_vec::<AddressInfo>(&x)),
-                    Err(e) => repl_err!(e),
-                },
-                Err(e) => repl_err!(e),
-            },
-
-            Command::get_block => {
-                if parameters.len() != 1 {
-                    repl_err!("Wrong param numbers") // TODO: print help
-                } else {
-                    // parse
-                    let b_id = match parameters[0].parse::<BlockId>() {
-                        Ok(b) => b,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    match client.public.get_block(b_id).await {
-                        Ok(x) => repl_ok!(format!("{}", x)),
-                        Err(e) => repl_err!(e),
-                    }
+            Command::get_addresses => {
+                let addresses = parse_vec::<Address>(parameters)?;
+                match client.public.get_addresses(addresses).await {
+                    Ok(addresses_info) => Ok(Box::new(addresses_info)),
+                    Err(e) => bail!("RpcError: {}", e),
                 }
             }
 
-            Command::get_endorsements => match parse_vec::<EndorsementId>(parameters) {
-                Ok(endorsements) => match client.public.get_endorsements(endorsements).await {
-                    Ok(x) => repl_ok!(format_vec::<EndorsementInfo>(&x)),
-                    Err(e) => repl_err!(e),
-                },
-                Err(e) => repl_err!(e),
-            },
+            Command::get_block => {
+                if parameters.len() != 1 {
+                    bail!("wrong param numbers")
+                }
+                let block_id = parameters[0].parse::<BlockId>()?;
+                match client.public.get_block(block_id).await {
+                    Ok(block_info) => Ok(Box::new(block_info)),
+                    Err(e) => bail!("RpcError: {}", e),
+                }
+            }
 
-            Command::get_operations => match parse_vec::<OperationId>(parameters) {
-                Ok(operations) => match client.public.get_operations(operations).await {
-                    Ok(x) => repl_ok!(format_vec::<OperationInfo>(&x)),
-                    Err(e) => repl_err!(e),
-                },
-                Err(e) => repl_err!(e),
-            },
+            Command::get_endorsements => {
+                let endorsements = parse_vec::<EndorsementId>(parameters)?;
+                match client.public.get_endorsements(endorsements).await {
+                    Ok(endorsements_info) => Ok(Box::new(endorsements_info)),
+                    Err(e) => bail!("RpcError: {}", e),
+                }
+            }
+
+            Command::get_operations => {
+                let operations = parse_vec::<OperationId>(parameters)?;
+                match client.public.get_operations(operations).await {
+                    Ok(operations_info) => Ok(Box::new(operations_info)),
+                    Err(e) => bail!("RpcError: {}", e),
+                }
+            }
 
             Command::wallet_info => {
                 let full_wallet = wallet.get_full_wallet();
-                // TODO: maybe too much info in wallet_info
-
                 let mut res = "WARNING: do not share your private key\n\n".to_string();
                 match client
                     .public
@@ -393,7 +355,7 @@ impl Command {
                         for info in x.into_iter() {
                             let keys = match full_wallet.get(&info.address) {
                                 Some(keys) => keys,
-                                None => return repl_err!("Missing keys in wallet"),
+                                None => bail!("Missing keys in wallet"),
                             };
                             res.push_str(&format!(
                                 "Private key: {}\nPublic key: {}\n{}\n\n=====\n\n",
@@ -402,7 +364,6 @@ impl Command {
                                 info.compact()
                             ));
                         }
-                        repl_ok!(res)
                     }
                     Err(e) => {
                         res.push_str(&format!(
@@ -415,253 +376,163 @@ impl Command {
                                 priva, publ, ad
                             ));
                         }
-                        repl_ok!(res)
                     }
                 }
+                if !json {
+                    println!("{}", res);
+                }
+                Ok(Box::new(()))
             }
 
             Command::wallet_generate_private_key => {
-                match wallet.add_private_key(generate_random_private_key()) {
-                    Ok(ad) => repl_ok!(format!(
-                        "Generated {} address and added it to the wallet",
-                        ad
-                    )),
-                    Err(e) => repl_err!(e),
+                let ad = wallet.add_private_key(generate_random_private_key())?;
+                if !json {
+                    println!("Generated {} address and added it to the wallet", ad);
                 }
+                Ok(Box::new(()))
             }
 
-            Command::wallet_add_private_keys => match parse_vec::<PrivateKey>(parameters) {
-                Ok(x) => {
-                    let mut res = "".to_string();
-                    for key in x.into_iter() {
-                        match wallet.add_private_key(key) {
-                            Ok(ad) => {
-                                res.push_str(&format!(
-                                    "Derived and added address {} to the wallet\n",
-                                    ad
-                                ));
-                            }
-                            Err(e) => return repl_err!(e),
-                        }
-                    }
-                    repl_ok!(res)
+            Command::wallet_add_private_keys => {
+                let mut res = "".to_string();
+                for key in parse_vec::<PrivateKey>(parameters)?.into_iter() {
+                    let ad = wallet.add_private_key(key)?;
+                    res.push_str(&format!("Derived and added address {} to the wallet\n", ad));
                 }
-                Err(e) => repl_err!(e),
-            },
+                if !json {
+                    println!("{}", res);
+                }
+                Ok(Box::new(()))
+            }
 
-            Command::wallet_remove_addresses => match parse_vec::<Address>(parameters) {
-                Ok(x) => {
-                    let mut res = "".to_string();
-                    for key in x.into_iter() {
-                        match wallet.remove_address(key) {
-                            Some(_) => {
-                                res.push_str(&format!("Removed address {} from the wallet\n", key));
-                            }
-                            None => {
-                                res.push_str(&format!("Address {} wasn't in the wallet\n", key));
-                            }
+            Command::wallet_remove_addresses => {
+                let mut res = "".to_string();
+                for key in parse_vec::<Address>(parameters)?.into_iter() {
+                    match wallet.remove_address(key) {
+                        Some(_) => {
+                            res.push_str(&format!("Removed address {} from the wallet\n", key));
+                        }
+                        None => {
+                            res.push_str(&format!("Address {} wasn't in the wallet\n", key));
                         }
                     }
-                    repl_ok!(res)
                 }
-                Err(e) => repl_err!(e),
-            },
+                if !json {
+                    println!("{}", res);
+                }
+                Ok(Box::new(()))
+            }
 
             Command::buy_rolls => {
                 if parameters.len() != 3 {
-                    return repl_err!("Wrong param numbers"); // TODO: print help buy roll
-                } else {
-                    let addr = match parameters[0].parse::<Address>() {
-                        Ok(a) => a,
-                        Err(e) => return repl_err!(e),
-                    };
-                    let roll_count = match parameters[1].parse::<u64>() {
-                        Ok(a) => a,
-                        Err(e) => return repl_err!(e),
-                    };
-                    let fee = match parameters[2].parse::<Amount>() {
-                        Ok(a) => a,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    let op = OperationType::RollBuy { roll_count };
-
-                    let cfg = match client.public.get_status().await {
-                        Ok(x) => x.algo_config,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    let slot = match get_current_latest_block_slot(
-                        cfg.thread_count,
-                        cfg.t0,
-                        cfg.genesis_timestamp,
-                        0,
-                    ) {
-                        Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    let mut expire_period = slot.period + cfg.operation_validity_periods;
-                    if slot.thread >= addr.get_thread(cfg.thread_count) {
-                        expire_period += 1;
-                    };
-                    let sender_public_key = match wallet.find_associated_public_key(addr) {
-                        Some(pk) => *pk,
-                        None => return repl_err!("Missing public key"),
-                    };
-
-                    let content = OperationContent {
-                        sender_public_key,
-                        fee,
-                        expire_period,
-                        op,
-                    };
-                    let op = match wallet.create_operation(content, addr) {
-                        Ok(op) => op,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    match client.public.send_operations(vec![op]).await {
-                        Ok(x) => repl_ok!(format!("Sent operation id : {}", format_vec(&x))),
-                        Err(e) => repl_err!(e),
-                    }
+                    bail!("wrong param numbers");
                 }
+                let addr = parameters[0].parse::<Address>()?;
+                let roll_count = parameters[1].parse::<u64>()?;
+                let fee = parameters[2].parse::<Amount>()?;
+
+                send_operation(
+                    client,
+                    wallet,
+                    OperationType::RollBuy { roll_count },
+                    fee,
+                    addr,
+                    json,
+                )
+                .await
             }
 
             Command::sell_rolls => {
                 if parameters.len() != 3 {
-                    return repl_err!("Wrong param numbers"); // TODO: print help sell roll
-                } else {
-                    let addr = match parameters[0].parse::<Address>() {
-                        Ok(a) => a,
-                        Err(e) => return repl_err!(e),
-                    };
-                    let roll_count = match parameters[1].parse::<u64>() {
-                        Ok(a) => a,
-                        Err(e) => return repl_err!(e),
-                    };
-                    let fee = match parameters[2].parse::<Amount>() {
-                        Ok(a) => a,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    let op = OperationType::RollSell { roll_count };
-
-                    let cfg = match client.public.get_status().await {
-                        Ok(x) => x.algo_config,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    let slot = match get_current_latest_block_slot(
-                        cfg.thread_count,
-                        cfg.t0,
-                        cfg.genesis_timestamp,
-                        0,
-                    ) {
-                        Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    let mut expire_period = slot.period + cfg.operation_validity_periods;
-                    if slot.thread >= addr.get_thread(cfg.thread_count) {
-                        expire_period += 1;
-                    };
-                    let sender_public_key = match wallet.find_associated_public_key(addr) {
-                        Some(pk) => *pk,
-                        None => return repl_err!("Missing public key"),
-                    };
-
-                    let content = OperationContent {
-                        sender_public_key,
-                        fee,
-                        expire_period,
-                        op,
-                    };
-                    let op = match wallet.create_operation(content, addr) {
-                        Ok(op) => op,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    match client.public.send_operations(vec![op]).await {
-                        Ok(x) => repl_ok!(format!("Sent operation id : {}", format_vec(&x))),
-                        Err(e) => repl_err!(e),
-                    }
+                    bail!("wrong param numbers");
                 }
+                let addr = parameters[0].parse::<Address>()?;
+                let roll_count = parameters[1].parse::<u64>()?;
+                let fee = parameters[2].parse::<Amount>()?;
+
+                send_operation(
+                    client,
+                    wallet,
+                    OperationType::RollSell { roll_count },
+                    fee,
+                    addr,
+                    json,
+                )
+                .await
             }
 
             Command::send_transaction => {
                 if parameters.len() != 4 {
-                    return repl_err!("Wrong param numbers"); // TODO: print help transaction
-                } else {
-                    let addr = match parameters[0].parse::<Address>() {
-                        Ok(a) => a,
-                        Err(e) => return repl_err!(e),
-                    };
-                    let recipient_address = match parameters[1].parse::<Address>() {
-                        Ok(a) => a,
-                        Err(e) => return repl_err!(e),
-                    };
+                    bail!("wrong param numbers");
+                }
+                let addr = parameters[0].parse::<Address>()?;
+                let recipient_address = parameters[1].parse::<Address>()?;
+                let amount = parameters[2].parse::<Amount>()?;
+                let fee = parameters[3].parse::<Amount>()?;
 
-                    let amount = match parameters[2].parse::<Amount>() {
-                        Ok(a) => a,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    let fee = match parameters[3].parse::<Amount>() {
-                        Ok(a) => a,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    let op = OperationType::Transaction {
+                send_operation(
+                    client,
+                    wallet,
+                    OperationType::Transaction {
                         recipient_address,
                         amount,
-                    };
-
-                    let cfg = match client.public.get_status().await {
-                        Ok(x) => x.algo_config,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    let slot = match get_current_latest_block_slot(
-                        cfg.thread_count,
-                        cfg.t0,
-                        cfg.genesis_timestamp,
-                        0,
-                    ) {
-                        Ok(a) => a.unwrap_or_else(|| Slot::new(0, 0)),
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    let mut expire_period = slot.period + cfg.operation_validity_periods;
-                    if slot.thread >= addr.get_thread(cfg.thread_count) {
-                        expire_period += 1;
-                    };
-                    let sender_public_key = match wallet.find_associated_public_key(addr) {
-                        Some(pk) => *pk,
-                        None => return repl_err!("Missing public key"),
-                    };
-
-                    let content = OperationContent {
-                        sender_public_key,
-                        fee,
-                        expire_period,
-                        op,
-                    };
-                    let op = match wallet.create_operation(content, addr) {
-                        Ok(op) => op,
-                        Err(e) => return repl_err!(e),
-                    };
-
-                    match client.public.send_operations(vec![op]).await {
-                        Ok(x) => repl_ok!(if is_interactive {
-                            format!("Sent operation id : {}", format_vec(&x))
-                        } else {
-                            format_vec(&x)
-                        }),
-                        Err(e) => repl_err!(e),
-                    }
-                }
+                    },
+                    fee,
+                    addr,
+                    json,
+                )
+                .await
             }
         }
     }
+}
+
+async fn send_operation(
+    client: &Client,
+    wallet: &Wallet,
+    op: OperationType,
+    fee: Amount,
+    addr: Address,
+    json: bool,
+) -> Result<Box<dyn Output>> {
+    let cfg = match client.public.get_status().await {
+        Ok(node_status) => node_status,
+        Err(e) => bail!("RpcError: {}", e),
+    }
+    .algo_config;
+
+    let slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp, 0)?
+        .unwrap_or_else(|| Slot::new(0, 0));
+    let mut expire_period = slot.period + cfg.operation_validity_periods;
+    if slot.thread >= addr.get_thread(cfg.thread_count) {
+        expire_period += 1;
+    };
+    let sender_public_key = match wallet.find_associated_public_key(addr) {
+        Some(pk) => *pk,
+        None => bail!("Missing public key"),
+    };
+
+    let op = wallet.create_operation(
+        OperationContent {
+            sender_public_key,
+            fee,
+            expire_period,
+            op,
+        },
+        addr,
+    )?;
+
+    match client.public.send_operations(vec![op]).await {
+        Ok(operation_ids) => {
+            if !json {
+                println!("Sent operation IDs:");
+            }
+            Ok(Box::new(operation_ids))
+        }
+        Err(e) => bail!("RpcError: {}", e),
+    }
+}
+
+// TODO: ugly utilities functions
+pub fn parse_vec<T: std::str::FromStr>(args: &Vec<String>) -> anyhow::Result<Vec<T>, T::Err> {
+    args.iter().map(|x| x.parse::<T>()).collect()
 }

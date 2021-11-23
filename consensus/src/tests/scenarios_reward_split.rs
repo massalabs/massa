@@ -5,6 +5,7 @@ use crypto::hash::Hash;
 use models::ledger::LedgerData;
 use models::{Address, Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use serial_test::serial;
+use signature::{derive_public_key, generate_random_private_key, sign};
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -21,22 +22,22 @@ async fn test_reward_split() {
     let thread_count = 2;
 
     // A
-    let mut priv_a = crypto::generate_random_private_key();
-    let mut pubkey_a = crypto::derive_public_key(&priv_a);
+    let mut priv_a = generate_random_private_key();
+    let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
     while 0 != address_a.get_thread(thread_count) {
-        priv_a = crypto::generate_random_private_key();
-        pubkey_a = crypto::derive_public_key(&priv_a);
+        priv_a = generate_random_private_key();
+        pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a).unwrap();
     }
 
     // B
-    let mut priv_b = crypto::generate_random_private_key();
-    let mut pubkey_b = crypto::derive_public_key(&priv_b);
+    let mut priv_b = generate_random_private_key();
+    let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
     while 0 != address_b.get_thread(thread_count) {
-        priv_b = crypto::generate_random_private_key();
-        pubkey_b = crypto::derive_public_key(&priv_b);
+        priv_b = generate_random_private_key();
+        pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b).unwrap();
     }
 
@@ -151,7 +152,7 @@ async fn test_reward_split() {
                 endorsed_block: b1_id,
             };
             let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-            let signature = crypto::sign(&hash, &slot_two_priv_key).unwrap();
+            let signature = sign(&hash, &slot_two_priv_key).unwrap();
             let ed_1 = Endorsement {
                 content: content.clone(),
                 signature,
@@ -169,7 +170,7 @@ async fn test_reward_split() {
                 endorsed_block: b1_id,
             };
             let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-            let signature = crypto::sign(&hash, &slot_one_priv_key).unwrap();
+            let signature = sign(&hash, &slot_one_priv_key).unwrap();
             let ed_2 = Endorsement {
                 content: content.clone(),
                 signature,
@@ -187,7 +188,7 @@ async fn test_reward_split() {
                 endorsed_block: b1_id,
             };
             let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-            let signature = crypto::sign(&hash, &slot_two_priv_key).unwrap();
+            let signature = sign(&hash, &slot_two_priv_key).unwrap();
             let ed_3 = Endorsement {
                 content: content.clone(),
                 signature,
@@ -215,11 +216,11 @@ async fn test_reward_split() {
                 .saturating_add(if pubkey_a == slot_one_pub_key {
                     // block 1 reward
                     cfg.block_reward
-                        .checked_mul_u64(1 + 0)
+                        .checked_mul_u64(1)
                         .unwrap()
                         .checked_div_u64((1 + cfg.endorsement_count).into())
                         .unwrap()
-                        .saturating_sub(third.checked_mul_u64(2 * 0).unwrap())
+                        .saturating_sub(third.checked_mul_u64(0).unwrap())
                         // endorsements reward
                         .saturating_add(
                             third // parent in ed 1
@@ -252,11 +253,11 @@ async fn test_reward_split() {
                 .saturating_add(if pubkey_b == slot_one_pub_key {
                     // block 1 reward
                     cfg.block_reward
-                        .checked_mul_u64(1 + 0)
+                        .checked_mul_u64(1)
                         .unwrap()
                         .checked_div_u64((1 + cfg.endorsement_count).into())
                         .unwrap()
-                        .saturating_sub(third.checked_mul_u64(2 * 0).unwrap())
+                        .saturating_sub(third.checked_mul_u64(0).unwrap())
                         // endorsements reward
                         .saturating_add(
                             third // parent in ed 1

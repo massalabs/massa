@@ -1,9 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crypto::signature::PrivateKey;
 use models::{AlgoConfig, Amount};
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
+use signature::PrivateKey;
 use std::{default::Default, path::PathBuf, usize};
 use time::UTime;
 
@@ -68,6 +68,8 @@ pub struct ConsensusConfig {
     pub stats_timespan: UTime,
     // max event send wait
     pub max_send_wait: UTime,
+    // force keep at least this number of final periods in RAM for each thread
+    pub force_keep_final_periods: u64,
     pub endorsement_count: u32,
     pub block_db_prune_interval: UTime,
     pub max_item_return_count: usize,

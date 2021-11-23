@@ -13,6 +13,7 @@ members = [
     "massa-client",
     "protocol-worker",
     "protocol-exports",
+    "signature",
     "time",
     "wallet",
 ]

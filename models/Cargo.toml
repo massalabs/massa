@@ -9,18 +9,15 @@ displaydoc = "0.2"
 integer-encoding = "3.0"
 lazy_static = "1.4"
 num_enum = "0.5"
-rand = { version = "0.8"}
-reqwest = { version = "0.11", features = ["blocking", "json"] }
+rand = "0.8"
 rust_decimal = "1.15"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0" }
-serde_qs = {version= "0.8"}
-sled = "0.34"
 tokio = { version = "1.11", features = ["full"] }
 thiserror = "1.0"
 # custom modules
-crypto = {path = "../crypto"}
-time = {path = "../time"}
+crypto = { path = "../crypto" }
+signature = { path = "../signature" }
+time = { path = "../time" }
 
 [dev-dependencies]
 pretty_assertions = "1.0"

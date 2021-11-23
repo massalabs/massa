@@ -6,13 +6,15 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0"
 atty = "0.2"
 config = "0.11"
 console = "0.15"
 dialoguer = { version = "0.9", git = "https://github.com/yvan-sraka/dialoguer.git", branch="completion-feature", features = ["history", "completion"] }
+erased-serde = "0.3"
 futures = "0.3"
 jsonrpc-core-client = { version = "18.0.0", features = ["http", "tls"] }
-lazy_static = "1"
+lazy_static = "1.4.0"
 paw = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -21,10 +23,10 @@ strum = "0.22"
 strum_macros = "0.22"
 tokio = { version = "1", features = ["full"] }
 # custom modules
-crypto = { path = "../crypto" }
-models = {path = "../models"}
-time = {path = "../time"}
-wallet = {path = "../wallet"}
+models = { path = "../models" }
+signature = { path = "../signature" }
+time = { path = "../time" }
+wallet = { path = "../wallet" }
 
 [dev-dependencies]
 assert_cmd = "2.0"

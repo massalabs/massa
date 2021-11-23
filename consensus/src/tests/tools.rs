@@ -1,4 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
+#![allow(clippy::ptr_arg)] // this allow &Vec<..> as function argument type
 
 use super::mock_pool_controller::{MockPoolController, PoolCommandSink};
 use super::mock_protocol_controller::MockProtocolController;
@@ -11,10 +12,7 @@ use crate::{
     start_consensus_controller, BootstrapableGraph, ConsensusCommandSender, ConsensusEventReceiver,
     ExportProofOfStake,
 };
-use crypto::{
-    hash::Hash,
-    signature::{PrivateKey, PublicKey},
-};
+use crypto::hash::Hash;
 use models::ledger::LedgerData;
 use models::{
     Address, Amount, Block, BlockHashSet, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
@@ -23,6 +21,9 @@ use models::{
 use num::rational::Ratio;
 use pool::PoolCommand;
 use protocol_exports::ProtocolCommand;
+use signature::{
+    derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
+};
 use std::str::FromStr;
 use std::{
     collections::{HashMap, HashSet},
@@ -45,12 +46,12 @@ pub async fn validate_notpropagate_block(
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => Some(block_id),
             _ => None,
         })
         .await;
     match param {
-        Some(block_id) => !(not_propagated == block_id),
+        Some(block_id) => not_propagated != block_id,
         None => false,
     }
 }
@@ -63,7 +64,7 @@ pub async fn validate_notpropagate_block_in_list(
 ) -> bool {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => Some(block_id),
             _ => None,
         })
         .await;
@@ -80,7 +81,7 @@ pub async fn validate_propagate_block_in_list(
 ) -> BlockId {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::IntegratedBlock { block_id, .. } => return Some(block_id),
+            ProtocolCommand::IntegratedBlock { block_id, .. } => Some(block_id),
             _ => None,
         })
         .await;
@@ -100,7 +101,7 @@ pub async fn validate_ask_for_block(
 ) -> BlockId {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::WishlistDelta { new, .. } => return Some(new),
+            ProtocolCommand::WishlistDelta { new, .. } => Some(new),
             _ => None,
         })
         .await;
@@ -122,7 +123,7 @@ pub async fn validate_wishlist(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::WishlistDelta { new, remove } => return Some((new, remove)),
+            ProtocolCommand::WishlistDelta { new, remove } => Some((new, remove)),
             _ => None,
         })
         .await;
@@ -142,17 +143,14 @@ pub async fn validate_does_not_ask_for_block(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::WishlistDelta { new, .. } => return Some(new),
+            ProtocolCommand::WishlistDelta { new, .. } => Some(new),
             _ => None,
         })
         .await;
-    match param {
-        Some(new) => {
-            if new.contains(hash) {
-                panic!("unexpected ask for block {}", hash);
-            }
+    if let Some(new) = param {
+        if new.contains(hash) {
+            panic!("unexpected ask for block {}", hash);
         }
-        None => {}
     }
 }
 
@@ -182,7 +180,7 @@ pub async fn validate_notify_block_attack_attempt(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::AttackBlockDetected(hash) => return Some(hash),
+            ProtocolCommand::AttackBlockDetected(hash) => Some(hash),
             _ => None,
         })
         .await;
@@ -199,7 +197,7 @@ pub async fn validate_block_found(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::GetBlocksResults(results) => return Some(results),
+            ProtocolCommand::GetBlocksResults(results) => Some(results),
             _ => None,
         })
         .await;
@@ -225,7 +223,7 @@ pub async fn validate_block_not_found(
 ) {
     let param = protocol_controller
         .wait_command(timeout_ms.into(), |cmd| match cmd {
-            ProtocolCommand::GetBlocksResults(results) => return Some(results),
+            ProtocolCommand::GetBlocksResults(results) => Some(results),
             _ => None,
         })
         .await;
@@ -253,7 +251,7 @@ pub async fn create_and_test_block(
     trace: bool,
     creator: PrivateKey,
 ) -> BlockId {
-    let (block_hash, block, _) = create_block(&cfg, slot, best_parents, creator);
+    let (block_hash, block, _) = create_block(cfg, slot, best_parents, creator);
     if trace {
         info!("create block:{}", block_hash);
     }
@@ -308,7 +306,7 @@ pub fn create_roll_transaction(
         op,
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-    let signature = crypto::sign(&hash, &priv_key).unwrap();
+    let signature = sign(&hash, &priv_key).unwrap();
     Operation { content, signature }
 }
 
@@ -353,7 +351,7 @@ pub fn create_transaction(
         op,
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-    let signature = crypto::sign(&hash, &priv_key).unwrap();
+    let signature = sign(&hash, &priv_key).unwrap();
     Operation { content, signature }
 }
 
@@ -364,7 +362,7 @@ pub fn create_roll_buy(
     fee: u64,
 ) -> Operation {
     let op = OperationType::RollBuy { roll_count };
-    let sender_public_key = crypto::derive_public_key(&priv_key);
+    let sender_public_key = derive_public_key(&priv_key);
     let content = OperationContent {
         sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
@@ -372,7 +370,7 @@ pub fn create_roll_buy(
         op,
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-    let signature = crypto::sign(&hash, &priv_key).unwrap();
+    let signature = sign(&hash, &priv_key).unwrap();
     Operation { content, signature }
 }
 
@@ -383,7 +381,7 @@ pub fn create_roll_sell(
     fee: u64,
 ) -> Operation {
     let op = OperationType::RollSell { roll_count };
-    let sender_public_key = crypto::derive_public_key(&priv_key);
+    let sender_public_key = derive_public_key(&priv_key);
     let content = OperationContent {
         sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
@@ -391,7 +389,7 @@ pub fn create_roll_sell(
         op,
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-    let signature = crypto::sign(&hash, &priv_key).unwrap();
+    let signature = sign(&hash, &priv_key).unwrap();
     Operation { content, signature }
 }
 
@@ -419,7 +417,7 @@ pub fn create_block_with_merkle_root(
     best_parents: Vec<BlockId>,
     creator: PrivateKey,
 ) -> (BlockId, Block, PrivateKey) {
-    let public_key = crypto::derive_public_key(&creator);
+    let public_key = derive_public_key(&creator);
     let (hash, header) = BlockHeader::new_signed(
         &creator,
         BlockHeaderContent {
@@ -447,7 +445,7 @@ pub fn create_endorsement(
     endorsed_block: BlockId,
     index: u32,
 ) -> Endorsement {
-    let sender_public_key = crypto::derive_public_key(&sender_priv);
+    let sender_public_key = derive_public_key(&sender_priv);
 
     let content = EndorsementContent {
         sender_public_key,
@@ -456,11 +454,8 @@ pub fn create_endorsement(
         endorsed_block,
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-    let signature = crypto::sign(&hash, &sender_priv).unwrap();
-    Endorsement {
-        content: content.clone(),
-        signature,
-    }
+    let signature = sign(&hash, &sender_priv).unwrap();
+    Endorsement { content, signature }
 }
 
 pub fn get_export_active_test_block(
@@ -473,13 +468,12 @@ pub fn get_export_active_test_block(
     let block = Block {
         header: BlockHeader {
             content: BlockHeaderContent{
-                creator: creator,
+                creator,
                 operation_merkle_root: Hash::hash(&operations.iter().map(|op|{
                     op
                         .get_operation_id()
                         .unwrap()
                         .to_bytes()
-                        .clone()
                     })
                     .flatten()
                     .collect::<Vec<_>>()[..]),
@@ -489,7 +483,7 @@ pub fn get_export_active_test_block(
                 slot,
                 endorsements: Vec::new(),
             },
-            signature: crypto::signature::Signature::from_bs58_check(
+            signature: Signature::from_bs58_check(
                 "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
             ).unwrap()
         },
@@ -518,12 +512,11 @@ pub fn create_block_with_operations(
     creator: PrivateKey,
     operations: Vec<Operation>,
 ) -> (BlockId, Block, PrivateKey) {
-    let public_key = crypto::derive_public_key(&creator);
+    let public_key = derive_public_key(&creator);
 
     let operation_merkle_root = Hash::hash(
         &operations.iter().fold(Vec::new(), |acc, v| {
-            let res = [acc, v.to_bytes_compact().unwrap()].concat();
-            res
+            [acc, v.to_bytes_compact().unwrap()].concat()
         })[..],
     );
 
@@ -587,7 +580,7 @@ pub fn generate_roll_counts_file(roll_counts: &RollCounts) -> NamedTempFile {
 pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempFile {
     let mut roll_counts = RollCounts::default();
     for key in stakers.iter() {
-        let pub_key = crypto::derive_public_key(key);
+        let pub_key = derive_public_key(key);
         let address = Address::from_public_key(&pub_key).unwrap();
         let update = RollUpdate {
             roll_purchases: 1,
@@ -602,10 +595,10 @@ pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempF
 
 pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<PrivateKey>) -> PrivateKey {
     for key in nodes.iter() {
-        let pub_key = crypto::derive_public_key(key);
+        let pub_key = derive_public_key(key);
         let address = Address::from_public_key(&pub_key).unwrap();
         if address == *draw {
-            return key.clone();
+            return *key;
         }
     }
     panic!("Matching key for draw not found.");
@@ -616,7 +609,7 @@ pub fn default_consensus_config(
     roll_counts_path: &Path,
     staking_keys_path: &Path,
 ) -> ConsensusConfig {
-    let genesis_key = crypto::generate_random_private_key();
+    let genesis_key = generate_random_private_key();
     let thread_count: u8 = 2;
     let max_block_size: u32 = 3 * 1024 * 1024;
     let max_operations_per_block: u32 = 1024;
@@ -645,7 +638,7 @@ pub fn default_consensus_config(
 
     ConsensusConfig {
         genesis_timestamp: UTime::now(0).unwrap(),
-        thread_count: thread_count,
+        thread_count,
         t0: 32000.into(),
         genesis_key,
         max_discarded_blocks: 10,
@@ -677,6 +670,7 @@ pub fn default_consensus_config(
         staking_keys_path: staking_keys_path.to_path_buf(),
         end_timestamp: None,
         max_send_wait: 500.into(),
+        force_keep_final_periods: 0,
         endorsement_count: 0,
         block_db_prune_interval: 1000.into(),
         max_item_return_count: 1000,

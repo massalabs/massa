@@ -3,15 +3,15 @@
 #![feature(async_closure)]
 #![doc = include_str!("../../docs/api.md")]
 
+use crate::error::ApiError::WrongAPI;
 use consensus::{ConsensusCommandSender, ConsensusConfig};
-use crypto::signature::PrivateKey;
 use error::ApiError;
 use jsonrpc_core::{BoxFuture, IoHandler, Value};
 use jsonrpc_derive::rpc;
 use jsonrpc_http_server::{CloseHandle, ServerBuilder};
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
-    APIConfig, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
+    APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
     TimeInterval,
 };
 use models::clique::Clique;
@@ -21,6 +21,7 @@ use models::operation::{Operation, OperationId};
 use models::{Address, BlockId, EndorsementId, Version};
 use network::{NetworkCommandSender, NetworkConfig};
 use pool::PoolCommandSender;
+use signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
 use std::thread;
 use std::thread::JoinHandle;
@@ -34,9 +35,9 @@ mod public;
 pub struct Public {
     pub consensus_command_sender: ConsensusCommandSender,
     pub pool_command_sender: PoolCommandSender,
-    pub consensus_config: ConsensusConfig,
-    pub api_config: APIConfig,
-    pub network_config: NetworkConfig,
+    pub consensus_settings: &'static ConsensusConfig,
+    pub api_settings: &'static APISettings,
+    pub network_settings: &'static NetworkConfig,
     pub version: Version,
     pub network_command_sender: NetworkCommandSender,
     pub compensation_millis: i64,
@@ -46,8 +47,8 @@ pub struct Public {
 pub struct Private {
     pub consensus_command_sender: ConsensusCommandSender,
     pub network_command_sender: NetworkCommandSender,
-    pub consensus_config: ConsensusConfig,
-    pub api_config: APIConfig,
+    pub consensus_settings: &'static ConsensusConfig,
+    pub api_settings: &'static APISettings,
     pub stop_node_channel: mpsc::Sender<()>,
 }
 
@@ -169,6 +170,11 @@ pub trait Endpoints {
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
     #[rpc(name = "send_operations")]
     fn send_operations(&self, _: Vec<Operation>) -> BoxFuture<Result<Vec<OperationId>, ApiError>>;
+}
+
+fn wrong_api<T>() -> BoxFuture<Result<T, ApiError>> {
+    let closure = async move || Err(WrongAPI);
+    Box::pin(closure())
 }
 
 fn _jsonrpc_assert(_method: &str, _request: Value, _response: Value) {

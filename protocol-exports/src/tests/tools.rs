@@ -2,19 +2,17 @@
 
 use super::mock_network_controller::MockNetworkController;
 use crate::{
-    ProtocolConfig, ProtocolEvent, ProtocolEventReceiver, ProtocolPoolEvent,
-    ProtocolPoolEventReceiver,
+    ProtocolEvent, ProtocolEventReceiver, ProtocolPoolEvent, ProtocolPoolEventReceiver,
+    ProtocolSettings,
 };
-use crypto::{
-    hash::Hash,
-    signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey},
-};
+use crypto::hash::Hash;
 use models::node::NodeId;
 use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, SerializeCompact, Slot,
 };
 use models::{Endorsement, EndorsementContent, Operation, OperationContent, OperationType};
 use network::NetworkCommand;
+use signature::{derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey};
 use std::collections::HashMap;
 use time::UTime;
 use tokio::time::sleep;
@@ -163,8 +161,8 @@ pub async fn send_and_propagate_block(
 /// Creates an endorsement for use in protocol tests,
 /// without paying attention to consensus related things.
 pub fn create_endorsement() -> Endorsement {
-    let sender_priv = crypto::generate_random_private_key();
-    let sender_public_key = crypto::derive_public_key(&sender_priv);
+    let sender_priv = generate_random_private_key();
+    let sender_public_key = derive_public_key(&sender_priv);
 
     let content = EndorsementContent {
         sender_public_key,
@@ -173,7 +171,7 @@ pub fn create_endorsement() -> Endorsement {
         endorsed_block: BlockId(Hash::hash(&[])),
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-    let signature = crypto::sign(&hash, &sender_priv).unwrap();
+    let signature = sign(&hash, &sender_priv).unwrap();
     Endorsement {
         content: content.clone(),
         signature,
@@ -185,10 +183,10 @@ pub fn create_operation_with_expire_period(
     sender_priv: &PrivateKey,
     expire_period: u64,
 ) -> Operation {
-    let sender_pub = crypto::derive_public_key(sender_priv);
+    let sender_pub = derive_public_key(sender_priv);
 
-    let recv_priv = crypto::generate_random_private_key();
-    let recv_pub = crypto::derive_public_key(&recv_priv);
+    let recv_priv = generate_random_private_key();
+    let recv_pub = derive_public_key(&recv_priv);
 
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub).unwrap(),
@@ -201,13 +199,17 @@ pub fn create_operation_with_expire_period(
         expire_period,
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-    let signature = crypto::sign(&hash, sender_priv).unwrap();
+    let signature = sign(&hash, sender_priv).unwrap();
 
     Operation { content, signature }
 }
 
+lazy_static::lazy_static! {
+    pub static ref PROTOCOL_SETTINGS: ProtocolSettings = create_protocol_settings();
+}
+
 // create a ProtocolConfig with typical values
-pub fn create_protocol_config() -> ProtocolConfig {
+pub fn create_protocol_settings() -> ProtocolSettings {
     // Init the serialization context with a default,
     // can be overwritten with a more specific one in the test.
     models::init_serialization_context(models::SerializationContext {
@@ -229,7 +231,7 @@ pub fn create_protocol_config() -> ProtocolConfig {
         max_block_endorsments: 8,
     });
 
-    ProtocolConfig {
+    ProtocolSettings {
         ask_block_timeout: 500.into(),
         max_node_known_blocks_size: 100,
         max_node_wanted_blocks_size: 100,

@@ -12,10 +12,10 @@ use serial_test::serial;
 #[serial]
 async fn test_without_a_priori() {
     // start
-    let protocol_config = tools::create_protocol_config();
+    let protocol_settings = &tools::PROTOCOL_SETTINGS;
 
     protocol_test(
-        protocol_config,
+        &protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -82,9 +82,9 @@ async fn test_without_a_priori() {
 #[serial]
 async fn test_someone_knows_it() {
     // start
-    let protocol_config = tools::create_protocol_config();
+    let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        protocol_config,
+        &protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -159,9 +159,9 @@ async fn test_someone_knows_it() {
 #[serial]
 async fn test_dont_want_it_anymore() {
     // start
-    let protocol_config = tools::create_protocol_config();
+    let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        protocol_config,
+        &protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -230,10 +230,10 @@ async fn test_dont_want_it_anymore() {
 #[serial]
 async fn test_no_one_has_it() {
     // start
-    let protocol_config = tools::create_protocol_config();
+    let protocol_settings = &tools::PROTOCOL_SETTINGS;
 
     protocol_test(
-        protocol_config,
+        &protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -306,10 +306,10 @@ async fn test_no_one_has_it() {
 #[serial]
 async fn test_multiple_blocks_without_a_priori() {
     // start
-    let protocol_config = tools::create_protocol_config();
+    let protocol_settings = &tools::PROTOCOL_SETTINGS;
 
     protocol_test(
-        protocol_config,
+        &protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,

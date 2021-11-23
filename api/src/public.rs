@@ -1,18 +1,16 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 #![allow(clippy::too_many_arguments)]
 use crate::error::ApiError;
-use crate::error::ApiError::WrongAPI;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use consensus::{
     ConsensusCommandSender, ConsensusConfig, DiscardReason, ExportBlockStatus, Status,
 };
-use crypto::signature::PrivateKey;
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
-    APIConfig, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, NodeStatus,
-    OperationInfo, TimeInterval,
+    APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
+    IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
 };
 use models::clique::Clique;
 use models::crypto::PubkeySig;
@@ -25,16 +23,17 @@ use models::{
 };
 use network::{NetworkCommandSender, NetworkConfig};
 use pool::PoolCommandSender;
+use signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
 use time::UTime;
 
 impl API<Public> {
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
-        api_config: APIConfig,
-        consensus_config: ConsensusConfig,
+        api_settings: &'static APISettings,
+        consensus_settings: &'static ConsensusConfig,
         pool_command_sender: PoolCommandSender,
-        network_config: NetworkConfig,
+        network_settings: &'static NetworkConfig,
         version: Version,
         network_command_sender: NetworkCommandSender,
         compensation_millis: i64,
@@ -42,10 +41,10 @@ impl API<Public> {
     ) -> Self {
         API(Public {
             consensus_command_sender,
-            consensus_config,
-            api_config,
+            consensus_settings,
+            api_settings,
             pool_command_sender,
-            network_config,
+            network_settings,
             version,
             network_command_sender,
             compensation_millis,
@@ -63,56 +62,49 @@ impl RpcServer for API<Public> {
 #[doc(hidden)]
 impl Endpoints for API<Public> {
     fn stop_node(&self) -> BoxFuture<Result<(), ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
+        crate::wrong_api::<()>()
     }
 
     fn node_sign_message(&self, _: Vec<u8>) -> BoxFuture<Result<PubkeySig, ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
+        crate::wrong_api::<PubkeySig>()
     }
 
     fn add_staking_private_keys(&self, _: Vec<PrivateKey>) -> BoxFuture<Result<(), ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
+        crate::wrong_api::<()>()
     }
 
     fn remove_staking_addresses(&self, _: Vec<Address>) -> BoxFuture<Result<(), ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
+        crate::wrong_api::<()>()
     }
 
     fn get_staking_addresses(&self) -> BoxFuture<Result<AddressHashSet, ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
+        crate::wrong_api::<AddressHashSet>()
     }
 
     fn ban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
+        crate::wrong_api::<()>()
     }
 
     fn unban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
-        let closure = async move || Err(WrongAPI);
-        Box::pin(closure())
+        crate::wrong_api::<()>()
     }
 
     fn get_status(&self) -> BoxFuture<Result<NodeStatus, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let network_command_sender = self.0.network_command_sender.clone();
-        let network_config = self.0.network_config.clone();
+        let network_config = self.0.network_settings.clone();
         let version = self.0.version;
-        let consensus_config = self.0.consensus_config.clone();
+        let consensus_settings = self.0.consensus_settings.clone();
         let compensation_millis = self.0.compensation_millis;
         let mut pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
-        let algo_config = consensus_config.to_algo_config();
+        let algo_config = consensus_settings.to_algo_config();
         let closure = async move || {
             let now = UTime::now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
-                consensus_config.thread_count,
-                consensus_config.t0,
-                consensus_config.genesis_timestamp,
+                consensus_settings.thread_count,
+                consensus_settings.t0,
+                consensus_settings.genesis_timestamp,
                 now,
             )?;
 
@@ -126,11 +118,11 @@ impl Endpoints for API<Public> {
                 node_id,
                 node_ip: network_config.routable_ip,
                 version,
-                genesis_timestamp: consensus_config.genesis_timestamp,
-                t0: consensus_config.t0,
-                delta_f0: consensus_config.delta_f0,
-                roll_price: consensus_config.roll_price,
-                thread_count: consensus_config.thread_count,
+                genesis_timestamp: consensus_settings.genesis_timestamp,
+                t0: consensus_settings.t0,
+                delta_f0: consensus_settings.delta_f0,
+                roll_price: consensus_settings.roll_price,
+                thread_count: consensus_settings.thread_count,
                 current_time: now,
                 connected_nodes: peers?
                     .peers
@@ -141,7 +133,7 @@ impl Endpoints for API<Public> {
                 last_slot,
                 next_slot: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))
-                    .get_next_slot(consensus_config.thread_count)?,
+                    .get_next_slot(consensus_settings.thread_count)?,
                 consensus_stats: consensus_stats?,
                 network_stats: network_stats?,
                 pool_stats: pool_stats?,
@@ -149,7 +141,7 @@ impl Endpoints for API<Public> {
                 algo_config,
                 current_cycle: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))
-                    .get_cycle(consensus_config.periods_per_cycle),
+                    .get_cycle(consensus_settings.periods_per_cycle),
             })
         };
         Box::pin(closure())
@@ -171,7 +163,7 @@ impl Endpoints for API<Public> {
         &self,
         ops: Vec<OperationId>,
     ) -> BoxFuture<Result<Vec<OperationInfo>, ApiError>> {
-        let api_cfg = self.0.api_config;
+        let api_cfg = self.0.api_settings;
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let mut pool_command_sender = self.0.pool_command_sender.clone();
         let closure = async move || {
@@ -285,13 +277,13 @@ impl Endpoints for API<Public> {
         time: TimeInterval,
     ) -> BoxFuture<Result<Vec<BlockSummary>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let consensus_config = self.0.consensus_config.clone();
+        let consensus_settings = self.0.consensus_settings.clone();
         let closure = async move || {
             // filter blocks from graph_export
             let (start_slot, end_slot) = time_range_to_slot_range(
-                consensus_config.thread_count,
-                consensus_config.t0,
-                consensus_config.genesis_timestamp,
+                consensus_settings.thread_count,
+                consensus_settings.t0,
+                consensus_settings.genesis_timestamp,
                 time.start,
                 time.end,
             )?;
@@ -338,8 +330,8 @@ impl Endpoints for API<Public> {
         addresses: Vec<Address>,
     ) -> BoxFuture<Result<Vec<AddressInfo>, ApiError>> {
         let cmd_sender = self.0.consensus_command_sender.clone();
-        let cfg = self.0.consensus_config.clone();
-        let api_cfg = self.0.api_config;
+        let cfg = self.0.consensus_settings.clone();
+        let api_cfg = self.0.api_settings;
         let pool_command_sender = self.0.pool_command_sender.clone();
         let compensation_millis = self.0.compensation_millis;
         let closure = async move || {
@@ -381,23 +373,16 @@ impl Endpoints for API<Public> {
                 AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
             let mut blocks: AddressHashMap<BlockHashSet> =
                 AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
-            let mut blocks_futures = FuturesUnordered::new();
-            let mut operations_futures = FuturesUnordered::new();
+            let mut concurrent_getters = FuturesUnordered::new();
             for &address in addresses.iter() {
-                let cmd_snd = cmd_sender.clone();
                 let mut pool_cmd_snd = pool_command_sender.clone();
-                blocks_futures.push(async move {
-                    Result::<(Address, BlockHashSet), ApiError>::Ok((
-                        address,
-                        cmd_snd
-                            .get_block_ids_by_creator(address)
-                            .await?
-                            .into_keys()
-                            .collect::<BlockHashSet>(),
-                    ))
-                });
                 let cmd_snd = cmd_sender.clone();
-                operations_futures.push(async move {
+                concurrent_getters.push(async move {
+                    let blocks = cmd_snd
+                        .get_block_ids_by_creator(address)
+                        .await?
+                        .into_keys()
+                        .collect::<BlockHashSet>();
                     let get_pool_ops = pool_cmd_snd.get_operations_involving_address(address);
                     let get_consensus_ops = cmd_snd.get_operations_involving_address(address);
                     let (get_pool_ops, get_consensus_ops) =
@@ -406,16 +391,15 @@ impl Endpoints for API<Public> {
                         .into_keys()
                         .chain(get_consensus_ops?.into_keys())
                         .collect();
-                    Result::<(Address, OperationHashSet), ApiError>::Ok((address, gathered))
+                    Result::<(Address, BlockHashSet, OperationHashSet), ApiError>::Ok((
+                        address, blocks, gathered,
+                    ))
                 });
             }
-            while let Some(res) = blocks_futures.next().await {
-                let (a, op_set) = res?;
-                blocks.insert(a, op_set);
-            }
-            while let Some(res) = operations_futures.next().await {
-                let (a, op_set) = res?;
+            while let Some(res) = concurrent_getters.next().await {
+                let (a, bl_set, op_set) = res?;
                 operations.insert(a, op_set);
+                blocks.insert(a, bl_set);
             }
 
             // compile everything per address
@@ -431,7 +415,19 @@ impl Endpoints for API<Public> {
                         .filter(|(_, (ad, _))| *ad == address)
                         .map(|(slot, _)| *slot)
                         .collect(),
-                    endorsement_draws: Default::default(), // TODO: update wait for !238
+                    endorsement_draws: next_draws
+                        .iter()
+                        .map(|(slot, (_, addrs))| {
+                            addrs.iter().enumerate().filter_map(|(index, ad)| {
+                                if *ad == address {
+                                    Some(IndexedSlot { slot: *slot, index })
+                                } else {
+                                    None
+                                }
+                            })
+                        })
+                        .flatten()
+                        .collect(),
                     blocks_created: blocks.remove(&address).ok_or(ApiError::NotFound)?,
                     involved_in_endorsements: Default::default(), // TODO: update wait for !238
                     involved_in_operations: operations
@@ -450,7 +446,7 @@ impl Endpoints for API<Public> {
         ops: Vec<Operation>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
-        let api_cfg = self.0.api_config;
+        let api_cfg = self.0.api_settings;
         let closure = async move || {
             if ops.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));

@@ -3,10 +3,7 @@
 use super::{block_graph::*, config::ConsensusConfig, pos::ProofOfStake};
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
-use crypto::{
-    hash::Hash,
-    signature::{derive_public_key, PrivateKey, PublicKey},
-};
+use crypto::hash::Hash;
 use models::api::{LedgerInfo, RollsInfo};
 use models::{address::AddressCycleProductionStats, stats::ConsensusStats};
 use models::{
@@ -25,6 +22,7 @@ use models::{
 };
 use pool::PoolCommandSender;
 use protocol_exports::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
+use signature::{derive_public_key, PrivateKey, PublicKey};
 use std::{cmp::max, collections::HashSet, collections::VecDeque, convert::TryFrom};
 use time::UTime;
 use tokio::{
@@ -909,7 +907,7 @@ impl ConsensusWorker {
             }
             ConsensusCommand::RegisterStakingPrivateKeys(keys) => {
                 for key in keys.into_iter() {
-                    let public = crypto::derive_public_key(&key);
+                    let public = derive_public_key(&key);
                     let address = Address::from_public_key(&public)?;
                     info!("Staking with address {}", address);
                     self.staking_keys.insert(address, (public, key));

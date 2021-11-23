@@ -5,15 +5,14 @@
 use crate::tests::tools::{self, generate_ledger_file};
 use models::Slot;
 use serial_test::serial;
+use signature::{generate_random_private_key, PrivateKey};
 use std::collections::HashMap;
 
 #[tokio::test]
 #[serial]
 async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
 
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -39,7 +38,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
             // create test blocks
             let slot = Slot::new(1 + start_slot, 0);
             let draw = consensus_command_sender
-                .get_selection_draws(slot.clone(), Slot::new(2 + start_slot, 0))
+                .get_selection_draws(slot, Slot::new(2 + start_slot, 0))
                 .await
                 .expect("could not get selection draws.")[0]
                 .1
@@ -85,9 +84,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 #[serial]
 async fn test_consensus_block_not_found() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -114,7 +111,7 @@ async fn test_consensus_block_not_found() {
                 &cfg,
                 Slot::new(1 + start_slot, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             // Ask for the block to consensus.

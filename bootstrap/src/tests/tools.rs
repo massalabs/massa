@@ -1,18 +1,14 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::str::FromStr;
-
+use super::mock_establisher::Duplex;
+use crate::settings::BootstrapSettings;
 use bitvec::prelude::*;
 use consensus::ledger::LedgerChanges;
-use tokio::{sync::mpsc::Receiver, time::sleep};
-
 use consensus::{
     BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportProofOfStake, LedgerSubset,
     RollCounts, RollUpdate, RollUpdates, ThreadCycleState,
 };
 use crypto::hash::Hash;
-use crypto::signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use models::clique::Clique;
 use models::ledger::LedgerChange;
 use models::ledger::LedgerData;
@@ -21,12 +17,15 @@ use models::{
     Endorsement, EndorsementContent, Operation, OperationContent, SerializeCompact, Slot,
 };
 use network::{BootstrapPeers, NetworkCommand};
+use signature::{
+    derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
+};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::str::FromStr;
 use time::UTime;
-
-use super::mock_establisher::Duplex;
-use crate::config::BootstrapConfig;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
+use tokio::{sync::mpsc::Receiver, time::sleep};
 
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
@@ -35,22 +34,22 @@ pub fn get_dummy_block_id(s: &str) -> BlockId {
 }
 
 pub fn get_random_public_key() -> PublicKey {
-    let priv_key = crypto::generate_random_private_key();
-    crypto::derive_public_key(&priv_key)
+    let priv_key = generate_random_private_key();
+    derive_public_key(&priv_key)
 }
 
 pub fn get_random_address() -> Address {
-    let priv_key = crypto::generate_random_private_key();
-    let pub_key = crypto::derive_public_key(&priv_key);
+    let priv_key = generate_random_private_key();
+    let pub_key = derive_public_key(&priv_key);
     Address::from_public_key(&pub_key).unwrap()
 }
 
-pub fn get_dummy_signature(s: &str) -> crypto::signature::Signature {
-    let priv_key = crypto::generate_random_private_key();
-    crypto::sign(&Hash::hash(&s.as_bytes()), &priv_key).unwrap()
+pub fn get_dummy_signature(s: &str) -> Signature {
+    let priv_key = generate_random_private_key();
+    sign(&Hash::hash(s.as_bytes()), &priv_key).unwrap()
 }
 
-pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig {
+pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSettings {
     // Init the serialization context with a default,
     // can be overwritten with a more specific one in the test.
     models::init_serialization_context(models::SerializationContext {
@@ -72,7 +71,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapConfig 
         max_block_endorsments: 8,
     });
 
-    BootstrapConfig {
+    BootstrapSettings {
         bind: Some("0.0.0.0:31244".parse().unwrap()),
         connect_timeout: 200.into(),
         retry_delay: 200.into(),
@@ -204,7 +203,7 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
         "length mismatch"
     );
     for (id1, itm1) in v1.active_blocks.iter() {
-        let itm2 = v2.active_blocks.get(&id1).unwrap();
+        let itm2 = v2.active_blocks.get(id1).unwrap();
         assert_eq!(
             itm1.block.to_bytes_compact().unwrap(),
             itm2.block.to_bytes_compact().unwrap(),
@@ -278,8 +277,8 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
 }
 
 pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
-    let private_key = crypto::generate_random_private_key();
-    let public_key = crypto::derive_public_key(&private_key);
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key).unwrap();
 
     let mut ledger_subset = LedgerSubset::default();
@@ -329,7 +328,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     let boot_pos = ExportProofOfStake {
         cycle_states: vec![
             vec![cycle_state.clone()].into_iter().collect(),
-            vec![cycle_state.clone()].into_iter().collect(),
+            vec![cycle_state].into_iter().collect(),
         ],
     };
 

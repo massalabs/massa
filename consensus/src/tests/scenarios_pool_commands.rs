@@ -4,12 +4,12 @@ use crate::{
     tests::tools::{self, create_transaction, generate_ledger_file, get_export_active_test_block},
     BootstrapableGraph, LedgerSubset,
 };
-use crypto::signature::PublicKey;
 use models::clique::Clique;
 use models::ledger::LedgerData;
 use models::{Address, Amount, BlockId, Operation, Slot};
 use pool::PoolCommand;
 use serial_test::serial;
+use signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use std::collections::HashMap;
 use std::str::FromStr;
 use time::UTime;
@@ -18,9 +18,7 @@ use time::UTime;
 #[serial]
 async fn test_update_current_slot_cmd_notification() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -95,9 +93,7 @@ async fn test_update_current_slot_cmd_notification() {
 #[serial]
 async fn test_update_latest_final_block_cmd_notification() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -160,9 +156,7 @@ async fn test_update_latest_final_block_cmd_notification() {
 #[serial]
 async fn test_new_final_ops() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -178,22 +172,22 @@ async fn test_new_final_ops() {
     let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_a = crypto::generate_random_private_key();
-    let mut pubkey_a = crypto::derive_public_key(&priv_a);
+    let mut priv_a = generate_random_private_key();
+    let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
     while 0 != address_a.get_thread(thread_count) {
-        priv_a = crypto::generate_random_private_key();
-        pubkey_a = crypto::derive_public_key(&priv_a);
+        priv_a = generate_random_private_key();
+        pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a).unwrap();
     }
     assert_eq!(0, address_a.get_thread(thread_count));
 
-    let mut priv_b = crypto::generate_random_private_key();
-    let mut pubkey_b = crypto::derive_public_key(&priv_b);
+    let mut priv_b = generate_random_private_key();
+    let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
     while 0 != address_b.get_thread(thread_count) {
-        priv_b = crypto::generate_random_private_key();
-        pubkey_b = crypto::derive_public_key(&priv_b);
+        priv_b = generate_random_private_key();
+        pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b).unwrap();
     }
     assert_eq!(0, address_b.get_thread(thread_count));
@@ -221,7 +215,7 @@ async fn test_new_final_ops() {
                 vec![p0, p1],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -232,7 +226,7 @@ async fn test_new_final_ops() {
                 vec![p0, p1],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -243,7 +237,7 @@ async fn test_new_final_ops() {
                 vec![p0, p1],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
             // UpdateLatestFinalPeriods pool command filter
@@ -277,9 +271,7 @@ async fn test_new_final_ops() {
 #[serial]
 async fn test_max_attempts_get_operations() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -295,22 +287,22 @@ async fn test_max_attempts_get_operations() {
     let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_a = crypto::generate_random_private_key();
-    let mut pubkey_a = crypto::derive_public_key(&priv_a);
+    let mut priv_a = generate_random_private_key();
+    let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
     while 0 != address_a.get_thread(thread_count) {
-        priv_a = crypto::generate_random_private_key();
-        pubkey_a = crypto::derive_public_key(&priv_a);
+        priv_a = generate_random_private_key();
+        pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a).unwrap();
     }
     assert_eq!(0, address_a.get_thread(thread_count));
 
-    let mut priv_b = crypto::generate_random_private_key();
-    let mut pubkey_b = crypto::derive_public_key(&priv_b);
+    let mut priv_b = generate_random_private_key();
+    let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
     while 0 != address_b.get_thread(thread_count) {
-        priv_b = crypto::generate_random_private_key();
-        pubkey_b = crypto::derive_public_key(&priv_b);
+        priv_b = generate_random_private_key();
+        pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b).unwrap();
     }
     assert_eq!(0, address_b.get_thread(thread_count));
@@ -401,9 +393,7 @@ async fn test_max_attempts_get_operations() {
 #[serial]
 async fn test_max_batch_size_get_operations() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -419,22 +409,22 @@ async fn test_max_batch_size_get_operations() {
     let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_a = crypto::generate_random_private_key();
-    let mut pubkey_a = crypto::derive_public_key(&priv_a);
+    let mut priv_a = generate_random_private_key();
+    let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
     while 0 != address_a.get_thread(thread_count) {
-        priv_a = crypto::generate_random_private_key();
-        pubkey_a = crypto::derive_public_key(&priv_a);
+        priv_a = generate_random_private_key();
+        pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a).unwrap();
     }
     assert_eq!(0, address_a.get_thread(thread_count));
 
-    let mut priv_b = crypto::generate_random_private_key();
-    let mut pubkey_b = crypto::derive_public_key(&priv_b);
+    let mut priv_b = generate_random_private_key();
+    let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
     while 0 != address_b.get_thread(thread_count) {
-        priv_b = crypto::generate_random_private_key();
-        pubkey_b = crypto::derive_public_key(&priv_b);
+        priv_b = generate_random_private_key();
+        pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b).unwrap();
     }
     assert_eq!(0, address_b.get_thread(thread_count));
@@ -518,11 +508,11 @@ fn get_bootgraph(
     ledger: LedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
     let (genesis_0, g0_id) =
-        get_export_active_test_block(creator.clone(), vec![], vec![], Slot::new(0, 0), true);
+        get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 0), true);
     let (genesis_1, g1_id) =
-        get_export_active_test_block(creator.clone(), vec![], vec![], Slot::new(0, 1), true);
+        get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 1), true);
     let (p1t0, p1t0_id) = get_export_active_test_block(
-        creator.clone(),
+        creator,
         vec![(g0_id, 0), (g1_id, 0)],
         vec![operation],
         Slot::new(1, 0),
@@ -531,13 +521,9 @@ fn get_bootgraph(
     (
         BootstrapableGraph {
             /// Map of active blocks, where blocks are in their exported version.
-            active_blocks: vec![
-                (g0_id, genesis_0.clone()),
-                (g1_id, genesis_1.clone()),
-                (p1t0_id, p1t0.clone()),
-            ]
-            .into_iter()
-            .collect(),
+            active_blocks: vec![(g0_id, genesis_0), (g1_id, genesis_1), (p1t0_id, p1t0)]
+                .into_iter()
+                .collect(),
             /// Best parents hash in each thread.
             best_parents: vec![(p1t0_id, 1), (g1_id, 0)],
             /// Latest final period and block hash in each thread.

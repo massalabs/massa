@@ -5,15 +5,14 @@ use crate::tests::{block_factory::BlockFactory, tools::generate_ledger_file};
 use crypto::hash::Hash;
 use models::{BlockId, Slot};
 use serial_test::serial;
+use signature::{generate_random_private_key, PrivateKey};
 use std::collections::HashMap;
 
 #[tokio::test]
 #[serial]
 async fn test_old_stale_not_propagated_and_discarded() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let mut cfg = tools::default_consensus_config(
@@ -72,9 +71,7 @@ async fn test_old_stale_not_propagated_and_discarded() {
 #[serial]
 async fn test_block_not_processed_multiple_times() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let mut cfg = tools::default_consensus_config(
@@ -130,9 +127,7 @@ async fn test_block_not_processed_multiple_times() {
 #[serial]
 async fn test_queuing() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let mut cfg = tools::default_consensus_config(
@@ -164,7 +159,7 @@ async fn test_queuing() {
             let (hash_1, _) = block_factory.create_and_receive_block(false).await;
 
             block_factory.slot = Slot::new(4, 0);
-            block_factory.best_parents = vec![hash_1.clone(), parents[1]];
+            block_factory.best_parents = vec![hash_1, parents[1]];
 
             block_factory.create_and_receive_block(false).await;
 
@@ -188,9 +183,7 @@ async fn test_queuing() {
 #[serial]
 async fn test_double_staking_does_not_propagate() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let mut cfg = tools::default_consensus_config(
@@ -221,7 +214,7 @@ async fn test_double_staking_does_not_propagate() {
             let (_, mut block_1) = block_factory.create_and_receive_block(true).await;
 
             // Same creator, same slot, different block
-            block_1.header.content.operation_merkle_root = Hash::hash(&"hello world".as_bytes());
+            block_1.header.content.operation_merkle_root = Hash::hash("hello world".as_bytes());
             let block = block_factory.sign_header(block_1.header.content);
 
             // Note: currently does propagate, see #190.

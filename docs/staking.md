@@ -11,8 +11,7 @@ rolls can be seen [there](https://test.massa.net/#staking).
 Rolls can be bought with Massa coins or sold to get the coins back. If
 you already have more than 100 Massa, you can continue this tutorial,
 otherwise, send your address to the faucet bot in the
-"testnet-faucet" channel of our
-Discord.
+"testnet-faucet" channel of our [Discord](https://discord.com/invite/TnsJQzXkRN).
 
 ## Buying rolls
 
@@ -73,6 +72,6 @@ will be frozen for 1 cycle before you can spend them, again check with:
 
     wallet_info
 
-## Next steps
+## Next step
 
--   [Sending transactions](transaction.md).
+-   [Routability tutorial](docs/routability.md) (Optionnal)

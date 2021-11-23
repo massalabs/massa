@@ -9,14 +9,12 @@ use crate::{
     OperationHashMap, OperationHashSet, SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot,
     SLOT_KEY_SIZE,
 };
-use crypto::{
-    hash::{Hash, HASH_SIZE_BYTES},
-    signature::{
-        sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
-        SIGNATURE_SIZE_BYTES,
-    },
-};
+use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use serde::{Deserialize, Serialize};
+use signature::{
+    sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
+    SIGNATURE_SIZE_BYTES,
+};
 use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::str::FromStr;
@@ -515,6 +513,7 @@ mod test {
     use super::*;
     use crate::EndorsementContent;
     use serial_test::serial;
+    use signature::{derive_public_key, generate_random_private_key};
 
     #[test]
     #[serial]
@@ -538,8 +537,8 @@ mod test {
             max_block_endorsments: 8,
         };
         crate::init_serialization_context(ctx);
-        let private_key = crypto::generate_random_private_key();
-        let public_key = crypto::derive_public_key(&private_key);
+        let private_key = generate_random_private_key();
+        let public_key = derive_public_key(&private_key);
 
         // create block header
         let (orig_id, orig_header) = BlockHeader::new_signed(

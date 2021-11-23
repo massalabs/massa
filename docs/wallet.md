@@ -63,8 +63,6 @@ their associated thread and balance.
 Also, if you want to save this wallet and be able to restore it later,
 click `Save wallet`, and next time directly do `Load wallet`.
 
-## Next steps
+## Next step
 
--   To get testnet coins, send your address to the faucet bot in the "testnet-faucet" channel of our [Discord](https://discord.com/invite/TnsJQzXkRN).
 -   [Staking](staking.md) your coins to receive rewards.
--   [Sending transactions](transaction.md).
