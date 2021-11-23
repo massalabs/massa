@@ -156,7 +156,7 @@ pub struct AddressInfo {
     pub ledger_info: LedgerInfo,
     pub rolls: RollsInfo,
     pub block_draws: HashSet<Slot>,
-    pub endorsement_draws: HashMap<String, u64>, // u64 is the index
+    pub endorsement_draws: HashSet<IndexedSlot>,
     pub blocks_created: BlockHashSet,
     pub involved_in_endorsements: EndorsementHashSet,
     pub involved_in_operations: OperationHashSet,
@@ -181,8 +181,7 @@ impl std::fmt::Display for AddressInfo {
             "Endorsement draws: {}",
             self.endorsement_draws
                 .iter()
-                .map(|(slot, idx)| format!("    {}: index {}", slot, idx))
-                .fold("\n".to_string(), |acc, s| format!("{}{}", acc, s))
+                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
         )?;
         writeln!(
             f,
@@ -235,6 +234,19 @@ impl AddressInfo {
             balance: self.ledger_info,
             rolls: self.rolls,
         }
+    }
+}
+
+/// When an address is drawn to create an endorsement it is selected for a specific index
+#[derive(Debug, Deserialize, Serialize, Hash, PartialEq, Eq)]
+pub struct IndexedSlot {
+    pub slot: Slot,
+    pub index: usize,
+}
+
+impl std::fmt::Display for IndexedSlot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Slot: {}, Index: {}", self.slot, self.index)
     }
 }
 

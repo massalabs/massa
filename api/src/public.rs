@@ -9,8 +9,8 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::{
-    APIConfig, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, NodeStatus,
-    OperationInfo, TimeInterval,
+    APIConfig, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
+    IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
 };
 use models::clique::Clique;
 use models::crypto::PubkeySig;
@@ -415,7 +415,19 @@ impl Endpoints for API<Public> {
                         .filter(|(_, (ad, _))| *ad == address)
                         .map(|(slot, _)| *slot)
                         .collect(),
-                    endorsement_draws: Default::default(), // TODO: update wait for !238
+                    endorsement_draws: next_draws
+                        .iter()
+                        .map(|(slot, (_, addrs))| {
+                            addrs.iter().enumerate().filter_map(|(index, ad)| {
+                                if *ad == address {
+                                    Some(IndexedSlot { slot: *slot, index })
+                                } else {
+                                    None
+                                }
+                            })
+                        })
+                        .flatten()
+                        .collect(),
                     blocks_created: blocks.remove(&address).ok_or(ApiError::NotFound)?,
                     involved_in_endorsements: Default::default(), // TODO: update wait for !238
                     involved_in_operations: operations
