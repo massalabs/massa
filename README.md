@@ -51,7 +51,7 @@ For project announcements, we mainly use
 
 ## More tutorials
 
--   [Updating the node](docs/Update.md)
+-   [Updating the node](docs/update.md)
 -   [Sending transactions](docs/transaction.md)
 
 ## FAQ and Troubleshooting
