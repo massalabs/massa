@@ -54,3 +54,11 @@ operation to be made routable.
     address and port 31244 in
     <https://www.yougetsignal.com/tools/open-ports/> (then again with
     port 31245)
+
+## Last step
+
+-   To validate your participation in the testnet staking reward program,
+you have to register with your Discord account. Write something in the
+`testnet-rewards` channel of our
+[Discord](https://discord.com/invite/TnsJQzXkRN) and our bot will DM you
+instructions. More info here: [Testnet rewards program](docs/testnet_rules.md)
