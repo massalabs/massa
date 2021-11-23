@@ -153,8 +153,17 @@ impl EndorsementPool {
         removed
     }
 
-    pub fn get_endorsement_by_address(&self, address: Address) -> EndorsementHashMap<Endorsement> {
-        todo!()
+    pub fn get_endorsement_by_address(
+        &self,
+        address: Address,
+    ) -> Result<EndorsementHashMap<Endorsement>, PoolError> {
+        let mut res = EndorsementHashMap::default();
+        for (id, ed) in self.endorsements.iter() {
+            if Address::from_public_key(&ed.content.sender_public_key)? == address {
+                res.insert(*id, ed.clone());
+            }
+        }
+        Ok(res)
     }
 
     pub fn get_endorsement_by_id(

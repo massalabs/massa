@@ -263,7 +263,7 @@ impl PoolWorker {
                 address,
             } => {
                 if response_tx
-                    .send(self.endorsement_pool.get_endorsement_by_address(address))
+                    .send(self.endorsement_pool.get_endorsement_by_address(address)?)
                     .is_err()
                 {
                     warn!("pool: could not send PoolStats response");
