@@ -670,6 +670,7 @@ pub fn default_consensus_config(
         staking_keys_path: staking_keys_path.to_path_buf(),
         end_timestamp: None,
         max_send_wait: 500.into(),
+        force_keep_final_periods: 0,
         endorsement_count: 0,
         block_db_prune_interval: 1000.into(),
         max_item_return_count: 1000,
