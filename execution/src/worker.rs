@@ -1,6 +1,9 @@
 use crate::config::ExecutionConfig;
 use crate::error::ExecutionError;
-use models::{address::AddressHashMap, Amount, Block, BlockHashMap, BlockId, Slot};
+use crypto::hash::Hash;
+use models::{
+    address::AddressHashMap, hhasher::HHashMap, Amount, Block, BlockHashMap, BlockId, Slot,
+};
 use tokio::sync::mpsc;
 
 /// Commands sent to the `execution` component.
@@ -29,7 +32,7 @@ pub enum ExecutionManagementCommand {}
 struct SCELedgerEntry {
     balance: Amount,
     bytecode: Vec<u8>,
-    data: Vec<u8>,
+    data: HHashMap<Hash, Vec<u8>>,
 }
 
 pub struct ExecutionWorker {
@@ -69,8 +72,15 @@ impl ExecutionWorker {
             controller_command_rx,
             controller_manager_rx,
             _event_sender: event_sender,
+
+            //TODO bootstrap or init
+            last_final_slot: Slot::new(0, 0),
+            last_active_slot: Slot::new(0, 0),
+            final_ledger: Default::default(),
+            active_ledger: Default::default(),
+            ordered_active_blocks: Default::default(),
+            ordered_pending_css_final_blocks: Default::default(),
         };
-        //TODO bootstrap or init
 
         // TODO: start a thread to run the actual VM?
 
@@ -137,7 +147,7 @@ impl ExecutionWorker {
         // gather pending finalized CSS
         let mut css_final_blocks: Vec<(BlockId, Block)> = self
             .ordered_pending_css_final_blocks
-            .into_iter()
+            .drain(..)
             .chain(finalized_blocks.into_iter())
             .collect();
         css_final_blocks.sort_unstable_by_key(|(_, b)| b.header.content.slot);

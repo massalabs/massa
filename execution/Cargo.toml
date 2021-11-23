@@ -9,6 +9,7 @@ edition = "2021"
 [dependencies]
 displaydoc = "0.2"
 models = {path = "../models"}
+crypto = {path = "../crypto"}
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
