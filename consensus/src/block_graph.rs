@@ -4155,7 +4155,7 @@ impl BlockGraph {
     pub(crate) fn get_endorsement_by_id(
         &self,
         endorsements: EndorsementHashSet,
-    ) -> Result<Vec<EndorsementInfo>, ConsensusError> {
+    ) -> Result<EndorsementHashMap<EndorsementInfo>, ConsensusError> {
         // iterate on active (final and non-final) blocks
 
         let mut res = EndorsementHashMap::default();
@@ -4192,7 +4192,7 @@ impl BlockGraph {
                 }
             }
         }
-        Ok(res.values().cloned().collect())
+        Ok(res)
     }
 }
 

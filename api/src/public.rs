@@ -18,8 +18,8 @@ use models::hhasher::BuildHHasher;
 use models::node::NodeId;
 use models::timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range};
 use models::{
-    Address, BlockHashSet, BlockId, EndorsementId, Operation, OperationHashMap, OperationHashSet,
-    OperationId, Slot, Version,
+    Address, BlockHashSet, BlockId, EndorsementHashSet, EndorsementId, Operation, OperationHashMap,
+    OperationHashSet, OperationId, Slot, Version,
 };
 use network::{NetworkCommandSender, NetworkConfig};
 use pool::PoolCommandSender;
@@ -230,10 +230,24 @@ impl Endpoints for API<Public> {
         eds: Vec<EndorsementId>,
     ) -> BoxFuture<Result<Vec<EndorsementInfo>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
+        let pool_command_sender = self.0.pool_command_sender.clone();
         let closure = async move || {
-            Ok(consensus_command_sender
-                .get_endorsements_by_id(eds.into_iter().collect())
-                .await?)
+            let mapped: EndorsementHashSet = eds.into_iter().collect();
+            let mut res = consensus_command_sender
+                .get_endorsements_by_id(mapped.clone())
+                .await?;
+            for (id, endorsement) in pool_command_sender.get_endorsements_by_id(mapped).await? {
+                res.entry(id)
+                    .and_modify(|EndorsementInfo { in_pool, .. }| *in_pool = true)
+                    .or_insert(EndorsementInfo {
+                        id,
+                        in_pool: true,
+                        in_blocks: vec![],
+                        is_final: false,
+                        endorsement,
+                    });
+            }
+            Ok(res.values().cloned().collect())
         };
         Box::pin(closure())
     }

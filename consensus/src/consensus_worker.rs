@@ -90,7 +90,7 @@ pub enum ConsensusCommand {
     },
     GetEndorsementsById {
         endorsements: EndorsementHashSet,
-        response_tx: oneshot::Sender<Vec<EndorsementInfo>>,
+        response_tx: oneshot::Sender<EndorsementHashMap<EndorsementInfo>>,
     },
 
     GetCliques(oneshot::Sender<Vec<Clique>>),

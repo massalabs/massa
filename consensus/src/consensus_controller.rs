@@ -547,7 +547,7 @@ impl ConsensusCommandSender {
     pub async fn get_endorsements_by_id(
         &self,
         endorsements: EndorsementHashSet,
-    ) -> Result<Vec<EndorsementInfo>, ConsensusError> {
+    ) -> Result<EndorsementHashMap<EndorsementInfo>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_endorsements_by_id", {});
         self.0
