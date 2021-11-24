@@ -13,7 +13,7 @@ use signature::{
     sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
     SIGNATURE_SIZE_BYTES,
 };
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 pub const ENDORSEMENT_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
@@ -65,6 +65,24 @@ impl EndorsementId {
 pub struct Endorsement {
     pub content: EndorsementContent,
     pub signature: Signature,
+}
+
+impl Display for Endorsement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "Endorsed block: {} at slot {}",
+            self.content.endorsed_block, self.content.slot
+        )?;
+        writeln!(f, "Index: {}", self.content.index)?;
+        writeln!(
+            f,
+            "Endorsement creator public key: {}",
+            self.content.sender_public_key
+        )?;
+        writeln!(f, "Signature: {}", self.signature)?;
+        Ok(())
+    }
 }
 
 impl EndorsementContent {
