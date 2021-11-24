@@ -2,7 +2,7 @@
 
 use crate::repl::Output;
 use crate::rpc::Client;
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use console::style;
 use models::timeslots::get_current_latest_block_slot;
 use models::{
@@ -475,15 +475,15 @@ impl Command {
                             match addresses_info.get(0) {
                                 Some(info) => {
                                     if info.ledger_info.candidate_ledger_info.balance < total {
-                                        println!("Warning: this operation may be rejected due to insuffisant balance");
+                                        println!("WARNING: this operation may be rejected due to insuffisant balance");
                                     }
                                 }
-                                None => println!("Warning: address {} not found", addr),
+                                None => println!("WARNING: address {} not found", addr),
                             }
                         }
                     }
                     None => {
-                        bail!("The total amount hit the limit overflow, operation rejected")
+                        println!("WARNING: The total amount hit the limit overflow, operation will certainly be rejected");
                     }
                 }
 
