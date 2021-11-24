@@ -4,7 +4,7 @@ use super::{block_graph::*, config::ConsensusConfig, pos::ProofOfStake};
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
 use crypto::hash::Hash;
-use models::api::{LedgerInfo, RollsInfo};
+use models::api::{EndorsementInfo, LedgerInfo, RollsInfo};
 use models::{address::AddressCycleProductionStats, stats::ConsensusStats};
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
@@ -90,7 +90,7 @@ pub enum ConsensusCommand {
     },
     GetEndorsementsById {
         endorsements: EndorsementHashSet,
-        response_tx: oneshot::Sender<EndorsementHashMap<Endorsement>>,
+        response_tx: oneshot::Sender<Vec<EndorsementInfo>>,
     },
 
     GetCliques(oneshot::Sender<Vec<Clique>>),

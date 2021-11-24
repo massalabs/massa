@@ -267,13 +267,13 @@ impl std::fmt::Display for CompactAddressInfo {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct EndorsementInfo {
-    id: EndorsementId,
-    in_pool: bool,
-    in_blocks: Vec<BlockId>,
-    is_final: bool,
-    endorsement: Endorsement,
+    pub id: EndorsementId,
+    pub in_pool: bool,
+    pub in_blocks: Vec<BlockId>,
+    pub is_final: bool,
+    pub endorsement: Endorsement,
 }
 
 impl std::fmt::Display for EndorsementInfo {

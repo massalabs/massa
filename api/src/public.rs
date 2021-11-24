@@ -227,9 +227,15 @@ impl Endpoints for API<Public> {
 
     fn get_endorsements(
         &self,
-        _: Vec<EndorsementId>,
+        eds: Vec<EndorsementId>,
     ) -> BoxFuture<Result<Vec<EndorsementInfo>, ApiError>> {
-        todo!() // TODO: wait for !238
+        let consensus_command_sender = self.0.consensus_command_sender.clone();
+        let closure = async move || {
+            Ok(consensus_command_sender
+                .get_endorsements_by_id(eds.into_iter().collect())
+                .await?)
+        };
+        Box::pin(closure())
     }
 
     /// gets a block. Returns None if not found

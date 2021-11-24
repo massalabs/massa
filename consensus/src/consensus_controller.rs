@@ -12,6 +12,7 @@ use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
+    api::EndorsementInfo,
     BlockHashMap, Endorsement, EndorsementHashMap, EndorsementHashSet, OperationHashMap,
     OperationHashSet,
 };
@@ -546,7 +547,7 @@ impl ConsensusCommandSender {
     pub async fn get_endorsements_by_id(
         &self,
         endorsements: EndorsementHashSet,
-    ) -> Result<EndorsementHashMap<Endorsement>, ConsensusError> {
+    ) -> Result<Vec<EndorsementInfo>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_endorsements_by_id", {});
         self.0
