@@ -385,14 +385,14 @@ impl Endpoints for API<Public> {
             let (next_draws, states) = tokio::join!(next_draws, states);
             let (next_draws, mut states) = (next_draws?, states?);
 
-            // endorsements info
-            // TODO: add get_endorsements_by_address consensus command -> wait for !238
-
-            // operations info
+            // operations block and endorsement info
             let mut operations: AddressHashMap<OperationHashSet> =
                 AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
             let mut blocks: AddressHashMap<BlockHashSet> =
                 AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
+            let mut endorsements: AddressHashMap<EndorsementHashSet> =
+                AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
+
             let mut concurrent_getters = FuturesUnordered::new();
             for &address in addresses.iter() {
                 let mut pool_cmd_snd = pool_command_sender.clone();
@@ -411,15 +411,25 @@ impl Endpoints for API<Public> {
                         .into_keys()
                         .chain(get_consensus_ops?.into_keys())
                         .collect();
-                    Result::<(Address, BlockHashSet, OperationHashSet), ApiError>::Ok((
-                        address, blocks, gathered,
+
+                        let get_pool_eds = pool_cmd_snd.get_endorsements_by_address(address);
+                        let get_consensus_eds = cmd_snd.get_endorsements_by_address(address);
+                        let (get_pool_eds, get_consensus_eds) =
+                            tokio::join!(get_pool_eds, get_consensus_eds);
+                        let gathered_ed: EndorsementHashSet = get_pool_eds?
+                            .into_keys()
+                            .chain(get_consensus_eds?.into_keys())
+                            .collect();
+                    Result::<(Address, BlockHashSet, OperationHashSet, EndorsementHashSet), ApiError>::Ok((
+                        address, blocks, gathered, gathered_ed
                     ))
                 });
             }
             while let Some(res) = concurrent_getters.next().await {
-                let (a, bl_set, op_set) = res?;
+                let (a, bl_set, op_set, ed_set) = res?;
                 operations.insert(a, op_set);
                 blocks.insert(a, bl_set);
+                endorsements.insert(a, ed_set);
             }
 
             // compile everything per address
@@ -449,7 +459,9 @@ impl Endpoints for API<Public> {
                         .flatten()
                         .collect(),
                     blocks_created: blocks.remove(&address).ok_or(ApiError::NotFound)?,
-                    involved_in_endorsements: Default::default(), // TODO: update wait for !238
+                    involved_in_endorsements: endorsements
+                        .remove(&address)
+                        .ok_or(ApiError::NotFound)?,
                     involved_in_operations: operations
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
