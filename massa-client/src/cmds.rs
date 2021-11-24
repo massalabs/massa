@@ -88,7 +88,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "EndorsementId1 EndorsementId2 ...", todo = ""),
+        props(args = "EndorsementId1 EndorsementId2 ..."),
         message = "show info about a list of endorsements (content, finality ...)"
     )]
     get_endorsements,
