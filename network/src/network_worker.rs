@@ -1056,10 +1056,12 @@ impl NetworkWorker {
                 self.peer_info_db.merge_candidate_peers(&lst)?;
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data)) => {
+                let id = data.header.compute_block_id()?;
                 massa_trace!(
                     "network_worker.on_node_event receive NetworkEvent::ReceivedBlock",
-                    {"block_id": data.header.compute_block_id()?, "block": data, "node": from_node_id}
+                    {"block_id": id, "block": data, "node": from_node_id}
                 );
+                warn!("received block {} from node {}", id, from_node_id);
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedBlock {
                         node: from_node_id,
@@ -1076,10 +1078,12 @@ impl NetworkWorker {
                     .await;
             }
             NodeEvent(source_node_id, NodeEventType::ReceivedBlockHeader(header)) => {
+                let id = header.content.compute_hash()?;
                 massa_trace!(
                     "network_worker.on_node_event receive NetworkEvent::ReceivedBlockHeader",
-                    {"hash": header.content.compute_hash()?, "header": header, "node": source_node_id}
+                    {"hash": id, "header": header, "node": source_node_id}
                 );
+                warn!("received block {} from node {}", id, source_node_id);
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedBlockHeader {
                         source_node_id,
