@@ -234,9 +234,8 @@ impl ExecutionWorker {
         Ok(())
     }
 
-    /// Process blocks that are "ready for execution".
-    /// TODO: use when the blockclique has changed.
-    fn process_blocks(&mut self, blocks: BlockHashMap<Block>) -> Result<(), ExecutionError> {
+    /// Execute blocks that are "ready for execution".
+    fn execute_blocks(&mut self, blocks: Vec<(BlockId, Block)>) -> Result<(), ExecutionError> {
         // Add new SCE final blocks to the run queue.
         let &(ref lock, ref condvar) = &*self.execution_queue;
         let mut queue = lock.lock();
@@ -312,16 +311,18 @@ impl ExecutionWorker {
             }
         }
 
+        // New blocks.
+        let new_blocks: Vec<(BlockId, Block)> = blockclique
+            .into_iter()
+            .filter(|(_b_id, b)| b.header.content.slot > self.last_final_slot)
+            .collect();
+
         // list remaining CSS finals + new blockclique
         self.ordered_active_blocks = self
             .ordered_pending_css_final_blocks
             .iter()
             .cloned()
-            .chain(
-                blockclique
-                    .into_iter()
-                    .filter(|(_b_id, b)| b.header.content.slot > self.last_final_slot),
-            )
+            .chain(new_blocks.clone().into_iter())
             .collect();
 
         // sort active blocks
@@ -343,6 +344,9 @@ impl ExecutionWorker {
             }
             self.apply_active_slot(self.last_active_slot, Some((b_id, &block)))?;
         }
+
+        // Execute blocks.
+        self.execute_blocks(new_blocks)?;
 
         Ok(())
     }
