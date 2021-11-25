@@ -267,18 +267,29 @@ impl std::fmt::Display for CompactAddressInfo {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct EndorsementInfo {
-    id: EndorsementId,
-    in_pool: bool,
-    in_blocks: Vec<BlockId>,
-    is_final: bool,
-    endorsement: Endorsement,
+    pub id: EndorsementId,
+    pub in_pool: bool,
+    pub in_blocks: Vec<BlockId>,
+    pub is_final: bool,
+    pub endorsement: Endorsement,
 }
 
 impl std::fmt::Display for EndorsementInfo {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!() // TODO: wait for !238
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Endorsement id: {}", self.id)?;
+        display_if_true(self.is_final, "final");
+        display_if_true(self.in_pool, "in pool");
+        writeln!(
+            f,
+            "In blocks: {}",
+            self.in_blocks
+                .iter()
+                .fold("\n".to_string(), |acc, s| format!("{}    {}", acc, s))
+        )?;
+        writeln!(f, "Endorsement: {}", self.endorsement)?;
+        Ok(())
     }
 }
 
