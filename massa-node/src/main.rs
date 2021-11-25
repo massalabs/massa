@@ -130,7 +130,7 @@ async fn launch() -> (
 
     // Launch execution controller.
     let (execution_command_sender, execution_event_receiver, execution_manager) =
-        execution::start_controller(execution::ExecutionConfig {})
+        execution::start_controller(execution::ExecutionConfig {}, cfg.consensus.thread_count)
             .await
             .expect("Could not start execution controller.");
 
