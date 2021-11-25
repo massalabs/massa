@@ -74,4 +74,4 @@ will be frozen for 1 cycle before you can spend them, again check with:
 
 ## Next step
 
--   [Routability tutorial](docs/routability.md) (Optionnal)
+-   [Routability tutorial](routability.md) (Optionnal)

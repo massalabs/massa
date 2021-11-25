@@ -1,6 +1,6 @@
 # Installing a node
 
-Right now 4 cores and 8 GB of RAM should be enough to run a node, but it might increase in the future. More info in the [FAQ](docs/faq.md).
+Right now 4 cores and 8 GB of RAM should be enough to run a node, but it might increase in the future. More info in the [FAQ](faq.md).
 
 ## From binaries
 If you just wish to run a Massa node without compiling it yourself, you
@@ -65,4 +65,4 @@ Otherwise, if you wish to run a Massa node from source code, here are the steps 
 
 ### Next step
 
--   [Running a node](docs/run.md)
+-   [Running a node](run.md)
