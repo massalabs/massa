@@ -110,6 +110,21 @@ impl From<ActiveBlock> for ExportActiveBlock {
     }
 }
 
+impl From<Box<ActiveBlock>> for ExportActiveBlock {
+    fn from(block: Box<ActiveBlock>) -> Self {
+        ExportActiveBlock {
+            block: block.block,
+            parents: block.parents,
+            children: block.children,
+            dependencies: block.dependencies,
+            is_final: block.is_final,
+            block_ledger_changes: block.block_ledger_changes,
+            roll_updates: block.roll_updates,
+            production_events: block.production_events,
+        }
+    }
+}
+
 impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
     fn try_from(block: ExportActiveBlock) -> Result<ActiveBlock, ConsensusError> {
         let operation_set = block
@@ -148,6 +163,49 @@ impl<'a> TryFrom<ExportActiveBlock> for ActiveBlock {
             roll_updates: block.roll_updates,
             production_events: block.production_events,
         })
+    }
+
+    type Error = ConsensusError;
+}
+
+impl<'a> TryFrom<ExportActiveBlock> for Box<ActiveBlock> {
+    fn try_from(block: ExportActiveBlock) -> Result<Box<ActiveBlock>, ConsensusError> {
+        let operation_set = block
+            .block
+            .operations
+            .iter()
+            .enumerate()
+            .map(|(idx, op)| match op.get_operation_id() {
+                Ok(id) => Ok((id, (idx, op.content.expire_period))),
+                Err(e) => Err(e),
+            })
+            .collect::<Result<_, _>>()?;
+
+        let endorsement_ids = block
+            .block
+            .header
+            .content
+            .endorsements
+            .iter()
+            .map(|endo| endo.compute_endorsement_id())
+            .collect::<Result<_, _>>()?;
+
+        let addresses_to_operations = block.block.involved_addresses(&operation_set)?;
+        Ok(Box::new(ActiveBlock {
+            creator_address: Address::from_public_key(&block.block.header.content.creator)?,
+            block: block.block,
+            parents: block.parents,
+            children: block.children,
+            dependencies: block.dependencies,
+            descendants: Default::default(),
+            is_final: block.is_final,
+            block_ledger_changes: block.block_ledger_changes,
+            operation_set,
+            endorsement_ids,
+            addresses_to_operations,
+            roll_updates: block.roll_updates,
+            production_events: block.production_events,
+        }))
     }
 
     type Error = ConsensusError;
@@ -269,7 +327,7 @@ impl DeserializeCompact for ExportActiveBlock {
         // is_final
         let is_final_u8 = u8_from_slice(buffer)?;
         cursor += 1;
-        let is_final = !(is_final_u8 == 0);
+        let is_final = is_final_u8 != 0;
 
         // block
         let (block, delta) = Block::from_bytes_compact(&buffer[cursor..])?;
@@ -440,7 +498,7 @@ enum BlockStatus {
         unsatisfied_dependencies: BlockHashSet, // includes self if it's only a header
         sequence_number: u64,
     },
-    Active(ActiveBlock),
+    Active(Box<ActiveBlock>),
     Discarded {
         header: BlockHeader,
         reason: DiscardReason,
@@ -970,7 +1028,7 @@ impl BlockGraph {
             genesis_block_ids.push(block_id);
             block_statuses.insert(
                 block_id,
-                BlockStatus::Active(ActiveBlock {
+                BlockStatus::Active(Box::new(ActiveBlock {
                     creator_address: Address::from_public_key(&block.header.content.creator)?,
                     parents: Vec::new(),
                     children: vec![BlockHashMap::default(); cfg.thread_count as usize],
@@ -987,7 +1045,7 @@ impl BlockGraph {
                     roll_updates: RollUpdates::default(), // no roll updates in genesis blocks
                     production_events: vec![],
                     block,
-                }),
+                })),
             );
         }
 
@@ -1026,7 +1084,7 @@ impl BlockGraph {
                     .into_iter()
                     .map(|(h, v)| (h, v.into_iter().collect()))
                     .collect(),
-                max_cliques: boot_graph.max_cliques.clone(),
+                max_cliques: boot_graph.max_cliques,
                 to_propagate: Default::default(),
                 attack_attempts: Default::default(),
                 ledger,
@@ -1115,7 +1173,7 @@ impl BlockGraph {
         // apply to block state accumulator
         self.block_state_try_apply(
             state_accu,
-            &header,
+            header,
             Some(op_ledger_changes),
             Some(op_roll_updates),
             pos,
@@ -1142,7 +1200,7 @@ impl BlockGraph {
                 Some(&missing_entries),
                 pos,
             )?;
-            accu.roll_counts.sync_from(&involved_addrs, roll_counts);
+            accu.roll_counts.sync_from(involved_addrs, roll_counts);
             let block_cycle = header.content.slot.get_cycle(self.cfg.periods_per_cycle);
             if block_cycle == accu.same_thread_parent_cycle {
                 // if the parent cycle is different, ignore cycle roll updates
@@ -1199,10 +1257,10 @@ impl BlockGraph {
             }
 
             // try to apply updates to the local roll_counts
-            local_roll_counts.apply_updates(&roll_updates)?;
+            local_roll_counts.apply_updates(roll_updates)?;
 
             // try to apply updates to the local cycle_roll_updates
-            let compensations = local_cycle_roll_updates.chain(&roll_updates)?;
+            let compensations = local_cycle_roll_updates.chain(roll_updates)?;
 
             // credit cycle roll compensations as ledger changes
             if !compensations.is_empty() {
@@ -1212,12 +1270,15 @@ impl BlockGraph {
                 }
                 if let Some(ref mut ledger_changes) = opt_ledger_changes {
                     for (addr, compensation) in compensations {
-                        let balance_delta =
-                            self.cfg.roll_price.checked_mul_u64(compensation.0).ok_or(
+                        let balance_delta = self
+                            .cfg
+                            .roll_price
+                            .checked_mul_u64(compensation.0)
+                            .ok_or_else(|| {
                                 ConsensusError::InvalidLedgerChange(
                                     "overflow getting compensated roll credit amount".into(),
-                                ),
-                            )?;
+                                )
+                            })?;
                         ledger_changes.apply(
                             &addr,
                             &LedgerChange {
@@ -1233,7 +1294,7 @@ impl BlockGraph {
             let mut local_roll_updates = accu.roll_updates.clone_subset(&involved_addrs);
 
             // try to apply updates to the local roll updates
-            local_roll_updates.chain(&roll_updates)?;
+            local_roll_updates.chain(roll_updates)?;
 
             (
                 involved_addrs,
@@ -1293,7 +1354,7 @@ impl BlockGraph {
             let mut local_ledger_changes = accu.ledger_changes.clone_subset(&involved_addrs);
 
             // try to chain changes to the local ledger changes
-            local_ledger_changes.chain(&ledger_changes)?;
+            local_ledger_changes.chain(ledger_changes)?;
             (
                 involved_addrs,
                 thread_addrs,
@@ -1390,7 +1451,7 @@ impl BlockGraph {
             self.cfg.endorsement_count,
         )?;
 
-        self.block_state_try_apply(&mut accu, &header, Some(reward_ledger_changes), None, pos)?;
+        self.block_state_try_apply(&mut accu, header, Some(reward_ledger_changes), None, pos)?;
 
         // apply roll lock funds release
         if accu.same_thread_parent_cycle != block_cycle {
@@ -1411,7 +1472,7 @@ impl BlockGraph {
             // apply to block state
             self.block_state_try_apply(
                 &mut accu,
-                &header,
+                header,
                 Some(roll_unlock_ledger_changes),
                 None,
                 pos,
@@ -1442,7 +1503,7 @@ impl BlockGraph {
             }
 
             // apply changes to block state
-            self.block_state_try_apply(&mut accu, &header, None, Some(roll_updates), pos)?;
+            self.block_state_try_apply(&mut accu, header, None, Some(roll_updates), pos)?;
         }
 
         Ok(accu)
@@ -1468,26 +1529,22 @@ impl BlockGraph {
         // iterate on active (final and non-final) blocks
         self.active_index
             .iter()
-            .filter_map(|block_id| {
-                if let Some(BlockStatus::Active(ActiveBlock {
-                    creator_address,
-                    is_final,
-                    ..
-                })) = self.block_statuses.get(block_id)
-                {
-                    // list blocks with the right creator address
-                    if creator_address == address {
-                        return Some((
+            .filter_map(|block_id| match self.block_statuses.get(block_id) {
+                Some(BlockStatus::Active(active_block)) => {
+                    if active_block.creator_address == *address {
+                        Some((
                             *block_id,
-                            if *is_final {
+                            if active_block.is_final {
                                 Status::Final
                             } else {
                                 Status::Active
                             },
-                        ));
+                        ))
+                    } else {
+                        None
                     }
                 }
-                None
+                _ => None,
             })
             .collect()
     }
@@ -1646,28 +1703,24 @@ impl BlockGraph {
     ) -> Result<OperationHashMap<OperationSearchResult>, ConsensusError> {
         let mut res: OperationHashMap<OperationSearchResult> = Default::default();
         'outer: for b_id in self.active_index.iter() {
-            if let Some(BlockStatus::Active(ActiveBlock {
-                addresses_to_operations,
-                is_final,
-                operation_set,
-                block,
-                ..
-            })) = self.block_statuses.get(b_id)
-            {
-                if let Some(ops) = addresses_to_operations.get(address) {
+            if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(b_id) {
+                if let Some(ops) = active_block.addresses_to_operations.get(address) {
                     for op in ops.iter() {
-                        let (idx, _) = operation_set.get(op).ok_or_else(|| {
+                        let (idx, _) = active_block.operation_set.get(op).ok_or_else(|| {
                             ConsensusError::ContainerInconsistency(format!(
                                 "op {} should be here",
                                 op
                             ))
                         })?;
                         let search = OperationSearchResult {
-                            op: block.operations[*idx].clone(),
+                            op: active_block.block.operations[*idx].clone(),
                             in_pool: false,
-                            in_blocks: vec![(block.header.compute_block_id()?, (*idx, *is_final))]
-                                .into_iter()
-                                .collect(),
+                            in_blocks: vec![(
+                                active_block.block.header.compute_block_id()?,
+                                (*idx, active_block.is_final),
+                            )]
+                            .into_iter()
+                            .collect(),
                             status: OperationSearchResultStatus::InBlock(
                                 OperationSearchResultBlockStatus::Active,
                             ),
@@ -1709,26 +1762,23 @@ impl BlockGraph {
         let mut res: OperationHashMap<OperationSearchResult> = Default::default();
         // for each active block
         for block_id in self.active_index.iter() {
-            if let Some(BlockStatus::Active(ActiveBlock {
-                block,
-                operation_set,
-                is_final,
-                ..
-            })) = self.block_statuses.get(block_id)
-            {
+            if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(block_id) {
                 // check the intersection with the wanted operation ids, and update/insert into results
                 operation_ids
                     .iter()
                     .filter_map(|op_id| {
-                        operation_set
+                        active_block
+                            .operation_set
                             .get(op_id)
-                            .map(|(idx, _)| (op_id, idx, &block.operations[*idx]))
+                            .map(|(idx, _)| (op_id, idx, &active_block.block.operations[*idx]))
                     })
                     .for_each(|(op_id, idx, op)| {
                         let search_new = OperationSearchResult {
                             op: op.clone(),
                             in_pool: false,
-                            in_blocks: vec![(*block_id, (*idx, *is_final))].into_iter().collect(),
+                            in_blocks: vec![(*block_id, (*idx, active_block.is_final))]
+                                .into_iter()
+                                .collect(),
                             status: OperationSearchResultStatus::InBlock(
                                 OperationSearchResultBlockStatus::Active,
                             ),
@@ -2907,7 +2957,7 @@ impl BlockGraph {
             match self.block_state_try_apply_op(
                 &mut state_accu,
                 &block_to_check.header,
-                &operation,
+                operation,
                 pos,
             ) {
                 Ok(_) => (),
@@ -3097,6 +3147,7 @@ impl BlockGraph {
         max_cliques
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn add_block_to_graph(
         &mut self,
         add_block_id: BlockId,
@@ -3118,7 +3169,7 @@ impl BlockGraph {
         // add block to status structure
         self.block_statuses.insert(
             add_block_id,
-            BlockStatus::Active(ActiveBlock {
+            BlockStatus::Active(Box::new(ActiveBlock {
                 creator_address: Address::from_public_key(&add_block.header.content.creator)?,
                 parents: parents_hash_period.clone(),
                 dependencies: deps,
@@ -3132,7 +3183,7 @@ impl BlockGraph {
                 addresses_to_operations,
                 roll_updates,
                 production_events,
-            }),
+            })),
         );
         self.active_index.insert(add_block_id);
 
@@ -3359,10 +3410,11 @@ impl BlockGraph {
 
                 // remove from parent's children
                 for (parent_h, _parent_period) in active_block.parents.iter() {
-                    if let Some(BlockStatus::Active(ActiveBlock { children, .. })) =
+                    if let Some(BlockStatus::Active(active_block)) =
                         self.block_statuses.get_mut(parent_h)
                     {
-                        children[active_block.block.header.content.slot.thread as usize]
+                        active_block.children
+                            [active_block.block.header.content.slot.thread as usize]
                             .remove(&stale_block_hash);
                     }
                 }
@@ -3626,17 +3678,12 @@ impl BlockGraph {
         // the current "best parents",
         // and the dependencies for both.
         for block_id in active_blocks.iter() {
-            if let Some(BlockStatus::Active(ActiveBlock {
-                is_final,
-                dependencies,
-                ..
-            })) = self.block_statuses.get(block_id)
-            {
-                if !*is_final
+            if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(block_id) {
+                if !active_block.is_final
                     || self.best_parents.iter().any(|(b, _p)| b == block_id)
                     || latest_final_blocks.contains(block_id)
                 {
-                    retain_active.extend(dependencies);
+                    retain_active.extend(active_block.dependencies.clone());
                     retain_active.insert(*block_id);
                 }
             }
@@ -3730,12 +3777,10 @@ impl BlockGraph {
         // retain extra history according to the config
         // this is useful to avoid desync on temporary connection loss
         for a_block in self.active_index.iter() {
-            if let Some(BlockStatus::Active(ActiveBlock { block, .. })) =
-                self.block_statuses.get(a_block)
-            {
-                let (_b_id, latest_final_period) =
-                    self.latest_final_blocks_periods[block.header.content.slot.thread as usize];
-                if block.header.content.slot.period
+            if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(a_block) {
+                let (_b_id, latest_final_period) = self.latest_final_blocks_periods
+                    [active_block.block.header.content.slot.thread as usize];
+                if active_block.block.header.content.slot.period
                     >= latest_final_period.saturating_sub(self.cfg.force_keep_final_periods)
                 {
                     retain_active.insert(*a_block);
@@ -3757,10 +3802,11 @@ impl BlockGraph {
 
             // remove from parent's children
             for (parent_h, _parent_period) in discarded_active.parents.iter() {
-                if let Some(BlockStatus::Active(ActiveBlock { children, .. })) =
+                if let Some(BlockStatus::Active(active_block)) =
                     self.block_statuses.get_mut(parent_h)
                 {
-                    children[discarded_active.block.header.content.slot.thread as usize]
+                    active_block.children
+                        [discarded_active.block.header.content.slot.thread as usize]
                         .remove(discard_active_h);
                 }
             }
@@ -3777,7 +3823,7 @@ impl BlockGraph {
             );
             self.discarded_index.insert(*discard_active_h);
 
-            discarded_finals.insert(*discard_active_h, discarded_active);
+            discarded_finals.insert(*discard_active_h, *discarded_active);
         }
 
         Ok(discarded_finals)
@@ -3989,11 +4035,11 @@ impl BlockGraph {
             })
             .collect();
         slot_waiting.sort_unstable();
-        for idx in self.cfg.max_future_processing_blocks..slot_waiting.len() {
+        (self.cfg.max_future_processing_blocks..slot_waiting.len()).for_each(|idx| {
             let (_slot, block_id) = &slot_waiting[idx];
-            self.block_statuses.remove(&block_id);
-            self.waiting_for_slot_index.remove(&block_id);
-        }
+            self.block_statuses.remove(block_id);
+            self.waiting_for_slot_index.remove(block_id);
+        });
     }
 
     fn prune_discarded(&mut self) -> Result<(), ConsensusError> {
@@ -4083,7 +4129,7 @@ impl BlockGraph {
             .iter()
             .enumerate()
             .find(|(_, c)| c.is_blockclique)
-            .map_or_else(|| BlockHashSet::default(), |(_, v)| v.block_ids.clone())
+            .map_or_else(BlockHashSet::default, |(_, v)| v.block_ids.clone())
     }
 
     // Get the headers to be propagated.
@@ -4294,7 +4340,7 @@ mod tests {
         let mut blockp1t0 = active_block.clone();
         blockp1t0.parents = vec![(hash_genesist0, 0), (hash_genesist1, 0)];
         blockp1t0.is_final = true;
-        blockp1t0.block.header.content.creator = pubkey_a.clone();
+        blockp1t0.block.header.content.creator = pubkey_a;
         blockp1t0.block_ledger_changes = LedgerChanges::default();
         blockp1t0
             .block_ledger_changes
@@ -4325,7 +4371,7 @@ mod tests {
         let mut blockp1t1 = active_block.clone();
         blockp1t1.parents = vec![(hash_genesist0, 0), (hash_genesist1, 0)];
         blockp1t1.is_final = true;
-        blockp1t1.block.header.content.creator = pubkey_b.clone();
+        blockp1t1.block.header.content.creator = pubkey_b;
         blockp1t1.block_ledger_changes = LedgerChanges::default();
         blockp1t1
             .block_ledger_changes
@@ -4356,7 +4402,7 @@ mod tests {
         let mut blockp2t0 = active_block.clone();
         blockp2t0.parents = vec![(get_dummy_block_id("blockp1t0"), 1), (hash_genesist1, 0)];
         blockp2t0.is_final = false;
-        blockp2t0.block.header.content.creator = pubkey_a.clone();
+        blockp2t0.block.header.content.creator = pubkey_a;
         blockp2t0.block_ledger_changes = LedgerChanges::default();
         blockp2t0
             .block_ledger_changes
@@ -4379,7 +4425,7 @@ mod tests {
             (get_dummy_block_id("blockp1t1"), 1),
         ];
         blockp2t1.is_final = true;
-        blockp2t1.block.header.content.creator = pubkey_b.clone();
+        blockp2t1.block.header.content.creator = pubkey_b;
         blockp2t1.block_ledger_changes = LedgerChanges::default();
         blockp2t1
             .block_ledger_changes
@@ -4412,7 +4458,7 @@ mod tests {
             (get_dummy_block_id("blockp1t1"), 1),
         ];
         blockp3t0.is_final = false;
-        blockp3t0.block.header.content.creator = pubkey_a.clone();
+        blockp3t0.block.header.content.creator = pubkey_a;
         blockp3t0.block_ledger_changes = LedgerChanges::default();
         blockp3t0
             .block_ledger_changes
@@ -4445,7 +4491,7 @@ mod tests {
             (get_dummy_block_id("blockp2t1"), 2),
         ];
         blockp3t1.is_final = false;
-        blockp3t1.block.header.content.creator = pubkey_b.clone();
+        blockp3t1.block.header.content.creator = pubkey_b;
         blockp3t1.block_ledger_changes = LedgerChanges::default();
         blockp3t1
             .block_ledger_changes
@@ -4523,7 +4569,7 @@ mod tests {
         // Ledger at parents (p3t0, p3t1) for addresses A, B, C, D:
         let res = block_graph
             .get_ledger_at_parents(
-                &vec![
+                &[
                     get_dummy_block_id("blockp3t0"),
                     get_dummy_block_id("blockp3t1"),
                 ],
@@ -4552,7 +4598,7 @@ mod tests {
         // ask_ledger_at_parents for parents [p1t0, p1t1] for address A  => balance A = 1000000159
         let res = block_graph
             .get_ledger_at_parents(
-                &vec![
+                &[
                     get_dummy_block_id("blockp1t0"),
                     get_dummy_block_id("blockp1t1"),
                 ],
@@ -4572,14 +4618,14 @@ mod tests {
 
         // ask_ledger_at_parents for parents [p1t0, p1t1] for addresses A, B => ERROR
         let res = block_graph.get_ledger_at_parents(
-            &vec![
+            &[
                 get_dummy_block_id("blockp1t0"),
                 get_dummy_block_id("blockp1t1"),
             ],
             &vec![address_a, address_b].into_iter().collect(),
         );
         println!("res: {:#?}", res);
-        if let Ok(_) = res {
+        if res.is_ok() {
             panic!("get_ledger_at_parents should return an error");
         }
     }
@@ -4619,7 +4665,7 @@ mod tests {
             active_blocks: vec![
                 (b1_id, active_block.clone()),
                 (get_dummy_block_id("active12"), active_block.clone()),
-                (get_dummy_block_id("active13"), active_block.clone()),
+                (get_dummy_block_id("active13"), active_block),
             ]
             .into_iter()
             .collect(),
@@ -4752,6 +4798,7 @@ mod tests {
         ledger_file_named
     }
 
+    #[allow(clippy::ptr_arg)]
     pub fn generate_staking_keys_file(staking_keys: &Vec<PrivateKey>) -> NamedTempFile {
         use std::io::prelude::*;
         let file_named = NamedTempFile::new().expect("cannot create temp file");
