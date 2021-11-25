@@ -200,7 +200,8 @@ impl ExecutionWorker {
         // apply active blocks and misses to the active ledger
         self.active_ledger = self.final_ledger.clone();
         self.last_active_slot = self.last_final_slot;
-        for (b_id, block) in self.ordered_active_blocks.iter() {
+        // TODO: remove clone.
+        for (b_id, block) in self.ordered_active_blocks.clone() {
             // process misses
             if self.last_active_slot == self.last_final_slot {
                 self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
@@ -209,7 +210,7 @@ impl ExecutionWorker {
                 self.apply_active_slot(self.last_active_slot, None)?;
                 self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
             }
-            self.apply_active_slot(self.last_active_slot, Some((*b_id, block)))?;
+            self.apply_active_slot(self.last_active_slot, Some((b_id, &block)))?;
         }
 
         Ok(())
