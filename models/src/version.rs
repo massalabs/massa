@@ -8,7 +8,7 @@ use std::{convert::TryInto, fmt, str::FromStr};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Version {
     instance: [char; 4], // ascii uppercase alpha
-    major: u32,
+    pub major: u32,
     minor: u32,
 }
 
