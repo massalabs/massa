@@ -197,9 +197,13 @@ impl ConsensusWorker {
             next_slot.thread,
         );
         if cfg.genesis_timestamp > now {
+            let (days, hours, mins, secs) = cfg
+                .genesis_timestamp
+                .saturating_sub(now)
+                .days_hours_mins_secs();
             info!(
-                "{:?} remaining to genesis",
-                cfg.genesis_timestamp.saturating_sub(now).to_duration()
+                "{} days, {} hours, {} minutes, {} seconds remaining to genesis",
+                days, hours, mins, secs,
             )
         }
         for addr in staking_keys.keys() {
