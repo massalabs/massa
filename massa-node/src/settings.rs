@@ -16,9 +16,12 @@ lazy_static::lazy_static! {
         let mut settings = config::Config::default();
         let config_path = std::env::var("MASSA_CONFIG_PATH").unwrap_or_else(|_| "base_config/config.toml".to_string());
         settings.merge(config::File::with_name(&config_path)).unwrap_or_else(|_| panic!("failed to read {} config", config_path));
-        if let Some(proj_dirs) = ProjectDirs::from("com", "MassaLabs", "Massa") { // Portable user config loading
+        if let Some(proj_dirs) = ProjectDirs::from("com", "MassaLabs", "massa.toml") { // Portable user config loading
             let user_config_path = proj_dirs.config_dir();
-            settings.merge(config::File::with_name(user_config_path.to_str().unwrap())).unwrap_or_else(|_| panic!("failed to read {} user config", config_path));
+            if user_config_path.exists() {
+                let path_str = user_config_path.to_str().unwrap();
+                settings.merge(config::File::with_name(path_str)).unwrap_or_else(|_| panic!(" de quoi failed to read {} user config", path_str));
+            }
         }
         settings.merge(config::Environment::with_prefix("MASSA_NODE")).unwrap();
         settings.try_into().unwrap()

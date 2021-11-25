@@ -1,3 +1,6 @@
+# Testing configuration used in unit tests
+# Do not use it for anything else
+
 version = "TEST.4.2"
 
 [logging]
@@ -25,7 +28,7 @@ max_operations_per_block = 102400
 max_operations_fill_attempts = 102400
 max_block_size = 102400
 operation_validity_periods = 10
-ledger_path = "storage/ledger"
+ledger_path = "../massa-node/src/tests/storage/ledger"
 ledger_cache_capacity = 1048576
 ledger_flush_interval = 10000
 ledger_reset_at_startup = true
@@ -45,6 +48,7 @@ roll_price = "100"
 stats_timespan = 60000
 block_db_prune_interval = 5000
 max_item_return_count = 100
+force_keep_final_periods = 50
 
 [protocol]
 message_timeout = 5000

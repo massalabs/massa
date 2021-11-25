@@ -10,21 +10,35 @@ async fn test_if_exit_gracefully() {
     cmd.arg("exit").assert().success();
 }
 
-const CONFIG_PATH: &str = "../massa-node/base_config/testnet.toml";
+const CONFIG_PATH: &str = "../massa-node/src/tests/testnet.toml";
 
 #[tokio::test]
 #[serial]
-async fn test_if_wallet_info() {
+async fn test_if_node_stop() {
     tools::update_genesis_timestamp(CONFIG_PATH);
     let massa_node_thread_handle = thread::spawn(|| {
         Command::cargo_bin("massa-node")
             .unwrap()
             .env("MASSA_CONFIG_PATH", CONFIG_PATH)
-            .unwrap();
+            .assert()
+            .success();
     });
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     let mut cmd = Command::cargo_bin("massa-client").unwrap();
-    thread::sleep(std::time::Duration::from_secs(5));
-    cmd.arg("node_stop").assert().success();
+    let mut success = false;
+    for _ in 0..3 {
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+        let assert_cli = cmd.arg("node_stop").assert();
+        let out = std::str::from_utf8(&assert_cli.get_output().stdout).unwrap();
+        if out.contains("RpcError") {
+            println!("RpcError, retry to send message");
+        } else {
+            println!("Message request sent: {}", out);
+            success = true;
+            break;
+        }
+    }
+    assert!(success, "Error: Failed to close correctly the node 3 times");
     massa_node_thread_handle.join().unwrap();
     cmd.arg("exit").assert().success();
 }
