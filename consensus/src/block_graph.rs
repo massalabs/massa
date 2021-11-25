@@ -9,6 +9,7 @@ use crate::{
 };
 use crypto::hash::Hash;
 use models::address::{AddressHashMap, AddressHashSet};
+use models::api::EndorsementInfo;
 use models::clique::Clique;
 use models::hhasher::BuildHHasher;
 use models::ledger::LedgerChange;
@@ -4199,7 +4200,7 @@ impl BlockGraph {
     pub(crate) fn get_endorsement_by_id(
         &self,
         endorsements: EndorsementHashSet,
-    ) -> Result<EndorsementHashMap<Endorsement>, ConsensusError> {
+    ) -> Result<EndorsementHashMap<EndorsementInfo>, ConsensusError> {
         // iterate on active (final and non-final) blocks
 
         let mut res = EndorsementHashMap::default();
@@ -4214,7 +4215,17 @@ impl BlockGraph {
                     for e in ab.block.header.content.endorsements.iter() {
                         let id = e.compute_endorsement_id()?;
                         if endorsements.contains(&id) {
-                            res.insert(id, e.clone());
+                            res.entry(id)
+                                .and_modify(|EndorsementInfo { in_blocks, .. }| {
+                                    in_blocks.push(*block_id)
+                                })
+                                .or_insert(EndorsementInfo {
+                                    id,
+                                    in_pool: false,
+                                    in_blocks: vec![*block_id],
+                                    is_final: ab.is_final,
+                                    endorsement: e.clone(),
+                                });
                         }
                     }
                 }
