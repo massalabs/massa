@@ -300,4 +300,14 @@ impl UTime {
         let datetime: DateTime<Utc> = DateTime::from_utc(naive, Utc);
         format!("{}", datetime)
     }
+
+    pub fn days_hours_mins_secs(&self) -> (u64, u64, u64, u64) {
+        let days = self.0 / (1000 * 24 * 60 * 60);
+        let hours = (self.0 - days * 1000 * 24 * 60 * 60) / (1000 * 60 * 60);
+        let mins = (self.0 - days * 1000 * 24 * 60 * 60 - hours * 1000 * 60 * 60) / (1000 * 60);
+        let secs =
+            (self.0 - days * 1000 * 24 * 60 * 60 - hours * 1000 * 60 * 60 - mins * 1000 * 60)
+                / 1000;
+        (days, hours, mins, secs)
+    }
 }
