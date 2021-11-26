@@ -20,6 +20,7 @@ async fn test_if_node_stop() {
         Command::cargo_bin("massa-node")
             .unwrap()
             .env("MASSA_CONFIG_PATH", CONFIG_PATH)
+            .timeout(std::time::Duration::from_secs(61))
             .assert()
             .success();
     });
@@ -38,7 +39,7 @@ async fn test_if_node_stop() {
             break;
         }
     }
-    assert!(success, "Error: Failed to close correctly the node 3 times");
     massa_node_thread_handle.join().unwrap();
+    assert!(success, "Error: Failed to close correctly the node 3 times");
     cmd.arg("exit").assert().success();
 }

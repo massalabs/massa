@@ -1,7 +1,7 @@
 # Testing configuration used in unit tests
 # Do not use it for anything else
 
-version = "DEV.4.2"
+version = "DEVE.4.2"
 
 [logging]
 level = 2
@@ -13,8 +13,7 @@ bind_public = "0.0.0.0:33035"
 max_arguments = 128
 
 [consensus]
-genesis_timestamp = 1636056000000
-end_timestamp = 1638282600000
+genesis_timestamp = "1637953396204"
 t0 = 16000
 thread_count = 32
 genesis_key = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
