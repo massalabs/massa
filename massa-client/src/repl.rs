@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::cmds::Command;
+use crate::cmds::{Command, ExtendedWallet};
 use crate::rpc::Client;
 use crate::settings::SETTINGS;
 use crate::utils::longest_common_prefix;
@@ -131,6 +131,18 @@ impl dyn Output {
         let mut format: Box<dyn Serializer> = Box::new(<dyn Serializer>::erase(json));
         self.erased_serialize(&mut format)?;
         Ok(())
+    }
+}
+
+impl Output for Wallet {
+    fn pretty_print(&self) {
+        println!("{}", self);
+    }
+}
+
+impl Output for ExtendedWallet {
+    fn pretty_print(&self) {
+        println!("{}", self);
     }
 }
 

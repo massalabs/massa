@@ -18,10 +18,10 @@ use time::UTime;
 mod error;
 
 /// Contains the private keys created in the wallet.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Wallet {
-    keys: AddressHashMap<(PublicKey, PrivateKey)>,
-    wallet_path: PathBuf,
+    pub keys: AddressHashMap<(PublicKey, PrivateKey)>,
+    pub wallet_path: PathBuf,
 }
 
 impl Wallet {

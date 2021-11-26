@@ -2,14 +2,17 @@
 
 use crate::repl::Output;
 use crate::rpc::Client;
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use console::style;
+use models::address::AddressHashMap;
+use models::api::{AddressInfo, CompactAddressInfo};
 use models::timeslots::get_current_latest_block_slot;
 use models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
 };
-use signature::{generate_random_private_key, PrivateKey};
-use std::fmt::Debug;
+use serde::Serialize;
+use signature::{generate_random_private_key, PrivateKey, PublicKey};
+use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::process;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
@@ -159,6 +162,59 @@ macro_rules! rpc_error {
     };
 }
 
+#[derive(Serialize)]
+struct ExtendedWalletEntry {
+    pub private_key: PrivateKey,
+    pub public_key: PublicKey,
+    pub address_info: CompactAddressInfo,
+}
+
+impl Display for ExtendedWalletEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Private key: {}", self.private_key)?;
+        writeln!(f, "Public key: {}", self.public_key)?;
+        writeln!(f, "{}", self.address_info)?;
+        writeln!(f, "\n=====\n")?;
+        Ok(())
+    }
+}
+
+#[derive(Serialize)]
+pub struct ExtendedWallet(AddressHashMap<ExtendedWalletEntry>);
+
+impl ExtendedWallet {
+    fn new(wallet: &Wallet, addresses_info: &Vec<AddressInfo>) -> Result<Self> {
+        Ok(ExtendedWallet(
+            addresses_info
+                .iter()
+                .map(|x| {
+                    let &(public_key, private_key) = wallet
+                        .keys
+                        .get(&x.address)
+                        .ok_or(anyhow!("missing private key"))?;
+                    Ok((
+                        x.address,
+                        ExtendedWalletEntry {
+                            private_key,
+                            public_key,
+                            address_info: x.compact(),
+                        },
+                    ))
+                })
+                .collect::<Result<_>>()?,
+        ))
+    }
+}
+
+impl Display for ExtendedWallet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for entry in self.0.values() {
+            writeln!(f, "{}", entry)?;
+        }
+        Ok(())
+    }
+}
+
 impl Command {
     pub(crate) fn help(&self) {
         println!(
@@ -292,21 +348,20 @@ impl Command {
                         Ok(node_sig) => {
                             if !json {
                                 println!("Enter the following in discord:");
-                                println!(
-                                    "{}/{}/{}/{}",
-                                    node_sig.public_key,
-                                    node_sig.signature,
-                                    addr_sig.public_key,
-                                    addr_sig.signature
-                                );
                             }
+                            return Ok(Box::new(format!(
+                                "{}/{}/{}/{}",
+                                node_sig.public_key,
+                                node_sig.signature,
+                                addr_sig.public_key,
+                                addr_sig.signature
+                            )));
                         }
                         Err(e) => rpc_error!(e),
                     }
                 } else {
-                    panic!("address not found")
+                    bail!("address not found")
                 }
-                Ok(Box::new(()))
             }
 
             Command::get_status => match client.public.get_status().await {
@@ -350,62 +405,40 @@ impl Command {
             }
 
             Command::wallet_info => {
-                let full_wallet = wallet.get_full_wallet();
-                let mut res = "WARNING: do not share your private key\n\n".to_string();
+                println!("WARNING: do not share your private key");
                 match client
                     .public
-                    .get_addresses(full_wallet.keys().copied().collect())
+                    .get_addresses(wallet.get_full_wallet().keys().copied().collect())
                     .await
                 {
-                    Ok(x) => {
-                        for info in x.into_iter() {
-                            let keys = match full_wallet.get(&info.address) {
-                                Some(keys) => keys,
-                                None => bail!("Missing keys in wallet"),
-                            };
-                            res.push_str(&format!(
-                                "Private key: {}\nPublic key: {}\n{}\n\n=====\n\n",
-                                keys.1,
-                                keys.0,
-                                info.compact()
-                            ));
-                        }
+                    Ok(addresses_info) => {
+                        Ok(Box::new(ExtendedWallet::new(wallet, &addresses_info)?))
                     }
-                    Err(e) => {
-                        res.push_str(&format!(
-                            "Error retrieving addresses info: {:?}\nIs your node running ?\n\n",
-                            e
-                        ));
-                        for (ad, (publ, priva)) in full_wallet.into_iter() {
-                            res.push_str(&format!(
-                                "Private key: {}\nPublic key: {}\nAddress: {}\n\n=====\n\n",
-                                priva, publ, ad
-                            ));
-                        }
-                    }
+                    Err(_) => Ok(Box::new(wallet.clone())), // FIXME
                 }
-                if !json {
-                    println!("{}", res);
-                }
-                Ok(Box::new(()))
             }
 
             Command::wallet_generate_private_key => {
                 let ad = wallet.add_private_key(generate_random_private_key())?;
-                if !json {
+                if json {
+                    Ok(Box::new(ad.to_string()))
+                } else {
                     println!("Generated {} address and added it to the wallet", ad);
+                    Ok(Box::new(()))
                 }
-                Ok(Box::new(()))
             }
 
             Command::wallet_add_private_keys => {
-                let mut res = "".to_string();
-                for key in parse_vec::<PrivateKey>(parameters)?.into_iter() {
-                    let ad = wallet.add_private_key(key)?;
-                    res.push_str(&format!("Derived and added address {} to the wallet\n", ad));
-                }
-                if !json {
-                    println!("{}", res);
+                let addresses = parse_vec::<PrivateKey>(parameters)?
+                    .into_iter()
+                    .map(|key| Ok(wallet.add_private_key(key)?))
+                    .collect::<Result<Vec<Address>>>()?;
+                if json {
+                    return Ok(Box::new(())); // FIXME
+                } else {
+                    for address in addresses.iter() {
+                        println!("Derived and added address {} to the wallet\n", address);
+                    }
                 }
                 Ok(Box::new(()))
             }
