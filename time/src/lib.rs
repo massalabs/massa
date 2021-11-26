@@ -301,6 +301,15 @@ impl UTime {
         format!("{}", datetime)
     }
 
+    /// ```
+    /// # use time::*;
+    /// let utime = UTime::from(1000* ( 8 * 24*60*60 + 1*60*60 +3*60 +6 ));
+    /// let (days, hours, mins, secs) = utime.days_hours_mins_secs().unwrap();
+    /// assert_eq!(days, 8);
+    /// assert_eq!(hours, 1);
+    /// assert_eq!(mins, 3);
+    /// assert_eq!(secs, 6);
+    /// ```
     pub fn days_hours_mins_secs(&self) -> Result<(i64, i64, i64, i64), TimeError> {
         let time = chrono::Duration::from_std(self.to_duration())
             .map_err(|_| TimeError::TimeOverflowError)?;
