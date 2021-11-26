@@ -5,8 +5,8 @@ use crate::endorsement_pool::EndorsementPool;
 use crate::operation_pool::OperationPool;
 use models::stats::PoolStats;
 use models::{
-    Address, BlockId, Endorsement, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
-    OperationHashSet, OperationId, OperationSearchResult, Slot,
+    Address, BlockId, Endorsement, EndorsementHashMap, EndorsementHashSet, EndorsementId,
+    Operation, OperationHashMap, OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
 use protocol_exports::{ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver};
 use tokio::sync::{mpsc, oneshot};
@@ -42,6 +42,14 @@ pub enum PoolCommand {
     },
     AddEndorsements(EndorsementHashMap<Endorsement>),
     GetStats(oneshot::Sender<PoolStats>),
+    GetEndorsementsByAddress {
+        address: Address,
+        response_tx: oneshot::Sender<EndorsementHashMap<Endorsement>>,
+    },
+    GetEndorsementsById {
+        endorsements: EndorsementHashSet,
+        response_tx: oneshot::Sender<EndorsementHashMap<Endorsement>>,
+    },
 }
 
 /// Events that are emitted by pool.
@@ -245,6 +253,28 @@ impl PoolWorker {
                         operation_count: self.operation_pool.len() as u64,
                         endorsement_count: self.endorsement_pool.len() as u64,
                     })
+                    .is_err()
+                {
+                    warn!("pool: could not send PoolStats response");
+                }
+            }
+            PoolCommand::GetEndorsementsByAddress {
+                response_tx,
+                address,
+            } => {
+                if response_tx
+                    .send(self.endorsement_pool.get_endorsement_by_address(address)?)
+                    .is_err()
+                {
+                    warn!("pool: could not send PoolStats response");
+                }
+            }
+            PoolCommand::GetEndorsementsById {
+                response_tx,
+                endorsements,
+            } => {
+                if response_tx
+                    .send(self.endorsement_pool.get_endorsement_by_id(endorsements))
                     .is_err()
                 {
                     warn!("pool: could not send PoolStats response");

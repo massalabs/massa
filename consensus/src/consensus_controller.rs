@@ -12,7 +12,9 @@ use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
-    BlockHashMap, OperationHashMap, OperationHashSet,
+    api::EndorsementInfo,
+    BlockHashMap, Endorsement, EndorsementHashMap, EndorsementHashSet, OperationHashMap,
+    OperationHashSet,
 };
 use models::{clique::Clique, stats::ConsensusStats};
 use models::{Address, Block, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats};
@@ -511,6 +513,57 @@ impl ConsensusCommandSender {
         response_rx.await.map_err(|_| {
             ConsensusError::ReceiveChannelError(
                 "consensus command get_stakers_production_statsresponse read error".to_string(),
+            )
+        })
+    }
+
+    pub async fn get_endorsements_by_address(
+        &self,
+        address: Address,
+    ) -> Result<EndorsementHashMap<Endorsement>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        massa_trace!(
+            "consensus.consensus_controller.get_endorsements_by_address",
+            {}
+        );
+        self.0
+            .send(ConsensusCommand::GetEndorsementsByAddress {
+                address,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(
+                    "send error consensus command get_endorsements_by_address".to_string(),
+                )
+            })?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(
+                "consensus command get_endorsements_by_address read error".to_string(),
+            )
+        })
+    }
+
+    pub async fn get_endorsements_by_id(
+        &self,
+        endorsements: EndorsementHashSet,
+    ) -> Result<EndorsementHashMap<EndorsementInfo>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        massa_trace!("consensus.consensus_controller.get_endorsements_by_id", {});
+        self.0
+            .send(ConsensusCommand::GetEndorsementsById {
+                endorsements,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(
+                    "send error consensus command get_endorsements_by_id".to_string(),
+                )
+            })?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(
+                "consensus command get_endorsements_by_id read error".to_string(),
             )
         })
     }

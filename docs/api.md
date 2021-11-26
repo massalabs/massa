@@ -332,10 +332,16 @@ Get addresses.
       },
     ],
     "blocks_created": [String], // Block ids
-    "endorsement_draws": {
-      "(period: 19387, thread: 19)": 8, // TODO wait for #447
-    },
-    "involved_in_endorsements": [], // TODO wait for #256
+    "endorsement_draws": [
+      {
+        "slot": {
+          "period": Number,
+          "thread": Number
+        },
+        "index": Number
+      }
+    ],
+    "involved_in_endorsements": [String], // Endorsement Id
     "involved_in_operations": [String], // Operation id
     "production_stats": [ // as many items as cached cycles
       {

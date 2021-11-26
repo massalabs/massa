@@ -153,4 +153,33 @@ impl EndorsementPool {
         massa_trace!("pool.endorsement_pool.prune", { "removed": removed });
         removed
     }
+
+    pub fn get_endorsement_by_address(
+        &self,
+        address: Address,
+    ) -> Result<EndorsementHashMap<Endorsement>, PoolError> {
+        let mut res = EndorsementHashMap::default();
+        for (id, ed) in self.endorsements.iter() {
+            if Address::from_public_key(&ed.content.sender_public_key)? == address {
+                res.insert(*id, ed.clone());
+            }
+        }
+        Ok(res)
+    }
+
+    pub fn get_endorsement_by_id(
+        &self,
+        endorsements: EndorsementHashSet,
+    ) -> EndorsementHashMap<Endorsement> {
+        self.endorsements
+            .iter()
+            .filter_map(|(id, ed)| {
+                if endorsements.contains(id) {
+                    Some((*id, ed.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
 }

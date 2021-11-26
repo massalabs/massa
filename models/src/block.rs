@@ -4,9 +4,10 @@ use crate::{
     address::{AddressHashMap, AddressHashSet},
     array_from_slice,
     hhasher::{HHashMap, HHashSet, PreHashed},
-    u8_from_slice, with_serialization_context, DeserializeCompact, DeserializeMinBEInt,
-    DeserializeVarInt, Endorsement, ModelsError, Operation, OperationHashMap, OperationHashSet,
-    SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot, SLOT_KEY_SIZE,
+    u8_from_slice, with_serialization_context, Address, DeserializeCompact, DeserializeMinBEInt,
+    DeserializeVarInt, Endorsement, EndorsementHashMap, EndorsementHashSet, ModelsError, Operation,
+    OperationHashMap, OperationHashSet, SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot,
+    SLOT_KEY_SIZE,
 };
 use crypto::hash::{Hash, HASH_SIZE_BYTES};
 use serde::{Deserialize, Serialize};
@@ -123,6 +124,29 @@ impl Block {
                 Ok(())
             })?;
         Ok(addresses_to_operations)
+    }
+
+    pub fn addresses_to_endorsements(
+        &self,
+        _endo: &EndorsementHashMap<u32>,
+    ) -> Result<AddressHashMap<EndorsementHashSet>, ModelsError> {
+        let mut res: AddressHashMap<EndorsementHashSet> = AddressHashMap::default();
+        self.header
+            .content
+            .endorsements
+            .iter()
+            .try_for_each::<_, Result<(), ModelsError>>(|e| {
+                let address = Address::from_public_key(&e.content.sender_public_key)?;
+                if let Some(old) = res.get_mut(&address) {
+                    old.insert(e.compute_endorsement_id()?);
+                } else {
+                    let mut set = EndorsementHashSet::default();
+                    set.insert(e.compute_endorsement_id()?);
+                    res.insert(address, set);
+                }
+                Ok(())
+            })?;
+        Ok(res)
     }
 }
 

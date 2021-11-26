@@ -5,11 +5,11 @@ use itertools::Itertools;
 use logging::massa_trace;
 use models::hhasher::BuildHHasher;
 use models::node::NodeId;
+use models::Endorsement;
 use models::{
     Address, Block, BlockHashMap, BlockHashSet, BlockHeader, BlockId, EndorsementHashMap,
     EndorsementHashSet, Operation, OperationHashMap, OperationHashSet, OperationId,
 };
-use models::{Endorsement, EndorsementId};
 use network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolError, ProtocolEvent, ProtocolEventReceiver,
@@ -263,14 +263,14 @@ mod nodeinfo {
 /// Info about a block we've seen
 struct BlockInfo {
     /// Endorsements contained in the block header.
-    endorsements: Vec<EndorsementId>,
+    endorsements: EndorsementHashMap<u32>,
     /// Operations contained in the block,
     /// if we've received them already, and none otherwise.
     operations: Option<Vec<OperationId>>,
 }
 
 impl BlockInfo {
-    fn new(endorsements: Vec<EndorsementId>, operations: Option<Vec<OperationId>>) -> Self {
+    fn new(endorsements: EndorsementHashMap<u32>, operations: Option<Vec<OperationId>>) -> Self {
         BlockInfo {
             endorsements,
             operations,
@@ -898,7 +898,7 @@ impl ProtocolWorker {
         &mut self,
         header: &BlockHeader,
         source_node_id: &NodeId,
-    ) -> Result<Option<(BlockId, Vec<EndorsementId>, bool)>, ProtocolError> {
+    ) -> Result<Option<(BlockId, EndorsementHashMap<u32>, bool)>, ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
@@ -942,7 +942,7 @@ impl ProtocolWorker {
                     self.protocol_settings.max_node_known_blocks_size,
                 );
                 node_info.insert_known_endorsements(
-                    block_info.endorsements.clone(),
+                    block_info.endorsements.keys().copied().collect(),
                     self.protocol_settings.max_known_endorsements_size,
                 );
                 if let Some(operations) = block_info.operations.as_ref() {
@@ -1076,8 +1076,14 @@ impl ProtocolWorker {
         &mut self,
         block: &Block,
         source_node_id: &NodeId,
-    ) -> Result<Option<(BlockId, OperationHashMap<(usize, u64)>, Vec<EndorsementId>)>, ProtocolError>
-    {
+    ) -> Result<
+        Option<(
+            BlockId,
+            OperationHashMap<(usize, u64)>,
+            EndorsementHashMap<u32>,
+        )>,
+        ProtocolError,
+    > {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
         // check header
@@ -1243,20 +1249,20 @@ impl ProtocolWorker {
         endorsements: Vec<Endorsement>,
         source_node_id: &NodeId,
         propagate: bool,
-    ) -> Result<(Vec<EndorsementId>, bool), ProtocolError> {
+    ) -> Result<(EndorsementHashMap<u32>, bool), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_endorsements_from_node", { "node": source_node_id, "endorsements": endorsements});
         let length = endorsements.len();
         let mut contains_duplicates = false;
 
-        let mut unique_ids =
-            EndorsementHashSet::with_capacity_and_hasher(length, BuildHHasher::default());
         let mut new_endorsements =
             EndorsementHashMap::with_capacity_and_hasher(length, BuildHHasher::default());
-        let mut endorsement_ids: Vec<EndorsementId> = Vec::with_capacity(length);
+        let mut endorsement_ids = EndorsementHashMap::default();
         for endorsement in endorsements.into_iter() {
             let endorsement_id = endorsement.compute_endorsement_id()?;
-            endorsement_ids.push(endorsement_id);
-            if !unique_ids.insert(endorsement_id) {
+            if endorsement_ids
+                .insert(endorsement_id, endorsement.content.index)
+                .is_some()
+            {
                 contains_duplicates = true;
             }
             // check endorsement signature if not already checked
@@ -1269,7 +1275,7 @@ impl ProtocolWorker {
         // add to known endorsements for source node.
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
             node_info.insert_known_endorsements(
-                endorsement_ids.clone(),
+                endorsement_ids.keys().copied().collect(),
                 self.protocol_settings.max_known_endorsements_size,
             );
         }

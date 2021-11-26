@@ -4,11 +4,11 @@ use super::{block_graph::*, config::ConsensusConfig, pos::ProofOfStake};
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
 use crypto::hash::Hash;
-use models::api::{LedgerInfo, RollsInfo};
+use models::api::{EndorsementInfo, LedgerInfo, RollsInfo};
 use models::{address::AddressCycleProductionStats, stats::ConsensusStats};
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
-    BlockHashSet,
+    BlockHashSet, EndorsementHashSet,
 };
 use models::{
     clique::Clique,
@@ -84,6 +84,15 @@ pub enum ConsensusCommand {
         address: Address,
         response_tx: oneshot::Sender<BlockHashMap<Status>>,
     },
+    GetEndorsementsByAddress {
+        address: Address,
+        response_tx: oneshot::Sender<EndorsementHashMap<Endorsement>>,
+    },
+    GetEndorsementsById {
+        endorsements: EndorsementHashSet,
+        response_tx: oneshot::Sender<EndorsementHashMap<EndorsementInfo>>,
+    },
+
     GetCliques(oneshot::Sender<Vec<Clique>>),
 }
 
@@ -499,9 +508,10 @@ impl ConsensusWorker {
                 .get_endorsements(thread_parent_slot, thread_parent, endorsement_draws)
                 .await?
                 .into_iter()
+                .map(|(id, e)| ((id, e.content.index), e))
                 .unzip()
         } else {
-            (Vec::new(), Vec::new())
+            (EndorsementHashMap::default(), Vec::new())
         };
 
         massa_trace!("consensus.create_block.get_endorsements.result", {
@@ -954,6 +964,28 @@ impl ConsensusWorker {
                 }
                 Ok(())
             }
+            ConsensusCommand::GetEndorsementsByAddress {
+                address,
+                response_tx,
+            } => response_tx
+                .send(self.block_db.get_endorsement_by_address(address)?)
+                .map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send get endorsement by address response: {:?}",
+                        err
+                    ))
+                }),
+            ConsensusCommand::GetEndorsementsById {
+                endorsements,
+                response_tx,
+            } => response_tx
+                .send(self.block_db.get_endorsement_by_id(endorsements)?)
+                .map_err(|err| {
+                    ConsensusError::SendChannelError(format!(
+                        "could not send get endorsement by id response: {:?}",
+                        err
+                    ))
+                }),
         }
     }
 
@@ -1171,7 +1203,7 @@ impl ConsensusWorker {
                             Some((
                                 a_block.block.clone(),
                                 Some(a_block.operation_set.keys().copied().collect()),
-                                Some(a_block.endorsement_ids.clone()),
+                                Some(a_block.endorsement_ids.keys().copied().collect()),
                             )),
                         );
                     } else {

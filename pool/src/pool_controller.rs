@@ -9,8 +9,8 @@ use super::{
 };
 use logging::massa_trace;
 use models::{
-    Address, BlockId, Endorsement, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
-    OperationHashSet, OperationId, OperationSearchResult, Slot,
+    Address, BlockId, Endorsement, EndorsementHashMap, EndorsementHashSet, EndorsementId,
+    Operation, OperationHashMap, OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
 use protocol_exports::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use tokio::{
@@ -272,6 +272,60 @@ impl PoolCommandSender {
             .await
             .map_err(|_| PoolError::ChannelError("add_endorsements command send error".into()));
         res
+    }
+
+    pub async fn get_endorsements_by_address(
+        &self,
+        address: Address,
+    ) -> Result<EndorsementHashMap<Endorsement>, PoolError> {
+        massa_trace!("pool.command_sender.get_endorsements_by_address", {
+            "address": address
+        });
+
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(PoolCommand::GetEndorsementsByAddress {
+                address,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                PoolError::ChannelError("get_endorsements_by_address command send error".into())
+            })?;
+
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_endorsements_by_address {:?}",
+                e
+            ))
+        })
+    }
+
+    pub async fn get_endorsements_by_id(
+        &self,
+        endorsements: EndorsementHashSet,
+    ) -> Result<EndorsementHashMap<Endorsement>, PoolError> {
+        massa_trace!("pool.command_sender.get_endorsements_by_id", {
+            "endorsements": endorsements
+        });
+
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(PoolCommand::GetEndorsementsById {
+                endorsements,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                PoolError::ChannelError("get_endorsements_by_id command send error".into())
+            })?;
+
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_endorsements_by_id {:?}",
+                e
+            ))
+        })
     }
 }
 
