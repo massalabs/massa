@@ -126,7 +126,7 @@ pub trait Output: Serialize {
 }
 
 impl dyn Output {
-    pub(crate) fn json(&self) -> anyhow::Result<()> {
+    pub(crate) fn stdout_json(&self) -> anyhow::Result<()> {
         let json = &mut serde_json::Serializer::new(std::io::stdout());
         let mut format: Box<dyn Serializer> = Box::new(<dyn Serializer>::erase(json));
         self.erased_serialize(&mut format)?;

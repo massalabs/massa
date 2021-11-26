@@ -153,6 +153,12 @@ pub(crate) fn help() {
     Command::iter().map(|c| c.help()).collect()
 }
 
+macro_rules! rpc_error {
+    ($e:expr) => {
+        bail!("check if your node is running: {}", $e)
+    };
+}
+
 impl Command {
     pub(crate) fn help(&self) {
         println!(
@@ -208,7 +214,7 @@ impl Command {
                             println!("Request of unbanning successfully sent!")
                         }
                     }
-                    Err(e) => bail!("RpcError: {}", e),
+                    Err(e) => rpc_error!(e),
                 };
                 Ok(Box::new(()))
             }
@@ -221,7 +227,7 @@ impl Command {
                             println!("Request of banning successfully sent!")
                         }
                     }
-                    Err(e) => bail!("RpcError: {}", e),
+                    Err(e) => rpc_error!(e),
                 }
                 Ok(Box::new(()))
             }
@@ -233,7 +239,7 @@ impl Command {
                             println!("Request of stopping the Node successfully sent")
                         }
                     }
-                    Err(e) => bail!("RpcError: {}", e),
+                    Err(e) => rpc_error!(e),
                 };
                 Ok(Box::new(()))
             }
@@ -241,7 +247,7 @@ impl Command {
             Command::node_get_staking_addresses => {
                 match client.private.get_staking_addresses().await {
                     Ok(staking_addresses) => Ok(Box::new(staking_addresses)),
-                    Err(e) => bail!("RpcError: {}", e),
+                    Err(e) => rpc_error!(e),
                 }
             }
 
@@ -253,7 +259,7 @@ impl Command {
                             println!("Addresses successfully removed!")
                         }
                     }
-                    Err(e) => bail!("RpcError: {}", e),
+                    Err(e) => rpc_error!(e),
                 }
                 Ok(Box::new(()))
             }
@@ -266,7 +272,7 @@ impl Command {
                             println!("Private keys successfully added!")
                         }
                     }
-                    Err(e) => bail!("RpcError: {}", e),
+                    Err(e) => rpc_error!(e),
                 };
                 Ok(Box::new(()))
             }
@@ -295,7 +301,7 @@ impl Command {
                                 );
                             }
                         }
-                        Err(e) => bail!("RpcError: {}", e),
+                        Err(e) => rpc_error!(e),
                     }
                 } else {
                     panic!("address not found")
@@ -305,14 +311,14 @@ impl Command {
 
             Command::get_status => match client.public.get_status().await {
                 Ok(node_status) => Ok(Box::new(node_status)),
-                Err(e) => bail!("RpcError: {}", e),
+                Err(e) => rpc_error!(e),
             },
 
             Command::get_addresses => {
                 let addresses = parse_vec::<Address>(parameters)?;
                 match client.public.get_addresses(addresses).await {
                     Ok(addresses_info) => Ok(Box::new(addresses_info)),
-                    Err(e) => bail!("RpcError: {}", e),
+                    Err(e) => rpc_error!(e),
                 }
             }
 
@@ -323,7 +329,7 @@ impl Command {
                 let block_id = parameters[0].parse::<BlockId>()?;
                 match client.public.get_block(block_id).await {
                     Ok(block_info) => Ok(Box::new(block_info)),
-                    Err(e) => bail!("RpcError: {}", e),
+                    Err(e) => rpc_error!(e),
                 }
             }
 
@@ -331,7 +337,7 @@ impl Command {
                 let endorsements = parse_vec::<EndorsementId>(parameters)?;
                 match client.public.get_endorsements(endorsements).await {
                     Ok(endorsements_info) => Ok(Box::new(endorsements_info)),
-                    Err(e) => bail!("RpcError: {}", e),
+                    Err(e) => rpc_error!(e),
                 }
             }
 
@@ -339,7 +345,7 @@ impl Command {
                 let operations = parse_vec::<OperationId>(parameters)?;
                 match client.public.get_operations(operations).await {
                     Ok(operations_info) => Ok(Box::new(operations_info)),
-                    Err(e) => bail!("RpcError: {}", e),
+                    Err(e) => rpc_error!(e),
                 }
             }
 
@@ -496,7 +502,7 @@ async fn send_operation(
 ) -> Result<Box<dyn Output>> {
     let cfg = match client.public.get_status().await {
         Ok(node_status) => node_status,
-        Err(e) => bail!("RpcError: {}", e),
+        Err(e) => rpc_error!(e),
     }
     .algo_config;
 
@@ -528,7 +534,7 @@ async fn send_operation(
             }
             Ok(Box::new(operation_ids))
         }
-        Err(e) => bail!("RpcError: {}", e),
+        Err(e) => rpc_error!(e),
     }
 }
 
