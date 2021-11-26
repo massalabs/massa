@@ -6,6 +6,7 @@ use models::address::AddressHashMap;
 use models::hhasher::{BuildHHasher, HHashMap};
 use models::{Address, Amount, Block, BlockHashMap, BlockId, OperationType, Slot};
 use parking_lot::{Condvar, Mutex};
+use std::collections::VecDeque;
 use std::mem;
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
@@ -34,19 +35,6 @@ pub enum ExecutionEvent {
 /// Management commands sent to the `execution` component.
 pub enum ExecutionManagementCommand {}
 
-#[derive(Debug, Clone)]
-struct SCELedgerEntry {
-    balance: Amount,
-    bytecode: Vec<u8>,
-    data: HHashMap<Hash, Vec<u8>>,
-}
-
-/// Execution queue.
-pub enum ExecutionQueue {
-    Running(Vec<Module>),
-    Shutdown,
-    Stopped,
-}
 
 pub struct ExecutionWorker {
     /// Configuration
@@ -62,15 +50,12 @@ pub struct ExecutionWorker {
     /// Time cursors
     last_final_slot: Slot,
     last_active_slot: Slot,
-    /// SCE ledger
-    final_ledger: AddressHashMap<SCELedgerEntry>,
-    active_ledger: AddressHashMap<SCELedgerEntry>,
     /// ordered active blocks
     ordered_active_blocks: Vec<(BlockId, Block)>,
     /// pending CSS final blocks
     ordered_pending_css_final_blocks: Vec<(BlockId, Block)>,
     /// Execution queue.
-    execution_queue: Arc<(Mutex<ExecutionQueue>, Condvar)>,
+    execution_queue: Arc<(Mutex<VecDeque<ExecutionRequest>>, Condvar)>,
     /// VM thread join handle.
     vm_join_handle: JoinHandle<()>,
     /// VM Store, shared with the VM.
@@ -199,7 +184,12 @@ impl ExecutionWorker {
         Ok(())
     }
 
-    fn apply_final_slot(
+    /// applies a SCE-final slot to the final ledger
+    ///
+    /// # Arguments
+    /// * slot: the target slot
+    /// * opt_block: if None, the slot is a miss. If Some((block_id, block)), then "block" needs to be applied
+    fn vm_push_final_block(
         &mut self,
         slot: Slot,
         opt_block: Option<(BlockId, &Block)>,
@@ -208,6 +198,11 @@ impl ExecutionWorker {
         Ok(())
     }
 
+    /// applies a SCE-active slot (that may or may not contain a block) to the final ledger
+    ///
+    /// # Arguments
+    /// * slot: the target slot
+    /// * opt_block: if None, the slot is a miss. If Some((block_id, block)), then "block" needs to be applied
     fn apply_active_slot(
         &mut self,
         slot: Slot,
@@ -215,6 +210,13 @@ impl ExecutionWorker {
     ) -> Result<(), ExecutionError> {
         // TODO
         Ok(())
+    }
+
+    /// Lets the VM finish applying SCE-final blocks/slots,
+    ///  cancels all other active or pending VM runs,
+    ///  and waits for VM to stop touching the ledgers
+    fn reset_vm(&mut self) {
+        //TODO
     }
 
     /// Process a given command.
@@ -273,6 +275,9 @@ impl ExecutionWorker {
         blockclique: BlockHashMap<Block>,
         finalized_blocks: BlockHashMap<Block>,
     ) -> Result<(), ExecutionError> {
+        // stop the current VM execution
+        self.reset_vm();
+
         // gather pending finalized CSS
         let mut css_final_blocks: Vec<(BlockId, Block)> = self
             .ordered_pending_css_final_blocks
@@ -290,7 +295,7 @@ impl ExecutionWorker {
             );
         }
 
-        // list final blocks
+        // list SCE-final slots/blocks
         for (b_id, block) in css_final_blocks.into_iter() {
             let block_slot = block.header.content.slot;
             if block_slot <= self.last_final_slot {
@@ -299,9 +304,9 @@ impl ExecutionWorker {
             loop {
                 let next_final_slot = self.last_final_slot.get_next_slot(self.thread_count)?;
                 if block_slot == next_final_slot {
-                    self.apply_final_slot(next_final_slot, Some((b_id, &block)))?;
+                    self.vm_push_final_block(b_id, &block)?;
                 } else if next_final_slot < max_thread_slot[next_final_slot.thread as usize] {
-                    self.apply_final_slot(next_final_slot, None)?;
+                    self.vm_push_final_miss(next_final_slot)?;
                 } else {
                     self.ordered_pending_css_final_blocks.push((b_id, block));
                     break;
@@ -310,7 +315,7 @@ impl ExecutionWorker {
             }
         }
 
-        // New blocks.
+        // new blocks
         let new_blocks: Vec<(BlockId, Block)> = blockclique
             .into_iter()
             .filter(|(_b_id, b)| b.header.content.slot > self.last_final_slot)
@@ -331,21 +336,18 @@ impl ExecutionWorker {
         // apply active blocks and misses to the active ledger
         self.active_ledger = self.final_ledger.clone();
         self.last_active_slot = self.last_final_slot;
-        // TODO: remove clone.
+        // TODO remove clone() in iterator below
         for (b_id, block) in self.ordered_active_blocks.clone() {
             // process misses
             if self.last_active_slot == self.last_final_slot {
                 self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
             }
             while self.last_active_slot < block.header.content.slot {
-                self.apply_active_slot(self.last_active_slot, None)?;
+                self.vm_push_active_miss(self.last_active_slot)?;
                 self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
             }
-            self.apply_active_slot(self.last_active_slot, Some((b_id, &block)))?;
+            self.vm_push_active_block(b_id, &block)?;
         }
-
-        // Execute blocks.
-        self.execute_blocks(new_blocks)?;
 
         Ok(())
     }
