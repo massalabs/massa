@@ -6,7 +6,6 @@ use models::address::AddressHashMap;
 use models::hhasher::{BuildHHasher, HHashMap};
 use models::{Address, Amount, Block, BlockHashMap, BlockId, OperationType, Slot};
 use parking_lot::{Condvar, Mutex};
-use std::collections::VecDeque;
 use std::mem;
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
