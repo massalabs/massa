@@ -303,7 +303,7 @@ impl UTime {
 
     /// ```
     /// # use time::*;
-    /// let utime = UTime::from(1000* ( 8 * 24*60*60 + 1*60*60 +3*60 +6 ));
+    /// let utime = UTime::from(1000 * ( 8 * 24*60*60 + 1 * 60*60 + 3 * 60 + 6 ));
     /// let (days, hours, mins, secs) = utime.days_hours_mins_secs().unwrap();
     /// assert_eq!(days, 8);
     /// assert_eq!(hours, 1);
