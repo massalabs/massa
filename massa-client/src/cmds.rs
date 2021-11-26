@@ -533,7 +533,7 @@ impl Command {
                     Err(e) => bail!("RpcError: {}", e),
                 } {
                     let (days, hours, mins, secs) =
-                        end.saturating_sub(UTime::now(0)?).days_hours_mins_secs(); // TODO set compensation millis
+                        end.saturating_sub(UTime::now(0)?).days_hours_mins_secs()?; // TODO set compensation millis
                     let mut res = "".to_string();
                     res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of episode {}", days, hours, mins, secs, version.major));
                     if !json {

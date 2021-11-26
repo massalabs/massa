@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 mod error;
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{self, DateTime, NaiveDateTime, Utc};
 pub use error::TimeError;
 use std::fmt;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -301,13 +301,18 @@ impl UTime {
         format!("{}", datetime)
     }
 
-    pub fn days_hours_mins_secs(&self) -> (u64, u64, u64, u64) {
-        let days = self.0 / (1000 * 24 * 60 * 60);
-        let hours = (self.0 - days * 1000 * 24 * 60 * 60) / (1000 * 60 * 60);
-        let mins = (self.0 - days * 1000 * 24 * 60 * 60 - hours * 1000 * 60 * 60) / (1000 * 60);
-        let secs =
-            (self.0 - days * 1000 * 24 * 60 * 60 - hours * 1000 * 60 * 60 - mins * 1000 * 60)
-                / 1000;
-        (days, hours, mins, secs)
+    pub fn days_hours_mins_secs(&self) -> Result<(i64, i64, i64, i64), TimeError> {
+        let time = chrono::Duration::from_std(self.to_duration())
+            .map_err(|_| TimeError::TimeOverflowError)?;
+        let days = time.num_days();
+        let hours = (time - chrono::Duration::days(days)).num_hours();
+        let mins =
+            (time - chrono::Duration::days(days) - chrono::Duration::hours(hours)).num_minutes();
+        let secs = (time
+            - chrono::Duration::days(days)
+            - chrono::Duration::hours(hours)
+            - chrono::Duration::minutes(mins))
+        .num_seconds();
+        Ok((days, hours, mins, secs))
     }
 }

@@ -200,7 +200,7 @@ impl ConsensusWorker {
             let (days, hours, mins, secs) = cfg
                 .genesis_timestamp
                 .saturating_sub(now)
-                .days_hours_mins_secs();
+                .days_hours_mins_secs()?;
             info!(
                 "{} days, {} hours, {} minutes, {} seconds remaining to genesis",
                 days, hours, mins, secs,
