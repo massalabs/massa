@@ -1839,6 +1839,10 @@ impl BlockGraph {
             return Ok(());
         }
 
+        info!(
+            "received header {} for slot {}",
+            block_id, header.content.slot
+        );
         massa_trace!("consensus.block_graph.incoming_header", {"block_id": block_id, "header": header});
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
         match self.block_statuses.entry(block_id) {
@@ -1887,7 +1891,10 @@ impl BlockGraph {
         if self.genesis_hashes.contains(&block_id) {
             return Ok(());
         }
-
+        info!(
+            "received block {} for slot {}",
+            block_id, block.header.content.slot
+        );
         massa_trace!("consensus.block_graph.incoming_block", {"block_id": block_id, "block": block});
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
         match self.block_statuses.entry(block_id) {
