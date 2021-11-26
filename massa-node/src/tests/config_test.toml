@@ -1,7 +1,7 @@
 # Testing configuration used in unit tests
 # Do not use it for anything else
 
-version = "TEST.4.2"
+version = "DEV.4.2"
 
 [logging]
 level = 2

@@ -10,7 +10,7 @@ async fn test_if_exit_gracefully() {
     cmd.arg("exit").assert().success();
 }
 
-const CONFIG_PATH: &str = "../massa-node/src/tests/testnet.toml";
+const CONFIG_PATH: &str = "../massa-node/src/tests/config_test.toml";
 
 #[tokio::test]
 #[serial]
