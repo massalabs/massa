@@ -1,4 +1,3 @@
-use super::tools;
 use assert_cmd::Command;
 use serial_test::serial;
 use std::thread;
@@ -10,12 +9,11 @@ async fn test_if_exit_gracefully() {
     cmd.arg("exit").assert().success();
 }
 
-const CONFIG_PATH: &str = "../massa-node/src/tests/config_test.toml";
-
+const CONFIG_PATH: &str = "../massa-node/src/tests/config.toml";
+const TIMEOUT: u64 = 10;
 #[tokio::test]
 #[serial]
 async fn test_if_node_stop() {
-    tools::update_genesis_timestamp(CONFIG_PATH);
     let massa_node_thread_handle = thread::spawn(|| {
         Command::cargo_bin("massa-node")
             .unwrap()
@@ -24,17 +22,14 @@ async fn test_if_node_stop() {
             .assert()
             .success();
     });
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     let mut cmd = Command::cargo_bin("massa-client").unwrap();
     let mut success = false;
     for _ in 0..3 {
-        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(TIMEOUT)).await;
         let assert_cli = cmd.arg("node_stop").assert();
-        let out = std::str::from_utf8(&assert_cli.get_output().stdout).unwrap();
-        if out.contains("RpcError") {
-            println!("RpcError, retry to send message");
-        } else {
-            println!("Message request sent: {}", out);
+        let output = std::str::from_utf8(&assert_cli.get_output().stdout).unwrap();
+        if !output.contains("tcp connect error") {
+            println!("Client output: {}", output);
             success = true;
             break;
         }

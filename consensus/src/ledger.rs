@@ -5,9 +5,10 @@ use crate::{ConsensusConfig, ConsensusError};
 use models::address::{AddressHashMap, AddressHashSet};
 use models::hhasher::BuildHHasher;
 use models::ledger::{LedgerChange, LedgerData};
+use models::ADDRESS_SIZE_BYTES;
 use models::{
     array_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, Operation,
-    SerializeCompact, SerializeVarInt, ADDRESS_SIZE_BYTES,
+    SerializeCompact, SerializeVarInt,
 };
 use serde::{Deserialize, Serialize};
 use sled::{Transactional, Tree};

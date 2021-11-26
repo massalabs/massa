@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::config::NetworkConfig;
 use crate::error::{NetworkConnectionErrorType, NetworkError};
+use crate::settings::NetworkSettings;
 use itertools::Itertools;
 use logging::massa_trace;
 use serde::{Deserialize, Serialize};
@@ -60,7 +60,7 @@ impl PeerInfo {
 /// Contains all information about every peers we know about.
 pub struct PeerInfoDatabase {
     /// Network configuration.
-    cfg: NetworkConfig,
+    network_settings: NetworkSettings,
     /// Maps an ip address to peer's info
     pub peers: HashMap<IpAddr, PeerInfo>,
     /// Handle on the task managing the dump
@@ -123,7 +123,7 @@ async fn dump_peers(
 /// peers : peers to clean up
 /// opt_new_peers : optional peers to add to the database
 fn cleanup_peers(
-    cfg: &NetworkConfig,
+    cfg: &NetworkSettings,
     peers: &mut HashMap<IpAddr, PeerInfo>,
     opt_new_peers: Option<&Vec<IpAddr>>,
     clock_compensation: i64,
@@ -152,7 +152,7 @@ fn cleanup_peers(
                 }
                 true
             })
-            .take(cfg.max_advertise_length as usize)
+            .take(crate::settings::MAX_ADVERTISE_LENGTH as usize)
             .map(|&ip| PeerInfo {
                 ip,
                 banned: false,
@@ -224,7 +224,7 @@ impl PeerInfoDatabase {
     ///
     /// # Argument
     /// * cfg : network configuration
-    pub async fn new(cfg: &NetworkConfig, clock_compensation: i64) -> Result<Self, NetworkError> {
+    pub async fn new(cfg: &NetworkSettings, clock_compensation: i64) -> Result<Self, NetworkError> {
         // wakeup interval
         let wakeup_interval = cfg.wakeup_interval;
 
@@ -272,7 +272,7 @@ impl PeerInfoDatabase {
 
         // return struct
         Ok(PeerInfoDatabase {
-            cfg: cfg.clone(),
+            network_settings: cfg.clone(),
             peers,
             saver_join_handle,
             saver_watch_tx,
@@ -290,11 +290,11 @@ impl PeerInfoDatabase {
     /// Performs multiple cleanup tasks e.g. remove old banned peers
     pub fn update(&mut self) -> Result<(), NetworkError> {
         cleanup_peers(
-            &self.cfg,
+            &self.network_settings,
             &mut self.peers,
             None,
             self.clock_compensation,
-            self.cfg.ban_timeout,
+            self.network_settings.ban_timeout,
         )?;
         Ok(())
     }
@@ -319,11 +319,11 @@ impl PeerInfoDatabase {
             }
         }
         cleanup_peers(
-            &self.cfg,
+            &self.network_settings,
             &mut self.peers,
             None,
             self.clock_compensation,
-            self.cfg.ban_timeout,
+            self.network_settings.ban_timeout,
         )?;
         Ok(())
     }
@@ -333,7 +333,7 @@ impl PeerInfoDatabase {
     pub async fn stop(self) -> Result<(), NetworkError> {
         drop(self.saver_watch_tx);
         self.saver_join_handle.await?;
-        if let Err(e) = dump_peers(&self.peers, &self.cfg.peers_file).await {
+        if let Err(e) = dump_peers(&self.peers, &self.network_settings.peers_file).await {
             warn!("could not dump peers to file: {}", e);
         }
         Ok(())
@@ -344,21 +344,21 @@ impl PeerInfoDatabase {
     // returns (count for bootstrap, count for non-bootstrap)
     pub fn get_available_out_connection_attempts(&self) -> (usize, usize) {
         let bootstrap_count = std::cmp::min(
-            self.cfg
+            self.network_settings
                 .target_bootstrap_connections
                 .saturating_sub(self.active_out_bootstrap_connection_attempts)
                 .saturating_sub(self.active_bootstrap_connections),
-            self.cfg
+            self.network_settings
                 .max_out_bootstrap_connection_attempts
                 .saturating_sub(self.active_out_bootstrap_connection_attempts),
         );
 
         let nonbootstrap_count = std::cmp::min(
-            self.cfg
+            self.network_settings
                 .target_out_nonbootstrap_connections
                 .saturating_sub(self.active_out_nonbootstrap_connection_attempts)
                 .saturating_sub(self.active_out_nonbootstrap_connections),
-            self.cfg
+            self.network_settings
                 .max_out_nonbootstrap_connection_attempts
                 .saturating_sub(self.active_out_nonbootstrap_connection_attempts),
         );
@@ -465,12 +465,12 @@ impl PeerInfoDatabase {
         sorted_peers.sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_alive), p.last_failure));
         let mut sorted_ips: Vec<IpAddr> = sorted_peers
             .into_iter()
-            .take(self.cfg.max_advertise_length as usize)
+            .take(crate::settings::MAX_ADVERTISE_LENGTH as usize)
             .map(|p| p.ip)
             .collect();
-        if let Some(our_ip) = self.cfg.routable_ip {
+        if let Some(our_ip) = self.network_settings.routable_ip {
             sorted_ips.insert(0, our_ip);
-            sorted_ips.truncate(self.cfg.max_advertise_length as usize);
+            sorted_ips.truncate(crate::settings::MAX_ADVERTISE_LENGTH as usize);
         }
         sorted_ips
     }
@@ -520,11 +520,11 @@ impl PeerInfoDatabase {
             return Ok(());
         }
         cleanup_peers(
-            &self.cfg,
+            &self.network_settings,
             &mut self.peers,
             Some(new_peers),
             self.clock_compensation,
-            self.cfg.ban_timeout,
+            self.network_settings.ban_timeout,
         )?;
         self.request_dump()
     }
@@ -586,11 +586,11 @@ impl PeerInfoDatabase {
             peer.banned = true;
             if !peer.is_active() && !peer.bootstrap {
                 cleanup_peers(
-                    &self.cfg,
+                    &self.network_settings,
                     &mut self.peers,
                     None,
                     self.clock_compensation,
-                    self.cfg.ban_timeout,
+                    self.network_settings.ban_timeout,
                 )?;
             }
         }
@@ -627,11 +627,11 @@ impl PeerInfoDatabase {
 
         if !peer.is_active() && !peer.bootstrap {
             cleanup_peers(
-                &self.cfg,
+                &self.network_settings,
                 &mut self.peers,
                 None,
                 self.clock_compensation,
-                self.cfg.ban_timeout,
+                self.network_settings.ban_timeout,
             )?;
             self.request_dump()
         } else {
@@ -669,11 +669,11 @@ impl PeerInfoDatabase {
         }
         if !peer.is_active() && !peer.bootstrap {
             cleanup_peers(
-                &self.cfg,
+                &self.network_settings,
                 &mut self.peers,
                 None,
                 self.clock_compensation,
-                self.cfg.ban_timeout,
+                self.network_settings.ban_timeout,
             )?;
             self.request_dump()
         } else {
@@ -710,10 +710,11 @@ impl PeerInfoDatabase {
             ));
         }
         if (peer.bootstrap
-            && self.active_bootstrap_connections >= self.cfg.target_bootstrap_connections)
+            && self.active_bootstrap_connections
+                >= self.network_settings.target_bootstrap_connections)
             || (!peer.bootstrap
                 && self.active_out_nonbootstrap_connections
-                    >= self.cfg.target_out_nonbootstrap_connections)
+                    >= self.network_settings.target_out_nonbootstrap_connections)
         {
             return Ok(false);
         }
@@ -728,11 +729,11 @@ impl PeerInfoDatabase {
             peer.last_failure = Some(UTime::now(self.clock_compensation)?);
             if !peer.is_active() && !peer.bootstrap {
                 cleanup_peers(
-                    &self.cfg,
+                    &self.network_settings,
                     &mut self.peers,
                     None,
                     self.clock_compensation,
-                    self.cfg.ban_timeout,
+                    self.network_settings.ban_timeout,
                 )?;
             }
             self.request_dump()?;
@@ -777,11 +778,11 @@ impl PeerInfoDatabase {
         peer.last_failure = Some(UTime::now(self.clock_compensation)?);
         if !peer.is_active() && !peer.bootstrap {
             cleanup_peers(
-                &self.cfg,
+                &self.network_settings,
                 &mut self.peers,
                 None,
                 self.clock_compensation,
-                self.cfg.ban_timeout,
+                self.network_settings.ban_timeout,
             )?;
         }
         self.request_dump()
@@ -797,10 +798,10 @@ impl PeerInfoDatabase {
     /// * ip : ip address of the considered peer.
     pub fn try_new_in_connection(&mut self, ip: &IpAddr) -> Result<bool, NetworkError> {
         // try to create a new input connection, return false if no slots
-        if !ip.is_global() || self.cfg.max_in_connections_per_ip == 0 {
+        if !ip.is_global() || self.network_settings.max_in_connections_per_ip == 0 {
             return Ok(false);
         }
-        if let Some(our_ip) = self.cfg.routable_ip {
+        if let Some(our_ip) = self.network_settings.routable_ip {
             // avoid our own IP
             if *ip == our_ip {
                 warn!("incoming connection from our own IP");
@@ -812,10 +813,11 @@ impl PeerInfoDatabase {
             hash_map::Entry::Occupied(mut occ) => {
                 let peer = occ.get_mut();
                 if (peer.bootstrap
-                    && self.active_bootstrap_connections >= self.cfg.target_bootstrap_connections)
+                    && self.active_bootstrap_connections
+                        >= self.network_settings.target_bootstrap_connections)
                     || (!peer.bootstrap
                         && self.active_in_nonbootstrap_connections
-                            >= self.cfg.max_in_nonbootstrap_connections)
+                            >= self.network_settings.max_in_nonbootstrap_connections)
                 {
                     return Ok(false);
                 }
@@ -825,7 +827,7 @@ impl PeerInfoDatabase {
                     self.request_dump()?;
                     return Ok(false);
                 }
-                if peer.active_in_connections >= self.cfg.max_in_connections_per_ip {
+                if peer.active_in_connections >= self.network_settings.max_in_connections_per_ip {
                     self.request_dump()?;
                     return Ok(false);
                 }
@@ -849,11 +851,11 @@ impl PeerInfoDatabase {
                     active_in_connections: 0,
                 };
                 if self.active_in_nonbootstrap_connections
-                    >= self.cfg.max_in_nonbootstrap_connections
+                    >= self.network_settings.max_in_nonbootstrap_connections
                 {
                     return Ok(false);
                 }
-                if peer.active_in_connections >= self.cfg.max_in_connections_per_ip {
+                if peer.active_in_connections >= self.network_settings.max_in_connections_per_ip {
                     self.request_dump()?;
                     return Ok(false);
                 }
@@ -870,15 +872,14 @@ impl PeerInfoDatabase {
 //to start alone RUST_BACKTRACE=1 cargo test peer_info_database -- --nocapture --test-threads=1
 #[cfg(test)]
 mod tests {
-    use super::super::config::NetworkConfig;
     use super::*;
     use serial_test::serial;
 
     #[tokio::test]
     #[serial]
     async fn test_try_new_in_connection_in_connection_closed() {
-        let mut network_config = example_network_config();
-        network_config.target_out_nonbootstrap_connections = 5;
+        let mut network_settings = NetworkSettings::default();
+        network_settings.target_out_nonbootstrap_connections = 5;
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         // add peers
@@ -892,7 +893,7 @@ mod tests {
         connected_peers1.banned = true;
         peers.insert(connected_peers1.ip, connected_peers1);
 
-        let wakeup_interval = network_config.wakeup_interval;
+        let wakeup_interval = network_settings.wakeup_interval;
         let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
 
         let saver_join_handle = tokio::spawn(async move {
@@ -905,7 +906,7 @@ mod tests {
         });
 
         let mut db = PeerInfoDatabase {
-            cfg: network_config,
+            network_settings,
             peers,
             saver_join_handle,
             saver_watch_tx,
@@ -985,8 +986,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_out_connection_attempt_failed() {
-        let mut network_config = example_network_config();
-        network_config.target_out_nonbootstrap_connections = 5;
+        let mut network_settings = NetworkSettings::default();
+        network_settings.target_out_nonbootstrap_connections = 5;
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         // add peers
@@ -1000,7 +1001,7 @@ mod tests {
         connected_peers1.banned = true;
         peers.insert(connected_peers1.ip, connected_peers1);
 
-        let wakeup_interval = network_config.wakeup_interval;
+        let wakeup_interval = network_settings.wakeup_interval;
         let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
 
         let saver_join_handle = tokio::spawn(async move {
@@ -1013,7 +1014,7 @@ mod tests {
         });
 
         let mut db = PeerInfoDatabase {
-            cfg: network_config,
+            network_settings,
             peers,
             saver_join_handle,
             saver_watch_tx,
@@ -1086,8 +1087,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_try_out_connection_attempt_success() {
-        let mut network_config = example_network_config();
-        network_config.target_out_nonbootstrap_connections = 5;
+        let mut network_settings = NetworkSettings::default();
+        network_settings.target_out_nonbootstrap_connections = 5;
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         // add peers
@@ -1101,7 +1102,7 @@ mod tests {
         connected_peers1.banned = true;
         peers.insert(connected_peers1.ip, connected_peers1);
 
-        let wakeup_interval = network_config.wakeup_interval;
+        let wakeup_interval = network_settings.wakeup_interval;
         let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
 
         let saver_join_handle = tokio::spawn(async move {
@@ -1114,7 +1115,7 @@ mod tests {
         });
 
         let mut db = PeerInfoDatabase {
-            cfg: network_config,
+            network_settings,
             peers,
             saver_join_handle,
             saver_watch_tx,
@@ -1189,8 +1190,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_new_out_connection_closed() {
-        let mut network_config = example_network_config();
-        network_config.max_out_nonbootstrap_connection_attempts = 5;
+        let mut network_settings = NetworkSettings::default();
+        network_settings.max_out_nonbootstrap_connection_attempts = 5;
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         // add peers
@@ -1198,7 +1199,7 @@ mod tests {
         let connected_peers1 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
         peers.insert(connected_peers1.ip, connected_peers1);
-        let wakeup_interval = network_config.wakeup_interval;
+        let wakeup_interval = network_settings.wakeup_interval;
         let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
         let saver_join_handle = tokio::spawn(async move {
             loop {
@@ -1210,7 +1211,7 @@ mod tests {
         });
 
         let mut db = PeerInfoDatabase {
-            cfg: network_config,
+            network_settings,
             peers,
             saver_join_handle,
             saver_watch_tx,
@@ -1276,8 +1277,8 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_new_out_connection_attempt() {
-        let mut network_config = example_network_config();
-        network_config.max_out_nonbootstrap_connection_attempts = 5;
+        let mut network_settings = NetworkSettings::default();
+        network_settings.max_out_nonbootstrap_connection_attempts = 5;
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         // add peers
@@ -1285,12 +1286,12 @@ mod tests {
         let connected_peers1 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
         peers.insert(connected_peers1.ip, connected_peers1);
-        let wakeup_interval = network_config.wakeup_interval;
+        let wakeup_interval = network_settings.wakeup_interval;
         let (saver_watch_tx, _) = watch::channel(peers.clone());
         let saver_join_handle = tokio::spawn(async move {});
 
         let mut db = PeerInfoDatabase {
-            cfg: network_config,
+            network_settings,
             peers,
             saver_join_handle,
             saver_watch_tx,
@@ -1342,7 +1343,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_get_advertisable_peer_ips() {
-        let network_config = example_network_config();
+        let network_settings = NetworkSettings::default();
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         // add peers
@@ -1383,12 +1384,12 @@ mod tests {
             Some(UTime::now(0).unwrap().checked_sub(2000.into()).unwrap());
         peers.insert(connected_peers2.ip, connected_peers2);
 
-        let wakeup_interval = network_config.wakeup_interval;
+        let wakeup_interval = network_settings.wakeup_interval;
         let (saver_watch_tx, _) = watch::channel(peers.clone());
         let saver_join_handle = tokio::spawn(async move {});
 
         let db = PeerInfoDatabase {
-            cfg: network_config,
+            network_settings,
             peers,
             saver_join_handle,
             saver_watch_tx,
@@ -1431,7 +1432,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_get_out_connection_candidate_ips() {
-        let network_config = example_network_config();
+        let network_settings = NetworkSettings::default();
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         // add peers
@@ -1493,12 +1494,12 @@ mod tests {
         connected_peers1.advertised = false;
         peers.insert(connected_peers1.ip, connected_peers1);
 
-        let wakeup_interval = network_config.wakeup_interval;
+        let wakeup_interval = network_settings.wakeup_interval;
         let (saver_watch_tx, _) = watch::channel(peers.clone());
         let saver_join_handle = tokio::spawn(async move {});
 
         let db = PeerInfoDatabase {
-            cfg: network_config,
+            network_settings,
             peers,
             saver_join_handle,
             saver_watch_tx,
@@ -1533,35 +1534,21 @@ mod tests {
         );
     }
 
-    fn default_peer_info_not_connected(ip: IpAddr) -> PeerInfo {
-        PeerInfo {
-            ip,
-            banned: false,
-            bootstrap: false,
-            last_alive: None,
-            last_failure: None,
-            advertised: true,
-            active_out_connection_attempts: 0,
-            active_out_connections: 0,
-            active_in_connections: 0,
-        }
-    }
-
     #[tokio::test]
     #[serial]
     async fn test_cleanup_peers() {
-        let mut network_config = example_network_config();
-        network_config.max_banned_peers = 1;
-        network_config.max_idle_peers = 1;
+        let mut network_settings = NetworkSettings::default();
+        network_settings.max_banned_peers = 1;
+        network_settings.max_idle_peers = 1;
         let mut peers = HashMap::new();
 
         // Call with empty db.
         cleanup_peers(
-            &network_config,
+            &network_settings,
             &mut peers,
             None,
             0,
-            network_config.ban_timeout,
+            network_settings.ban_timeout,
         )
         .unwrap();
         assert!(peers.is_empty());
@@ -1631,11 +1618,11 @@ mod tests {
         peers.insert(banned_host2.ip, banned_host2);
 
         cleanup_peers(
-            &network_config,
+            &network_settings,
             &mut peers,
             None,
             0,
-            network_config.ban_timeout,
+            network_settings.ban_timeout,
         )
         .unwrap();
 
@@ -1658,15 +1645,14 @@ mod tests {
             IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
         ];
 
-        network_config.max_advertise_length = 1;
-        network_config.max_idle_peers = 5;
+        network_settings.max_idle_peers = 5;
 
         cleanup_peers(
-            &network_config,
+            &network_settings,
             &mut peers,
             Some(&advertised),
             0,
-            network_config.ban_timeout,
+            network_settings.ban_timeout,
         )
         .unwrap();
 
@@ -1676,10 +1662,11 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test() {
-        let peer_db = peer_database_example(5);
+        let peer_db = PeerInfoDatabase::from(5);
         let p = peer_db.peers.values().next().unwrap();
         assert_eq!(p.is_active(), false);
     }
+
     fn default_peer_info_connected(ip: IpAddr) -> PeerInfo {
         PeerInfo {
             ip,
@@ -1694,82 +1681,63 @@ mod tests {
         }
     }
 
-    fn example_network_config() -> NetworkConfig {
-        use std::net::{Ipv4Addr, SocketAddr};
-
-        NetworkConfig {
-            bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
-            routable_ip: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
-            protocol_port: 0,
-            connect_timeout: UTime::from(180_000),
-            wakeup_interval: UTime::from(10_000),
-            peers_file: std::path::PathBuf::new(),
-            target_bootstrap_connections: 1,
-            max_out_bootstrap_connection_attempts: 1,
-            target_out_nonbootstrap_connections: 10,
-            max_in_nonbootstrap_connections: 5,
-            max_in_connections_per_ip: 2,
-            max_out_nonbootstrap_connection_attempts: 15,
-            max_idle_peers: 3,
-            max_banned_peers: 3,
-            max_advertise_length: 5,
-            peers_file_dump_interval: UTime::from(10_000),
-            max_message_size: 3 * 10241024,
-            message_timeout: UTime::from(5000u64),
-            ask_peer_list_interval: UTime::from(50000u64),
-            private_key_file: std::path::PathBuf::new(),
-            max_ask_blocks_per_message: 10,
-            max_operations_per_message: 1024,
-            max_endorsements_per_message: 1024,
-            max_send_wait: UTime::from(100),
-            ban_timeout: UTime::from(100_000_000),
+    fn default_peer_info_not_connected(ip: IpAddr) -> PeerInfo {
+        PeerInfo {
+            ip,
+            banned: false,
+            bootstrap: false,
+            last_alive: None,
+            last_failure: None,
+            advertised: true,
+            active_out_connection_attempts: 0,
+            active_out_connections: 0,
+            active_in_connections: 0,
         }
     }
 
-    fn peer_database_example(peers_number: u32) -> PeerInfoDatabase {
-        use rand::Rng;
-
-        let mut rng = rand::thread_rng();
-
-        let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
-        for i in 0..peers_number {
-            let ip: [u8; 4] = [rng.gen(), rng.gen(), rng.gen(), rng.gen()];
-            let peer = PeerInfo {
-                ip: IpAddr::from(ip),
-                banned: (ip[0] % 5) == 0,
-                bootstrap: (ip[1] % 2) == 0,
-                last_alive: match i % 4 {
-                    0 => None,
-                    _ => Some(UTime::now(0).unwrap().checked_sub(50000.into()).unwrap()),
-                },
-                last_failure: match i % 5 {
-                    0 => None,
-                    _ => Some(UTime::now(0).unwrap().checked_sub(60000.into()).unwrap()),
-                },
-                advertised: (ip[2] % 2) == 0,
-                active_out_connection_attempts: 0,
-                active_out_connections: 0,
-                active_in_connections: 0,
-            };
-            peers.insert(peer.ip, peer);
-        }
-        let cfg = example_network_config();
-        let wakeup_interval = cfg.wakeup_interval;
-
-        let (saver_watch_tx, _) = watch::channel(peers.clone());
-        let saver_join_handle = tokio::spawn(async move {});
-        PeerInfoDatabase {
-            cfg,
-            peers,
-            saver_join_handle,
-            saver_watch_tx,
-            active_out_bootstrap_connection_attempts: 0,
-            active_bootstrap_connections: 0,
-            active_out_nonbootstrap_connection_attempts: 0,
-            active_out_nonbootstrap_connections: 0,
-            active_in_nonbootstrap_connections: 0,
-            wakeup_interval,
-            clock_compensation: 0,
+    impl From<u32> for PeerInfoDatabase {
+        fn from(peers_number: u32) -> Self {
+            use rand::Rng;
+            let mut rng = rand::thread_rng();
+            let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
+            for i in 0..peers_number {
+                let ip: [u8; 4] = [rng.gen(), rng.gen(), rng.gen(), rng.gen()];
+                let peer = PeerInfo {
+                    ip: IpAddr::from(ip),
+                    banned: (ip[0] % 5) == 0,
+                    bootstrap: (ip[1] % 2) == 0,
+                    last_alive: match i % 4 {
+                        0 => None,
+                        _ => Some(UTime::now(0).unwrap().checked_sub(50000.into()).unwrap()),
+                    },
+                    last_failure: match i % 5 {
+                        0 => None,
+                        _ => Some(UTime::now(0).unwrap().checked_sub(60000.into()).unwrap()),
+                    },
+                    advertised: (ip[2] % 2) == 0,
+                    active_out_connection_attempts: 0,
+                    active_out_connections: 0,
+                    active_in_connections: 0,
+                };
+                peers.insert(peer.ip, peer);
+            }
+            let network_settings = NetworkSettings::default();
+            let wakeup_interval = network_settings.wakeup_interval;
+            let (saver_watch_tx, _) = watch::channel(peers.clone());
+            let saver_join_handle = tokio::spawn(async move {});
+            PeerInfoDatabase {
+                network_settings,
+                peers,
+                saver_join_handle,
+                saver_watch_tx,
+                active_out_bootstrap_connection_attempts: 0,
+                active_bootstrap_connections: 0,
+                active_out_nonbootstrap_connection_attempts: 0,
+                active_out_nonbootstrap_connections: 0,
+                active_in_nonbootstrap_connections: 0,
+                wakeup_interval,
+                clock_compensation: 0,
+            }
         }
     }
 }

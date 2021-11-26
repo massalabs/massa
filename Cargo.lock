@@ -292,6 +292,7 @@ dependencies = [
  "bitvec",
  "displaydoc",
  "futures 0.3.18",
+ "lazy_static",
  "logging",
  "massa_hash",
  "models",

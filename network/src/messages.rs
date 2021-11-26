@@ -1,16 +1,16 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::settings::HANDSHAKE_RANDOMNESS_SIZE_BYTES;
+use models::BLOCK_ID_SIZE_BYTES;
 use models::{
     array_from_slice, with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact,
     DeserializeVarInt, Endorsement, ModelsError, Operation, SerializeCompact, SerializeVarInt,
-    Version, BLOCK_ID_SIZE_BYTES,
+    Version,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use std::{convert::TryInto, net::IpAddr};
-
-pub const HANDSHAKE_RANDOMNES_SIZE_BYTES: usize = 32;
 
 /// All messages that can be sent or received.
 #[derive(Debug, Serialize, Deserialize)]
@@ -22,7 +22,7 @@ pub enum Message {
         /// Random data we expect the peer to sign with its private_key.
         /// They should send us their handshake initiation message to
         /// let us know their public key.
-        random_bytes: [u8; HANDSHAKE_RANDOMNES_SIZE_BYTES],
+        random_bytes: [u8; HANDSHAKE_RANDOMNESS_SIZE_BYTES],
         version: Version,
     },
     /// Reply to a handshake initiation message.
@@ -172,9 +172,9 @@ impl DeserializeCompact for Message {
                 let public_key = PublicKey::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += PUBLIC_KEY_SIZE_BYTES;
                 // random bytes
-                let random_bytes: [u8; HANDSHAKE_RANDOMNES_SIZE_BYTES] =
+                let random_bytes: [u8; HANDSHAKE_RANDOMNESS_SIZE_BYTES] =
                     array_from_slice(&buffer[cursor..])?;
-                cursor += HANDSHAKE_RANDOMNES_SIZE_BYTES;
+                cursor += HANDSHAKE_RANDOMNESS_SIZE_BYTES;
 
                 // version
                 let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
@@ -276,6 +276,7 @@ mod tests {
 
     use rand::{prelude::StdRng, RngCore, SeedableRng};
     use serial_test::serial;
+
     use signature::{derive_public_key, generate_random_private_key};
 
     use super::*;

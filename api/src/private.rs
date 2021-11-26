@@ -22,14 +22,14 @@ impl API<Private> {
         consensus_command_sender: ConsensusCommandSender,
         network_command_sender: NetworkCommandSender,
         api_settings: &'static APISettings,
-        consensus_settings: &'static ConsensusConfig,
+        consensus_settings: ConsensusConfig,
     ) -> (Self, mpsc::Receiver<()>) {
         let (stop_node_channel, rx) = mpsc::channel(1);
         (
             API(Private {
                 consensus_command_sender,
                 network_command_sender,
-                consensus_settings,
+                consensus_config: consensus_settings,
                 api_settings,
                 stop_node_channel,
             }),
