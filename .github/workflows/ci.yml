@@ -127,7 +127,7 @@ jobs:
         with:
           command: test
 
-  success: # quick hack because bors wrongly detect matrix jobs status
+  build: # quick hack because bors wrongly detect matrix jobs status
     if: github.ref == 'refs/heads/staging'
     needs: full
     runs-on: ubuntu-latest
