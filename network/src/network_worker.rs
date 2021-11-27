@@ -923,10 +923,10 @@ impl NetworkWorker {
     ) {
         if let Some((_, node_command_tx)) = self.active_nodes.get(node) {
             if node_command_tx.send(message).await.is_err() {
-                warn!(
+                debug!(
                     "{}",
-                    NetworkError::ChannelError("error forwarding message to node worker".into(),)
-                )
+                    NetworkError::ChannelError("error forwarding message to node worker".into())
+                );
             };
         } else {
             // We probably weren't able to send this event previously,
