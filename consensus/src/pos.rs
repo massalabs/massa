@@ -12,6 +12,7 @@ use models::{
     SerializeVarInt, Slot, StakersCycleProductionStats, ADDRESS_SIZE_BYTES,
 };
 use num::rational::Ratio;
+use num::Integer;
 use rand::distributions::Uniform;
 use rand::Rng;
 use rand_xoshiro::rand_core::SeedableRng;
@@ -497,7 +498,13 @@ impl DeserializeCompact for ThreadCycleState {
                 "invalid number entries when deserializing ExportThreadCycleStat rng_seed".into(),
             ));
         }
-        let mut rng_seed: BitVec<Lsb0, u8> = BitVec::try_from_vec(buffer[cursor..].to_vec())
+        let bits_u8_len = n_entries.div_ceil(&u8::BITS) as usize;
+        if buffer[cursor..].len() < bits_u8_len {
+            return Err(ModelsError::SerializeError(
+                "too few remaining bytes when deserializing ExportThreadCycleStat rng_seed".into(),
+            ));
+        }
+        let mut rng_seed: BitVec<Lsb0, u8> = BitVec::try_from_vec(buffer[cursor..(cursor+bits_u8_len)].to_vec())
             .map_err(|_| ModelsError::SerializeError("error in bitvec conversion during deserialization of ExportThreadCycleStat rng_seed".into()))?;
         rng_seed.truncate(n_entries as usize);
         if rng_seed.len() != n_entries as usize {
