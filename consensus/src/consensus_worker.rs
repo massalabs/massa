@@ -23,7 +23,7 @@ use models::{
 use pool::PoolCommandSender;
 use protocol_exports::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
 use signature::{derive_public_key, PrivateKey, PublicKey};
-use std::{cmp::max, collections::HashSet, collections::VecDeque, convert::TryFrom};
+use std::{cmp::max, collections::HashSet, collections::VecDeque};
 use time::UTime;
 use tokio::{
     sync::{mpsc, mpsc::error::SendTimeoutError, oneshot},
@@ -827,10 +827,7 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_consensus_command.get_bootstrap_state",
                     {}
                 );
-                let resp = (
-                    self.pos.export(),
-                    BootstrapableGraph::try_from(&self.block_db)?,
-                );
+                let resp = (self.pos.export(), self.block_db.export_bootstrap_graph()?);
                 if response_tx.send(resp).is_err() {
                     warn!("consensus: could not send GetBootstrapState answer");
                 }
