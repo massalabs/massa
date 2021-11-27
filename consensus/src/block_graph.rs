@@ -109,7 +109,7 @@ impl From<&ActiveBlock> for ExportActiveBlock {
             parents: a_block.parents.clone(),
             children: a_block.children.clone(),
             dependencies: a_block.dependencies.clone(),
-            is_final: a_block.is_final.clone(),
+            is_final: a_block.is_final,
             block_ledger_changes: a_block.block_ledger_changes.clone(),
             roll_updates: a_block.roll_updates.clone(),
             production_events: a_block.production_events.clone(),
@@ -3724,7 +3724,7 @@ impl BlockGraph {
             }
         }
 
-        return Ok(retain_active);
+        Ok(retain_active)
     }
 
     // prune active blocks and return final blocks, return discarded final blocks
