@@ -1,17 +1,17 @@
 use crate::config::ExecutionConfig;
 use crate::error::ExecutionError;
-use crate::vm::VM;
 use massa_hash::hash::Hash;
 use models::address::AddressHashMap;
 use models::hhasher::{BuildHHasher, HHashMap};
 use models::{Address, Amount, Block, BlockHashMap, BlockId, OperationType, Slot};
+
+use crate::vm::{ExecutionStep, VM};
 use parking_lot::{Condvar, Mutex};
 use std::collections::VecDeque;
-use std::mem;
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use tokio::sync::mpsc;
-use wasmer::{Module, Store};
+use wasmer::Module;
 
 /// Commands sent to the `execution` component.
 #[derive(Debug)]
@@ -35,6 +35,13 @@ pub enum ExecutionEvent {
 /// Management commands sent to the `execution` component.
 pub enum ExecutionManagementCommand {}
 
+/// execution request
+enum ExecutionRequest {
+    RunFinalStep(ExecutionStep),  // Runs a final step
+    RunActiveStep(ExecutionStep), // Runs an active step
+    ResetToFinalState,            // Resets the VM to its final state
+    Stop,                         // Stops the VM thread
+}
 
 pub struct ExecutionWorker {
     /// Configuration
@@ -58,11 +65,6 @@ pub struct ExecutionWorker {
     execution_queue: Arc<(Mutex<VecDeque<ExecutionRequest>>, Condvar)>,
     /// VM thread join handle.
     vm_join_handle: JoinHandle<()>,
-    /// VM Store, shared with the VM.
-    store: Arc<Store>,
-    /// Ledger, shared with the VM.
-    /// TODO: use SCELedgerEntry and final/active concepts.
-    ledger: Arc<Mutex<AddressHashMap<Module>>>,
 }
 
 impl ExecutionWorker {
@@ -74,54 +76,33 @@ impl ExecutionWorker {
         controller_manager_rx: mpsc::Receiver<ExecutionManagementCommand>,
     ) -> Result<ExecutionWorker, ExecutionError> {
         // Shared with the VM.
-        let execution_queue = Arc::new((
-            Mutex::new(ExecutionQueue::Running(Default::default())),
-            Condvar::new(),
-        ));
-        let execution_queue_clone = execution_queue.clone();
-
-        let ledger = Arc::new(Mutex::new(AddressHashMap::with_capacity_and_hasher(
-            1,
-            BuildHHasher::default(),
-        )));
-        let ledger_clone = ledger.clone();
-
-        let store = Arc::new(Store::default());
-        let store_clone = store.clone();
+        let execution_queue: Arc<(Mutex<VecDeque<ExecutionRequest>>, Condvar)> =
+            Arc::new((Mutex::new(Default::default()), Condvar::new()));
+        let execution_queue_clone = Arc::clone(&execution_queue);
 
         let vm_join_handle = thread::spawn(move || {
-            let vm = VM::new(store_clone, ledger_clone);
+            let mut vm = VM::new();
+
+            // Scoping the lock
+            let (queue_lock, condvar) = &*execution_queue_clone;
+            let mut queue_guard = queue_lock.lock();
             loop {
-                let modules = {
-                    // Scoping the lock.
-                    let &(ref lock, ref condvar) = &*execution_queue_clone;
-                    let mut queue = lock.lock();
-
-                    // Run until shutdown
-                    loop {
-                        condvar.wait(&mut queue);
-
-                        // Running normally.
-                        match *queue {
-                            ExecutionQueue::Running(ref mut queue) => {
-                                // Return the modules to run.
-                                break mem::take(queue);
-                            }
-                            ExecutionQueue::Stopped => panic!("Unexpected execution queue state."),
-                            ExecutionQueue::Shutdown => {
-                                // Confirm shutdown
-                                *queue = ExecutionQueue::Stopped;
-                                condvar.notify_one();
-
-                                // Dropping the lock.
-                                return;
-                            }
-                        }
+                condvar.wait(&mut queue_guard);
+                match (*queue_guard).pop_front() {
+                    Some(ExecutionRequest::Stop) => {
+                        break;
                     }
-                };
-
-                // Run stuff without holding the lock.
-                vm.run(&modules);
+                    Some(ExecutionRequest::ResetToFinalState) => {
+                        vm.reset_to_final();
+                    }
+                    Some(ExecutionRequest::RunFinalStep(step)) => {
+                        vm.run_final_step(step);
+                    }
+                    Some(ExecutionRequest::RunActiveStep(step)) => {
+                        vm.run_active_step(step);
+                    }
+                    None => {}
+                }
             }
         });
 
@@ -134,14 +115,10 @@ impl ExecutionWorker {
             //TODO bootstrap or init
             last_final_slot: Slot::new(0, 0),
             last_active_slot: Slot::new(0, 0),
-            final_ledger: Default::default(),
-            active_ledger: Default::default(),
             ordered_active_blocks: Default::default(),
             ordered_pending_css_final_blocks: Default::default(),
             execution_queue,
             vm_join_handle,
-            store,
-            ledger,
         };
 
         Ok(worker)
@@ -153,34 +130,25 @@ impl ExecutionWorker {
                 // Process management commands
                 cmd = self.controller_manager_rx.recv() => {
                     match cmd {
-                    None => break,
-                    Some(_) => {}
-                }}
+                        None => break,
+                        Some(_) => {}
+                    }
+                ,}
 
                 // Process commands
                 Some(cmd) = self.controller_command_rx.recv() => self.process_command(cmd).await?,
             }
         }
 
-        // Signal shutdown.
-        let &(ref lock, ref condvar) = &*self.execution_queue;
-        let mut queue = lock.lock();
-        *queue = ExecutionQueue::Shutdown;
-        condvar.notify_one();
-
-        // Wait for shutdown confirmation.
-        loop {
-            match *queue {
-                ExecutionQueue::Stopped => break,
-                _ => {}
-            }
-            condvar.wait(&mut queue);
+        // Shutdown VM
+        {
+            let (queue_lock, condvar) = &*execution_queue;
+            let mut queue_guard = queue_lock.lock();
+            *queue_guard.push_front(ExecutionRequest::Stop);
+            cvar.notify_all();
         }
-
-        // Join on the thread, once shutdown has been confirmed.
         self.vm_join_handle.join();
 
-        // end loop
         Ok(())
     }
 
@@ -348,7 +316,6 @@ impl ExecutionWorker {
             }
             self.vm_push_active_block(b_id, &block)?;
         }
-
         Ok(())
     }
 }

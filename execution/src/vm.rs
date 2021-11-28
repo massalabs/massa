@@ -1,12 +1,10 @@
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::hhasher::HHashMap;
-use models::{Address, Block, BlockId, Slot};
 use models::{address::AddressHashMap, Amount};
+use models::{Address, Block, BlockId, Slot};
 use parking_lot::Mutex;
 use std::sync::Arc;
 use wasmer::{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv};
-
-use crate::ExecutionConfig;
 
 /// Example API available to wasm code, aka "syscall".
 fn foo(shared_env: &SharedExecutionContext, n: i32) -> i32 {
@@ -18,14 +16,11 @@ fn call_address(shared_env: &SharedExecutionContext, addr: Address) {
     if let Some(module) = Arc::clone(&shared_env.0).lock().active_ledger.get(&addr) {}
 }
 
-/// execution request
-pub enum ExecutionRequest {
-    RunFinalMiss(Slot), // Runs a final miss. TODO add the address drawn for this slot
-    RunFinalBlock((BlockId, Block)), // Runs a final block
-    RunActiveMiss(Slot), // Runs an active miss. TODO add the address drawn for this slot
-    RunActiveBlock((BlockId, Block)), // Runs an active block
-    ResetToFinalState,  // Resets to final state
-    Stop,               // Stops the VM thread
+pub struct ExecutionStep {
+    pub slot: Slot,
+    // TODO add pos_seed for RNG seeding
+    // TODO add pos_draws to list the draws (block and endorsement creators) for that slot
+    pub block: Option<(BlockId, Block)>, // None if miss
 }
 
 #[derive(Debug, Clone)]
@@ -71,10 +66,16 @@ impl VM {
         }
     }
 
-    pub fn run(&self, to_run: &[Module]) {
-        for module in to_run {
-            self.call_module(module)
-        }
+    pub fn run_final_step(&mut self, step: ExecutionStep) {
+        // TODO
+    }
+
+    pub fn run_active_step(&mut self, step: ExecutionStep) {
+        // TODO
+    }
+
+    pub fn reset_to_final(&mut self) {
+        // TODO
     }
 
     fn call_module(&self, module: &Module) {
