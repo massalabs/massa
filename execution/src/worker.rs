@@ -1,9 +1,6 @@
 use crate::config::ExecutionConfig;
 use crate::error::ExecutionError;
-use massa_hash::hash::Hash;
-use models::address::AddressHashMap;
-use models::hhasher::{BuildHHasher, HHashMap};
-use models::{Address, Amount, Block, BlockHashMap, BlockId, OperationType, Slot};
+use models::{Block, BlockHashMap, BlockId, Slot};
 
 use crate::vm::{ExecutionStep, VM};
 use parking_lot::{Condvar, Mutex};
@@ -11,7 +8,6 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use tokio::sync::mpsc;
-use wasmer::Module;
 
 /// Commands sent to the `execution` component.
 #[derive(Debug)]
@@ -45,7 +41,7 @@ enum ExecutionRequest {
 
 pub struct ExecutionWorker {
     /// Configuration
-    _cfg: ExecutionConfig,
+    cfg: ExecutionConfig,
     /// Thread count
     thread_count: u8,
     /// Receiver of commands.
@@ -75,15 +71,18 @@ impl ExecutionWorker {
         controller_command_rx: mpsc::Receiver<ExecutionCommand>,
         controller_manager_rx: mpsc::Receiver<ExecutionManagementCommand>,
     ) -> Result<ExecutionWorker, ExecutionError> {
-        // Shared with the VM.
+        // setup execution request queue
         let execution_queue: Arc<(Mutex<VecDeque<ExecutionRequest>>, Condvar)> =
             Arc::new((Mutex::new(Default::default()), Condvar::new()));
         let execution_queue_clone = Arc::clone(&execution_queue);
 
+        // launch VM thread
+        let cfg_clone = cfg.clone();
         let vm_join_handle = thread::spawn(move || {
-            let mut vm = VM::new();
+            // init VM
+            let mut vm = VM::new(cfg_clone);
 
-            // Scoping the lock
+            // handle execution requests
             let (queue_lock, condvar) = &*execution_queue_clone;
             let mut queue_guard = queue_lock.lock();
             loop {
@@ -106,8 +105,9 @@ impl ExecutionWorker {
             }
         });
 
-        let worker = ExecutionWorker {
-            _cfg: cfg,
+        // return execution worker
+        Ok(ExecutionWorker {
+            cfg,
             thread_count,
             controller_command_rx,
             controller_manager_rx,
@@ -119,9 +119,7 @@ impl ExecutionWorker {
             ordered_pending_css_final_blocks: Default::default(),
             execution_queue,
             vm_join_handle,
-        };
-
-        Ok(worker)
+        })
     }
 
     pub async fn run_loop(mut self) -> Result<(), ExecutionError> {
@@ -133,58 +131,73 @@ impl ExecutionWorker {
                         None => break,
                         Some(_) => {}
                     }
-                ,}
+                },
 
                 // Process commands
                 Some(cmd) = self.controller_command_rx.recv() => self.process_command(cmd).await?,
             }
         }
 
-        // Shutdown VM
+        // Shutdown VM, cancel all pending execution requests
         {
-            let (queue_lock, condvar) = &*execution_queue;
+            let (queue_lock, condvar) = &*self.execution_queue;
             let mut queue_guard = queue_lock.lock();
-            *queue_guard.push_front(ExecutionRequest::Stop);
-            cvar.notify_all();
+            (*queue_guard).push_front(ExecutionRequest::Stop);
+            condvar.notify_all();
         }
-        self.vm_join_handle.join();
+        let _ = self.vm_join_handle.join();
 
         Ok(())
     }
 
-    /// applies a SCE-final slot to the final ledger
+    // asks the VM to reset to its final
+    fn vm_reset(&mut self) {
+        let (queue_lock, condvar) = &*self.execution_queue;
+        let mut queue_guard = queue_lock.lock();
+        // cancel all non-final, non-stop requests
+        // Final execution requests are left to maintain final state consistency
+        (*queue_guard).retain(|req| match req {
+            ExecutionRequest::RunFinalStep(..) => true,
+            ExecutionRequest::Stop => true,
+            ExecutionRequest::RunActiveStep(..) => false,
+            ExecutionRequest::ResetToFinalState => false,
+        });
+        // request reset to final state
+        (*queue_guard).push_back(ExecutionRequest::ResetToFinalState);
+        // notify
+        condvar.notify_one();
+    }
+
+    /// runs an SCE-final step (slot)
     ///
     /// # Arguments
-    /// * slot: the target slot
-    /// * opt_block: if None, the slot is a miss. If Some((block_id, block)), then "block" needs to be applied
-    fn vm_push_final_block(
-        &mut self,
-        slot: Slot,
-        opt_block: Option<(BlockId, &Block)>,
-    ) -> Result<(), ExecutionError> {
-        // TODO
-        Ok(())
+    /// * slot: target slot
+    /// * block: None if miss, Some(block_id, block) otherwise
+    fn vm_run_final_step(&mut self, slot: Slot, block: Option<(BlockId, Block)>) {
+        let (queue_lock, condvar) = &*self.execution_queue;
+        let mut queue_guard = queue_lock.lock();
+        (*queue_guard).push_back(ExecutionRequest::RunFinalStep(ExecutionStep {
+            slot,
+            block,
+        }));
+        // notify
+        condvar.notify_one();
     }
 
-    /// applies a SCE-active slot (that may or may not contain a block) to the final ledger
+    /// runs an SCE-active step (slot)
     ///
     /// # Arguments
-    /// * slot: the target slot
-    /// * opt_block: if None, the slot is a miss. If Some((block_id, block)), then "block" needs to be applied
-    fn apply_active_slot(
-        &mut self,
-        slot: Slot,
-        opt_block: Option<(BlockId, &Block)>,
-    ) -> Result<(), ExecutionError> {
-        // TODO
-        Ok(())
-    }
-
-    /// Lets the VM finish applying SCE-final blocks/slots,
-    ///  cancels all other active or pending VM runs,
-    ///  and waits for VM to stop touching the ledgers
-    fn reset_vm(&mut self) {
-        //TODO
+    /// * slot: target slot
+    /// * block: None if miss, Some(block_id, block) otherwise
+    fn vm_run_active_step(&mut self, slot: Slot, block: Option<(BlockId, Block)>) {
+        let (queue_lock, condvar) = &*self.execution_queue;
+        let mut queue_guard = queue_lock.lock();
+        (*queue_guard).push_back(ExecutionRequest::RunActiveStep(ExecutionStep {
+            slot,
+            block,
+        }));
+        // notify
+        condvar.notify_one();
     }
 
     /// Process a given command.
@@ -203,48 +216,13 @@ impl ExecutionWorker {
         Ok(())
     }
 
-    /// Execute blocks that are "ready for execution".
-    fn execute_blocks(&mut self, blocks: Vec<(BlockId, Block)>) -> Result<(), ExecutionError> {
-        // Add new SCE final blocks to the run queue.
-        let &(ref lock, ref condvar) = &*self.execution_queue;
-        let mut queue = lock.lock();
-        let mut ledger = self.ledger.lock();
-        match *queue {
-            ExecutionQueue::Running(ref mut queue) => {
-                // TODO: use Damir's code to get the blocks that are "ready for execution".
-                for (_, block) in blocks.into_iter() {
-                    for operation in block.operations {
-                        if let OperationType::ExecuteSC { data, .. } = operation.content.op {
-                            let address =
-                                Address::from_public_key(&operation.content.sender_public_key)
-                                    .unwrap();
-                            // Compile the module.
-                            let module =
-                                Module::new(&self.store, &data).expect("Failed to compile.");
-                            // Add compiled module to the ledger.
-                            ledger.insert(address, module.clone());
-                            // Add module to the run queue.
-                            queue.push(module);
-                        }
-                    }
-                }
-            }
-            _ => panic!("Unexpected state."),
-        }
-
-        // Notify the VM.
-        condvar.notify_one();
-
-        Ok(())
-    }
-
     fn blockclique_changed(
         &mut self,
         blockclique: BlockHashMap<Block>,
         finalized_blocks: BlockHashMap<Block>,
     ) -> Result<(), ExecutionError> {
-        // stop the current VM execution
-        self.reset_vm();
+        // stop the current VM execution and reset state to final
+        self.vm_reset();
 
         // gather pending finalized CSS
         let mut css_final_blocks: Vec<(BlockId, Block)> = self
@@ -271,15 +249,17 @@ impl ExecutionWorker {
             }
             loop {
                 let next_final_slot = self.last_final_slot.get_next_slot(self.thread_count)?;
-                if block_slot == next_final_slot {
-                    self.vm_push_final_block(b_id, &block)?;
+                if next_final_slot == block_slot {
+                    self.vm_run_final_step(next_final_slot, Some((b_id, block)));
+                    self.last_final_slot = next_final_slot;
+                    break;
                 } else if next_final_slot < max_thread_slot[next_final_slot.thread as usize] {
-                    self.vm_push_final_miss(next_final_slot)?;
+                    self.vm_run_final_step(next_final_slot, None);
+                    self.last_final_slot = next_final_slot;
                 } else {
                     self.ordered_pending_css_final_blocks.push((b_id, block));
                     break;
                 }
-                self.last_final_slot = next_final_slot;
             }
         }
 
@@ -301,9 +281,7 @@ impl ExecutionWorker {
         self.ordered_active_blocks
             .sort_unstable_by_key(|(_b_id, b)| b.header.content.slot);
 
-        // apply active blocks and misses to the active ledger
-        self.active_ledger = self.final_ledger.clone();
-        self.last_active_slot = self.last_final_slot;
+        // apply active blocks and misses
         // TODO remove clone() in iterator below
         for (b_id, block) in self.ordered_active_blocks.clone() {
             // process misses
@@ -311,10 +289,10 @@ impl ExecutionWorker {
                 self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
             }
             while self.last_active_slot < block.header.content.slot {
-                self.vm_push_active_miss(self.last_active_slot)?;
+                self.vm_run_active_step(self.last_active_slot, None);
                 self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
             }
-            self.vm_push_active_block(b_id, &block)?;
+            self.vm_run_active_step(self.last_active_slot, Some((b_id, block)));
         }
         Ok(())
     }
