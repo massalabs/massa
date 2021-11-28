@@ -645,6 +645,7 @@ dependencies = [
  "serial_test",
  "thiserror",
  "tokio",
+ "tracing",
  "wasmer",
 ]
 

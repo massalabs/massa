@@ -15,6 +15,7 @@ serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
 wasmer = "2.0.0"
+tracing = "0.1"
 
 [dev-dependencies]
 serial_test = "0.5"
