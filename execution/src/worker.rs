@@ -1,9 +1,9 @@
 use crate::config::ExecutionConfig;
 use crate::error::ExecutionError;
 use models::{Block, BlockHashMap, BlockId, Slot};
-
 use crate::vm::{ExecutionStep, VM};
 use parking_lot::{Condvar, Mutex};
+
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
@@ -74,7 +74,7 @@ impl ExecutionWorker {
         // setup execution request queue
         let execution_queue: Arc<(Mutex<VecDeque<ExecutionRequest>>, Condvar)> =
             Arc::new((Mutex::new(Default::default()), Condvar::new()));
-        let execution_queue_clone = Arc::clone(&execution_queue);
+        let execution_queue_clone = execution_queue.clone();
 
         // launch VM thread
         let cfg_clone = cfg.clone();
@@ -85,6 +85,7 @@ impl ExecutionWorker {
             // handle execution requests
             let (queue_lock, condvar) = &*execution_queue_clone;
             let mut queue_guard = queue_lock.lock();
+            
             loop {
                 condvar.wait(&mut queue_guard);
                 match (*queue_guard).pop_front() {
@@ -222,6 +223,7 @@ impl ExecutionWorker {
         finalized_blocks: BlockHashMap<Block>,
     ) -> Result<(), ExecutionError> {
         // stop the current VM execution and reset state to final
+        // TODO make something more iterative/conservative in the future to reuse unaffected executions
         self.vm_reset();
 
         // gather pending finalized CSS

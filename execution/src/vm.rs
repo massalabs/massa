@@ -1,13 +1,11 @@
-use massa_hash::hash::Hash;
-use models::hhasher::HHashMap;
-use models::{address::AddressHashMap, Amount};
 use models::{Address, Block, BlockId, OperationType, Slot};
-use parking_lot::Mutex;
-use std::collections::hash_map;
 use std::fmt::Debug;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tracing::debug;
 use wasmer::{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv};
+
+use crate::sce_ledger::SCELedger;
+use crate::ExecutionConfig;
 
 /// Example API available to wasm code, aka "syscall".
 fn foo(shared_env: &SharedExecutionContext, n: i32) -> i32 {
@@ -27,18 +25,16 @@ pub struct ExecutionStep {
     pub block: Option<(BlockId, Block)>, // None if miss
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct SCELedgerEntry {
-    pub balance: Amount,
-    pub module: Option<Module>,
-    pub data: HHashMap<Hash, Vec<u8>>,
+#[derive(Debug, Clone)]
+pub struct SpeculativeLedger {
+    final_ledger: Arc<Mutex<SCELedger>>,
 }
 
 #[derive(WasmerEnv, Clone)]
 /// Stateful context, providing an execution context to host functions("syscalls").
 pub struct ExecutionContext {
-    pub final_ledger: AddressHashMap<SCELedgerEntry>,
-    pub active_ledger: AddressHashMap<SCELedgerEntry>,
+    pub final_ledger: SCELedger,
+    pub active_ledger: SCELedger
 }
 
 #[derive(WasmerEnv, Clone)]
@@ -112,12 +108,13 @@ impl VM {
                     // This will be corrected with the single-ledger version of the smart contract system.
                     {
                         let mut context_guard = self.shared_execution_context.0.lock();
-                        let ledger_entry = (*context_guard)
-                            .final_ledger
-                            .entry(sender_addr)
-                            .or_insert_with(|| Default::default());
+                        // TODO rewrite credit
+                        //let ledger_entry = (*context_guard)
+                        //    .final_ledger
+                        //    .entry(sender_addr)
+                        //    .or_insert_with(|| Default::default());
                         // TODO remove unwrap()
-                        ledger_entry.balance = ledger_entry.balance.checked_add(coins).unwrap();
+                        //ledger_entry.balance = ledger_entry.balance.checked_add(coins).unwrap();
                     }
 
                     // check remaining per-block gas
@@ -132,12 +129,13 @@ impl VM {
                     {
                         let to_credit = gas_price.checked_mul_u64(max_gas).unwrap();
                         let mut context_guard = self.shared_execution_context.0.lock();
-                        let ledger_entry = (*context_guard)
-                            .final_ledger
-                            .entry(block_creator_addr)
-                            .or_insert_with(|| Default::default());
+                        // TODO rewrite credit
+                        // let ledger_entry = (*context_guard)
+                        //     .final_ledger
+                        //     .entry(block_creator_addr)
+                        //     .or_insert_with(|| Default::default());
                         // TODO remove unwrap()
-                        ledger_entry.balance = ledger_entry.balance.checked_add(to_credit).unwrap();
+                        // ledger_entry.balance = ledger_entry.balance.checked_add(to_credit).unwrap();
                     }
 
                     // parse operation bytecode
@@ -157,7 +155,9 @@ impl VM {
                     continue;
                 };
 
-                // a module was successfully parsed and balances are ready: run the module
+                // a module was successfully parsed and balances are ready
+
+                // run the module
                 // TODO metering
                 // TODO find a way to provide context info:
                 //    gas_price, max_gas, coins, block etc...
@@ -195,6 +195,6 @@ impl VM {
     pub fn reset_to_final(&mut self) {
         let mut context_guard = self.shared_execution_context.0.lock();
         // reset ledger to its latest final state
-        (*context_guard).active_ledger = (*context_guard).final_ledger.clone();
+        // TODO: (*context_guard).active_ledger = (*context_guard).final_ledger.clone();
     }
 }

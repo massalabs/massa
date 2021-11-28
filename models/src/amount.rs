@@ -7,6 +7,7 @@ use std::fmt;
 use std::str::FromStr;
 
 pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
+pub const AMOUNT_ZERO: Amount = Amount::from_raw(0);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);
@@ -16,7 +17,7 @@ impl Amount {
         self.0
     }
 
-    pub fn from_raw(raw: u64) -> Self {
+    pub const fn from_raw(raw: u64) -> Self {
         Self(raw)
     }
 
@@ -26,6 +27,10 @@ impl Amount {
 
     pub fn saturating_sub(self, amount: Amount) -> Self {
         Amount(self.0.saturating_sub(amount.0))
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.0 == 0
     }
 
     /// ```

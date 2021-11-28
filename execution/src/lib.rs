@@ -1,6 +1,7 @@
 mod config;
 mod controller;
 mod error;
+mod sce_ledger;
 mod vm;
 mod worker;
 
