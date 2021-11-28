@@ -640,7 +640,6 @@ dependencies = [
  "crypto",
  "displaydoc",
  "models",
- "parking_lot",
  "serde 1.0.130",
  "serial_test",
  "thiserror",

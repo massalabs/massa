@@ -3,7 +3,7 @@
 #[macro_use]
 extern crate lazy_static;
 pub use address::{Address, ADDRESS_SIZE_BYTES};
-pub use amount::Amount;
+pub use amount::{Amount, AMOUNT_ZERO};
 pub use block::{
     Block, BlockHashMap, BlockHashSet, BlockHeader, BlockHeaderContent, BlockId,
     BLOCK_ID_SIZE_BYTES,

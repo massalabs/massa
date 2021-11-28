@@ -2,9 +2,8 @@ use crate::config::ExecutionConfig;
 use crate::error::ExecutionError;
 use crate::vm::{ExecutionStep, VM};
 use models::{Block, BlockHashMap, BlockId, Slot};
-use parking_lot::{Condvar, Mutex};
 use std::collections::VecDeque;
-use std::sync::Arc;
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
 use tokio::sync::mpsc;
 
@@ -83,9 +82,9 @@ impl ExecutionWorker {
 
             // handle execution requests
             let (queue_lock, condvar) = &*execution_queue_clone;
-            let mut queue_guard = queue_lock.lock();
+            let mut queue_guard = queue_lock.lock().unwrap();
             loop {
-                condvar.wait(&mut queue_guard);
+                queue_guard = condvar.wait(queue_guard).unwrap();
                 match (*queue_guard).pop_front() {
                     Some(ExecutionRequest::Stop) => {
                         break;
@@ -140,7 +139,7 @@ impl ExecutionWorker {
         // Shutdown VM, cancel all pending execution requests
         {
             let (queue_lock, condvar) = &*self.execution_queue;
-            let mut queue_guard = queue_lock.lock();
+            let mut queue_guard = queue_lock.lock().unwrap();
             (*queue_guard).push_front(ExecutionRequest::Stop);
             condvar.notify_all();
         }
@@ -152,7 +151,7 @@ impl ExecutionWorker {
     // asks the VM to reset to its final
     fn vm_reset(&mut self) {
         let (queue_lock, condvar) = &*self.execution_queue;
-        let mut queue_guard = queue_lock.lock();
+        let mut queue_guard = queue_lock.lock().unwrap();
         // cancel all non-final, non-stop requests
         // Final execution requests are left to maintain final state consistency
         (*queue_guard).retain(|req| match req {
@@ -174,7 +173,7 @@ impl ExecutionWorker {
     /// * block: None if miss, Some(block_id, block) otherwise
     fn vm_run_final_step(&mut self, slot: Slot, block: Option<(BlockId, Block)>) {
         let (queue_lock, condvar) = &*self.execution_queue;
-        let mut queue_guard = queue_lock.lock();
+        let mut queue_guard = queue_lock.lock().unwrap();
         (*queue_guard).push_back(ExecutionRequest::RunFinalStep(ExecutionStep {
             slot,
             block,
@@ -190,7 +189,7 @@ impl ExecutionWorker {
     /// * block: None if miss, Some(block_id, block) otherwise
     fn vm_run_active_step(&mut self, slot: Slot, block: Option<(BlockId, Block)>) {
         let (queue_lock, condvar) = &*self.execution_queue;
-        let mut queue_guard = queue_lock.lock();
+        let mut queue_guard = queue_lock.lock().unwrap();
         (*queue_guard).push_back(ExecutionRequest::RunActiveStep(ExecutionStep {
             slot,
             block,
@@ -221,6 +220,7 @@ impl ExecutionWorker {
         finalized_blocks: BlockHashMap<Block>,
     ) -> Result<(), ExecutionError> {
         // stop the current VM execution and reset state to final
+        // TODO make something more iterative/conservative in the future to reuse unaffected executions
         self.vm_reset();
 
         // gather pending finalized CSS
