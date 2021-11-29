@@ -925,7 +925,7 @@ impl NetworkWorker {
             if node_command_tx.send(message).await.is_err() {
                 debug!(
                     "{}",
-                    NetworkError::ChannelError("error forwarding message to node worker".into())
+                    NetworkError::ChannelError("contact with node worker lost while trying to send it a message. Probably a peer disconnect.".into())
                 );
             };
         } else {
