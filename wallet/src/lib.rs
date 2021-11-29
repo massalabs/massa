@@ -122,7 +122,7 @@ impl Wallet {
         let sender_priv = self
             .find_associated_private_key(address)
             .ok_or(WalletError::MissingKeyError(address))?;
-        let signature = sign(&hash, &sender_priv)?;
+        let signature = sign(&hash, sender_priv)?;
         Ok(Operation { content, signature })
     }
 }

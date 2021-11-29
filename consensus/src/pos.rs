@@ -1006,7 +1006,7 @@ impl ProofOfStake {
                 cycle_entry.is_final = if thread_cycle_complete {
                     *completeness
                         .entry(cycle)
-                        .and_modify(|n| *n = *n + 1)
+                        .and_modify(|n| *n += 1)
                         .or_insert(1)
                         == self.cfg.thread_count
                 } else {
@@ -1016,7 +1016,7 @@ impl ProofOfStake {
                 for addr in addrs {
                     let (n_ok, n_nok) = thread_cycle_info
                         .production_stats
-                        .get(&addr)
+                        .get(addr)
                         .unwrap_or(&(0, 0));
                     cycle_entry
                         .ok_nok_counts

@@ -216,7 +216,7 @@ mod tests {
     use serial_test::serial;
 
     fn example() -> Hash {
-        Hash::hash(&"hello world".as_bytes())
+        Hash::hash("hello world".as_bytes())
     }
 
     #[test]
@@ -232,7 +232,7 @@ mod tests {
     #[serial]
     fn test_hash() {
         let data = "abc".as_bytes();
-        let hash = Hash::hash(&data);
+        let hash = Hash::hash(data);
         let hash_ref: [u8; HASH_SIZE_BYTES] = [
             186, 120, 22, 191, 143, 1, 207, 234, 65, 65, 64, 222, 93, 174, 34, 35, 176, 3, 97, 163,
             150, 23, 122, 156, 180, 16, 255, 97, 242, 0, 21, 173,

@@ -41,7 +41,7 @@ async fn test_bootstrap_server() {
     let bootstrap_manager = start_bootstrap_server(
         ConsensusCommandSender(consensus_cmd_tx),
         NetworkCommandSender(network_cmd_tx),
-        &bootstrap_settings,
+        bootstrap_settings,
         bootstrap_establisher,
         *private_key,
         0,
@@ -55,7 +55,7 @@ async fn test_bootstrap_server() {
     let (remote_establisher, mut remote_interface) = mock_establisher::new();
     let get_state_h = tokio::spawn(async move {
         get_state(
-            &bootstrap_settings,
+            bootstrap_settings,
             remote_establisher,
             Version::from_str("TEST.1.2").unwrap(),
             UTime::now(0).unwrap().saturating_sub(1000.into()),

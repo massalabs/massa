@@ -16,7 +16,7 @@ use std::time::Duration;
 async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,
@@ -71,7 +71,7 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
 async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,
@@ -128,7 +128,7 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
 async fn test_protocol_propagates_operations_to_active_nodes() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -162,7 +162,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
             let expected_operation_id = operation.verify_integrity().unwrap();
 
             let mut ops = OperationHashMap::default();
-            ops.insert(expected_operation_id.clone(), operation);
+            ops.insert(expected_operation_id, operation);
             protocol_command_sender
                 .propagate_operations(ops)
                 .await
@@ -202,7 +202,7 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
 async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -241,7 +241,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let expected_operation_id = operation.verify_integrity().unwrap();
 
             let mut ops = OperationHashMap::default();
-            ops.insert(expected_operation_id.clone(), operation);
+            ops.insert(expected_operation_id, operation);
 
             // send endorsement to protocol
             // it should be propagated only to the node that doesn't know about it
@@ -285,7 +285,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 ) {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -310,7 +310,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let block_id = block.header.compute_block_id().unwrap();
 
             network_controller
-                .send_ask_for_block(nodes[0].id.clone(), vec![block_id.clone()])
+                .send_ask_for_block(nodes[0].id, vec![block_id])
                 .await;
 
             // Wait for the event to be sure that the node is connected,
@@ -329,7 +329,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .integrated_block(
                     block_id,
                     block,
-                    vec![operation_id.clone()].into_iter().collect(),
+                    vec![operation_id].into_iter().collect(),
                     Default::default(),
                 )
                 .await
@@ -354,7 +354,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // it should not propagate to the node that already knows about it
             // because of the previously integrated block.
             let mut ops = OperationHashMap::default();
-            ops.insert(operation_id.clone(), operation);
+            ops.insert(operation_id, operation);
             protocol_command_sender
                 .propagate_operations(ops)
                 .await
@@ -395,7 +395,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 ) {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -420,7 +420,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let block_id = block.header.compute_block_id().unwrap();
 
             network_controller
-                .send_ask_for_block(nodes[0].id.clone(), vec![block_id.clone()])
+                .send_ask_for_block(nodes[0].id, vec![block_id])
                 .await;
 
             // Wait for the event to be sure that the node is connected,
@@ -436,8 +436,8 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Send the block as search results.
             let mut results = BlockHashMap::default();
             let mut ops = OperationHashSet::default();
-            ops.insert(operation_id.clone());
-            results.insert(block_id.clone(), Some((block.clone(), Some(ops), None)));
+            ops.insert(operation_id);
+            results.insert(block_id, Some((block.clone(), Some(ops), None)));
 
             protocol_command_sender
                 .send_get_blocks_results(results)
@@ -463,7 +463,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // it should not propagate to the node that already knows about it
             // because of the previously integrated block.
             let mut ops = OperationHashMap::default();
-            ops.insert(operation_id.clone(), operation);
+            ops.insert(operation_id, operation);
             protocol_command_sender
                 .propagate_operations(ops)
                 .await
@@ -504,7 +504,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 ) {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -529,13 +529,13 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             // Node 2 sends block, resulting in operations and endorsements noted in block info.
             network_controller
-                .send_block(nodes[1].id.clone(), block.clone())
+                .send_block(nodes[1].id, block.clone())
                 .await;
 
             // Node 1 sends header, resulting in protocol using the block info to determine
             // the node knows about the operations contained in the block.
             network_controller
-                .send_header(nodes[0].id.clone(), block.header.clone())
+                .send_header(nodes[0].id, block.header.clone())
                 .await;
 
             // Wait for the event to be sure that the node is connected,
@@ -552,7 +552,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // it should not propagate to the node that already knows about it
             // because of the previously received header.
             let mut ops = OperationHashMap::default();
-            ops.insert(operation_id.clone(), operation);
+            ops.insert(operation_id, operation);
             protocol_command_sender
                 .propagate_operations(ops)
                 .await
@@ -593,7 +593,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 ) {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -624,17 +624,17 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Node 2 sends block, not resulting in operations and endorsements noted in block info,
             // because of the invalid root hash.
             network_controller
-                .send_block(nodes[1].id.clone(), block.clone())
+                .send_block(nodes[1].id, block.clone())
                 .await;
 
             // Node 3 sends block, resulting in operations and endorsements noted in block info.
             network_controller
-                .send_block(nodes[2].id.clone(), block.clone())
+                .send_block(nodes[2].id, block.clone())
                 .await;
 
             // Node 1 sends header, but the block is empty.
             network_controller
-                .send_header(nodes[0].id.clone(), block.header.clone())
+                .send_header(nodes[0].id, block.header.clone())
                 .await;
 
             // Wait for the event to be sure that the node is connected.
@@ -649,7 +649,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Send the operation to protocol
             // it should propagate to the node because it isn't in the block.
             let mut ops = OperationHashMap::default();
-            ops.insert(operation_id_2.clone(), operation_2);
+            ops.insert(operation_id_2, operation_2);
             protocol_command_sender
                 .propagate_operations(ops)
                 .await
@@ -688,7 +688,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 async fn test_protocol_does_not_propagates_operations_when_receiving_those_inside_a_block() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,

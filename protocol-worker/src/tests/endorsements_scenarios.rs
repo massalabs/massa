@@ -16,7 +16,7 @@ use serial_test::serial;
 async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,
@@ -70,7 +70,7 @@ async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
 async fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,
@@ -126,7 +126,7 @@ async fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() 
 async fn test_protocol_propagates_endorsements_to_active_nodes() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -160,7 +160,7 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
             let expected_endorsement_id = endorsement.compute_endorsement_id().unwrap();
 
             let mut ends = EndorsementHashMap::default();
-            ends.insert(expected_endorsement_id.clone(), endorsement);
+            ends.insert(expected_endorsement_id, endorsement);
             protocol_command_sender
                 .propagate_endorsements(ends)
                 .await
@@ -200,7 +200,7 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
 async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -242,7 +242,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // send the endorsement to protocol
             // it should propagate it to nodes that don't know about it
             let mut ops = EndorsementHashMap::default();
-            ops.insert(expected_endorsement_id.clone(), endorsement);
+            ops.insert(expected_endorsement_id, endorsement);
             protocol_command_sender
                 .propagate_endorsements(ops)
                 .await
@@ -284,7 +284,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 ) {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -309,7 +309,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let block_id = block.header.compute_block_id().unwrap();
 
             network_controller
-                .send_ask_for_block(nodes[0].id.clone(), vec![block_id.clone()])
+                .send_ask_for_block(nodes[0].id, vec![block_id])
                 .await;
 
             // Wait for the event to be sure that the node is connected,
@@ -325,12 +325,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Integrate the block,
             // this should note the node as knowning about the endorsement.
             protocol_command_sender
-                .integrated_block(
-                    block_id,
-                    block,
-                    Default::default(),
-                    vec![endorsement_id.clone()],
-                )
+                .integrated_block(block_id, block, Default::default(), vec![endorsement_id])
                 .await
                 .unwrap();
 
@@ -353,7 +348,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // it should not propagate to the node that already knows about it
             // because of the previously integrated block.
             let mut ops = EndorsementHashMap::default();
-            ops.insert(endorsement_id.clone(), endorsement);
+            ops.insert(endorsement_id, endorsement);
             protocol_command_sender
                 .propagate_endorsements(ops)
                 .await
@@ -394,7 +389,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 ) {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -419,7 +414,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let block_id = block.header.compute_block_id().unwrap();
 
             network_controller
-                .send_ask_for_block(nodes[0].id.clone(), vec![block_id.clone()])
+                .send_ask_for_block(nodes[0].id, vec![block_id])
                 .await;
 
             // Wait for the event to be sure that the node is connected,
@@ -435,7 +430,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Send the block as search results.
             let mut results = BlockHashMap::default();
             results.insert(
-                block_id.clone(),
+                block_id,
                 Some((block.clone(), None, Some(vec![endorsement_id]))),
             );
 
@@ -463,7 +458,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // it should not propagate to the node that already knows about it
             // because of the previously integrated block.
             let mut ops = EndorsementHashMap::default();
-            ops.insert(endorsement_id.clone(), endorsement);
+            ops.insert(endorsement_id, endorsement);
             protocol_command_sender
                 .propagate_endorsements(ops)
                 .await
@@ -504,7 +499,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 ) {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -529,13 +524,13 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
             // Node 2 sends block, resulting in endorsements noted in block info.
             network_controller
-                .send_block(nodes[1].id.clone(), block.clone())
+                .send_block(nodes[1].id, block.clone())
                 .await;
 
             // Node 1 sends header, resulting in protocol using the block info to determine
             // the node knows about the endorsements contained in the block header.
             network_controller
-                .send_header(nodes[0].id.clone(), block.header.clone())
+                .send_header(nodes[0].id, block.header.clone())
                 .await;
 
             // Wait for the event to be sure that the node is connected,
@@ -552,7 +547,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // it should not propagate to the node that already knows about it
             // because of the previously received header.
             let mut ops = EndorsementHashMap::default();
-            ops.insert(endorsement_id.clone(), endorsement);
+            ops.insert(endorsement_id, endorsement);
             protocol_command_sender
                 .propagate_endorsements(ops)
                 .await
@@ -592,7 +587,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 async fn test_protocol_does_not_propagates_endorsements_when_receiving_those_inside_a_header() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,

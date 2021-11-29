@@ -15,7 +15,7 @@ async fn test_without_a_priori() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
 
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -84,7 +84,7 @@ async fn test_someone_knows_it() {
     // start
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
@@ -161,7 +161,7 @@ async fn test_dont_want_it_anymore() {
     // start
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -233,7 +233,7 @@ async fn test_no_one_has_it() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
 
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
@@ -309,7 +309,7 @@ async fn test_multiple_blocks_without_a_priori() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
 
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,

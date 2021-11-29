@@ -465,7 +465,7 @@ impl ProtocolWorker {
                     // if we know that a node wants a block we send the full block
                     if node_info.remove_wanted_block(&block_id) {
                         node_info.insert_known_blocks(
-                            &vec![block_id],
+                            &[block_id],
                             true,
                             now,
                             self.protocol_settings.max_node_known_blocks_size,
@@ -544,7 +544,7 @@ impl ProtocolWorker {
                             for (node_id, node_info) in self.active_nodes.iter_mut() {
                                 if node_info.remove_wanted_block(&block_id) {
                                     node_info.insert_known_blocks(
-                                        &vec![block_id],
+                                        &[block_id],
                                         true,
                                         Instant::now(),
                                         self.protocol_settings.max_node_known_blocks_size,
@@ -742,7 +742,7 @@ impl ProtocolWorker {
                         if info_time < &timeout_at {
                             // info less recent than timeout: mark as not having it
                             node_info.insert_known_blocks(
-                                &vec![*hash],
+                                &[*hash],
                                 false,
                                 timeout_at,
                                 self.protocol_settings.max_node_known_blocks_size,
@@ -758,7 +758,7 @@ impl ProtocolWorker {
                         if info_time < &timeout_at {
                             // info less recent than timeout: update info time
                             node_info.insert_known_blocks(
-                                &vec![*hash],
+                                &[*hash],
                                 false,
                                 timeout_at,
                                 self.protocol_settings.max_node_known_blocks_size,
@@ -769,7 +769,7 @@ impl ProtocolWorker {
                     // timed out but don't know if has it: mark as not having it
                     (true, Some(timeout_at), None) => {
                         node_info.insert_known_blocks(
-                            &vec![*hash],
+                            &[*hash],
                             false,
                             timeout_at,
                             self.protocol_settings.max_node_known_blocks_size,
@@ -936,7 +936,7 @@ impl ProtocolWorker {
                     self.protocol_settings.max_node_known_blocks_size,
                 );
                 node_info.insert_known_blocks(
-                    &vec![block_id],
+                    &[block_id],
                     true,
                     now,
                     self.protocol_settings.max_node_known_blocks_size,
@@ -1028,7 +1028,7 @@ impl ProtocolWorker {
                 self.protocol_settings.max_node_known_blocks_size,
             );
             node_info.insert_known_blocks(
-                &vec![block_id],
+                &[block_id],
                 true,
                 now,
                 self.protocol_settings.max_node_known_blocks_size,
@@ -1197,7 +1197,7 @@ impl ProtocolWorker {
             // Note: we always want to update the node's view of known operations,
             // even if we cached the check previously.
             let was_present =
-                received_ids.insert(operation_id.clone(), (idx, operation.content.expire_period));
+                received_ids.insert(operation_id, (idx, operation.content.expire_period));
 
             // There are duplicate operations in this batch.
             if was_present.is_some() {
@@ -1312,7 +1312,7 @@ impl ProtocolWorker {
                     { "node": node_id }
                 );
                 self.active_nodes
-                    .insert(node_id, nodeinfo::NodeInfo::new(&self.protocol_settings));
+                    .insert(node_id, nodeinfo::NodeInfo::new(self.protocol_settings));
                 self.update_ask_block(block_ask_timer).await?;
             }
             NetworkEvent::ConnectionClosed(node_id) => {
@@ -1397,7 +1397,7 @@ impl ProtocolWorker {
                 massa_trace!("protocol.protocol_worker.on_network_event.block_not_found", { "node": node, "block_id": block_id});
                 if let Some(info) = self.active_nodes.get_mut(&node) {
                     info.insert_known_blocks(
-                        &vec![block_id],
+                        &[block_id],
                         false,
                         Instant::now(),
                         self.protocol_settings.max_node_known_blocks_size,
@@ -1453,33 +1453,28 @@ mod tests {
     fn test_node_info_know_block() {
         let max_node_known_blocks_size = 10;
         let protocol_settings = &PROTOCOL_SETTINGS;
-        let mut nodeinfo = NodeInfo::new(&protocol_settings);
+        let mut nodeinfo = NodeInfo::new(protocol_settings);
         let instant = Instant::now();
 
         let hash_test = get_dummy_block_id("test");
-        nodeinfo.insert_known_blocks(&vec![hash_test], true, instant, max_node_known_blocks_size);
+        nodeinfo.insert_known_blocks(&[hash_test], true, instant, max_node_known_blocks_size);
         let (val, t) = nodeinfo.get_known_block(&hash_test).unwrap();
         assert!(val);
         assert_eq!(instant, *t);
-        nodeinfo.insert_known_blocks(&vec![hash_test], false, instant, max_node_known_blocks_size);
+        nodeinfo.insert_known_blocks(&[hash_test], false, instant, max_node_known_blocks_size);
         let (val, t) = nodeinfo.get_known_block(&hash_test).unwrap();
         assert!(!val);
         assert_eq!(instant, *t);
 
         for index in 0..9 {
             let hash = get_dummy_block_id(&index.to_string());
-            nodeinfo.insert_known_blocks(
-                &vec![hash],
-                true,
-                Instant::now(),
-                max_node_known_blocks_size,
-            );
+            nodeinfo.insert_known_blocks(&[hash], true, Instant::now(), max_node_known_blocks_size);
             assert!(nodeinfo.get_known_block(&hash).is_some());
         }
 
         // re insert the oldest to update its timestamp.
         nodeinfo.insert_known_blocks(
-            &vec![hash_test],
+            &[hash_test],
             false,
             Instant::now(),
             max_node_known_blocks_size,
@@ -1487,7 +1482,7 @@ mod tests {
 
         // add hash that triggers container pruning
         nodeinfo.insert_known_blocks(
-            &vec![get_dummy_block_id("test2")],
+            &[get_dummy_block_id("test2")],
             true,
             Instant::now(),
             max_node_known_blocks_size,
@@ -1513,7 +1508,7 @@ mod tests {
     fn test_node_info_wanted_block() {
         let max_node_wanted_blocks_size = 10;
         let protocol_settings = &PROTOCOL_SETTINGS;
-        let mut nodeinfo = NodeInfo::new(&protocol_settings);
+        let mut nodeinfo = NodeInfo::new(protocol_settings);
 
         let hash = get_dummy_block_id("test");
         nodeinfo.insert_wanted_blocks(hash, max_node_wanted_blocks_size);

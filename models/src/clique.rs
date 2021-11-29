@@ -93,9 +93,9 @@ impl DeserializeCompact for Clique {
 
         let (block_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if block_count > max_bootstrap_blocks {
-            return Err(ModelsError::DeserializeError(format!(
-                "too many blocks in clique for deserialization"
-            )));
+            return Err(ModelsError::DeserializeError(
+                "too many blocks in clique for deserialization".to_string(),
+            ));
         }
         cursor += delta;
         let mut block_ids =

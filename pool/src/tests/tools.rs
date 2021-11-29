@@ -78,10 +78,7 @@ pub fn create_endorsement(slot: Slot) -> Endorsement {
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
     let signature = sign(&hash, &sender_priv).unwrap();
-    Endorsement {
-        content: content.clone(),
-        signature,
-    }
+    Endorsement { content, signature }
 }
 
 pub fn get_transaction_with_addresses(

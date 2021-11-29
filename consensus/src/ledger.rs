@@ -168,7 +168,7 @@ impl OperationLedgerInterface for Operation {
         res.apply(
             &sender_address,
             &LedgerChange {
-                balance_delta: self.content.fee.clone().into(),
+                balance_delta: self.content.fee,
                 balance_increment: false,
             },
         )?;
@@ -191,14 +191,14 @@ impl OperationLedgerInterface for Operation {
                 res.apply(
                     &sender_address,
                     &LedgerChange {
-                        balance_delta: amount.clone().into(),
+                        balance_delta: (*amount),
                         balance_increment: false,
                     },
                 )?;
                 res.apply(
-                    &recipient_address,
+                    recipient_address,
                     &LedgerChange {
-                        balance_delta: amount.clone().into(),
+                        balance_delta: (*amount),
                         balance_increment: true,
                     },
                 )?;
@@ -616,7 +616,7 @@ impl LedgerSubset {
                 .iter()
                 .filter_map(|(a, dta)| {
                     if addrs.contains(a) {
-                        Some((*a, dta.clone()))
+                        Some((*a, *dta))
                     } else {
                         None
                     }
@@ -635,7 +635,7 @@ impl<'a> TryFrom<&'a Ledger> for LedgerSubset {
                 .read_whole()?
                 .0
                 .iter()
-                .map(|(k, v)| (*k, v.clone()))
+                .map(|(k, v)| (*k, *v))
                 .collect(),
         ))
     }

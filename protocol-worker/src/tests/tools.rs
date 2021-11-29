@@ -34,7 +34,7 @@ where
         protocol_pool_event_receiver,
         protocol_manager,
     ) = start_protocol_controller(
-        &protocol_settings,
+        protocol_settings,
         5u64,
         network_command_sender,
         network_event_receiver,
