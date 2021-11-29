@@ -8,7 +8,7 @@ use models::node::NodeId;
 use models::Endorsement;
 use models::{
     Address, Block, BlockHashMap, BlockHashSet, BlockHeader, BlockId, EndorsementHashMap,
-    EndorsementHashSet, Operation, OperationHashMap, OperationHashSet, OperationId,
+    EndorsementHashSet, Operation, OperationHashMap, OperationHashSet, OperationId, OperationType,
 };
 use network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use protocol_exports::{
@@ -1221,17 +1221,17 @@ impl ProtocolWorker {
                 has_duplicate_operations = true;
             }
 
+            // Accumulate gas
+            if let OperationType::ExecuteSC { max_gas, .. } = &operation.content.op {
+                total_gas = total_gas.saturating_add(*max_gas);
+            }
+
             // Check operation signature only if not already checked.
             if self.checked_operations.insert(operation_id) {
                 // check signature
                 operation.verify_signature()?;
                 new_operations.insert(operation_id, operation);
             };
-
-            // Accumulate gas
-            if let OperationType::ExecuteSC { max_gas, .. } = &operation.content.op {
-                total_gas = total_gas.saturating_add(max_gas);
-            }
         }
 
         // add to known ops

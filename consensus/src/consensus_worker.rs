@@ -7,7 +7,7 @@ use massa_hash::hash::Hash;
 use models::api::{EndorsementInfo, LedgerInfo, RollsInfo};
 
 use execution::ExecutionCommandSender;
-use models::{address::AddressCycleProductionStats, stats::ConsensusStats};
+use models::{address::AddressCycleProductionStats, stats::ConsensusStats, OperationType};
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
     BlockHashSet, EndorsementHashSet,
@@ -628,11 +628,11 @@ impl ConsensusWorker {
 
                 // check that we have block gas left
                 let op_gas = if let OperationType::ExecuteSC { max_gas, .. } = &op.content.op {
-                    max_gas
+                    *max_gas
                 } else {
                     0
                 };
-                if total_gas + op_gas > self.cfg.max_block_gas {
+                if total_gas + op_gas > self.cfg.max_gas_per_block {
                     // no more gas left: do not include
                     continue;
                 }
