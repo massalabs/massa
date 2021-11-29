@@ -2068,10 +2068,10 @@
     ) {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">node_command_tx</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="ident">node</span>) {
             <span class="kw">if</span> <span class="ident">node_command_tx</span>.<span class="ident">send</span>(<span class="ident">message</span>).<span class="kw">await</span>.<span class="ident">is_err</span>() {
-                <span class="macro">warn!</span>(
+                <span class="macro">debug!</span>(
                     <span class="string">&quot;{}&quot;</span>,
-                    <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;error forwarding message to node worker&quot;</span>.<span class="ident">into</span>(),)
-                )
+                    <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;contact with node worker lost while trying to send it a message. Probably a peer disconnect.&quot;</span>.<span class="ident">into</span>())
+                );
             };
         } <span class="kw">else</span> {
             <span class="comment">// We probably weren&#39;t able to send this event previously,</span>
