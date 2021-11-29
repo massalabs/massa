@@ -5,6 +5,4 @@ pub const CHANNEL_SIZE: usize = 256;
 
 /// Execution configuration
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
-pub struct ExecutionConfig {
-    pub max_gas_per_block: u64,
-}
+pub struct ExecutionConfig {}

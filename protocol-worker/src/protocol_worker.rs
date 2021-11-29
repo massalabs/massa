@@ -31,12 +31,15 @@ use tracing::{debug, error, info, warn};
 /// - launch protocol_controller_fn in an other task
 ///
 /// # Arguments
-/// * cfg : protocol configuration
+/// * cfg: protocol configuration
+/// * operation_validity_periods: operation validity duration in periods
+/// * max_block_gas: maximum gas per block
 /// * network_command_sender: the NetworkCommandSender we interact with
 /// * network_event_receiver: the NetworkEventReceiver we interact with
 pub async fn start_protocol_controller(
     protocol_settings: &'static ProtocolSettings,
     operation_validity_periods: u64,
+    max_block_gas: u64,
     network_command_sender: NetworkCommandSender,
     network_event_receiver: NetworkEventReceiver,
 ) -> Result<
@@ -59,6 +62,7 @@ pub async fn start_protocol_controller(
         let res = ProtocolWorker::new(
             protocol_settings,
             operation_validity_periods,
+            max_block_gas,
             network_command_sender,
             network_event_receiver,
             event_tx,
@@ -283,6 +287,8 @@ pub struct ProtocolWorker {
     protocol_settings: &'static ProtocolSettings,
     /// Operation validity periods
     operation_validity_periods: u64,
+    /// Max gas per block
+    max_block_gas: u64,
     /// Associated network command sender.
     network_command_sender: NetworkCommandSender,
     /// Associated network event receiver.
@@ -313,6 +319,7 @@ impl ProtocolWorker {
     /// # Arguments
     /// * protocol_settings: protocol configuration.
     /// * operation_validity_periods: operation validity periods
+    /// * max_block_gas: max gas per block
     /// * self_node_id: our private key.
     /// * network_controller associated network controller.
     /// * controller_event_tx: Channel to send protocol events.
@@ -321,6 +328,7 @@ impl ProtocolWorker {
     pub fn new(
         protocol_settings: &'static ProtocolSettings,
         operation_validity_periods: u64,
+        max_block_gas: u64,
         network_command_sender: NetworkCommandSender,
         network_event_receiver: NetworkEventReceiver,
         controller_event_tx: mpsc::Sender<ProtocolEvent>,
@@ -331,6 +339,7 @@ impl ProtocolWorker {
         ProtocolWorker {
             protocol_settings,
             operation_validity_periods,
+            max_block_gas,
             network_command_sender,
             network_event_receiver,
             controller_event_tx,
@@ -1100,9 +1109,15 @@ impl ProtocolWorker {
 
         // Perform general checks on the operations, note them into caches and send them to pool
         // but do not propagate as they are already propagating within a block
-        let (seen_ops, received_operations_ids, has_duplicate_operations) = self
+        let (seen_ops, received_operations_ids, has_duplicate_operations, total_gas) = self
             .note_operations_from_node(block.operations.clone(), source_node_id, false)
             .await?;
+        if total_gas > self.max_block_gas {
+            // Gas usage over limit => block invalid
+            // TODO remove this check in the single-ledger version,
+            //      this is only here to prevent ExecuteSC senders from spending gas fees while the block is unable to execute their op
+            return Ok(None);
+        }
 
         // Perform checks on the operations that relate to the block in which they have been included.
         // We perform those checks AFTER note_operations_from_node to allow otherwise valid operations to be noted
@@ -1173,6 +1188,7 @@ impl ProtocolWorker {
     /// - a list of seen operation ids, for use in checking the root hash of the block.
     /// - a map of seen operations with indices and validity periods to avoid recomputing them later
     /// - a boolean indicating whether duplicate operations were noted.
+    /// - the sum of all operation's max_gas.
     ///
     /// Checks performed:
     /// - Valid signature
@@ -1181,8 +1197,9 @@ impl ProtocolWorker {
         operations: Vec<Operation>,
         source_node_id: &NodeId,
         propagate: bool,
-    ) -> Result<(Vec<OperationId>, OperationHashMap<(usize, u64)>, bool), ProtocolError> {
+    ) -> Result<(Vec<OperationId>, OperationHashMap<(usize, u64)>, bool, u64), ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_operations_from_node", { "node": source_node_id, "operations": operations });
+        let mut total_gas = 0u64;
         let length = operations.len();
         let mut has_duplicate_operations = false;
         let mut seen_ops = vec![];
@@ -1210,6 +1227,11 @@ impl ProtocolWorker {
                 operation.verify_signature()?;
                 new_operations.insert(operation_id, operation);
             };
+
+            // Accumulate gas
+            if let OperationType::ExecuteSC { max_gas, .. } = &operation.content.op {
+                total_gas = total_gas.saturating_add(max_gas);
+            }
         }
 
         // add to known ops
@@ -1232,7 +1254,7 @@ impl ProtocolWorker {
             self.prune_checked_operations();
         }
 
-        Ok((seen_ops, received_ids, has_duplicate_operations))
+        Ok((seen_ops, received_ids, has_duplicate_operations, total_gas))
     }
 
     /// Note endorsements coming from a given node,

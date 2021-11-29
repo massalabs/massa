@@ -109,8 +109,10 @@ async fn launch() -> (
         protocol_pool_event_receiver,
         protocol_manager,
     ) = start_protocol_controller(
+
         &SETTINGS.protocol,
         SETTINGS.consensus.operation_validity_periods,
+        SETTINGS.consensus.max_gas_per_block,
         network_command_sender.clone(),
         network_event_receiver,
     )

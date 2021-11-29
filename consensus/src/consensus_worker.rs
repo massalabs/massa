@@ -597,6 +597,7 @@ impl ConsensusWorker {
             || remaining_operation_count == 0
             || self.cfg.max_operations_fill_attempts == 0;
         let mut attempts = 0;
+        let mut total_gas = 0u64;
         while !finished {
             // get a batch of operations
             let operation_batch = self
@@ -625,6 +626,17 @@ impl ConsensusWorker {
                     continue;
                 }
 
+                // check that we have block gas left
+                let op_gas = if let OperationType::ExecuteSC { max_gas, .. } = &op.content.op {
+                    max_gas
+                } else {
+                    0
+                };
+                if total_gas + op_gas > self.cfg.max_block_gas {
+                    // no more gas left: do not include
+                    continue;
+                }
+
                 // try to apply operation to block state
                 // on failure, the block state is not modified
                 if self
@@ -640,6 +652,7 @@ impl ConsensusWorker {
                 operations.push(op);
                 remaining_block_space -= op_size;
                 remaining_operation_count -= 1;
+                total_gas += op_gas;
                 total_hash.extend(op_id.to_bytes());
 
                 // check if the block still has some space
