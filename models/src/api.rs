@@ -250,6 +250,7 @@ impl std::fmt::Display for IndexedSlot {
     }
 }
 
+#[derive(Serialize)]
 pub struct CompactAddressInfo {
     pub address: Address,
     pub thread: u8,

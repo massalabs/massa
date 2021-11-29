@@ -8,6 +8,7 @@ use anyhow::Result;
 use atty::Stream;
 use cmds::Command;
 use console::style;
+use serde::Serialize;
 use std::net::IpAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -52,6 +53,11 @@ struct Args {
     json: bool,
 }
 
+#[derive(Serialize)]
+struct JsonError {
+    error: String,
+}
+
 #[paw::main]
 #[tokio::main]
 async fn main(args: Args) -> Result<()> {
@@ -85,14 +91,23 @@ async fn main(args: Args) -> Result<()> {
             Ok(output) => {
                 if args.json {
                     output
-                        .json()
+                        .stdout_json()
                         .expect("fail to serialize to JSON command output")
                 } else {
                     output.pretty_print();
                 }
             }
-            // TODO: Error should be also handled in JSON format
-            Err(e) => println!("{}", style(format!("Error: {}", e)).red()),
+            Err(e) => {
+                if args.json {
+                    let error = serde_json::to_string(&JsonError {
+                        error: format!("{:?}", e),
+                    })
+                    .expect("fail to serialize to JSON error");
+                    println!("{}", error);
+                } else {
+                    println!("{}", style(format!("Error: {}", e)).red());
+                }
+            }
         }
     }
     Ok(())

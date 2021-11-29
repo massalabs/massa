@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::cmds::Command;
+use crate::cmds::{Command, ExtendedWallet};
 use crate::rpc::Client;
 use crate::settings::SETTINGS;
 use crate::utils::longest_common_prefix;
@@ -126,11 +126,23 @@ pub trait Output: Serialize {
 }
 
 impl dyn Output {
-    pub(crate) fn json(&self) -> anyhow::Result<()> {
+    pub(crate) fn stdout_json(&self) -> anyhow::Result<()> {
         let json = &mut serde_json::Serializer::new(std::io::stdout());
         let mut format: Box<dyn Serializer> = Box::new(<dyn Serializer>::erase(json));
         self.erased_serialize(&mut format)?;
         Ok(())
+    }
+}
+
+impl Output for Wallet {
+    fn pretty_print(&self) {
+        println!("{}", self);
+    }
+}
+
+impl Output for ExtendedWallet {
+    fn pretty_print(&self) {
+        println!("{}", self);
     }
 }
 
