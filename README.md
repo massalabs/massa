@@ -7,6 +7,7 @@ mass adoption.
 [![CI](https://github.com/massalabs/massa/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/massalabs/massa/actions/workflows/ci.yml?query=branch%3Amain)
 [![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/39543)
 [![Coverage Status](https://coveralls.io/repos/github/massalabs/massa/badge.svg?branch=main)](https://coveralls.io/github/massalabs/massa?branch=main)
+[![Docs](https://img.shields.io/static/v1?label=Docs&message=docs.massa.net&color=blue)](https://massalabs.github.io/massa/massa_node/)
 
 ## Introduction
 
