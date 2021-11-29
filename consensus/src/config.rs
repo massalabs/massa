@@ -64,6 +64,7 @@ pub struct ConsensusConfig {
     pub initial_rolls_path: PathBuf,
     pub initial_draw_seed: String,
     pub roll_price: Amount,
+    pub max_gas_per_block: u64,
     // stats timespan
     pub stats_timespan: UTime,
     // max event send wait

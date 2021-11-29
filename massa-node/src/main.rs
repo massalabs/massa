@@ -101,6 +101,7 @@ async fn launch(
     ) = start_protocol_controller(
         cfg.protocol.clone(),
         cfg.consensus.operation_validity_periods,
+        cfg.consensus.max_gas_per_block,
         network_command_sender.clone(),
         network_event_receiver,
     )

@@ -23,7 +23,7 @@ impl SCELedgerEntry {
         }
 
         // module
-        if let Some(opt_module) = update.update_opt_module {
+        if let Some(opt_module) = &update.update_opt_module {
             self.opt_module = opt_module.clone();
         }
 
@@ -58,12 +58,12 @@ impl SCELedgerEntryUpdate {
         }
 
         // module
-        if let Some(new_opt_module) = other.update_opt_module {
+        if let Some(new_opt_module) = &other.update_opt_module {
             self.update_opt_module = Some(new_opt_module.clone());
         }
 
         // data
-        self.update_data.extend(other.update_data);
+        self.update_data.extend(other.update_data.clone());
     }
 }
 
@@ -82,17 +82,17 @@ pub enum SCELedgerChange {
 impl SCELedgerChange {
     /// applies another SCELedgerChange to the current one
     pub fn apply_change(&mut self, other: &SCELedgerChange) {
-        match (self, other) {
+        let new_val = match (&self, other) {
             // other deletes the entry
             (_, SCELedgerChange::Delete) => {
                 // make self delete as well
-                *self = SCELedgerChange::Delete;
+                SCELedgerChange::Delete
             }
 
             // other sets an absolute entry
             (_, new_set @ SCELedgerChange::Set(_)) => {
                 // make self set the same absolute entry
-                *self = new_set.clone();
+                new_set.clone()
             }
 
             // self deletes, other updates
@@ -102,13 +102,16 @@ impl SCELedgerChange {
                 // apply other's updates to res_entry
                 res_entry.apply_entry_update(other_entry_update);
                 // make self set to res_entry
-                *self = SCELedgerChange::Set(res_entry);
+                SCELedgerChange::Set(res_entry)
             }
 
             // self sets, other updates
             (SCELedgerChange::Set(cur_entry), SCELedgerChange::Update(other_entry_update)) => {
                 // apply other's updates to cur_entry
-                cur_entry.apply_entry_update(other_entry_update);
+                // TODO avoid clone, act directly on mutable cur_entry
+                let mut res_entry = cur_entry.clone();
+                res_entry.apply_entry_update(other_entry_update);
+                SCELedgerChange::Set(res_entry)
             }
 
             // self updates, other updates
@@ -117,9 +120,13 @@ impl SCELedgerChange {
                 SCELedgerChange::Update(other_entry_update),
             ) => {
                 // try to apply other's updates to self's updates
-                cur_entry_update.apply_entry_update(other_entry_update);
+                // TODO avoid clone, act directly on mutable cur_entry_update
+                let mut res_update = cur_entry_update.clone();
+                res_update.apply_entry_update(other_entry_update);
+                SCELedgerChange::Update(res_update)
             }
-        }
+        };
+        *self = new_val;
     }
 }
 
@@ -205,7 +212,7 @@ impl SCELedgerStep {
 
         // check if the final ledger has the info
         {
-            let mut ledger_guard = self.final_ledger.lock().unwrap();
+            let ledger_guard = self.final_ledger.lock().unwrap();
             if let Some(entry) = (*ledger_guard).0.get(addr) {
                 return entry.balance;
             }
@@ -259,9 +266,9 @@ impl SCELedgerStep {
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {
                 Some(SCELedgerChange::Delete) => return None,
-                Some(SCELedgerChange::Set(new_entry)) => return new_entry.opt_module,
+                Some(SCELedgerChange::Set(new_entry)) => return new_entry.opt_module.clone(),
                 Some(SCELedgerChange::Update(update)) => {
-                    if let Some(updates_opt_module) = update.update_opt_module {
+                    if let Some(updates_opt_module) = &update.update_opt_module {
                         return updates_opt_module.clone();
                     }
                 }
@@ -271,7 +278,7 @@ impl SCELedgerStep {
 
         // check if the final ledger has the info
         {
-            let mut ledger_guard = self.final_ledger.lock().unwrap();
+            let ledger_guard = self.final_ledger.lock().unwrap();
             if let Some(entry) = (*ledger_guard).0.get(addr) {
                 return entry.opt_module.clone();
             }
@@ -302,7 +309,7 @@ impl SCELedgerStep {
 
         // check if the final ledger has the info
         {
-            let mut ledger_guard = self.final_ledger.lock().unwrap();
+            let ledger_guard = self.final_ledger.lock().unwrap();
             if let Some(entry) = (*ledger_guard).0.get(addr) {
                 return entry.data.get(key).cloned();
             }
