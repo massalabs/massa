@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["massa_client"] = [{"text":"impl IntoEnumIterator for <a class=\"enum\" href=\"massa_client/cmds/enum.Command.html\" title=\"enum massa_client::cmds::Command\">Command</a>","synthetic":false,"types":["massa_client::cmds::Command"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

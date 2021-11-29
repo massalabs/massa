@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["start_protocol_controller","start a new ProtocolController from a ProtocolConfig"]]});

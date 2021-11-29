@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["APISettings",""],["AddressInfo",""],["BlockInfo",""],["BlockInfoContent",""],["BlockSummary",""],["CompactAddressInfo",""],["EndorsementInfo",""],["IndexedSlot","When an address is drawn to create an endorsement it is selected for a specific index"],["LedgerInfo",""],["NodeStatus",""],["OperationInfo",""],["RollsInfo",""],["TimeInterval",""]]});

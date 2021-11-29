@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["massa_client"] = [{"text":"impl&lt;T:&nbsp;<a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html\" title=\"trait alloc::string::ToString\">ToString</a>&gt; History&lt;T&gt; for <a class=\"struct\" href=\"massa_client/repl/struct.CommandHistory.html\" title=\"struct massa_client::repl::CommandHistory\">CommandHistory</a>","synthetic":false,"types":["massa_client::repl::CommandHistory"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

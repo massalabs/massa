@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["PoolCommand","Commands that can be processed by pool."],["PoolError",""]],"fn":[["start_pool_controller","Creates a new pool controller."]],"struct":[["PoolCommandSender",""],["PoolManager",""],["PoolSettings","Pool configuration"]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["DefaultConnector","Initiates a connection with given timeout in millis"],["DefaultEstablisher","Establishes a connection"],["DefaultListener","The listener we are using"]],"type":[["Connector",""],["Duplex",""],["Establisher",""],["Listener",""]]});

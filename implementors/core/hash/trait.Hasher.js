@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["models"] = [{"text":"impl&lt;T:&nbsp;<a class=\"trait\" href=\"models/hhasher/trait.PreHashed.html\" title=\"trait models::hhasher::PreHashed\">PreHashed</a>&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/hash/trait.Hasher.html\" title=\"trait core::hash::Hasher\">Hasher</a> for <a class=\"struct\" href=\"models/hhasher/struct.HHasher.html\" title=\"struct models::hhasher::HHasher\">HHasher</a>&lt;T&gt;","synthetic":false,"types":["models::hhasher::HHasher"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

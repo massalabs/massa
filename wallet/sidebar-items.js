@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["WalletError",""]],"struct":[["ConsensusConfigData",""],["Wallet","Contains the private keys created in the wallet."]]});

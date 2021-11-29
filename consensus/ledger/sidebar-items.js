@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Ledger",""],["LedgerChanges",""],["LedgerSubset",""]],"trait":[["OperationLedgerInterface",""]]});
