@@ -972,14 +972,21 @@ enum BlockCheckOutcome {
     WaitForDependencies(BlockHashSet),
 }
 
+/// Possible outcome of a block's operations check.
 #[derive(Debug)]
 enum BlockOperationsCheckOutcome {
+    /// Everything is ok
     Proceed {
+        /// blocks that block depends on
         dependencies: BlockHashSet,
+        /// changes caused by that block on the ledger
         block_ledger_changes: LedgerChanges,
+        /// changes caused by that block on rolls
         roll_updates: RollUpdates,
     },
+    /// There is something wrong with that batch of operation
     Discard(DiscardReason),
+    /// it must wait for these block ids to be fully processed
     WaitForDependencies(BlockHashSet),
 }
 
