@@ -68,10 +68,13 @@ impl LedgerData {
     }
 }
 
+/// A balance change that can be applied to an address
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LedgerChange {
+    /// Amount to add or substract
     pub balance_delta: Amount,
-    pub balance_increment: bool, // wether to increment or decrement balance of delta
+    /// wether to increment or decrement balance of delta
+    pub balance_increment: bool,
 }
 
 impl Default for LedgerChange {
