@@ -1541,11 +1541,6 @@
 <span id="1540">1540</span>
 <span id="1541">1541</span>
 <span id="1542">1542</span>
-<span id="1543">1543</span>
-<span id="1544">1544</span>
-<span id="1545">1545</span>
-<span id="1546">1546</span>
-<span id="1547">1547</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">crypto::hash::Hash</span>;
@@ -2013,7 +2008,7 @@
                     <span class="comment">// if we know that a node wants a block we send the full block</span>
                     <span class="kw">if</span> <span class="ident">node_info</span>.<span class="ident">remove_wanted_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_id</span>) {
                         <span class="ident">node_info</span>.<span class="ident">insert_known_blocks</span>(
-                            <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="ident">block_id</span>],
+                            <span class="kw-2">&amp;</span>[<span class="ident">block_id</span>],
                             <span class="bool-val">true</span>,
                             <span class="ident">now</span>,
                             <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_blocks_size</span>,
@@ -2092,7 +2087,7 @@
                             <span class="kw">for</span> (<span class="ident">node_id</span>, <span class="ident">node_info</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">active_nodes</span>.<span class="ident">iter_mut</span>() {
                                 <span class="kw">if</span> <span class="ident">node_info</span>.<span class="ident">remove_wanted_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_id</span>) {
                                     <span class="ident">node_info</span>.<span class="ident">insert_known_blocks</span>(
-                                        <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="ident">block_id</span>],
+                                        <span class="kw-2">&amp;</span>[<span class="ident">block_id</span>],
                                         <span class="bool-val">true</span>,
                                         <span class="ident">Instant::now</span>(),
                                         <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_blocks_size</span>,
@@ -2290,7 +2285,7 @@
                         <span class="kw">if</span> <span class="ident">info_time</span> <span class="op">&lt;</span> <span class="kw-2">&amp;</span><span class="ident">timeout_at</span> {
                             <span class="comment">// info less recent than timeout: mark as not having it</span>
                             <span class="ident">node_info</span>.<span class="ident">insert_known_blocks</span>(
-                                <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="kw-2">*</span><span class="ident">hash</span>],
+                                <span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">hash</span>],
                                 <span class="bool-val">false</span>,
                                 <span class="ident">timeout_at</span>,
                                 <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_blocks_size</span>,
@@ -2306,7 +2301,7 @@
                         <span class="kw">if</span> <span class="ident">info_time</span> <span class="op">&lt;</span> <span class="kw-2">&amp;</span><span class="ident">timeout_at</span> {
                             <span class="comment">// info less recent than timeout: update info time</span>
                             <span class="ident">node_info</span>.<span class="ident">insert_known_blocks</span>(
-                                <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="kw-2">*</span><span class="ident">hash</span>],
+                                <span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">hash</span>],
                                 <span class="bool-val">false</span>,
                                 <span class="ident">timeout_at</span>,
                                 <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_blocks_size</span>,
@@ -2317,7 +2312,7 @@
                     <span class="comment">// timed out but don&#39;t know if has it: mark as not having it</span>
                     (<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="ident">timeout_at</span>), <span class="prelude-val">None</span>) =&gt; {
                         <span class="ident">node_info</span>.<span class="ident">insert_known_blocks</span>(
-                            <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="kw-2">*</span><span class="ident">hash</span>],
+                            <span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">hash</span>],
                             <span class="bool-val">false</span>,
                             <span class="ident">timeout_at</span>,
                             <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_blocks_size</span>,
@@ -2484,7 +2479,7 @@
                     <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_blocks_size</span>,
                 );
                 <span class="ident">node_info</span>.<span class="ident">insert_known_blocks</span>(
-                    <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="ident">block_id</span>],
+                    <span class="kw-2">&amp;</span>[<span class="ident">block_id</span>],
                     <span class="bool-val">true</span>,
                     <span class="ident">now</span>,
                     <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_blocks_size</span>,
@@ -2576,7 +2571,7 @@
                 <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_blocks_size</span>,
             );
             <span class="ident">node_info</span>.<span class="ident">insert_known_blocks</span>(
-                <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="ident">block_id</span>],
+                <span class="kw-2">&amp;</span>[<span class="ident">block_id</span>],
                 <span class="bool-val">true</span>,
                 <span class="ident">now</span>,
                 <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_blocks_size</span>,
@@ -2745,7 +2740,7 @@
             <span class="comment">// Note: we always want to update the node&#39;s view of known operations,</span>
             <span class="comment">// even if we cached the check previously.</span>
             <span class="kw">let</span> <span class="ident">was_present</span> <span class="op">=</span>
-                <span class="ident">received_ids</span>.<span class="ident">insert</span>(<span class="ident">operation_id</span>.<span class="ident">clone</span>(), (<span class="ident">idx</span>, <span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">expire_period</span>));
+                <span class="ident">received_ids</span>.<span class="ident">insert</span>(<span class="ident">operation_id</span>, (<span class="ident">idx</span>, <span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">expire_period</span>));
 
             <span class="comment">// There are duplicate operations in this batch.</span>
             <span class="kw">if</span> <span class="ident">was_present</span>.<span class="ident">is_some</span>() {
@@ -2860,7 +2855,7 @@
                     { <span class="string">&quot;node&quot;</span>: <span class="ident">node_id</span> }
                 );
                 <span class="self">self</span>.<span class="ident">active_nodes</span>
-                    .<span class="ident">insert</span>(<span class="ident">node_id</span>, <span class="ident">nodeinfo::NodeInfo::new</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">protocol_settings</span>));
+                    .<span class="ident">insert</span>(<span class="ident">node_id</span>, <span class="ident">nodeinfo::NodeInfo::new</span>(<span class="self">self</span>.<span class="ident">protocol_settings</span>));
                 <span class="self">self</span>.<span class="ident">update_ask_block</span>(<span class="ident">block_ask_timer</span>).<span class="kw">await</span><span class="question-mark">?</span>;
             }
             <span class="ident">NetworkEvent::ConnectionClosed</span>(<span class="ident">node_id</span>) =&gt; {
@@ -2945,7 +2940,7 @@
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.on_network_event.block_not_found&quot;</span>, { <span class="string">&quot;node&quot;</span>: <span class="ident">node</span>, <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>});
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">info</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">active_nodes</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>) {
                     <span class="ident">info</span>.<span class="ident">insert_known_blocks</span>(
-                        <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="ident">block_id</span>],
+                        <span class="kw-2">&amp;</span>[<span class="ident">block_id</span>],
                         <span class="bool-val">false</span>,
                         <span class="ident">Instant::now</span>(),
                         <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_blocks_size</span>,
@@ -3001,33 +2996,28 @@
     <span class="kw">fn</span> <span class="ident">test_node_info_know_block</span>() {
         <span class="kw">let</span> <span class="ident">max_node_known_blocks_size</span> <span class="op">=</span> <span class="number">10</span>;
         <span class="kw">let</span> <span class="ident">protocol_settings</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">PROTOCOL_SETTINGS</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nodeinfo</span> <span class="op">=</span> <span class="ident">NodeInfo::new</span>(<span class="kw-2">&amp;</span><span class="ident">protocol_settings</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nodeinfo</span> <span class="op">=</span> <span class="ident">NodeInfo::new</span>(<span class="ident">protocol_settings</span>);
         <span class="kw">let</span> <span class="ident">instant</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
 
         <span class="kw">let</span> <span class="ident">hash_test</span> <span class="op">=</span> <span class="ident">get_dummy_block_id</span>(<span class="string">&quot;test&quot;</span>);
-        <span class="ident">nodeinfo</span>.<span class="ident">insert_known_blocks</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="ident">hash_test</span>], <span class="bool-val">true</span>, <span class="ident">instant</span>, <span class="ident">max_node_known_blocks_size</span>);
+        <span class="ident">nodeinfo</span>.<span class="ident">insert_known_blocks</span>(<span class="kw-2">&amp;</span>[<span class="ident">hash_test</span>], <span class="bool-val">true</span>, <span class="ident">instant</span>, <span class="ident">max_node_known_blocks_size</span>);
         <span class="kw">let</span> (<span class="ident">val</span>, <span class="ident">t</span>) <span class="op">=</span> <span class="ident">nodeinfo</span>.<span class="ident">get_known_block</span>(<span class="kw-2">&amp;</span><span class="ident">hash_test</span>).<span class="ident">unwrap</span>();
         <span class="macro">assert!</span>(<span class="ident">val</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">instant</span>, <span class="kw-2">*</span><span class="ident">t</span>);
-        <span class="ident">nodeinfo</span>.<span class="ident">insert_known_blocks</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="ident">hash_test</span>], <span class="bool-val">false</span>, <span class="ident">instant</span>, <span class="ident">max_node_known_blocks_size</span>);
+        <span class="ident">nodeinfo</span>.<span class="ident">insert_known_blocks</span>(<span class="kw-2">&amp;</span>[<span class="ident">hash_test</span>], <span class="bool-val">false</span>, <span class="ident">instant</span>, <span class="ident">max_node_known_blocks_size</span>);
         <span class="kw">let</span> (<span class="ident">val</span>, <span class="ident">t</span>) <span class="op">=</span> <span class="ident">nodeinfo</span>.<span class="ident">get_known_block</span>(<span class="kw-2">&amp;</span><span class="ident">hash_test</span>).<span class="ident">unwrap</span>();
         <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">val</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">instant</span>, <span class="kw-2">*</span><span class="ident">t</span>);
 
         <span class="kw">for</span> <span class="ident">index</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">9</span> {
             <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">get_dummy_block_id</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">to_string</span>());
-            <span class="ident">nodeinfo</span>.<span class="ident">insert_known_blocks</span>(
-                <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="ident">hash</span>],
-                <span class="bool-val">true</span>,
-                <span class="ident">Instant::now</span>(),
-                <span class="ident">max_node_known_blocks_size</span>,
-            );
+            <span class="ident">nodeinfo</span>.<span class="ident">insert_known_blocks</span>(<span class="kw-2">&amp;</span>[<span class="ident">hash</span>], <span class="bool-val">true</span>, <span class="ident">Instant::now</span>(), <span class="ident">max_node_known_blocks_size</span>);
             <span class="macro">assert!</span>(<span class="ident">nodeinfo</span>.<span class="ident">get_known_block</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>).<span class="ident">is_some</span>());
         }
 
         <span class="comment">// re insert the oldest to update its timestamp.</span>
         <span class="ident">nodeinfo</span>.<span class="ident">insert_known_blocks</span>(
-            <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="ident">hash_test</span>],
+            <span class="kw-2">&amp;</span>[<span class="ident">hash_test</span>],
             <span class="bool-val">false</span>,
             <span class="ident">Instant::now</span>(),
             <span class="ident">max_node_known_blocks_size</span>,
@@ -3035,7 +3025,7 @@
 
         <span class="comment">// add hash that triggers container pruning</span>
         <span class="ident">nodeinfo</span>.<span class="ident">insert_known_blocks</span>(
-            <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="ident">get_dummy_block_id</span>(<span class="string">&quot;test2&quot;</span>)],
+            <span class="kw-2">&amp;</span>[<span class="ident">get_dummy_block_id</span>(<span class="string">&quot;test2&quot;</span>)],
             <span class="bool-val">true</span>,
             <span class="ident">Instant::now</span>(),
             <span class="ident">max_node_known_blocks_size</span>,
@@ -3061,7 +3051,7 @@
     <span class="kw">fn</span> <span class="ident">test_node_info_wanted_block</span>() {
         <span class="kw">let</span> <span class="ident">max_node_wanted_blocks_size</span> <span class="op">=</span> <span class="number">10</span>;
         <span class="kw">let</span> <span class="ident">protocol_settings</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">PROTOCOL_SETTINGS</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nodeinfo</span> <span class="op">=</span> <span class="ident">NodeInfo::new</span>(<span class="kw-2">&amp;</span><span class="ident">protocol_settings</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nodeinfo</span> <span class="op">=</span> <span class="ident">NodeInfo::new</span>(<span class="ident">protocol_settings</span>);
 
         <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">get_dummy_block_id</span>(<span class="string">&quot;test&quot;</span>);
         <span class="ident">nodeinfo</span>.<span class="ident">insert_wanted_blocks</span>(<span class="ident">hash</span>, <span class="ident">max_node_wanted_blocks_size</span>);

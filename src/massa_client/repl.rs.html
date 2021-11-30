@@ -216,7 +216,6 @@
 <span id="215">215</span>
 <span id="216">216</span>
 <span id="217">217</span>
-<span id="218">218</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::cmds</span>::{<span class="ident">Command</span>, <span class="ident">ExtendedWallet</span>};
@@ -397,9 +396,8 @@
     <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(
             <span class="string">&quot;{}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">into_iter</span>()
-                .<span class="ident">fold</span>(<span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>(), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">a</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;{}{}\n&quot;</span>, <span class="ident">acc</span>, <span class="ident">a</span>)
-                    .<span class="ident">to_string</span>())
+            <span class="self">self</span>.<span class="ident">iter</span>()
+                .<span class="ident">fold</span>(<span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>(), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">a</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;{}{}\n&quot;</span>, <span class="ident">acc</span>, <span class="ident">a</span>))
         )
     }
 }

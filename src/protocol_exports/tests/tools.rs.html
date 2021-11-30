@@ -346,10 +346,6 @@
 <span id="345">345</span>
 <span id="346">346</span>
 <span id="347">347</span>
-<span id="348">348</span>
-<span id="349">349</span>
-<span id="350">350</span>
-<span id="351">351</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::mock_network_controller::MockNetworkController</span>;
@@ -402,7 +398,7 @@
     <span class="kw">let</span> (<span class="kw">_</span>, <span class="ident">header</span>) <span class="op">=</span> <span class="ident">BlockHeader::new_signed</span>(
         <span class="ident">private_key</span>,
         <span class="ident">BlockHeaderContent</span> {
-            <span class="ident">creator</span>: <span class="ident">public_key</span>.<span class="ident">clone</span>(),
+            <span class="ident">creator</span>: <span class="kw-2">*</span><span class="ident">public_key</span>,
             <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="number">1</span>, <span class="number">0</span>),
             <span class="ident">parents</span>: <span class="macro">vec!</span>[
                 <span class="ident">BlockId</span>(<span class="ident">Hash::hash</span>(<span class="string">&quot;Genesis 0&quot;</span>.<span class="ident">as_bytes</span>())),
@@ -428,14 +424,13 @@
 ) -&gt; <span class="ident">Block</span> {
     <span class="kw">let</span> <span class="ident">operation_merkle_root</span> <span class="op">=</span> <span class="ident">Hash::hash</span>(
         <span class="kw-2">&amp;</span><span class="ident">operations</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">Vec::new</span>(), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">v</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> [<span class="ident">acc</span>, <span class="ident">v</span>.<span class="ident">get_operation_id</span>().<span class="ident">unwrap</span>().<span class="ident">to_bytes</span>().<span class="ident">to_vec</span>()].<span class="ident">concat</span>();
-            <span class="ident">res</span>
+            [<span class="ident">acc</span>, <span class="ident">v</span>.<span class="ident">get_operation_id</span>().<span class="ident">unwrap</span>().<span class="ident">to_bytes</span>().<span class="ident">to_vec</span>()].<span class="ident">concat</span>()
         })[..],
     );
     <span class="kw">let</span> (<span class="kw">_</span>, <span class="ident">header</span>) <span class="op">=</span> <span class="ident">BlockHeader::new_signed</span>(
         <span class="ident">private_key</span>,
         <span class="ident">BlockHeaderContent</span> {
-            <span class="ident">creator</span>: <span class="ident">public_key</span>.<span class="ident">clone</span>(),
+            <span class="ident">creator</span>: <span class="kw-2">*</span><span class="ident">public_key</span>,
             <span class="ident">slot</span>,
             <span class="ident">parents</span>: <span class="macro">vec!</span>[
                 <span class="ident">BlockId</span>(<span class="ident">Hash::hash</span>(<span class="string">&quot;Genesis 0&quot;</span>.<span class="ident">as_bytes</span>())),
@@ -459,7 +454,7 @@
     <span class="kw">let</span> (<span class="kw">_</span>, <span class="ident">header</span>) <span class="op">=</span> <span class="ident">BlockHeader::new_signed</span>(
         <span class="ident">private_key</span>,
         <span class="ident">BlockHeaderContent</span> {
-            <span class="ident">creator</span>: <span class="ident">public_key</span>.<span class="ident">clone</span>(),
+            <span class="ident">creator</span>: <span class="kw-2">*</span><span class="ident">public_key</span>,
             <span class="ident">slot</span>,
             <span class="ident">parents</span>: <span class="macro">vec!</span>[
                 <span class="ident">BlockId</span>(<span class="ident">Hash::hash</span>(<span class="string">&quot;Genesis 0&quot;</span>.<span class="ident">as_bytes</span>())),
@@ -524,10 +519,7 @@
     };
     <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">Hash::hash</span>(<span class="kw-2">&amp;</span><span class="ident">content</span>.<span class="ident">to_bytes_compact</span>().<span class="ident">unwrap</span>());
     <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>, <span class="kw-2">&amp;</span><span class="ident">sender_priv</span>).<span class="ident">unwrap</span>();
-    <span class="ident">Endorsement</span> {
-        <span class="ident">content</span>: <span class="ident">content</span>.<span class="ident">clone</span>(),
-        <span class="ident">signature</span>,
-    }
+    <span class="ident">Endorsement</span> { <span class="ident">content</span>, <span class="ident">signature</span> }
 }
 
 <span class="comment">// Create an operation, from a specific sender, and with a specific expire period.</span>

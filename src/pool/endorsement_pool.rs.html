@@ -183,7 +183,6 @@
 <span id="182">182</span>
 <span id="183">183</span>
 <span id="184">184</span>
-<span id="185">185</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">PoolError</span>, <span class="ident">PoolSettings</span>};
@@ -283,8 +282,7 @@
                 <span class="kw">continue</span>;
             }
 
-            <span class="self">self</span>.<span class="ident">endorsements</span>
-                .<span class="ident">insert</span>(<span class="ident">endorsement_id</span>.<span class="ident">clone</span>(), <span class="ident">endorsement</span>);
+            <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">insert</span>(<span class="ident">endorsement_id</span>, <span class="ident">endorsement</span>);
             <span class="ident">newly_added</span>.<span class="ident">insert</span>(<span class="ident">endorsement_id</span>);
         }
 
