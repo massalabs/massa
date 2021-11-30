@@ -134,7 +134,7 @@ impl MockEstablisher {
 
         Ok(MockConnector {
             connection_connector_tx: self.connection_connector_tx.clone(),
-            timeout_duration: timeout_duration,
+            timeout_duration,
         })
     }
 }
@@ -156,15 +156,12 @@ impl MockEstablisherInterface {
             "mock connect_to_controller_listener channel not initialized".to_string(),
         ))?;
         let (response_tx, response_rx) = oneshot::channel::<(ReadHalf, WriteHalf)>();
-        sender
-            .send((addr.clone(), response_tx))
-            .await
-            .map_err(|_err| {
-                io::Error::new(
-                    io::ErrorKind::Other,
-                    "mock connect_to_controller_listener channel to listener closed".to_string(),
-                )
-            })?;
+        sender.send((*addr, response_tx)).await.map_err(|_err| {
+            io::Error::new(
+                io::ErrorKind::Other,
+                "mock connect_to_controller_listener channel to listener closed".to_string(),
+            )
+        })?;
         let (duplex_mock_read, duplex_mock_write) = response_rx.await.map_err(|_| {
             io::Error::new(
                 io::ErrorKind::Other,

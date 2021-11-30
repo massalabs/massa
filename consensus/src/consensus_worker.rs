@@ -1065,7 +1065,7 @@ impl ConsensusWorker {
         let mut states = AddressHashMap::default();
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         let ledger_data = self.block_db.get_ledger_data_export(addresses)?;
-        let prod_stats = self.pos.get_stakers_production_stats(&addresses);
+        let prod_stats = self.pos.get_stakers_production_stats(addresses);
         for thread in 0..thread_count {
             if addresses_by_thread[thread as usize].is_empty() {
                 continue;
@@ -1113,13 +1113,13 @@ impl ConsensusWorker {
                             candidate_ledger_info: ledger_data
                                 .candidate_data
                                 .0
-                                .get(&addr)
-                                .map_or_else(|| LedgerData::default(), |v| v.clone()),
+                                .get(addr)
+                                .map_or_else(LedgerData::default, |v| *v),
                             final_ledger_info: ledger_data
                                 .final_data
                                 .0
-                                .get(&addr)
-                                .map_or_else(|| LedgerData::default(), |v| v.clone()),
+                                .get(addr)
+                                .map_or_else(LedgerData::default, |v| *v),
                         },
 
                         production_stats: prod_stats
@@ -1127,16 +1127,8 @@ impl ConsensusWorker {
                             .map(|cycle_stats| AddressCycleProductionStats {
                                 cycle: cycle_stats.cycle,
                                 is_final: cycle_stats.is_final,
-                                ok_count: cycle_stats
-                                    .ok_nok_counts
-                                    .get(&addr)
-                                    .unwrap_or_else(|| &(0, 0))
-                                    .0,
-                                nok_count: cycle_stats
-                                    .ok_nok_counts
-                                    .get(&addr)
-                                    .unwrap_or_else(|| &(0, 0))
-                                    .1,
+                                ok_count: cycle_stats.ok_nok_counts.get(addr).unwrap_or(&(0, 0)).0,
+                                nok_count: cycle_stats.ok_nok_counts.get(addr).unwrap_or(&(0, 0)).1,
                             })
                             .collect(),
                     },

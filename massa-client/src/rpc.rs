@@ -52,7 +52,7 @@ impl From<RpcChannel> for RpcClient {
 impl RpcClient {
     /// Default constructor
     pub(crate) async fn from_url(url: &str) -> RpcClient {
-        match http::connect::<RpcClient>(&url).await {
+        match http::connect::<RpcClient>(url).await {
             Ok(client) => client,
             Err(_) => panic!("Unable to connect to Node."),
         }

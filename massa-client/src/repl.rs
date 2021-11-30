@@ -178,9 +178,8 @@ impl Output for AddressHashSet {
     fn pretty_print(&self) {
         println!(
             "{}",
-            self.into_iter()
-                .fold("".to_string(), |acc, a| format!("{}{}\n", acc, a)
-                    .to_string())
+            self.iter()
+                .fold("".to_string(), |acc, a| format!("{}{}\n", acc, a))
         )
     }
 }

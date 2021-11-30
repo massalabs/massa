@@ -11,7 +11,7 @@ use serial_test::serial;
 
 lazy_static::lazy_static! {
     pub static ref CUSTOM_PROTOCOL_SETTINGS: ProtocolSettings = {
-        let mut protocol_settings = tools::PROTOCOL_SETTINGS.clone();
+        let mut protocol_settings = *tools::PROTOCOL_SETTINGS;
 
         // Set max_node_known_blocks_size to zero.
         protocol_settings.max_node_known_blocks_size = 0;
@@ -26,7 +26,7 @@ async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size()
     let protocol_settings = &CUSTOM_PROTOCOL_SETTINGS;
 
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,
@@ -51,9 +51,7 @@ async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size()
             // Send a block, ensuring the processing of it,
             // and of its header,
             // does not panic.
-            network_controller
-                .send_block(nodes[0].id.clone(), block)
-                .await;
+            network_controller.send_block(nodes[0].id, block).await;
 
             // Wait for the event, should not panic.
             let _ = tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {

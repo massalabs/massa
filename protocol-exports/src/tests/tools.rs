@@ -50,7 +50,7 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
     let (_, header) = BlockHeader::new_signed(
         private_key,
         BlockHeaderContent {
-            creator: public_key.clone(),
+            creator: *public_key,
             slot: Slot::new(1, 0),
             parents: vec![
                 BlockId(Hash::hash("Genesis 0".as_bytes())),
@@ -76,14 +76,13 @@ pub fn create_block_with_operations(
 ) -> Block {
     let operation_merkle_root = Hash::hash(
         &operations.iter().fold(Vec::new(), |acc, v| {
-            let res = [acc, v.get_operation_id().unwrap().to_bytes().to_vec()].concat();
-            res
+            [acc, v.get_operation_id().unwrap().to_bytes().to_vec()].concat()
         })[..],
     );
     let (_, header) = BlockHeader::new_signed(
         private_key,
         BlockHeaderContent {
-            creator: public_key.clone(),
+            creator: *public_key,
             slot,
             parents: vec![
                 BlockId(Hash::hash("Genesis 0".as_bytes())),
@@ -107,7 +106,7 @@ pub fn create_block_with_endorsements(
     let (_, header) = BlockHeader::new_signed(
         private_key,
         BlockHeaderContent {
-            creator: public_key.clone(),
+            creator: *public_key,
             slot,
             parents: vec![
                 BlockId(Hash::hash("Genesis 0".as_bytes())),
@@ -172,10 +171,7 @@ pub fn create_endorsement() -> Endorsement {
     };
     let hash = Hash::hash(&content.to_bytes_compact().unwrap());
     let signature = sign(&hash, &sender_priv).unwrap();
-    Endorsement {
-        content: content.clone(),
-        signature,
-    }
+    Endorsement { content, signature }
 }
 
 // Create an operation, from a specific sender, and with a specific expire period.

@@ -32,7 +32,7 @@ use tracing::trace;
 async fn test_node_worker_shutdown() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&vec![]);
-    let network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
     let reader = ReadBinder::new(duplex_mock_read);
@@ -95,7 +95,7 @@ async fn test_multiple_connections_to_controller() {
     // test config
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&vec![]);
-    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.max_in_nonbootstrap_connections = 2;
     network_conf.max_in_connections_per_ip = 1;
 
@@ -208,7 +208,7 @@ async fn test_peer_ban() {
         active_in_connections: 0,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.wakeup_interval = 1000.into();
 
     tools::network_test(
@@ -347,7 +347,7 @@ async fn test_peer_ban_by_ip() {
         active_in_connections: 0,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.wakeup_interval = 1000.into();
 
     tools::network_test(
@@ -483,7 +483,7 @@ async fn test_advertised_and_wakeup_interval() {
         active_out_connections: 0,
         active_in_connections: 0,
     }]);
-    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.wakeup_interval = UTime::from(500);
     network_conf.connect_timeout = UTime::from(2000);
 
@@ -564,13 +564,16 @@ async fn test_advertised_and_wakeup_interval() {
             };
 
             // 4) check that there are no further connection attempts from controller
-            if let Some(_) =
-                tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
-                {
+            if tools::wait_network_event(
+                &mut network_event_receiver,
+                1000.into(),
+                |msg| match msg {
                     NetworkEvent::NewConnection(_) => Some(()),
                     _ => None,
-                })
-                .await
+                },
+            )
+            .await
+            .is_some()
             {
                 panic!("a connection event was emitted by controller while none were expected");
             }
@@ -612,7 +615,7 @@ async fn test_block_not_found() {
         active_in_connections: 0,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.target_bootstrap_connections = 1;
     network_conf.max_ask_blocks_per_message = 3;
 
@@ -747,13 +750,12 @@ async fn test_block_not_found() {
                 .await
                 .unwrap();
             // assert it is sent to protocol
-            if let Some(_) =
-                tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
+            if tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
                 {
                     NetworkEvent::AskedForBlocks { list, node } => Some((list, node)),
                     _ => None,
                 })
-                .await
+                .await.is_some()
             {
                 panic!("AskedForBlocks with more max_ask_blocks_per_message forward blocks");
             }
@@ -791,7 +793,7 @@ async fn test_retry_connection_closed() {
         active_in_connections: 0,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.target_bootstrap_connections = 1;
 
     tools::network_test(
@@ -888,7 +890,7 @@ async fn test_operation_messages() {
         active_in_connections: 0,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.target_bootstrap_connections = 1;
     network_conf.max_ask_blocks_per_message = 3;
 
@@ -1010,7 +1012,7 @@ async fn test_endorsements_messages() {
         active_in_connections: 0,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.target_bootstrap_connections = 1;
     network_conf.max_ask_blocks_per_message = 3;
 

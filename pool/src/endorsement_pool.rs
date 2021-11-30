@@ -97,8 +97,7 @@ impl EndorsementPool {
                 continue;
             }
 
-            self.endorsements
-                .insert(endorsement_id.clone(), endorsement);
+            self.endorsements.insert(endorsement_id, endorsement);
             newly_added.insert(endorsement_id);
         }
 

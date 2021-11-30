@@ -25,7 +25,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
     // .unwrap();
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
     protocol_test(
-        &protocol_settings,
+        protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,
@@ -123,7 +123,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     let (_, header) = BlockHeader::new_signed(
                         &creator_node.private_key,
                         BlockHeaderContent {
-                            creator: derive_public_key(&creator_node.private_key).clone(),
+                            creator: derive_public_key(&creator_node.private_key),
                             slot: slot_a,
                             parents: Vec::new(),
                             operation_merkle_root,

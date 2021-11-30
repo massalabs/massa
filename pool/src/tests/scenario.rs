@@ -30,7 +30,7 @@ async fn test_pool() {
     ) = &POOL_SETTINGS;
 
     pool_test(
-        &cfg,
+        cfg,
         *thread_count,
         *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
@@ -56,7 +56,7 @@ async fn test_pool() {
                     .unwrap();
 
                 let newly_added = match protocol_controller
-                    .wait_command(250.into(), op_filter.clone())
+                    .wait_command(250.into(), op_filter)
                     .await
                 {
                     Some(ProtocolCommand::PropagateOperations(ops)) => ops,
@@ -75,7 +75,7 @@ async fn test_pool() {
                     .unwrap();
 
                 match protocol_controller
-                    .wait_command(250.into(), op_filter.clone())
+                    .wait_command(250.into(), op_filter)
                     .await
                 {
                     Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
@@ -163,7 +163,7 @@ async fn test_pool() {
                 pool_command_sender.add_operations(ops).await.unwrap();
 
                 match protocol_controller
-                    .wait_command(250.into(), op_filter.clone())
+                    .wait_command(250.into(), op_filter)
                     .await
                 {
                     Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
@@ -192,7 +192,7 @@ async fn test_pool_with_protocol_events() {
         &POOL_SETTINGS;
 
     pool_test(
-        &cfg,
+        cfg,
         *thread_count,
         *operation_validity_periods,
         async move |mut protocol_controller, pool_command_sender, pool_manager| {
@@ -216,7 +216,7 @@ async fn test_pool_with_protocol_events() {
                 protocol_controller.received_operations(ops.clone()).await;
 
                 let newly_added = match protocol_controller
-                    .wait_command(250.into(), op_filter.clone())
+                    .wait_command(250.into(), op_filter)
                     .await
                 {
                     Some(ProtocolCommand::PropagateOperations(ops)) => ops,
@@ -232,7 +232,7 @@ async fn test_pool_with_protocol_events() {
                 protocol_controller.received_operations(ops.clone()).await;
 
                 match protocol_controller
-                    .wait_command(250.into(), op_filter.clone())
+                    .wait_command(250.into(), op_filter)
                     .await
                 {
                     Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
@@ -255,7 +255,7 @@ async fn test_pool_propagate_newly_added_endorsements() {
         &POOL_SETTINGS;
 
     pool_test(
-        &cfg,
+        cfg,
         *thread_count,
         *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
@@ -267,14 +267,14 @@ async fn test_pool_propagate_newly_added_endorsements() {
             let endorsement = tools::create_endorsement(target_slot);
             let mut endorsements = EndorsementHashMap::default();
             let id = endorsement.compute_endorsement_id().unwrap();
-            endorsements.insert(id.clone(), endorsement.clone());
+            endorsements.insert(id, endorsement.clone());
 
             protocol_controller
                 .received_endorsements(endorsements.clone())
                 .await;
 
             let newly_added = match protocol_controller
-                .wait_command(250.into(), op_filter.clone())
+                .wait_command(250.into(), op_filter)
                 .await
             {
                 Some(ProtocolCommand::PropagateEndorsements(endorsements)) => endorsements,
@@ -290,7 +290,7 @@ async fn test_pool_propagate_newly_added_endorsements() {
                 .await;
 
             match protocol_controller
-                .wait_command(250.into(), op_filter.clone())
+                .wait_command(250.into(), op_filter)
                 .await
             {
                 Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
@@ -320,7 +320,7 @@ async fn test_pool_add_old_endorsements() {
         &POOL_SETTINGS;
 
     pool_test(
-        &cfg,
+        cfg,
         *thread_count,
         *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
@@ -332,7 +332,7 @@ async fn test_pool_add_old_endorsements() {
             let endorsement = tools::create_endorsement(Slot::new(1, 0));
             let mut endorsements = EndorsementHashMap::default();
             let id = endorsement.compute_endorsement_id().unwrap();
-            endorsements.insert(id.clone(), endorsement.clone());
+            endorsements.insert(id, endorsement.clone());
 
             pool_command_sender
                 .update_latest_final_periods(vec![50, 50])
@@ -344,7 +344,7 @@ async fn test_pool_add_old_endorsements() {
                 .await;
 
             match protocol_controller
-                .wait_command(250.into(), op_filter.clone())
+                .wait_command(250.into(), op_filter)
                 .await
             {
                 Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
@@ -387,7 +387,7 @@ async fn test_get_involved_operations() {
         &POOL_SETTINGS;
 
     pool_test(
-        &cfg,
+        cfg,
         *thread_count,
         *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
@@ -418,7 +418,7 @@ async fn test_get_involved_operations() {
             protocol_controller.received_operations(ops.clone()).await;
 
             let newly_added = match protocol_controller
-                .wait_command(250.into(), op_filter.clone())
+                .wait_command(250.into(), op_filter)
                 .await
             {
                 Some(ProtocolCommand::PropagateOperations(ops)) => ops,
@@ -543,7 +543,7 @@ async fn test_new_final_ops() {
         &POOL_SETTINGS;
 
     pool_test(
-        &cfg,
+        cfg,
         *thread_count,
         *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
@@ -564,7 +564,7 @@ async fn test_new_final_ops() {
                 .await;
 
             let newly_added = match protocol_controller
-                .wait_command(250.into(), op_filter.clone())
+                .wait_command(250.into(), op_filter)
                 .await
             {
                 Some(ProtocolCommand::PropagateOperations(ops)) => ops,
@@ -612,7 +612,7 @@ async fn test_new_final_ops() {
                 .await;
 
             match protocol_controller
-                .wait_command(500.into(), op_filter.clone())
+                .wait_command(500.into(), op_filter)
                 .await
             {
                 Some(ProtocolCommand::PropagateOperations(_)) => {

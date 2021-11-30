@@ -439,10 +439,7 @@ mod tests {
         let hash = Hash::hash(&content.to_bytes_compact().unwrap());
         let signature = sign(&hash, &sender_priv).unwrap();
 
-        let op = Operation {
-            content: content.clone(),
-            signature,
-        };
+        let op = Operation { content, signature };
 
         let ser_op = op.to_bytes_compact().unwrap();
         let (res_op, _) = Operation::from_bytes_compact(&ser_op).unwrap();
