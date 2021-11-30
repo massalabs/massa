@@ -153,6 +153,7 @@ impl RollUpdates {
         }
     }
 
+    /// get the roll update for a subset of addresses
     pub fn clone_subset(&self, addrs: &AddressHashSet) -> Self {
         Self(
             addrs
