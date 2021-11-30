@@ -51,17 +51,28 @@ impl HeaderOrBlock {
     }
 }
 
+/// Agregated changes made during a block's execution
 #[derive(Debug, Clone)]
 pub struct BlockStateAccumulator {
+    /// Addresses impacted by ledger updates
     pub loaded_ledger_addrs: AddressHashSet,
+    /// Subset of the ledger. Contains only data in the thread of the given block
     pub ledger_thread_subset: LedgerSubset,
+    /// Cummulative changes made during that block execution
     pub ledger_changes: LedgerChanges,
+    /// Addresses impacted by roll updates
     pub loaded_roll_addrs: AddressHashSet,
+    /// Current roll counts for these addresses
     pub roll_counts: RollCounts,
+    /// Roll updates that happened during that block execution
     pub roll_updates: RollUpdates,
+    /// Roll updates that happend during current cycle
     pub cycle_roll_updates: RollUpdates,
+    /// Cycle of the parent in the same thread
     pub same_thread_parent_cycle: u64,
+    /// Address of the parent in the same thread
     pub same_thread_parent_creator: Address,
+    /// Adresses of that block endorsers
     pub endorsers_addresses: Vec<Address>,
 }
 
