@@ -1611,9 +1611,9 @@ impl BlockGraph {
             .collect()
     }
 
-    ///for algo see pos.md
-    // if addrs_opt is Some(addrs), restrict to addrs. If None, return all addresses.
-    // returns (roll_counts, cycle_roll_updates)
+    /// for algo see pos.md
+    /// if addrs_opt is Some(addrs), restrict to addrs. If None, return all addresses.
+    /// returns (roll_counts, cycle_roll_updates)
     pub fn get_roll_data_at_parent(
         &self,
         block_id: BlockId,
@@ -1854,7 +1854,7 @@ impl BlockGraph {
         res
     }
 
-    // signal new slot
+    /// signal new slot
     pub fn slot_tick(
         &mut self,
         pos: &mut ProofOfStake,
@@ -2011,7 +2011,7 @@ impl BlockGraph {
         res
     }
 
-    // acknowledge a set of items recursively
+    /// acknowledge a set of items recursively
     fn rec_process(
         &mut self,
         mut to_ack: BTreeSet<(Slot, BlockId)>,
@@ -2025,7 +2025,7 @@ impl BlockGraph {
         Ok(())
     }
 
-    // ack a single item, return a set of items to re-ack
+    /// ack a single item, return a set of items to re-ack
     ///
     /// Checks performed:
     /// - See `check_header` for checks on incoming headers.
@@ -3851,7 +3851,7 @@ impl BlockGraph {
         Ok(retain_active)
     }
 
-    // prune active blocks and return final blocks, return discarded final blocks
+    /// prune active blocks and return final blocks, return discarded final blocks
     fn prune_active(&mut self) -> Result<BlockHashMap<ActiveBlock>, ConsensusError> {
         // list required active blocks
         let mut retain_active = self.list_required_active_blocks()?;
@@ -4155,7 +4155,7 @@ impl BlockGraph {
         Ok(())
     }
 
-    // prune and return final blocks, return discarded final blocks
+    /// prune and return final blocks, return discarded final blocks
     pub fn prune(&mut self) -> Result<BlockHashMap<ActiveBlock>, ConsensusError> {
         let before = self.max_cliques.len();
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
@@ -4181,7 +4181,7 @@ impl BlockGraph {
         Ok(discarded_finals)
     }
 
-    // get the current block wishlist
+    /// get the current block wishlist
     pub fn get_block_wishlist(&self) -> Result<BlockHashSet, ConsensusError> {
         let mut wishlist = BlockHashSet::default();
         for block_id in self.waiting_for_dependencies_index.iter() {
@@ -4219,28 +4219,28 @@ impl BlockGraph {
             .map_or_else(BlockHashSet::default, |(_, v)| v.block_ids.clone())
     }
 
-    // Get the headers to be propagated.
-    // Must be called by the consensus worker within `block_db_changed`.
+    /// Get the headers to be propagated.
+    /// Must be called by the consensus worker within `block_db_changed`.
     pub fn get_blocks_to_propagate(
         &mut self,
     ) -> BlockHashMap<(Block, OperationHashSet, Vec<EndorsementId>)> {
         mem::take(&mut self.to_propagate)
     }
 
-    // Get the hashes of objects that were attack attempts.
-    // Must be called by the consensus worker within `block_db_changed`.
+    /// Get the hashes of objects that were attack attempts.
+    /// Must be called by the consensus worker within `block_db_changed`.
     pub fn get_attack_attempts(&mut self) -> Vec<BlockId> {
         mem::take(&mut self.attack_attempts)
     }
 
-    // Get the ids of blocks that became final.
-    // Must be called by the consensus worker within `block_db_changed`.
+    /// Get the ids of blocks that became final.
+    /// Must be called by the consensus worker within `block_db_changed`.
     pub fn get_new_final_blocks(&mut self) -> BlockHashSet {
         mem::take(&mut self.new_final_blocks)
     }
 
-    // Get the ids of blocks that became stale.
-    // Must be called by the consensus worker within `block_db_changed`.
+    /// Get the ids of blocks that became stale.
+    /// Must be called by the consensus worker within `block_db_changed`.
     pub fn get_new_stale_blocks(&mut self) -> BlockHashMap<(PublicKey, Slot)> {
         mem::take(&mut self.new_stale_blocks)
     }
