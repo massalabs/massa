@@ -252,7 +252,9 @@ impl RollCounts {
     }
 }
 
+/// Roll specific method on operation
 pub trait OperationRollInterface {
+    /// get roll related modifications
     fn get_roll_updates(&self) -> Result<RollUpdates, ConsensusError>;
 }
 
