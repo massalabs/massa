@@ -533,7 +533,7 @@ impl Command {
                     Err(e) => bail!("RpcError: {}", e),
                 } {
                     let (days, hours, mins, secs) =
-                        end.saturating_sub(UTime::now(0)?).days_hours_mins_secs()?; // TODO set compensation millis
+                        end.saturating_sub(UTime::now(0)?).days_hours_mins_secs()?; // compensation millis is zero
                     let mut res = "".to_string();
                     res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of episode {}", days, hours, mins, secs, version.major));
                     if !json {
@@ -560,7 +560,7 @@ async fn send_operation(
     }
     .algo_config;
 
-    let slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp, 0)? // todo set clock compensation
+    let slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp, 0)? // clock compensation is zero
         .unwrap_or_else(|| Slot::new(0, 0));
     let mut expire_period = slot.period + cfg.operation_validity_periods;
     if slot.thread >= addr.get_thread(cfg.thread_count) {
