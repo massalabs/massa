@@ -936,8 +936,11 @@ enum HeaderCheckOutcome {
 /// Possible outcomes of endorsements check
 #[derive(Debug)]
 enum EndorsementsCheckOutcome {
+    /// Everything is ok
     Proceed,
+    /// There is something wrong with that endorsement
     Discard(DiscardReason),
+    /// It must wait for its slot to be fully processed
     WaitForSlot,
 }
 
