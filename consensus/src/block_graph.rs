@@ -76,22 +76,38 @@ pub struct BlockStateAccumulator {
     pub endorsers_addresses: Vec<Address>,
 }
 
+/// Block that was checked as final, with some useful precomputed data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActiveBlock {
+    /// The cretor's address
     pub creator_address: Address,
+    /// The block itself, as it was created
     pub block: Block,
-    pub parents: Vec<(BlockId, u64)>, // one (hash, period) per thread ( if not genesis )
-    pub children: Vec<BlockHashMap<u64>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
-    pub dependencies: BlockHashSet,       // dependencies required for validity check
+    /// one (block id, period) per thread ( if not genesis )
+    pub parents: Vec<(BlockId, u64)>,
+    /// one HashMap<Block id, period> per thread (blocks that need to be kept)
+    /// Children reference that block as a parent
+    pub children: Vec<BlockHashMap<u64>>,
+    /// dependencies required for validity check (TODO: not sure if it's used)
+    pub dependencies: BlockHashSet,
+    /// Blocks id that have this block as an ancestor
     pub descendants: BlockHashSet,
+    /// ie has its fitness reached the given thresold
     pub is_final: bool,
+    /// Changes caused by this block
     pub block_ledger_changes: LedgerChanges,
-    pub operation_set: OperationHashMap<(usize, u64)>, // index in the block, end of validity period
-    pub endorsement_ids: EndorsementHashMap<u32>,      // IDs of the endorsements to index in block
+    /// index in the block, end of validity period
+    pub operation_set: OperationHashMap<(usize, u64)>,
+    /// IDs of the endorsements to index in block
+    pub endorsement_ids: EndorsementHashMap<u32>,
+    /// Maps addresses to operations id they are involved in
     pub addresses_to_operations: AddressHashMap<OperationHashSet>,
+    /// Maps addresses to endorsements id they are involved in
     pub addresses_to_endorsements: AddressHashMap<EndorsementHashSet>,
-    pub roll_updates: RollUpdates, // Address -> RollUpdate
-    pub production_events: Vec<(u64, Address, bool)>, // list of (period, address, did_create) for all block/endorsement creation events
+    /// Address -> RollUpdate
+    pub roll_updates: RollUpdates,
+    /// list of (period, address, did_create) for all block/endorsement creation events
+    pub production_events: Vec<(u64, Address, bool)>,
 }
 
 impl ActiveBlock {
