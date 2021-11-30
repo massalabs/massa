@@ -117,15 +117,26 @@ impl ActiveBlock {
     }
 }
 
+/// Exportable version of ActiveBlock
+/// Fields that can be easily recomuted were left out
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportActiveBlock {
+    /// The block itself, as it was created
     pub block: Block,
-    pub parents: Vec<(BlockId, u64)>, // one (hash, period) per thread ( if not genesis )
-    pub children: Vec<BlockHashMap<u64>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
-    pub dependencies: BlockHashSet,       // dependencies required for validity check
+    /// one (block id, period) per thread ( if not genesis )
+    pub parents: Vec<(BlockId, u64)>,
+    /// one HashMap<Block id, period> per thread (blocks that need to be kept)
+    /// Children reference that block as a parent
+    pub children: Vec<BlockHashMap<u64>>,
+    /// dependencies required for validity check (TODO: not sure if it's used)
+    pub dependencies: BlockHashSet,
+    /// ie has its fitness reached the given thresold
     pub is_final: bool,
+    /// Changes caused by this block
     pub block_ledger_changes: LedgerChanges,
+    /// Address -> RollUpdate
     pub roll_updates: RollUpdates,
+    /// list of (period, address, did_create) for all block/endorsement creation events
     pub production_events: Vec<(u64, Address, bool)>,
 }
 
