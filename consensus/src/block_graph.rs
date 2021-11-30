@@ -909,17 +909,27 @@ pub struct BlockGraph {
     ledger: Ledger,
 }
 
+/// Possible output of a header check
 #[derive(Debug)]
 enum HeaderCheckOutcome {
+    /// it's ok and here are some useful values
     Proceed {
+        /// one (parent block id, parent's period) per thread
         parents_hash_period: Vec<(BlockId, u64)>,
+        /// blocks that header depends on
         dependencies: BlockHashSet,
+        /// blocks that header is incompatible with
         incompatibilities: BlockHashSet,
+        /// number of incompatibilities that are inherited from the parents
         inherited_incompatibilities_count: usize,
-        production_events: Vec<(u64, Address, bool)>, // list of (period, address, did_create) for all block/endorsement creation events
+        /// list of (period, address, did_create) for all block/endorsement creation events
+        production_events: Vec<(u64, Address, bool)>,
     },
+    /// there is something wrong with that header
     Discard(DiscardReason),
+    /// it must wait for its slot to be fully processed
     WaitForSlot,
+    /// it must wait for these block ids to be fully processed
     WaitForDependencies(BlockHashSet),
 }
 
