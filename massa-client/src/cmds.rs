@@ -25,7 +25,11 @@ pub enum Command {
     #[strum(ascii_case_insensitive, message = "exit the client gracefully")]
     exit,
 
-    #[strum(ascii_case_insensitive, message = "display this help")]
+    #[strum(
+        ascii_case_insensitive,
+        message = "display this help",
+        props(flag = "⭐")
+    )]
     help,
 
     #[strum(
@@ -57,20 +61,21 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "PrivateKey1 PrivateKey2 ..."),
+        props(args = "PrivateKey1 PrivateKey2 ...", flag = "🟣"),
         message = "add staking private keys"
     )]
     node_add_staking_private_keys,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address discord_id"),
+        props(args = "Address discord_id", flag = "🟣"),
         message = "generate the testnet rewards program node/staker ownership proof"
     )]
     node_testnet_rewards_program_ownership_proof,
 
     #[strum(
         ascii_case_insensitive,
+        props(flag = "⭐"),
         message = "show the status of the node (reachable? number of peers connected, consensus, version, config parameter summary...)"
     )]
     get_status,
@@ -105,12 +110,14 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
+        props(flag = "⭐"),
         message = "show wallet info (private keys, public keys, addresses, balances ...)"
     )]
     wallet_info,
 
     #[strum(
         ascii_case_insensitive,
+        props(flag = "🟣"),
         message = "generate a private key and add it into the wallet"
     )]
     wallet_generate_private_key,
@@ -131,7 +138,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address RollCount Fee"),
+        props(args = "Address RollCount Fee", flag = "🟩"),
         message = "buy rolls with wallet address"
     )]
     buy_rolls,
@@ -145,7 +152,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "SenderAddress ReceiverAddress Amount Fee"),
+        props(args = "SenderAddress ReceiverAddress Amount Fee", flag = "🟩"),
         message = "send coins from a wallet address"
     )]
     send_transaction,
@@ -218,7 +225,12 @@ impl Display for ExtendedWallet {
 impl Command {
     pub(crate) fn help(&self) {
         println!(
-            "- {} {}: {}{}",
+            "- {} {} {}: {}{}",
+            if self.get_str("flag").is_some() {
+                style(self.get_str("flag").unwrap_or(""))
+            } else {
+                style("")
+            },
             style(self.to_string()).green(),
             if self.get_str("args").is_some() {
                 style(self.get_str("args").unwrap_or("")).yellow()
