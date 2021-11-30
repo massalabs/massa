@@ -500,7 +500,7 @@ impl Ledger {
     }
 
     /// Used for bootstrap.
-    // Note: this cannot be done transactionally.
+    /// Note: this cannot be done transactionally.
     pub fn read_whole(&self) -> Result<LedgerSubset, ConsensusError> {
         let mut res = LedgerSubset::default();
         for tree in self.ledger_per_thread.iter() {
