@@ -1199,6 +1199,13 @@ impl BlockGraph {
         })
     }
 
+    /// Try to apply an operation in the contexxt of the block
+    ///
+    /// # Arguments
+    /// * state_accu: where the changes are accumulated while we go through the block
+    /// * header: the header of the block we are inside
+    /// * operation: the operation that we are trying to apply
+    /// * pos: proof of stake engine (used for roll related operations)
     pub fn block_state_try_apply_op(
         &self,
         state_accu: &mut BlockStateAccumulator,
