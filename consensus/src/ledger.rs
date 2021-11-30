@@ -28,6 +28,7 @@ pub struct Ledger {
     cfg: ConsensusConfig,
 }
 
+/// Map an address to a LedgerChange
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LedgerChanges(pub AddressHashMap<LedgerChange>);
 
