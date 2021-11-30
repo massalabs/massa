@@ -479,19 +479,33 @@ pub enum DiscardReason {
     Final,
 }
 
+/// Enum used in blockgraph's state machine
 #[derive(Debug, Clone)]
 enum BlockStatus {
+    /// The block/header has reached consensus but no consensus-level check has been performed.
+    /// It will be processed during the next iteration
     Incoming(HeaderOrBlock),
+    /// The block/header's slot is too much in the future.
+    /// It will be processed at the block/header slot
     WaitingForSlot(HeaderOrBlock),
+    /// The block references an unknown Block id
     WaitingForDependencies {
+        /// Given header/block
         header_or_block: HeaderOrBlock,
-        unsatisfied_dependencies: BlockHashSet, // includes self if it's only a header
+        /// includes self if it's only a header
+        unsatisfied_dependencies: BlockHashSet,
+        /// Used to limit and sort the number of blocks/headers wainting for dependencies
         sequence_number: u64,
     },
+    /// The block was checked and incluced in the blockgraph
     Active(Box<ActiveBlock>),
+    /// The block was discarded and is kept to avoid reprocessing it
     Discarded {
+        /// Just the header of that block
         header: BlockHeader,
+        /// why it was discarded
         reason: DiscardReason,
+        /// Used to limit and sort the number of blocks/headers wainting for dependencies
         sequence_number: u64,
     },
 }
