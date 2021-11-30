@@ -1238,7 +1238,13 @@ impl BlockGraph {
         Ok(())
     }
 
-    // loads missing block state rolls if available
+    /// loads missing block state rolls if available
+    ///
+    /// # Arguments
+    /// * accu: accumulated block changes
+    /// * header: block header
+    /// * pos: proof of state engine
+    /// * involved_addrs: involved addresses
     pub fn block_state_sync_rolls(
         &self,
         accu: &mut BlockStateAccumulator,
