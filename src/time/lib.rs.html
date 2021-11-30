@@ -302,6 +302,9 @@
 <span id="301">301</span>
 <span id="302">302</span>
 <span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">mod</span> <span class="ident">error</span>;
@@ -401,7 +404,10 @@
     <span class="doccomment">/// Smallest time interval</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">EPSILON</span>: <span class="ident">UTime</span> <span class="op">=</span> <span class="ident">UTime</span>(<span class="number">1</span>);
 
-    <span class="doccomment">/// Gets current timestamp.</span>
+    <span class="doccomment">/// Gets current unix timestamp (resolution: milliseconds).</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Parameters</span>
+    <span class="doccomment">///   * compensation_millis: when the system clock is slightly off, this parameter allows correcting it by adding this signed number of milliseconds to the locally measured timestamp</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use std::time::{Duration, SystemTime, UNIX_EPOCH};</span>
