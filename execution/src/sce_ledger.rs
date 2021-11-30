@@ -184,12 +184,16 @@ impl SCELedger {
 }
 
 /// represents an execution step from the point of view of the SCE ledger
-///   a reference to the final ledger, as well as an accumulator of existing ledger changes allow computing the input SCE ledger state
-///   caused_changes lists the additional changes caused by the step
+/// applying cumulative_history_changes then caused_changes to final_ledger yields the current ledger during the ledger step
 #[derive(Debug, Clone)]
 pub struct SCELedgerStep {
+    // arc/mutex reference to the final ledger
     pub final_ledger: Arc<Mutex<SCELedger>>,
+
+    // accumulator of existing ledger changes
     pub cumulative_history_changes: SCELedgerChanges,
+
+    // additional changes caused by the step
     pub caused_changes: SCELedgerChanges,
 }
 
