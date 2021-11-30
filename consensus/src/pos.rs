@@ -229,6 +229,7 @@ impl RollCounts {
         Ok(())
     }
 
+    /// get roll counts for a subset of addresses.
     pub fn clone_subset(&self, addrs: &AddressHashSet) -> Self {
         Self(
             addrs
