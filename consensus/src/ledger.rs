@@ -17,9 +17,14 @@ use std::{
     usize,
 };
 
+/// Here we map an address to its balance.
+/// When a balance becomes final it is written on the disk.
 pub struct Ledger {
-    ledger_per_thread: Vec<Tree>, // containing (Address, LedgerData)
-    latest_final_periods: Tree,   // containing (thread_number: u8, latest_final_period: u64)
+    /// containing (Address, LedgerData), one per thread
+    ledger_per_thread: Vec<Tree>,
+    /// containing (thread_number: u8, latest_final_period: u64)
+    latest_final_periods: Tree,
+    /// consensus related config
     cfg: ConsensusConfig,
 }
 
