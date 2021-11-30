@@ -145,7 +145,17 @@ impl LedgerChanges {
     }
 }
 
+/// Ledger specific method on operations
 pub trait OperationLedgerInterface {
+    /// Retrieve and aggregate ledger specific changes in the context of a block
+    ///
+    /// # Arguments
+    /// * block creator
+    /// * included endorsement producers
+    /// * creator of the endorsed block
+    /// * thread count (fixed by the config)
+    /// * roll price (fixed by the config)
+    /// * max expected number of endorsements (fixed by the config)
     fn get_ledger_changes(
         &self,
         creator: Address,
