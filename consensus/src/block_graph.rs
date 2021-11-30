@@ -395,7 +395,7 @@ impl DeserializeCompact for ExportActiveBlock {
 
         // block_ledger_changes
         let (block_ledger_change_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        // TODO: count check
+        // TODO: count check ... see #1200
         cursor += delta;
         let mut block_ledger_changes = LedgerChanges(AddressHashMap::with_capacity_and_hasher(
             block_ledger_change_count as usize,
@@ -431,7 +431,7 @@ impl DeserializeCompact for ExportActiveBlock {
 
         // production_events
         let (production_events_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        // TODO: count check
+        // TODO: count check ... see #1200
         cursor += delta;
         let mut production_events: Vec<(u64, Address, bool)> =
             Vec::with_capacity(production_events_count as usize);

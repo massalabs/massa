@@ -80,7 +80,7 @@ async fn launch() -> (
     // launch network controller
     let (network_command_sender, network_event_receiver, network_manager, private_key, node_id) =
         start_network_controller(
-            SETTINGS.network.clone(), // TODO: get rid of this clone() ...
+            SETTINGS.network.clone(), // TODO: get rid of this clone() ... see #1277
             Establisher::new(),
             clock_compensation,
             initial_peers,
@@ -118,7 +118,7 @@ async fn launch() -> (
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
-            SETTINGS.consensus.clone(), // TODO: get rid of this clone() ...
+            SETTINGS.consensus.clone(), // TODO: get rid of this clone() ... see #1277
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender.clone(),

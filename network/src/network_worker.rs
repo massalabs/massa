@@ -895,9 +895,9 @@ impl NetworkWorker {
             NetworkCommand::GetStats { response_tx } => {
                 let res = NetworkStats {
                     in_connection_count: self.peer_info_db.active_in_nonbootstrap_connections
-                        as u64, // TODO: add bootstrap connections
+                        as u64, // TODO: add bootstrap connections ... see #1312
                     out_connection_count: self.peer_info_db.active_out_nonbootstrap_connections
-                        as u64, // TODO: add bootstrap connections
+                        as u64, // TODO: add bootstrap connections ... see #1312
                     known_peer_count: self.peer_info_db.peers.len() as u64,
                     banned_peer_count: self
                         .peer_info_db

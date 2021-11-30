@@ -287,7 +287,7 @@ impl NodeWorker {
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedEndorsements(endorsements))).await;
                             }
                             _ => {
-                                // TODO: Write a more user-friendly warning/logout after several consecutive fails?
+                                // TODO: Write a more user-friendly warning/logout after several consecutive fails? see #1082
                                 massa_trace!("node_worker.run_loop.self.socket_reader.next(). Unexpected message Warning", {});
                             },
                         }

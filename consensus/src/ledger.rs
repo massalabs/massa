@@ -173,7 +173,7 @@ impl OperationLedgerInterface for Operation {
         creator: Address,
         endorsers: Vec<Address>,
         parent_creator: Address,
-        _thread_count: u8, // TODO: why it's here ?
+        _thread_count: u8, // TODO: why it's here?
         roll_price: Amount,
         endorsement_count: u32,
     ) -> Result<LedgerChanges, ConsensusError> {
@@ -717,7 +717,7 @@ impl DeserializeCompact for LedgerSubset {
         let mut cursor = 0usize;
 
         let (entry_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        // TODO: add entry_count checks
+        // TODO: add entry_count checks ... see #1200
         cursor += delta;
 
         let mut ledger_subset = LedgerSubset(AddressHashMap::with_capacity_and_hasher(
