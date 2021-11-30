@@ -944,19 +944,31 @@ enum EndorsementsCheckOutcome {
     WaitForSlot,
 }
 
+/// Possible outcome of block check
 #[derive(Debug)]
 enum BlockCheckOutcome {
+    /// Everything is ok
     Proceed {
+        /// one (parent block id, parent's period) per thread
         parents_hash_period: Vec<(BlockId, u64)>,
+        /// blocks that block depends on
         dependencies: BlockHashSet,
+        /// blocks that block is incompatible with
         incompatibilities: BlockHashSet,
+        /// number of incompatibilities that are inherited from the parents
         inherited_incompatibilities_count: usize,
+        /// changes caused by that block on the ledger
         block_ledger_changes: LedgerChanges,
+        /// changes caused by that block on rolls
         roll_updates: RollUpdates,
-        production_events: Vec<(u64, Address, bool)>, // list of (period, address, did_create) for all block/endorsement creation events
+        /// list of (period, address, did_create) for all block/endorsement creation events
+        production_events: Vec<(u64, Address, bool)>,
     },
+    /// There is something wrong with that block
     Discard(DiscardReason),
+    /// It must wait for its slot to be fully processed
     WaitForSlot,
+    /// it must wait for these block ids to be fully processed
     WaitForDependencies(BlockHashSet),
 }
 
