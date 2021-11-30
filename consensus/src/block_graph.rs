@@ -990,6 +990,7 @@ enum BlockOperationsCheckOutcome {
     WaitForDependencies(BlockHashSet),
 }
 
+/// Read the initial ledger.
 async fn read_genesis_ledger(cfg: &ConsensusConfig) -> Result<Ledger, ConsensusError> {
     // load ledger from file
     let ledger = serde_json::from_str::<LedgerSubset>(
