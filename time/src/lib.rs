@@ -97,7 +97,10 @@ impl UTime {
     /// Smallest time interval
     pub const EPSILON: UTime = UTime(1);
 
-    /// Gets current timestamp.
+    /// Gets current unix timestamp (resolution: milliseconds).
+    ///
+    /// # Parameters
+    ///   * compensation_millis: when the system clock is slightly off, this parameter allows correcting it by adding this signed number of milliseconds to the locally measured timestamp
     ///
     /// ```
     /// # use std::time::{Duration, SystemTime, UNIX_EPOCH};
