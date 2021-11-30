@@ -870,23 +870,42 @@ impl DeserializeCompact for BootstrapableGraph {
 }
 
 pub struct BlockGraph {
+    /// Consensus related config
     cfg: ConsensusConfig,
+    /// Block ids of genesis blocks
     genesis_hashes: Vec<BlockId>,
+    /// Used to limit the number of waiting and discarded blocks
     sequence_counter: u64,
+    /// Every block we know about
     block_statuses: BlockHashMap<BlockStatus>,
+    /// Ids of incomming blocks/headers
     incoming_index: BlockHashSet,
+    /// ids of waiting for slot blocks/headers
     waiting_for_slot_index: BlockHashSet,
+    /// ids of waiting for dependencies blocks/headers
     waiting_for_dependencies_index: BlockHashSet,
+    /// ids of active blocks
     active_index: BlockHashSet,
+    /// ids of discarded blocks
     discarded_index: BlockHashSet,
+    /// One (block id, period) per thread
     latest_final_blocks_periods: Vec<(BlockId, u64)>,
+    /// One (block id, period) per thread TODO not sure I understand the difference with latest_final_blocks_periods
     best_parents: Vec<(BlockId, u64)>,
+    /// Incompatibility graph: maps a block id to the block ids it is incompatible with
+    /// One entry per Active Block
     gi_head: BlockHashMap<BlockHashSet>,
+    /// All the cliques
     max_cliques: Vec<Clique>,
+    /// Blocks that need to be propagated
     to_propagate: BlockHashMap<(Block, OperationHashSet, Vec<EndorsementId>)>,
+    /// List of block ids we think are attack attempts
     attack_attempts: Vec<BlockId>,
+    /// Newly final blocks
     new_final_blocks: BlockHashSet,
-    new_stale_blocks: BlockHashMap<(PublicKey, Slot)>, // creator, slot
+    /// Newly stale block mapped to creator and slot
+    new_stale_blocks: BlockHashMap<(PublicKey, Slot)>,
+    /// ledger
     ledger: Ledger,
 }
 
