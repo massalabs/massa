@@ -33,10 +33,17 @@ pub enum ExecutionManagementCommand {}
 
 /// execution request
 enum ExecutionRequest {
-    RunFinalStep(ExecutionStep),  // Runs a final step
-    RunActiveStep(ExecutionStep), // Runs an active step
-    ResetToFinalState,            // Resets the VM to its final state
-    Stop,                         // Stops the VM thread
+    /// Runs a final step
+    RunFinalStep(ExecutionStep),
+
+    /// Runs an active step
+    RunActiveStep(ExecutionStep),
+
+    /// Resets the VM to its final state
+    ResetToFinalState,
+
+    /// Stops the VM thread
+    Stop,
 }
 
 pub struct ExecutionWorker {
