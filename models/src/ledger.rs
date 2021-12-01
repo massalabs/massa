@@ -73,7 +73,7 @@ impl LedgerData {
 pub struct LedgerChange {
     /// Amount to add or substract
     pub balance_delta: Amount,
-    /// wether to increment or decrement balance of delta
+    /// whether to increment or decrement balance of delta
     pub balance_increment: bool,
 }
 
