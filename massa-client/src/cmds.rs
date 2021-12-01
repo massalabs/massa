@@ -2,7 +2,7 @@
 
 use crate::repl::Output;
 use crate::rpc::Client;
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use console::style;
 use models::timeslots::get_current_latest_block_slot;
 use models::{
