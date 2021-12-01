@@ -17,12 +17,18 @@ use std::{
     usize,
 };
 
+/// Here we map an address to its balance.
+/// When a balance becomes final it is written on the disk.
 pub struct Ledger {
-    ledger_per_thread: Vec<Tree>, // containing (Address, LedgerData)
-    latest_final_periods: Tree,   // containing (thread_number: u8, latest_final_period: u64)
+    /// containing (Address, LedgerData), one per thread
+    ledger_per_thread: Vec<Tree>,
+    /// containing (thread_number: u8, latest_final_period: u64)
+    latest_final_periods: Tree,
+    /// consensus related config
     cfg: ConsensusConfig,
 }
 
+/// Map an address to a LedgerChange
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LedgerChanges(pub AddressHashMap<LedgerChange>);
 
@@ -139,7 +145,17 @@ impl LedgerChanges {
     }
 }
 
+/// Ledger specific method on operations
 pub trait OperationLedgerInterface {
+    /// Retrieve and aggregate ledger specific changes in the context of a block
+    ///
+    /// # Arguments
+    /// * block creator
+    /// * included endorsement producers
+    /// * creator of the endorsed block
+    /// * thread count (fixed by the config)
+    /// * roll price (fixed by the config)
+    /// * max expected number of endorsements (fixed by the config)
     fn get_ledger_changes(
         &self,
         creator: Address,
@@ -157,7 +173,7 @@ impl OperationLedgerInterface for Operation {
         creator: Address,
         endorsers: Vec<Address>,
         parent_creator: Address,
-        _thread_count: u8,
+        _thread_count: u8, // TODO: why it's here ?
         roll_price: Amount,
         endorsement_count: u32,
     ) -> Result<LedgerChanges, ConsensusError> {
@@ -484,7 +500,7 @@ impl Ledger {
     }
 
     /// Used for bootstrap.
-    // Note: this cannot be done transactionally.
+    /// Note: this cannot be done transactionally.
     pub fn read_whole(&self) -> Result<LedgerSubset, ConsensusError> {
         let mut res = LedgerSubset::default();
         for tree in self.ledger_per_thread.iter() {
