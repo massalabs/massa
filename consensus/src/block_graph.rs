@@ -51,36 +51,63 @@ impl HeaderOrBlock {
     }
 }
 
+/// Agregated changes made during a block's execution
 #[derive(Debug, Clone)]
 pub struct BlockStateAccumulator {
+    /// Addresses impacted by ledger updates
     pub loaded_ledger_addrs: AddressHashSet,
+    /// Subset of the ledger. Contains only data in the thread of the given block
     pub ledger_thread_subset: LedgerSubset,
+    /// Cummulative changes made during that block execution
     pub ledger_changes: LedgerChanges,
+    /// Addresses impacted by roll updates
     pub loaded_roll_addrs: AddressHashSet,
+    /// Current roll counts for these addresses
     pub roll_counts: RollCounts,
+    /// Roll updates that happened during that block execution
     pub roll_updates: RollUpdates,
+    /// Roll updates that happend during current cycle
     pub cycle_roll_updates: RollUpdates,
+    /// Cycle of the parent in the same thread
     pub same_thread_parent_cycle: u64,
+    /// Address of the parent in the same thread
     pub same_thread_parent_creator: Address,
+    /// Adresses of that block endorsers
     pub endorsers_addresses: Vec<Address>,
 }
 
+/// Block that was checked as final, with some useful precomputed data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActiveBlock {
+    /// The cretor's address
     pub creator_address: Address,
+    /// The block itself, as it was created
     pub block: Block,
-    pub parents: Vec<(BlockId, u64)>, // one (hash, period) per thread ( if not genesis )
-    pub children: Vec<BlockHashMap<u64>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
-    pub dependencies: BlockHashSet,       // dependencies required for validity check
+    /// one (block id, period) per thread ( if not genesis )
+    pub parents: Vec<(BlockId, u64)>,
+    /// one HashMap<Block id, period> per thread (blocks that need to be kept)
+    /// Children reference that block as a parent
+    pub children: Vec<BlockHashMap<u64>>,
+    /// dependencies required for validity check
+    pub dependencies: BlockHashSet,
+    /// Blocks id that have this block as an ancestor
     pub descendants: BlockHashSet,
+    /// ie has its fitness reached the given thresold
     pub is_final: bool,
+    /// Changes caused by this block
     pub block_ledger_changes: LedgerChanges,
-    pub operation_set: OperationHashMap<(usize, u64)>, // index in the block, end of validity period
-    pub endorsement_ids: EndorsementHashMap<u32>,      // IDs of the endorsements to index in block
+    /// index in the block, end of validity period
+    pub operation_set: OperationHashMap<(usize, u64)>,
+    /// IDs of the endorsements to index in block
+    pub endorsement_ids: EndorsementHashMap<u32>,
+    /// Maps addresses to operations id they are involved in
     pub addresses_to_operations: AddressHashMap<OperationHashSet>,
+    /// Maps addresses to endorsements id they are involved in
     pub addresses_to_endorsements: AddressHashMap<EndorsementHashSet>,
-    pub roll_updates: RollUpdates, // Address -> RollUpdate
-    pub production_events: Vec<(u64, Address, bool)>, // list of (period, address, did_create) for all block/endorsement creation events
+    /// Address -> RollUpdate
+    pub roll_updates: RollUpdates,
+    /// list of (period, address, did_create) for all block/endorsement creation events
+    pub production_events: Vec<(u64, Address, bool)>,
 }
 
 impl ActiveBlock {
@@ -90,15 +117,26 @@ impl ActiveBlock {
     }
 }
 
+/// Exportable version of ActiveBlock
+/// Fields that can be easily recomuted were left out
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportActiveBlock {
+    /// The block itself, as it was created
     pub block: Block,
-    pub parents: Vec<(BlockId, u64)>, // one (hash, period) per thread ( if not genesis )
-    pub children: Vec<BlockHashMap<u64>>, // one HashMap<hash, period> per thread (blocks that need to be kept)
-    pub dependencies: BlockHashSet,       // dependencies required for validity check
+    /// one (block id, period) per thread ( if not genesis )
+    pub parents: Vec<(BlockId, u64)>,
+    /// one HashMap<Block id, period> per thread (blocks that need to be kept)
+    /// Children reference that block as a parent
+    pub children: Vec<BlockHashMap<u64>>,
+    /// dependencies required for validity check
+    pub dependencies: BlockHashSet,
+    /// ie has its fitness reached the given thresold
     pub is_final: bool,
+    /// Changes caused by this block
     pub block_ledger_changes: LedgerChanges,
+    /// Address -> RollUpdate
     pub roll_updates: RollUpdates,
+    /// list of (period, address, did_create) for all block/endorsement creation events
     pub production_events: Vec<(u64, Address, bool)>,
 }
 
@@ -441,19 +479,33 @@ pub enum DiscardReason {
     Final,
 }
 
+/// Enum used in blockgraph's state machine
 #[derive(Debug, Clone)]
 enum BlockStatus {
+    /// The block/header has reached consensus but no consensus-level check has been performed.
+    /// It will be processed during the next iteration
     Incoming(HeaderOrBlock),
+    /// The block/header's slot is too much in the future.
+    /// It will be processed at the block/header slot
     WaitingForSlot(HeaderOrBlock),
+    /// The block references an unknown Block id
     WaitingForDependencies {
+        /// Given header/block
         header_or_block: HeaderOrBlock,
-        unsatisfied_dependencies: BlockHashSet, // includes self if it's only a header
+        /// includes self if it's only a header
+        unsatisfied_dependencies: BlockHashSet,
+        /// Used to limit and sort the number of blocks/headers wainting for dependencies
         sequence_number: u64,
     },
+    /// The block was checked and incluced in the blockgraph
     Active(Box<ActiveBlock>),
+    /// The block was discarded and is kept to avoid reprocessing it
     Discarded {
+        /// Just the header of that block
         header: BlockHeader,
+        /// why it was discarded
         reason: DiscardReason,
+        /// Used to limit and sort the number of blocks/headers wainting for dependencies
         sequence_number: u64,
     },
 }
@@ -818,75 +870,127 @@ impl DeserializeCompact for BootstrapableGraph {
 }
 
 pub struct BlockGraph {
+    /// Consensus related config
     cfg: ConsensusConfig,
+    /// Block ids of genesis blocks
     genesis_hashes: Vec<BlockId>,
+    /// Used to limit the number of waiting and discarded blocks
     sequence_counter: u64,
+    /// Every block we know about
     block_statuses: BlockHashMap<BlockStatus>,
+    /// Ids of incomming blocks/headers
     incoming_index: BlockHashSet,
+    /// ids of waiting for slot blocks/headers
     waiting_for_slot_index: BlockHashSet,
+    /// ids of waiting for dependencies blocks/headers
     waiting_for_dependencies_index: BlockHashSet,
+    /// ids of active blocks
     active_index: BlockHashSet,
+    /// ids of discarded blocks
     discarded_index: BlockHashSet,
+    /// One (block id, period) per thread
     latest_final_blocks_periods: Vec<(BlockId, u64)>,
+    /// One (block id, period) per thread TODO not sure I understand the difference with latest_final_blocks_periods
     best_parents: Vec<(BlockId, u64)>,
+    /// Incompatibility graph: maps a block id to the block ids it is incompatible with
+    /// One entry per Active Block
     gi_head: BlockHashMap<BlockHashSet>,
+    /// All the cliques
     max_cliques: Vec<Clique>,
+    /// Blocks that need to be propagated
     to_propagate: BlockHashMap<(Block, OperationHashSet, Vec<EndorsementId>)>,
+    /// List of block ids we think are attack attempts
     attack_attempts: Vec<BlockId>,
+    /// Newly final blocks
     new_final_blocks: BlockHashSet,
-    new_stale_blocks: BlockHashMap<(PublicKey, Slot)>, // creator, slot
+    /// Newly stale block mapped to creator and slot
+    new_stale_blocks: BlockHashMap<(PublicKey, Slot)>,
+    /// ledger
     ledger: Ledger,
 }
 
+/// Possible output of a header check
 #[derive(Debug)]
 enum HeaderCheckOutcome {
+    /// it's ok and here are some useful values
     Proceed {
+        /// one (parent block id, parent's period) per thread
         parents_hash_period: Vec<(BlockId, u64)>,
+        /// blocks that header depends on
         dependencies: BlockHashSet,
+        /// blocks that header is incompatible with
         incompatibilities: BlockHashSet,
+        /// number of incompatibilities that are inherited from the parents
         inherited_incompatibilities_count: usize,
-        production_events: Vec<(u64, Address, bool)>, // list of (period, address, did_create) for all block/endorsement creation events
+        /// list of (period, address, did_create) for all block/endorsement creation events
+        production_events: Vec<(u64, Address, bool)>,
     },
+    /// there is something wrong with that header
     Discard(DiscardReason),
+    /// it must wait for its slot to be fully processed
     WaitForSlot,
+    /// it must wait for these block ids to be fully processed
     WaitForDependencies(BlockHashSet),
 }
 
 /// Possible outcomes of endorsements check
 #[derive(Debug)]
 enum EndorsementsCheckOutcome {
+    /// Everything is ok
     Proceed,
+    /// There is something wrong with that endorsement
     Discard(DiscardReason),
+    /// It must wait for its slot to be fully processed
     WaitForSlot,
 }
 
+/// Possible outcome of block check
 #[derive(Debug)]
 enum BlockCheckOutcome {
+    /// Everything is ok
     Proceed {
+        /// one (parent block id, parent's period) per thread
         parents_hash_period: Vec<(BlockId, u64)>,
+        /// blocks that block depends on
         dependencies: BlockHashSet,
+        /// blocks that block is incompatible with
         incompatibilities: BlockHashSet,
+        /// number of incompatibilities that are inherited from the parents
         inherited_incompatibilities_count: usize,
+        /// changes caused by that block on the ledger
         block_ledger_changes: LedgerChanges,
+        /// changes caused by that block on rolls
         roll_updates: RollUpdates,
-        production_events: Vec<(u64, Address, bool)>, // list of (period, address, did_create) for all block/endorsement creation events
+        /// list of (period, address, did_create) for all block/endorsement creation events
+        production_events: Vec<(u64, Address, bool)>,
     },
+    /// There is something wrong with that block
     Discard(DiscardReason),
+    /// It must wait for its slot to be fully processed
     WaitForSlot,
+    /// it must wait for these block ids to be fully processed
     WaitForDependencies(BlockHashSet),
 }
 
+/// Possible outcome of a block's operations check.
 #[derive(Debug)]
 enum BlockOperationsCheckOutcome {
+    /// Everything is ok
     Proceed {
+        /// blocks that block depends on
         dependencies: BlockHashSet,
+        /// changes caused by that block on the ledger
         block_ledger_changes: LedgerChanges,
+        /// changes caused by that block on rolls
         roll_updates: RollUpdates,
     },
+    /// There is something wrong with that batch of operation
     Discard(DiscardReason),
+    /// it must wait for these block ids to be fully processed
     WaitForDependencies(BlockHashSet),
 }
 
+/// Read the initial ledger.
 async fn read_genesis_ledger(cfg: &ConsensusConfig) -> Result<Ledger, ConsensusError> {
     // load ledger from file
     let ledger = serde_json::from_str::<LedgerSubset>(
@@ -1095,6 +1199,13 @@ impl BlockGraph {
         })
     }
 
+    /// Try to apply an operation in the contexxt of the block
+    ///
+    /// # Arguments
+    /// * state_accu: where the changes are accumulated while we go through the block
+    /// * header: the header of the block we are inside
+    /// * operation: the operation that we are trying to apply
+    /// * pos: proof of stake engine (used for roll related operations)
     pub fn block_state_try_apply_op(
         &self,
         state_accu: &mut BlockStateAccumulator,
@@ -1127,7 +1238,13 @@ impl BlockGraph {
         Ok(())
     }
 
-    // loads missing block state rolls if available
+    /// loads missing block state rolls if available
+    ///
+    /// # Arguments
+    /// * accu: accumulated block changes
+    /// * header: block header
+    /// * pos: proof of state engine
+    /// * involved_addrs: involved addresses
     pub fn block_state_sync_rolls(
         &self,
         accu: &mut BlockStateAccumulator,
@@ -1494,9 +1611,9 @@ impl BlockGraph {
             .collect()
     }
 
-    ///for algo see pos.md
-    // if addrs_opt is Some(addrs), restrict to addrs. If None, return all addresses.
-    // returns (roll_counts, cycle_roll_updates)
+    /// for algo see pos.md
+    /// if addrs_opt is Some(addrs), restrict to addrs. If None, return all addresses.
+    /// returns (roll_counts, cycle_roll_updates)
     pub fn get_roll_data_at_parent(
         &self,
         block_id: BlockId,
@@ -1737,7 +1854,7 @@ impl BlockGraph {
         res
     }
 
-    // signal new slot
+    /// signal new slot
     pub fn slot_tick(
         &mut self,
         pos: &mut ProofOfStake,
@@ -1894,7 +2011,7 @@ impl BlockGraph {
         res
     }
 
-    // acknowledge a set of items recursively
+    /// acknowledge a set of items recursively
     fn rec_process(
         &mut self,
         mut to_ack: BTreeSet<(Slot, BlockId)>,
@@ -1908,7 +2025,7 @@ impl BlockGraph {
         Ok(())
     }
 
-    // ack a single item, return a set of items to re-ack
+    /// ack a single item, return a set of items to re-ack
     ///
     /// Checks performed:
     /// - See `check_header` for checks on incoming headers.
@@ -3734,7 +3851,7 @@ impl BlockGraph {
         Ok(retain_active)
     }
 
-    // prune active blocks and return final blocks, return discarded final blocks
+    /// prune active blocks and return final blocks, return discarded final blocks
     fn prune_active(&mut self) -> Result<BlockHashMap<ActiveBlock>, ConsensusError> {
         // list required active blocks
         let mut retain_active = self.list_required_active_blocks()?;
@@ -4038,7 +4155,7 @@ impl BlockGraph {
         Ok(())
     }
 
-    // prune and return final blocks, return discarded final blocks
+    /// prune and return final blocks, return discarded final blocks
     pub fn prune(&mut self) -> Result<BlockHashMap<ActiveBlock>, ConsensusError> {
         let before = self.max_cliques.len();
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
@@ -4064,7 +4181,7 @@ impl BlockGraph {
         Ok(discarded_finals)
     }
 
-    // get the current block wishlist
+    /// get the current block wishlist
     pub fn get_block_wishlist(&self) -> Result<BlockHashSet, ConsensusError> {
         let mut wishlist = BlockHashSet::default();
         for block_id in self.waiting_for_dependencies_index.iter() {
@@ -4102,28 +4219,28 @@ impl BlockGraph {
             .map_or_else(BlockHashSet::default, |(_, v)| v.block_ids.clone())
     }
 
-    // Get the headers to be propagated.
-    // Must be called by the consensus worker within `block_db_changed`.
+    /// Get the headers to be propagated.
+    /// Must be called by the consensus worker within `block_db_changed`.
     pub fn get_blocks_to_propagate(
         &mut self,
     ) -> BlockHashMap<(Block, OperationHashSet, Vec<EndorsementId>)> {
         mem::take(&mut self.to_propagate)
     }
 
-    // Get the hashes of objects that were attack attempts.
-    // Must be called by the consensus worker within `block_db_changed`.
+    /// Get the hashes of objects that were attack attempts.
+    /// Must be called by the consensus worker within `block_db_changed`.
     pub fn get_attack_attempts(&mut self) -> Vec<BlockId> {
         mem::take(&mut self.attack_attempts)
     }
 
-    // Get the ids of blocks that became final.
-    // Must be called by the consensus worker within `block_db_changed`.
+    /// Get the ids of blocks that became final.
+    /// Must be called by the consensus worker within `block_db_changed`.
     pub fn get_new_final_blocks(&mut self) -> BlockHashSet {
         mem::take(&mut self.new_final_blocks)
     }
 
-    // Get the ids of blocks that became stale.
-    // Must be called by the consensus worker within `block_db_changed`.
+    /// Get the ids of blocks that became stale.
+    /// Must be called by the consensus worker within `block_db_changed`.
     pub fn get_new_stale_blocks(&mut self) -> BlockHashMap<(PublicKey, Slot)> {
         mem::take(&mut self.new_stale_blocks)
     }
