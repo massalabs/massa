@@ -88,7 +88,7 @@ pub struct ActiveBlock {
     /// one HashMap<Block id, period> per thread (blocks that need to be kept)
     /// Children reference that block as a parent
     pub children: Vec<BlockHashMap<u64>>,
-    /// dependencies required for validity check (TODO: not sure if it's used)
+    /// dependencies required for validity check
     pub dependencies: BlockHashSet,
     /// Blocks id that have this block as an ancestor
     pub descendants: BlockHashSet,
@@ -128,7 +128,7 @@ pub struct ExportActiveBlock {
     /// one HashMap<Block id, period> per thread (blocks that need to be kept)
     /// Children reference that block as a parent
     pub children: Vec<BlockHashMap<u64>>,
-    /// dependencies required for validity check (TODO: not sure if it's used)
+    /// dependencies required for validity check
     pub dependencies: BlockHashSet,
     /// ie has its fitness reached the given thresold
     pub is_final: bool,
