@@ -755,6 +755,22 @@
 <span id="754">754</span>
 <span id="755">755</span>
 <span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::InternalError</span>;
@@ -774,12 +790,18 @@
     <span class="ident">usize</span>,
 };
 
+<span class="doccomment">/// Here we map an address to its balance.</span>
+<span class="doccomment">/// When a balance becomes final it is written on the disk.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Ledger</span> {
-    <span class="ident">ledger_per_thread</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Tree</span><span class="op">&gt;</span>, <span class="comment">// containing (Address, LedgerData)</span>
-    <span class="ident">latest_final_periods</span>: <span class="ident">Tree</span>,   <span class="comment">// containing (thread_number: u8, latest_final_period: u64)</span>
+    <span class="doccomment">/// containing (Address, LedgerData), one per thread</span>
+    <span class="ident">ledger_per_thread</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Tree</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// containing (thread_number: u8, latest_final_period: u64)</span>
+    <span class="ident">latest_final_periods</span>: <span class="ident">Tree</span>,
+    <span class="doccomment">/// consensus related config</span>
     <span class="ident">cfg</span>: <span class="ident">ConsensusConfig</span>,
 }
 
+<span class="doccomment">/// Map an address to a LedgerChange</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerChanges</span>(<span class="kw">pub</span> <span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">LedgerChange</span><span class="op">&gt;</span>);
 
@@ -896,7 +918,17 @@
     }
 }
 
+<span class="doccomment">/// Ledger specific method on operations</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">OperationLedgerInterface</span> {
+    <span class="doccomment">/// Retrieve and aggregate ledger specific changes in the context of a block</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Arguments</span>
+    <span class="doccomment">/// * block creator</span>
+    <span class="doccomment">/// * included endorsement producers</span>
+    <span class="doccomment">/// * creator of the endorsed block</span>
+    <span class="doccomment">/// * thread count (fixed by the config)</span>
+    <span class="doccomment">/// * roll price (fixed by the config)</span>
+    <span class="doccomment">/// * max expected number of endorsements (fixed by the config)</span>
     <span class="kw">fn</span> <span class="ident">get_ledger_changes</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">creator</span>: <span class="ident">Address</span>,
@@ -914,7 +946,7 @@
         <span class="ident">creator</span>: <span class="ident">Address</span>,
         <span class="ident">endorsers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
         <span class="ident">parent_creator</span>: <span class="ident">Address</span>,
-        <span class="ident">_thread_count</span>: <span class="ident">u8</span>,
+        <span class="ident">_thread_count</span>: <span class="ident">u8</span>, <span class="comment">// TODO: why it&#39;s here ?</span>
         <span class="ident">roll_price</span>: <span class="ident">Amount</span>,
         <span class="ident">endorsement_count</span>: <span class="ident">u32</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LedgerChanges</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
@@ -1241,7 +1273,7 @@
     }
 
     <span class="doccomment">/// Used for bootstrap.</span>
-    <span class="comment">// Note: this cannot be done transactionally.</span>
+    <span class="doccomment">/// Note: this cannot be done transactionally.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read_whole</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LedgerSubset</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">LedgerSubset::default</span>();
         <span class="kw">for</span> <span class="ident">tree</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">ledger_per_thread</span>.<span class="ident">iter</span>() {

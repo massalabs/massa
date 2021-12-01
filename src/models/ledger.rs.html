@@ -154,6 +154,9 @@
 <span id="153">153</span>
 <span id="154">154</span>
 <span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">u8_from_slice</span>, <span class="ident">Amount</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">ModelsError</span>, <span class="ident">SerializeCompact</span>};
@@ -224,10 +227,13 @@
     }
 }
 
+<span class="doccomment">/// A balance change that can be applied to an address</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerChange</span> {
+    <span class="doccomment">/// Amount to add or substract</span>
     <span class="kw">pub</span> <span class="ident">balance_delta</span>: <span class="ident">Amount</span>,
-    <span class="kw">pub</span> <span class="ident">balance_increment</span>: <span class="ident">bool</span>, <span class="comment">// wether to increment or decrement balance of delta</span>
+    <span class="doccomment">/// whether to increment or decrement balance of delta</span>
+    <span class="kw">pub</span> <span class="ident">balance_increment</span>: <span class="ident">bool</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">LedgerChange</span> {
