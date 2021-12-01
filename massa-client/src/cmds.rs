@@ -473,6 +473,19 @@ impl Command {
                 let roll_count = parameters[1].parse::<u64>()?;
                 let fee = parameters[2].parse::<Amount>()?;
 
+                if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
+                    match addresses_info.get(0) {
+                        Some(info) => {
+                            if info.ledger_info.candidate_ledger_info.balance < fee
+                                || roll_count > info.rolls.candidate_rolls
+                            {
+                                println!("WARNING: this operation may be rejected due to insuffisant balance or roll count");
+                            }
+                        }
+                        None => println!("WARNING: address {} not found", addr),
+                    }
+                }
+
                 send_operation(
                     client,
                     wallet,
