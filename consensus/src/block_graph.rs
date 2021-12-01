@@ -1901,7 +1901,7 @@ impl BlockGraph {
             return Ok(());
         }
 
-        info!(
+        debug!(
             "received header {} for slot {}",
             block_id, header.content.slot
         );
@@ -1953,7 +1953,7 @@ impl BlockGraph {
         if self.genesis_hashes.contains(&block_id) {
             return Ok(());
         }
-        info!(
+        debug!(
             "received block {} for slot {}",
             block_id, block.header.content.slot
         );
