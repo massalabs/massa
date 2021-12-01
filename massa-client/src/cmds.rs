@@ -528,14 +528,14 @@ impl Command {
                 .await
             }
             Command::when_episode_ends => {
-                if let (Some(end), version) = match client.public.get_status().await {
-                    Ok(node_status) => (node_status.algo_config.end_timestamp, node_status.version),
+                if let Some(end) = match client.public.get_status().await {
+                    Ok(node_status) => node_status.algo_config.end_timestamp,
                     Err(e) => bail!("RpcError: {}", e),
                 } {
                     let (days, hours, mins, secs) =
                         end.saturating_sub(UTime::now(0)?).days_hours_mins_secs()?; // compensation millis is zero
                     let mut res = "".to_string();
-                    res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of episode {}", days, hours, mins, secs, version.major));
+                    res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs));
                     if !json {
                         println!("{}", res);
                     }
