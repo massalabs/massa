@@ -303,7 +303,7 @@ impl SCELedgerStep {
                 Some(SCELedgerChange::Update(update)) => {
                     match update.update_data.get(key) {
                         None => {}                 // no updates
-                        Some(None) => return None, // data entrt deleted,
+                        Some(None) => return None, // data entry deleted,
                         Some(Some(updated_data)) => return Some(updated_data.clone()),
                     }
                 }
