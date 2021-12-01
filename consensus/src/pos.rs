@@ -70,7 +70,7 @@ impl DeserializeCompact for RollUpdate {
 }
 
 impl RollUpdate {
-    // chain two roll updates, compensate and return compensation count
+    /// chain two roll updates, compensate and return compensation count
     fn chain(&mut self, change: &Self) -> Result<RollCompensation, ConsensusError> {
         let compensation_other = std::cmp::min(change.roll_purchases, change.roll_sales);
         self.roll_purchases = self
@@ -94,7 +94,7 @@ impl RollUpdate {
         Ok(RollCompensation(compensation_total))
     }
 
-    // compensate a roll update, return compensation count
+    /// compensate a roll update, return compensation count
     pub fn compensate(&mut self) -> RollCompensation {
         let compensation = std::cmp::min(self.roll_purchases, self.roll_sales);
         self.roll_purchases -= compensation;
@@ -115,7 +115,7 @@ impl RollUpdates {
         self.0.keys().copied().collect()
     }
 
-    // chains with another RollUpdates, compensates and returns compensations
+    /// chains with another RollUpdates, compensates and returns compensations
     pub fn chain(
         &mut self,
         updates: &RollUpdates,
@@ -133,7 +133,7 @@ impl RollUpdates {
         Ok(res)
     }
 
-    // applyes a RollUpdate, compensates and returns compensation
+    /// applies a RollUpdate, compensates and returns compensation
     pub fn apply(
         &mut self,
         addr: &Address,
@@ -153,6 +153,7 @@ impl RollUpdates {
         }
     }
 
+    /// get the roll update for a subset of addresses
     pub fn clone_subset(&self, addrs: &AddressHashSet) -> Self {
         Self(
             addrs
@@ -187,7 +188,7 @@ impl RollCounts {
         self.0.len()
     }
 
-    // applies RollUpdates to self with compensations
+    /// applies RollUpdates to self with compensations
     pub fn apply_updates(&mut self, updates: &RollUpdates) -> Result<(), ConsensusError> {
         for (addr, update) in updates.0.iter() {
             match self.0.entry(*addr) {
@@ -228,6 +229,7 @@ impl RollCounts {
         Ok(())
     }
 
+    /// get roll counts for a subset of addresses.
     pub fn clone_subset(&self, addrs: &AddressHashSet) -> Self {
         Self(
             addrs
@@ -250,7 +252,9 @@ impl RollCounts {
     }
 }
 
+/// Roll specific method on operation
 pub trait OperationRollInterface {
+    /// get roll related modifications
     fn get_roll_updates(&self) -> Result<RollUpdates, ConsensusError>;
 }
 
@@ -315,11 +319,11 @@ pub struct ProofOfStake {
     draw_cache_counter: usize,
     /// Initial rolls: we keep them as long as negative cycle draws are needed
     initial_rolls: Option<Vec<RollCounts>>,
-    // Initial seeds: they are lightweight, we always keep them
-    // the seed for cycle -N is obtained by hashing N times the value ConsensusConfig.initial_draw_seed
-    // the seeds are indexed from -1 to -N
+    /// Initial seeds: they are lightweight, we always keep them
+    /// the seed for cycle -N is obtained by hashing N times the value ConsensusConfig.initial_draw_seed
+    /// the seeds are indexed from -1 to -N
     initial_seeds: Vec<Vec<u8>>,
-    // watched addresses
+    /// watched addresses
     watched_addresses: AddressHashSet,
 }
 
