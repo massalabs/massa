@@ -702,7 +702,7 @@
                                 <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedEndorsements</span>(<span class="ident">endorsements</span>))).<span class="kw">await</span>;
                             }
                             <span class="kw">_</span> =&gt; {
-                                <span class="comment">// TODO: Write a more user-friendly warning/logout after several consecutive fails?</span>
+                                <span class="comment">// TODO: Write a more user-friendly warning/logout after several consecutive fails? see #1082</span>
                                 <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.self.socket_reader.next(). Unexpected message Warning&quot;</span>, {});
                             },
                         }
@@ -828,5 +828,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (207c80f10 2021-11-30)" ></div>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (48a5999fc 2021-12-01)" ></div>
 </body></html>

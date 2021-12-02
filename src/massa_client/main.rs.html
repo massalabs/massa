@@ -176,7 +176,7 @@
 <span class="attribute">#[<span class="ident">paw::main</span>]</span>
 <span class="attribute">#[<span class="ident">tokio::main</span>]</span>
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>(<span class="ident">args</span>: <span class="ident">Args</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-    <span class="comment">// TODO: Move settings loading in another crate</span>
+    <span class="comment">// TODO: move settings loading in another crate ... see #1277</span>
     <span class="kw">let</span> <span class="ident">settings</span> <span class="op">=</span> <span class="ident">SETTINGS</span>.<span class="ident">clone</span>();
     <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">args</span>.<span class="ident">ip</span> {
         <span class="prelude-val">Some</span>(<span class="ident">ip</span>) =&gt; <span class="ident">ip</span>,
@@ -228,5 +228,5 @@
     <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (207c80f10 2021-11-30)" ></div>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (48a5999fc 2021-12-01)" ></div>
 </body></html>

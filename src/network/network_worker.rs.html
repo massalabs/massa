@@ -2040,9 +2040,9 @@
             <span class="ident">NetworkCommand::GetStats</span> { <span class="ident">response_tx</span> } =&gt; {
                 <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">NetworkStats</span> {
                     <span class="ident">in_connection_count</span>: <span class="self">self</span>.<span class="ident">peer_info_db</span>.<span class="ident">active_in_nonbootstrap_connections</span>
-                        <span class="kw">as</span> <span class="ident">u64</span>, <span class="comment">// TODO: add bootstrap connections</span>
+                        <span class="kw">as</span> <span class="ident">u64</span>, <span class="comment">// TODO: add bootstrap connections ... see #1312</span>
                     <span class="ident">out_connection_count</span>: <span class="self">self</span>.<span class="ident">peer_info_db</span>.<span class="ident">active_out_nonbootstrap_connections</span>
-                        <span class="kw">as</span> <span class="ident">u64</span>, <span class="comment">// TODO: add bootstrap connections</span>
+                        <span class="kw">as</span> <span class="ident">u64</span>, <span class="comment">// TODO: add bootstrap connections ... see #1312</span>
                     <span class="ident">known_peer_count</span>: <span class="self">self</span>.<span class="ident">peer_info_db</span>.<span class="ident">peers</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>,
                     <span class="ident">banned_peer_count</span>: <span class="self">self</span>
                         .<span class="ident">peer_info_db</span>
@@ -2288,5 +2288,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (207c80f10 2021-11-30)" ></div>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (48a5999fc 2021-12-01)" ></div>
 </body></html>

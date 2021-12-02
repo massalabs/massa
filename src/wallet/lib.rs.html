@@ -287,8 +287,8 @@
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">Wallet</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
         <span class="macro">writeln!</span>(<span class="ident">f</span>)<span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">key</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">keys</span> {
-            <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="ident">key</span>.<span class="number">1</span> .<span class="number">1</span>; <span class="comment">// TODO: ugly ...</span>
+        <span class="kw">for</span> <span class="ident">k</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">keys</span> {
+            <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="ident">k</span>.<span class="number">1</span> .<span class="number">1</span>; <span class="comment">// TODO: why not taking other fields of this struct?</span>
             <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">private_key</span>);
             <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">public_key</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">std::fmt::Error</span>)<span class="question-mark">?</span>;
             <span class="macro">writeln!</span>(<span class="ident">f</span>)<span class="question-mark">?</span>;
@@ -312,5 +312,5 @@
     <span class="kw">pub</span> <span class="ident">roll_price</span>: <span class="ident">Amount</span>,
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wallet" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (207c80f10 2021-11-30)" ></div>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wallet" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (48a5999fc 2021-12-01)" ></div>
 </body></html>

@@ -5427,7 +5427,7 @@
 
         <span class="comment">// block_ledger_changes</span>
         <span class="kw">let</span> (<span class="ident">block_ledger_change_count</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="comment">// TODO: count check</span>
+        <span class="comment">// TODO: count check ... see #1200</span>
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_ledger_changes</span> <span class="op">=</span> <span class="ident">LedgerChanges</span>(<span class="ident">AddressHashMap::with_capacity_and_hasher</span>(
             <span class="ident">block_ledger_change_count</span> <span class="kw">as</span> <span class="ident">usize</span>,
@@ -5463,7 +5463,7 @@
 
         <span class="comment">// production_events</span>
         <span class="kw">let</span> (<span class="ident">production_events_count</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-        <span class="comment">// TODO: count check</span>
+        <span class="comment">// TODO: count check ... see #1200</span>
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">production_events</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">Address</span>, <span class="ident">bool</span>)<span class="op">&gt;</span> <span class="op">=</span>
             <span class="ident">Vec::with_capacity</span>(<span class="ident">production_events_count</span> <span class="kw">as</span> <span class="ident">usize</span>);
@@ -10062,5 +10062,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (207c80f10 2021-11-30)" ></div>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (48a5999fc 2021-12-01)" ></div>
 </body></html>
