@@ -19,6 +19,7 @@ use network::{start_network_controller, Establisher, NetworkCommandSender, Netwo
 use pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use protocol_exports::ProtocolManager;
 use protocol_worker::start_protocol_controller;
+use std::process;
 use time::UTime;
 use tokio::signal;
 use tokio::sync::mpsc;
@@ -67,15 +68,25 @@ async fn launch() -> (
         max_block_endorsments: SETTINGS.consensus.endorsement_count,
     });
 
-    let (boot_pos, boot_graph, clock_compensation, initial_peers) = get_state(
-        &SETTINGS.bootstrap,
-        bootstrap::establisher::Establisher::new(),
-        SETTINGS.version,
-        SETTINGS.consensus.genesis_timestamp,
-        SETTINGS.consensus.end_timestamp,
-    )
-    .await
-    .unwrap();
+    // interrupt signal listener
+    let stop_signal = signal::ctrl_c();
+    tokio::pin!(stop_signal);
+    let (boot_pos, boot_graph, clock_compensation, initial_peers) = tokio::select! {
+        _ = &mut stop_signal => {
+            info!("interrupt signal received in bootstrap loop");
+            process::exit(0);
+        },
+        res = get_state(
+            &SETTINGS.bootstrap,
+            bootstrap::establisher::Establisher::new(),
+            SETTINGS.version,
+            SETTINGS.consensus.genesis_timestamp,
+            SETTINGS.consensus.end_timestamp,
+        ) => match res {
+            Ok(vals) => vals,
+            Err(err) => panic!("critical error detected in the bootstrap process: {}", err)
+        }
+    };
 
     // launch network controller
     let (network_command_sender, network_event_receiver, network_manager, private_key, node_id) =

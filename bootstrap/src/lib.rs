@@ -29,6 +29,8 @@ mod messages;
 mod server_binder;
 pub mod settings;
 
+/// Gets the state from a bootstrap server (internal private function)
+/// needs to be CANCELLABLE
 async fn get_state_internal(
     cfg: &BootstrapSettings, // TODO: should be a &'static ... see #1848
     bootstrap_addr: &SocketAddr,
@@ -40,12 +42,13 @@ async fn get_state_internal(
     info!("Start bootstrapping from {}", bootstrap_addr);
 
     // connect
-    let mut connector = establisher.get_connector(cfg.connect_timeout).await?;
-    let socket = connector.connect(*bootstrap_addr).await?;
+    let mut connector = establisher.get_connector(cfg.connect_timeout).await?; // cancellable
+    let socket = connector.connect(*bootstrap_addr).await?; // cancellable
     let mut client = BootstrapClientBinder::new(socket, *bootstrap_public_key);
 
     // handshake
     let send_time_uncompensated = UTime::now(0)?;
+    // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     match tokio::time::timeout(cfg.write_timeout.into(), client.handshake()).await {
         Err(_) => {
             return Err(std::io::Error::new(
@@ -59,6 +62,7 @@ async fn get_state_internal(
     }
 
     // First, clock and version.
+    // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     let server_time = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
         Err(_) => {
             return Err(std::io::Error::new(
@@ -114,6 +118,7 @@ async fn get_state_internal(
     };
 
     // Second, get peers
+    // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     let peers = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
         Err(_) => {
             return Err(std::io::Error::new(
@@ -128,6 +133,7 @@ async fn get_state_internal(
     };
 
     // Third, handle state message.
+    // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     let (pos, graph) = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
         Err(_) => {
             return Err(std::io::Error::new(
@@ -146,6 +152,8 @@ async fn get_state_internal(
     Ok((pos, graph, compensation_millis, peers))
 }
 
+/// Gets the state from a bootstrap server
+/// needs to be CANCELLABLE
 pub async fn get_state(
     bootstrap_settings: &'static BootstrapSettings,
     mut establisher: Establisher,
@@ -185,7 +193,7 @@ pub async fn get_state(
                 }
             }
             match get_state_internal(bootstrap_settings, addr, pub_key, &mut establisher, version)
-                .await
+                .await  // cancellable
             {
                 Err(e) => {
                     warn!("error while bootstrapping: {}", e);
