@@ -4,7 +4,7 @@ use std::fs;
 use time::UTime;
 use toml_edit::{value, Document};
 
-// TODO: move me in massa-node tests to fix #361
+// TODO: move me in massa-node tests to fix ... see #1269
 fn _update_genesis_timestamp() {
     let toml = fs::read_to_string("base_config/config.toml").expect("Unable to read file");
     let mut doc = toml.parse::<Document>().unwrap();

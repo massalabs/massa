@@ -61,7 +61,7 @@ struct JsonError {
 #[paw::main]
 #[tokio::main]
 async fn main(args: Args) -> Result<()> {
-    // TODO: Move settings loading in another crate
+    // TODO: move settings loading in another crate ... see #1277
     let settings = SETTINGS.clone();
     let address = match args.ip {
         Some(ip) => ip,

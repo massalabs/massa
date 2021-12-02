@@ -178,5 +178,5 @@ fn wrong_api<T>() -> BoxFuture<Result<T, ApiError>> {
 }
 
 fn _jsonrpc_assert(_method: &str, _request: Value, _response: Value) {
-    // TODO: jsonrpc_client_transports::RawClient::call_method
+    // TODO: jsonrpc_client_transports::RawClient::call_method ... see #1182
 }

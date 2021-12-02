@@ -30,7 +30,7 @@ mod server_binder;
 pub mod settings;
 
 async fn get_state_internal(
-    cfg: &BootstrapSettings, // TODO: should be a &'static
+    cfg: &BootstrapSettings, // TODO: should be a &'static ... see #1848
     bootstrap_addr: &SocketAddr,
     bootstrap_public_key: &PublicKey,
     establisher: &mut Establisher,

@@ -130,8 +130,8 @@ impl Wallet {
 impl std::fmt::Display for Wallet {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         writeln!(f)?;
-        for key in &self.keys {
-            let private_key = key.1 .1; // TODO: ugly ...
+        for k in &self.keys {
+            let private_key = k.1 .1; // TODO: why not taking other fields of this struct?
             let public_key = derive_public_key(&private_key);
             let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
             writeln!(f)?;

@@ -172,7 +172,6 @@ async fn test_roll() {
             parents[1] = id_1t1;
 
             // cycle 1
-            // todo check draws
 
             let (id_2, block2, _) = create_block_with_operations(
                 &cfg,
