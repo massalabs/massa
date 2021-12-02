@@ -88,16 +88,6 @@ async fn launch() -> (
         }
     };
 
-    let (boot_pos, boot_graph, clock_compensation, initial_peers) = get_state(
-        &SETTINGS.bootstrap,
-        bootstrap::establisher::Establisher::new(),
-        SETTINGS.version,
-        SETTINGS.consensus.genesis_timestamp,
-        SETTINGS.consensus.end_timestamp,
-    )
-    .await
-    .unwrap();
-
     // launch network controller
     let (network_command_sender, network_event_receiver, network_manager, private_key, node_id) =
         start_network_controller(
