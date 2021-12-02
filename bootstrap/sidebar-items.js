@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["get_state",""],["start_bootstrap_server",""]],"mod":[["establisher",""],["settings",""]],"struct":[["BootstrapManager",""]]});
+initSidebarItems({"fn":[["get_state","Gets the state from a bootstrap server needs to be CANCELLABLE"],["start_bootstrap_server",""]],"mod":[["establisher",""],["settings",""]],"struct":[["BootstrapManager",""]]});
