@@ -469,6 +469,30 @@ impl Command {
                 let roll_count = parameters[1].parse::<u64>()?;
                 let fee = parameters[2].parse::<Amount>()?;
 
+                let roll_price = match client.public.get_status().await {
+                    Err(e) => bail!("RpcError: {}", e),
+                    Ok(status) => status.algo_config.roll_price,
+                };
+                match roll_price
+                    .checked_mul_u64(roll_count)
+                    .and_then(|x| x.checked_add(fee))
+                {
+                    Some(total) => {
+                        if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
+                            match addresses_info.get(0) {
+                                Some(info) => {
+                                    if info.ledger_info.candidate_ledger_info.balance < total {
+                                        println!("WARNING: this operation may be rejected due to insuffisant balance");
+                                    }
+                                }
+                                None => println!("WARNING: address {} not found", addr),
+                            }
+                        }
+                    }
+                    None => {
+                        println!("WARNING: The total amount hit the limit overflow, operation will certainly be rejected");
+                    }
+                }
                 send_operation(
                     client,
                     wallet,
@@ -487,6 +511,19 @@ impl Command {
                 let addr = parameters[0].parse::<Address>()?;
                 let roll_count = parameters[1].parse::<u64>()?;
                 let fee = parameters[2].parse::<Amount>()?;
+
+                if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
+                    match addresses_info.get(0) {
+                        Some(info) => {
+                            if info.ledger_info.candidate_ledger_info.balance < fee
+                                || roll_count > info.rolls.candidate_rolls
+                            {
+                                println!("WARNING: this operation may be rejected due to insuffisant balance or roll count");
+                            }
+                        }
+                        None => println!("WARNING: address {} not found", addr),
+                    }
+                }
 
                 send_operation(
                     client,
@@ -507,6 +544,24 @@ impl Command {
                 let recipient_address = parameters[1].parse::<Address>()?;
                 let amount = parameters[2].parse::<Amount>()?;
                 let fee = parameters[3].parse::<Amount>()?;
+
+                match amount.checked_add(fee) {
+                    Some(total) => {
+                        if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
+                            match addresses_info.get(0) {
+                                Some(info) => {
+                                    if info.ledger_info.candidate_ledger_info.balance < total {
+                                        println!("WARNING: this operation may be rejected due to insuffisant balance");
+                                    }
+                                }
+                                None => println!("WARNING: address {} not found", addr),
+                            }
+                        }
+                    }
+                    None => {
+                        println!("WARNING: The total amount hit the limit overflow, operation will certainly be rejected");
+                    }
+                }
 
                 send_operation(
                     client,
