@@ -5,9 +5,11 @@ use crate::{DeserializeCompact, ModelsError, SerializeCompact, SerializeVarInt};
 use serde::de::Unexpected;
 use std::{convert::TryInto, fmt, str::FromStr};
 
+/// Application version, checked during handshakes
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Version {
-    instance: [char; 4], // ascii uppercase alpha
+    /// ascii uppercase alpha
+    instance: [char; 4],
     major: u32,
     minor: u32,
 }

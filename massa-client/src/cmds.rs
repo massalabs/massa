@@ -17,6 +17,7 @@ use std::net::IpAddr;
 use std::process;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
+use time::UTime;
 use wallet::Wallet;
 
 #[allow(non_camel_case_types)]
@@ -149,6 +150,11 @@ pub enum Command {
         message = "send coins from a wallet address"
     )]
     send_transaction,
+    #[strum(
+        ascii_case_insensitive,
+        message = "show time remaining to end of current episode"
+    )]
+    when_episode_ends,
 }
 
 pub(crate) fn help() {
@@ -576,6 +582,21 @@ impl Command {
                 )
                 .await
             }
+            Command::when_episode_ends => {
+                if let Some(end) = match client.public.get_status().await {
+                    Ok(node_status) => node_status.algo_config.end_timestamp,
+                    Err(e) => bail!("RpcError: {}", e),
+                } {
+                    let (days, hours, mins, secs) =
+                        end.saturating_sub(UTime::now(0)?).days_hours_mins_secs()?; // compensation millis is zero
+                    let mut res = "".to_string();
+                    res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs));
+                    if !json {
+                        println!("{}", res);
+                    }
+                }
+                Ok(Box::new(()))
+            }
         }
     }
 }
@@ -594,7 +615,7 @@ async fn send_operation(
     }
     .algo_config;
 
-    let slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp, 0)?
+    let slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp, 0)? // clock compensation is zero
         .unwrap_or_else(|| Slot::new(0, 0));
     let mut expire_period = slot.period + cfg.operation_validity_periods;
     if slot.thread >= addr.get_thread(cfg.thread_count) {
