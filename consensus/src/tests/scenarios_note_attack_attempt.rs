@@ -34,13 +34,15 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
-    let (mut _execution_controller, execution_command_sender) = MockExecutionController::new();
+    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
+        MockExecutionController::new();
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
             execution_command_sender,
+            execution_event_receiver,
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -102,7 +104,8 @@ async fn test_invalid_header_notified_as_attack_attempt() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let (mut _execution_controller, execution_command_sender) = MockExecutionController::new();
+    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
+        MockExecutionController::new();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
@@ -110,6 +113,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         start_consensus_controller(
             cfg.clone(),
             execution_command_sender,
+            execution_event_receiver,
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,

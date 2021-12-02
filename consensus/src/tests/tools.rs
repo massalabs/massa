@@ -677,6 +677,7 @@ pub fn default_consensus_config(
         endorsement_count: 0,
         block_db_prune_interval: 1000.into(),
         max_item_return_count: 1000,
+        max_gas_per_block: 10,
     }
 }
 
@@ -706,13 +707,15 @@ pub async fn consensus_pool_test<F, V>(
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let (mut _execution_controller, execution_command_sender) = MockExecutionController::new();
+    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
+        MockExecutionController::new();
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
             execution_command_sender,
+            execution_event_receiver,
             protocol_command_sender,
             protocol_event_receiver,
             pool_command_sender,
@@ -764,7 +767,8 @@ where
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let (mut _execution_controller, execution_command_sender) = MockExecutionController::new();
+    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
+        MockExecutionController::new();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
@@ -772,6 +776,7 @@ where
         start_consensus_controller(
             cfg.clone(),
             execution_command_sender,
+            execution_event_receiver,
             protocol_command_sender,
             protocol_event_receiver,
             pool_command_sender,

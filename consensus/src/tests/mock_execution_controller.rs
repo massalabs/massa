@@ -1,10 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use execution::{ExecutionCommand, ExecutionCommandSender};
+use execution::{ExecutionCommand, ExecutionCommandSender, ExecutionEvent, ExecutionEventReceiver};
 use models::{Block, BlockHashMap};
 use time::UTime;
 use tokio::{
-    sync::mpsc::{channel, Receiver, Sender},
+    sync::mpsc::{channel, unbounded_channel, Receiver, Sender, UnboundedSender},
     time::sleep,
 };
 
@@ -13,18 +13,22 @@ const CHANNEL_SIZE: usize = 256;
 pub struct MockExecutionController {
     execution_command_sender: Sender<ExecutionCommand>,
     execution_command_receiver: Receiver<ExecutionCommand>,
+    event_sender: UnboundedSender<ExecutionEvent>,
 }
 
 impl MockExecutionController {
-    pub fn new() -> (Self, ExecutionCommandSender) {
+    pub fn new() -> (Self, ExecutionCommandSender, ExecutionEventReceiver) {
+        let (event_sender, event_rx) = unbounded_channel::<ExecutionEvent>();
         let (execution_command_sender, execution_command_receiver) =
             channel::<ExecutionCommand>(CHANNEL_SIZE);
         (
             MockExecutionController {
                 execution_command_sender: execution_command_sender.clone(),
                 execution_command_receiver,
+                event_sender,
             },
             ExecutionCommandSender(execution_command_sender),
+            ExecutionEventReceiver(event_rx),
         )
     }
 

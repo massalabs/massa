@@ -541,7 +541,8 @@ async fn test_roll_block_creation() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
-    let (mut _execution_controller, execution_command_sender) = MockExecutionController::new();
+    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
+        MockExecutionController::new();
 
     cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
     // launch consensus controller
@@ -549,6 +550,7 @@ async fn test_roll_block_creation() {
         start_consensus_controller(
             cfg.clone(),
             execution_command_sender,
+            execution_event_receiver,
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -858,13 +860,15 @@ async fn test_roll_deactivation() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
-    let (mut _execution_controller, execution_command_sender) = MockExecutionController::new();
+    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
+        MockExecutionController::new();
     cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
             execution_command_sender,
+            execution_event_receiver,
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
