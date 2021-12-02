@@ -129,8 +129,8 @@ beginning of cycle C+3.
 
 For now, they don't stake automatically. In the future, we will add a
 feature allowing auto compounding. That being said, some people appear
-to have done that very early in the project. Feel free to ask on the
-link:https://discord.com/invite/TnsJQzXkRN\[Discord\] server :).
+to have done that very early in the project. Feel free to ask on the 
+[Discord](https://discord.com/invite/massa) server :).
 
 ### I can buy, send, sell ROLLs and coins without fees. When should I increase the fee \>0?
 
@@ -196,8 +196,9 @@ Check the quality of your internet connection. Try increasing the
     `could not start API controller: ServerError(hyper::Error(Listen, Os { code: 98, kind: AddrInUse, message: "Address already in use" }))`,
     it's probably because the default API ports 33034/33035 are already in use
     on your computer. You should change the port in the config files,
-    both in the API and Client: \*\* create/edit file
-    `massa-node/config/config.toml` to change the port used by the API:
+    both in the API and Client:
+
+  * create/edit file `massa-node/config/config.toml` to change the port used by the API:
 
 ```toml
 [api]
@@ -205,7 +206,7 @@ Check the quality of your internet connection. Try increasing the
     bind_public = "0.0.0.0:33035"  # change port here from 33035 to something else
 ```
 
-\*\* create/edit file `massa-client/config/config.toml` and put the same
+  * create/edit file `massa-client/config/config.toml` and put the same
 port:
 
 ```toml

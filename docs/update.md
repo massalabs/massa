@@ -6,10 +6,14 @@ Update Rust:
 
     rustup update
 
-Update Massa:
+Make sure you you have the right git repository (especially since the change from GitLab to GitHub):
 
     cd massa/
     git stash
+    git remote set-url origin https://github.com/massalabs/massa.git
+
+Update Massa:
+
     git checkout testnet
     git pull
 
