@@ -29,7 +29,8 @@ mod messages;
 mod server_binder;
 pub mod settings;
 
-// needs to be CANCELLABLE
+/// Gets the state from a bootstrap server (internal private function)
+/// needs to be CANCELLABLE
 async fn get_state_internal(
     cfg: &BootstrapSettings, // TODO: should be a &'static
     bootstrap_addr: &SocketAddr,
@@ -151,7 +152,8 @@ async fn get_state_internal(
     Ok((pos, graph, compensation_millis, peers))
 }
 
-// needs to be CANCELLABLE
+/// Gets the state from a bootstrap server
+/// needs to be CANCELLABLE
 pub async fn get_state(
     bootstrap_settings: &'static BootstrapSettings,
     mut establisher: Establisher,
