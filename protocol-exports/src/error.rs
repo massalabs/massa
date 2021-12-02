@@ -33,8 +33,8 @@ pub enum ProtocolError {
     IOError(#[from] std::io::Error),
     /// Serde error : {0}
     SerdeError(#[from] serde_json::Error),
-    /// crypto error {0}
-    CryptoError(#[from] crypto::CryptoError),
+    /// massa_hash error {0}
+    MassaHashError(#[from] massa_hash::MassaHashError),
     /// handshake error:{0:?}
     HandshakeError(HandshakeErrorType),
     /// the network controller should not drop a node command sender before shutting down the node.

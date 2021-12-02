@@ -350,7 +350,7 @@ impl OperationPool {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crypto::hash::Hash;
+    use massa_hash::hash::Hash;
     use models::{Amount, Operation, OperationContent, OperationType};
     use serial_test::serial;
     use signature::{derive_public_key, generate_random_private_key, sign};

@@ -7,7 +7,7 @@ use crate::{
     ledger::{Ledger, LedgerChanges, LedgerSubset, OperationLedgerInterface},
     pos::{OperationRollInterface, ProofOfStake, RollCounts, RollUpdate, RollUpdates},
 };
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::api::EndorsementInfo;
 use models::clique::Clique;

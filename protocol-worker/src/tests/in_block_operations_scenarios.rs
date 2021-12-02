@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::tools::protocol_test;
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::{
     get_serialization_context, Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot,
 };

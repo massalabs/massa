@@ -12,7 +12,7 @@ use crate::{
     start_consensus_controller, BootstrapableGraph, ConsensusCommandSender, ConsensusEventReceiver,
     ExportProofOfStake,
 };
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::ledger::LedgerData;
 use models::{
     Address, Amount, Block, BlockHashSet, BlockHeader, BlockHeaderContent, BlockId, Endorsement,

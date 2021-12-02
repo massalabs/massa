@@ -2,4 +2,4 @@
 
 mod error;
 pub mod hash;
-pub use error::CryptoError;
+pub use error::MassaHashError;

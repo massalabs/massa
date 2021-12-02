@@ -3,7 +3,7 @@
 use crate::api::{LedgerInfo, RollsInfo};
 use crate::hhasher::{HHashMap, HHashSet, PreHashed};
 use crate::ModelsError;
-use crypto::hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::hash::{Hash, HASH_SIZE_BYTES};
 use serde::{Deserialize, Serialize};
 use signature::PublicKey;
 use std::str::FromStr;
@@ -48,7 +48,7 @@ impl Address {
     /// ```rust
     /// # use signature::{PublicKey, PrivateKey, Signature,
     /// #       generate_random_private_key, derive_public_key};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
     /// # let private_key = generate_random_private_key();
@@ -66,7 +66,7 @@ impl Address {
     /// ```rust
     /// # use signature::{PublicKey, PrivateKey, Signature,
     /// #       generate_random_private_key, derive_public_key};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
     /// # let private_key = generate_random_private_key();
@@ -84,7 +84,7 @@ impl Address {
     /// ```rust
     /// # use signature::{PublicKey, PrivateKey, Signature,
     /// #       generate_random_private_key, derive_public_key};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
     /// # let private_key = generate_random_private_key();
@@ -104,7 +104,7 @@ impl Address {
     /// ```rust
     /// # use signature::{PublicKey, PrivateKey, Signature,
     /// #       generate_random_private_key, derive_public_key};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
     /// # let private_key = generate_random_private_key();
@@ -124,7 +124,7 @@ impl Address {
     /// ```rust
     /// # use signature::{PublicKey, PrivateKey, Signature,
     /// #       generate_random_private_key, derive_public_key};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use models::Address;
     /// # let private_key = generate_random_private_key();

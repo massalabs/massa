@@ -2,8 +2,8 @@
 
 use super::mock_protocol_controller::MockProtocolController;
 use crate::{pool_controller, PoolCommandSender, PoolManager, PoolSettings};
-use crypto::hash::Hash;
 use futures::Future;
+use massa_hash::hash::Hash;
 use models::{
     Address, Amount, BlockId, Endorsement, EndorsementContent, Operation, OperationContent,
     OperationType, SerializeCompact, Slot,

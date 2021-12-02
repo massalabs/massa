@@ -7,7 +7,7 @@ use models::api::{
     AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, TimeInterval,
 };
 use models::clique::Clique;
-use models::crypto::PubkeySig;
+use models::massa_hash::PubkeySig;
 use models::{Address, BlockId, EndorsementId, Operation, OperationId};
 use signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};

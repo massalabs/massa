@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crypto::hash::Hash;
-use crypto::CryptoError;
+use massa_hash::hash::Hash;
+use massa_hash::MassaHashError;
 use secp256k1::{Message, Secp256k1};
 use std::{convert::TryInto, str::FromStr};
 
@@ -24,7 +24,7 @@ impl std::fmt::Display for PrivateKey {
 }
 
 impl FromStr for PrivateKey {
-    type Err = CryptoError;
+    type Err = MassaHashError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         PrivateKey::from_bs58_check(s)
     }
@@ -36,7 +36,7 @@ impl PrivateKey {
     /// # Example
     ///  ```
     /// # use signature::generate_random_private_key;
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let serialized: String = private_key.to_bs58_check();
@@ -50,7 +50,7 @@ impl PrivateKey {
     /// # Example
     ///  ```
     /// # use signature::generate_random_private_key;
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let serialized = private_key.to_bytes();
@@ -64,7 +64,7 @@ impl PrivateKey {
     /// # Example
     ///  ```
     /// # use signature::generate_random_private_key;
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let serialized = private_key.into_bytes();
@@ -78,22 +78,25 @@ impl PrivateKey {
     /// # Example
     ///  ```
     /// # use signature::{PrivateKey, generate_random_private_key};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let serialized: String = private_key.to_bs58_check();
     /// let deserialized: PrivateKey = PrivateKey::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check(data: &str) -> Result<PrivateKey, CryptoError> {
+    pub fn from_bs58_check(data: &str) -> Result<PrivateKey, MassaHashError> {
         bs58::decode(data)
             .with_check(None)
             .into_vec()
             .map_err(|err| {
-                CryptoError::ParsingError(format!("private key bs58_check parsing error: {}", err))
+                MassaHashError::ParsingError(format!(
+                    "private key bs58_check parsing error: {}",
+                    err
+                ))
             })
             .and_then(|key| {
                 PrivateKey::from_bytes(&key.try_into().map_err(|err| {
-                    CryptoError::ParsingError(format!(
+                    MassaHashError::ParsingError(format!(
                         "private key bs58_check parsing error: {:?}",
                         err
                     ))
@@ -106,17 +109,17 @@ impl PrivateKey {
     /// # Example
     ///  ```
     /// # use signature::{PrivateKey, generate_random_private_key};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let serialized = private_key.to_bytes();
     /// let deserialized: PrivateKey = PrivateKey::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; PRIVATE_KEY_SIZE_BYTES]) -> Result<PrivateKey, CryptoError> {
+    pub fn from_bytes(data: &[u8; PRIVATE_KEY_SIZE_BYTES]) -> Result<PrivateKey, MassaHashError> {
         secp256k1::SecretKey::from_slice(&data[..])
             .map(PrivateKey)
             .map_err(|err| {
-                CryptoError::ParsingError(format!("private key bytes parsing error: {}", err))
+                MassaHashError::ParsingError(format!("private key bytes parsing error: {}", err))
             })
     }
 }
@@ -229,7 +232,7 @@ impl std::fmt::Display for PublicKey {
 }
 
 impl FromStr for PublicKey {
-    type Err = CryptoError;
+    type Err = MassaHashError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         PublicKey::from_bs58_check(s)
     }
@@ -293,16 +296,19 @@ impl PublicKey {
     /// let serialized: String = public_key.to_bs58_check();
     /// let deserialized: PublicKey = PublicKey::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check(data: &str) -> Result<PublicKey, CryptoError> {
+    pub fn from_bs58_check(data: &str) -> Result<PublicKey, MassaHashError> {
         bs58::decode(data)
             .with_check(None)
             .into_vec()
             .map_err(|err| {
-                CryptoError::ParsingError(format!("public key bs58_check parsing error: {}", err))
+                MassaHashError::ParsingError(format!(
+                    "public key bs58_check parsing error: {}",
+                    err
+                ))
             })
             .and_then(|key| {
                 PublicKey::from_bytes(&key.try_into().map_err(|err| {
-                    CryptoError::ParsingError(format!(
+                    MassaHashError::ParsingError(format!(
                         "public key bs58_check parsing error: {:?}",
                         err
                     ))
@@ -322,11 +328,11 @@ impl PublicKey {
     /// let serialized = public_key.into_bytes();
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; PUBLIC_KEY_SIZE_BYTES]) -> Result<PublicKey, CryptoError> {
+    pub fn from_bytes(data: &[u8; PUBLIC_KEY_SIZE_BYTES]) -> Result<PublicKey, MassaHashError> {
         secp256k1::PublicKey::from_slice(&data[..])
             .map(PublicKey)
             .map_err(|err| {
-                CryptoError::ParsingError(format!("public key bytes parsing error: {}", err))
+                MassaHashError::ParsingError(format!("public key bytes parsing error: {}", err))
             })
     }
 }
@@ -441,7 +447,7 @@ impl std::fmt::Display for Signature {
 }
 
 impl FromStr for Signature {
-    type Err = CryptoError;
+    type Err = MassaHashError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Signature::from_bs58_check(s)
     }
@@ -453,7 +459,7 @@ impl Signature {
     /// # Example
     ///  ```
     /// # use signature::{generate_random_private_key, sign};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
@@ -470,7 +476,7 @@ impl Signature {
     /// # Example
     ///  ```
     /// # use signature::{generate_random_private_key, sign};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
@@ -487,7 +493,7 @@ impl Signature {
     /// # Example
     ///  ```
     /// # use signature::{generate_random_private_key, sign};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
@@ -504,7 +510,7 @@ impl Signature {
     /// # Example
     ///  ```
     /// # use signature::{generate_random_private_key, sign, Signature};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
@@ -513,16 +519,16 @@ impl Signature {
     /// let serialized: String = signature.to_bs58_check();
     /// let deserialized: Signature = Signature::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check(data: &str) -> Result<Signature, CryptoError> {
+    pub fn from_bs58_check(data: &str) -> Result<Signature, MassaHashError> {
         bs58::decode(data)
             .with_check(None)
             .into_vec()
             .map_err(|err| {
-                CryptoError::ParsingError(format!("signature bs58_check parsing error: {}", err))
+                MassaHashError::ParsingError(format!("signature bs58_check parsing error: {}", err))
             })
             .and_then(|signature| {
                 Signature::from_bytes(&signature.try_into().map_err(|err| {
-                    CryptoError::ParsingError(format!(
+                    MassaHashError::ParsingError(format!(
                         "signature bs58_check parsing error: {:?}",
                         err
                     ))
@@ -535,7 +541,7 @@ impl Signature {
     /// # Example
     ///  ```
     /// # use signature::{generate_random_private_key, sign, Signature};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
@@ -544,11 +550,11 @@ impl Signature {
     /// let serialized = signature.to_bytes();
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; SIGNATURE_SIZE_BYTES]) -> Result<Signature, CryptoError> {
+    pub fn from_bytes(data: &[u8; SIGNATURE_SIZE_BYTES]) -> Result<Signature, MassaHashError> {
         secp256k1::Signature::from_compact(&data[..])
             .map(Signature)
             .map_err(|err| {
-                CryptoError::ParsingError(format!("signature bytes parsing error: {}", err))
+                MassaHashError::ParsingError(format!("signature bytes parsing error: {}", err))
             })
     }
 }
@@ -564,7 +570,7 @@ impl ::serde::Serialize for Signature {
     /// Human readable serialization :
     /// ```
     /// # use signature::{generate_random_private_key, sign};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
@@ -593,7 +599,7 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
     /// Human readable deserialization :
     /// ```
     /// # use signature::{generate_random_private_key, sign, Signature};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let data = Hash::hash("Hello World!".as_bytes());
@@ -684,14 +690,14 @@ impl SignatureEngine {
     /// # Example
     ///  ```
     /// # use signature::{derive_public_key, generate_random_private_key, sign, PublicKey};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let public_key: PublicKey = derive_public_key(&private_key);
     /// let data = Hash::hash("Hello World!".as_bytes());
     /// let signature = sign(&data, &private_key).unwrap();
     /// ```
-    fn sign(&self, hash: &Hash, private_key: &PrivateKey) -> Result<Signature, CryptoError> {
+    fn sign(&self, hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaHashError> {
         let message = Message::from_slice(&hash.to_bytes())?;
         Ok(Signature(self.0.sign(&message, &private_key.0)))
     }
@@ -702,7 +708,7 @@ impl SignatureEngine {
     /// # Example
     ///  ```
     /// # use signature::{derive_public_key, generate_random_private_key, sign, verify_signature, PublicKey};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let public_key: PublicKey = derive_public_key(&private_key);
@@ -715,7 +721,7 @@ impl SignatureEngine {
         hash: &Hash,
         signature: &Signature,
         public_key: &PublicKey,
-    ) -> Result<(), CryptoError> {
+    ) -> Result<(), MassaHashError> {
         let message = Message::from_slice(&hash.to_bytes())?;
         Ok(self.0.verify(&message, &signature.0, &public_key.0)?)
     }
@@ -732,7 +738,7 @@ pub fn derive_public_key(private_key: &PrivateKey) -> PublicKey {
     SIGNATURE_ENGINE.with(|signature_engine| signature_engine.derive_public_key(private_key))
 }
 
-pub fn sign(hash: &Hash, private_key: &PrivateKey) -> Result<Signature, CryptoError> {
+pub fn sign(hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaHashError> {
     SIGNATURE_ENGINE.with(|signature_engine| signature_engine.sign(hash, private_key))
 }
 
@@ -740,14 +746,14 @@ pub fn verify_signature(
     hash: &Hash,
     signature: &Signature,
     public_key: &PublicKey,
-) -> Result<(), CryptoError> {
+) -> Result<(), MassaHashError> {
     SIGNATURE_ENGINE.with(|signature_engine| signature_engine.verify(hash, signature, public_key))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crypto::hash::Hash;
+    use massa_hash::hash::Hash;
     use serial_test::serial;
 
     #[test]

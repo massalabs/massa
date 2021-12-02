@@ -3,7 +3,7 @@
 use crate::error::ConsensusError;
 use crate::{block_graph::ActiveBlock, ConsensusConfig};
 use bitvec::prelude::*;
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::address::{AddressHashMap, AddressHashSet};
 use models::hhasher::BuildHHasher;
 use models::{

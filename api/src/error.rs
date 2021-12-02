@@ -1,8 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use consensus::ConsensusError;
-use crypto::CryptoError;
 use displaydoc::Display;
+use massa_hash::MassaHashError;
 use models::ModelsError;
 use network::NetworkError;
 use pool::PoolError;
@@ -20,8 +20,8 @@ pub enum ApiError {
     SendChannelError(String),
     /// receive channel error: {0}
     ReceiveChannelError(String),
-    /// crypto error: {0}
-    CryptoError(#[from] CryptoError),
+    /// massa_hash error: {0}
+    MassaHashError(#[from] MassaHashError),
     /// consensus error: {0}
     ConsensusError(#[from] ConsensusError),
     /// network error: {0}

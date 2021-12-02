@@ -4,7 +4,7 @@ use super::{
     mock_protocol_controller::MockProtocolController,
     tools::{validate_notpropagate_block, validate_propagate_block},
 };
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::{Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement, Operation, Slot};
 use signature::{derive_public_key, generate_random_private_key, PrivateKey};
 

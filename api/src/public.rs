@@ -13,8 +13,8 @@ use models::api::{
     IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
 };
 use models::clique::Clique;
-use models::crypto::PubkeySig;
 use models::hhasher::BuildHHasher;
+use models::massa_hash::PubkeySig;
 use models::node::NodeId;
 use models::timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range};
 use models::{

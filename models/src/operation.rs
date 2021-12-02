@@ -8,7 +8,7 @@ use crate::{
     },
     Address, Amount, ModelsError, ADDRESS_SIZE_BYTES,
 };
-use crypto::hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::hash::{Hash, HASH_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use signature::{

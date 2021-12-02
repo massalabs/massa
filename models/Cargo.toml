@@ -17,7 +17,7 @@ serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.11", features = ["full"] }
 thiserror = "1.0"
 # custom modules
-crypto = { path = "../crypto" }
+massa_hash = { path = "../massa_hash" }
 signature = { path = "../signature" }
 time = { path = "../time" }
 

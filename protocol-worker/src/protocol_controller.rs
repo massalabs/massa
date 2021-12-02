@@ -1,8 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crypto::hash::Hash;
 use itertools::Itertools;
 use logging::massa_trace;
+use massa_hash::hash::Hash;
 use models::hhasher::BuildHHasher;
 use models::node::NodeId;
 use models::Endorsement;
