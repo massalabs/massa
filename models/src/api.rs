@@ -122,13 +122,13 @@ pub struct LedgerInfo {
 
 impl std::fmt::Display for LedgerInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Final balance: {}", self.final_ledger_info.balance)?;
+        writeln!(f, "\tFinal balance: {}", self.final_ledger_info.balance)?;
         writeln!(
             f,
-            "Candidate balance: {}",
+            "\tCandidate balance: {}",
             self.candidate_ledger_info.balance
         )?;
-        writeln!(f, "Locked balance: {}", self.locked_balance)?;
+        writeln!(f, "\tLocked balance: {}", self.locked_balance)?;
         Ok(())
     }
 }
@@ -142,9 +142,9 @@ pub struct RollsInfo {
 
 impl std::fmt::Display for RollsInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Active rolls: {}", self.active_rolls)?;
-        writeln!(f, "Final rolls: {}", self.final_rolls)?;
-        writeln!(f, "Candidate rolls: {}", self.candidate_rolls)?;
+        writeln!(f, "\tActive rolls: {}", self.active_rolls)?;
+        writeln!(f, "\tFinal rolls: {}", self.final_rolls)?;
+        writeln!(f, "\tCandidate rolls: {}", self.candidate_rolls)?;
         Ok(())
     }
 }
