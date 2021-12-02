@@ -505,13 +505,13 @@
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">LedgerInfo</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Final balance: {}&quot;</span>, <span class="self">self</span>.<span class="ident">final_ledger_info</span>.<span class="ident">balance</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tFinal balance: {}&quot;</span>, <span class="self">self</span>.<span class="ident">final_ledger_info</span>.<span class="ident">balance</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
             <span class="ident">f</span>,
-            <span class="string">&quot;Candidate balance: {}&quot;</span>,
+            <span class="string">&quot;\tCandidate balance: {}&quot;</span>,
             <span class="self">self</span>.<span class="ident">candidate_ledger_info</span>.<span class="ident">balance</span>
         )<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Locked balance: {}&quot;</span>, <span class="self">self</span>.<span class="ident">locked_balance</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tLocked balance: {}&quot;</span>, <span class="self">self</span>.<span class="ident">locked_balance</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -525,9 +525,9 @@
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">RollsInfo</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Active rolls: {}&quot;</span>, <span class="self">self</span>.<span class="ident">active_rolls</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Final rolls: {}&quot;</span>, <span class="self">self</span>.<span class="ident">final_rolls</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Candidate rolls: {}&quot;</span>, <span class="self">self</span>.<span class="ident">candidate_rolls</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tActive rolls: {}&quot;</span>, <span class="self">self</span>.<span class="ident">active_rolls</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tFinal rolls: {}&quot;</span>, <span class="self">self</span>.<span class="ident">final_rolls</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tCandidate rolls: {}&quot;</span>, <span class="self">self</span>.<span class="ident">candidate_rolls</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
