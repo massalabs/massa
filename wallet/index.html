@@ -7,22 +7,23 @@ security of your coins (with <code>secp256k1</code>).</p>
 that were sent to your address (your address is the hash of your public
 key).</p>
 <p>Here is how to create a Massa wallet.</p>
-<h3 id="from-the-command-line-interface" class="section-header"><a href="#from-the-command-line-interface">From the command line interface</a></h3>
+<h3 id="from-the-command-line-interface" class="section-header"><a href="#from-the-command-line-interface">From the command line interface</a></h3><h4 id="if-your-client-is-not-running" class="section-header"><a href="#if-your-client-is-not-running">If your client is not running</a></h4>
 <p>Go to the client folder:</p>
 <div class="example-wrap"><pre class="language-bash"><code>cd massa/massa-client/</code></pre></div>
 <p>Start the interactive client and load a wallet file:</p>
 <div class="example-wrap"><pre class="language-bash"><code>cargo run</code></pre></div>
 <p>It loads the wallet file <code>wallet.dat</code>. If it does not exist, it is
 created.</p>
+<h4 id="if-your-client-is-running" class="section-header"><a href="#if-your-client-is-running">If your client is running</a></h4>
 <p>Now you can either generate a new private key (and associated public key/address):</p>
 <div class="example-wrap"><pre class="language-plain"><code>wallet_generate_private_key</code></pre></div>
-<p>or add manually an existing private key:</p>
+<p><strong>or</strong>, add manually an existing private key if you already have one from a previous wallet:</p>
 <div class="example-wrap"><pre class="language-plain"><code>wallet_add_private_keys &lt;your_private_key&gt;</code></pre></div>
 <p>The list of addresses and keys of your wallet can be accessed with:</p>
 <div class="example-wrap"><pre class="language-plain"><code>wallet_info</code></pre></div><h3 id="from-the-graphical-interface" class="section-header"><a href="#from-the-graphical-interface">From the graphical interface</a></h3>
 <p>If you don’t plan to stake or use the command-line client, you can also
 create a wallet on the web interface: head to the
-<a href="https://test.massa.net">explorer</a>, in the wallet part.</p>
+<a href="https://test.massa.net">explorer</a>, in the wallet tab.</p>
 <p>Click <code>Generate private key</code> then <code>Add</code>.</p>
 <p>This generates a new random private key from your computer randomness
 which stays on your side, it is never transferred on the network.</p>
