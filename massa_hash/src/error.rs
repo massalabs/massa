@@ -5,7 +5,7 @@ use thiserror::Error;
 
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
-pub enum CryptoError {
+pub enum MassaHashError {
     /// parsing error : {0}
     ParsingError(String),
 

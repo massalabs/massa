@@ -10,11 +10,11 @@ use super::{
     peer_info_database::*,
 };
 use crate::error::{HandshakeErrorType, NetworkError};
-use crypto::hash::Hash;
 use futures::{stream::FuturesUnordered, StreamExt};
 use logging::massa_trace;
+use massa_hash::hash::Hash;
 use models::stats::NetworkStats;
-use models::{crypto::PubkeySig, node::NodeId};
+use models::{massa_hash::PubkeySig, node::NodeId};
 use models::{
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializeCompact, SerializeVarInt, Version,

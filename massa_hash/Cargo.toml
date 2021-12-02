@@ -1,5 +1,5 @@
 [package]
-name = "crypto"
+name = "massa_hash"
 version = "0.1.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"

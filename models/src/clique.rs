@@ -21,7 +21,7 @@ impl SerializeCompact for Clique {
     /// ```rust
     /// use models::clique::Clique;
     /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, BlockId};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use std::str::FromStr;
     /// # models::init_serialization_context(models::SerializationContext {
     /// #     max_block_operations: 1024,

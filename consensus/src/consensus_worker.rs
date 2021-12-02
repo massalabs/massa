@@ -3,7 +3,7 @@
 use super::{block_graph::*, config::ConsensusConfig, pos::ProofOfStake};
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::api::{EndorsementInfo, LedgerInfo, RollsInfo};
 use models::{address::AddressCycleProductionStats, stats::ConsensusStats};
 use models::{

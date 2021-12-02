@@ -15,7 +15,7 @@ use models::api::{
     TimeInterval,
 };
 use models::clique::Clique;
-use models::crypto::PubkeySig;
+use models::massa_hash::PubkeySig;
 use models::node::NodeId;
 use models::operation::{Operation, OperationId};
 use models::{Address, BlockId, EndorsementId, Version};

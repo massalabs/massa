@@ -7,7 +7,7 @@ use super::{
     with_serialization_context,
 };
 use crate::error::ModelsError;
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, convert::TryInto};
 

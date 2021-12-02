@@ -6,7 +6,7 @@ use crate::{
         self, create_endorsement, create_roll_transaction, create_transaction, generate_ledger_file,
     },
 };
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::{ledger::LedgerData, EndorsementId};
 use models::{Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot};
 use models::{Endorsement, SerializeCompact};

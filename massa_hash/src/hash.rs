@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::error::CryptoError;
+use crate::error::MassaHashError;
 use bitcoin_hashes;
 use std::{convert::TryInto, str::FromStr};
 
@@ -20,7 +20,7 @@ impl Hash {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// let hash = Hash::hash(&"hello world".as_bytes());
     /// ```
     pub fn hash(data: &[u8]) -> Self {
@@ -32,7 +32,7 @@ impl Hash {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// let hash = Hash::hash(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check();
     /// ```
@@ -44,7 +44,7 @@ impl Hash {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// let hash = Hash::hash(&"hello world".as_bytes());
     /// let serialized = hash.to_bytes();
     /// ```
@@ -57,7 +57,7 @@ impl Hash {
     ///
     /// # Example
     ///  ```
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// let hash = Hash::hash(&"hello world".as_bytes());
     /// let serialized = hash.into_bytes();
     /// ```
@@ -71,21 +71,21 @@ impl Hash {
     /// # Example
     ///  ```
     /// # use serde::{Deserialize, Serialize};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// let hash = Hash::hash(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check();
     /// let deserialized: Hash = Hash::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check(data: &str) -> Result<Hash, CryptoError> {
+    pub fn from_bs58_check(data: &str) -> Result<Hash, MassaHashError> {
         let decoded_bs58_check = bs58::decode(data)
             .with_check(None)
             .into_vec()
-            .map_err(|err| CryptoError::ParsingError(format!("{}", err)))?;
+            .map_err(|err| MassaHashError::ParsingError(format!("{}", err)))?;
         Hash::from_bytes(
             &decoded_bs58_check
                 .as_slice()
                 .try_into()
-                .map_err(|err| CryptoError::ParsingError(format!("{}", err)))?,
+                .map_err(|err| MassaHashError::ParsingError(format!("{}", err)))?,
         )
     }
 
@@ -94,16 +94,16 @@ impl Hash {
     /// # Example
     ///  ```
     /// # use serde::{Deserialize, Serialize};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// let hash = Hash::hash(&"hello world".as_bytes());
     /// let serialized = hash.into_bytes();
     /// let deserialized: Hash = Hash::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<Hash, CryptoError> {
+    pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<Hash, MassaHashError> {
         use bitcoin_hashes::Hash;
         Ok(Hash(
             bitcoin_hashes::sha256::Hash::from_slice(&data[..])
-                .map_err(|err| CryptoError::ParsingError(format!("{}", err)))?,
+                .map_err(|err| MassaHashError::ParsingError(format!("{}", err)))?,
         ))
     }
 }
@@ -119,7 +119,7 @@ impl ::serde::Serialize for Hash {
     /// Human readable serialization :
     /// ```
     /// # use serde::{Deserialize, Serialize};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// let hash = Hash::hash(&"hello world".as_bytes());
     /// let serialized: String = serde_json::to_string(&hash).unwrap();
     /// ```
@@ -143,7 +143,7 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
     ///
     /// Human readable deserialization :
     /// ```
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let hash = Hash::hash(&"hello world".as_bytes());
     /// let serialized: String = serde_json::to_string(&hash).unwrap();
@@ -204,7 +204,7 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
 }
 
 impl FromStr for Hash {
-    type Err = CryptoError;
+    type Err = MassaHashError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Hash::from_bs58_check(s)
     }

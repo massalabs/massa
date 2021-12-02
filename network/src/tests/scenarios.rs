@@ -8,7 +8,7 @@ use crate::node_worker::{NodeCommand, NodeEvent, NodeWorker};
 use crate::ConnectionClosureReason;
 use crate::NetworkEvent;
 use crate::PeerInfo;
-use crypto::{self, hash::Hash};
+use massa_hash::{self, hash::Hash};
 use models::node::NodeId;
 use models::{BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use serial_test::serial;

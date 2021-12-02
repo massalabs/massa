@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::{Address, Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use serial_test::serial;
 use signature::{derive_public_key, generate_random_private_key, sign};

@@ -40,12 +40,12 @@ name = "api"
 version = "0.1.0"
 dependencies = [
  "consensus",
- "crypto",
  "displaydoc",
  "futures 0.3.18",
  "jsonrpc-core",
  "jsonrpc-derive",
  "jsonrpc-http-server",
+ "massa_hash",
  "models",
  "network",
  "pool",
@@ -146,11 +146,11 @@ version = "0.1.0"
 dependencies = [
  "bitvec",
  "consensus",
- "crypto",
  "displaydoc",
  "futures 0.3.18",
  "lazy_static",
  "logging",
+ "massa_hash",
  "models",
  "network",
  "num_enum",
@@ -290,10 +290,10 @@ name = "consensus"
 version = "0.1.0"
 dependencies = [
  "bitvec",
- "crypto",
  "displaydoc",
  "futures 0.3.18",
  "logging",
+ "massa_hash",
  "models",
  "num",
  "pool",
@@ -390,22 +390,6 @@ checksum = "d82cfc11ce7f2c3faef78d8a684447b40d503d9681acebed6cb728d45940c4db"
 dependencies = [
  "cfg-if 1.0.0",
  "lazy_static",
-]
-
-[[package]]
-name = "crypto"
-version = "0.1.0"
-dependencies = [
- "bitcoin_hashes",
- "bs58",
- "displaydoc",
- "pretty_assertions",
- "rand 0.8.4",
- "secp256k1",
- "serde 1.0.130",
- "serde_json",
- "serial_test",
- "thiserror",
 ]
 
 [[package]]
@@ -1146,6 +1130,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_hash"
+version = "0.1.0"
+dependencies = [
+ "bitcoin_hashes",
+ "bs58",
+ "displaydoc",
+ "pretty_assertions",
+ "rand 0.8.4",
+ "secp256k1",
+ "serde 1.0.130",
+ "serde_json",
+ "serial_test",
+ "thiserror",
+]
+
+[[package]]
 name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1198,10 +1198,10 @@ dependencies = [
 name = "models"
 version = "0.1.0"
 dependencies = [
- "crypto",
  "displaydoc",
  "integer-encoding",
  "lazy_static",
+ "massa_hash",
  "num-traits 0.2.14",
  "num_enum",
  "pretty_assertions",
@@ -1249,11 +1249,11 @@ dependencies = [
 name = "network"
 version = "0.1.0"
 dependencies = [
- "crypto",
  "displaydoc",
  "futures 0.3.18",
  "itertools",
  "logging",
+ "massa_hash",
  "models",
  "num_enum",
  "pretty_assertions",
@@ -1559,11 +1559,11 @@ checksum = "12295df4f294471248581bc09bef3c38a5e46f1e36d6a37353621a0c6c357e1f"
 name = "pool"
 version = "0.1.0"
 dependencies = [
- "crypto",
  "displaydoc",
  "futures 0.3.18",
  "lazy_static",
  "logging",
+ "massa_hash",
  "models",
  "num",
  "pretty_assertions",
@@ -1679,12 +1679,12 @@ dependencies = [
 name = "protocol-exports"
 version = "0.1.0"
 dependencies = [
- "crypto",
  "displaydoc",
  "futures 0.3.18",
  "itertools",
  "lazy_static",
  "logging",
+ "massa_hash",
  "models",
  "network",
  "num_enum",
@@ -1706,12 +1706,12 @@ dependencies = [
 name = "protocol-worker"
 version = "0.1.0"
 dependencies = [
- "crypto",
  "displaydoc",
  "futures 0.3.18",
  "itertools",
  "lazy_static",
  "logging",
+ "massa_hash",
  "models",
  "network",
  "num_enum",
@@ -2265,8 +2265,8 @@ version = "0.1.0"
 dependencies = [
  "bitcoin_hashes",
  "bs58",
- "crypto",
  "displaydoc",
+ "massa_hash",
  "pretty_assertions",
  "rand 0.8.4",
  "secp256k1",
@@ -2778,8 +2778,8 @@ dependencies = [
 name = "wallet"
 version = "0.1.0"
 dependencies = [
- "crypto",
  "displaydoc",
+ "massa_hash",
  "models",
  "serde 1.0.130",
  "serde_json",

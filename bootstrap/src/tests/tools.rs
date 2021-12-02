@@ -8,7 +8,7 @@ use consensus::{
     BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportProofOfStake, LedgerSubset,
     RollCounts, RollUpdate, RollUpdates, ThreadCycleState,
 };
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::clique::Clique;
 use models::ledger::LedgerChange;
 use models::ledger::LedgerData;

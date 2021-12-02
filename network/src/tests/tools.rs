@@ -10,7 +10,7 @@ use crate::{
     NetworkCommandSender, NetworkConfig, NetworkEvent, NetworkEventReceiver, NetworkManager,
     PeerInfo,
 };
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::node::NodeId;
 use models::{
     Address, Amount, BlockId, Operation, OperationContent, OperationType, SerializeCompact, Version,

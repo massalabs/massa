@@ -7,7 +7,7 @@ use crate::{
     },
     with_serialization_context, BlockId, ModelsError, Slot, BLOCK_ID_SIZE_BYTES,
 };
-use crypto::hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::hash::{Hash, HASH_SIZE_BYTES};
 use serde::{Deserialize, Serialize};
 use signature::{
     sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,

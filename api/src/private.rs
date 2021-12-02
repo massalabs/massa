@@ -11,7 +11,7 @@ use models::api::{
     TimeInterval,
 };
 use models::clique::Clique;
-use models::crypto::PubkeySig;
+use models::massa_hash::PubkeySig;
 use models::{Address, BlockId, EndorsementId, Operation, OperationId};
 use network::NetworkCommandSender;
 use signature::PrivateKey;

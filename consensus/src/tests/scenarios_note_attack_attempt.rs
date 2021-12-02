@@ -6,7 +6,7 @@ use super::{
     tools,
 };
 use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::{BlockId, Slot};
 use serial_test::serial;
 use signature::{generate_random_private_key, PrivateKey};

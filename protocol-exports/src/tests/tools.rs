@@ -5,7 +5,7 @@ use crate::{
     ProtocolEvent, ProtocolEventReceiver, ProtocolPoolEvent, ProtocolPoolEventReceiver,
     ProtocolSettings,
 };
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::node::NodeId;
 use models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, SerializeCompact, Slot,

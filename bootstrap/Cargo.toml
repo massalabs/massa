@@ -19,7 +19,7 @@ tokio = { version = "1.11", features = ["full"] }
 tracing = "0.1"
 # custom modules
 consensus = { path = "../consensus" }
-crypto = { path = "../crypto" }
+massa_hash = { path = "../massa_hash" }
 logging = {path = "../logging"}
 models = { path = "../models" }
 network = {path = "../network"}

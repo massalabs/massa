@@ -2,11 +2,11 @@
 
 #![doc = include_str!("../../docs/wallet.md")]
 
-use crypto::hash::Hash;
 pub use error::WalletError;
+use massa_hash::hash::Hash;
 use models::address::{Address, AddressHashMap, AddressHashSet};
 use models::amount::Amount;
-use models::crypto::PubkeySig;
+use models::massa_hash::PubkeySig;
 use models::Operation;
 use models::OperationContent;
 use models::SerializeCompact;

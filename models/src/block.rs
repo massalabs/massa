@@ -9,7 +9,7 @@ use crate::{
     OperationHashMap, OperationHashSet, SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot,
     SLOT_KEY_SIZE,
 };
-use crypto::hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::hash::{Hash, HASH_SIZE_BYTES};
 use serde::{Deserialize, Serialize};
 use signature::{
     sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
@@ -196,6 +196,11 @@ impl std::fmt::Display for BlockHeaderContent {
         writeln!(f, "\tEndorsements:")?;
         for ed in self.endorsements.iter() {
             writeln!(f, "\t\t-----")?;
+            writeln!(
+                f,
+                "\t\tId: {}",
+                ed.compute_endorsement_id().map_err(|_| std::fmt::Error)?
+            )?;
             writeln!(f, "\t\tIndex: {}", ed.content.index)?;
             writeln!(f, "\t\tEndorsed slot: {}", ed.content.slot)?;
             writeln!(

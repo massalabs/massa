@@ -9,8 +9,8 @@ use crate::{
     error::{HandshakeErrorType, NetworkError},
     ReadHalf, WriteHalf,
 };
-use crypto::hash::Hash;
 use futures::future::try_join;
+use massa_hash::hash::Hash;
 use models::node::NodeId;
 use models::Version;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
