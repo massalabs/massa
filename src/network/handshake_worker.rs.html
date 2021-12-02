@@ -190,8 +190,8 @@
     <span class="ident">error</span>::{<span class="ident">HandshakeErrorType</span>, <span class="ident">NetworkError</span>},
     <span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>,
 };
-<span class="kw">use</span> <span class="ident">crypto::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">futures::future::try_join</span>;
+<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">models::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident">models::Version</span>;
 <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::StdRng</span>, <span class="ident">RngCore</span>, <span class="ident">SeedableRng</span>};

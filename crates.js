@@ -1,1 +1,1 @@
-window.ALL_CRATES = ["api","bootstrap","consensus","crypto","logging","massa_client","massa_node","models","network","pool","protocol_exports","protocol_worker","signature","time","wallet"];
+window.ALL_CRATES = ["api","bootstrap","consensus","logging","massa_client","massa_hash","massa_node","models","network","pool","protocol_exports","protocol_worker","signature","time","wallet"];

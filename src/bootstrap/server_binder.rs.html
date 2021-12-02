@@ -101,7 +101,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::messages::BootstrapMessage</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::establisher::Duplex</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">error::BootstrapError</span>, <span class="ident">messages::BOOTSTRAP_RANDOMNES_SIZE_BYTES</span>};
-<span class="kw">use</span> <span class="ident">crypto</span>::{<span class="ident">hash::Hash</span>, <span class="ident">hash::HASH_SIZE_BYTES</span>};
+<span class="kw">use</span> <span class="ident">massa_hash</span>::{<span class="ident">hash::Hash</span>, <span class="ident">hash::HASH_SIZE_BYTES</span>};
 <span class="kw">use</span> <span class="ident">models::SerializeMinBEInt</span>;
 <span class="kw">use</span> <span class="ident">models</span>::{<span class="ident">with_serialization_context</span>, <span class="ident">SerializeCompact</span>};
 <span class="kw">use</span> <span class="ident">signature</span>::{<span class="ident">sign</span>, <span class="ident">PrivateKey</span>, <span class="ident">Signature</span>, <span class="ident">SIGNATURE_SIZE_BYTES</span>};

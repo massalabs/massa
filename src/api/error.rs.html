@@ -55,8 +55,8 @@
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">consensus::ConsensusError</span>;
-<span class="kw">use</span> <span class="ident">crypto::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
+<span class="kw">use</span> <span class="ident">massa_hash::MassaHashError</span>;
 <span class="kw">use</span> <span class="ident">models::ModelsError</span>;
 <span class="kw">use</span> <span class="ident">network::NetworkError</span>;
 <span class="kw">use</span> <span class="ident">pool::PoolError</span>;
@@ -74,8 +74,8 @@
     <span class="ident">SendChannelError</span>(<span class="ident">String</span>),
     <span class="doccomment">/// receive channel error: {0}</span>
     <span class="ident">ReceiveChannelError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// crypto error: {0}</span>
-    <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
+    <span class="doccomment">/// massa_hash error: {0}</span>
+    <span class="ident">MassaHashError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MassaHashError</span>),
     <span class="doccomment">/// consensus error: {0}</span>
     <span class="ident">ConsensusError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ConsensusError</span>),
     <span class="doccomment">/// network error: {0}</span>

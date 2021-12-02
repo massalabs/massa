@@ -164,7 +164,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::api</span>::{<span class="ident">LedgerInfo</span>, <span class="ident">RollsInfo</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::hhasher</span>::{<span class="ident">HHashMap</span>, <span class="ident">HHashSet</span>, <span class="ident">PreHashed</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ModelsError</span>;
-<span class="kw">use</span> <span class="ident">crypto::hash</span>::{<span class="ident">Hash</span>, <span class="ident">HASH_SIZE_BYTES</span>};
+<span class="kw">use</span> <span class="ident">massa_hash::hash</span>::{<span class="ident">Hash</span>, <span class="ident">HASH_SIZE_BYTES</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">signature::PublicKey</span>;
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
@@ -209,7 +209,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use signature::{PublicKey, PrivateKey, Signature,</span>
     <span class="doccomment">/// #       generate_random_private_key, derive_public_key};</span>
-    <span class="doccomment">/// # use crypto::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use models::Address;</span>
     <span class="doccomment">/// # let private_key = generate_random_private_key();</span>
@@ -227,7 +227,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use signature::{PublicKey, PrivateKey, Signature,</span>
     <span class="doccomment">/// #       generate_random_private_key, derive_public_key};</span>
-    <span class="doccomment">/// # use crypto::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use models::Address;</span>
     <span class="doccomment">/// # let private_key = generate_random_private_key();</span>
@@ -245,7 +245,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use signature::{PublicKey, PrivateKey, Signature,</span>
     <span class="doccomment">/// #       generate_random_private_key, derive_public_key};</span>
-    <span class="doccomment">/// # use crypto::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use models::Address;</span>
     <span class="doccomment">/// # let private_key = generate_random_private_key();</span>
@@ -265,7 +265,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use signature::{PublicKey, PrivateKey, Signature,</span>
     <span class="doccomment">/// #       generate_random_private_key, derive_public_key};</span>
-    <span class="doccomment">/// # use crypto::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use models::Address;</span>
     <span class="doccomment">/// # let private_key = generate_random_private_key();</span>
@@ -285,7 +285,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use signature::{PublicKey, PrivateKey, Signature,</span>
     <span class="doccomment">/// #       generate_random_private_key, derive_public_key};</span>
-    <span class="doccomment">/// # use crypto::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use models::Address;</span>
     <span class="doccomment">/// # let private_key = generate_random_private_key();</span>

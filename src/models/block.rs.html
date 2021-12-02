@@ -598,6 +598,11 @@
 <span id="597">597</span>
 <span id="598">598</span>
 <span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -609,7 +614,7 @@
     <span class="ident">OperationHashMap</span>, <span class="ident">OperationHashSet</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeMinBEInt</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">Slot</span>,
     <span class="ident">SLOT_KEY_SIZE</span>,
 };
-<span class="kw">use</span> <span class="ident">crypto::hash</span>::{<span class="ident">Hash</span>, <span class="ident">HASH_SIZE_BYTES</span>};
+<span class="kw">use</span> <span class="ident">massa_hash::hash</span>::{<span class="ident">Hash</span>, <span class="ident">HASH_SIZE_BYTES</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">signature</span>::{
     <span class="ident">sign</span>, <span class="ident">verify_signature</span>, <span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>, <span class="ident">Signature</span>, <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>,
@@ -796,6 +801,11 @@
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tEndorsements:&quot;</span>)<span class="question-mark">?</span>;
         <span class="kw">for</span> <span class="ident">ed</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">iter</span>() {
             <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\t\t-----&quot;</span>)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(
+                <span class="ident">f</span>,
+                <span class="string">&quot;\t\tId: {}&quot;</span>,
+                <span class="ident">ed</span>.<span class="ident">compute_endorsement_id</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">std::fmt::Error</span>)<span class="question-mark">?</span>
+            )<span class="question-mark">?</span>;
             <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\t\tIndex: {}&quot;</span>, <span class="ident">ed</span>.<span class="ident">content</span>.<span class="ident">index</span>)<span class="question-mark">?</span>;
             <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\t\tEndorsed slot: {}&quot;</span>, <span class="ident">ed</span>.<span class="ident">content</span>.<span class="ident">slot</span>)<span class="question-mark">?</span>;
             <span class="macro">writeln!</span>(

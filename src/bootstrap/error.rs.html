@@ -41,8 +41,8 @@
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::BootstrapMessage</span>;
 <span class="kw">use</span> <span class="ident">consensus::error::ConsensusError</span>;
-<span class="kw">use</span> <span class="ident">crypto::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
+<span class="kw">use</span> <span class="ident">massa_hash::MassaHashError</span>;
 <span class="kw">use</span> <span class="ident">network::NetworkError</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 <span class="kw">use</span> <span class="ident">time::TimeError</span>;
@@ -60,8 +60,8 @@
     <span class="ident">UnexpectedMessage</span>(<span class="ident">BootstrapMessage</span>),
     <span class="doccomment">/// connection with bootstrap node dropped</span>
     <span class="ident">UnexpectedConnectionDrop</span>,
-    <span class="doccomment">/// crypto error: {0}</span>
-    <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
+    <span class="doccomment">/// massa_hash error: {0}</span>
+    <span class="ident">MassaHashError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MassaHashError</span>),
     <span class="doccomment">/// time error: {0}</span>
     <span class="ident">TimeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TimeError</span>),
     <span class="doccomment">/// consensus error: {0}</span>

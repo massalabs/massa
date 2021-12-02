@@ -1155,11 +1155,11 @@
     <span class="ident">peer_info_database</span>::<span class="kw-2">*</span>,
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::{<span class="ident">HandshakeErrorType</span>, <span class="ident">NetworkError</span>};
-<span class="kw">use</span> <span class="ident">crypto::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">stream::FuturesUnordered</span>, <span class="ident">StreamExt</span>};
 <span class="kw">use</span> <span class="ident">logging::massa_trace</span>;
+<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">models::stats::NetworkStats</span>;
-<span class="kw">use</span> <span class="ident">models</span>::{<span class="ident">crypto::PubkeySig</span>, <span class="ident">node::NodeId</span>};
+<span class="kw">use</span> <span class="ident">models</span>::{<span class="ident">massa_hash::PubkeySig</span>, <span class="ident">node::NodeId</span>};
 <span class="kw">use</span> <span class="ident">models</span>::{
     <span class="ident">with_serialization_context</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>,
     <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">Version</span>,

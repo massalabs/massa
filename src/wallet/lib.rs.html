@@ -159,11 +159,11 @@
 
 <span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../../docs/wallet.md&quot;</span>)]</span>
 
-<span class="kw">use</span> <span class="ident">crypto::hash::Hash</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::WalletError</span>;
+<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">models::address</span>::{<span class="ident">Address</span>, <span class="ident">AddressHashMap</span>, <span class="ident">AddressHashSet</span>};
 <span class="kw">use</span> <span class="ident">models::amount::Amount</span>;
-<span class="kw">use</span> <span class="ident">models::crypto::PubkeySig</span>;
+<span class="kw">use</span> <span class="ident">models::massa_hash::PubkeySig</span>;
 <span class="kw">use</span> <span class="ident">models::Operation</span>;
 <span class="kw">use</span> <span class="ident">models::OperationContent</span>;
 <span class="kw">use</span> <span class="ident">models::SerializeCompact</span>;
