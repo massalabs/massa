@@ -305,10 +305,34 @@
 <span id="304">304</span>
 <span id="305">305</span>
 <span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">mod</span> <span class="ident">error</span>;
-<span class="kw">use</span> <span class="ident">chrono</span>::{<span class="ident">DateTime</span>, <span class="ident">NaiveDateTime</span>, <span class="ident">Utc</span>};
+<span class="kw">use</span> <span class="ident">chrono</span>::{<span class="self">self</span>, <span class="ident">DateTime</span>, <span class="ident">NaiveDateTime</span>, <span class="ident">Utc</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::TimeError</span>;
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
 <span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">Duration</span>, <span class="ident">SystemTime</span>, <span class="ident">UNIX_EPOCH</span>};
@@ -609,6 +633,30 @@
         );
         <span class="kw">let</span> <span class="ident">datetime</span>: <span class="ident">DateTime</span><span class="op">&lt;</span><span class="ident">Utc</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">DateTime::from_utc</span>(<span class="ident">naive</span>, <span class="ident">Utc</span>);
         <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">datetime</span>)
+    }
+
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// # use time::*;</span>
+    <span class="doccomment">/// let utime = UTime::from(1000 * ( 8 * 24*60*60 + 1 * 60*60 + 3 * 60 + 6 ));</span>
+    <span class="doccomment">/// let (days, hours, mins, secs) = utime.days_hours_mins_secs().unwrap();</span>
+    <span class="doccomment">/// assert_eq!(days, 8);</span>
+    <span class="doccomment">/// assert_eq!(hours, 1);</span>
+    <span class="doccomment">/// assert_eq!(mins, 3);</span>
+    <span class="doccomment">/// assert_eq!(secs, 6);</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">days_hours_mins_secs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">i64</span>, <span class="ident">i64</span>, <span class="ident">i64</span>, <span class="ident">i64</span>), <span class="ident">TimeError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">chrono::Duration::from_std</span>(<span class="self">self</span>.<span class="ident">to_duration</span>())
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">days</span> <span class="op">=</span> <span class="ident">time</span>.<span class="ident">num_days</span>();
+        <span class="kw">let</span> <span class="ident">hours</span> <span class="op">=</span> (<span class="ident">time</span> <span class="op">-</span> <span class="ident">chrono::Duration::days</span>(<span class="ident">days</span>)).<span class="ident">num_hours</span>();
+        <span class="kw">let</span> <span class="ident">mins</span> <span class="op">=</span>
+            (<span class="ident">time</span> <span class="op">-</span> <span class="ident">chrono::Duration::days</span>(<span class="ident">days</span>) <span class="op">-</span> <span class="ident">chrono::Duration::hours</span>(<span class="ident">hours</span>)).<span class="ident">num_minutes</span>();
+        <span class="kw">let</span> <span class="ident">secs</span> <span class="op">=</span> (<span class="ident">time</span>
+            <span class="op">-</span> <span class="ident">chrono::Duration::days</span>(<span class="ident">days</span>)
+            <span class="op">-</span> <span class="ident">chrono::Duration::hours</span>(<span class="ident">hours</span>)
+            <span class="op">-</span> <span class="ident">chrono::Duration::minutes</span>(<span class="ident">mins</span>))
+        .<span class="ident">num_seconds</span>();
+        <span class="prelude-val">Ok</span>((<span class="ident">days</span>, <span class="ident">hours</span>, <span class="ident">mins</span>, <span class="ident">secs</span>))
     }
 }
 </code></pre></div>

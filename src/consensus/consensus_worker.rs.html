@@ -1404,6 +1404,10 @@
 <span id="1403">1403</span>
 <span id="1404">1404</span>
 <span id="1405">1405</span>
+<span id="1406">1406</span>
+<span id="1407">1407</span>
+<span id="1408">1408</span>
+<span id="1409">1409</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">block_graph</span>::<span class="kw-2">*</span>, <span class="ident">config::ConsensusConfig</span>, <span class="ident">pos::ProofOfStake</span>};
@@ -1603,9 +1607,13 @@
             <span class="ident">next_slot</span>.<span class="ident">thread</span>,
         );
         <span class="kw">if</span> <span class="ident">cfg</span>.<span class="ident">genesis_timestamp</span> <span class="op">&gt;</span> <span class="ident">now</span> {
+            <span class="kw">let</span> (<span class="ident">days</span>, <span class="ident">hours</span>, <span class="ident">mins</span>, <span class="ident">secs</span>) <span class="op">=</span> <span class="ident">cfg</span>
+                .<span class="ident">genesis_timestamp</span>
+                .<span class="ident">saturating_sub</span>(<span class="ident">now</span>)
+                .<span class="ident">days_hours_mins_secs</span>()<span class="question-mark">?</span>;
             <span class="macro">info!</span>(
-                <span class="string">&quot;{:?} remaining to genesis&quot;</span>,
-                <span class="ident">cfg</span>.<span class="ident">genesis_timestamp</span>.<span class="ident">saturating_sub</span>(<span class="ident">now</span>).<span class="ident">to_duration</span>()
+                <span class="string">&quot;{} days, {} hours, {} minutes, {} seconds remaining to genesis&quot;</span>,
+                <span class="ident">days</span>, <span class="ident">hours</span>, <span class="ident">mins</span>, <span class="ident">secs</span>,
             )
         }
         <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="ident">staking_keys</span>.<span class="ident">keys</span>() {
