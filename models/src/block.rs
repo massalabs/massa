@@ -196,6 +196,11 @@ impl std::fmt::Display for BlockHeaderContent {
         writeln!(f, "\tEndorsements:")?;
         for ed in self.endorsements.iter() {
             writeln!(f, "\t\t-----")?;
+            writeln!(
+                f,
+                "\t\tId: {}",
+                ed.compute_endorsement_id().map_err(|_| std::fmt::Error)?
+            )?;
             writeln!(f, "\t\tIndex: {}", ed.content.index)?;
             writeln!(f, "\t\tEndorsed slot: {}", ed.content.slot)?;
             writeln!(
