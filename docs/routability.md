@@ -54,11 +54,13 @@ operation to be made routable.
     address and port 31244 in
     <https://www.yougetsignal.com/tools/open-ports/> (then again with
     port 31245)
+-   Once your node is routable, you need to send the public IP address of your node to the Discord bot.
+    You first need to register to the staking reward program (see the last step below).
 
 ## Last step
 
 -   To validate your participation in the testnet staking reward program,
 you have to register with your Discord account. Write something in the
-`testnet-rewards` channel of our
-[Discord](https://discord.com/invite/TnsJQzXkRN) and our bot will DM you
+`testnet-rewards-registration` channel of our
+[Discord](https://discord.com/invite/massa) and our bot will DM you
 instructions. More info here: [Testnet rewards program](testnet_rules.md)

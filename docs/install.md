@@ -4,7 +4,7 @@ Right now 4 cores and 8 GB of RAM should be enough to run a node, but it might i
 
 ## From binaries
 If you just wish to run a Massa node without compiling it yourself, you
-can simply run the latest binary (download and execute):
+can simply get the latest binary (download below and go the the next step: [Running a node](run.md))
 
 -   [Windows
     executable](https://gitlab.com/massalabs/massa/-/jobs/artifacts/testnet/download?job=build-windows)
@@ -30,7 +30,7 @@ Otherwise, if you wish to run a Massa node from source code, here are the steps 
 -   set it as default: `rustup default nightly`
 -   check rust version: `rustc --version`
 -   clone this repo:
-    `git clone --branch testnet https://gitlab.com/massalabs/massa.git`
+    `git clone --branch testnet https://github.com/massalabs/massa.git`
 
 ### On Windows
 

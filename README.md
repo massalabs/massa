@@ -35,11 +35,11 @@ rules](docs/testnet_rules.md).
 
 ## Testnet Discussions
 
-Please come to our [Discord](https://discord.com/invite/TnsJQzXkRN) for
+Please come to our [Discord](https://discord.com/invite/massa) for
 testnet discussions, in the testnet channel.
 
 For project announcements, we mainly use
-[Telegram](https://t.me/massanetwork).
+[Telegram](https://t.me/massanetwork), and we also have a [Twitter](https://twitter.com/MassaLabs) account.
 
 ## Tutorials to follow to join the testnet
 
@@ -55,10 +55,10 @@ For project announcements, we mainly use
 -   [Updating the node](docs/update.md)
 -   [Sending transactions](docs/transaction.md)
 
-## FAQ and Troubleshooting
+## [FAQ](docs/faq.md) and Troubleshooting
 
 You'll find answers to common issues and questions regarding the Massa
 protocol in the [FAQ](docs/faq.md).
 
 Don't hesitate to ask questions in the
-[Discord](https://discord.com/invite/TnsJQzXkRN) testnet channel.
+[Discord](https://discord.com/invite/massa) testnet channel.

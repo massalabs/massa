@@ -27,18 +27,18 @@ therefore also reward how often your node is publicly accessible.
 
 ## Episodes
 
-We will have release cycles of 1 month each, called "episodes", the
-first one starting in August 2021. At the beginning of an episode,
-participants will have a few days to set up their nodes with the newest
+We have release cycles of 1 month each, called "episodes", the
+first one started in August 2021. At the beginning of an episode,
+participants have a few days to set up their nodes with the newest
 version before scoring starts, but it's also possible to join anytime
 during the episode.
 
 Throughout the episode, you can ask for coins in the Discord faucet (on
-channel testnet-token-request). No need to abuse the faucet, we don't
+channel `testnet-faucet`). No need to abuse the faucet, we don't
 reward you based on the number of rolls.
 
-At the end of the episode, all nodes will stop by themselves and become
-useless/unusable. Participants will have to download and launch the new
+At the end of an episode, all nodes stop by themselves and become
+useless/unusable. Participants have to download and launch the new
 version for the next episode. Make sure you keep the same node private
 key and wallet!
 
@@ -90,13 +90,13 @@ network health and will be a point of attention for rewards.
 
 To validate your participation in the testnet staking reward program,
 you have to register with your Discord account. Write something in the
-`testnet-rewards` channel of our
-[Discord](https://discord.com/invite/TnsJQzXkRN) and our bot will DM you
+`testnet-rewards-registration` channel of our
+[Discord](https://discord.com/invite/massa) and our bot will DM you
 instructions.
 
 ## From scores to rewards
 
-The launch of mainnet is currently planned for Q2 2022.
+The launch of mainnet is planned for mid-2022.
 
 By this time, people will be able to claim their rewards through a KYC
 process (most likely including video/liveness) to ensure that the same
