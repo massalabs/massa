@@ -1090,12 +1090,12 @@
         <span class="kw">let</span> <span class="ident">operation_merkle_root</span> <span class="op">=</span> <span class="ident">Hash::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">HASH_SIZE_BYTES</span>;
 
-        <span class="kw">let</span> <span class="ident">max_block_endorsments</span> <span class="op">=</span>
-            <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">max_block_endorsments</span>);
+        <span class="kw">let</span> <span class="ident">max_block_endorsements</span> <span class="op">=</span>
+            <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">max_block_endorsements</span>);
 
         <span class="comment">// endorsements</span>
         <span class="kw">let</span> (<span class="ident">endorsement_count</span>, <span class="ident">delta</span>) <span class="op">=</span>
-            <span class="ident">u32::from_varint_bytes_bounded</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..], <span class="ident">max_block_endorsments</span>)<span class="question-mark">?</span>;
+            <span class="ident">u32::from_varint_bytes_bounded</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..], <span class="ident">max_block_endorsements</span>)<span class="question-mark">?</span>;
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">endorsement_count</span> <span class="kw">as</span> <span class="ident">usize</span>);
@@ -1144,7 +1144,7 @@
             <span class="ident">max_operations_per_message</span>: <span class="number">1024</span>,
             <span class="ident">max_endorsements_per_message</span>: <span class="number">1024</span>,
             <span class="ident">max_bootstrap_message_size</span>: <span class="number">100000000</span>,
-            <span class="ident">max_block_endorsments</span>: <span class="number">8</span>,
+            <span class="ident">max_block_endorsements</span>: <span class="number">8</span>,
         };
         <span class="ident"><span class="kw">crate</span>::init_serialization_context</span>(<span class="ident">ctx</span>);
         <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
@@ -1208,5 +1208,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (48a5999fc 2021-12-01)" ></div>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (acbe4443c 2021-12-02)" ></div>
 </body></html>
