@@ -684,7 +684,7 @@ impl SerializeCompact for LedgerSubset {
     /// #     max_bootstrap_message_size: 100000000,
     /// #     max_bootstrap_pos_cycles: 10000,
     /// #     max_bootstrap_pos_entries: 10000,
-    /// #     max_block_endorsments: 8,
+    /// #     max_block_endorsements: 8,
     /// # });
     /// let bytes = ledger.clone().to_bytes_compact().unwrap();
     /// let (res, _) = LedgerSubset::from_bytes_compact(&bytes).unwrap();

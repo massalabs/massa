@@ -4794,7 +4794,7 @@ mod tests {
             max_bootstrap_message_size: 100000000,
             max_bootstrap_pos_entries: 1000,
             max_bootstrap_pos_cycles: 5,
-            max_block_endorsments: 8,
+            max_block_endorsements: 8,
         });
 
         let active_block = get_export_active_test_block();
@@ -4985,7 +4985,7 @@ mod tests {
             max_bootstrap_message_size: 100000000,
             max_bootstrap_pos_entries: 1000,
             max_bootstrap_pos_cycles: 5,
-            max_block_endorsments: 8,
+            max_block_endorsements: 8,
         });
 
         ConsensusConfig {

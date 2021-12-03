@@ -68,7 +68,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSetting
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
-        max_block_endorsments: 8,
+        max_block_endorsements: 8,
     });
 
     BootstrapSettings {

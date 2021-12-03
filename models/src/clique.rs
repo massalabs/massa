@@ -39,7 +39,7 @@ impl SerializeCompact for Clique {
     /// #     max_bootstrap_message_size: 100000000,
     /// #     max_bootstrap_pos_cycles: 10000,
     /// #     max_bootstrap_pos_entries: 10000,
-    /// #     max_block_endorsments: 8,
+    /// #     max_block_endorsements: 8,
     /// # });
     /// # pub fn get_dummy_block_id(s: &str) -> BlockId {
     /// #     BlockId(Hash::hash(s.as_bytes()))

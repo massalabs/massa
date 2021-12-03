@@ -197,8 +197,8 @@ impl SerializeCompact for EndorsementContent {
 /// - Validity of the endorsed block id.
 impl DeserializeCompact for EndorsementContent {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let max_block_endorsments =
-            with_serialization_context(|context| context.max_block_endorsments);
+        let max_block_endorsements =
+            with_serialization_context(|context| context.max_block_endorsements);
         let mut cursor = 0usize;
 
         // sender public key
@@ -217,7 +217,7 @@ impl DeserializeCompact for EndorsementContent {
         // endorsement index inside the block
         let (index, delta) = u32::from_varint_bytes_bounded(
             &buffer[cursor..],
-            max_block_endorsments.saturating_sub(1),
+            max_block_endorsements.saturating_sub(1),
         )?;
         cursor += delta;
 
@@ -262,7 +262,7 @@ mod tests {
             max_operations_per_message: 1024,
             max_endorsements_per_message: 1024,
             max_bootstrap_message_size: 100000000,
-            max_block_endorsments: 8,
+            max_block_endorsements: 8,
         };
         crate::init_serialization_context(ctx);
 
