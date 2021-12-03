@@ -1,8 +1,7 @@
 # Massa JSON-RPC API
 
 This crate exposes Rust methods (through the [`Endpoints` trait) as
-JSON-RPC API endpoints (thanks to the [Parity
-JSON-RPC](https://github.com/paritytech/jsonrpc) crate).
+JSON-RPC API endpoints (thanks to the [ParityJSON-RPC](https://github.com/paritytech/jsonrpc) crate).
 
 **E.g.** this curl command will call endpoint `stop_node` (and stop the
 locally running `massa-node`):
@@ -13,16 +12,16 @@ curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0", "method"
 
 Endpoints are organised in 2 authorisations levels:
 
-## **Public** API, a.k.a. *"user mode"* endpoints (running by default on `[::]:33035`)
+## **Public** API, a.k.a. _"user mode"_ endpoints (running by default on `[::]:33035`)
 
 ### `get_status`
 
 Summary of the current state: time, last final blocks (hash, thread,
 slot, timestamp), clique count, connected nodes count.
 
-- No parameters.
+-   No parameters.
 
-- Return:
+-   Return:
 
 ```javascript
  {
@@ -81,34 +80,33 @@ slot, timestamp), clique count, connected nodes count.
   "thread_count": Number,
   "version": String
 }
-
 ```
 
 ### `get_cliques`
 
 Get cliques.
 
-- No parameters.
+-   No parameters.
 
-- Return:
+-   Return:
 
 ```javascript
 [
-  {
-    "block_ids": [String],
-    "fitness": Number,
-    "is_blockclique": Boolean
-  }
-]
+    {
+        block_ids: [String],
+        fitness: Number,
+        is_blockclique: Boolean,
+    },
+];
 ```
 
 ### `get_stakers`
 
 Returns the active stakers and their roll counts for the current cycle.
 
-- No parameters.
+-   No parameters.
 
-- Return:
+-   Return:
 
 ```javascript
 {
@@ -120,13 +118,13 @@ Returns the active stakers and their roll counts for the current cycle.
 
 Returns operations information associated to a given list of operations' IDs.
 
-- Parameters:
+-   Parameters:
 
 ```javascript
 [String]. // String must be an operation Id
 ```
 
-- Return:
+-   Return:
 
 ```javascript
 [
@@ -159,20 +157,19 @@ Returns operations information associated to a given list of operations' IDs.
     }
   }
 ]
-
 ```
 
 ### `get_endorsements`
 
 Get endorsements (not yet implemented)
 
-- Parameters:
+-   Parameters:
 
 ```javascript
-[String] // string must be an endorsement id
+[String]; // string must be an endorsement id
 ```
 
-- Return:
+-   Return:
 
 ```javascript
 [{
@@ -199,13 +196,13 @@ Get endorsements (not yet implemented)
 
 Get information on a block given its hash.
 
-- Parameters:
+-   Parameters:
 
 ```javascript
-String // Block id
+[String]; // Block IDs
 ```
 
-- Return:
+-   Return:
 
 ```javascript
 {
@@ -219,7 +216,7 @@ String // Block id
                 "content": {
                   "endorsed_block": String, // Block id
                   "index": Number,
-                  "sender_public_key": String, 
+                  "sender_public_key": String,
                   "slot": { // endorsed block slot: deifferent from block's slot
                     "period": Number,
                     "thread": Number
@@ -273,7 +270,7 @@ String // Block id
 
 Get the block graph within the specified time interval.
 
-- Parameters:
+-   Parameters:
 
 ```javascript
 {
@@ -286,80 +283,79 @@ Get the block graph within the specified time interval.
 
 ```javascript
 [
-  {
-    "creator": String, // public key
-    "id": String, // Block Id
-    "is_final": Boolean,
-    "is_in_blockclique": Boolean,
-    "is_stale": Boolean,
-    "parents": [String], // as many block Ids as there are threads
-    "slot": {
-      "period": Number,
-      "thread": Number
-    }
-  }
-]
+    {
+        creator: String, // public key
+        id: String, // Block Id
+        is_final: Boolean,
+        is_in_blockclique: Boolean,
+        is_stale: Boolean,
+        parents: [String], // as many block Ids as there are threads
+        slot: {
+            period: Number,
+            thread: Number,
+        },
+    },
+];
 ```
 
 ### `get_addresses`
 
 Get addresses.
 
-- Parameters:
+-   Parameters:
 
 ```javascript
 [
-  [String] // Addresses
-]
-
+    [String], // Addresses
+];
 ```
 
-- Return:
+-   Return:
 
 ```javascript
 [
-  {
-    "address": String,
-    "balance": {
-      "candidate_balance": String, // represent an Amount in coins
-      "final_balance": String, // represent an Amount in coins
-      "locked_balance": String // represent an Amount in coins
-    },
-    "block_draws": [
-      {
-        "period": Number,
-        "thread": Number
-      },
-    ],
-    "blocks_created": [String], // Block ids
-    "endorsement_draws": [
-      {
-        "slot": {
-          "period": Number,
-          "thread": Number
+    {
+        address: String,
+        balance: {
+            candidate_balance: String, // represent an Amount in coins
+            final_balance: String, // represent an Amount in coins
+            locked_balance: String, // represent an Amount in coins
         },
-        "index": Number
-      }
-    ],
-    "involved_in_endorsements": [String], // Endorsement Id
-    "involved_in_operations": [String], // Operation id
-    "production_stats": [ // as many items as cached cycles
-      {
-        "cycle": Number,
-        "is_final": Boolean,
-        "nok_count": Number,
-        "ok_count": Number
-      }
-    ],
-    "rolls": {
-      "active_rolls": Number,
-      "candidate_rolls": Number,
-      "final_rolls": Number
+        block_draws: [
+            {
+                period: Number,
+                thread: Number,
+            },
+        ],
+        blocks_created: [String], // Block ids
+        endorsement_draws: [
+            {
+                slot: {
+                    period: Number,
+                    thread: Number,
+                },
+                index: Number,
+            },
+        ],
+        involved_in_endorsements: [String], // Endorsement Id
+        involved_in_operations: [String], // Operation id
+        production_stats: [
+            // as many items as cached cycles
+            {
+                cycle: Number,
+                is_final: Boolean,
+                nok_count: Number,
+                ok_count: Number,
+            },
+        ],
+        rolls: {
+            active_rolls: Number,
+            candidate_rolls: Number,
+            final_rolls: Number,
+        },
+        thread: Number,
     },
-    "thread": Number
-  }
-]
-
+];
 ```
 
 ### `send_operations`
@@ -367,7 +363,7 @@ Get addresses.
 Adds operations to pool. Returns operations that were ok and sent to
 pool.
 
-- Parameters:
+-   Parameters:
 
 ```javascript
 [[
@@ -402,7 +398,7 @@ pool.
 [String], // Operation ids
 ```
 
-## **Private** API, a.k.a. *"manager mode"* endpoints (running by default on `127.0.0.1:33034`)
+## **Private** API, a.k.a. _"manager mode"_ endpoints (running by default on `127.0.0.1:33034`)
 
 ### `stop_node`
 
@@ -419,7 +415,7 @@ Sign message with node's key.
 -   Parameter:
 
 ```javascript
-[u8]
+[u8];
 ```
 
 -   Return:
@@ -438,7 +434,7 @@ Add a vec of new private keys for the node to use to stake.
 -   Parameter:
 
 ```javascript
-[String]
+[String];
 ```
 
 The strings must be private keys.
@@ -452,7 +448,7 @@ Remove a vec of addresses used to stake.
 -   Parameter:
 
 ```javascript
-[String]
+[String];
 ```
 
 The strings must be addresses.
@@ -468,7 +464,7 @@ Return hashset of staking addresses.
 -   Return:
 
 ```javascript
-[String]
+[String];
 ```
 
 The strings are addresses.
@@ -480,7 +476,7 @@ Bans given IP addresses.
 -   Parameter:
 
 ```javascript
-[String]
+[String];
 ```
 
 The strings must be ip addresses.
@@ -494,7 +490,7 @@ Unbans given IP addresses.
 -   Parameter:
 
 ```javascript
-[String]
+[String];
 ```
 
 The strings must be ip addresses.

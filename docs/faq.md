@@ -16,7 +16,7 @@ desktop computer with 8 cores, 16 GB RAM, and 1TB disk.
 You can use a VPS to run a node. The pros of VPS are that they have high
 availability and are easy to configure. Cons are that nodes running on a
 VPS can lead to centralization if a lot of nodes running on the same
-provider (e.g. AWS).
+provider (e.g. AWS).
 
 ### How to keep the node running when I close the terminal?
 
@@ -105,14 +105,15 @@ selected to do so. Most frequent reasons:
     time during which you had active_rolls \> 0
 
 Diagnostic process:
-* make sure the node is running on a computer that matches hardware requirements and that no other software is hogging ressources
-* type `wallet_info` and make sure that at least one address has active rolls > 0
-  * if there are no addresses listed, create a new one by calling `wallet_generate_private_key` and try the diagnostic process again
-  * if none of the listed addresses has non-zero active rolls, perform a new roll buy (see tutorials) and try the diagnostic process again
-* type `node_get_staking_addresses` in the client:
-  * if the list is empty or if none of the addresses listed matches addresses that have active rolls in `wallet_info`:
-    * call `node_add_staking_private_keys` with the private key matching an address that has non-zero active rolls in `wallet_info`
-* check your address with the online explorer: if there is a mismatch between the number of active rolls displayed in the online interface and what is returned by `wallet_info`, it might be that your node is desynchronized. Try restarting it.
+
+-   make sure the node is running on a computer that matches hardware requirements and that no other software is hogging ressources
+-   type `wallet_info` and make sure that at least one address has active rolls > 0
+    -   if there are no addresses listed, create a new one by calling `wallet_generate_private_key` and try the diagnostic process again
+    -   if none of the listed addresses has non-zero active rolls, perform a new roll buy (see tutorials) and try the diagnostic process again
+-   type `node_get_staking_addresses` in the client:
+    -   if the list is empty or if none of the addresses listed matches addresses that have active rolls in `wallet_info`:
+        -   call `node_add_staking_private_keys` with the private key matching an address that has non-zero active rolls in `wallet_info`
+-   check your address with the online explorer: if there is a mismatch between the number of active rolls displayed in the online interface and what is returned by `wallet_info`, it might be that your node is desynchronized. Try restarting it.
 
 ### Why are rolls automatically sold? Is it some kind of penalty/slashing?
 
@@ -129,7 +130,7 @@ beginning of cycle C+3.
 
 For now, they don't stake automatically. In the future, we will add a
 feature allowing auto compounding. That being said, some people appear
-to have done that very early in the project. Feel free to ask on the 
+to have done that very early in the project. Feel free to ask on the
 [Discord](https://discord.com/invite/massa) server :).
 
 ### I can buy, send, sell ROLLs and coins without fees. When should I increase the fee \>0?
@@ -187,31 +188,31 @@ Check the quality of your internet connection. Try increasing the
 
 ```toml
 [bootstrap]
-    max_ping = 10000 # try 10000 for example
+max_ping = 10000 # try 10000 for example
 ```
 
 ### API can't start
 
--   If your API can't start, e.g. with
+-   If your API can't start, e.g. with
     `could not start API controller: ServerError(hyper::Error(Listen, Os { code: 98, kind: AddrInUse, message: "Address already in use" }))`,
     it's probably because the default API ports 33034/33035 are already in use
     on your computer. You should change the port in the config files,
     both in the API and Client:
 
-  * create/edit file `massa-node/config/config.toml` to change the port used by the API:
+*   create/edit file `massa-node/config/config.toml` to change the port used by the API:
 
 ```toml
 [api]
-    bind_private = "127.0.0.1:33034"  # change port here from 33034 to something else
-    bind_public = "0.0.0.0:33035"  # change port here from 33035 to something else
+bind_private = "127.0.0.1:33034" # change port here from 33034 to something else
+bind_public = "0.0.0.0:33035" # change port here from 33035 to something else
 ```
 
-  * create/edit file `massa-client/config/config.toml` and put the same
-port:
+-   create/edit file `massa-client/config/config.toml` and put the same
+    port:
 
 ```toml
 [default_node]
-    ip = "127.0.0.1"
-    private_port = 33034  # change port here from 33034 to the port chosen in node's bind_private
-    public_port = 33035  # change port here from 33035 to the port chosen in node's bind_public
+ip = "127.0.0.1"
+private_port = 33034 # change port here from 33034 to the port chosen in node's bind_private
+public_port = 33035 # change port here from 33035 to the port chosen in node's bind_public
 ```

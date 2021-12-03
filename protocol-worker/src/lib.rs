@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+#![doc = include_str!("../../docs/concurrency.md")]
 #![feature(async_closure)]
 #![feature(drain_filter)]
 #![feature(ip)]

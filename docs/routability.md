@@ -44,8 +44,8 @@ operation to be made routable.
 -   edit file `massa-node/config/config.toml` (create it if absent) with the following
     contents:
     ```toml
-        [network]
-            routable_ip = "AAA.BBB.CCC.DDD"
+    [network]
+    routable_ip = "AAA.BBB.CCC.DDD"
     ```
     where AAA.BBB.CCC.DDD should be replaced with your public IP address (not
     the local one !). IPV6 is also supported.
@@ -60,7 +60,7 @@ operation to be made routable.
 ## Last step
 
 -   To validate your participation in the testnet staking reward program,
-you have to register with your Discord account. Write something in the
-`testnet-rewards-registration` channel of our
-[Discord](https://discord.com/invite/massa) and our bot will DM you
-instructions. More info here: [Testnet rewards program](testnet_rules.md)
+    you have to register with your Discord account. Write something in the
+    `testnet-rewards-registration` channel of our
+    [Discord](https://discord.com/invite/massa) and our bot will DM you
+    instructions. More info here: [Testnet rewards program](testnet_rules.md)

@@ -3,9 +3,9 @@
 ## From binaries
 
 Simply run the binaries you downloaded in the previous step:
-    Open the `massa-node` folder and run the `massa-node` excutable
-    Open the `massa-client` folder and run the `massa-client` excutable
-    
+Open the `massa-node` folder and run the `massa-node` excutable
+Open the `massa-client` folder and run the `massa-client` excutable
+
 ## From source code
 
 ### On Ubuntu / MacOS
@@ -14,15 +14,21 @@ Simply run the binaries you downloaded in the previous step:
 
 On a first window:
 
-    cd massa/massa-node/
+```bash
+cd massa/massa-node/
+```
 
 Launch the node, on Ubuntu:
 
-    RUST_BACKTRACE=full cargo run --release |& tee logs.txt
+```bash
+RUST_BACKTRACE=full cargo run --release |& tee logs.txt
+```
 
 **Or,** on macOS:
 
-    RUST_BACKTRACE=full cargo run --release > logs.txt 2>&1
+```bash
+RUST_BACKTRACE=full cargo run --release > logs.txt 2>&1
+```
 
 You should leave the window opened.
 
@@ -30,10 +36,15 @@ You should leave the window opened.
 
 On a second window:
 
-    cd massa/massa-client/
+```bash
+cd massa/massa-client/
+```
+
 Then:
 
-    cargo run --release
+```bash
+cargo run --release
+```
 
 Please wait until the directories are built before moving to the next step.
 

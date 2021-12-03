@@ -1,5 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+#![doc = include_str!("../pos.md")]
+
 use crate::error::ConsensusError;
 use crate::{block_graph::ActiveBlock, ConsensusConfig};
 use bitvec::prelude::*;

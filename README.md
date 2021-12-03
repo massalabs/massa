@@ -30,8 +30,7 @@ and run a Massa node. Running a node during the testnet phase also helps
 us find bugs and improve usability, so it will be rewarded with real
 Massa on mainnet launch.
 
-The mechanics of those rewards are described in the [Testnet
-rules](docs/testnet_rules.md).
+The mechanics of those rewards are described in the [Testnetrules](docs/testnet_rules.md).
 
 ## Testnet Discussions
 
@@ -43,17 +42,17 @@ For project announcements, we mainly use
 
 ## Tutorials to follow to join the testnet
 
--   [Installing a node](docs/install.md)
--   [Running a node](docs/run.md)
--   [Creating a wallet](docs/wallet.md)
--   [Staking](docs/staking.md)
--   [Routability tutorial](docs/routability.md) (Optionnal)
--   [Testnet rewards program](docs/testnet_rules.md) (Optionnal)
+- [Installing a node](docs/install.md)
+- [Running a node](docs/run.md)
+- [Creating a wallet](docs/wallet.md)
+- [Staking](docs/staking.md)
+- [Routability tutorial](docs/routability.md) (Optionnal)
+- [Testnet rewards program](docs/testnet_rules.md) (Optionnal)
 
 ## More tutorials
 
--   [Updating the node](docs/update.md)
--   [Sending transactions](docs/transaction.md)
+- [Updating the node](docs/update.md)
+- [Sending transactions](docs/transaction.md)
 
 ## [FAQ](docs/faq.md) and Troubleshooting
 
