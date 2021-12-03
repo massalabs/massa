@@ -7,11 +7,11 @@ If you just wish to run a Massa node without compiling it yourself, you
 can simply get the latest binary (download below and go the the next step: [Running a node](run.md))
 
 -   [Windows
-    executable](https://github.com/massalabs/massa/suites/4532777205/artifacts/121408879)
+    executable](https://github.com/massalabs/massa/releases/latest/download/release_windows.zip)
 -   [Linux
-    binary](https://github.com/massalabs/massa/suites/4532777205/artifacts/121408877)
+    binary](https://github.com/massalabs/massa/releases/latest/download/release_linux.zip)
 -   [MacOS
-    binary](https://github.com/massalabs/massa/suites/4532777205/artifacts/121408878)
+    binary](https://github.com/massalabs/massa/releases/latest/download/release_macos.zip)
 
 ## From source code
 Otherwise, if you wish to run a Massa node from source code, here are the steps to follow:
