@@ -56,7 +56,7 @@ where
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerializationContext {
     pub max_block_operations: u32,
-    pub max_block_endorsments: u32,
+    pub max_block_endorsements: u32,
     pub parent_count: u8,
     pub max_block_size: u32,
     pub max_peer_list_length: u32,

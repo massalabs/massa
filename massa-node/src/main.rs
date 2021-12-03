@@ -65,7 +65,7 @@ async fn launch() -> (
         max_bootstrap_message_size: SETTINGS.bootstrap.max_bootstrap_message_size,
         max_bootstrap_pos_cycles: SETTINGS.bootstrap.max_bootstrap_pos_cycles,
         max_bootstrap_pos_entries: SETTINGS.bootstrap.max_bootstrap_pos_entries,
-        max_block_endorsments: SETTINGS.consensus.endorsement_count,
+        max_block_endorsements: SETTINGS.consensus.endorsement_count,
     });
 
     // interrupt signal listener

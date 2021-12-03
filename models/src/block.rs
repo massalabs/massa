@@ -485,12 +485,12 @@ impl DeserializeCompact for BlockHeaderContent {
         let operation_merkle_root = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
         cursor += HASH_SIZE_BYTES;
 
-        let max_block_endorsments =
-            with_serialization_context(|context| context.max_block_endorsments);
+        let max_block_endorsements =
+            with_serialization_context(|context| context.max_block_endorsements);
 
         // endorsements
         let (endorsement_count, delta) =
-            u32::from_varint_bytes_bounded(&buffer[cursor..], max_block_endorsments)?;
+            u32::from_varint_bytes_bounded(&buffer[cursor..], max_block_endorsements)?;
         cursor += delta;
 
         let mut endorsements: Vec<Endorsement> = Vec::with_capacity(endorsement_count as usize);
@@ -539,7 +539,7 @@ mod test {
             max_operations_per_message: 1024,
             max_endorsements_per_message: 1024,
             max_bootstrap_message_size: 100000000,
-            max_block_endorsments: 8,
+            max_block_endorsements: 8,
         };
         crate::init_serialization_context(ctx);
         let private_key = generate_random_private_key();
