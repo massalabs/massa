@@ -553,21 +553,25 @@ impl Command {
                 let amount = parameters[2].parse::<Amount>()?;
                 let fee = parameters[3].parse::<Amount>()?;
 
-                match amount.checked_add(fee) {
-                    Some(total) => {
-                        if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
-                            match addresses_info.get(0) {
-                                Some(info) => {
-                                    if info.ledger_info.candidate_ledger_info.balance < total {
-                                        println!("WARNING: this operation may be rejected due to insuffisant balance");
+                if !json {
+                    match amount.checked_add(fee) {
+                        Some(total) => {
+                            if let Ok(addresses_info) =
+                                client.public.get_addresses(vec![addr]).await
+                            {
+                                match addresses_info.get(0) {
+                                    Some(info) => {
+                                        if info.ledger_info.candidate_ledger_info.balance < total {
+                                            println!("WARNING: this operation may be rejected due to insuffisant balance");
+                                        }
                                     }
+                                    None => println!("WARNING: address {} not found", addr),
                                 }
-                                None => println!("WARNING: address {} not found", addr),
                             }
                         }
-                    }
-                    None => {
-                        println!("WARNING: The total amount hit the limit overflow, operation will certainly be rejected");
+                        None => {
+                            println!("WARNING: The total amount hit the limit overflow, operation will certainly be rejected");
+                        }
                     }
                 }
 
