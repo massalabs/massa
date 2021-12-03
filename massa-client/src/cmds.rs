@@ -411,7 +411,9 @@ impl Command {
             }
 
             Command::wallet_info => {
-                println!("WARNING: do not share your private key");
+                if !json {
+                    println!("WARNING: do not share your private key");
+                }
                 match client
                     .public
                     .get_addresses(wallet.get_full_wallet().keys().copied().collect())
@@ -475,28 +477,32 @@ impl Command {
                 let roll_count = parameters[1].parse::<u64>()?;
                 let fee = parameters[2].parse::<Amount>()?;
 
-                let roll_price = match client.public.get_status().await {
-                    Err(e) => bail!("RpcError: {}", e),
-                    Ok(status) => status.algo_config.roll_price,
-                };
-                match roll_price
-                    .checked_mul_u64(roll_count)
-                    .and_then(|x| x.checked_add(fee))
-                {
-                    Some(total) => {
-                        if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
-                            match addresses_info.get(0) {
-                                Some(info) => {
-                                    if info.ledger_info.candidate_ledger_info.balance < total {
-                                        println!("WARNING: this operation may be rejected due to insuffisant balance");
+                if !json {
+                    let roll_price = match client.public.get_status().await {
+                        Err(e) => bail!("RpcError: {}", e),
+                        Ok(status) => status.algo_config.roll_price,
+                    };
+                    match roll_price
+                        .checked_mul_u64(roll_count)
+                        .and_then(|x| x.checked_add(fee))
+                    {
+                        Some(total) => {
+                            if let Ok(addresses_info) =
+                                client.public.get_addresses(vec![addr]).await
+                            {
+                                match addresses_info.get(0) {
+                                    Some(info) => {
+                                        if info.ledger_info.candidate_ledger_info.balance < total {
+                                            println!("WARNING: this operation may be rejected due to insuffisant balance");
+                                        }
                                     }
+                                    None => println!("WARNING: address {} not found", addr),
                                 }
-                                None => println!("WARNING: address {} not found", addr),
                             }
                         }
-                    }
-                    None => {
-                        println!("WARNING: The total amount hit the limit overflow, operation will certainly be rejected");
+                        None => {
+                            println!("WARNING: The total amount hit the limit overflow, operation will certainly be rejected");
+                        }
                     }
                 }
                 send_operation(
@@ -518,16 +524,18 @@ impl Command {
                 let roll_count = parameters[1].parse::<u64>()?;
                 let fee = parameters[2].parse::<Amount>()?;
 
-                if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
-                    match addresses_info.get(0) {
-                        Some(info) => {
-                            if info.ledger_info.candidate_ledger_info.balance < fee
-                                || roll_count > info.rolls.candidate_rolls
-                            {
-                                println!("WARNING: this operation may be rejected due to insuffisant balance or roll count");
+                if !json {
+                    if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
+                        match addresses_info.get(0) {
+                            Some(info) => {
+                                if info.ledger_info.candidate_ledger_info.balance < fee
+                                    || roll_count > info.rolls.candidate_rolls
+                                {
+                                    println!("WARNING: this operation may be rejected due to insuffisant balance or roll count");
+                                }
                             }
+                            None => println!("WARNING: address {} not found", addr),
                         }
-                        None => println!("WARNING: address {} not found", addr),
                     }
                 }
 
@@ -551,21 +559,25 @@ impl Command {
                 let amount = parameters[2].parse::<Amount>()?;
                 let fee = parameters[3].parse::<Amount>()?;
 
-                match amount.checked_add(fee) {
-                    Some(total) => {
-                        if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
-                            match addresses_info.get(0) {
-                                Some(info) => {
-                                    if info.ledger_info.candidate_ledger_info.balance < total {
-                                        println!("WARNING: this operation may be rejected due to insuffisant balance");
+                if !json {
+                    match amount.checked_add(fee) {
+                        Some(total) => {
+                            if let Ok(addresses_info) =
+                                client.public.get_addresses(vec![addr]).await
+                            {
+                                match addresses_info.get(0) {
+                                    Some(info) => {
+                                        if info.ledger_info.candidate_ledger_info.balance < total {
+                                            println!("WARNING: this operation may be rejected due to insuffisant balance");
+                                        }
                                     }
+                                    None => println!("WARNING: address {} not found", addr),
                                 }
-                                None => println!("WARNING: address {} not found", addr),
                             }
                         }
-                    }
-                    None => {
-                        println!("WARNING: The total amount hit the limit overflow, operation will certainly be rejected");
+                        None => {
+                            println!("WARNING: The total amount hit the limit overflow, operation will certainly be rejected");
+                        }
                     }
                 }
 
