@@ -41,7 +41,7 @@ impl Address {
 
     /// Computes address associated with given public key
     pub fn from_public_key(public_key: &PublicKey) -> Result<Self, ModelsError> {
-        Ok(Address(Hash::hash(&public_key.to_bytes())))
+        Ok(Address(Hash::from(&public_key.to_bytes())))
     }
 
     /// ## Example

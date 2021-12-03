@@ -117,7 +117,7 @@ async fn test_endorsement_check() {
                 index: 0,
                 endorsed_block: parents[0],
             };
-            let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+            let hash = Hash::from(&content.to_bytes_compact().unwrap());
             let signature = sign(&hash, &sender_priv).unwrap();
             let ed = Endorsement {
                 content: content.clone(),
@@ -135,7 +135,7 @@ async fn test_endorsement_check() {
                 index: 0,
                 endorsed_block: parents[1],
             };
-            let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+            let hash = Hash::from(&content.to_bytes_compact().unwrap());
             let signature = sign(&hash, &sender_priv).unwrap();
             let ed = Endorsement {
                 content: content.clone(),
@@ -153,7 +153,7 @@ async fn test_endorsement_check() {
                 index: 0,
                 endorsed_block: parents[1],
             };
-            let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+            let hash = Hash::from(&content.to_bytes_compact().unwrap());
             let signature = sign(&hash, &sender_priv).unwrap();
             let ed = Endorsement {
                 content: content.clone(),
@@ -171,7 +171,7 @@ async fn test_endorsement_check() {
                 index: 0,
                 endorsed_block: parents[0],
             };
-            let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+            let hash = Hash::from(&content.to_bytes_compact().unwrap());
             let signature = sign(&hash, &sender_priv).unwrap();
             let ed = Endorsement {
                 content: content.clone(),

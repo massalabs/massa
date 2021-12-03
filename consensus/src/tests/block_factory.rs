@@ -40,7 +40,7 @@ impl BlockFactory {
                 creator: public_key,
                 slot: self.slot,
                 parents: self.best_parents.clone(),
-                operation_merkle_root: Hash::hash(
+                operation_merkle_root: Hash::from(
                     &self
                         .operations
                         .iter()

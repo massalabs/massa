@@ -42,7 +42,7 @@ impl SerializeCompact for Clique {
     /// #     max_block_endorsements: 8,
     /// # });
     /// # pub fn get_dummy_block_id(s: &str) -> BlockId {
-    /// #     BlockId(Hash::hash(s.as_bytes()))
+    /// #     BlockId(Hash::from(s.as_bytes()))
     /// # }
     /// let clique = Clique {
     ///         block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")].into_iter().collect(),

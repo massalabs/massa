@@ -41,7 +41,7 @@ impl BootstrapServerBinder {
         let rand_hash = {
             let mut random_bytes = [0u8; BOOTSTRAP_RANDOMNES_SIZE_BYTES];
             self.duplex.read_exact(&mut random_bytes).await?;
-            let expected_hash = Hash::hash(&random_bytes);
+            let expected_hash = Hash::from(&random_bytes);
             let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
             self.duplex.read_exact(&mut hash_bytes).await?;
             if Hash::from_bytes(&hash_bytes)? != expected_hash {
@@ -74,7 +74,7 @@ impl BootstrapServerBinder {
             signed_data[..SIGNATURE_SIZE_BYTES]
                 .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
             signed_data[SIGNATURE_SIZE_BYTES..].clone_from_slice(&msg_bytes);
-            sign(&Hash::hash(&signed_data), &self.local_privkey)?
+            sign(&Hash::from(&signed_data), &self.local_privkey)?
         };
 
         // send signature

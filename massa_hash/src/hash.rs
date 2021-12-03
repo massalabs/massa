@@ -21,9 +21,9 @@ impl Hash {
     /// # Example
     ///  ```
     /// # use massa_hash::hash::Hash;
-    /// let hash = Hash::hash(&"hello world".as_bytes());
+    /// let hash = Hash::from(&"hello world".as_bytes());
     /// ```
-    pub fn hash(data: &[u8]) -> Self {
+    pub fn from(data: &[u8]) -> Self {
         use bitcoin_hashes::Hash;
         Hash(bitcoin_hashes::sha256::Hash::hash(data))
     }
@@ -33,7 +33,7 @@ impl Hash {
     /// # Example
     ///  ```
     /// # use massa_hash::hash::Hash;
-    /// let hash = Hash::hash(&"hello world".as_bytes());
+    /// let hash = Hash::from(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check();
     /// ```
     pub fn to_bs58_check(&self) -> String {
@@ -45,7 +45,7 @@ impl Hash {
     /// # Example
     ///  ```
     /// # use massa_hash::hash::Hash;
-    /// let hash = Hash::hash(&"hello world".as_bytes());
+    /// let hash = Hash::from(&"hello world".as_bytes());
     /// let serialized = hash.to_bytes();
     /// ```
     pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
@@ -58,7 +58,7 @@ impl Hash {
     /// # Example
     ///  ```
     /// # use massa_hash::hash::Hash;
-    /// let hash = Hash::hash(&"hello world".as_bytes());
+    /// let hash = Hash::from(&"hello world".as_bytes());
     /// let serialized = hash.into_bytes();
     /// ```
     pub fn into_bytes(self) -> [u8; HASH_SIZE_BYTES] {
@@ -72,7 +72,7 @@ impl Hash {
     ///  ```
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_hash::hash::Hash;
-    /// let hash = Hash::hash(&"hello world".as_bytes());
+    /// let hash = Hash::from(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check();
     /// let deserialized: Hash = Hash::from_bs58_check(&serialized).unwrap();
     /// ```
@@ -95,7 +95,7 @@ impl Hash {
     ///  ```
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_hash::hash::Hash;
-    /// let hash = Hash::hash(&"hello world".as_bytes());
+    /// let hash = Hash::from(&"hello world".as_bytes());
     /// let serialized = hash.into_bytes();
     /// let deserialized: Hash = Hash::from_bytes(&serialized).unwrap();
     /// ```
@@ -120,7 +120,7 @@ impl ::serde::Serialize for Hash {
     /// ```
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_hash::hash::Hash;
-    /// let hash = Hash::hash(&"hello world".as_bytes());
+    /// let hash = Hash::from(&"hello world".as_bytes());
     /// let serialized: String = serde_json::to_string(&hash).unwrap();
     /// ```
     ///
@@ -145,7 +145,7 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
     /// ```
     /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
-    /// let hash = Hash::hash(&"hello world".as_bytes());
+    /// let hash = Hash::from(&"hello world".as_bytes());
     /// let serialized: String = serde_json::to_string(&hash).unwrap();
     /// let deserialized: Hash = serde_json::from_str(&serialized).unwrap();
     /// ```
@@ -216,7 +216,7 @@ mod tests {
     use serial_test::serial;
 
     fn example() -> Hash {
-        Hash::hash("hello world".as_bytes())
+        Hash::from("hello world".as_bytes())
     }
 
     #[test]
@@ -232,7 +232,7 @@ mod tests {
     #[serial]
     fn test_hash() {
         let data = "abc".as_bytes();
-        let hash = Hash::hash(data);
+        let hash = Hash::from(data);
         let hash_ref: [u8; HASH_SIZE_BYTES] = [
             186, 120, 22, 191, 143, 1, 207, 234, 65, 65, 64, 222, 93, 174, 34, 35, 176, 3, 97, 163,
             150, 23, 122, 156, 180, 16, 255, 97, 242, 0, 21, 173,

@@ -1146,7 +1146,7 @@ impl ProtocolWorker {
                 .iter()
                 .map(|op_id| op_id.to_bytes().to_vec())
                 .concat();
-            if block.header.content.operation_merkle_root != Hash::hash(&concat_bytes) {
+            if block.header.content.operation_merkle_root != Hash::from(&concat_bytes) {
                 massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_root_hash",
                     { "node": source_node_id,"block_id":block_id, "block": block });
                 return Ok(None);
@@ -1446,7 +1446,7 @@ mod tests {
     }
 
     pub fn get_dummy_block_id(s: &str) -> BlockId {
-        BlockId(Hash::hash(s.as_bytes()))
+        BlockId(Hash::from(s.as_bytes()))
     }
     #[test]
     #[serial]
