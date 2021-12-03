@@ -411,7 +411,9 @@ impl Command {
             }
 
             Command::wallet_info => {
-                println!("WARNING: do not share your private key");
+                if !json {
+                    println!("WARNING: do not share your private key");
+                }
                 match client
                     .public
                     .get_addresses(wallet.get_full_wallet().keys().copied().collect())
