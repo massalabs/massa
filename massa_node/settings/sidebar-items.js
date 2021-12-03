@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["BASE_CONFIG_PATH",""],["OVERRIDE_CONFIG_PATH",""]],"struct":[["LoggingSettings",""],["SETTINGS",""],["Settings",""]]});
+initSidebarItems({"struct":[["LoggingSettings",""],["SETTINGS",""],["Settings",""]]});
