@@ -429,7 +429,7 @@ pub mod tests {
             sender_public_key: sender_pub,
             expire_period,
         };
-        let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+        let hash = Hash::from(&content.to_bytes_compact().unwrap());
         let signature = sign(&hash, &sender_priv).unwrap();
 
         (

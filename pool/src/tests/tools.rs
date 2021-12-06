@@ -56,7 +56,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
         sender_public_key: sender_pub,
         expire_period,
     };
-    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+    let hash = Hash::from(&content.to_bytes_compact().unwrap());
     let signature = sign(&hash, &sender_priv).unwrap();
 
     (
@@ -74,9 +74,9 @@ pub fn create_endorsement(slot: Slot) -> Endorsement {
         sender_public_key,
         slot,
         index: 0,
-        endorsed_block: BlockId(Hash::hash("blabla".as_bytes())),
+        endorsed_block: BlockId(Hash::from("blabla".as_bytes())),
     };
-    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+    let hash = Hash::from(&content.to_bytes_compact().unwrap());
     let signature = sign(&hash, &sender_priv).unwrap();
     Endorsement { content, signature }
 }
@@ -98,7 +98,7 @@ pub fn get_transaction_with_addresses(
         sender_public_key: sender_pub,
         expire_period,
     };
-    let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+    let hash = Hash::from(&content.to_bytes_compact().unwrap());
     let signature = sign(&hash, &sender_priv).unwrap();
 
     (
