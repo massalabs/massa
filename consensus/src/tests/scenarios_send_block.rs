@@ -5,15 +5,14 @@
 use crate::tests::tools::{self, generate_ledger_file};
 use models::Slot;
 use serial_test::serial;
+use signature::{generate_random_private_key, PrivateKey};
 use std::collections::HashMap;
 
 #[tokio::test]
 #[serial]
 async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
 
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -28,19 +27,18 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let start_slot = 3;
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create test blocks
+            // create test blocks
             let slot = Slot::new(1 + start_slot, 0);
             let draw = consensus_command_sender
-                .get_selection_draws(slot.clone(), Slot::new(2 + start_slot, 0))
+                .get_selection_draws(slot, Slot::new(2 + start_slot, 0))
                 .await
                 .expect("could not get selection draws.")[0]
                 .1
@@ -56,7 +54,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
             // Send the actual block.
             protocol_controller.receive_block(t0s1).await;
 
-            //block t0s1 is propagated
+            // block t0s1 is propagated
             let hash_list = vec![hasht0s1];
             tools::validate_propagate_block_in_list(
                 &mut protocol_controller,
@@ -86,9 +84,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 #[serial]
 async fn test_consensus_block_not_found() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -102,21 +98,20 @@ async fn test_consensus_block_not_found() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let start_slot = 3;
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create test blocks
+            // create test blocks
             let (hasht0s1, _, _) = tools::create_block(
                 &cfg,
                 Slot::new(1 + start_slot, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             // Ask for the block to consensus.

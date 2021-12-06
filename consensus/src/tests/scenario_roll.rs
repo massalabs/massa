@@ -1,12 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use communication::protocol::ProtocolCommand;
 use models::address::AddressHashSet;
 use models::{Address, Amount, BlockId, Slot};
 use num::rational::Ratio;
 use pool::PoolCommand;
+use protocol_exports::ProtocolCommand;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use serial_test::serial;
+use signature::{derive_public_key, generate_random_private_key};
 use std::collections::HashMap;
 use std::str::FromStr;
 use time::UTime;
@@ -38,22 +39,22 @@ async fn test_roll() {
     let thread_count = 2;
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
-    let mut priv_1 = crypto::generate_random_private_key();
-    let mut pubkey_1 = crypto::derive_public_key(&priv_1);
+    let mut priv_1 = generate_random_private_key();
+    let mut pubkey_1 = derive_public_key(&priv_1);
     let mut address_1 = Address::from_public_key(&pubkey_1).unwrap();
     while 0 != address_1.get_thread(thread_count) {
-        priv_1 = crypto::generate_random_private_key();
-        pubkey_1 = crypto::derive_public_key(&priv_1);
+        priv_1 = generate_random_private_key();
+        pubkey_1 = derive_public_key(&priv_1);
         address_1 = Address::from_public_key(&pubkey_1).unwrap();
     }
     assert_eq!(0, address_1.get_thread(thread_count));
 
-    let mut priv_2 = crypto::generate_random_private_key();
-    let mut pubkey_2 = crypto::derive_public_key(&priv_2);
+    let mut priv_2 = generate_random_private_key();
+    let mut pubkey_2 = derive_public_key(&priv_2);
     let mut address_2 = Address::from_public_key(&pubkey_2).unwrap();
     while 0 != address_2.get_thread(thread_count) {
-        priv_2 = crypto::generate_random_private_key();
-        pubkey_2 = crypto::derive_public_key(&priv_2);
+        priv_2 = generate_random_private_key();
+        pubkey_2 = derive_public_key(&priv_2);
         address_2 = Address::from_public_key(&pubkey_2).unwrap();
     }
     assert_eq!(0, address_2.get_thread(thread_count));
@@ -88,13 +89,12 @@ async fn test_roll() {
         cfg.clone(),
         None,
         None,
-        None,
         async move |mut pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
                     consensus_event_receiver| {
             let mut parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -122,7 +122,7 @@ async fn test_roll() {
                 priv_1,
                 vec![rb_a1_r1_err],
             );
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 1, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 1, 0).await;
             // invalid because a1 has not enough coins to buy a roll
             propagate_block(&mut protocol_controller, block1_err1, false, 150).await;
 
@@ -155,24 +155,23 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
-            assert_eq!(addr_state.final_rolls, 0);
-            assert_eq!(addr_state.candidate_rolls, 1);
+            assert_eq!(addr_state.rolls.active_rolls, 0);
+            assert_eq!(addr_state.rolls.final_rolls, 0);
+            assert_eq!(addr_state.rolls.candidate_rolls, 1);
             assert_eq!(
-                addr_state.candidate_ledger_data.balance,
+                addr_state.ledger_info.candidate_ledger_info.balance,
                 Amount::from_str("9000").unwrap()
             );
 
             let (id_1t1, block1t1, _) =
                 create_block_with_operations(&cfg, Slot::new(1, 1), &parents, priv_1, vec![]);
 
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 1, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 1, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block1t1, true, 150).await;
             parents[1] = id_1t1;
 
             // cycle 1
-            // todo check draws
 
             let (id_2, block2, _) = create_block_with_operations(
                 &cfg,
@@ -182,7 +181,7 @@ async fn test_roll() {
                 vec![rs_a2_r1],
             );
 
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 2, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 2, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block2, true, 150).await;
             parents[0] = id_2;
@@ -194,15 +193,15 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
-            assert_eq!(addr_state.final_rolls, 0);
-            assert_eq!(addr_state.candidate_rolls, 0);
-            let balance = addr_state.candidate_ledger_data.balance;
+            assert_eq!(addr_state.rolls.active_rolls, 0);
+            assert_eq!(addr_state.rolls.final_rolls, 0);
+            assert_eq!(addr_state.rolls.candidate_rolls, 0);
+            let balance = addr_state.ledger_info.candidate_ledger_info.balance;
             assert_eq!(balance, Amount::from_str("9000").unwrap());
 
             let (id_2t, block2t2, _) =
                 create_block_with_operations(&cfg, Slot::new(2, 1), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 2, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 2, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block2t2, true, 150).await;
             parents[1] = id_2t;
@@ -212,32 +211,32 @@ async fn test_roll() {
             // block 3 in thread 1
             let (id_3t1, block3t1, _) =
                 create_block_with_operations(&cfg, Slot::new(3, 1), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 3, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 3, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block3t1, true, 150).await;
             parents[1] = id_3t1;
 
             // cycle 2
 
-            //miss block 4
+            // miss block 4
 
             let (id_4t1, block4t1, _) =
                 create_block_with_operations(&cfg, Slot::new(4, 1), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 4, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 4, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block4t1, true, 150).await;
             parents[1] = id_4t1;
 
             let (id_5, block5, _) =
                 create_block_with_operations(&cfg, Slot::new(5, 0), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 5, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 5, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block5, true, 150).await;
             parents[0] = id_5;
 
             let (id_5t1, block5t1, _) =
                 create_block_with_operations(&cfg, Slot::new(5, 1), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 5, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 5, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block5t1, true, 150).await;
             parents[1] = id_5t1;
@@ -264,7 +263,7 @@ async fn test_roll() {
                 get_creator_for_draw(&other_addr, &vec![priv_1, priv_2]),
                 vec![],
             );
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 6, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 6, 0).await;
             // invalid: other_addr wasn't drawn for that block creation
             propagate_block(&mut protocol_controller, block6_err, false, 150).await;
 
@@ -287,9 +286,9 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(1));
-            assert_eq!(addr_state.final_rolls, 0);
-            assert_eq!(addr_state.candidate_rolls, 0);
+            assert_eq!(addr_state.rolls.active_rolls, 1);
+            assert_eq!(addr_state.rolls.final_rolls, 0);
+            assert_eq!(addr_state.rolls.candidate_rolls, 0);
 
             let (id_6t1, block6t1, _) = create_block_with_operations(
                 &cfg,
@@ -299,7 +298,7 @@ async fn test_roll() {
                 vec![],
             );
 
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 6, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 6, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block6t1, true, 150).await;
             parents[1] = id_6t1;
@@ -312,7 +311,7 @@ async fn test_roll() {
                 vec![],
             );
 
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 7, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 7, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block7, true, 150).await;
             parents[0] = id_7;
@@ -324,9 +323,9 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(1));
-            assert_eq!(addr_state.final_rolls, 0);
-            assert_eq!(addr_state.candidate_rolls, 0);
+            assert_eq!(addr_state.rolls.active_rolls, 1);
+            assert_eq!(addr_state.rolls.final_rolls, 0);
+            assert_eq!(addr_state.rolls.candidate_rolls, 0);
 
             let (id_7t1, block7t1, _) = create_block_with_operations(
                 &cfg,
@@ -336,7 +335,7 @@ async fn test_roll() {
                 vec![],
             );
 
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 7, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 7, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block7t1, true, 150).await;
             parents[1] = id_7t1;
@@ -350,7 +349,7 @@ async fn test_roll() {
                 priv_1,
                 vec![rb_a2_r2],
             );
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 8, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 8, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block8, true, 150).await;
             parents[0] = id_8;
@@ -362,15 +361,15 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
-            assert_eq!(addr_state.final_rolls, 0);
-            assert_eq!(addr_state.candidate_rolls, 2);
-            let balance = addr_state.candidate_ledger_data.balance;
+            assert_eq!(addr_state.rolls.active_rolls, 0);
+            assert_eq!(addr_state.rolls.final_rolls, 0);
+            assert_eq!(addr_state.rolls.candidate_rolls, 2);
+            let balance = addr_state.ledger_info.candidate_ledger_info.balance;
             assert_eq!(balance, Amount::from_str("7000").unwrap());
 
             let (id_8t1, block8t1, _) =
                 create_block_with_operations(&cfg, Slot::new(8, 1), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 8, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 8, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block8t1, true, 150).await;
             parents[1] = id_8t1;
@@ -382,7 +381,7 @@ async fn test_roll() {
                 priv_1,
                 vec![rs_a2_r2],
             );
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 9, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 9, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block9, true, 150).await;
             parents[0] = id_9;
@@ -394,15 +393,15 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
-            assert_eq!(addr_state.final_rolls, 0);
-            assert_eq!(addr_state.candidate_rolls, 0);
-            let balance = addr_state.candidate_ledger_data.balance;
+            assert_eq!(addr_state.rolls.active_rolls, 0);
+            assert_eq!(addr_state.rolls.final_rolls, 0);
+            assert_eq!(addr_state.rolls.candidate_rolls, 0);
+            let balance = addr_state.ledger_info.candidate_ledger_info.balance;
             assert_eq!(balance, Amount::from_str("9000").unwrap());
 
             let (id_9t1, block9t1, _) =
                 create_block_with_operations(&cfg, Slot::new(9, 1), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 9, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 9, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block9t1, true, 150).await;
             parents[1] = id_9t1;
@@ -411,7 +410,7 @@ async fn test_roll() {
 
             let (id_10, block10, _) =
                 create_block_with_operations(&cfg, Slot::new(10, 0), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 10, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 10, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block10, true, 150).await;
             parents[0] = id_10;
@@ -423,9 +422,9 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
-            assert_eq!(addr_state.final_rolls, 2);
-            assert_eq!(addr_state.candidate_rolls, 0);
+            assert_eq!(addr_state.rolls.active_rolls, 0);
+            assert_eq!(addr_state.rolls.final_rolls, 2);
+            assert_eq!(addr_state.rolls.candidate_rolls, 0);
 
             let balance = consensus_command_sender
                 .get_addresses_info(addresses.clone())
@@ -433,20 +432,21 @@ async fn test_roll() {
                 .unwrap()
                 .get(&address_2)
                 .unwrap()
-                .candidate_ledger_data
+                .ledger_info
+                .candidate_ledger_info
                 .balance;
             assert_eq!(balance, Amount::from_str("10000").unwrap());
 
             let (id_10t1, block10t1, _) =
                 create_block_with_operations(&cfg, Slot::new(10, 1), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 10, 1).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 10, 1).await;
             // valid
             propagate_block(&mut protocol_controller, block10t1, true, 150).await;
             parents[1] = id_10t1;
 
             let (id_11, block11, _) =
                 create_block_with_operations(&cfg, Slot::new(11, 0), &parents, priv_1, vec![]);
-            wait_pool_slot(&mut &mut pool_controller, cfg.t0, 11, 0).await;
+            wait_pool_slot(&mut pool_controller, cfg.t0, 11, 0).await;
             // valid
             propagate_block(&mut protocol_controller, block11, true, 150).await;
             parents[0] = id_11;
@@ -458,9 +458,9 @@ async fn test_roll() {
                 .get(&address_2)
                 .unwrap()
                 .clone();
-            assert_eq!(addr_state.active_rolls, Some(0));
-            assert_eq!(addr_state.final_rolls, 0);
-            assert_eq!(addr_state.candidate_rolls, 0);
+            assert_eq!(addr_state.rolls.active_rolls, 0);
+            assert_eq!(addr_state.rolls.final_rolls, 0);
+            assert_eq!(addr_state.rolls.candidate_rolls, 0);
             (
                 pool_controller,
                 protocol_controller,
@@ -486,22 +486,22 @@ async fn test_roll_block_creation() {
     let thread_count = 2;
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
-    let mut priv_1 = crypto::generate_random_private_key();
-    let mut pubkey_1 = crypto::derive_public_key(&priv_1);
+    let mut priv_1 = generate_random_private_key();
+    let mut pubkey_1 = derive_public_key(&priv_1);
     let mut address_1 = Address::from_public_key(&pubkey_1).unwrap();
     while 0 != address_1.get_thread(thread_count) {
-        priv_1 = crypto::generate_random_private_key();
-        pubkey_1 = crypto::derive_public_key(&priv_1);
+        priv_1 = generate_random_private_key();
+        pubkey_1 = derive_public_key(&priv_1);
         address_1 = Address::from_public_key(&pubkey_1).unwrap();
     }
     assert_eq!(0, address_1.get_thread(thread_count));
 
-    let mut priv_2 = crypto::generate_random_private_key();
-    let mut pubkey_2 = crypto::derive_public_key(&priv_2);
+    let mut priv_2 = generate_random_private_key();
+    let mut pubkey_2 = derive_public_key(&priv_2);
     let mut address_2 = Address::from_public_key(&pubkey_2).unwrap();
     while 0 != address_2.get_thread(thread_count) {
-        priv_2 = crypto::generate_random_private_key();
-        pubkey_2 = crypto::derive_public_key(&priv_2);
+        priv_2 = generate_random_private_key();
+        pubkey_2 = derive_public_key(&priv_2);
         address_2 = Address::from_public_key(&pubkey_2).unwrap();
     }
     assert_eq!(0, address_2.get_thread(thread_count));
@@ -550,7 +550,6 @@ async fn test_roll_block_creation() {
             pool_command_sender,
             None,
             None,
-            None,
             0,
         )
         .await
@@ -564,7 +563,7 @@ async fn test_roll_block_creation() {
     addresses.insert(address_2);
     let addresses = addresses;
 
-    //wait for first slot
+    // wait for first slot
     pool_controller
         .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
             PoolCommand::UpdateCurrentSlot(s) => {
@@ -638,9 +637,9 @@ async fn test_roll_block_creation() {
         .get(&address_2)
         .unwrap()
         .clone();
-    assert_eq!(addr_state.active_rolls, Some(0));
-    assert_eq!(addr_state.final_rolls, 0);
-    assert_eq!(addr_state.candidate_rolls, 1);
+    assert_eq!(addr_state.rolls.active_rolls, 0);
+    assert_eq!(addr_state.rolls.final_rolls, 0);
+    assert_eq!(addr_state.rolls.candidate_rolls, 1);
 
     let balance = consensus_command_sender
         .get_addresses_info(addresses.clone())
@@ -648,11 +647,12 @@ async fn test_roll_block_creation() {
         .unwrap()
         .get(&address_2)
         .unwrap()
-        .candidate_ledger_data
+        .ledger_info
+        .candidate_ledger_info
         .balance;
     assert_eq!(balance, Amount::from_str("9000").unwrap());
 
-    wait_pool_slot(&mut &mut pool_controller, cfg.t0, 1, 1).await;
+    wait_pool_slot(&mut pool_controller, cfg.t0, 1, 1).await;
     // slot 1,1
     pool_controller
         .wait_command(300.into(), |cmd| match cmd {
@@ -743,10 +743,10 @@ async fn test_roll_block_creation() {
         .get(&address_2)
         .unwrap()
         .clone();
-    assert_eq!(addr_state.active_rolls, Some(0));
-    assert_eq!(addr_state.final_rolls, 0);
-    assert_eq!(addr_state.candidate_rolls, 0);
-    let balance = addr_state.candidate_ledger_data.balance;
+    assert_eq!(addr_state.rolls.active_rolls, 0);
+    assert_eq!(addr_state.rolls.final_rolls, 0);
+    assert_eq!(addr_state.rolls.candidate_rolls, 0);
+    let balance = addr_state.ledger_info.candidate_ledger_info.balance;
     assert_eq!(balance, Amount::from_str("9000").unwrap());
 }
 
@@ -787,8 +787,8 @@ async fn test_roll_deactivation() {
     let mut pubkey_a0;
     let mut address_a0;
     loop {
-        privkey_a0 = crypto::generate_random_private_key();
-        pubkey_a0 = crypto::derive_public_key(&privkey_a0);
+        privkey_a0 = generate_random_private_key();
+        pubkey_a0 = derive_public_key(&privkey_a0);
         address_a0 = Address::from_public_key(&pubkey_a0).unwrap();
         if address_a0.get_thread(thread_count) == 0 {
             break;
@@ -798,8 +798,8 @@ async fn test_roll_deactivation() {
     let mut pubkey_b0;
     let mut address_b0;
     loop {
-        privkey_b0 = crypto::generate_random_private_key();
-        pubkey_b0 = crypto::derive_public_key(&privkey_b0);
+        privkey_b0 = generate_random_private_key();
+        pubkey_b0 = derive_public_key(&privkey_b0);
         address_b0 = Address::from_public_key(&pubkey_b0).unwrap();
         if address_b0.get_thread(thread_count) == 0 {
             break;
@@ -810,8 +810,8 @@ async fn test_roll_deactivation() {
     let mut pubkey_a1;
     let mut address_a1;
     loop {
-        privkey_a1 = crypto::generate_random_private_key();
-        pubkey_a1 = crypto::derive_public_key(&privkey_a1);
+        privkey_a1 = generate_random_private_key();
+        pubkey_a1 = derive_public_key(&privkey_a1);
         address_a1 = Address::from_public_key(&pubkey_a1).unwrap();
         if address_a1.get_thread(thread_count) == 1 {
             break;
@@ -821,8 +821,8 @@ async fn test_roll_deactivation() {
     let mut pubkey_b1;
     let mut address_b1;
     loop {
-        privkey_b1 = crypto::generate_random_private_key();
-        pubkey_b1 = crypto::derive_public_key(&privkey_b1);
+        privkey_b1 = generate_random_private_key();
+        pubkey_b1 = derive_public_key(&privkey_b1);
         address_b1 = Address::from_public_key(&pubkey_b1).unwrap();
         if address_b1.get_thread(thread_count) == 1 {
             break;
@@ -865,7 +865,6 @@ async fn test_roll_deactivation() {
             pool_command_sender,
             None,
             None,
-            None,
             0,
         )
         .await
@@ -873,14 +872,14 @@ async fn test_roll_deactivation() {
 
     let mut cur_slot = Slot::new(0, 0);
     let mut best_parents = consensus_command_sender
-        .get_block_graph_status()
+        .get_block_graph_status(None, None)
         .await
         .unwrap()
         .genesis_blocks;
     let mut cycle_draws = HashMap::new();
     let mut draws_cycle = None;
     'outer: loop {
-        //wait for slot info
+        // wait for slot info
         let latest_slot = pool_controller
             .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
                 PoolCommand::UpdateCurrentSlot(s) => Some(s),
@@ -985,23 +984,23 @@ async fn test_roll_deactivation() {
                 .clone();
             if cur_slot.period == (1 + cfg.pos_lookback_cycles) * cfg.periods_per_cycle {
                 if cur_slot.thread == 0 {
-                    assert_eq!(addrs_info[&address_a0].candidate_rolls, 0);
-                    assert_eq!(addrs_info[&address_b0].candidate_rolls, 1);
-                    assert_eq!(addrs_info[&address_a1].candidate_rolls, 1);
-                    assert_eq!(addrs_info[&address_b1].candidate_rolls, 1);
+                    assert_eq!(addrs_info[&address_a0].rolls.candidate_rolls, 0);
+                    assert_eq!(addrs_info[&address_b0].rolls.candidate_rolls, 1);
+                    assert_eq!(addrs_info[&address_a1].rolls.candidate_rolls, 1);
+                    assert_eq!(addrs_info[&address_b1].rolls.candidate_rolls, 1);
                 } else if cur_slot.thread == 1 {
-                    assert_eq!(addrs_info[&address_a0].candidate_rolls, 0);
-                    assert_eq!(addrs_info[&address_b0].candidate_rolls, 1);
-                    assert_eq!(addrs_info[&address_a1].candidate_rolls, 0);
-                    assert_eq!(addrs_info[&address_b1].candidate_rolls, 1);
+                    assert_eq!(addrs_info[&address_a0].rolls.candidate_rolls, 0);
+                    assert_eq!(addrs_info[&address_b0].rolls.candidate_rolls, 1);
+                    assert_eq!(addrs_info[&address_a1].rolls.candidate_rolls, 0);
+                    assert_eq!(addrs_info[&address_b1].rolls.candidate_rolls, 1);
                 } else {
                     break 'outer;
                 }
             } else {
-                assert_eq!(addrs_info[&address_a0].candidate_rolls, 1);
-                assert_eq!(addrs_info[&address_b0].candidate_rolls, 1);
-                assert_eq!(addrs_info[&address_a1].candidate_rolls, 1);
-                assert_eq!(addrs_info[&address_b1].candidate_rolls, 1);
+                assert_eq!(addrs_info[&address_a0].rolls.candidate_rolls, 1);
+                assert_eq!(addrs_info[&address_b0].rolls.candidate_rolls, 1);
+                assert_eq!(addrs_info[&address_a1].rolls.candidate_rolls, 1);
+                assert_eq!(addrs_info[&address_b1].rolls.candidate_rolls, 1);
             }
 
             cur_slot = cur_slot.get_next_slot(thread_count).unwrap();

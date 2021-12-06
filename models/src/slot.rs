@@ -7,9 +7,9 @@ use super::{
     with_serialization_context,
 };
 use crate::error::ModelsError;
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use serde::{Deserialize, Serialize};
-use std::{cmp::Ordering, convert::TryInto, fmt};
+use std::{cmp::Ordering, convert::TryInto};
 
 pub const SLOT_KEY_SIZE: usize = 9;
 
@@ -31,9 +31,10 @@ impl Ord for Slot {
     }
 }
 
-impl fmt::Display for Slot {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "(period: {}, thread: {})", self.period, self.thread)
+impl std::fmt::Display for Slot {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "(period: {}, thread: {})", self.period, self.thread)?;
+        Ok(())
     }
 }
 
@@ -43,7 +44,7 @@ impl Slot {
     }
 
     pub fn get_first_bit(&self) -> bool {
-        Hash::hash(&self.to_bytes_key()).to_bytes()[0] >> 7 == 1
+        Hash::from(&self.to_bytes_key()).to_bytes()[0] >> 7 == 1
     }
 
     pub fn get_cycle(&self, periods_per_cycle: u64) -> u64 {
@@ -112,7 +113,7 @@ impl Slot {
 }
 
 impl SerializeCompact for Slot {
-    /// Returns a compact binary representation of the slot         
+    /// Returns a compact binary representation of the slot
     ///
     /// ## Example
     /// ```rust
@@ -134,7 +135,7 @@ impl SerializeCompact for Slot {
     /// #    max_bootstrap_message_size: 100000000,
     /// #     max_bootstrap_pos_cycles: 10000,
     /// #     max_bootstrap_pos_entries: 10000,
-    /// #     max_block_endorsments: 8,
+    /// #     max_block_endorsements: 8,
     /// # });
     /// # let context = models::get_serialization_context();
     /// let slot = Slot::new(10,1);
@@ -175,7 +176,7 @@ impl DeserializeCompact for Slot {
     /// #     max_bootstrap_message_size: 100000000,
     /// #     max_bootstrap_pos_cycles: 10000,
     /// #     max_bootstrap_pos_entries: 10000,
-    /// #     max_block_endorsments: 8, // FIXME `max_block_endorsements` ?!
+    /// #     max_block_endorsements: 8,
     /// # });
     /// # let context = models::get_serialization_context();
     /// let slot = Slot::new(10,1);

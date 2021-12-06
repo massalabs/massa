@@ -33,19 +33,17 @@ pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
 
 #[derive(Debug)]
 pub struct MockListener {
-    connection_listener_rx: mpsc::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>, //(controller, mock)
+    connection_listener_rx: mpsc::Receiver<(SocketAddr, oneshot::Sender<Duplex>)>, // (controller, mock)
 }
 
 impl MockListener {
     pub async fn accept(&mut self) -> std::io::Result<(Duplex, SocketAddr)> {
-        let (addr, sender) = self
-            .connection_listener_rx
-            .recv()
-            .await
-            .ok_or(io::Error::new(
+        let (addr, sender) = self.connection_listener_rx.recv().await.ok_or_else(|| {
+            io::Error::new(
                 io::ErrorKind::Other,
                 "MockListener accept channel from Establisher closed".to_string(),
-            ))?;
+            )
+        })?;
         let (duplex_controller, duplex_mock) = tokio::io::duplex(MAX_DUPLEX_BUFFER_SIZE);
         sender.send(duplex_mock).map_err(|_| {
             io::Error::new(
@@ -66,12 +64,12 @@ pub struct MockConnector {
 
 impl MockConnector {
     pub async fn connect(&mut self, addr: SocketAddr) -> std::io::Result<Duplex> {
-        //task the controller connection if exist.
+        // task the controller connection if exist.
         let (duplex_controller, duplex_mock) = tokio::io::duplex(MAX_DUPLEX_BUFFER_SIZE);
-        //to see if the connection is accepted
+        // to see if the connection is accepted
         let (accept_tx, accept_rx) = oneshot::channel::<bool>();
 
-        //send new connection to mock
+        // send new connection to mock
         timeout(self.timeout_duration.to_duration(), async move {
             self.connection_connector_tx
                 .send((duplex_mock, addr, accept_tx))
@@ -121,11 +119,11 @@ impl MockEstablisher {
         &mut self,
         timeout_duration: UTime,
     ) -> std::io::Result<MockConnector> {
-        //create connector stream
+        // create connector stream
 
         Ok(MockConnector {
             connection_connector_tx: self.connection_connector_tx.clone(),
-            timeout_duration: timeout_duration,
+            timeout_duration,
         })
     }
 }
@@ -137,20 +135,19 @@ pub struct MockEstablisherInterface {
 
 impl MockEstablisherInterface {
     pub async fn connect_to_controller(&self, addr: &SocketAddr) -> io::Result<Duplex> {
-        let sender = self.connection_listener_tx.as_ref().ok_or(io::Error::new(
-            io::ErrorKind::Other,
-            "mock connect_to_controller_listener channel not initialized".to_string(),
-        ))?;
+        let sender = self.connection_listener_tx.as_ref().ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::Other,
+                "mock connect_to_controller_listener channel not initialized".to_string(),
+            )
+        })?;
         let (response_tx, response_rx) = oneshot::channel::<Duplex>();
-        sender
-            .send((addr.clone(), response_tx))
-            .await
-            .map_err(|_err| {
-                io::Error::new(
-                    io::ErrorKind::Other,
-                    "mock connect_to_controller_listener channel to listener closed".to_string(),
-                )
-            })?;
+        sender.send((*addr, response_tx)).await.map_err(|_err| {
+            io::Error::new(
+                io::ErrorKind::Other,
+                "mock connect_to_controller_listener channel to listener closed".to_string(),
+            )
+        })?;
         let duplex_mock = response_rx.await.map_err(|_| {
             io::Error::new(
                 io::ErrorKind::Other,
@@ -164,12 +161,11 @@ impl MockEstablisherInterface {
     pub async fn wait_connection_attempt_from_controller(
         &mut self,
     ) -> io::Result<(Duplex, SocketAddr, oneshot::Sender<bool>)> {
-        self.connection_connector_rx
-            .recv()
-            .await
-            .ok_or(io::Error::new(
+        self.connection_connector_rx.recv().await.ok_or_else(|| {
+            io::Error::new(
                 io::ErrorKind::Other,
                 "MockListener get_connect_stream channel from connector closed".to_string(),
-            ))
+            )
+        })
     }
 }

@@ -6,18 +6,17 @@ use super::{
     tools,
 };
 use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::{BlockId, Slot};
 use serial_test::serial;
+use signature::{generate_random_private_key, PrivateKey};
 use std::collections::HashMap;
 
 #[tokio::test]
 #[serial]
 async fn test_invalid_block_notified_as_attack_attempt() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -44,14 +43,13 @@ async fn test_invalid_block_notified_as_attack_attempt() {
             pool_command_sender,
             None,
             None,
-            None,
             0,
         )
         .await
         .expect("could not start consensus controller");
 
     let parents: Vec<BlockId> = consensus_command_sender
-        .get_block_graph_status()
+        .get_block_graph_status(None, None)
         .await
         .expect("could not get block graph status")
         .best_parents
@@ -62,10 +60,10 @@ async fn test_invalid_block_notified_as_attack_attempt() {
     // Block for a non-existent thread.
     let (hash, block, _) = tools::create_block_with_merkle_root(
         &cfg,
-        Hash::hash("different".as_bytes()),
+        Hash::from("different".as_bytes()),
         Slot::new(1, cfg.thread_count + 1),
         parents.clone(),
-        staking_keys[0].clone(),
+        staking_keys[0],
     );
     protocol_controller.receive_block(block).await;
 
@@ -85,9 +83,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
 #[serial]
 async fn test_invalid_header_notified_as_attack_attempt() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -114,14 +110,13 @@ async fn test_invalid_header_notified_as_attack_attempt() {
             pool_command_sender,
             None,
             None,
-            None,
             0,
         )
         .await
         .expect("could not start consensus controller");
 
     let parents: Vec<BlockId> = consensus_command_sender
-        .get_block_graph_status()
+        .get_block_graph_status(None, None)
         .await
         .expect("could not get block graph status")
         .best_parents
@@ -132,10 +127,10 @@ async fn test_invalid_header_notified_as_attack_attempt() {
     // Block for a non-existent thread.
     let (hash, block, _) = tools::create_block_with_merkle_root(
         &cfg,
-        Hash::hash("different".as_bytes()),
+        Hash::from("different".as_bytes()),
         Slot::new(1, cfg.thread_count + 1),
         parents.clone(),
-        staking_keys[0].clone(),
+        staking_keys[0],
     );
     protocol_controller.receive_header(block.header).await;
 

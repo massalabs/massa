@@ -14,8 +14,8 @@ pub enum ModelsError {
     DeserializeError(String),
     /// buffer error: {0}
     BufferError(String),
-    /// crypto error: {0}
-    CryptoError(#[from] crypto::CryptoError),
+    /// massa_hash error: {0}
+    MassaHashError(#[from] massa_hash::MassaHashError),
     /// thread overflow error
     ThreadOverflowError,
     /// period overflow error

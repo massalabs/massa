@@ -6,6 +6,7 @@ use crate::tests::tools::{self, generate_ledger_file};
 use models::timeslots;
 use models::{BlockHashSet, BlockId, Slot};
 use serial_test::serial;
+use signature::{generate_random_private_key, PrivateKey};
 use std::collections::{HashMap, HashSet};
 use time::UTime;
 
@@ -18,9 +19,7 @@ async fn test_unsorted_block() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -34,73 +33,72 @@ async fn test_unsorted_block() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let start_period = 3;
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
-            //create test blocks
+            // create test blocks
 
             let (hasht0s1, t0s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1 + start_period, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht1s1, t1s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1 + start_period, 1),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s2, t0s2, _) = tools::create_block(
                 &cfg,
                 Slot::new(2 + start_period, 0),
                 vec![hasht0s1, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s2, t1s2, _) = tools::create_block(
                 &cfg,
                 Slot::new(2 + start_period, 1),
                 vec![hasht0s1, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s3, t0s3, _) = tools::create_block(
                 &cfg,
                 Slot::new(3 + start_period, 0),
                 vec![hasht0s2, hasht1s2],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s3, t1s3, _) = tools::create_block(
                 &cfg,
                 Slot::new(3 + start_period, 1),
                 vec![hasht0s2, hasht1s2],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s4, t0s4, _) = tools::create_block(
                 &cfg,
                 Slot::new(4 + start_period, 0),
                 vec![hasht0s3, hasht1s3],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s4, t1s4, _) = tools::create_block(
                 &cfg,
                 Slot::new(4 + start_period, 1),
                 vec![hasht0s3, hasht1s3],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
-            //send blocks  t0s1, t1s1,
+            // send blocks  t0s1, t1s1,
             protocol_controller.receive_block(t0s1).await;
             protocol_controller.receive_block(t1s1).await;
-            //send blocks t0s3, t1s4, t0s4, t0s2, t1s3, t1s2
+            // send blocks t0s3, t1s4, t0s4, t0s2, t1s3, t1s2
             protocol_controller.receive_block(t0s3).await;
             protocol_controller.receive_block(t1s4).await;
             protocol_controller.receive_block(t0s4).await;
@@ -108,7 +106,7 @@ async fn test_unsorted_block() {
             protocol_controller.receive_block(t1s3).await;
             protocol_controller.receive_block(t1s2).await;
 
-            //block t0s1 and t1s1 are propagated
+            // block t0s1 and t1s1 are propagated
             let hash_list = vec![hasht0s1, hasht1s1];
             tools::validate_propagate_block_in_list(
                 &mut protocol_controller,
@@ -118,19 +116,19 @@ async fn test_unsorted_block() {
             .await;
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
-            //block t0s2 and t1s2 are propagated
+            // block t0s2 and t1s2 are propagated
             let hash_list = vec![hasht0s2, hasht1s2];
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
-            //block t0s3 and t1s3 are propagated
+            // block t0s3 and t1s3 are propagated
             let hash_list = vec![hasht0s3, hasht1s3];
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
-            //block t0s4 and t1s4 are propagated
+            // block t0s4 and t1s4 are propagated
             let hash_list = vec![hasht0s4, hasht1s4];
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
@@ -156,9 +154,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -173,11 +169,10 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            //create test blocks
+            // create test blocks
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -187,7 +182,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             protocol_controller.receive_block(block1).await;
             tools::validate_propagate_block(&mut protocol_controller, hash1, 2500).await;
@@ -205,7 +200,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
                 &cfg,
                 Slot::new(slot.period + 2, slot.thread),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             protocol_controller.receive_block(block2).await;
             assert!(
@@ -226,7 +221,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
                 &cfg,
                 Slot::new(slot.period + 1000, slot.thread),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             protocol_controller.receive_block(block3).await;
             assert!(
@@ -235,7 +230,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
             // Check that the block has been silently dropped and not discarded for being too much in the future.
             let block_graph = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap();
             assert!(!block_graph.active_blocks.contains_key(&hash3));
@@ -259,9 +254,7 @@ async fn test_too_many_blocks_in_the_future() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -277,11 +270,10 @@ async fn test_too_many_blocks_in_the_future() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
-            //get genesis block hashes
+            // get genesis block hashes
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -303,7 +295,7 @@ async fn test_too_many_blocks_in_the_future() {
                     &cfg,
                     Slot::new(max_period, slot.thread),
                     genesis_hashes.clone(),
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 );
                 protocol_controller.receive_block(block).await;
                 if period < 2 {
@@ -338,7 +330,7 @@ async fn test_too_many_blocks_in_the_future() {
             {}
             // ensure that the graph contains only what we expect
             let graph = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
             expected_clone.extend(graph.genesis_blocks);
@@ -366,9 +358,7 @@ async fn test_dep_in_back_order() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -384,69 +374,68 @@ async fn test_dep_in_back_order() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create test blocks
+            // create test blocks
             let (hasht0s1, t0s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht1s1, t1s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1, 1),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s2, t0s2, _) = tools::create_block(
                 &cfg,
                 Slot::new(2, 0),
                 vec![hasht0s1, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s2, t1s2, _) = tools::create_block(
                 &cfg,
                 Slot::new(2, 1),
                 vec![hasht0s1, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s3, t0s3, _) = tools::create_block(
                 &cfg,
                 Slot::new(3, 0),
                 vec![hasht0s2, hasht1s2],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s3, t1s3, _) = tools::create_block(
                 &cfg,
                 Slot::new(3, 1),
                 vec![hasht0s2, hasht1s2],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s4, t0s4, _) = tools::create_block(
                 &cfg,
                 Slot::new(4, 0),
                 vec![hasht0s3, hasht1s3],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s4, t1s4, _) = tools::create_block(
                 &cfg,
                 Slot::new(4, 1),
                 vec![hasht0s3, hasht1s3],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
-            //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
+            // send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
             protocol_controller.receive_block(t0s2).await; // not propagated and update wishlist
             tools::validate_wishlist(
                 &mut protocol_controller,
@@ -542,9 +531,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -560,57 +547,56 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create test blocks
+            // create test blocks
 
             let (hasht0s1, t0s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht1s1, t1s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1, 1),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s2, t0s2, _) = tools::create_block(
                 &cfg,
                 Slot::new(2, 0),
                 vec![hasht0s1, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s2, t1s2, _) = tools::create_block(
                 &cfg,
                 Slot::new(2, 1),
                 vec![hasht0s1, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht0s3, t0s3, _) = tools::create_block(
                 &cfg,
                 Slot::new(3, 0),
                 vec![hasht0s2, hasht1s2],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s3, t1s3, _) = tools::create_block(
                 &cfg,
                 Slot::new(3, 1),
                 vec![hasht0s2, hasht1s2],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
-            //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
+            // send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
             protocol_controller.receive_block(t0s2).await;
             tools::validate_wishlist(
                 &mut protocol_controller,
@@ -679,9 +665,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
     .init()
     .unwrap();*/
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -697,27 +681,26 @@ async fn test_add_block_that_depends_on_invalid_block() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            //create test blocks
+            // create test blocks
             let (hasht0s1, t0s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1, 0),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             let (hasht1s1, t1s1, _) = tools::create_block(
                 &cfg,
                 Slot::new(1, 1),
                 genesis_hashes.clone(),
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             // blocks t3s2 with wrong thread and (t0s1, t1s1) parents.
@@ -725,7 +708,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
                 &cfg,
                 Slot::new(2, 3),
                 vec![hasht0s1, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             // blocks t0s3 and t1s3 with (t3s2, t1s2) parents.
@@ -733,31 +716,31 @@ async fn test_add_block_that_depends_on_invalid_block() {
                 &cfg,
                 Slot::new(3, 0),
                 vec![hasht3s2, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
             let (hasht1s3, t1s3, _) = tools::create_block(
                 &cfg,
                 Slot::new(3, 1),
                 vec![hasht3s2, hasht1s1],
-                staking_keys[0].clone(),
+                staking_keys[0],
             );
 
             // add block in this order t0s1, t1s1, t0s3, t1s3, t3s2
-            //send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
+            // send blocks   t0s2, t1s3, t0s1, t0s4, t1s4, t1s1, t0s3, t1s2
             protocol_controller.receive_block(t0s1).await;
             protocol_controller.receive_block(t1s1).await;
             protocol_controller.receive_block(t0s3).await;
             protocol_controller.receive_block(t1s3).await;
             protocol_controller.receive_block(t3s2).await;
 
-            //block t0s1 and t1s1 are propagated
+            // block t0s1 and t1s1 are propagated
             let hash_list = vec![hasht0s1, hasht1s1];
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
             tools::validate_propagate_block_in_list(&mut protocol_controller, &hash_list, 1000)
                 .await;
 
-            //block  t0s3, t1s3 are not propagated
+            // block  t0s3, t1s3 are not propagated
             let hash_list = vec![hasht0s3, hasht1s3];
             assert!(
                 !tools::validate_notpropagate_block_in_list(

@@ -3,15 +3,14 @@
 use crate::tests::tools::{self, generate_ledger_file};
 use models::{BlockId, Slot};
 use serial_test::serial;
+use signature::{generate_random_private_key, PrivateKey};
 use std::collections::HashMap;
 
 #[tokio::test]
 #[serial]
 async fn test_pruning_of_discarded_blocks() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -25,10 +24,9 @@ async fn test_pruning_of_discarded_blocks() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -46,13 +44,13 @@ async fn test_pruning_of_discarded_blocks() {
                     parents.clone(),
                     false,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
             }
 
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
             assert!(status.discarded_blocks.len() <= cfg.max_discarded_blocks);
@@ -71,9 +69,7 @@ async fn test_pruning_of_discarded_blocks() {
 #[serial]
 async fn test_pruning_of_awaiting_slot_blocks() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -87,10 +83,9 @@ async fn test_pruning_of_awaiting_slot_blocks() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -108,13 +103,13 @@ async fn test_pruning_of_awaiting_slot_blocks() {
                     parents.clone(),
                     false,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
             }
 
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
             assert!(status.discarded_blocks.len() <= cfg.max_future_processing_blocks);
@@ -132,9 +127,7 @@ async fn test_pruning_of_awaiting_slot_blocks() {
 #[serial]
 async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
 
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
@@ -149,10 +142,9 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -161,12 +153,8 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
                 .collect();
 
             // Too far into the future.
-            let (bad_parent, bad_block, _) = tools::create_block(
-                &cfg,
-                Slot::new(10000, 0),
-                parents.clone(),
-                staking_keys[0].clone(),
-            );
+            let (bad_parent, bad_block, _) =
+                tools::create_block(&cfg, Slot::new(10000, 0), parents.clone(), staking_keys[0]);
 
             for i in 1..4 {
                 // Sent several headers with the bad parent as dependency.
@@ -174,10 +162,10 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
                     &mut protocol_controller,
                     &cfg,
                     Slot::new(i, 0),
-                    vec![bad_parent.clone(), parents.clone()[0]],
+                    vec![bad_parent, parents.clone()[0]],
                     false,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
             }
@@ -195,7 +183,7 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
             // Note the parent too much in the future will not be discarded, but ignored.
             loop {
                 let status = consensus_command_sender
-                    .get_block_graph_status()
+                    .get_block_graph_status(None, None)
                     .await
                     .expect("could not get block graph status");
                 if status.discarded_blocks.len() == 3 {

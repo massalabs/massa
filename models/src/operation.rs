@@ -8,15 +8,14 @@ use crate::{
     },
     Address, Amount, ModelsError, ADDRESS_SIZE_BYTES,
 };
-use crypto::{
-    hash::{Hash, HASH_SIZE_BYTES},
-    signature::{
-        verify_signature, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
-    },
-};
+use massa_hash::hash::{Hash, HASH_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
+use signature::{
+    verify_signature, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
+};
 use std::convert::TryInto;
+use std::fmt::Formatter;
 use std::{ops::RangeInclusive, str::FromStr};
 
 pub const OPERATION_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
@@ -70,10 +69,35 @@ enum OperationTypeId {
     RollBuy = 1,
     RollSell = 2,
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Operation {
     pub content: OperationContent,
     pub signature: Signature,
+}
+
+impl std::fmt::Display for Operation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "Id: {}",
+            match self.get_operation_id() {
+                Ok(id) => format!("{}", id),
+                Err(e) => format!("error computing id: {}", e),
+            }
+        )?;
+        writeln!(f, "Signature: {}", self.signature)?;
+        let addr = Address::from_public_key(&self.content.sender_public_key)
+            .map_err(|_| std::fmt::Error)?;
+        let amount = self.content.fee.to_string();
+        writeln!(
+            f,
+            "sender: {}     fee: {}     expire_period: {}",
+            addr, amount, self.content.expire_period,
+        )?;
+        writeln!(f, "{}", self.content.op)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -82,6 +106,16 @@ pub struct OperationContent {
     pub fee: Amount,
     pub expire_period: u64,
     pub op: OperationType,
+}
+
+impl std::fmt::Display for OperationContent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Sender public key: {}", self.sender_public_key)?;
+        writeln!(f, "Fee: {}", self.fee)?;
+        writeln!(f, "Expire period: {}", self.expire_period)?;
+        writeln!(f, "Operation type: {}", self.op)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -96,6 +130,30 @@ pub enum OperationType {
     RollSell {
         roll_count: u64,
     },
+}
+
+impl std::fmt::Display for OperationType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OperationType::Transaction {
+                recipient_address,
+                amount,
+            } => {
+                writeln!(f, "Transaction:")?;
+                writeln!(f, "\t- Recipient:{}", recipient_address)?;
+                writeln!(f, "\t  Amount:{}", amount)?;
+            }
+            OperationType::RollBuy { roll_count } => {
+                writeln!(f, "Buy rolls:")?;
+                write!(f, "\t- Roll count:{}", roll_count)?;
+            }
+            OperationType::RollSell { roll_count } => {
+                writeln!(f, "Sell rolls:")?;
+                write!(f, "\t- Roll count:{}", roll_count)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Checks performed:
@@ -255,7 +313,7 @@ impl Operation {
     }
 
     pub fn verify_signature(&self) -> Result<(), ModelsError> {
-        let content_hash = Hash::hash(&self.content.to_bytes_compact()?);
+        let content_hash = Hash::from(&self.content.to_bytes_compact()?);
         verify_signature(
             &content_hash,
             &self.signature,
@@ -265,7 +323,7 @@ impl Operation {
     }
 
     pub fn get_operation_id(&self) -> Result<OperationId, ModelsError> {
-        Ok(OperationId(Hash::hash(&self.to_bytes_compact()?)))
+        Ok(OperationId(Hash::from(&self.to_bytes_compact()?)))
     }
 
     pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
@@ -348,15 +406,16 @@ impl DeserializeCompact for Operation {
 mod tests {
     use super::*;
     use serial_test::serial;
+    use signature::{derive_public_key, generate_random_private_key, sign};
 
     #[test]
     #[serial]
     fn test_operation_type() {
-        let sender_priv = crypto::generate_random_private_key();
-        let sender_pub = crypto::derive_public_key(&sender_priv);
+        let sender_priv = generate_random_private_key();
+        let sender_pub = derive_public_key(&sender_priv);
 
-        let recv_priv = crypto::generate_random_private_key();
-        let recv_pub = crypto::derive_public_key(&recv_priv);
+        let recv_priv = generate_random_private_key();
+        let recv_pub = derive_public_key(&recv_priv);
 
         let op = OperationType::Transaction {
             recipient_address: Address::from_public_key(&recv_pub).unwrap(),
@@ -364,7 +423,7 @@ mod tests {
         };
         let ser_type = op.to_bytes_compact().unwrap();
         let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
-        assert_eq!(format!("{:?}", res_type), format!("{:?}", op));
+        assert_eq!(format!("{}", res_type), format!("{}", op));
 
         let content = OperationContent {
             fee: Amount::from_str("20").unwrap(),
@@ -375,19 +434,16 @@ mod tests {
 
         let ser_content = content.to_bytes_compact().unwrap();
         let (res_content, _) = OperationContent::from_bytes_compact(&ser_content).unwrap();
-        assert_eq!(format!("{:?}", res_content), format!("{:?}", content));
+        assert_eq!(format!("{}", res_content), format!("{}", content));
 
-        let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-        let signature = crypto::sign(&hash, &sender_priv).unwrap();
+        let hash = Hash::from(&content.to_bytes_compact().unwrap());
+        let signature = sign(&hash, &sender_priv).unwrap();
 
-        let op = Operation {
-            content: content.clone(),
-            signature,
-        };
+        let op = Operation { content, signature };
 
         let ser_op = op.to_bytes_compact().unwrap();
         let (res_op, _) = Operation::from_bytes_compact(&ser_op).unwrap();
-        assert_eq!(format!("{:?}", res_op), format!("{:?}", op));
+        assert_eq!(format!("{}", res_op), format!("{}", op));
 
         assert_eq!(op.get_validity_range(10), 40..=50);
     }

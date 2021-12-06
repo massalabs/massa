@@ -3,15 +3,14 @@
 use crate::tests::tools::{self, generate_ledger_file};
 use models::{BlockId, Slot};
 use serial_test::serial;
+use signature::{generate_random_private_key, PrivateKey};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 #[tokio::test]
 #[serial]
 async fn test_thread_incompatibility() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -25,10 +24,9 @@ async fn test_thread_incompatibility() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .best_parents
@@ -43,7 +41,7 @@ async fn test_thread_incompatibility() {
                 parents.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -54,7 +52,7 @@ async fn test_thread_incompatibility() {
                 parents.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -65,12 +63,12 @@ async fn test_thread_incompatibility() {
                 parents.clone(),
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
 
@@ -97,7 +95,7 @@ async fn test_thread_incompatibility() {
 
             let mut current_period = 3;
             let mut parents = vec![hash_1, hash_2];
-            for _ in 0..3 as usize {
+            for _ in 0..3 {
                 let hash = tools::create_and_test_block(
                     &mut protocol_controller,
                     &cfg,
@@ -105,15 +103,15 @@ async fn test_thread_incompatibility() {
                     parents.clone(),
                     true,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
                 current_period += 1;
-                parents[0] = hash.clone();
+                parents[0] = hash;
             }
 
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
 
@@ -123,17 +121,17 @@ async fn test_thread_incompatibility() {
                 panic!("missing block in clique")
             });
 
-            let mut parents = vec![status.best_parents[0].0.clone(), hash_2];
+            let mut parents = vec![status.best_parents[0].0, hash_2];
             let mut current_period = 8;
-            for _ in 0..30 as usize {
+            for _ in 0..30 {
                 let (hash, b, _) = tools::create_block(
                     &cfg,
                     Slot::new(current_period, 0),
                     parents.clone(),
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 );
                 current_period += 1;
-                parents[0] = hash.clone();
+                parents[0] = hash;
                 protocol_controller.receive_block(b).await;
 
                 // Note: higher timeout required.
@@ -146,7 +144,7 @@ async fn test_thread_incompatibility() {
             }
 
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
 
@@ -161,7 +159,7 @@ async fn test_thread_incompatibility() {
                 parents.clone(),
                 false,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -179,9 +177,7 @@ async fn test_thread_incompatibility() {
 #[serial]
 async fn test_grandpa_incompatibility() {
     let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<crypto::signature::PrivateKey> = (0..1)
-        .map(|_| crypto::generate_random_private_key())
-        .collect();
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = tools::generate_staking_keys_file(&staking_keys);
     let roll_counts_file = tools::generate_default_roll_counts_file(staking_keys.clone());
     let mut cfg = tools::default_consensus_config(
@@ -195,10 +191,9 @@ async fn test_grandpa_incompatibility() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status")
                 .genesis_blocks;
@@ -210,7 +205,7 @@ async fn test_grandpa_incompatibility() {
                 vec![genesis[0], genesis[1]],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -221,7 +216,7 @@ async fn test_grandpa_incompatibility() {
                 vec![genesis[0], genesis[1]],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -232,7 +227,7 @@ async fn test_grandpa_incompatibility() {
                 vec![hash_1, genesis[1]],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
@@ -243,12 +238,12 @@ async fn test_grandpa_incompatibility() {
                 vec![genesis[0], hash_2],
                 true,
                 false,
-                staking_keys[0].clone(),
+                staking_keys[0],
             )
             .await;
 
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
 
@@ -276,7 +271,7 @@ async fn test_grandpa_incompatibility() {
             let mut latest_extra_blocks = VecDeque::new();
             for extend_i in 0..33 {
                 let status = consensus_command_sender
-                    .get_block_graph_status()
+                    .get_block_graph_status(None, None)
                     .await
                     .expect("could not get block graph status");
                 let hash = tools::create_and_test_block(
@@ -286,7 +281,7 @@ async fn test_grandpa_incompatibility() {
                     status.best_parents.iter().map(|(b, _p)| *b).collect(),
                     true,
                     false,
-                    staking_keys[0].clone(),
+                    staking_keys[0],
                 )
                 .await;
 
@@ -298,7 +293,7 @@ async fn test_grandpa_incompatibility() {
 
             let latest_extra_blocks: HashSet<BlockId> = latest_extra_blocks.into_iter().collect();
             let status = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .expect("could not get block graph status");
             assert_eq!(status.max_cliques.len(), 1, "wrong cliques (len)");

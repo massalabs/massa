@@ -1,0 +1,122 @@
+name: CD
+
+on:
+  push:
+    tags:
+      - TEST.*
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: full
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    container:
+      image: massalabs/linux-ci
+    steps:
+    - uses: actions/checkout@v2
+    - run: |
+        export HOME=/root
+        rustup default nightly
+        rustup target add x86_64-unknown-linux-musl
+        cargo update
+        rm -rf massa/*
+        mkdir -p massa/massa-node/
+        cargo build --release --target x86_64-unknown-linux-musl
+        cd massa/
+        mkdir massa-client
+        cp -v ../target/x86_64-unknown-linux-musl/release/massa-node ./massa-node/massa-node
+        cp -rv ../massa-node/config ./massa-node/config
+        cp -rv ../massa-node/base_config ./massa-node/base_config
+        cp -rv ../massa-node/storage ./massa-node/storage
+        cp -v ../target/x86_64-unknown-linux-musl/release/massa-client ./massa-client/massa-client
+        cp -rv ../massa-client/base_config ./massa-client/base_config
+    - uses: actions/upload-artifact@v2
+      with:
+        name: release_linux
+        path: massa/
+
+  windows:
+    runs-on: ubuntu-latest
+    container:
+      image: massalabs/linux-ci
+    steps:
+    - uses: actions/checkout@v2
+    - run: |
+        export HOME=/root
+        rustup update
+        rustup default nightly
+        rustup target add x86_64-pc-windows-gnu
+        cargo update
+        rm -rf massa/*
+        mkdir -p massa/massa-node/
+        cargo build --release --target x86_64-pc-windows-gnu
+        cd massa/
+        mkdir massa-client
+        cp -v ../target/x86_64-pc-windows-gnu/release/massa-node.exe ./massa-node/massa-node.exe
+        cp -rv ../massa-node/config ./massa-node/config
+        cp -rv ../massa-node/base_config ./massa-node/base_config
+        cp -rv ../massa-node/storage ./massa-node/storage
+        cp -v ../target/x86_64-pc-windows-gnu/release/massa-client.exe ./massa-client/massa-client.exe
+        cp -rv ../massa-client/base_config ./massa-client/base_config
+    - uses: actions/upload-artifact@v2
+      with:
+        name: release_windows
+        path: massa/
+
+  macos:
+    runs-on: ubuntu-latest
+    container:
+      image: massalabs/linux-ci
+    steps:
+    - uses: actions/checkout@v2
+    - run: |
+        export HOME=/root
+        rustup update
+        rustup default nightly
+        rustup target add x86_64-apple-darwin
+        cargo update
+        rm -rf massa/*
+        mkdir -p massa/massa-node/
+        CC=o64-clang CXX=o64-clang++ cargo build --release --target x86_64-apple-darwin
+        cd massa/
+        mkdir massa-client
+        cp -v ../target/x86_64-apple-darwin/release/massa-node ./massa-node/massa-node
+        cp -rv ../massa-node/config ./massa-node/config
+        cp -rv ../massa-node/base_config ./massa-node/base_config
+        cp -rv ../massa-node/storage ./massa-node/storage
+        cp -v ../target/x86_64-apple-darwin/release/massa-client ./massa-client/massa-client
+        cp -rv ../massa-client/base_config ./massa-client/base_config
+    - uses: actions/upload-artifact@v2
+      with:
+        name: release_macos
+        path: massa/
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [linux, windows, macos]
+    steps:
+    - uses: actions/download-artifact@v2.0.10
+      with:
+        name: release_macos
+        path: release_macos
+    - uses: actions/download-artifact@v2.0.10
+      with:
+        name: release_windows
+        path: release_windows
+    - uses: actions/download-artifact@v2.0.10
+      with:
+        name: release_linux
+        path: release_linux
+    - run: |
+        echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+        tar -czvf massa_${RELEASE_VERSION}_linux.tar.gz release_linux
+        tar -czvf massa_${RELEASE_VERSION}_windows.tar.gz release_windows
+        tar -czvf massa_${RELEASE_VERSION}_macos.tar.gz release_macos
+    - uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          release_linux.tar.gz
+          release_darwin.tar.gz
+          release_windows.tar.gz

@@ -4,31 +4,29 @@ use super::{
     block_graph::*,
     config::{ConsensusConfig, CHANNEL_SIZE},
     consensus_worker::{
-        ConsensusCommand, ConsensusEvent, ConsensusManagementCommand, ConsensusStats,
-        ConsensusWorker,
+        ConsensusCommand, ConsensusEvent, ConsensusManagementCommand, ConsensusWorker,
     },
     pos::ProofOfStake,
 };
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
-use communication::protocol::{ProtocolCommandSender, ProtocolEventReceiver};
-use crypto::{
-    derive_public_key,
-    signature::{PrivateKey, PublicKey},
-};
-use logging::debug;
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
-    BlockHashMap, OperationHashMap, OperationHashSet,
+    api::EndorsementInfo,
+    BlockHashMap, Endorsement, EndorsementHashMap, EndorsementHashSet, OperationHashMap,
+    OperationHashSet,
 };
+use models::{clique::Clique, stats::ConsensusStats};
 use models::{Address, Block, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats};
 use pool::PoolCommandSender;
+use protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
+use signature::{derive_public_key, PrivateKey, PublicKey};
 use std::{collections::VecDeque, path::Path};
-use storage::StorageAccess;
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
 };
+use tracing::{debug, error, info};
 
 /// Creates a new consensus controller.
 ///
@@ -41,7 +39,6 @@ pub async fn start_consensus_controller(
     protocol_command_sender: ProtocolCommandSender,
     protocol_event_receiver: ProtocolEventReceiver,
     pool_command_sender: PoolCommandSender,
-    opt_storage_command_sender: Option<StorageAccess>,
     boot_pos: Option<ExportProofOfStake>,
     boot_graph: Option<BootstrapableGraph>,
     clock_compensation: i64,
@@ -92,7 +89,6 @@ pub async fn start_consensus_controller(
             protocol_command_sender,
             protocol_event_receiver,
             pool_command_sender,
-            opt_storage_command_sender,
             block_db,
             pos,
             command_rx,
@@ -106,7 +102,7 @@ pub async fn start_consensus_controller(
         .await;
         match res {
             Err(err) => {
-                error!("consensus worker crashed: {:?}", err);
+                error!("consensus worker crashed: {}", err);
                 Err(err)
             }
             Ok(v) => {
@@ -148,11 +144,23 @@ pub struct ConsensusCommandSender(pub mpsc::Sender<ConsensusCommand>);
 
 impl ConsensusCommandSender {
     /// Gets all the aviable information on the block graph returning a Blockgraphexport.
-    pub async fn get_block_graph_status(&self) -> Result<BlockGraphExport, ConsensusError> {
+    ///
+    /// # Arguments
+    /// * slot_start: optional slot start for slot-based filtering (included).
+    /// * slot_end: optional slot end for slot-based filtering (excluded).
+    pub async fn get_block_graph_status(
+        &self,
+        slot_start: Option<Slot>,
+        slot_end: Option<Slot>,
+    ) -> Result<BlockGraphExport, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel::<BlockGraphExport>();
         massa_trace!("consensus.consensus_controller.get_block_graph_status", {});
         self.0
-            .send(ConsensusCommand::GetBlockGraphStatus(response_tx))
+            .send(ConsensusCommand::GetBlockGraphStatus {
+                slot_start,
+                slot_end,
+                response_tx,
+            })
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError(
@@ -165,6 +173,27 @@ impl ConsensusCommandSender {
             )
         })
     }
+
+    /// Gets all cliques.
+    ///
+    pub async fn get_cliques(&self) -> Result<Vec<Clique>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel::<Vec<Clique>>();
+        massa_trace!("consensus.consensus_controller.get_cliques", {});
+        self.0
+            .send(ConsensusCommand::GetCliques(response_tx))
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(
+                    "send error consensus command get_cliques".to_string(),
+                )
+            })?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(
+                "consensus command get_cliques response read error".to_string(),
+            )
+        })
+    }
+
     /// Gets the whole block and its status corresponding to given hash.
     ///
     /// # Arguments
@@ -398,7 +427,7 @@ impl ConsensusCommandSender {
         })
     }
 
-    pub async fn get_active_stakers(&self) -> Result<Option<AddressHashMap<u64>>, ConsensusError> {
+    pub async fn get_active_stakers(&self) -> Result<AddressHashMap<u64>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_active_stakers", {});
         self.0
@@ -484,6 +513,57 @@ impl ConsensusCommandSender {
         response_rx.await.map_err(|_| {
             ConsensusError::ReceiveChannelError(
                 "consensus command get_stakers_production_statsresponse read error".to_string(),
+            )
+        })
+    }
+
+    pub async fn get_endorsements_by_address(
+        &self,
+        address: Address,
+    ) -> Result<EndorsementHashMap<Endorsement>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        massa_trace!(
+            "consensus.consensus_controller.get_endorsements_by_address",
+            {}
+        );
+        self.0
+            .send(ConsensusCommand::GetEndorsementsByAddress {
+                address,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(
+                    "send error consensus command get_endorsements_by_address".to_string(),
+                )
+            })?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(
+                "consensus command get_endorsements_by_address read error".to_string(),
+            )
+        })
+    }
+
+    pub async fn get_endorsements_by_id(
+        &self,
+        endorsements: EndorsementHashSet,
+    ) -> Result<EndorsementHashMap<EndorsementInfo>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        massa_trace!("consensus.consensus_controller.get_endorsements_by_id", {});
+        self.0
+            .send(ConsensusCommand::GetEndorsementsById {
+                endorsements,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                ConsensusError::SendChannelError(
+                    "send error consensus command get_endorsements_by_id".to_string(),
+                )
+            })?;
+        response_rx.await.map_err(|_| {
+            ConsensusError::ReceiveChannelError(
+                "consensus command get_endorsements_by_id read error".to_string(),
             )
         })
     }

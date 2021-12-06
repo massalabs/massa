@@ -17,12 +17,18 @@ use std::{
     usize,
 };
 
+/// Here we map an address to its balance.
+/// When a balance becomes final it is written on the disk.
 pub struct Ledger {
-    ledger_per_thread: Vec<Tree>, // containing (Address, LedgerData)
-    latest_final_periods: Tree,   // containing (thread_number: u8, latest_final_period: u64)
+    /// containing (Address, LedgerData), one per thread
+    ledger_per_thread: Vec<Tree>,
+    /// containing (thread_number: u8, latest_final_period: u64)
+    latest_final_periods: Tree,
+    /// consensus related config
     cfg: ConsensusConfig,
 }
 
+/// Map an address to a LedgerChange
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LedgerChanges(pub AddressHashMap<LedgerChange>);
 
@@ -139,7 +145,17 @@ impl LedgerChanges {
     }
 }
 
+/// Ledger specific method on operations
 pub trait OperationLedgerInterface {
+    /// Retrieve and aggregate ledger specific changes in the context of a block
+    ///
+    /// # Arguments
+    /// * block creator
+    /// * included endorsement producers
+    /// * creator of the endorsed block
+    /// * thread count (fixed by the config)
+    /// * roll price (fixed by the config)
+    /// * max expected number of endorsements (fixed by the config)
     fn get_ledger_changes(
         &self,
         creator: Address,
@@ -157,7 +173,7 @@ impl OperationLedgerInterface for Operation {
         creator: Address,
         endorsers: Vec<Address>,
         parent_creator: Address,
-        _thread_count: u8,
+        _thread_count: u8, // TODO: why it's here?
         roll_price: Amount,
         endorsement_count: u32,
     ) -> Result<LedgerChanges, ConsensusError> {
@@ -168,7 +184,7 @@ impl OperationLedgerInterface for Operation {
         res.apply(
             &sender_address,
             &LedgerChange {
-                balance_delta: self.content.fee.clone().into(),
+                balance_delta: self.content.fee,
                 balance_increment: false,
             },
         )?;
@@ -191,14 +207,14 @@ impl OperationLedgerInterface for Operation {
                 res.apply(
                     &sender_address,
                     &LedgerChange {
-                        balance_delta: amount.clone().into(),
+                        balance_delta: (*amount),
                         balance_increment: false,
                     },
                 )?;
                 res.apply(
-                    &recipient_address,
+                    recipient_address,
                     &LedgerChange {
-                        balance_delta: amount.clone().into(),
+                        balance_delta: (*amount),
                         balance_increment: true,
                     },
                 )?;
@@ -237,8 +253,8 @@ impl Ledger {
 
         let mut ledger_per_thread = Vec::new();
         for thread in 0..cfg.thread_count {
-            db.drop_tree(format!("ledger_thread_{:?}", thread))?;
-            let current_tree = db.open_tree(format!("ledger_thread_{:?}", thread))?;
+            db.drop_tree(format!("ledger_thread_{}", thread))?;
+            let current_tree = db.open_tree(format!("ledger_thread_{}", thread))?;
             ledger_per_thread.push(current_tree);
         }
         db.drop_tree("latest_final_periods".to_string())?;
@@ -259,7 +275,7 @@ impl Ledger {
                         data.to_bytes_compact().map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
-                                    "error serializing ledger data: {:?}",
+                                    "error serializing ledger data: {}",
                                     err
                                 )),
                             )
@@ -289,7 +305,7 @@ impl Ledger {
                     let ledger = ledger_per_thread.get(thread as usize).ok_or_else(|| {
                         sled::transaction::ConflictableTransactionError::Abort(
                             InternalError::TransactionError(format!(
-                                "Could not get ledger for thread {:?}",
+                                "Could not get ledger for thread {}",
                                 thread
                             )),
                         )
@@ -299,7 +315,7 @@ impl Ledger {
                             .map_err(|err| {
                                 sled::transaction::ConflictableTransactionError::Abort(
                                     InternalError::TransactionError(format!(
-                                        "error deserializing ledger data: {:?}",
+                                        "error deserializing ledger data: {}",
                                         err
                                     )),
                                 )
@@ -339,7 +355,7 @@ impl Ledger {
                 .is_some()
             {
                 return Err(ConsensusError::LedgerInconsistency(format!(
-                    "adress {:?} already in ledger while bootsrapping",
+                    "adress {} already in ledger while bootsrapping",
                     address
                 )));
             };
@@ -379,7 +395,7 @@ impl Ledger {
         latest_final_period: u64,
     ) -> Result<(), ConsensusError> {
         let ledger = self.ledger_per_thread.get(thread as usize).ok_or_else(|| {
-            ConsensusError::LedgerInconsistency(format!("missing ledger for thread {:?}", thread))
+            ConsensusError::LedgerInconsistency(format!("missing ledger for thread {}", thread))
         })?;
 
         (ledger, &self.latest_final_periods).transaction(|(db, latest_final_periods_db)| {
@@ -392,7 +408,7 @@ impl Ledger {
                     let (old, _) = LedgerData::from_bytes_compact(old_bytes).map_err(|err| {
                         sled::transaction::ConflictableTransactionError::Abort(
                             InternalError::TransactionError(format!(
-                                "error deserializing ledger data: {:?}",
+                                "error deserializing ledger data: {}",
                                 err
                             )),
                         )
@@ -404,10 +420,7 @@ impl Ledger {
                 };
                 data.apply_change(change).map_err(|err| {
                     sled::transaction::ConflictableTransactionError::Abort(
-                        InternalError::TransactionError(format!(
-                            "error applying change: {:?}",
-                            err
-                        )),
+                        InternalError::TransactionError(format!("error applying change: {}", err)),
                     )
                 })?;
                 // remove entry if nil
@@ -419,7 +432,7 @@ impl Ledger {
                         data.to_bytes_compact().map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
-                                    "error serializing ledger data: {:?}",
+                                    "error serializing ledger data: {}",
                                     err
                                 )),
                             )
@@ -432,7 +445,7 @@ impl Ledger {
                 .map_err(|err| {
                     sled::transaction::ConflictableTransactionError::Abort(
                         InternalError::TransactionError(format!(
-                            "error inserting transaction: {:?}",
+                            "error inserting transaction: {}",
                             err
                         )),
                     )
@@ -452,7 +465,7 @@ impl Ledger {
                         let latest = array_from_slice(&val).map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
-                                    "error getting latest final period for thread: {:?} {:?}",
+                                    "error getting latest final period for thread: {} {}",
                                     thread, err
                                 )),
                             )
@@ -463,7 +476,7 @@ impl Ledger {
                         // since they are initialized in ::new().
                         return Err(sled::transaction::ConflictableTransactionError::Abort(
                             InternalError::TransactionError(format!(
-                                "error getting latest final period for thread: {:?}",
+                                "error getting latest final period for thread: {}",
                                 thread
                             )),
                         ));
@@ -487,7 +500,7 @@ impl Ledger {
     }
 
     /// Used for bootstrap.
-    // Note: this cannot be done transactionally.
+    /// Note: this cannot be done transactionally.
     pub fn read_whole(&self) -> Result<LedgerSubset, ConsensusError> {
         let mut res = LedgerSubset::default();
         for tree in self.ledger_per_thread.iter() {
@@ -520,7 +533,7 @@ impl Ledger {
                         LedgerData::from_bytes_compact(&data_bytes).map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
                                 InternalError::TransactionError(format!(
-                                    "error deserializing ledger data: {:?}",
+                                    "error deserializing ledger data: {}",
                                     err
                                 )),
                             )
@@ -619,7 +632,7 @@ impl LedgerSubset {
                 .iter()
                 .filter_map(|(a, dta)| {
                     if addrs.contains(a) {
-                        Some((*a, dta.clone()))
+                        Some((*a, *dta))
                     } else {
                         None
                     }
@@ -638,7 +651,7 @@ impl<'a> TryFrom<&'a Ledger> for LedgerSubset {
                 .read_whole()?
                 .0
                 .iter()
-                .map(|(k, v)| (*k, v.clone()))
+                .map(|(k, v)| (*k, *v))
                 .collect(),
         ))
     }
@@ -671,7 +684,7 @@ impl SerializeCompact for LedgerSubset {
     /// #     max_bootstrap_message_size: 100000000,
     /// #     max_bootstrap_pos_cycles: 10000,
     /// #     max_bootstrap_pos_entries: 10000,
-    /// #     max_block_endorsments: 8,
+    /// #     max_block_endorsements: 8,
     /// # });
     /// let bytes = ledger.clone().to_bytes_compact().unwrap();
     /// let (res, _) = LedgerSubset::from_bytes_compact(&bytes).unwrap();
@@ -685,7 +698,7 @@ impl SerializeCompact for LedgerSubset {
 
         let entry_count: u64 = self.0.len().try_into().map_err(|err| {
             models::ModelsError::SerializeError(format!(
-                "too many entries in LedgerSubset: {:?}",
+                "too many entries in LedgerSubset: {}",
                 err
             ))
         })?;
@@ -704,7 +717,7 @@ impl DeserializeCompact for LedgerSubset {
         let mut cursor = 0usize;
 
         let (entry_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        //TODO add entry_count checks
+        // TODO: add entry_count checks ... see #1200
         cursor += delta;
 
         let mut ledger_subset = LedgerSubset(AddressHashMap::with_capacity_and_hasher(

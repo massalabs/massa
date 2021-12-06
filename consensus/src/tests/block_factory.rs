@@ -4,8 +4,9 @@ use super::{
     mock_protocol_controller::MockProtocolController,
     tools::{validate_notpropagate_block, validate_propagate_block},
 };
-use crypto::{hash::Hash, signature::PrivateKey};
+use massa_hash::hash::Hash;
 use models::{Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement, Operation, Slot};
+use signature::{derive_public_key, generate_random_private_key, PrivateKey};
 
 pub struct BlockFactory {
     pub best_parents: Vec<BlockId>,
@@ -23,7 +24,7 @@ impl BlockFactory {
     ) -> BlockFactory {
         BlockFactory {
             best_parents: genesis,
-            creator_priv_key: crypto::generate_random_private_key(),
+            creator_priv_key: generate_random_private_key(),
             slot: Slot::new(1, 0),
             endorsements: Vec::new(),
             operations: Vec::new(),
@@ -32,18 +33,18 @@ impl BlockFactory {
     }
 
     pub async fn create_and_receive_block(&mut self, valid: bool) -> (BlockId, Block) {
-        let public_key = crypto::derive_public_key(&self.creator_priv_key);
+        let public_key = derive_public_key(&self.creator_priv_key);
         let (hash, header) = BlockHeader::new_signed(
             &self.creator_priv_key,
             BlockHeaderContent {
                 creator: public_key,
                 slot: self.slot,
                 parents: self.best_parents.clone(),
-                operation_merkle_root: Hash::hash(
+                operation_merkle_root: Hash::from(
                     &self
                         .operations
                         .iter()
-                        .map(|op| op.get_operation_id().unwrap().to_bytes().clone())
+                        .map(|op| op.get_operation_id().unwrap().to_bytes())
                         .flatten()
                         .collect::<Vec<_>>()[..],
                 ),
@@ -69,7 +70,7 @@ impl BlockFactory {
     }
 
     pub fn sign_header(&self, header: BlockHeaderContent) -> Block {
-        let _public_key = crypto::derive_public_key(&self.creator_priv_key);
+        let _public_key = derive_public_key(&self.creator_priv_key);
         let (_hash, header) = BlockHeader::new_signed(&self.creator_priv_key, header).unwrap();
 
         Block {

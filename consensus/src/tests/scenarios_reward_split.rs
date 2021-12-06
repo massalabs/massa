@@ -1,10 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::tests::tools::{self, generate_ledger_file};
-use crypto::hash::Hash;
+use massa_hash::hash::Hash;
 use models::ledger::LedgerData;
 use models::{Address, Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use serial_test::serial;
+use signature::{derive_public_key, generate_random_private_key, sign};
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -21,22 +22,22 @@ async fn test_reward_split() {
     let thread_count = 2;
 
     // A
-    let mut priv_a = crypto::generate_random_private_key();
-    let mut pubkey_a = crypto::derive_public_key(&priv_a);
+    let mut priv_a = generate_random_private_key();
+    let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
     while 0 != address_a.get_thread(thread_count) {
-        priv_a = crypto::generate_random_private_key();
-        pubkey_a = crypto::derive_public_key(&priv_a);
+        priv_a = generate_random_private_key();
+        pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a).unwrap();
     }
 
     // B
-    let mut priv_b = crypto::generate_random_private_key();
-    let mut pubkey_b = crypto::derive_public_key(&priv_b);
+    let mut priv_b = generate_random_private_key();
+    let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
     while 0 != address_b.get_thread(thread_count) {
-        priv_b = crypto::generate_random_private_key();
-        pubkey_b = crypto::derive_public_key(&priv_b);
+        priv_b = generate_random_private_key();
+        pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b).unwrap();
     }
 
@@ -65,7 +66,6 @@ async fn test_reward_split() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        None,
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             // Check initial balances.
             let addresses_state = consensus_command_sender
@@ -75,13 +75,13 @@ async fn test_reward_split() {
 
             let addresse_a_state = addresses_state.get(&address_a).unwrap();
             assert_eq!(
-                addresse_a_state.candidate_ledger_data.balance,
+                addresse_a_state.ledger_info.candidate_ledger_info.balance,
                 Amount::from_str("10").unwrap()
             );
 
             let addresse_b_state = addresses_state.get(&address_b).unwrap();
             assert_eq!(
-                addresse_b_state.candidate_ledger_data.balance,
+                addresse_b_state.ledger_info.candidate_ledger_info.balance,
                 Amount::from_str("10").unwrap()
             );
 
@@ -103,7 +103,7 @@ async fn test_reward_split() {
 
             // Create, and propagate, block 1.
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap()
                 .best_parents
@@ -126,7 +126,7 @@ async fn test_reward_split() {
 
             // Create, and propagate, block 2.
             let parents: Vec<BlockId> = consensus_command_sender
-                .get_block_graph_status()
+                .get_block_graph_status(None, None)
                 .await
                 .unwrap()
                 .best_parents
@@ -151,8 +151,8 @@ async fn test_reward_split() {
                 index,
                 endorsed_block: b1_id,
             };
-            let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-            let signature = crypto::sign(&hash, &slot_two_priv_key).unwrap();
+            let hash = Hash::from(&content.to_bytes_compact().unwrap());
+            let signature = sign(&hash, &slot_two_priv_key).unwrap();
             let ed_1 = Endorsement {
                 content: content.clone(),
                 signature,
@@ -169,8 +169,8 @@ async fn test_reward_split() {
                 index,
                 endorsed_block: b1_id,
             };
-            let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-            let signature = crypto::sign(&hash, &slot_one_priv_key).unwrap();
+            let hash = Hash::from(&content.to_bytes_compact().unwrap());
+            let signature = sign(&hash, &slot_one_priv_key).unwrap();
             let ed_2 = Endorsement {
                 content: content.clone(),
                 signature,
@@ -187,8 +187,8 @@ async fn test_reward_split() {
                 index,
                 endorsed_block: b1_id,
             };
-            let hash = Hash::hash(&content.to_bytes_compact().unwrap());
-            let signature = crypto::sign(&hash, &slot_two_priv_key).unwrap();
+            let hash = Hash::from(&content.to_bytes_compact().unwrap());
+            let signature = sign(&hash, &slot_two_priv_key).unwrap();
             let ed_3 = Endorsement {
                 content: content.clone(),
                 signature,
@@ -216,11 +216,11 @@ async fn test_reward_split() {
                 .saturating_add(if pubkey_a == slot_one_pub_key {
                     // block 1 reward
                     cfg.block_reward
-                        .checked_mul_u64(1 + 0)
+                        .checked_mul_u64(1)
                         .unwrap()
                         .checked_div_u64((1 + cfg.endorsement_count).into())
                         .unwrap()
-                        .saturating_sub(third.checked_mul_u64(2 * 0).unwrap())
+                        .saturating_sub(third.checked_mul_u64(0).unwrap())
                         // endorsements reward
                         .saturating_add(
                             third // parent in ed 1
@@ -242,7 +242,7 @@ async fn test_reward_split() {
                         // endorsement rewards
                         .saturating_add(
                             third // creator of ed 1
-                                .saturating_add(third), //creator of ed 3
+                                .saturating_add(third), // creator of ed 3
                         )
                 } else {
                     Default::default()
@@ -253,11 +253,11 @@ async fn test_reward_split() {
                 .saturating_add(if pubkey_b == slot_one_pub_key {
                     // block 1 reward
                     cfg.block_reward
-                        .checked_mul_u64(1 + 0)
+                        .checked_mul_u64(1)
                         .unwrap()
                         .checked_div_u64((1 + cfg.endorsement_count).into())
                         .unwrap()
-                        .saturating_sub(third.checked_mul_u64(2 * 0).unwrap())
+                        .saturating_sub(third.checked_mul_u64(0).unwrap())
                         // endorsements reward
                         .saturating_add(
                             third // parent in ed 1
@@ -279,17 +279,23 @@ async fn test_reward_split() {
                         // endorsement rewards
                         .saturating_add(
                             third // creator of ed 1
-                                .saturating_add(third), //creator of ed 3
+                                .saturating_add(third), // creator of ed 3
                         )
                 } else {
                     Default::default()
                 });
 
             let state_a = addresses_state.get(&address_a).unwrap();
-            assert_eq!(state_a.candidate_ledger_data.balance, expected_a);
+            assert_eq!(
+                state_a.ledger_info.candidate_ledger_info.balance,
+                expected_a
+            );
 
             let state_b = addresses_state.get(&address_b).unwrap();
-            assert_eq!(state_b.candidate_ledger_data.balance, expected_b);
+            assert_eq!(
+                state_b.ledger_info.candidate_ledger_info.balance,
+                expected_b
+            );
 
             (
                 protocol_controller,

@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 mod error;
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{self, DateTime, NaiveDateTime, Utc};
 pub use error::TimeError;
 use std::fmt;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -97,7 +97,10 @@ impl UTime {
     /// Smallest time interval
     pub const EPSILON: UTime = UTime(1);
 
-    /// Gets current timestamp.
+    /// Gets current unix timestamp (resolution: milliseconds).
+    ///
+    /// # Parameters
+    ///   * compensation_millis: when the system clock is slightly off, this parameter allows correcting it by adding this signed number of milliseconds to the locally measured timestamp
     ///
     /// ```
     /// # use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -299,5 +302,29 @@ impl UTime {
         );
         let datetime: DateTime<Utc> = DateTime::from_utc(naive, Utc);
         format!("{}", datetime)
+    }
+
+    /// ```
+    /// # use time::*;
+    /// let utime = UTime::from(1000 * ( 8 * 24*60*60 + 1 * 60*60 + 3 * 60 + 6 ));
+    /// let (days, hours, mins, secs) = utime.days_hours_mins_secs().unwrap();
+    /// assert_eq!(days, 8);
+    /// assert_eq!(hours, 1);
+    /// assert_eq!(mins, 3);
+    /// assert_eq!(secs, 6);
+    /// ```
+    pub fn days_hours_mins_secs(&self) -> Result<(i64, i64, i64, i64), TimeError> {
+        let time = chrono::Duration::from_std(self.to_duration())
+            .map_err(|_| TimeError::TimeOverflowError)?;
+        let days = time.num_days();
+        let hours = (time - chrono::Duration::days(days)).num_hours();
+        let mins =
+            (time - chrono::Duration::days(days) - chrono::Duration::hours(hours)).num_minutes();
+        let secs = (time
+            - chrono::Duration::days(days)
+            - chrono::Duration::hours(hours)
+            - chrono::Duration::minutes(mins))
+        .num_seconds();
+        Ok((days, hours, mins, secs))
     }
 }

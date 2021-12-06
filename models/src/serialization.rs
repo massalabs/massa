@@ -174,7 +174,7 @@ pub fn array_from_slice<const ARRAY_SIZE: usize>(
         ));
     }
     buffer[..ARRAY_SIZE].try_into().map_err(|err| {
-        ModelsError::BufferError(format!("could not extract array from slice: {:?}", err))
+        ModelsError::BufferError(format!("could not extract array from slice: {}", err))
     })
 }
 

@@ -1,31 +1,32 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::pool_worker::PoolStats;
+use models::stats::PoolStats;
 
 use super::{
-    config::{PoolConfig, CHANNEL_SIZE},
     error::PoolError,
     pool_worker::{PoolCommand, PoolManagementCommand, PoolWorker},
+    settings::{PoolSettings, CHANNEL_SIZE},
 };
-use communication::protocol::{ProtocolCommandSender, ProtocolPoolEventReceiver};
-use logging::{debug, massa_trace};
+use logging::massa_trace;
 use models::{
-    Address, BlockId, Endorsement, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
-    OperationHashSet, OperationId, OperationSearchResult, Slot,
+    Address, BlockId, Endorsement, EndorsementHashMap, EndorsementHashSet, EndorsementId,
+    Operation, OperationHashMap, OperationHashSet, OperationId, OperationSearchResult, Slot,
 };
+use protocol_exports::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
 };
+use tracing::{debug, error, info};
 
 /// Creates a new pool controller.
 ///
 /// # Arguments
-/// * cfg: pool configuration
+/// * pool_settings: pool configuration
 /// * protocol_command_sender: a ProtocolCommandSender instance to send commands to Protocol.
 /// * protocol_pool_event_receiver: a ProtocolPoolEventReceiver instance to receive pool events from Protocol.
 pub async fn start_pool_controller(
-    cfg: PoolConfig,
+    pool_settings: &'static PoolSettings,
     thread_count: u8,
     operation_validity_periods: u64,
     protocol_command_sender: ProtocolCommandSender,
@@ -39,7 +40,7 @@ pub async fn start_pool_controller(
     let (manager_tx, manager_rx) = mpsc::channel::<PoolManagementCommand>(1);
     let join_handle = tokio::spawn(async move {
         let res = PoolWorker::new(
-            cfg,
+            pool_settings,
             thread_count,
             operation_validity_periods,
             protocol_command_sender,
@@ -51,7 +52,7 @@ pub async fn start_pool_controller(
         .await;
         match res {
             Err(err) => {
-                error!("pool worker crashed: {:?}", err);
+                error!("pool worker crashed: {}", err);
                 Err(err)
             }
             Ok(v) => {
@@ -106,7 +107,7 @@ impl PoolCommandSender {
             .map_err(|_| PoolError::ChannelError("get_pool_stats command send error".into()))?;
         response_rx.await.map_err(|e| {
             PoolError::ChannelError(format!(
-                "pool command response read error in get_pool_stats {:?}",
+                "pool command response read error in get_pool_stats {}",
                 e
             ))
         })
@@ -169,7 +170,7 @@ impl PoolCommandSender {
 
         response_rx.await.map_err(|e| {
             PoolError::ChannelError(format!(
-                "pool command response read error in get_operation_batch {:?}",
+                "pool command response read error in get_operation_batch {}",
                 e
             ))
         })
@@ -198,7 +199,7 @@ impl PoolCommandSender {
 
         response_rx.await.map_err(|e| {
             PoolError::ChannelError(format!(
-                "pool command response read error in get_endorsements {:?}",
+                "pool command response read error in get_endorsements {}",
                 e
             ))
         })
@@ -223,7 +224,7 @@ impl PoolCommandSender {
 
         response_rx.await.map_err(|e| {
             PoolError::ChannelError(format!(
-                "pool command response read error in get_operations {:?}",
+                "pool command response read error in get_operations {}",
                 e
             ))
         })
@@ -252,7 +253,7 @@ impl PoolCommandSender {
 
         response_rx.await.map_err(|e| {
             PoolError::ChannelError(format!(
-                "pool command response read error in get_operations_involving_address {:?}",
+                "pool command response read error in get_operations_involving_address {}",
                 e
             ))
         })
@@ -271,6 +272,60 @@ impl PoolCommandSender {
             .await
             .map_err(|_| PoolError::ChannelError("add_endorsements command send error".into()));
         res
+    }
+
+    pub async fn get_endorsements_by_address(
+        &self,
+        address: Address,
+    ) -> Result<EndorsementHashMap<Endorsement>, PoolError> {
+        massa_trace!("pool.command_sender.get_endorsements_by_address", {
+            "address": address
+        });
+
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(PoolCommand::GetEndorsementsByAddress {
+                address,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                PoolError::ChannelError("get_endorsements_by_address command send error".into())
+            })?;
+
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_endorsements_by_address {:?}",
+                e
+            ))
+        })
+    }
+
+    pub async fn get_endorsements_by_id(
+        &self,
+        endorsements: EndorsementHashSet,
+    ) -> Result<EndorsementHashMap<Endorsement>, PoolError> {
+        massa_trace!("pool.command_sender.get_endorsements_by_id", {
+            "endorsements": endorsements
+        });
+
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(PoolCommand::GetEndorsementsById {
+                endorsements,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                PoolError::ChannelError("get_endorsements_by_id command send error".into())
+            })?;
+
+        response_rx.await.map_err(|e| {
+            PoolError::ChannelError(format!(
+                "pool command response read error in get_endorsements_by_id {:?}",
+                e
+            ))
+        })
     }
 }
 

@@ -1,10 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::messages::BootstrapMessage;
-use communication::CommunicationError;
 use consensus::error::ConsensusError;
-use crypto::CryptoError;
 use displaydoc::Display;
+use massa_hash::MassaHashError;
+use network::NetworkError;
 use thiserror::Error;
 use time::TimeError;
 
@@ -21,14 +21,14 @@ pub enum BootstrapError {
     UnexpectedMessage(BootstrapMessage),
     /// connection with bootstrap node dropped
     UnexpectedConnectionDrop,
-    /// crypto error: {0}
-    CryptoError(#[from] CryptoError),
+    /// massa_hash error: {0}
+    MassaHashError(#[from] MassaHashError),
     /// time error: {0}
     TimeError(#[from] TimeError),
     /// consensus error: {0}
     ConsensusError(#[from] ConsensusError),
-    /// communication error: {0}
-    CommunicationError(#[from] CommunicationError),
+    /// network error: {0}
+    NetworkError(#[from] NetworkError),
     /// join error: {0}
     JoinError(#[from] tokio::task::JoinError),
     /// missing private key file

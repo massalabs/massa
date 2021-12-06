@@ -4,19 +4,19 @@ use crate::{
     address::{AddressHashMap, AddressHashSet},
     array_from_slice,
     hhasher::{HHashMap, HHashSet, PreHashed},
-    u8_from_slice, with_serialization_context, DeserializeCompact, DeserializeMinBEInt,
-    DeserializeVarInt, Endorsement, ModelsError, Operation, OperationHashMap, OperationHashSet,
-    SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot, SLOT_KEY_SIZE,
+    u8_from_slice, with_serialization_context, Address, DeserializeCompact, DeserializeMinBEInt,
+    DeserializeVarInt, Endorsement, EndorsementHashMap, EndorsementHashSet, ModelsError, Operation,
+    OperationHashMap, OperationHashSet, SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot,
+    SLOT_KEY_SIZE,
 };
-use crypto::{
-    hash::{Hash, HASH_SIZE_BYTES},
-    signature::{
-        sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
-        SIGNATURE_SIZE_BYTES,
-    },
-};
+use massa_hash::hash::{Hash, HASH_SIZE_BYTES};
 use serde::{Deserialize, Serialize};
+use signature::{
+    sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
+    SIGNATURE_SIZE_BYTES,
+};
 use std::convert::TryInto;
+use std::fmt::Formatter;
 use std::str::FromStr;
 
 pub const BLOCK_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
@@ -60,7 +60,7 @@ impl BlockId {
     }
 
     pub fn get_first_bit(&self) -> bool {
-        Hash::hash(&self.to_bytes()).to_bytes()[0] >> 7 == 1
+        Hash::from(&self.to_bytes()).to_bytes()[0] >> 7 == 1
     }
 }
 
@@ -108,7 +108,7 @@ impl Block {
                 let op = &self.operations[*op_idx];
                 let addrs = op.get_ledger_involved_addresses().map_err(|err| {
                     ModelsError::DeserializeError(format!(
-                        "could not get involved addresses: {:?}",
+                        "could not get involved addresses: {}",
                         err
                     ))
                 })?;
@@ -125,6 +125,45 @@ impl Block {
             })?;
         Ok(addresses_to_operations)
     }
+
+    pub fn addresses_to_endorsements(
+        &self,
+        _endo: &EndorsementHashMap<u32>,
+    ) -> Result<AddressHashMap<EndorsementHashSet>, ModelsError> {
+        let mut res: AddressHashMap<EndorsementHashSet> = AddressHashMap::default();
+        self.header
+            .content
+            .endorsements
+            .iter()
+            .try_for_each::<_, Result<(), ModelsError>>(|e| {
+                let address = Address::from_public_key(&e.content.sender_public_key)?;
+                if let Some(old) = res.get_mut(&address) {
+                    old.insert(e.compute_endorsement_id()?);
+                } else {
+                    let mut set = EndorsementHashSet::default();
+                    set.insert(e.compute_endorsement_id()?);
+                    res.insert(address, set);
+                }
+                Ok(())
+            })?;
+        Ok(res)
+    }
+}
+
+impl std::fmt::Display for Block {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}", self.header)?;
+        writeln!(
+            f,
+            "Operations: {}",
+            self.operations
+                .iter()
+                .map(|op| format!("{}", op))
+                .collect::<Vec<String>>()
+                .join(" ")
+        )?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -134,6 +173,49 @@ pub struct BlockHeaderContent {
     pub parents: Vec<BlockId>,
     pub operation_merkle_root: Hash, // all operations hash
     pub endorsements: Vec<Endorsement>,
+}
+
+impl std::fmt::Display for BlockHeaderContent {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let pk = self.creator.to_string();
+        writeln!(f, "\tCreator: {}", pk)?;
+        writeln!(
+            f,
+            "\t(period: {}, thread: {})",
+            self.slot.period, self.slot.thread,
+        )?;
+        writeln!(f, "\tMerkle root: {}", self.operation_merkle_root,)?;
+        writeln!(f, "\tParents: ")?;
+        for id in self.parents.iter() {
+            let str_id = id.to_string();
+            writeln!(f, "\t\t{}", str_id)?;
+        }
+        if self.parents.is_empty() {
+            writeln!(f, "No parents found: This is a genesis header")?;
+        }
+        writeln!(f, "\tEndorsements:")?;
+        for ed in self.endorsements.iter() {
+            writeln!(f, "\t\t-----")?;
+            writeln!(
+                f,
+                "\t\tId: {}",
+                ed.compute_endorsement_id().map_err(|_| std::fmt::Error)?
+            )?;
+            writeln!(f, "\t\tIndex: {}", ed.content.index)?;
+            writeln!(f, "\t\tEndorsed slot: {}", ed.content.slot)?;
+            writeln!(
+                f,
+                "\t\tEndorser's public key: {}",
+                ed.content.sender_public_key
+            )?;
+            writeln!(f, "\t\tEndorsed block: {}", ed.content.endorsed_block)?;
+            writeln!(f, "\t\tSignature: {}", ed.signature)?;
+        }
+        if self.endorsements.is_empty() {
+            writeln!(f, "\tNo endorsements found")?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -157,15 +239,24 @@ impl SerializeCompact for Block {
             with_serialization_context(|context| context.max_block_operations);
 
         // operations
-        let operation_count: u32 = self.operations.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many operations: {:?}", err))
-        })?;
+        let operation_count: u32 =
+            self.operations.len().try_into().map_err(|err| {
+                ModelsError::SerializeError(format!("too many operations: {}", err))
+            })?;
         res.extend(operation_count.to_be_bytes_min(max_block_operations)?);
         for operation in self.operations.iter() {
             res.extend(operation.to_bytes_compact()?);
         }
 
         Ok(res)
+    }
+}
+
+impl std::fmt::Display for BlockHeader {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Signature: {}", self.signature)?;
+        writeln!(f, "{}", self.content)?;
+        Ok(())
     }
 }
 
@@ -221,7 +312,7 @@ impl BlockHeader {
     /// Generate the block id without verifying the integrity of the it,
     /// used only in tests.
     pub fn compute_block_id(&self) -> Result<BlockId, ModelsError> {
-        Ok(BlockId(Hash::hash(&self.to_bytes_compact()?)))
+        Ok(BlockId(Hash::from(&self.to_bytes_compact()?)))
     }
 
     // Hash([slot, hash])
@@ -230,7 +321,7 @@ impl BlockHeader {
         res[..SLOT_KEY_SIZE].copy_from_slice(&slot.to_bytes_key());
         res[SLOT_KEY_SIZE..].copy_from_slice(&hash.to_bytes());
         // rehash for safety
-        Hash::hash(&res)
+        Hash::from(&res)
     }
 
     // check if a [slot, hash] pair was signed by a public_key
@@ -309,7 +400,7 @@ impl DeserializeCompact for BlockHeader {
 
 impl BlockHeaderContent {
     pub fn compute_hash(&self) -> Result<Hash, ModelsError> {
-        Ok(Hash::hash(&self.to_bytes_compact()?))
+        Ok(Hash::from(&self.to_bytes_compact()?))
     }
 }
 
@@ -342,7 +433,7 @@ impl SerializeCompact for BlockHeaderContent {
 
         // endorsements
         let endorsements_count: u32 = self.endorsements.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many endorsements: {:?}", err))
+            ModelsError::SerializeError(format!("too many endorsements: {}", err))
         })?;
         res.extend(endorsements_count.to_varint_bytes());
         for endorsement in self.endorsements.iter() {
@@ -394,12 +485,12 @@ impl DeserializeCompact for BlockHeaderContent {
         let operation_merkle_root = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
         cursor += HASH_SIZE_BYTES;
 
-        let max_block_endorsments =
-            with_serialization_context(|context| context.max_block_endorsments);
+        let max_block_endorsements =
+            with_serialization_context(|context| context.max_block_endorsements);
 
         // endorsements
         let (endorsement_count, delta) =
-            u32::from_varint_bytes_bounded(&buffer[cursor..], max_block_endorsments)?;
+            u32::from_varint_bytes_bounded(&buffer[cursor..], max_block_endorsements)?;
         cursor += delta;
 
         let mut endorsements: Vec<Endorsement> = Vec::with_capacity(endorsement_count as usize);
@@ -427,6 +518,7 @@ mod test {
     use super::*;
     use crate::EndorsementContent;
     use serial_test::serial;
+    use signature::{derive_public_key, generate_random_private_key};
 
     #[test]
     #[serial]
@@ -447,11 +539,11 @@ mod test {
             max_operations_per_message: 1024,
             max_endorsements_per_message: 1024,
             max_bootstrap_message_size: 100000000,
-            max_block_endorsments: 8,
+            max_block_endorsements: 8,
         };
         crate::init_serialization_context(ctx);
-        let private_key = crypto::generate_random_private_key();
-        let public_key = crypto::derive_public_key(&private_key);
+        let private_key = generate_random_private_key();
+        let public_key = derive_public_key(&private_key);
 
         // create block header
         let (orig_id, orig_header) = BlockHeader::new_signed(
@@ -460,29 +552,29 @@ mod test {
                 creator: public_key,
                 slot: Slot::new(1, 2),
                 parents: vec![
-                    BlockId(Hash::hash("abc".as_bytes())),
-                    BlockId(Hash::hash("def".as_bytes())),
-                    BlockId(Hash::hash("ghi".as_bytes())),
+                    BlockId(Hash::from("abc".as_bytes())),
+                    BlockId(Hash::from("def".as_bytes())),
+                    BlockId(Hash::from("ghi".as_bytes())),
                 ],
-                operation_merkle_root: Hash::hash("mno".as_bytes()),
+                operation_merkle_root: Hash::from("mno".as_bytes()),
                 endorsements: vec![
                     Endorsement {
                         content: EndorsementContent {
                             sender_public_key: public_key,
                             slot: Slot::new(1, 1),
                             index: 1,
-                            endorsed_block: BlockId(Hash::hash("blk1".as_bytes())),
+                            endorsed_block: BlockId(Hash::from("blk1".as_bytes())),
                         },
-                        signature: sign(&Hash::hash("dta".as_bytes()), &private_key).unwrap(),
+                        signature: sign(&Hash::from("dta".as_bytes()), &private_key).unwrap(),
                     },
                     Endorsement {
                         content: EndorsementContent {
                             sender_public_key: public_key,
                             slot: Slot::new(4, 0),
                             index: 3,
-                            endorsed_block: BlockId(Hash::hash("blk2".as_bytes())),
+                            endorsed_block: BlockId(Hash::from("blk2".as_bytes())),
                         },
-                        signature: sign(&Hash::hash("dat".as_bytes()), &private_key).unwrap(),
+                        signature: sign(&Hash::from("dat".as_bytes()), &private_key).unwrap(),
                     },
                 ],
             },

@@ -9,7 +9,7 @@ use core::usize;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Clique {
     pub block_ids: BlockHashSet,
     pub fitness: u64,
@@ -21,7 +21,7 @@ impl SerializeCompact for Clique {
     /// ```rust
     /// use models::clique::Clique;
     /// # use models::{SerializeCompact, DeserializeCompact, SerializationContext, BlockId};
-    /// # use crypto::hash::Hash;
+    /// # use massa_hash::hash::Hash;
     /// # use std::str::FromStr;
     /// # models::init_serialization_context(models::SerializationContext {
     /// #     max_block_operations: 1024,
@@ -39,10 +39,10 @@ impl SerializeCompact for Clique {
     /// #     max_bootstrap_message_size: 100000000,
     /// #     max_bootstrap_pos_cycles: 10000,
     /// #     max_bootstrap_pos_entries: 10000,
-    /// #     max_block_endorsments: 8,
+    /// #     max_block_endorsements: 8,
     /// # });
     /// # pub fn get_dummy_block_id(s: &str) -> BlockId {
-    /// #     BlockId(Hash::hash(s.as_bytes()))
+    /// #     BlockId(Hash::from(s.as_bytes()))
     /// # }
     /// let clique = Clique {
     ///         block_ids: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")].into_iter().collect(),
@@ -63,7 +63,7 @@ impl SerializeCompact for Clique {
 
         // block_ids
         let block_ids_count: u32 = self.block_ids.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many blocks in in clique: {:?}", err))
+            ModelsError::SerializeError(format!("too many blocks in in clique: {}", err))
         })?;
         res.extend(&block_ids_count.to_varint_bytes());
         for b_id in self.block_ids.iter() {
@@ -93,9 +93,9 @@ impl DeserializeCompact for Clique {
 
         let (block_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         if block_count > max_bootstrap_blocks {
-            return Err(ModelsError::DeserializeError(format!(
-                "too many blocks in clique for deserialization"
-            )));
+            return Err(ModelsError::DeserializeError(
+                "too many blocks in clique for deserialization".to_string(),
+            ));
         }
         cursor += delta;
         let mut block_ids =

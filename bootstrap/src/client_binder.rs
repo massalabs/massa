@@ -3,13 +3,10 @@
 use super::messages::BootstrapMessage;
 use crate::establisher::Duplex;
 use crate::{error::BootstrapError, messages::BOOTSTRAP_RANDOMNES_SIZE_BYTES};
-use crypto::{
-    hash::Hash,
-    signature::{PublicKey, Signature, SIGNATURE_SIZE_BYTES},
-    verify_signature,
-};
+use massa_hash::hash::Hash;
 use models::{with_serialization_context, DeserializeCompact, DeserializeMinBEInt};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
+use signature::{verify_signature, PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 
@@ -48,7 +45,7 @@ impl BootstrapClientBinder {
             let mut random_bytes = [0u8; BOOTSTRAP_RANDOMNES_SIZE_BYTES];
             StdRng::from_entropy().fill_bytes(&mut random_bytes);
             self.duplex.write_all(&random_bytes).await?;
-            let rand_hash = Hash::hash(&random_bytes);
+            let rand_hash = Hash::from(&random_bytes);
             self.duplex.write_all(&rand_hash.to_bytes()).await?;
             rand_hash
         };
@@ -92,7 +89,7 @@ impl BootstrapClientBinder {
             self.duplex
                 .read_exact(&mut sig_msg_bytes[SIGNATURE_SIZE_BYTES..])
                 .await?;
-            let msg_hash = Hash::hash(&sig_msg_bytes);
+            let msg_hash = Hash::from(&sig_msg_bytes);
             verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
             let (msg, _len) =
                 BootstrapMessage::from_bytes_compact(&sig_msg_bytes[SIGNATURE_SIZE_BYTES..])?;

@@ -1,6 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use communication::protocol::ProtocolCommand;
+use super::tools::get_transaction;
+use crate::operation_pool::tests::POOL_SETTINGS;
+use crate::tests::tools::{self, get_transaction_with_addresses, pool_test};
+use crate::PoolSettings;
 use models::Address;
 use models::EndorsementHashMap;
 use models::Operation;
@@ -9,36 +12,38 @@ use models::OperationHashSet;
 use models::OperationId;
 use models::SerializeCompact;
 use models::Slot;
+use protocol_exports::ProtocolCommand;
+use serial_test::serial;
+use signature::{derive_public_key, generate_random_private_key};
 use std::collections::HashSet;
 use std::time::Duration;
 use tokio::time::sleep;
 
-use crate::tests::tools::{self, get_transaction_with_addresses, pool_test};
-
-use super::tools::{example_pool_config, get_transaction};
-use serial_test::serial;
-
 #[tokio::test]
 #[serial]
 async fn test_pool() {
-    let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
-    let max_pool_size_per_thread = 10;
-    cfg.max_pool_size_per_thread = max_pool_size_per_thread;
+    let (cfg, thread_count, operation_validity_periods, max_pool_size_per_thread): &(
+        PoolSettings,
+        u8,
+        u64,
+        u64,
+    ) = &POOL_SETTINGS;
+
     pool_test(
         cfg,
-        thread_count,
-        operation_validity_periods,
+        *thread_count,
+        *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
                 _ => None,
             };
             // generate transactions
-            let mut thread_tx_lists = vec![Vec::new(); thread_count as usize];
+            let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
             for i in 0..18 {
                 let fee = 40 + i;
                 let expire_period: u64 = 40 + i;
-                let start_period = expire_period.saturating_sub(operation_validity_periods);
+                let start_period = expire_period.saturating_sub(*operation_validity_periods);
                 let (op, thread) = get_transaction(expire_period, fee);
                 let id = op.verify_integrity().unwrap();
 
@@ -51,7 +56,7 @@ async fn test_pool() {
                     .unwrap();
 
                 let newly_added = match protocol_controller
-                    .wait_command(250.into(), op_filter.clone())
+                    .wait_command(250.into(), op_filter)
                     .await
                 {
                     Some(ProtocolCommand::PropagateOperations(ops)) => ops,
@@ -70,7 +75,7 @@ async fn test_pool() {
                     .unwrap();
 
                 match protocol_controller
-                    .wait_command(250.into(), op_filter.clone())
+                    .wait_command(250.into(), op_filter)
                     .await
                 {
                     Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
@@ -82,7 +87,7 @@ async fn test_pool() {
             // sort from bigger fee to smaller and truncate
             for lst in thread_tx_lists.iter_mut() {
                 lst.reverse();
-                lst.truncate(max_pool_size_per_thread as usize);
+                lst.truncate(*max_pool_size_per_thread as usize);
             }
 
             // checks ops for thread 0 and 1 and various periods
@@ -112,7 +117,7 @@ async fn test_pool() {
             // op ending before or at period 45 should be discarded
             let final_period = 45u64;
             pool_command_sender
-                .update_latest_final_periods(vec![final_period; thread_count as usize])
+                .update_latest_final_periods(vec![final_period; *thread_count as usize])
                 .await
                 .unwrap();
             for lst in thread_tx_lists.iter_mut() {
@@ -158,7 +163,7 @@ async fn test_pool() {
                 pool_command_sender.add_operations(ops).await.unwrap();
 
                 match protocol_controller
-                    .wait_command(250.into(), op_filter.clone())
+                    .wait_command(250.into(), op_filter)
                     .await
                 {
                     Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
@@ -183,14 +188,13 @@ async fn test_pool() {
 #[tokio::test]
 #[serial]
 async fn test_pool_with_protocol_events() {
-    let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
-    let max_pool_size_per_thread = 10;
-    cfg.max_pool_size_per_thread = max_pool_size_per_thread;
+    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
+        &POOL_SETTINGS;
 
     pool_test(
         cfg,
-        thread_count,
-        operation_validity_periods,
+        *thread_count,
+        *operation_validity_periods,
         async move |mut protocol_controller, pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
@@ -198,11 +202,11 @@ async fn test_pool_with_protocol_events() {
             };
 
             // generate transactions
-            let mut thread_tx_lists = vec![Vec::new(); thread_count as usize];
+            let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
             for i in 0..18 {
                 let fee = 40 + i;
                 let expire_period: u64 = 40 + i;
-                let start_period = expire_period.saturating_sub(operation_validity_periods);
+                let start_period = expire_period.saturating_sub(*operation_validity_periods);
                 let (op, thread) = get_transaction(expire_period, fee);
                 let id = op.verify_integrity().unwrap();
 
@@ -212,7 +216,7 @@ async fn test_pool_with_protocol_events() {
                 protocol_controller.received_operations(ops.clone()).await;
 
                 let newly_added = match protocol_controller
-                    .wait_command(250.into(), op_filter.clone())
+                    .wait_command(250.into(), op_filter)
                     .await
                 {
                     Some(ProtocolCommand::PropagateOperations(ops)) => ops,
@@ -228,7 +232,7 @@ async fn test_pool_with_protocol_events() {
                 protocol_controller.received_operations(ops.clone()).await;
 
                 match protocol_controller
-                    .wait_command(250.into(), op_filter.clone())
+                    .wait_command(250.into(), op_filter)
                     .await
                 {
                     Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
@@ -247,14 +251,13 @@ async fn test_pool_with_protocol_events() {
 #[tokio::test]
 #[serial]
 async fn test_pool_propagate_newly_added_endorsements() {
-    let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
-    let max_pool_size_per_thread = 10;
-    cfg.max_pool_size_per_thread = max_pool_size_per_thread;
+    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
+        &POOL_SETTINGS;
 
     pool_test(
         cfg,
-        thread_count,
-        operation_validity_periods,
+        *thread_count,
+        *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateEndorsements(_) => Some(cmd),
@@ -264,14 +267,14 @@ async fn test_pool_propagate_newly_added_endorsements() {
             let endorsement = tools::create_endorsement(target_slot);
             let mut endorsements = EndorsementHashMap::default();
             let id = endorsement.compute_endorsement_id().unwrap();
-            endorsements.insert(id.clone(), endorsement.clone());
+            endorsements.insert(id, endorsement.clone());
 
             protocol_controller
                 .received_endorsements(endorsements.clone())
                 .await;
 
             let newly_added = match protocol_controller
-                .wait_command(250.into(), op_filter.clone())
+                .wait_command(250.into(), op_filter)
                 .await
             {
                 Some(ProtocolCommand::PropagateEndorsements(endorsements)) => endorsements,
@@ -287,7 +290,7 @@ async fn test_pool_propagate_newly_added_endorsements() {
                 .await;
 
             match protocol_controller
-                .wait_command(250.into(), op_filter.clone())
+                .wait_command(250.into(), op_filter)
                 .await
             {
                 Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
@@ -313,14 +316,13 @@ async fn test_pool_propagate_newly_added_endorsements() {
 #[tokio::test]
 #[serial]
 async fn test_pool_add_old_endorsements() {
-    let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
-    let max_pool_size_per_thread = 10;
-    cfg.max_pool_size_per_thread = max_pool_size_per_thread;
+    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
+        &POOL_SETTINGS;
 
     pool_test(
         cfg,
-        thread_count,
-        operation_validity_periods,
+        *thread_count,
+        *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateEndorsements(_) => Some(cmd),
@@ -330,7 +332,7 @@ async fn test_pool_add_old_endorsements() {
             let endorsement = tools::create_endorsement(Slot::new(1, 0));
             let mut endorsements = EndorsementHashMap::default();
             let id = endorsement.compute_endorsement_id().unwrap();
-            endorsements.insert(id.clone(), endorsement.clone());
+            endorsements.insert(id, endorsement.clone());
 
             pool_command_sender
                 .update_latest_final_periods(vec![50, 50])
@@ -342,7 +344,7 @@ async fn test_pool_add_old_endorsements() {
                 .await;
 
             match protocol_controller
-                .wait_command(250.into(), op_filter.clone())
+                .wait_command(250.into(), op_filter)
                 .await
             {
                 Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
@@ -359,36 +361,35 @@ async fn test_pool_add_old_endorsements() {
 #[serial]
 async fn test_get_involved_operations() {
     let thread_count = 2;
-    //define addresses use for the test
+    // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_a = crypto::generate_random_private_key();
-    let mut pubkey_a = crypto::derive_public_key(&priv_a);
+    let mut priv_a = generate_random_private_key();
+    let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
     while 1 != address_a.get_thread(thread_count) {
-        priv_a = crypto::generate_random_private_key();
-        pubkey_a = crypto::derive_public_key(&priv_a);
+        priv_a = generate_random_private_key();
+        pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a).unwrap();
     }
     assert_eq!(1, address_a.get_thread(thread_count));
 
-    let mut priv_b = crypto::generate_random_private_key();
-    let mut pubkey_b = crypto::derive_public_key(&priv_b);
+    let mut priv_b = generate_random_private_key();
+    let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
     while 1 != address_b.get_thread(thread_count) {
-        priv_b = crypto::generate_random_private_key();
-        pubkey_b = crypto::derive_public_key(&priv_b);
+        priv_b = generate_random_private_key();
+        pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b).unwrap();
     }
     assert_eq!(1, address_b.get_thread(thread_count));
 
-    let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
-    let max_pool_size_per_thread = 10;
-    cfg.max_pool_size_per_thread = max_pool_size_per_thread;
+    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
+        &POOL_SETTINGS;
 
     pool_test(
         cfg,
-        thread_count,
-        operation_validity_periods,
+        *thread_count,
+        *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
@@ -417,7 +418,7 @@ async fn test_get_involved_operations() {
             protocol_controller.received_operations(ops.clone()).await;
 
             let newly_added = match protocol_controller
-                .wait_command(250.into(), op_filter.clone())
+                .wait_command(250.into(), op_filter)
                 .await
             {
                 Some(ProtocolCommand::PropagateOperations(ops)) => ops,
@@ -516,36 +517,35 @@ async fn test_get_involved_operations() {
 #[serial]
 async fn test_new_final_ops() {
     let thread_count = 2;
-    //define addresses use for the test
+    // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_a = crypto::generate_random_private_key();
-    let mut pubkey_a = crypto::derive_public_key(&priv_a);
+    let mut priv_a = generate_random_private_key();
+    let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
     while 0 != address_a.get_thread(thread_count) {
-        priv_a = crypto::generate_random_private_key();
-        pubkey_a = crypto::derive_public_key(&priv_a);
+        priv_a = generate_random_private_key();
+        pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a).unwrap();
     }
     assert_eq!(0, address_a.get_thread(thread_count));
 
-    let mut priv_b = crypto::generate_random_private_key();
-    let mut pubkey_b = crypto::derive_public_key(&priv_b);
+    let mut priv_b = generate_random_private_key();
+    let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
     while 0 != address_b.get_thread(thread_count) {
-        priv_b = crypto::generate_random_private_key();
-        pubkey_b = crypto::derive_public_key(&priv_b);
+        priv_b = generate_random_private_key();
+        pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b).unwrap();
     }
     assert_eq!(0, address_b.get_thread(thread_count));
 
-    let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
-    let max_pool_size_per_thread = 10;
-    cfg.max_pool_size_per_thread = max_pool_size_per_thread;
+    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
+        &POOL_SETTINGS;
 
     pool_test(
         cfg,
-        thread_count,
-        operation_validity_periods,
+        *thread_count,
+        *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
@@ -564,7 +564,7 @@ async fn test_new_final_ops() {
                 .await;
 
             let newly_added = match protocol_controller
-                .wait_command(250.into(), op_filter.clone())
+                .wait_command(250.into(), op_filter)
                 .await
             {
                 Some(ProtocolCommand::PropagateOperations(ops)) => ops,
@@ -612,7 +612,7 @@ async fn test_new_final_ops() {
                 .await;
 
             match protocol_controller
-                .wait_command(500.into(), op_filter.clone())
+                .wait_command(500.into(), op_filter)
                 .await
             {
                 Some(ProtocolCommand::PropagateOperations(_)) => {
