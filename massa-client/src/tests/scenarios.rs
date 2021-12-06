@@ -10,7 +10,7 @@ async fn test_if_exit_gracefully() {
 }
 
 const CONFIG_PATH: &str = "../massa-node/src/tests/config.toml";
-const TIMEOUT: u64 = 10;
+const TIMEOUT: u64 = 5;
 #[tokio::test]
 #[serial]
 async fn test_if_node_stop() {
@@ -24,7 +24,7 @@ async fn test_if_node_stop() {
     });
     let mut cmd = Command::cargo_bin("massa-client").unwrap();
     let mut success = false;
-    for _ in 0..3 {
+    for _ in 0..5 {
         tokio::time::sleep(std::time::Duration::from_secs(TIMEOUT)).await;
         let assert_cli = cmd.arg("node_stop").assert();
         let output = std::str::from_utf8(&assert_cli.get_output().stdout).unwrap();
