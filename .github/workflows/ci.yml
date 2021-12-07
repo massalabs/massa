@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -34,6 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -50,6 +54,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -70,6 +76,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -87,7 +95,9 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -114,6 +124,8 @@ jobs:
           - windows-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -140,6 +152,8 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -171,6 +185,8 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
