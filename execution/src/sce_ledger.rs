@@ -187,13 +187,15 @@ impl SCELedger {
 /// applying cumulative_history_changes then caused_changes to final_ledger yields the current ledger during the ledger step
 #[derive(Debug, Clone)]
 pub struct SCELedgerStep {
-    // arc/mutex reference to the final ledger
+    /// arc/mutex reference to the final ledger
+    /// Note that the Arc/Mutex is not used for true concurrency, but only to provide wasmer with a reference to the final ledger.
+    /// There might be better ways of doing so without copy...
     pub final_ledger: Arc<Mutex<SCELedger>>,
 
-    // accumulator of existing ledger changes
+    /// accumulator of existing ledger changes
     pub cumulative_history_changes: SCELedgerChanges,
 
-    // additional changes caused by the step
+    /// additional changes caused by the step
     pub caused_changes: SCELedgerChanges,
 }
 
@@ -293,7 +295,7 @@ impl SCELedgerStep {
     }
 
     /// returns a data entry
-    ///   None if address not found or entry nto found in addr's data
+    /// None if address not found or entry not found in addr's data
     pub fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {

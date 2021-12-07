@@ -212,6 +212,7 @@ impl VM {
             (*exec_context_guard).ledger_step.cumulative_history_changes = active_changes;
             // TODO add more info in the exec_context: slot, PoS draws, optional block, call stack etc...
             //      if possible prefer Arc/Mutex sharing to copying full blocks
+            // This needs to be defined when integrating the VM https://github.com/massalabs/cautious-bassoon/issues/5
         }
 
         // run implicit and async calls
