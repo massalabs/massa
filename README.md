@@ -42,17 +42,17 @@ For project announcements, we mainly use
 
 ## Tutorials to follow to join the testnet
 
-- [Installing a node](docs/install.md)
-- [Running a node](docs/run.md)
-- [Creating a wallet](docs/wallet.md)
-- [Staking](docs/staking.md)
-- [Routability tutorial](docs/routability.md) (Optionnal)
-- [Testnet rewards program](docs/testnet_rules.md) (Optionnal)
+- [Installing a node](https://github.com/massalabs/massa/wiki/install)
+- [Running a node](https://github.com/massalabs/massa/wiki/run)
+- [Creating a wallet](https://github.com/massalabs/massa/wiki/wallet)
+- [Staking](https://github.com/massalabs/massa/wiki/staking)
+- [Routability tutorial](https://github.com/massalabs/massa/wiki/routability) (Optionnal)
+- [Testnet rewards program](https://github.com/massalabs/massa/wiki/testnet_rules) (Optionnal)
 
 ## More tutorials
 
-- [Updating the node](docs/update.md)
-- [Sending transactions](docs/transaction.md)
+- [Updating the node](https://github.com/massalabs/massa/wiki/update)
+- [Sending transactions](https://github.com/massalabs/massa/wiki/transaction)
 
 ## [FAQ](docs/faq.md) and Troubleshooting
 
