@@ -1,8 +1,7 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Massa JSON-RPC API"><meta name="keywords" content="rust, rustlang, rust-lang, api"><title>api - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../ayu.css"disabled><link rel="stylesheet" type="text/css" href="../dark.css"disabled><link rel="stylesheet" type="text/css" href="../light.css"id="themeStyle"><script id="default-settings" ></script><script src="../storage.js"></script><script src="../crates.js"></script><script defer src="../main.js"></script>
     <noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a class="sidebar-logo" href='../api/index.html'><div class='logo-container rust-logo'><img src='../rust-logo.png' alt='logo'></div></a><h2 class="location">Crate api</h2><div class="block version"><div class="narrow-helper"></div><p>Version 0.1.0</p></div><div class="sidebar-elems"><a id="all-types" href="all.html"><p>See all api's items</p></a><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#traits">Traits</a></li></ul></div><div id="sidebar-vars" data-name="api" data-ty="mod" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container rust-logo" href='../api/index.html'><img src='../rust-logo.png' alt='logo'></a><nav class="sub"><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><h1 class="fqn"><span class="in-band">Crate <a class="mod" href="#">api</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span><span class="out-of-band"><span id="render-detail"><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span><a class="srclink" href="../src/api/lib.rs.html#3-182" title="goto source code">[src]</a></span></h1><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="massa-json-rpc-api" class="section-header"><a href="#massa-json-rpc-api">Massa JSON-RPC API</a></h2>
 <p>This crate exposes Rust methods (through the [<code>Endpoints</code> trait) as
-JSON-RPC API endpoints (thanks to the <a href="https://github.com/paritytech/jsonrpc">Parity
-JSON-RPC</a> crate).</p>
+JSON-RPC API endpoints (thanks to the <a href="https://github.com/paritytech/jsonrpc">ParityJSON-RPC</a> crate).</p>
 <p><strong>E.g.</strong> this curl command will call endpoint <code>stop_node</code> (and stop the
 locally running <code>massa-node</code>):</p>
 <div class="example-wrap"><pre class="language-bash"><code>curl -X POST -H &quot;Content-Type: application/json&quot; -d &#39;{&quot;jsonrpc&quot;: &quot;2.0&quot;, &quot;method&quot;: &quot;stop_node&quot;, &quot;id&quot;: 123 }&#39; 127.0.0.1:33034</code></pre></div>
@@ -73,8 +72,7 @@ slot, timestamp), clique count, connected nodes count.</p>
   &quot;t0&quot;: Number,
   &quot;thread_count&quot;: Number,
   &quot;version&quot;: String
-}
-</code></pre></div><h4 id="get_cliques" class="section-header"><a href="#get_cliques"><code>get_cliques</code></a></h4>
+}</code></pre></div><h4 id="get_cliques" class="section-header"><a href="#get_cliques"><code>get_cliques</code></a></h4>
 <p>Get cliques.</p>
 <ul>
 <li>
@@ -85,12 +83,12 @@ slot, timestamp), clique count, connected nodes count.</p>
 </li>
 </ul>
 <div class="example-wrap"><pre class="language-javascript"><code>[
-  {
-    &quot;block_ids&quot;: [String],
-    &quot;fitness&quot;: Number,
-    &quot;is_blockclique&quot;: Boolean
-  }
-]</code></pre></div><h4 id="get_stakers" class="section-header"><a href="#get_stakers"><code>get_stakers</code></a></h4>
+    {
+        block_ids: [String],
+        fitness: Number,
+        is_blockclique: Boolean,
+    },
+];</code></pre></div><h4 id="get_stakers" class="section-header"><a href="#get_stakers"><code>get_stakers</code></a></h4>
 <p>Returns the active stakers and their roll counts for the current cycle.</p>
 <ul>
 <li>
@@ -140,13 +138,12 @@ slot, timestamp), clique count, connected nodes count.</p>
       &quot;signature&quot;: String
     }
   }
-]
-</code></pre></div><h4 id="get_endorsements" class="section-header"><a href="#get_endorsements"><code>get_endorsements</code></a></h4>
+]</code></pre></div><h4 id="get_endorsements" class="section-header"><a href="#get_endorsements"><code>get_endorsements</code></a></h4>
 <p>Get endorsements (not yet implemented)</p>
 <ul>
 <li>Parameters:</li>
 </ul>
-<div class="example-wrap"><pre class="language-javascript"><code>[String] // string must be an endorsement id</code></pre></div>
+<div class="example-wrap"><pre class="language-javascript"><code>[String]; // string must be an endorsement id</code></pre></div>
 <ul>
 <li>Return:</li>
 </ul>
@@ -172,7 +169,7 @@ slot, timestamp), clique count, connected nodes count.</p>
 <ul>
 <li>Parameters:</li>
 </ul>
-<div class="example-wrap"><pre class="language-javascript"><code>String // Block id</code></pre></div>
+<div class="example-wrap"><pre class="language-javascript"><code>[String]; // Block IDs</code></pre></div>
 <ul>
 <li>Return:</li>
 </ul>
@@ -187,7 +184,7 @@ slot, timestamp), clique count, connected nodes count.</p>
                 &quot;content&quot;: {
                   &quot;endorsed_block&quot;: String, // Block id
                   &quot;index&quot;: Number,
-                  &quot;sender_public_key&quot;: String, 
+                  &quot;sender_public_key&quot;: String,
                   &quot;slot&quot;: { // endorsed block slot: deifferent from block&#39;s slot
                     &quot;period&quot;: Number,
                     &quot;thread&quot;: Number
@@ -247,73 +244,72 @@ slot, timestamp), clique count, connected nodes count.</p>
 <li>Return:</li>
 </ul>
 <div class="example-wrap"><pre class="language-javascript"><code>[
-  {
-    &quot;creator&quot;: String, // public key
-    &quot;id&quot;: String, // Block Id
-    &quot;is_final&quot;: Boolean,
-    &quot;is_in_blockclique&quot;: Boolean,
-    &quot;is_stale&quot;: Boolean,
-    &quot;parents&quot;: [String], // as many block Ids as there are threads
-    &quot;slot&quot;: {
-      &quot;period&quot;: Number,
-      &quot;thread&quot;: Number
-    }
-  }
-]</code></pre></div><h4 id="get_addresses" class="section-header"><a href="#get_addresses"><code>get_addresses</code></a></h4>
+    {
+        creator: String, // public key
+        id: String, // Block Id
+        is_final: Boolean,
+        is_in_blockclique: Boolean,
+        is_stale: Boolean,
+        parents: [String], // as many block Ids as there are threads
+        slot: {
+            period: Number,
+            thread: Number,
+        },
+    },
+];</code></pre></div><h4 id="get_addresses" class="section-header"><a href="#get_addresses"><code>get_addresses</code></a></h4>
 <p>Get addresses.</p>
 <ul>
 <li>Parameters:</li>
 </ul>
 <div class="example-wrap"><pre class="language-javascript"><code>[
-  [String] // Addresses
-]
-</code></pre></div>
+    [String], // Addresses
+];</code></pre></div>
 <ul>
 <li>Return:</li>
 </ul>
 <div class="example-wrap"><pre class="language-javascript"><code>[
-  {
-    &quot;address&quot;: String,
-    &quot;balance&quot;: {
-      &quot;candidate_balance&quot;: String, // represent an Amount in coins
-      &quot;final_balance&quot;: String, // represent an Amount in coins
-      &quot;locked_balance&quot;: String // represent an Amount in coins
-    },
-    &quot;block_draws&quot;: [
-      {
-        &quot;period&quot;: Number,
-        &quot;thread&quot;: Number
-      },
-    ],
-    &quot;blocks_created&quot;: [String], // Block ids
-    &quot;endorsement_draws&quot;: [
-      {
-        &quot;slot&quot;: {
-          &quot;period&quot;: Number,
-          &quot;thread&quot;: Number
+    {
+        address: String,
+        balance: {
+            candidate_balance: String, // represent an Amount in coins
+            final_balance: String, // represent an Amount in coins
+            locked_balance: String, // represent an Amount in coins
         },
-        &quot;index&quot;: Number
-      }
-    ],
-    &quot;involved_in_endorsements&quot;: [String], // Endorsement Id
-    &quot;involved_in_operations&quot;: [String], // Operation id
-    &quot;production_stats&quot;: [ // as many items as cached cycles
-      {
-        &quot;cycle&quot;: Number,
-        &quot;is_final&quot;: Boolean,
-        &quot;nok_count&quot;: Number,
-        &quot;ok_count&quot;: Number
-      }
-    ],
-    &quot;rolls&quot;: {
-      &quot;active_rolls&quot;: Number,
-      &quot;candidate_rolls&quot;: Number,
-      &quot;final_rolls&quot;: Number
+        block_draws: [
+            {
+                period: Number,
+                thread: Number,
+            },
+        ],
+        blocks_created: [String], // Block ids
+        endorsement_draws: [
+            {
+                slot: {
+                    period: Number,
+                    thread: Number,
+                },
+                index: Number,
+            },
+        ],
+        involved_in_endorsements: [String], // Endorsement Id
+        involved_in_operations: [String], // Operation id
+        production_stats: [
+            // as many items as cached cycles
+            {
+                cycle: Number,
+                is_final: Boolean,
+                nok_count: Number,
+                ok_count: Number,
+            },
+        ],
+        rolls: {
+            active_rolls: Number,
+            candidate_rolls: Number,
+            final_rolls: Number,
+        },
+        thread: Number,
     },
-    &quot;thread&quot;: Number
-  }
-]
-</code></pre></div><h4 id="send_operations" class="section-header"><a href="#send_operations"><code>send_operations</code></a></h4>
+];</code></pre></div><h4 id="send_operations" class="section-header"><a href="#send_operations"><code>send_operations</code></a></h4>
 <p>Adds operations to pool. Returns operations that were ok and sent to
 pool.</p>
 <ul>
@@ -361,7 +357,7 @@ pool.</p>
 <ul>
 <li>Parameter:</li>
 </ul>
-<div class="example-wrap"><pre class="language-javascript"><code>[u8]</code></pre></div>
+<div class="example-wrap"><pre class="language-javascript"><code>[u8];</code></pre></div>
 <ul>
 <li>Return:</li>
 </ul>
@@ -373,7 +369,7 @@ the resulting signature.</p>
 <ul>
 <li>Parameter:</li>
 </ul>
-<div class="example-wrap"><pre class="language-javascript"><code>[String]</code></pre></div>
+<div class="example-wrap"><pre class="language-javascript"><code>[String];</code></pre></div>
 <p>The strings must be private keys.</p>
 <ul>
 <li>No return.</li>
@@ -383,7 +379,7 @@ the resulting signature.</p>
 <ul>
 <li>Parameter:</li>
 </ul>
-<div class="example-wrap"><pre class="language-javascript"><code>[String]</code></pre></div>
+<div class="example-wrap"><pre class="language-javascript"><code>[String];</code></pre></div>
 <p>The strings must be addresses.</p>
 <ul>
 <li>No return.</li>
@@ -398,14 +394,14 @@ the resulting signature.</p>
 <p>Return:</p>
 </li>
 </ul>
-<div class="example-wrap"><pre class="language-javascript"><code>[String]</code></pre></div>
+<div class="example-wrap"><pre class="language-javascript"><code>[String];</code></pre></div>
 <p>The strings are addresses.</p>
 <h4 id="ban" class="section-header"><a href="#ban"><code>ban</code></a></h4>
 <p>Bans given IP addresses.</p>
 <ul>
 <li>Parameter:</li>
 </ul>
-<div class="example-wrap"><pre class="language-javascript"><code>[String]</code></pre></div>
+<div class="example-wrap"><pre class="language-javascript"><code>[String];</code></pre></div>
 <p>The strings must be ip addresses.</p>
 <ul>
 <li>No return.</li>
@@ -415,12 +411,12 @@ the resulting signature.</p>
 <ul>
 <li>Parameter:</li>
 </ul>
-<div class="example-wrap"><pre class="language-javascript"><code>[String]</code></pre></div>
+<div class="example-wrap"><pre class="language-javascript"><code>[String];</code></pre></div>
 <p>The strings must be ip addresses.</p>
 <ul>
 <li>No return.</li>
 </ul>
 </div></details><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2>
 <div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.API.html" title="api::API struct">API</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Private.html" title="api::Private struct">Private</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Public.html" title="api::Public struct">Public</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.StopHandle.html" title="api::StopHandle struct">StopHandle</a></div><div class="item-right docblock-short"></div></div></div><h2 id="traits" class="section-header"><a href="#traits">Traits</a></h2>
-<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.Endpoints.html" title="api::Endpoints trait">Endpoints</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.RpcServer.html" title="api::RpcServer trait">RpcServer</a></div><div class="item-right docblock-short"></div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (e2116acae 2021-12-05)" ></div>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.Endpoints.html" title="api::Endpoints trait">Endpoints</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.RpcServer.html" title="api::RpcServer trait">RpcServer</a></div><div class="item-right docblock-short"></div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
 </body></html>

@@ -43,21 +43,43 @@
 <span id="42">42</span>
 <span id="43">43</span>
 <span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="doccomment">/// Unsafe but fast hasher that is used when the thing to hash is itself already a hash</span>
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 <span class="kw">use</span> <span class="ident">std::hash</span>::{<span class="ident">BuildHasherDefault</span>, <span class="ident">Hasher</span>};
 <span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
 
+<span class="doccomment">/// A trait indicating that its carrier is already a hash with at least 64 bits</span>
+<span class="doccomment">/// and doesn&#39;t need to be re-hashed for hash-table purposes</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">PreHashed</span> {}
 
+<span class="doccomment">/// A Hasher for PreHashed keys that is faster because it avoids re-hashing hashes but simply truncates them.</span>
+<span class="doccomment">/// Note: when truncating, it takes the last 8 bytes of the key instead of the first 8 bytes.</span>
+<span class="doccomment">/// This is done to circumvent biases induced by first-byte manipulations in addresses related to the thread assignment process</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">HHasher</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">PreHashed</span><span class="op">&gt;</span> {
     <span class="ident">source</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
     <span class="ident">hash</span>: <span class="ident">u64</span>,
 }
 
+<span class="doccomment">/// Default implementation for HHasher (zero hash)</span>
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">PreHashed</span><span class="op">&gt;</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">HHasher</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">HHasher</span> {
@@ -67,12 +89,17 @@
     }
 }
 
+<span class="doccomment">/// Hasher implementation for HHasher</span>
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">PreHashed</span><span class="op">&gt;</span> <span class="ident">Hasher</span> <span class="kw">for</span> <span class="ident">HHasher</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// finish the hashing process and return the truncated u64 hash</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">fn</span> <span class="ident">finish</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
         <span class="self">self</span>.<span class="ident">hash</span>
     }
 
+    <span class="doccomment">/// write the bytes of a PreHashed key into the HHasher</span>
+    <span class="doccomment">/// Panics if bytes.len() is strictly lower than 8</span>
+    <span class="doccomment">/// Note: the truncated u64 is completely overwritten by the last 8 items of &quot;bytes&quot; at every call</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) {
         <span class="comment">// assumes bytes.len() is at least 8, otherwise panics</span>
@@ -84,9 +111,16 @@
     }
 }
 
+<span class="doccomment">/// BuildHasherDefault specialization for HHasher</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">BuildHHasher</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BuildHasherDefault</span><span class="op">&lt;</span><span class="ident">HHasher</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+
+<span class="doccomment">/// HashMap specialization for PreHashed keys</span>
+<span class="doccomment">/// This hashmap is about 2x faster than the default HashMap</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">HHashMap</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span>, <span class="ident">BuildHHasher</span><span class="op">&lt;</span><span class="ident">K</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+
+<span class="doccomment">/// HashSet specialization for PreHashed keys</span>
+<span class="doccomment">/// This hashset is about 2x faster than the default HashSet</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">HHashSet</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">BuildHHasher</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (e2116acae 2021-12-05)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
 </body></html>
