@@ -5,8 +5,10 @@ JSON-RPC API endpoints (thanks to the <a href="https://github.com/paritytech/jso
 <p><strong>E.g.</strong> this curl command will call endpoint <code>stop_node</code> (and stop the
 locally running <code>massa-node</code>):</p>
 <div class="example-wrap"><pre class="language-bash"><code>curl -X POST -H &quot;Content-Type: application/json&quot; -d &#39;{&quot;jsonrpc&quot;: &quot;2.0&quot;, &quot;method&quot;: &quot;stop_node&quot;, &quot;id&quot;: 123 }&#39; 127.0.0.1:33034</code></pre></div>
-<p>Endpoints are organised in 2 authorisations levels:</p>
-<h3 id="public-api-aka-user-mode-endpoints-running-by-default-on-33035" class="section-header"><a href="#public-api-aka-user-mode-endpoints-running-by-default-on-33035"><strong>Public</strong> API, a.k.a. <em>“user mode”</em> endpoints (running by default on <code>[::]:33035</code>)</a></h3><h4 id="get_status" class="section-header"><a href="#get_status"><code>get_status</code></a></h4>
+<p>Endpoints are organized in 2 authorizations levels:</p>
+<h3 id="public-api" class="section-header"><a href="#public-api"><strong>Public</strong> API</a></h3>
+<p><em>a.k.a. <strong>“user mode”</strong> endpoints (running by default on <code>[::]:33035</code>)</em></p>
+<h4 id="get_status" class="section-header"><a href="#get_status"><code>get_status</code></a></h4>
 <p>Summary of the current state: time, last final blocks (hash, thread,
 slot, timestamp), clique count, connected nodes count.</p>
 <ul>
@@ -20,7 +22,7 @@ slot, timestamp), clique count, connected nodes count.</p>
 <div class="example-wrap"><pre class="language-javascript"><code> {
   &quot;algo_config&quot;: {
     &quot;block_reward&quot;: String, // represent an Amount in coins
-    &quot;delta_f0&quot;: Number, // Used to compute finality thresold
+    &quot;delta_f0&quot;: Number, // Used to compute finality threshold
     &quot;end_timestamp&quot;: null or Number, // millis since 1970-01-01 (only in tesnets)
     &quot;genesis_timestamp&quot;: Number, // millis since 1970-01-01
     &quot;operation_validity_periods&quot;: Number,
@@ -117,7 +119,7 @@ slot, timestamp), clique count, connected nodes count.</p>
     &quot;is_final&quot;: Boolean,
     &quot;operation&quot;: {
       &quot;content&quot;: {
-        &quot;expire_period&quot;: Number,
+        &quot;expire_period&quot;: Number,// after that period, the operation become invalid forever
         &quot;fee&quot;: String, // represent an Amount in coins
         &quot;op&quot;: {
           &quot;Transaction&quot;: {
@@ -342,7 +344,9 @@ pool.</p>
 <ul>
 <li>Return:</li>
 </ul>
-<div class="example-wrap"><pre class="language-javascript"><code>[String], // Operation ids</code></pre></div><h3 id="private-api-aka-manager-mode-endpoints-running-by-default-on-12700133034" class="section-header"><a href="#private-api-aka-manager-mode-endpoints-running-by-default-on-12700133034"><strong>Private</strong> API, a.k.a. <em>“manager mode”</em> endpoints (running by default on <code>127.0.0.1:33034</code>)</a></h3><h4 id="stop_node" class="section-header"><a href="#stop_node"><code>stop_node</code></a></h4>
+<div class="example-wrap"><pre class="language-javascript"><code>[String], // Operation ids</code></pre></div><h3 id="private-api" class="section-header"><a href="#private-api"><strong>Private</strong> API</a></h3>
+<p><em>a.k.a. <strong>“manager mode”</strong> endpoints (running by default on <code>127.0.0.1:33034</code>)</em></p>
+<h4 id="stop_node" class="section-header"><a href="#stop_node"><code>stop_node</code></a></h4>
 <p>Gracefully stop the node.</p>
 <ul>
 <li>
