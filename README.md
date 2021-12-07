@@ -42,22 +42,22 @@ For project announcements, we mainly use
 
 ## Tutorials to follow to join the testnet
 
-- [Installing a node](https://github.com/massalabs/massa/wiki/install)
-- [Running a node](https://github.com/massalabs/massa/wiki/run)
-- [Creating a wallet](https://github.com/massalabs/massa/wiki/wallet)
-- [Staking](https://github.com/massalabs/massa/wiki/staking)
-- [Routability tutorial](https://github.com/massalabs/massa/wiki/routability) (Optionnal)
-- [Testnet rewards program](https://github.com/massalabs/massa/wiki/testnet_rules) (Optionnal)
+-   [Installing a node](https://github.com/massalabs/massa/wiki/install)
+-   [Running a node](https://github.com/massalabs/massa/wiki/run)
+-   [Creating a wallet](https://github.com/massalabs/massa/wiki/wallet)
+-   [Staking](https://github.com/massalabs/massa/wiki/staking)
+-   [Routability tutorial](https://github.com/massalabs/massa/wiki/routability) (Optionnal)
+-   [Testnet rewards program](https://github.com/massalabs/massa/wiki/testnet_rules) (Optionnal)
 
 ## More tutorials
 
-- [Updating the node](https://github.com/massalabs/massa/wiki/update)
-- [Sending transactions](https://github.com/massalabs/massa/wiki/transaction)
+-   [Updating the node](https://github.com/massalabs/massa/wiki/update)
+-   [Sending transactions](https://github.com/massalabs/massa/wiki/transaction)
 
-## [FAQ](docs/faq.md) and Troubleshooting
+## [FAQ](https://github.com/massalabs/massa/wiki/faq) and Troubleshooting
 
 You'll find answers to common issues and questions regarding the Massa
-protocol in the [FAQ](docs/faq.md).
+protocol in the [FAQ](https://github.com/massalabs/massa/wiki/faq).
 
 Don't hesitate to ask questions in the
 [Discord](https://discord.com/invite/massa) testnet channel.
