@@ -2,18 +2,13 @@ use models::{Address, Amount, Block, BlockId, OperationType, Slot};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use tracing::debug;
-use wasmer::{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv};
+use wasmer::{imports, ImportObject, Instance, Module, Store, WasmerEnv};
 
 use crate::sce_ledger::{SCELedger, SCELedgerChanges, SCELedgerStep};
 use crate::ExecutionConfig;
 
-/// Example ABI available to wasm code, aka "syscall".
-fn foo(shared_env: &SharedExecutionContext, n: i32) -> i32 {
-    n
-}
-
 /// ABI allowing a contract to call another.
-fn call(shared_env: &SharedExecutionContext, addr: Address, func_name: String, max_gas: u64) {
+fn _call(shared_env: &SharedExecutionContext, addr: Address, func_name: String, max_gas: u64) {
     //TODO add arbitrary input parameters and return value
 
     //TODO metering / mem limit
@@ -29,7 +24,7 @@ fn call(shared_env: &SharedExecutionContext, addr: Address, func_name: String, m
         // TODO make sure max_gas >= context.remaining_gas
 
         // get target module
-        if let Some(module) = (*exec_context_guard).ledger_step.get_module(&addr) {
+        if let Some(module) = (*exec_context_guard).ledger_step._get_module(&addr) {
             target_module = module;
         } else {
             // no module to call
@@ -55,10 +50,10 @@ fn call(shared_env: &SharedExecutionContext, addr: Address, func_name: String, m
         .map(|f| f.native::<(), ()>().unwrap()) // TODO figure out the "native" explicit parameters
         .map(|f| f.call())
     {
-        Ok(rets) => {
+        Ok(_rets) => {
             // TODO check what to do with the return values.
         }
-        Err(err) => {
+        Err(_err) => {
             // failed to find target func, or invalid parameters, or execution error
             run_failed = true;
         }
@@ -102,7 +97,7 @@ pub struct ExecutionContext {
 pub struct SharedExecutionContext(pub Arc<Mutex<ExecutionContext>>);
 
 pub struct VM {
-    cfg: ExecutionConfig,
+    _cfg: ExecutionConfig,
     imports: ImportObject,
     store: Store,
     final_ledger: Arc<Mutex<SCELedger>>,
@@ -131,13 +126,9 @@ impl VM {
                 opt_block_creator_addr: Default::default(),
                 call_stack: Default::default(),
             })));
-        let imports = imports! {
-            "env" => {
-                "foo" => Function::new_native_with_env(&store, current_execution_context.clone(), foo),
-            },
-        };
+        let imports = imports! {};
         VM {
-            cfg,
+            _cfg: cfg,
             imports,
             store,
             final_ledger,
@@ -230,7 +221,7 @@ impl VM {
 
             // run all operations
             for (op_idx, operation) in block.operations.into_iter().enumerate() {
-                let (module, max_gas, coins, gas_price, init_changes, sender_addr) =
+                let (module, max_gas, coins, gas_price, init_changes, _sender_addr) =
                     if let OperationType::ExecuteSC {
                         data,
                         max_gas,

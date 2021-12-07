@@ -71,12 +71,16 @@ impl SCELedgerEntryUpdate {
 pub enum SCELedgerChange {
     // delete an entry
     Delete,
-
     // sets an entry to an absolute value
     Set(SCELedgerEntry),
-
     // updates an entry
     Update(SCELedgerEntryUpdate),
+}
+
+impl Default for SCELedgerChange {
+    fn default() -> Self {
+        Self::Delete
+    }
 }
 
 impl SCELedgerChange {
@@ -175,7 +179,7 @@ impl SCELedger {
                     // insert default if absent
                     self.0
                         .entry(*addr)
-                        .or_insert_with(|| SCELedgerEntry::default())
+                        .or_insert_with(SCELedgerEntry::default)
                         .apply_entry_update(update);
                 }
             }
@@ -249,13 +253,13 @@ impl SCELedgerStep {
         if positive {
             balance = balance
                 .checked_add(amount)
-                .ok_or(ModelsError::CheckedOperationError(
+                .ok_or_else(|| ModelsError::CheckedOperationError(
                     "balance overflow".into(),
                 ))?;
         } else {
             balance = balance
                 .checked_sub(amount)
-                .ok_or(ModelsError::CheckedOperationError(
+                .ok_or_else(|| ModelsError::CheckedOperationError(
                     "balance underflow".into(),
                 ))?;
         }
@@ -265,7 +269,7 @@ impl SCELedgerStep {
 
     /// gets the module of an SCE ledger entry
     ///  returns None if the entry was not found or has no module
-    pub fn get_module(&self, addr: &Address) -> Option<Module> {
+    pub fn _get_module(&self, addr: &Address) -> Option<Module> {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {
@@ -294,7 +298,7 @@ impl SCELedgerStep {
 
     /// returns a data entry
     ///   None if address not found or entry nto found in addr's data
-    pub fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
+    pub fn _get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {
@@ -324,7 +328,7 @@ impl SCELedgerStep {
     }
 
     /// sets data entry
-    pub fn set_data_entry(&mut self, addr: Address, key: Hash, value: Vec<u8>) {
+    pub fn _set_data_entry(&mut self, addr: Address, key: Hash, value: Vec<u8>) {
         let update = SCELedgerEntryUpdate {
             update_balance: Default::default(),
             update_opt_module: Default::default(),

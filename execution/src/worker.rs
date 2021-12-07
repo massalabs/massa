@@ -54,7 +54,7 @@ enum ExecutionQueue {
 
 pub struct ExecutionWorker {
     /// Configuration
-    cfg: ExecutionConfig,
+    _cfg: ExecutionConfig,
     /// Thread count
     thread_count: u8,
     /// Receiver of commands.
@@ -97,13 +97,13 @@ impl ExecutionWorker {
             // Notify the worker the VM thread has started.
             let (queue_lock, condvar) = &*execution_queue_clone;
 
-            let mut queue_guard = queue_lock.lock().unwrap();
+            let mut queue_guard = queue_lock.lock();
             *queue_guard = ExecutionQueue::Running(Default::default());
             condvar.notify_one();
 
             // Run until shutdown.
             loop {
-                queue_guard = condvar.wait(queue_guard).unwrap();
+                condvar.wait(&mut queue_guard);
                 match &mut *queue_guard {
                     ExecutionQueue::ShuttingDown => {
                         break;
@@ -130,10 +130,7 @@ impl ExecutionWorker {
             let (queue_lock, condvar) = &*execution_queue;
             let mut queue_guard = queue_lock.lock();
             loop {
-                match &*queue_guard {
-                    ExecutionQueue::Running(_) => break,
-                    _ => {}
-                }
+                if let ExecutionQueue::Running(_) = &*queue_guard { break }
                 // TODO: this is not upper? before the match?
                 condvar.wait(&mut queue_guard);
             }
@@ -141,7 +138,7 @@ impl ExecutionWorker {
 
         // return execution worker
         Ok(ExecutionWorker {
-            cfg,
+            _cfg: cfg,
             thread_count,
             controller_command_rx,
             controller_manager_rx,
@@ -185,7 +182,7 @@ impl ExecutionWorker {
 
     // asks the VM to reset to its final
     fn vm_reset(&mut self) {
-        with_running_queue(self, |mut queue| {
+        with_running_queue(self, | queue| {
             // cancel all non-final requests
             // Final execution requests are left to maintain final state consistency
             queue.retain(|req| match req {
@@ -204,7 +201,7 @@ impl ExecutionWorker {
     /// * slot: target slot
     /// * block: None if miss, Some(block_id, block) otherwise
     fn vm_run_final_step(&mut self, slot: Slot, block: Option<(BlockId, Block)>) {
-        with_running_queue(self, |mut queue| {
+        with_running_queue(self, | queue| {
             queue.push_back(ExecutionRequest::RunFinalStep(ExecutionStep {
                 slot,
                 block,
@@ -218,7 +215,7 @@ impl ExecutionWorker {
     /// * slot: target slot
     /// * block: None if miss, Some(block_id, block) otherwise
     fn vm_run_active_step(&mut self, slot: Slot, block: Option<(BlockId, Block)>) {
-        with_running_queue(self, |mut queue| {
+        with_running_queue(self, | queue| {
             queue.push_back(ExecutionRequest::RunActiveStep(ExecutionStep {
                 slot,
                 block,
@@ -290,18 +287,14 @@ impl ExecutionWorker {
             }
         }
 
-        // new blocks
-        let new_blocks: Vec<(BlockId, Block)> = blockclique
-            .into_iter()
-            .filter(|(_b_id, b)| b.header.content.slot > self.last_final_slot)
-            .collect();
-
         // list remaining CSS finals + new blockclique
         self.ordered_active_blocks = self
             .ordered_pending_css_final_blocks
             .iter()
             .cloned()
-            .chain(new_blocks.clone().into_iter())
+            .chain(blockclique
+            .into_iter()
+            .filter(|(_b_id, b)| b.header.content.slot > self.last_final_slot))
             .collect();
 
         // sort active blocks
