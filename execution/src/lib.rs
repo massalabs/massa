@@ -11,5 +11,6 @@ pub use controller::{
 };
 pub use error::ExecutionError;
 pub use worker::ExecutionCommand;
+pub use worker::ExecutionEvent;
 #[cfg(test)]
 mod tests;

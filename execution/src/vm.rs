@@ -44,16 +44,16 @@ fn call(shared_env: &SharedExecutionContext, addr: Address, func_name: String, m
 
         // update context
         (*exec_context_guard).max_gas = max_gas;
-        (*exec_context_guard).coins = 0; // TODO maybe allow sending coins in the call
+        (*exec_context_guard).coins = Amount::from_raw(0); // TODO maybe allow sending coins in the call
         (*exec_context_guard).call_stack.push_back(addr);
     }
 
     // run
     let mut run_failed = false;
-    match Instance::new(&target_module, &todo_imports) // TODO bring imports into the execution context (?)
-        .and_then(|inst| inst.exports.get_function(func_name))
-        .and_then(|f| f.native::<(), ()>()) // TODO figure out the "native" explicit parameters
-        .and_then(|f| f.call())
+    match Instance::new(&target_module, &ImportObject::new()) // TODO bring imports into the execution context (?)
+        .map(|inst| inst.exports.get_function(&func_name).unwrap().clone())
+        .map(|f| f.native::<(), ()>().unwrap()) // TODO figure out the "native" explicit parameters
+        .map(|f| f.call())
     {
         Ok(rets) => {
             // TODO check what to do with the return values.
@@ -95,7 +95,7 @@ pub struct ExecutionContext {
     pub slot: Slot,
     pub opt_block_id: Option<BlockId>,
     pub opt_block_creator_addr: Option<Address>,
-    pub call_stack: Vec<Address>,
+    pub call_stack: VecDeque<Address>,
 }
 
 #[derive(WasmerEnv, Clone)]
@@ -304,7 +304,7 @@ impl VM {
                     (*exec_context_guard).slot = step.slot;
                     (*exec_context_guard).opt_block_id = Some(block_id);
                     (*exec_context_guard).opt_block_creator_addr = Some(block_creator_addr);
-                    (*exec_context_guard).call_stack = vec![sender_addr];
+                    (*exec_context_guard).call_stack = Default::default();
                     // TODO provide more context:
                     //   block, PoS seeds/draws, absolute time etc...
                 }

@@ -33,15 +33,21 @@ pub enum ExecutionManagementCommand {}
 enum ExecutionRequest {
     /// Runs a final step
     RunFinalStep(ExecutionStep),
-
     /// Runs an active step
     RunActiveStep(ExecutionStep),
-
     /// Resets the VM to its final state
     ResetToFinalState,
+}
 
-    /// Stops the VM thread
-    Stop,
+/// The execution queue, shared with the VM.
+enum ExecutionQueue {
+    /// Initial state, allowing the worker to wait for the VM thread to have started,
+    /// which is necessary to ensure the VM thread does not miss a notification.
+    NotStarted,
+    /// Running.
+    Running(VecDeque<ExecutionRequest>),
+    /// Shutdown state, set by the worker to signal shutdown to the VM thread.
+    ShuttingDown,
 }
 
 pub struct ExecutionWorker {
@@ -63,7 +69,7 @@ pub struct ExecutionWorker {
     /// pending CSS final blocks
     ordered_pending_css_final_blocks: Vec<(BlockId, Block)>,
     /// Execution queue.
-    execution_queue: Arc<(Mutex<VecDeque<ExecutionRequest>>, Condvar)>,
+    execution_queue: Arc<(Mutex<ExecutionQueue>, Condvar)>,
     /// VM thread join handle.
     vm_join_handle: JoinHandle<()>,
 }
@@ -77,8 +83,7 @@ impl ExecutionWorker {
         controller_manager_rx: mpsc::Receiver<ExecutionManagementCommand>,
     ) -> Result<ExecutionWorker, ExecutionError> {
         // setup execution request queue
-        let execution_queue: Arc<(Mutex<VecDeque<ExecutionRequest>>, Condvar)> =
-            Arc::new((Mutex::new(Default::default()), Condvar::new()));
+        let execution_queue = Arc::new((Mutex::new(ExecutionQueue::NotStarted), Condvar::new()));
         let execution_queue_clone = Arc::clone(&execution_queue);
 
         // launch VM thread
@@ -87,28 +92,48 @@ impl ExecutionWorker {
             // init VM
             let mut vm = VM::new(cfg_clone);
 
-            // handle execution requests
+            // Notify the worker the VM thread has started.
             let (queue_lock, condvar) = &*execution_queue_clone;
             let mut queue_guard = queue_lock.lock().unwrap();
+            *queue_guard = ExecutionQueue::Running(Default::default());
+            condvar.notify_one();
+
+            // Run until shutdown.
             loop {
                 queue_guard = condvar.wait(queue_guard).unwrap();
-                match (*queue_guard).pop_front() {
-                    Some(ExecutionRequest::Stop) => {
+                match &mut *queue_guard {
+                    ExecutionQueue::ShuttingDown => {
                         break;
                     }
-                    Some(ExecutionRequest::ResetToFinalState) => {
-                        vm.reset_to_final();
-                    }
-                    Some(ExecutionRequest::RunFinalStep(step)) => {
-                        vm.run_final_step(step);
-                    }
-                    Some(ExecutionRequest::RunActiveStep(step)) => {
-                        vm.run_active_step(step);
-                    }
-                    None => {}
+                    ExecutionQueue::Running(ref mut queue) => match queue.pop_front() {
+                        Some(ExecutionRequest::ResetToFinalState) => {
+                            vm.reset_to_final();
+                        }
+                        Some(ExecutionRequest::RunFinalStep(step)) => {
+                            vm.run_final_step(step);
+                        }
+                        Some(ExecutionRequest::RunActiveStep(step)) => {
+                            vm.run_active_step(step);
+                        }
+                        None => panic!("Spurious wake-up of vm."),
+                    },
+                    ExecutionQueue::NotStarted => panic!("Unexpected execution queue state."),
                 }
             }
         });
+
+        // Wait for the VM thread to have started
+        {
+            let (queue_lock, condvar) = &*execution_queue;
+            let mut queue_guard = queue_lock.lock().unwrap();
+            loop {
+                match &*queue_guard {
+                    ExecutionQueue::Running(_) => break,
+                    _ => {}
+                }
+                queue_guard = condvar.wait(queue_guard).unwrap();
+            }
+        }
 
         // return execution worker
         Ok(ExecutionWorker {
@@ -137,7 +162,6 @@ impl ExecutionWorker {
                         Some(_) => {}
                     }
                 },
-
                 // Process commands
                 Some(cmd) = self.controller_command_rx.recv() => self.process_command(cmd).await?,
             }
@@ -147,8 +171,8 @@ impl ExecutionWorker {
         {
             let (queue_lock, condvar) = &*self.execution_queue;
             let mut queue_guard = queue_lock.lock().unwrap();
-            (*queue_guard).push_front(ExecutionRequest::Stop);
-            condvar.notify_all();
+            *queue_guard = ExecutionQueue::ShuttingDown;
+            condvar.notify_one();
         }
         let _ = self.vm_join_handle.join();
 
@@ -157,20 +181,17 @@ impl ExecutionWorker {
 
     // asks the VM to reset to its final
     fn vm_reset(&mut self) {
-        let (queue_lock, condvar) = &*self.execution_queue;
-        let mut queue_guard = queue_lock.lock().unwrap();
-        // cancel all non-final, non-stop requests
-        // Final execution requests are left to maintain final state consistency
-        (*queue_guard).retain(|req| match req {
-            ExecutionRequest::RunFinalStep(..) => true,
-            ExecutionRequest::Stop => true,
-            ExecutionRequest::RunActiveStep(..) => false,
-            ExecutionRequest::ResetToFinalState => false,
+        with_running_queue(self, |mut queue| {
+            // cancel all non-final requests
+            // Final execution requests are left to maintain final state consistency
+            queue.retain(|req| match req {
+                ExecutionRequest::RunFinalStep(..) => true,
+                ExecutionRequest::RunActiveStep(..) => false,
+                ExecutionRequest::ResetToFinalState => false,
+            });
+            // request reset to final state
+            queue.push_back(ExecutionRequest::ResetToFinalState);
         });
-        // request reset to final state
-        (*queue_guard).push_back(ExecutionRequest::ResetToFinalState);
-        // notify
-        condvar.notify_one();
     }
 
     /// runs an SCE-final step (slot)
@@ -179,14 +200,12 @@ impl ExecutionWorker {
     /// * slot: target slot
     /// * block: None if miss, Some(block_id, block) otherwise
     fn vm_run_final_step(&mut self, slot: Slot, block: Option<(BlockId, Block)>) {
-        let (queue_lock, condvar) = &*self.execution_queue;
-        let mut queue_guard = queue_lock.lock().unwrap();
-        (*queue_guard).push_back(ExecutionRequest::RunFinalStep(ExecutionStep {
-            slot,
-            block,
-        }));
-        // notify
-        condvar.notify_one();
+        with_running_queue(self, |mut queue| {
+            queue.push_back(ExecutionRequest::RunFinalStep(ExecutionStep {
+                slot,
+                block,
+            }));
+        });
     }
 
     /// runs an SCE-active step (slot)
@@ -195,14 +214,12 @@ impl ExecutionWorker {
     /// * slot: target slot
     /// * block: None if miss, Some(block_id, block) otherwise
     fn vm_run_active_step(&mut self, slot: Slot, block: Option<(BlockId, Block)>) {
-        let (queue_lock, condvar) = &*self.execution_queue;
-        let mut queue_guard = queue_lock.lock().unwrap();
-        (*queue_guard).push_back(ExecutionRequest::RunActiveStep(ExecutionStep {
-            slot,
-            block,
-        }));
-        // notify
-        condvar.notify_one();
+        with_running_queue(self, |mut queue| {
+            queue.push_back(ExecutionRequest::RunActiveStep(ExecutionStep {
+                slot,
+                block,
+            }));
+        });
     }
 
     /// Process a given command.
@@ -303,4 +320,18 @@ impl ExecutionWorker {
 
         Ok(())
     }
+}
+
+fn with_running_queue<F>(worker: &mut ExecutionWorker, f: F)
+where
+    F: FnOnce(&mut VecDeque<ExecutionRequest>),
+{
+    let (queue_lock, condvar) = &*worker.execution_queue;
+    let mut queue_guard = queue_lock.lock().unwrap();
+    if let ExecutionQueue::Running(ref mut queue) = &mut *queue_guard {
+        f(queue);
+    } else {
+        panic!("Unexpected execution queue state.");
+    }
+    condvar.notify_one();
 }
