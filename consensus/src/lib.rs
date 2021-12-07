@@ -1,5 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+#![doc = include_str!("../../docs/staking.md")]
+#![doc = include_str!("../../docs/transaction.md")]
+#![doc = include_str!("../endorsements.md")]
 #![feature(async_closure)]
 #![feature(bool_to_option)]
 #![feature(hash_drain_filter)]

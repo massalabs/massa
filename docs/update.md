@@ -4,20 +4,26 @@ If you use the binaries, simply download the latest binaries. Otherwise:
 
 Update Rust:
 
-    rustup update
+```bash
+rustup update
+```
 
 Make sure you you have the right git repository (especially since the change from GitLab to GitHub):
 
-    cd massa/
-    git stash
-    git remote set-url origin https://github.com/massalabs/massa.git
+```bash
+cd massa/
+git stash
+git remote set-url origin https://github.com/massalabs/massa.git
+```
 
 Update Massa:
 
-    git checkout testnet
-    git pull
+```bash
+git checkout testnet
+git pull
+```
 
-After updating, enter the command `node_get_staking_addresses` in your client and make sure that it returns an address that has rolls according to `wallet_info`. 
+After updating, enter the command `node_get_staking_addresses` in your client and make sure that it returns an address that has rolls according to `wallet_info`.
 
 -   If `wallet_info` does not return any address, it means that you haven't backed up your wallet.dat correctly. Close the client, overwrite wallet.dat with your backup, launch the client again and try again. You can also create a new address by calling `wallet_generate_private_key`.
 

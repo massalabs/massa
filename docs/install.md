@@ -3,6 +3,7 @@
 Right now 4 cores and 8 GB of RAM should be enough to run a node, but it might increase in the future. More info in the [FAQ](faq.md).
 
 ## From binaries
+
 If you just wish to run a Massa node without compiling it yourself, you
 can simply get the latest binary (download below and go the the next step: [Running a node](run.md))
 
@@ -14,6 +15,7 @@ can simply get the latest binary (download below and go the the next step: [Runn
     binary](https://github.com/massalabs/massa/releases/latest/download/release_macos.zip)
 
 ## From source code
+
 Otherwise, if you wish to run a Massa node from source code, here are the steps to follow:
 
 ### On Ubuntu / MacOS
@@ -58,7 +60,8 @@ Otherwise, if you wish to run a Massa node from source code, here are the steps 
 #### Clone the Massa Git Repository
 
 -   Open Windows Power Shell
-    - To clone the latest distributed version, type: `git clone --branch testnet https://github.com/massalabs/massa.git`
+
+    -   To clone the latest distributed version, type: `git clone --branch testnet https://github.com/massalabs/massa.git`
 
 -   Change default Rust to nightly
     -   Type: `rustup default nightly`
