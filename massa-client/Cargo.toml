@@ -11,6 +11,7 @@ atty = "0.2"
 config = "0.11"
 console = "0.15"
 dialoguer = { version = "0.9", git = "https://github.com/yvan-sraka/dialoguer.git", branch="completion-feature", features = ["history", "completion"] }
+directories = "4.0"
 erased-serde = "0.3"
 futures = "0.3"
 jsonrpc-core-client = { version = "18.0.0", features = ["http", "tls"] }
