@@ -1104,6 +1104,7 @@ dependencies = [
  "config",
  "console",
  "dialoguer",
+ "directories",
  "erased-serde",
  "futures 0.3.18",
  "jsonrpc-core-client",
