@@ -153,6 +153,7 @@ pub struct AddressCycleProductionStats {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AddressState {
+    pub is_staking: bool,
     pub ledger_info: LedgerInfo,
     pub rolls: RollsInfo,
     pub production_stats: Vec<AddressCycleProductionStats>,

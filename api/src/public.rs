@@ -466,6 +466,7 @@ impl Endpoints for API<Public> {
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
                     production_stats: state.production_stats,
+                    is_staking: state.is_staking,
                 })
             }
             Ok(res)

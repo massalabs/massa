@@ -151,6 +151,7 @@ impl std::fmt::Display for RollsInfo {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AddressInfo {
+    pub is_staking: bool,
     pub address: Address,
     pub thread: u8,
     pub ledger_info: LedgerInfo,
@@ -165,7 +166,12 @@ pub struct AddressInfo {
 
 impl std::fmt::Display for AddressInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Address: {}", self.address)?;
+        writeln!(
+            f,
+            "Address: {}{}",
+            self.address,
+            if self.is_staking { "[staking]" } else { "" }
+        )?;
         writeln!(f, "Thread: {}", self.thread)?;
         writeln!(f, "Balance:\n{}", self.ledger_info)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
@@ -233,6 +239,7 @@ impl AddressInfo {
             thread: self.thread,
             balance: self.ledger_info,
             rolls: self.rolls,
+            is_staking: self.is_staking,
         }
     }
 }
@@ -252,6 +259,7 @@ impl std::fmt::Display for IndexedSlot {
 
 #[derive(Serialize)]
 pub struct CompactAddressInfo {
+    pub is_staking: bool,
     pub address: Address,
     pub thread: u8,
     pub balance: LedgerInfo,
@@ -260,7 +268,12 @@ pub struct CompactAddressInfo {
 
 impl std::fmt::Display for CompactAddressInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Address: {}", self.address)?;
+        writeln!(
+            f,
+            "Address: {}{}",
+            self.address,
+            if self.is_staking { "[staking]" } else { "" }
+        )?;
         writeln!(f, "Thread: {}", self.thread)?;
         writeln!(f, "Balance:\n{}", self.balance)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;

@@ -1135,6 +1135,7 @@ impl ConsensusWorker {
                                 nok_count: cycle_stats.ok_nok_counts.get(addr).unwrap_or(&(0, 0)).1,
                             })
                             .collect(),
+                        is_staking: self.staking_keys.contains_key(addr),
                     },
                 );
             }
