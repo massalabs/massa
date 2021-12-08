@@ -12,6 +12,7 @@ use models::{
 };
 use serde::Serialize;
 use signature::{generate_random_private_key, PrivateKey, PublicKey};
+use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::process;
@@ -427,11 +428,13 @@ impl Command {
             }
 
             Command::wallet_generate_private_key => {
-                let ad = wallet.add_private_key(generate_random_private_key())?;
+                let key = generate_random_private_key();
+                let ad = wallet.add_private_key(key)?;
                 if json {
                     Ok(Box::new(ad.to_string()))
                 } else {
                     println!("Generated {} address and added it to the wallet", ad);
+                    println!("Type `node_add_staking_private_keys {}` to start staking with this private_key.\n",key);
                     Ok(Box::new(()))
                 }
             }
@@ -439,13 +442,14 @@ impl Command {
             Command::wallet_add_private_keys => {
                 let addresses = parse_vec::<PrivateKey>(parameters)?
                     .into_iter()
-                    .map(|key| Ok(wallet.add_private_key(key)?))
-                    .collect::<Result<Vec<Address>>>()?;
+                    .map(|key| Ok((wallet.add_private_key(key)?, key)))
+                    .collect::<Result<HashMap<Address, PrivateKey>>>()?;
                 if json {
-                    return Ok(Box::new(())); // FIXME
+                    return Ok(Box::new(addresses.into_keys().collect::<Vec<Address>>()));
                 } else {
-                    for address in addresses.iter() {
-                        println!("Derived and added address {} to the wallet\n", address);
+                    for (address, key) in addresses.iter() {
+                        println!("Derived and added address {} to the wallet.", address);
+                        println!("Type `node_add_staking_private_keys {}` to start staking with this private_key.\n", key);
                     }
                 }
                 Ok(Box::new(()))
