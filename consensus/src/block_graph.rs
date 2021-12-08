@@ -1222,7 +1222,6 @@ impl BlockGraph {
             block_creator_address,
             state_accu.endorsers_addresses.clone(),
             state_accu.same_thread_parent_creator,
-            self.cfg.thread_count,
             self.cfg.roll_price,
             self.cfg.endorsement_count,
         )?;
