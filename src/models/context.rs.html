@@ -73,6 +73,8 @@
 <span id="72">72</span>
 <span id="73">73</span>
 <span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -134,8 +136,13 @@
     <span class="kw">pub</span> <span class="ident">max_block_endorsements</span>: <span class="ident">u32</span>,
     <span class="kw">pub</span> <span class="ident">parent_count</span>: <span class="ident">u8</span>,
     <span class="kw">pub</span> <span class="ident">max_block_size</span>: <span class="ident">u32</span>,
+    <span class="comment">// TODO: all field bellow should be removed since there are constant defined in bootstrap::settings</span>
     <span class="kw">pub</span> <span class="ident">max_peer_list_length</span>: <span class="ident">u32</span>,
     <span class="kw">pub</span> <span class="ident">max_message_size</span>: <span class="ident">u32</span>,
+    <span class="kw">pub</span> <span class="ident">max_ask_blocks_per_message</span>: <span class="ident">u32</span>,
+    <span class="kw">pub</span> <span class="ident">max_operations_per_message</span>: <span class="ident">u32</span>,
+    <span class="kw">pub</span> <span class="ident">max_endorsements_per_message</span>: <span class="ident">u32</span>,
+    <span class="comment">// TODO: all field bellow should be removed since there are constant defined in bootstrap::settings</span>
     <span class="kw">pub</span> <span class="ident">max_bootstrap_blocks</span>: <span class="ident">u32</span>,
     <span class="kw">pub</span> <span class="ident">max_bootstrap_cliques</span>: <span class="ident">u32</span>,
     <span class="kw">pub</span> <span class="ident">max_bootstrap_deps</span>: <span class="ident">u32</span>,
@@ -143,10 +150,7 @@
     <span class="kw">pub</span> <span class="ident">max_bootstrap_pos_cycles</span>: <span class="ident">u32</span>,
     <span class="kw">pub</span> <span class="ident">max_bootstrap_pos_entries</span>: <span class="ident">u32</span>,
     <span class="kw">pub</span> <span class="ident">max_bootstrap_message_size</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">max_ask_blocks_per_message</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">max_operations_per_message</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">max_endorsements_per_message</span>: <span class="ident">u32</span>,
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

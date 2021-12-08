@@ -413,18 +413,14 @@
 <span id="412">412</span>
 <span id="413">413</span>
 <span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">binders</span>::{<span class="ident">ReadBinder</span>, <span class="ident">WriteBinder</span>},
-    <span class="ident">config</span>::{<span class="ident">NetworkConfig</span>, <span class="ident">NODE_SEND_CHANNEL_SIZE</span>},
-    <span class="ident">messages::Message</span>,
-};
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">error::NetworkError</span>, <span class="ident">ConnectionClosureReason</span>};
-<span class="kw">use</span> <span class="ident">logging::massa_trace</span>;
-<span class="kw">use</span> <span class="ident">models::node::NodeId</span>;
-<span class="kw">use</span> <span class="ident">models</span>::{<span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">Operation</span>};
 <span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
+
 <span class="kw">use</span> <span class="ident">tokio</span>::{
     <span class="ident">sync::mpsc</span>,
     <span class="ident">sync::mpsc</span>::{
@@ -434,6 +430,18 @@
     <span class="ident">time::timeout</span>,
 };
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>, <span class="ident">warn</span>};
+
+<span class="kw">use</span> <span class="ident">logging::massa_trace</span>;
+<span class="kw">use</span> <span class="ident">models::node::NodeId</span>;
+<span class="kw">use</span> <span class="ident">models</span>::{<span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">Operation</span>};
+
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>::{<span class="ident">NetworkSettings</span>, <span class="ident">NODE_SEND_CHANNEL_SIZE</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">error::NetworkError</span>, <span class="ident">ConnectionClosureReason</span>};
+
+<span class="kw">use</span> <span class="kw">super</span>::{
+    <span class="ident">binders</span>::{<span class="ident">ReadBinder</span>, <span class="ident">WriteBinder</span>},
+    <span class="ident">messages::Message</span>,
+};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NodeCommand</span> {
@@ -485,7 +493,7 @@
 <span class="doccomment">/// One worker per node.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeWorker</span> {
     <span class="doccomment">/// Protocol configuration.</span>
-    <span class="ident">cfg</span>: <span class="ident">NetworkConfig</span>,
+    <span class="ident">cfg</span>: <span class="ident">NetworkSettings</span>,
     <span class="doccomment">/// Node id associated to that worker.</span>
     <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
     <span class="doccomment">/// Reader for incoming data.</span>
@@ -510,7 +518,7 @@
     <span class="doccomment">/// * node_command_rx: Channel to receive node commands.</span>
     <span class="doccomment">/// * node_event_tx: Channel to send node events.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">cfg</span>: <span class="ident">NetworkConfig</span>,
+        <span class="ident">cfg</span>: <span class="ident">NetworkSettings</span>,
         <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
         <span class="ident">socket_reader</span>: <span class="ident">ReadBinder</span>,
         <span class="ident">socket_writer</span>: <span class="ident">WriteBinder</span>,
@@ -747,7 +755,7 @@
                         <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::AskForBlocks</span>(<span class="ident">list</span>)) =&gt; {
                             <span class="comment">// cut hash list on sub list if exceed max_ask_blocks_per_message</span>
                             <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::AskForBlocks&quot;</span>, {<span class="string">&quot;hashlist&quot;</span>: <span class="ident">list</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>});
-                            <span class="kw">for</span> <span class="ident">to_send_list</span> <span class="kw">in</span> <span class="ident">list</span>.<span class="ident">chunks</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_ask_blocks_per_message</span> <span class="kw">as</span> <span class="ident">usize</span>) {
+                            <span class="kw">for</span> <span class="ident">to_send_list</span> <span class="kw">in</span> <span class="ident">list</span>.<span class="ident">chunks</span>(<span class="ident"><span class="kw">crate</span>::settings::MAX_ASK_BLOCKS_PER_MESSAGE</span> <span class="kw">as</span> <span class="ident">usize</span>) {
                                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::AskForBlocks</span>(<span class="ident">to_send_list</span>.<span class="ident">iter</span>().<span class="ident">copied</span>().<span class="ident">collect</span>())).<span class="ident">is_err</span>() {
                                     <span class="kw">break</span> <span class="lifetime">&#39;select_loop</span>;
                                 }
@@ -762,7 +770,7 @@
                         <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendOperations</span>(<span class="ident">operations</span>)) =&gt; {
                             <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::SendOperations&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operations&quot;</span>: <span class="ident">operations</span>});
                             <span class="comment">// cut operation list if it exceed max_operations_per_message</span>
-                            <span class="kw">for</span> <span class="ident">to_send_list</span> <span class="kw">in</span> <span class="ident">operations</span>.<span class="ident">chunks</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_operations_per_message</span> <span class="kw">as</span> <span class="ident">usize</span>) {
+                            <span class="kw">for</span> <span class="ident">to_send_list</span> <span class="kw">in</span> <span class="ident">operations</span>.<span class="ident">chunks</span>(<span class="ident"><span class="kw">crate</span>::settings::MAX_OPERATIONS_PER_MESSAGE</span> <span class="kw">as</span> <span class="ident">usize</span>) {
                                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::Operations</span>(<span class="ident">to_send_list</span>.<span class="ident">to_vec</span>())).<span class="ident">is_err</span>() {
                                     <span class="kw">break</span> <span class="lifetime">&#39;select_loop</span>;
                                 }
@@ -771,7 +779,7 @@
                         <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendEndorsements</span>(<span class="ident">endorsements</span>)) =&gt; {
                             <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::SendEndorsements&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>});
                             <span class="comment">// cut endorsement list if it exceed max_endorsements_per_message</span>
-                            <span class="kw">for</span> <span class="ident">to_send_list</span> <span class="kw">in</span> <span class="ident">endorsements</span>.<span class="ident">chunks</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_endorsements_per_message</span> <span class="kw">as</span> <span class="ident">usize</span>) {
+                            <span class="kw">for</span> <span class="ident">to_send_list</span> <span class="kw">in</span> <span class="ident">endorsements</span>.<span class="ident">chunks</span>(<span class="ident"><span class="kw">crate</span>::settings::MAX_ENDORSEMENTS_PER_MESSAGE</span> <span class="kw">as</span> <span class="ident">usize</span>) {
                                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::Endorsements</span>(<span class="ident">to_send_list</span>.<span class="ident">to_vec</span>())).<span class="ident">is_err</span>() {
                                     <span class="kw">break</span> <span class="lifetime">&#39;select_loop</span>;
                                 }
@@ -828,5 +836,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

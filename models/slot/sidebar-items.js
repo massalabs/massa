@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["SLOT_KEY_SIZE",""]],"struct":[["Slot",""]]});
+initSidebarItems({"struct":[["Slot",""]]});

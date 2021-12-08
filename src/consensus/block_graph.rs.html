@@ -4936,104 +4936,10 @@
 <span id="4935">4935</span>
 <span id="4936">4936</span>
 <span id="4937">4937</span>
-<span id="4938">4938</span>
-<span id="4939">4939</span>
-<span id="4940">4940</span>
-<span id="4941">4941</span>
-<span id="4942">4942</span>
-<span id="4943">4943</span>
-<span id="4944">4944</span>
-<span id="4945">4945</span>
-<span id="4946">4946</span>
-<span id="4947">4947</span>
-<span id="4948">4948</span>
-<span id="4949">4949</span>
-<span id="4950">4950</span>
-<span id="4951">4951</span>
-<span id="4952">4952</span>
-<span id="4953">4953</span>
-<span id="4954">4954</span>
-<span id="4955">4955</span>
-<span id="4956">4956</span>
-<span id="4957">4957</span>
-<span id="4958">4958</span>
-<span id="4959">4959</span>
-<span id="4960">4960</span>
-<span id="4961">4961</span>
-<span id="4962">4962</span>
-<span id="4963">4963</span>
-<span id="4964">4964</span>
-<span id="4965">4965</span>
-<span id="4966">4966</span>
-<span id="4967">4967</span>
-<span id="4968">4968</span>
-<span id="4969">4969</span>
-<span id="4970">4970</span>
-<span id="4971">4971</span>
-<span id="4972">4972</span>
-<span id="4973">4973</span>
-<span id="4974">4974</span>
-<span id="4975">4975</span>
-<span id="4976">4976</span>
-<span id="4977">4977</span>
-<span id="4978">4978</span>
-<span id="4979">4979</span>
-<span id="4980">4980</span>
-<span id="4981">4981</span>
-<span id="4982">4982</span>
-<span id="4983">4983</span>
-<span id="4984">4984</span>
-<span id="4985">4985</span>
-<span id="4986">4986</span>
-<span id="4987">4987</span>
-<span id="4988">4988</span>
-<span id="4989">4989</span>
-<span id="4990">4990</span>
-<span id="4991">4991</span>
-<span id="4992">4992</span>
-<span id="4993">4993</span>
-<span id="4994">4994</span>
-<span id="4995">4995</span>
-<span id="4996">4996</span>
-<span id="4997">4997</span>
-<span id="4998">4998</span>
-<span id="4999">4999</span>
-<span id="5000">5000</span>
-<span id="5001">5001</span>
-<span id="5002">5002</span>
-<span id="5003">5003</span>
-<span id="5004">5004</span>
-<span id="5005">5005</span>
-<span id="5006">5006</span>
-<span id="5007">5007</span>
-<span id="5008">5008</span>
-<span id="5009">5009</span>
-<span id="5010">5010</span>
-<span id="5011">5011</span>
-<span id="5012">5012</span>
-<span id="5013">5013</span>
-<span id="5014">5014</span>
-<span id="5015">5015</span>
-<span id="5016">5016</span>
-<span id="5017">5017</span>
-<span id="5018">5018</span>
-<span id="5019">5019</span>
-<span id="5020">5020</span>
-<span id="5021">5021</span>
-<span id="5022">5022</span>
-<span id="5023">5023</span>
-<span id="5024">5024</span>
-<span id="5025">5025</span>
-<span id="5026">5026</span>
-<span id="5027">5027</span>
-<span id="5028">5028</span>
-<span id="5029">5029</span>
-<span id="5030">5030</span>
-<span id="5031">5031</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! All information concerning blocks, the block graph and cliques is managed here.</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::config::ConsensusConfig</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::settings::ConsensusConfig</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ConsensusError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ledger</span>::{<span class="ident">Ledger</span>, <span class="ident">LedgerChanges</span>, <span class="ident">LedgerSubset</span>, <span class="ident">OperationLedgerInterface</span>},
@@ -9337,21 +9243,14 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident">std::path::Path</span>;
-    <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
-
-    <span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
-    <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
-    <span class="kw">use</span> <span class="ident">tempfile::NamedTempFile</span>;
-
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tests::tools::get_dummy_block_id</span>;
     <span class="kw">use</span> <span class="ident">models::ledger::LedgerData</span>;
     <span class="kw">use</span> <span class="ident">models</span>::{<span class="ident">Amount</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementContent</span>};
-    <span class="kw">use</span> <span class="ident">signature</span>::{<span class="ident">generate_random_private_key</span>, <span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>, <span class="ident">Signature</span>};
-    <span class="kw">use</span> <span class="ident">time::UTime</span>;
-
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tests::tools::get_dummy_block_id</span>;
-
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
+    <span class="kw">use</span> <span class="ident">signature</span>::{<span class="ident">PublicKey</span>, <span class="ident">Signature</span>};
+    <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+    <span class="kw">use</span> <span class="ident">tempfile::NamedTempFile</span>;
 
     <span class="kw">fn</span> <span class="ident">get_export_active_test_block</span>() -&gt; <span class="ident">ExportActiveBlock</span> {
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block</span> {
@@ -9443,7 +9342,7 @@
         <span class="kw">let</span> <span class="ident">thread_count</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">2</span>;
         <span class="kw">let</span> <span class="ident">active_block</span>: <span class="ident">ActiveBlock</span> <span class="op">=</span> <span class="ident">get_export_active_test_block</span>().<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">ledger_file</span> <span class="op">=</span> <span class="ident">generate_ledger_file</span>(<span class="kw-2">&amp;</span><span class="ident">AddressHashMap::default</span>());
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="ident">example_consensus_config</span>(<span class="ident">ledger_file</span>.<span class="ident">path</span>());
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="ident">ConsensusConfig::from</span>(<span class="ident">ledger_file</span>.<span class="ident">path</span>());
 
         <span class="ident">cfg</span>.<span class="ident">block_reward</span> <span class="op">=</span> <span class="ident">Amount::from_str</span>(<span class="string">&quot;1&quot;</span>).<span class="ident">unwrap</span>();
         <span class="comment">// to generate address and public keys</span>
@@ -9917,7 +9816,7 @@
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_clique_calculation</span>() {
         <span class="kw">let</span> <span class="ident">ledger_file</span> <span class="op">=</span> <span class="ident">generate_ledger_file</span>(<span class="kw-2">&amp;</span><span class="ident">AddressHashMap::default</span>());
-        <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="ident">example_consensus_config</span>(<span class="ident">ledger_file</span>.<span class="ident">path</span>());
+        <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="ident">ConsensusConfig::from</span>(<span class="ident">ledger_file</span>.<span class="ident">path</span>());
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_graph</span> <span class="op">=</span> <span class="ident">BlockGraph::new</span>(<span class="ident">cfg</span>, <span class="prelude-val">None</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">hashes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[
             <span class="string">&quot;VzCRpnoZVYY1yQZTXtVQbbxwzdu6hYtdCUZB5BXWSabsiXyfP&quot;</span>,
@@ -9973,94 +9872,7 @@
             .<span class="ident">expect</span>(<span class="string">&quot;could not seek file&quot;</span>);
         <span class="ident">ledger_file_named</span>
     }
-
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::ptr_arg</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_staking_keys_file</span>(<span class="ident">staking_keys</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span>) -&gt; <span class="ident">NamedTempFile</span> {
-        <span class="kw">use</span> <span class="ident">std::io::prelude</span>::<span class="kw-2">*</span>;
-        <span class="kw">let</span> <span class="ident">file_named</span> <span class="op">=</span> <span class="ident">NamedTempFile::new</span>().<span class="ident">expect</span>(<span class="string">&quot;cannot create temp file&quot;</span>);
-        <span class="ident">serde_json::to_writer_pretty</span>(<span class="ident">file_named</span>.<span class="ident">as_file</span>(), <span class="kw-2">&amp;</span><span class="ident">staking_keys</span>)
-            .<span class="ident">expect</span>(<span class="string">&quot;unable to write ledger file&quot;</span>);
-        <span class="ident">file_named</span>
-            .<span class="ident">as_file</span>()
-            .<span class="ident">seek</span>(<span class="ident">std::io::SeekFrom::Start</span>(<span class="number">0</span>))
-            .<span class="ident">expect</span>(<span class="string">&quot;could not seek file&quot;</span>);
-        <span class="ident">file_named</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">example_consensus_config</span>(<span class="ident">initial_ledger_path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span>) -&gt; <span class="ident">ConsensusConfig</span> {
-        <span class="kw">let</span> <span class="ident">genesis_key</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">staking_keys</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">2</span> {
-            <span class="ident">staking_keys</span>.<span class="ident">push</span>(<span class="ident">generate_random_private_key</span>());
-        }
-        <span class="kw">let</span> <span class="ident">staking_file</span> <span class="op">=</span> <span class="ident">generate_staking_keys_file</span>(<span class="kw-2">&amp;</span><span class="ident">staking_keys</span>);
-
-        <span class="kw">let</span> <span class="ident">thread_count</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">2</span>;
-        <span class="kw">let</span> <span class="ident">max_block_size</span> <span class="op">=</span> <span class="number">1024</span> <span class="op">*</span> <span class="number">1024</span>;
-        <span class="kw">let</span> <span class="ident">max_operations_per_block</span> <span class="op">=</span> <span class="number">1024</span>;
-        <span class="kw">let</span> <span class="ident">tempdir</span> <span class="op">=</span> <span class="ident">tempfile::tempdir</span>().<span class="ident">expect</span>(<span class="string">&quot;cannot create temp dir&quot;</span>);
-        <span class="kw">let</span> <span class="ident">tempdir3</span> <span class="op">=</span> <span class="ident">tempfile::tempdir</span>().<span class="ident">expect</span>(<span class="string">&quot;cannot create temp dir&quot;</span>);
-
-        <span class="ident">models::init_serialization_context</span>(<span class="ident">models::SerializationContext</span> {
-            <span class="ident">max_block_operations</span>: <span class="number">1024</span>,
-            <span class="ident">parent_count</span>: <span class="number">2</span>,
-            <span class="ident">max_peer_list_length</span>: <span class="number">128</span>,
-            <span class="ident">max_message_size</span>: <span class="number">3</span> <span class="op">*</span> <span class="number">1024</span> <span class="op">*</span> <span class="number">1024</span>,
-            <span class="ident">max_block_size</span>: <span class="number">3</span> <span class="op">*</span> <span class="number">1024</span> <span class="op">*</span> <span class="number">1024</span>,
-            <span class="ident">max_bootstrap_blocks</span>: <span class="number">100</span>,
-            <span class="ident">max_bootstrap_cliques</span>: <span class="number">100</span>,
-            <span class="ident">max_bootstrap_deps</span>: <span class="number">100</span>,
-            <span class="ident">max_bootstrap_children</span>: <span class="number">100</span>,
-            <span class="ident">max_ask_blocks_per_message</span>: <span class="number">10</span>,
-            <span class="ident">max_operations_per_message</span>: <span class="number">1024</span>,
-            <span class="ident">max_endorsements_per_message</span>: <span class="number">1024</span>,
-            <span class="ident">max_bootstrap_message_size</span>: <span class="number">100000000</span>,
-            <span class="ident">max_bootstrap_pos_entries</span>: <span class="number">1000</span>,
-            <span class="ident">max_bootstrap_pos_cycles</span>: <span class="number">5</span>,
-            <span class="ident">max_block_endorsements</span>: <span class="number">8</span>,
-        });
-
-        <span class="ident">ConsensusConfig</span> {
-            <span class="ident">genesis_timestamp</span>: <span class="ident">UTime::now</span>(<span class="number">0</span>).<span class="ident">unwrap</span>(),
-            <span class="ident">thread_count</span>,
-            <span class="ident">t0</span>: <span class="number">32</span>.<span class="ident">into</span>(),
-            <span class="ident">genesis_key</span>,
-            <span class="ident">max_discarded_blocks</span>: <span class="number">10</span>,
-            <span class="ident">future_block_processing_max_periods</span>: <span class="number">3</span>,
-            <span class="ident">max_future_processing_blocks</span>: <span class="number">10</span>,
-            <span class="ident">max_dependency_blocks</span>: <span class="number">10</span>,
-            <span class="ident">delta_f0</span>: <span class="number">5</span>,
-            <span class="ident">disable_block_creation</span>: <span class="bool-val">true</span>,
-            <span class="ident">max_block_size</span>,
-            <span class="ident">max_operations_per_block</span>,
-            <span class="ident">max_operations_fill_attempts</span>: <span class="number">6</span>,
-            <span class="ident">operation_validity_periods</span>: <span class="number">3</span>,
-            <span class="ident">ledger_path</span>: <span class="ident">tempdir</span>.<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
-            <span class="ident">ledger_cache_capacity</span>: <span class="number">1000000</span>,
-            <span class="ident">ledger_flush_interval</span>: <span class="prelude-val">Some</span>(<span class="number">200</span>.<span class="ident">into</span>()),
-            <span class="ident">ledger_reset_at_startup</span>: <span class="bool-val">true</span>,
-            <span class="ident">block_reward</span>: <span class="ident">Amount::from_str</span>(<span class="string">&quot;1&quot;</span>).<span class="ident">unwrap</span>(),
-            <span class="ident">initial_ledger_path</span>: <span class="ident">initial_ledger_path</span>.<span class="ident">to_path_buf</span>(),
-            <span class="ident">operation_batch_size</span>: <span class="number">100</span>,
-            <span class="ident">initial_rolls_path</span>: <span class="ident">tempdir3</span>.<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
-            <span class="ident">initial_draw_seed</span>: <span class="string">&quot;genesis&quot;</span>.<span class="ident">into</span>(),
-            <span class="ident">periods_per_cycle</span>: <span class="number">100</span>,
-            <span class="ident">pos_lookback_cycles</span>: <span class="number">2</span>,
-            <span class="ident">pos_lock_cycles</span>: <span class="number">1</span>,
-            <span class="ident">pos_draw_cached_cycles</span>: <span class="number">2</span>,
-            <span class="ident">pos_miss_rate_deactivation_threshold</span>: <span class="ident">Ratio::new</span>(<span class="number">1</span>, <span class="number">1</span>),
-            <span class="ident">roll_price</span>: <span class="ident">Amount::from_str</span>(<span class="string">&quot;10&quot;</span>).<span class="ident">unwrap</span>(),
-            <span class="ident">stats_timespan</span>: <span class="number">60000</span>.<span class="ident">into</span>(),
-            <span class="ident">staking_keys_path</span>: <span class="ident">staking_file</span>.<span class="ident">path</span>().<span class="ident">to_path_buf</span>(),
-            <span class="ident">end_timestamp</span>: <span class="prelude-val">None</span>,
-            <span class="ident">max_send_wait</span>: <span class="number">500</span>.<span class="ident">into</span>(),
-            <span class="ident">force_keep_final_periods</span>: <span class="number">0</span>,
-            <span class="ident">endorsement_count</span>: <span class="number">8</span>,
-            <span class="ident">block_db_prune_interval</span>: <span class="number">1000</span>.<span class="ident">into</span>(),
-            <span class="ident">max_item_return_count</span>: <span class="number">1000</span>,
-        }
-    }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

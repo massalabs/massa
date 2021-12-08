@@ -202,7 +202,7 @@
 <span class="kw">use</span> <span class="ident">models::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident">models::operation</span>::{<span class="ident">Operation</span>, <span class="ident">OperationId</span>};
 <span class="kw">use</span> <span class="ident">models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Version</span>};
-<span class="kw">use</span> <span class="ident">network</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkConfig</span>};
+<span class="kw">use</span> <span class="ident">network</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkSettings</span>};
 <span class="kw">use</span> <span class="ident">pool::PoolCommandSender</span>;
 <span class="kw">use</span> <span class="ident">signature::PrivateKey</span>;
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
@@ -218,9 +218,9 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Public</span> {
     <span class="kw">pub</span> <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
     <span class="kw">pub</span> <span class="ident">pool_command_sender</span>: <span class="ident">PoolCommandSender</span>,
-    <span class="kw">pub</span> <span class="ident">consensus_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ConsensusConfig</span>,
+    <span class="kw">pub</span> <span class="ident">consensus_config</span>: <span class="ident">ConsensusConfig</span>,
     <span class="kw">pub</span> <span class="ident">api_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">APISettings</span>,
-    <span class="kw">pub</span> <span class="ident">network_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">NetworkConfig</span>,
+    <span class="kw">pub</span> <span class="ident">network_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">NetworkSettings</span>,
     <span class="kw">pub</span> <span class="ident">version</span>: <span class="ident">Version</span>,
     <span class="kw">pub</span> <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
     <span class="kw">pub</span> <span class="ident">compensation_millis</span>: <span class="ident">i64</span>,
@@ -230,7 +230,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Private</span> {
     <span class="kw">pub</span> <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
     <span class="kw">pub</span> <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
-    <span class="kw">pub</span> <span class="ident">consensus_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ConsensusConfig</span>,
+    <span class="kw">pub</span> <span class="ident">consensus_config</span>: <span class="ident">ConsensusConfig</span>,
     <span class="kw">pub</span> <span class="ident">api_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">APISettings</span>,
     <span class="kw">pub</span> <span class="ident">stop_node_channel</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
 }
@@ -364,5 +364,5 @@
     <span class="comment">// TODO: jsonrpc_client_transports::RawClient::call_method ... see #1182</span>
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

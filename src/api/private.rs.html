@@ -167,14 +167,14 @@
         <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
         <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
         <span class="ident">api_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">APISettings</span>,
-        <span class="ident">consensus_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ConsensusConfig</span>,
+        <span class="ident">consensus_settings</span>: <span class="ident">ConsensusConfig</span>,
     ) -&gt; (<span class="self">Self</span>, <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span>()<span class="op">&gt;</span>) {
         <span class="kw">let</span> (<span class="ident">stop_node_channel</span>, <span class="ident">rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>(<span class="number">1</span>);
         (
             <span class="ident">API</span>(<span class="ident">Private</span> {
                 <span class="ident">consensus_command_sender</span>,
                 <span class="ident">network_command_sender</span>,
-                <span class="ident">consensus_settings</span>,
+                <span class="ident">consensus_config</span>: <span class="ident">consensus_settings</span>,
                 <span class="ident">api_settings</span>,
                 <span class="ident">stop_node_channel</span>,
             }),
@@ -288,5 +288,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

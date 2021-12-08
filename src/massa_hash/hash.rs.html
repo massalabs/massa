@@ -244,10 +244,9 @@
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::MassaHashError</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::HASH_SIZE_BYTES</span>;
 <span class="kw">use</span> <span class="ident">bitcoin_hashes</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert::TryInto</span>, <span class="ident">str::FromStr</span>};
-
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">HASH_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Hash</span>(<span class="ident">bitcoin_hashes::sha256::Hash</span>);
@@ -455,8 +454,9 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
+
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
     <span class="kw">fn</span> <span class="ident">example</span>() -&gt; <span class="ident">Hash</span> {
         <span class="ident">Hash::from</span>(<span class="string">&quot;hello world&quot;</span>.<span class="ident">as_bytes</span>())
@@ -484,5 +484,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_hash" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_hash" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

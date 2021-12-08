@@ -318,7 +318,6 @@
 <span id="317">317</span>
 <span id="318">318</span>
 <span id="319">319</span>
-<span id="320">320</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
@@ -326,7 +325,6 @@
 <span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]</span>
 
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">logging</span>;
-
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::SETTINGS</span>;
 <span class="kw">use</span> <span class="ident">api</span>::{<span class="ident">Private</span>, <span class="ident">Public</span>, <span class="ident">RpcServer</span>, <span class="ident">StopHandle</span>, <span class="ident">API</span>};
 <span class="kw">use</span> <span class="ident">bootstrap</span>::{<span class="ident">get_state</span>, <span class="ident">start_bootstrap_server</span>, <span class="ident">BootstrapManager</span>};
@@ -362,8 +360,8 @@
     <span class="ident">StopHandle</span>,
     <span class="ident">StopHandle</span>,
 ) {
-    <span class="macro">info!</span>(<span class="string">&quot;Node version : {}&quot;</span>, <span class="ident">SETTINGS</span>.<span class="ident">version</span>);
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">end</span>) <span class="op">=</span> <span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">end_timestamp</span> {
+    <span class="macro">info!</span>(<span class="string">&quot;Node version : {}&quot;</span>, <span class="kw-2">*</span><span class="ident"><span class="kw">crate</span>::settings::VERSION</span>);
+    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">end</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="ident">consensus::settings::END_TIMESTAMP</span> {
         <span class="kw">if</span> <span class="ident">UTime::now</span>(<span class="number">0</span>).<span class="ident">expect</span>(<span class="string">&quot;could not get now time&quot;</span>) <span class="op">&gt;</span> <span class="ident">end</span> {
             <span class="macro">panic!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
         }
@@ -371,22 +369,22 @@
 
     <span class="comment">// Init the global serialization context</span>
     <span class="ident">init_serialization_context</span>(<span class="ident">SerializationContext</span> {
-        <span class="ident">max_block_operations</span>: <span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">max_operations_per_block</span>,
-        <span class="ident">parent_count</span>: <span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">thread_count</span>,
-        <span class="ident">max_block_size</span>: <span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">max_block_size</span>,
-        <span class="ident">max_peer_list_length</span>: <span class="ident">SETTINGS</span>.<span class="ident">network</span>.<span class="ident">max_advertise_length</span>,
-        <span class="ident">max_message_size</span>: <span class="ident">SETTINGS</span>.<span class="ident">network</span>.<span class="ident">max_message_size</span>,
-        <span class="ident">max_bootstrap_blocks</span>: <span class="ident">SETTINGS</span>.<span class="ident">bootstrap</span>.<span class="ident">max_bootstrap_blocks</span>,
-        <span class="ident">max_bootstrap_cliques</span>: <span class="ident">SETTINGS</span>.<span class="ident">bootstrap</span>.<span class="ident">max_bootstrap_cliques</span>,
-        <span class="ident">max_bootstrap_deps</span>: <span class="ident">SETTINGS</span>.<span class="ident">bootstrap</span>.<span class="ident">max_bootstrap_deps</span>,
-        <span class="ident">max_bootstrap_children</span>: <span class="ident">SETTINGS</span>.<span class="ident">bootstrap</span>.<span class="ident">max_bootstrap_children</span>,
-        <span class="ident">max_ask_blocks_per_message</span>: <span class="ident">SETTINGS</span>.<span class="ident">network</span>.<span class="ident">max_ask_blocks_per_message</span>,
-        <span class="ident">max_operations_per_message</span>: <span class="ident">SETTINGS</span>.<span class="ident">network</span>.<span class="ident">max_operations_per_message</span>,
-        <span class="ident">max_endorsements_per_message</span>: <span class="ident">SETTINGS</span>.<span class="ident">network</span>.<span class="ident">max_endorsements_per_message</span>,
-        <span class="ident">max_bootstrap_message_size</span>: <span class="ident">SETTINGS</span>.<span class="ident">bootstrap</span>.<span class="ident">max_bootstrap_message_size</span>,
-        <span class="ident">max_bootstrap_pos_cycles</span>: <span class="ident">SETTINGS</span>.<span class="ident">bootstrap</span>.<span class="ident">max_bootstrap_pos_cycles</span>,
-        <span class="ident">max_bootstrap_pos_entries</span>: <span class="ident">SETTINGS</span>.<span class="ident">bootstrap</span>.<span class="ident">max_bootstrap_pos_entries</span>,
-        <span class="ident">max_block_endorsements</span>: <span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">endorsement_count</span>,
+        <span class="ident">max_block_operations</span>: <span class="ident">consensus::settings::MAX_OPERATIONS_PER_BLOCK</span>,
+        <span class="ident">parent_count</span>: <span class="ident">consensus::settings::THREAD_COUNT</span>,
+        <span class="ident">max_block_size</span>: <span class="ident">consensus::settings::MAX_BLOCK_SIZE</span>,
+        <span class="ident">max_block_endorsements</span>: <span class="ident">consensus::settings::ENDORSEMENT_COUNT</span>,
+        <span class="ident">max_peer_list_length</span>: <span class="ident">network::settings::MAX_ADVERTISE_LENGTH</span>,
+        <span class="ident">max_message_size</span>: <span class="ident">network::settings::MAX_MESSAGE_SIZE</span>,
+        <span class="ident">max_bootstrap_blocks</span>: <span class="ident">bootstrap::settings::MAX_BOOTSTRAP_BLOCKS</span>,
+        <span class="ident">max_bootstrap_cliques</span>: <span class="ident">bootstrap::settings::MAX_BOOTSTRAP_CLIQUES</span>,
+        <span class="ident">max_bootstrap_deps</span>: <span class="ident">bootstrap::settings::MAX_BOOTSTRAP_DEPS</span>,
+        <span class="ident">max_bootstrap_children</span>: <span class="ident">bootstrap::settings::MAX_BOOTSTRAP_CHILDREN</span>,
+        <span class="ident">max_ask_blocks_per_message</span>: <span class="ident">network::settings::MAX_ASK_BLOCKS_PER_MESSAGE</span>,
+        <span class="ident">max_operations_per_message</span>: <span class="ident">network::settings::MAX_OPERATIONS_PER_MESSAGE</span>,
+        <span class="ident">max_endorsements_per_message</span>: <span class="ident">network::settings::MAX_ENDORSEMENTS_PER_MESSAGE</span>,
+        <span class="ident">max_bootstrap_message_size</span>: <span class="ident">bootstrap::settings::MAX_BOOTSTRAP_MESSAGE_SIZE</span>,
+        <span class="ident">max_bootstrap_pos_cycles</span>: <span class="ident">bootstrap::settings::MAX_BOOTSTRAP_POS_CYCLES</span>,
+        <span class="ident">max_bootstrap_pos_entries</span>: <span class="ident">bootstrap::settings::MAX_BOOTSTRAP_POS_ENTRIES</span>,
     });
 
     <span class="comment">// interrupt signal listener</span>
@@ -400,9 +398,9 @@
         <span class="ident">res</span> <span class="op">=</span> <span class="ident">get_state</span>(
             <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">bootstrap</span>,
             <span class="ident">bootstrap::establisher::Establisher::new</span>(),
-            <span class="ident">SETTINGS</span>.<span class="ident">version</span>,
-            <span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">genesis_timestamp</span>,
-            <span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">end_timestamp</span>,
+            <span class="kw-2">*</span><span class="ident">settings::VERSION</span>,
+            <span class="kw-2">*</span><span class="ident">consensus::settings::GENESIS_TIMESTAMP</span>,
+            <span class="kw-2">*</span><span class="ident">consensus::settings::END_TIMESTAMP</span>,
         ) =&gt; <span class="kw">match</span> <span class="ident">res</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">vals</span>) =&gt; <span class="ident">vals</span>,
             <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, <span class="ident">err</span>)
@@ -416,7 +414,7 @@
             <span class="ident">Establisher::new</span>(),
             <span class="ident">clock_compensation</span>,
             <span class="ident">initial_peers</span>,
-            <span class="ident">SETTINGS</span>.<span class="ident">version</span>,
+            <span class="kw-2">*</span><span class="ident"><span class="kw">crate</span>::settings::VERSION</span>,
         )
         .<span class="kw">await</span>
         .<span class="ident">expect</span>(<span class="string">&quot;could not start network controller&quot;</span>);
@@ -429,7 +427,7 @@
         <span class="ident">protocol_manager</span>,
     ) <span class="op">=</span> <span class="ident">start_protocol_controller</span>(
         <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">protocol</span>,
-        <span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">operation_validity_periods</span>,
+        <span class="ident">consensus::settings::OPERATION_VALIDITY_PERIODS</span>,
         <span class="ident">network_command_sender</span>.<span class="ident">clone</span>(),
         <span class="ident">network_event_receiver</span>,
     )
@@ -439,8 +437,8 @@
     <span class="comment">// launch pool controller</span>
     <span class="kw">let</span> (<span class="ident">pool_command_sender</span>, <span class="ident">pool_manager</span>) <span class="op">=</span> <span class="ident">start_pool_controller</span>(
         <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">pool</span>,
-        <span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">thread_count</span>,
-        <span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">operation_validity_periods</span>,
+        <span class="ident">consensus::settings::THREAD_COUNT</span>,
+        <span class="ident">consensus::settings::OPERATION_VALIDITY_PERIODS</span>,
         <span class="ident">protocol_command_sender</span>.<span class="ident">clone</span>(),
         <span class="ident">protocol_pool_event_receiver</span>,
     )
@@ -450,7 +448,7 @@
     <span class="comment">// launch consensus controller</span>
     <span class="kw">let</span> (<span class="ident">consensus_command_sender</span>, <span class="ident">consensus_event_receiver</span>, <span class="ident">consensus_manager</span>) <span class="op">=</span>
         <span class="ident">start_consensus_controller</span>(
-            <span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">clone</span>(), <span class="comment">// TODO: get rid of this clone() ... see #1277</span>
+            <span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">config</span>(),
             <span class="ident">protocol_command_sender</span>.<span class="ident">clone</span>(),
             <span class="ident">protocol_event_receiver</span>,
             <span class="ident">pool_command_sender</span>.<span class="ident">clone</span>(),
@@ -469,7 +467,7 @@
         <span class="ident">bootstrap::Establisher::new</span>(),
         <span class="ident">private_key</span>,
         <span class="ident">clock_compensation</span>,
-        <span class="ident">SETTINGS</span>.<span class="ident">version</span>,
+        <span class="kw-2">*</span><span class="ident"><span class="kw">crate</span>::settings::VERSION</span>,
     )
     .<span class="kw">await</span>
     .<span class="ident">unwrap</span>();
@@ -479,7 +477,7 @@
         <span class="ident">consensus_command_sender</span>.<span class="ident">clone</span>(),
         <span class="ident">network_command_sender</span>.<span class="ident">clone</span>(),
         <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">api</span>,
-        <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">consensus</span>,
+        <span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">config</span>(),
     );
     <span class="kw">let</span> <span class="ident">api_private_handle</span> <span class="op">=</span> <span class="ident">api_private</span>.<span class="ident">serve</span>(<span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">api</span>.<span class="ident">bind_private</span>);
 
@@ -487,10 +485,10 @@
     <span class="kw">let</span> <span class="ident">api_public</span> <span class="op">=</span> <span class="ident">API</span>::<span class="op">&lt;</span><span class="ident">Public</span><span class="op">&gt;</span><span class="ident">::new</span>(
         <span class="ident">consensus_command_sender</span>.<span class="ident">clone</span>(),
         <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">api</span>,
-        <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">consensus</span>,
+        <span class="ident">SETTINGS</span>.<span class="ident">consensus</span>.<span class="ident">config</span>(),
         <span class="ident">pool_command_sender</span>.<span class="ident">clone</span>(),
         <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">network</span>,
-        <span class="ident">SETTINGS</span>.<span class="ident">version</span>,
+        <span class="kw-2">*</span><span class="ident"><span class="kw">crate</span>::settings::VERSION</span>,
         <span class="ident">network_command_sender</span>.<span class="ident">clone</span>(),
         <span class="ident">clock_compensation</span>,
         <span class="ident">node_id</span>,
@@ -640,5 +638,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

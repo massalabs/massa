@@ -57,17 +57,14 @@
 
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">lazy_static</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">address</span>::{<span class="ident">Address</span>, <span class="ident">ADDRESS_SIZE_BYTES</span>};
+
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">address::Address</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">amount::Amount</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">block</span>::{
-    <span class="ident">Block</span>, <span class="ident">BlockHashMap</span>, <span class="ident">BlockHashSet</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockHeaderContent</span>, <span class="ident">BlockId</span>,
-    <span class="ident">BLOCK_ID_SIZE_BYTES</span>,
-};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">block</span>::{<span class="ident">Block</span>, <span class="ident">BlockHashMap</span>, <span class="ident">BlockHashSet</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockHeaderContent</span>, <span class="ident">BlockId</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">composite</span>::{
     <span class="ident">OperationSearchResult</span>, <span class="ident">OperationSearchResultBlockStatus</span>, <span class="ident">OperationSearchResultStatus</span>,
     <span class="ident">StakersCycleProductionStats</span>,
 };
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">config::AlgoConfig</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">context</span>::{
     <span class="ident">get_serialization_context</span>, <span class="ident">init_serialization_context</span>, <span class="ident">with_serialization_context</span>,
     <span class="ident">SerializationContext</span>,
@@ -78,13 +75,16 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::ModelsError</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">operation</span>::{
     <span class="ident">Operation</span>, <span class="ident">OperationContent</span>, <span class="ident">OperationHashMap</span>, <span class="ident">OperationHashSet</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>,
-    <span class="ident">OPERATION_ID_SIZE_BYTES</span>,
 };
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">serialization</span>::{
     <span class="ident">array_from_slice</span>, <span class="ident">u8_from_slice</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeMinBEInt</span>, <span class="ident">DeserializeVarInt</span>,
     <span class="ident">SerializeCompact</span>, <span class="ident">SerializeMinBEInt</span>, <span class="ident">SerializeVarInt</span>,
 };
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">slot</span>::{<span class="ident">Slot</span>, <span class="ident">SLOT_KEY_SIZE</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::Config</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings</span>::{
+    <span class="ident">ADDRESS_SIZE_BYTES</span>, <span class="ident">BLOCK_ID_SIZE_BYTES</span>, <span class="ident">OPERATION_ID_SIZE_BYTES</span>, <span class="ident">SLOT_KEY_SIZE</span>,
+};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">slot::Slot</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">version::Version</span>;
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">address</span>;
@@ -93,7 +93,6 @@
 <span class="kw">mod</span> <span class="ident">block</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">clique</span>;
 <span class="kw">mod</span> <span class="ident">composite</span>;
-<span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">context</span>;
 <span class="kw">mod</span> <span class="ident">endorsement</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
@@ -103,10 +102,11 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">node</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">operation</span>;
 <span class="kw">mod</span> <span class="ident">serialization</span>;
+<span class="kw">mod</span> <span class="ident">settings</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">slot</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">stats</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">timeslots</span>;
 <span class="kw">mod</span> <span class="ident">version</span>;
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

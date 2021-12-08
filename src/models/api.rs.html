@@ -388,7 +388,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::stats</span>::{<span class="ident">ConsensusStats</span>, <span class="ident">NetworkStats</span>, <span class="ident">PoolStats</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">Address</span>, <span class="ident">AlgoConfig</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockHashSet</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementHashSet</span>,
+    <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockHashSet</span>, <span class="ident">BlockId</span>, <span class="ident">Config</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementHashSet</span>,
     <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationHashSet</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>,
 };
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -414,7 +414,7 @@
     <span class="kw">pub</span> <span class="ident">consensus_stats</span>: <span class="ident">ConsensusStats</span>,
     <span class="kw">pub</span> <span class="ident">pool_stats</span>: <span class="ident">PoolStats</span>,
     <span class="kw">pub</span> <span class="ident">network_stats</span>: <span class="ident">NetworkStats</span>,
-    <span class="kw">pub</span> <span class="ident">algo_config</span>: <span class="ident">AlgoConfig</span>,
+    <span class="kw">pub</span> <span class="ident">config</span>: <span class="ident">Config</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">NodeStatus</span> {
@@ -764,5 +764,5 @@
     <span class="kw">pub</span> <span class="ident">max_arguments</span>: <span class="ident">u64</span>,
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

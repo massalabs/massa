@@ -1209,6 +1209,7 @@
 <span id="1208">1208</span>
 <span id="1209">1209</span>
 <span id="1210">1210</span>
+<span id="1211">1211</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../pos.md&quot;</span>)]</span>
@@ -1219,10 +1220,11 @@
 <span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">models::address</span>::{<span class="ident">AddressHashMap</span>, <span class="ident">AddressHashSet</span>};
 <span class="kw">use</span> <span class="ident">models::hhasher::BuildHHasher</span>;
+<span class="kw">use</span> <span class="ident">models::ADDRESS_SIZE_BYTES</span>;
 <span class="kw">use</span> <span class="ident">models</span>::{
     <span class="ident">array_from_slice</span>, <span class="ident">with_serialization_context</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">BlockHashMap</span>, <span class="ident">BlockId</span>,
     <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>, <span class="ident">Operation</span>, <span class="ident">OperationType</span>, <span class="ident">SerializeCompact</span>,
-    <span class="ident">SerializeVarInt</span>, <span class="ident">Slot</span>, <span class="ident">StakersCycleProductionStats</span>, <span class="ident">ADDRESS_SIZE_BYTES</span>,
+    <span class="ident">SerializeVarInt</span>, <span class="ident">Slot</span>, <span class="ident">StakersCycleProductionStats</span>,
 };
 <span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
 <span class="kw">use</span> <span class="ident">num::Integer</span>;
@@ -2420,5 +2422,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

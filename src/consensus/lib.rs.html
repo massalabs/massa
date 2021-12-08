@@ -53,7 +53,6 @@
     <span class="ident">BlockGraphExport</span>, <span class="ident">DiscardReason</span>, <span class="ident">ExportActiveBlock</span>, <span class="ident">ExportBlockStatus</span>, <span class="ident">ExportCompiledBlock</span>,
     <span class="ident">LedgerDataExport</span>, <span class="ident">Status</span>,
 };
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">config::ConsensusConfig</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">consensus_controller</span>::{
     <span class="ident">start_consensus_controller</span>, <span class="ident">ConsensusCommandSender</span>, <span class="ident">ConsensusEventReceiver</span>, <span class="ident">ConsensusManager</span>,
 };
@@ -61,16 +60,17 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::ConsensusError</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ledger::LedgerSubset</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">pos</span>::{<span class="ident">ExportProofOfStake</span>, <span class="ident">RollCounts</span>, <span class="ident">RollUpdate</span>, <span class="ident">RollUpdates</span>, <span class="ident">ThreadCycleState</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings</span>::{<span class="ident">ConsensusConfig</span>, <span class="ident">ConsensusSettings</span>};
 
 <span class="kw">mod</span> <span class="ident">block_graph</span>;
-<span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">consensus_controller</span>;
 <span class="kw">mod</span> <span class="ident">consensus_worker</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">ledger</span>;
 <span class="kw">mod</span> <span class="ident">pos</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">settings</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span>;
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

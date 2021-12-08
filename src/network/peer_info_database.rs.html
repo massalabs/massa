@@ -1742,42 +1742,10 @@
 <span id="1741">1741</span>
 <span id="1742">1742</span>
 <span id="1743">1743</span>
-<span id="1744">1744</span>
-<span id="1745">1745</span>
-<span id="1746">1746</span>
-<span id="1747">1747</span>
-<span id="1748">1748</span>
-<span id="1749">1749</span>
-<span id="1750">1750</span>
-<span id="1751">1751</span>
-<span id="1752">1752</span>
-<span id="1753">1753</span>
-<span id="1754">1754</span>
-<span id="1755">1755</span>
-<span id="1756">1756</span>
-<span id="1757">1757</span>
-<span id="1758">1758</span>
-<span id="1759">1759</span>
-<span id="1760">1760</span>
-<span id="1761">1761</span>
-<span id="1762">1762</span>
-<span id="1763">1763</span>
-<span id="1764">1764</span>
-<span id="1765">1765</span>
-<span id="1766">1766</span>
-<span id="1767">1767</span>
-<span id="1768">1768</span>
-<span id="1769">1769</span>
-<span id="1770">1770</span>
-<span id="1771">1771</span>
-<span id="1772">1772</span>
-<span id="1773">1773</span>
-<span id="1774">1774</span>
-<span id="1775">1775</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::config::NetworkConfig</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::{<span class="ident">NetworkConnectionErrorType</span>, <span class="ident">NetworkError</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::NetworkSettings</span>;
 <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
 <span class="kw">use</span> <span class="ident">logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -1836,7 +1804,7 @@
 <span class="doccomment">/// Contains all information about every peers we know about.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PeerInfoDatabase</span> {
     <span class="doccomment">/// Network configuration.</span>
-    <span class="ident">cfg</span>: <span class="ident">NetworkConfig</span>,
+    <span class="ident">network_settings</span>: <span class="ident">NetworkSettings</span>,
     <span class="doccomment">/// Maps an ip address to peer&#39;s info</span>
     <span class="kw">pub</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Handle on the task managing the dump</span>
@@ -1899,7 +1867,7 @@
 <span class="doccomment">/// peers : peers to clean up</span>
 <span class="doccomment">/// opt_new_peers : optional peers to add to the database</span>
 <span class="kw">fn</span> <span class="ident">cleanup_peers</span>(
-    <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">NetworkConfig</span>,
+    <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">NetworkSettings</span>,
     <span class="ident">peers</span>: <span class="kw-2">&amp;mut</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span>,
     <span class="ident">opt_new_peers</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
@@ -1928,7 +1896,7 @@
                 }
                 <span class="bool-val">true</span>
             })
-            .<span class="ident">take</span>(<span class="ident">cfg</span>.<span class="ident">max_advertise_length</span> <span class="kw">as</span> <span class="ident">usize</span>)
+            .<span class="ident">take</span>(<span class="ident"><span class="kw">crate</span>::settings::MAX_ADVERTISE_LENGTH</span> <span class="kw">as</span> <span class="ident">usize</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">ip</span><span class="op">|</span> <span class="ident">PeerInfo</span> {
                 <span class="ident">ip</span>,
                 <span class="ident">banned</span>: <span class="bool-val">false</span>,
@@ -2000,7 +1968,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Argument</span>
     <span class="doccomment">/// * cfg : network configuration</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">NetworkConfig</span>, <span class="ident">clock_compensation</span>: <span class="ident">i64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">NetworkSettings</span>, <span class="ident">clock_compensation</span>: <span class="ident">i64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="comment">// wakeup interval</span>
         <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">wakeup_interval</span>;
 
@@ -2048,7 +2016,7 @@
 
         <span class="comment">// return struct</span>
         <span class="prelude-val">Ok</span>(<span class="ident">PeerInfoDatabase</span> {
-            <span class="ident">cfg</span>: <span class="ident">cfg</span>.<span class="ident">clone</span>(),
+            <span class="ident">network_settings</span>: <span class="ident">cfg</span>.<span class="ident">clone</span>(),
             <span class="ident">peers</span>,
             <span class="ident">saver_join_handle</span>,
             <span class="ident">saver_watch_tx</span>,
@@ -2066,11 +2034,11 @@
     <span class="doccomment">/// Performs multiple cleanup tasks e.g. remove old banned peers</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="ident">cleanup_peers</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cfg</span>,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
             <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
             <span class="prelude-val">None</span>,
             <span class="self">self</span>.<span class="ident">clock_compensation</span>,
-            <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">ban_timeout</span>,
+            <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
         )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
@@ -2095,11 +2063,11 @@
             }
         }
         <span class="ident">cleanup_peers</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cfg</span>,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
             <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
             <span class="prelude-val">None</span>,
             <span class="self">self</span>.<span class="ident">clock_compensation</span>,
-            <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">ban_timeout</span>,
+            <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
         )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
@@ -2109,7 +2077,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="ident">drop</span>(<span class="self">self</span>.<span class="ident">saver_watch_tx</span>);
         <span class="self">self</span>.<span class="ident">saver_join_handle</span>.<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">dump_peers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">peers</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">peers_file</span>).<span class="kw">await</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">dump_peers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">peers</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">peers_file</span>).<span class="kw">await</span> {
             <span class="macro">warn!</span>(<span class="string">&quot;could not dump peers to file: {}&quot;</span>, <span class="ident">e</span>);
         }
         <span class="prelude-val">Ok</span>(())
@@ -2120,21 +2088,21 @@
     <span class="comment">// returns (count for bootstrap, count for non-bootstrap)</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_available_out_connection_attempts</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">usize</span>, <span class="ident">usize</span>) {
         <span class="kw">let</span> <span class="ident">bootstrap_count</span> <span class="op">=</span> <span class="ident">std::cmp::min</span>(
-            <span class="self">self</span>.<span class="ident">cfg</span>
+            <span class="self">self</span>.<span class="ident">network_settings</span>
                 .<span class="ident">target_bootstrap_connections</span>
                 .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_out_bootstrap_connection_attempts</span>)
                 .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_bootstrap_connections</span>),
-            <span class="self">self</span>.<span class="ident">cfg</span>
+            <span class="self">self</span>.<span class="ident">network_settings</span>
                 .<span class="ident">max_out_bootstrap_connection_attempts</span>
                 .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_out_bootstrap_connection_attempts</span>),
         );
 
         <span class="kw">let</span> <span class="ident">nonbootstrap_count</span> <span class="op">=</span> <span class="ident">std::cmp::min</span>(
-            <span class="self">self</span>.<span class="ident">cfg</span>
+            <span class="self">self</span>.<span class="ident">network_settings</span>
                 .<span class="ident">target_out_nonbootstrap_connections</span>
                 .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connection_attempts</span>)
                 .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connections</span>),
-            <span class="self">self</span>.<span class="ident">cfg</span>
+            <span class="self">self</span>.<span class="ident">network_settings</span>
                 .<span class="ident">max_out_nonbootstrap_connection_attempts</span>
                 .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connection_attempts</span>),
         );
@@ -2241,12 +2209,12 @@
         <span class="ident">sorted_peers</span>.<span class="ident">sort_unstable_by_key</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">p</span><span class="op">|</span> (<span class="ident">std::cmp::Reverse</span>(<span class="ident">p</span>.<span class="ident">last_alive</span>), <span class="ident">p</span>.<span class="ident">last_failure</span>));
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sorted_ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">sorted_peers</span>
             .<span class="ident">into_iter</span>()
-            .<span class="ident">take</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_advertise_length</span> <span class="kw">as</span> <span class="ident">usize</span>)
+            .<span class="ident">take</span>(<span class="ident"><span class="kw">crate</span>::settings::MAX_ADVERTISE_LENGTH</span> <span class="kw">as</span> <span class="ident">usize</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">ip</span>)
             .<span class="ident">collect</span>();
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">our_ip</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">routable_ip</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">our_ip</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">routable_ip</span> {
             <span class="ident">sorted_ips</span>.<span class="ident">insert</span>(<span class="number">0</span>, <span class="ident">our_ip</span>);
-            <span class="ident">sorted_ips</span>.<span class="ident">truncate</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_advertise_length</span> <span class="kw">as</span> <span class="ident">usize</span>);
+            <span class="ident">sorted_ips</span>.<span class="ident">truncate</span>(<span class="ident"><span class="kw">crate</span>::settings::MAX_ADVERTISE_LENGTH</span> <span class="kw">as</span> <span class="ident">usize</span>);
         }
         <span class="ident">sorted_ips</span>
     }
@@ -2296,11 +2264,11 @@
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
         }
         <span class="ident">cleanup_peers</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cfg</span>,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
             <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
             <span class="prelude-val">Some</span>(<span class="ident">new_peers</span>),
             <span class="self">self</span>.<span class="ident">clock_compensation</span>,
-            <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">ban_timeout</span>,
+            <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
         )<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">request_dump</span>()
     }
@@ -2362,11 +2330,11 @@
             <span class="ident">peer</span>.<span class="ident">banned</span> <span class="op">=</span> <span class="bool-val">true</span>;
             <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span> {
                 <span class="ident">cleanup_peers</span>(
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cfg</span>,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
                     <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
                     <span class="prelude-val">None</span>,
                     <span class="self">self</span>.<span class="ident">clock_compensation</span>,
-                    <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">ban_timeout</span>,
+                    <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
                 )<span class="question-mark">?</span>;
             }
         }
@@ -2403,11 +2371,11 @@
 
         <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span> {
             <span class="ident">cleanup_peers</span>(
-                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cfg</span>,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
                 <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
                 <span class="prelude-val">None</span>,
                 <span class="self">self</span>.<span class="ident">clock_compensation</span>,
-                <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">ban_timeout</span>,
+                <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
             )<span class="question-mark">?</span>;
             <span class="self">self</span>.<span class="ident">request_dump</span>()
         } <span class="kw">else</span> {
@@ -2445,11 +2413,11 @@
         }
         <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span> {
             <span class="ident">cleanup_peers</span>(
-                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cfg</span>,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
                 <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
                 <span class="prelude-val">None</span>,
                 <span class="self">self</span>.<span class="ident">clock_compensation</span>,
-                <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">ban_timeout</span>,
+                <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
             )<span class="question-mark">?</span>;
             <span class="self">self</span>.<span class="ident">request_dump</span>()
         } <span class="kw">else</span> {
@@ -2486,10 +2454,11 @@
             ));
         }
         <span class="kw">if</span> (<span class="ident">peer</span>.<span class="ident">bootstrap</span>
-            <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_bootstrap_connections</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">target_bootstrap_connections</span>)
+            <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_bootstrap_connections</span>
+                <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">target_bootstrap_connections</span>)
             <span class="op">|</span><span class="op">|</span> (<span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span>
                 <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connections</span>
-                    <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">target_out_nonbootstrap_connections</span>)
+                    <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">target_out_nonbootstrap_connections</span>)
         {
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
         }
@@ -2504,11 +2473,11 @@
             <span class="ident">peer</span>.<span class="ident">last_failure</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">UTime::now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>);
             <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span> {
                 <span class="ident">cleanup_peers</span>(
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cfg</span>,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
                     <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
                     <span class="prelude-val">None</span>,
                     <span class="self">self</span>.<span class="ident">clock_compensation</span>,
-                    <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">ban_timeout</span>,
+                    <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
                 )<span class="question-mark">?</span>;
             }
             <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
@@ -2553,11 +2522,11 @@
         <span class="ident">peer</span>.<span class="ident">last_failure</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">UTime::now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>);
         <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span> {
             <span class="ident">cleanup_peers</span>(
-                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cfg</span>,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
                 <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
                 <span class="prelude-val">None</span>,
                 <span class="self">self</span>.<span class="ident">clock_compensation</span>,
-                <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">ban_timeout</span>,
+                <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
             )<span class="question-mark">?</span>;
         }
         <span class="self">self</span>.<span class="ident">request_dump</span>()
@@ -2573,10 +2542,10 @@
     <span class="doccomment">/// * ip : ip address of the considered peer.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_new_in_connection</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ip</span>: <span class="kw-2">&amp;</span><span class="ident">IpAddr</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="comment">// try to create a new input connection, return false if no slots</span>
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">ip</span>.<span class="ident">is_global</span>() <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_in_connections_per_ip</span> <span class="op">==</span> <span class="number">0</span> {
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">ip</span>.<span class="ident">is_global</span>() <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">max_in_connections_per_ip</span> <span class="op">==</span> <span class="number">0</span> {
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
         }
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">our_ip</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">routable_ip</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">our_ip</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">routable_ip</span> {
             <span class="comment">// avoid our own IP</span>
             <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">ip</span> <span class="op">==</span> <span class="ident">our_ip</span> {
                 <span class="macro">warn!</span>(<span class="string">&quot;incoming connection from our own IP&quot;</span>);
@@ -2588,10 +2557,11 @@
             <span class="ident">hash_map::Entry::Occupied</span>(<span class="kw-2">mut</span> <span class="ident">occ</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">occ</span>.<span class="ident">get_mut</span>();
                 <span class="kw">if</span> (<span class="ident">peer</span>.<span class="ident">bootstrap</span>
-                    <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_bootstrap_connections</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">target_bootstrap_connections</span>)
+                    <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_bootstrap_connections</span>
+                        <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">target_bootstrap_connections</span>)
                     <span class="op">|</span><span class="op">|</span> (<span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span>
                         <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_in_nonbootstrap_connections</span>
-                            <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_in_nonbootstrap_connections</span>)
+                            <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">max_in_nonbootstrap_connections</span>)
                 {
                     <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
                 }
@@ -2601,7 +2571,7 @@
                     <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
                     <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
                 }
-                <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">active_in_connections</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_in_connections_per_ip</span> {
+                <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">active_in_connections</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">max_in_connections_per_ip</span> {
                     <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
                     <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
                 }
@@ -2625,11 +2595,11 @@
                     <span class="ident">active_in_connections</span>: <span class="number">0</span>,
                 };
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active_in_nonbootstrap_connections</span>
-                    <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_in_nonbootstrap_connections</span>
+                    <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">max_in_nonbootstrap_connections</span>
                 {
                     <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
                 }
-                <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">active_in_connections</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_in_connections_per_ip</span> {
+                <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">active_in_connections</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">max_in_connections_per_ip</span> {
                     <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
                     <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
                 }
@@ -2646,15 +2616,14 @@
 <span class="comment">//to start alone RUST_BACKTRACE=1 cargo test peer_info_database -- --nocapture --test-threads=1</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::<span class="kw">super</span>::config::NetworkConfig</span>;
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_try_new_in_connection_in_connection_closed</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_config</span> <span class="op">=</span> <span class="ident">example_network_config</span>();
-        <span class="ident">network_config</span>.<span class="ident">target_out_nonbootstrap_connections</span> <span class="op">=</span> <span class="number">5</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
+        <span class="ident">network_settings</span>.<span class="ident">target_out_nonbootstrap_connections</span> <span class="op">=</span> <span class="number">5</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
         <span class="comment">// add peers</span>
@@ -2668,7 +2637,7 @@
         <span class="ident">connected_peers1</span>.<span class="ident">banned</span> <span class="op">=</span> <span class="bool-val">true</span>;
         <span class="ident">peers</span>.<span class="ident">insert</span>(<span class="ident">connected_peers1</span>.<span class="ident">ip</span>, <span class="ident">connected_peers1</span>);
 
-        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_config</span>.<span class="ident">wakeup_interval</span>;
+        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">wakeup_interval</span>;
         <span class="kw">let</span> (<span class="ident">saver_watch_tx</span>, <span class="kw-2">mut</span> <span class="ident">saver_watch_rx</span>) <span class="op">=</span> <span class="ident">watch::channel</span>(<span class="ident">peers</span>.<span class="ident">clone</span>());
 
         <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
@@ -2681,7 +2650,7 @@
         });
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase</span> {
-            <span class="ident">cfg</span>: <span class="ident">network_config</span>,
+            <span class="ident">network_settings</span>,
             <span class="ident">peers</span>,
             <span class="ident">saver_join_handle</span>,
             <span class="ident">saver_watch_tx</span>,
@@ -2761,8 +2730,8 @@
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_out_connection_attempt_failed</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_config</span> <span class="op">=</span> <span class="ident">example_network_config</span>();
-        <span class="ident">network_config</span>.<span class="ident">target_out_nonbootstrap_connections</span> <span class="op">=</span> <span class="number">5</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
+        <span class="ident">network_settings</span>.<span class="ident">target_out_nonbootstrap_connections</span> <span class="op">=</span> <span class="number">5</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
         <span class="comment">// add peers</span>
@@ -2776,7 +2745,7 @@
         <span class="ident">connected_peers1</span>.<span class="ident">banned</span> <span class="op">=</span> <span class="bool-val">true</span>;
         <span class="ident">peers</span>.<span class="ident">insert</span>(<span class="ident">connected_peers1</span>.<span class="ident">ip</span>, <span class="ident">connected_peers1</span>);
 
-        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_config</span>.<span class="ident">wakeup_interval</span>;
+        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">wakeup_interval</span>;
         <span class="kw">let</span> (<span class="ident">saver_watch_tx</span>, <span class="kw-2">mut</span> <span class="ident">saver_watch_rx</span>) <span class="op">=</span> <span class="ident">watch::channel</span>(<span class="ident">peers</span>.<span class="ident">clone</span>());
 
         <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
@@ -2789,7 +2758,7 @@
         });
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase</span> {
-            <span class="ident">cfg</span>: <span class="ident">network_config</span>,
+            <span class="ident">network_settings</span>,
             <span class="ident">peers</span>,
             <span class="ident">saver_join_handle</span>,
             <span class="ident">saver_watch_tx</span>,
@@ -2862,8 +2831,8 @@
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_try_out_connection_attempt_success</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_config</span> <span class="op">=</span> <span class="ident">example_network_config</span>();
-        <span class="ident">network_config</span>.<span class="ident">target_out_nonbootstrap_connections</span> <span class="op">=</span> <span class="number">5</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
+        <span class="ident">network_settings</span>.<span class="ident">target_out_nonbootstrap_connections</span> <span class="op">=</span> <span class="number">5</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
         <span class="comment">// add peers</span>
@@ -2877,7 +2846,7 @@
         <span class="ident">connected_peers1</span>.<span class="ident">banned</span> <span class="op">=</span> <span class="bool-val">true</span>;
         <span class="ident">peers</span>.<span class="ident">insert</span>(<span class="ident">connected_peers1</span>.<span class="ident">ip</span>, <span class="ident">connected_peers1</span>);
 
-        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_config</span>.<span class="ident">wakeup_interval</span>;
+        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">wakeup_interval</span>;
         <span class="kw">let</span> (<span class="ident">saver_watch_tx</span>, <span class="kw-2">mut</span> <span class="ident">saver_watch_rx</span>) <span class="op">=</span> <span class="ident">watch::channel</span>(<span class="ident">peers</span>.<span class="ident">clone</span>());
 
         <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
@@ -2890,7 +2859,7 @@
         });
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase</span> {
-            <span class="ident">cfg</span>: <span class="ident">network_config</span>,
+            <span class="ident">network_settings</span>,
             <span class="ident">peers</span>,
             <span class="ident">saver_join_handle</span>,
             <span class="ident">saver_watch_tx</span>,
@@ -2965,8 +2934,8 @@
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_new_out_connection_closed</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_config</span> <span class="op">=</span> <span class="ident">example_network_config</span>();
-        <span class="ident">network_config</span>.<span class="ident">max_out_nonbootstrap_connection_attempts</span> <span class="op">=</span> <span class="number">5</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
+        <span class="ident">network_settings</span>.<span class="ident">max_out_nonbootstrap_connection_attempts</span> <span class="op">=</span> <span class="number">5</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
         <span class="comment">// add peers</span>
@@ -2974,7 +2943,7 @@
         <span class="kw">let</span> <span class="ident">connected_peers1</span> <span class="op">=</span>
             <span class="ident">default_peer_info_not_connected</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">11</span>)));
         <span class="ident">peers</span>.<span class="ident">insert</span>(<span class="ident">connected_peers1</span>.<span class="ident">ip</span>, <span class="ident">connected_peers1</span>);
-        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_config</span>.<span class="ident">wakeup_interval</span>;
+        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">wakeup_interval</span>;
         <span class="kw">let</span> (<span class="ident">saver_watch_tx</span>, <span class="kw-2">mut</span> <span class="ident">saver_watch_rx</span>) <span class="op">=</span> <span class="ident">watch::channel</span>(<span class="ident">peers</span>.<span class="ident">clone</span>());
         <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
             <span class="kw">loop</span> {
@@ -2986,7 +2955,7 @@
         });
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase</span> {
-            <span class="ident">cfg</span>: <span class="ident">network_config</span>,
+            <span class="ident">network_settings</span>,
             <span class="ident">peers</span>,
             <span class="ident">saver_join_handle</span>,
             <span class="ident">saver_watch_tx</span>,
@@ -3052,8 +3021,8 @@
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_new_out_connection_attempt</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_config</span> <span class="op">=</span> <span class="ident">example_network_config</span>();
-        <span class="ident">network_config</span>.<span class="ident">max_out_nonbootstrap_connection_attempts</span> <span class="op">=</span> <span class="number">5</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
+        <span class="ident">network_settings</span>.<span class="ident">max_out_nonbootstrap_connection_attempts</span> <span class="op">=</span> <span class="number">5</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
         <span class="comment">// add peers</span>
@@ -3061,12 +3030,12 @@
         <span class="kw">let</span> <span class="ident">connected_peers1</span> <span class="op">=</span>
             <span class="ident">default_peer_info_not_connected</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">11</span>)));
         <span class="ident">peers</span>.<span class="ident">insert</span>(<span class="ident">connected_peers1</span>.<span class="ident">ip</span>, <span class="ident">connected_peers1</span>);
-        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_config</span>.<span class="ident">wakeup_interval</span>;
+        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">wakeup_interval</span>;
         <span class="kw">let</span> (<span class="ident">saver_watch_tx</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">watch::channel</span>(<span class="ident">peers</span>.<span class="ident">clone</span>());
         <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {});
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase</span> {
-            <span class="ident">cfg</span>: <span class="ident">network_config</span>,
+            <span class="ident">network_settings</span>,
             <span class="ident">peers</span>,
             <span class="ident">saver_join_handle</span>,
             <span class="ident">saver_watch_tx</span>,
@@ -3118,7 +3087,7 @@
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_get_advertisable_peer_ips</span>() {
-        <span class="kw">let</span> <span class="ident">network_config</span> <span class="op">=</span> <span class="ident">example_network_config</span>();
+        <span class="kw">let</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
         <span class="comment">// add peers</span>
@@ -3159,12 +3128,12 @@
             <span class="prelude-val">Some</span>(<span class="ident">UTime::now</span>(<span class="number">0</span>).<span class="ident">unwrap</span>().<span class="ident">checked_sub</span>(<span class="number">2000</span>.<span class="ident">into</span>()).<span class="ident">unwrap</span>());
         <span class="ident">peers</span>.<span class="ident">insert</span>(<span class="ident">connected_peers2</span>.<span class="ident">ip</span>, <span class="ident">connected_peers2</span>);
 
-        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_config</span>.<span class="ident">wakeup_interval</span>;
+        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">wakeup_interval</span>;
         <span class="kw">let</span> (<span class="ident">saver_watch_tx</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">watch::channel</span>(<span class="ident">peers</span>.<span class="ident">clone</span>());
         <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {});
 
         <span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase</span> {
-            <span class="ident">cfg</span>: <span class="ident">network_config</span>,
+            <span class="ident">network_settings</span>,
             <span class="ident">peers</span>,
             <span class="ident">saver_join_handle</span>,
             <span class="ident">saver_watch_tx</span>,
@@ -3207,7 +3176,7 @@
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_get_out_connection_candidate_ips</span>() {
-        <span class="kw">let</span> <span class="ident">network_config</span> <span class="op">=</span> <span class="ident">example_network_config</span>();
+        <span class="kw">let</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
         <span class="comment">// add peers</span>
@@ -3269,12 +3238,12 @@
         <span class="ident">connected_peers1</span>.<span class="ident">advertised</span> <span class="op">=</span> <span class="bool-val">false</span>;
         <span class="ident">peers</span>.<span class="ident">insert</span>(<span class="ident">connected_peers1</span>.<span class="ident">ip</span>, <span class="ident">connected_peers1</span>);
 
-        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_config</span>.<span class="ident">wakeup_interval</span>;
+        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">wakeup_interval</span>;
         <span class="kw">let</span> (<span class="ident">saver_watch_tx</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">watch::channel</span>(<span class="ident">peers</span>.<span class="ident">clone</span>());
         <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {});
 
         <span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase</span> {
-            <span class="ident">cfg</span>: <span class="ident">network_config</span>,
+            <span class="ident">network_settings</span>,
             <span class="ident">peers</span>,
             <span class="ident">saver_join_handle</span>,
             <span class="ident">saver_watch_tx</span>,
@@ -3309,35 +3278,21 @@
         );
     }
 
-    <span class="kw">fn</span> <span class="ident">default_peer_info_not_connected</span>(<span class="ident">ip</span>: <span class="ident">IpAddr</span>) -&gt; <span class="ident">PeerInfo</span> {
-        <span class="ident">PeerInfo</span> {
-            <span class="ident">ip</span>,
-            <span class="ident">banned</span>: <span class="bool-val">false</span>,
-            <span class="ident">bootstrap</span>: <span class="bool-val">false</span>,
-            <span class="ident">last_alive</span>: <span class="prelude-val">None</span>,
-            <span class="ident">last_failure</span>: <span class="prelude-val">None</span>,
-            <span class="ident">advertised</span>: <span class="bool-val">true</span>,
-            <span class="ident">active_out_connection_attempts</span>: <span class="number">0</span>,
-            <span class="ident">active_out_connections</span>: <span class="number">0</span>,
-            <span class="ident">active_in_connections</span>: <span class="number">0</span>,
-        }
-    }
-
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_cleanup_peers</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_config</span> <span class="op">=</span> <span class="ident">example_network_config</span>();
-        <span class="ident">network_config</span>.<span class="ident">max_banned_peers</span> <span class="op">=</span> <span class="number">1</span>;
-        <span class="ident">network_config</span>.<span class="ident">max_idle_peers</span> <span class="op">=</span> <span class="number">1</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
+        <span class="ident">network_settings</span>.<span class="ident">max_banned_peers</span> <span class="op">=</span> <span class="number">1</span>;
+        <span class="ident">network_settings</span>.<span class="ident">max_idle_peers</span> <span class="op">=</span> <span class="number">1</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
         <span class="comment">// Call with empty db.</span>
         <span class="ident">cleanup_peers</span>(
-            <span class="kw-2">&amp;</span><span class="ident">network_config</span>,
+            <span class="kw-2">&amp;</span><span class="ident">network_settings</span>,
             <span class="kw-2">&amp;mut</span> <span class="ident">peers</span>,
             <span class="prelude-val">None</span>,
             <span class="number">0</span>,
-            <span class="ident">network_config</span>.<span class="ident">ban_timeout</span>,
+            <span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
         )
         .<span class="ident">unwrap</span>();
         <span class="macro">assert!</span>(<span class="ident">peers</span>.<span class="ident">is_empty</span>());
@@ -3407,11 +3362,11 @@
         <span class="ident">peers</span>.<span class="ident">insert</span>(<span class="ident">banned_host2</span>.<span class="ident">ip</span>, <span class="ident">banned_host2</span>);
 
         <span class="ident">cleanup_peers</span>(
-            <span class="kw-2">&amp;</span><span class="ident">network_config</span>,
+            <span class="kw-2">&amp;</span><span class="ident">network_settings</span>,
             <span class="kw-2">&amp;mut</span> <span class="ident">peers</span>,
             <span class="prelude-val">None</span>,
             <span class="number">0</span>,
-            <span class="ident">network_config</span>.<span class="ident">ban_timeout</span>,
+            <span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
         )
         .<span class="ident">unwrap</span>();
 
@@ -3434,15 +3389,14 @@
             <span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>)),
         ];
 
-        <span class="ident">network_config</span>.<span class="ident">max_advertise_length</span> <span class="op">=</span> <span class="number">1</span>;
-        <span class="ident">network_config</span>.<span class="ident">max_idle_peers</span> <span class="op">=</span> <span class="number">5</span>;
+        <span class="ident">network_settings</span>.<span class="ident">max_idle_peers</span> <span class="op">=</span> <span class="number">5</span>;
 
         <span class="ident">cleanup_peers</span>(
-            <span class="kw-2">&amp;</span><span class="ident">network_config</span>,
+            <span class="kw-2">&amp;</span><span class="ident">network_settings</span>,
             <span class="kw-2">&amp;mut</span> <span class="ident">peers</span>,
             <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">advertised</span>),
             <span class="number">0</span>,
-            <span class="ident">network_config</span>.<span class="ident">ban_timeout</span>,
+            <span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
         )
         .<span class="ident">unwrap</span>();
 
@@ -3452,10 +3406,11 @@
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test</span>() {
-        <span class="kw">let</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">peer_database_example</span>(<span class="number">5</span>);
+        <span class="kw">let</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase::from</span>(<span class="number">5</span>);
         <span class="kw">let</span> <span class="ident">p</span> <span class="op">=</span> <span class="ident">peer_db</span>.<span class="ident">peers</span>.<span class="ident">values</span>().<span class="ident">next</span>().<span class="ident">unwrap</span>();
         <span class="macro">assert_eq!</span>(<span class="ident">p</span>.<span class="ident">is_active</span>(), <span class="bool-val">false</span>);
     }
+
     <span class="kw">fn</span> <span class="ident">default_peer_info_connected</span>(<span class="ident">ip</span>: <span class="ident">IpAddr</span>) -&gt; <span class="ident">PeerInfo</span> {
         <span class="ident">PeerInfo</span> {
             <span class="ident">ip</span>,
@@ -3470,85 +3425,66 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">example_network_config</span>() -&gt; <span class="ident">NetworkConfig</span> {
-        <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">Ipv4Addr</span>, <span class="ident">SocketAddr</span>};
-
-        <span class="ident">NetworkConfig</span> {
-            <span class="ident">bind</span>: <span class="ident">SocketAddr::new</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">Ipv4Addr::new</span>(<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>)), <span class="number">8080</span>),
-            <span class="ident">routable_ip</span>: <span class="prelude-val">Some</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">Ipv4Addr::new</span>(<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>))),
-            <span class="ident">protocol_port</span>: <span class="number">0</span>,
-            <span class="ident">connect_timeout</span>: <span class="ident">UTime::from</span>(<span class="number">180_000</span>),
-            <span class="ident">wakeup_interval</span>: <span class="ident">UTime::from</span>(<span class="number">10_000</span>),
-            <span class="ident">peers_file</span>: <span class="ident">std::path::PathBuf::new</span>(),
-            <span class="ident">target_bootstrap_connections</span>: <span class="number">1</span>,
-            <span class="ident">max_out_bootstrap_connection_attempts</span>: <span class="number">1</span>,
-            <span class="ident">target_out_nonbootstrap_connections</span>: <span class="number">10</span>,
-            <span class="ident">max_in_nonbootstrap_connections</span>: <span class="number">5</span>,
-            <span class="ident">max_in_connections_per_ip</span>: <span class="number">2</span>,
-            <span class="ident">max_out_nonbootstrap_connection_attempts</span>: <span class="number">15</span>,
-            <span class="ident">max_idle_peers</span>: <span class="number">3</span>,
-            <span class="ident">max_banned_peers</span>: <span class="number">3</span>,
-            <span class="ident">max_advertise_length</span>: <span class="number">5</span>,
-            <span class="ident">peers_file_dump_interval</span>: <span class="ident">UTime::from</span>(<span class="number">10_000</span>),
-            <span class="ident">max_message_size</span>: <span class="number">3</span> <span class="op">*</span> <span class="number">10241024</span>,
-            <span class="ident">message_timeout</span>: <span class="ident">UTime::from</span>(<span class="number">5000u64</span>),
-            <span class="ident">ask_peer_list_interval</span>: <span class="ident">UTime::from</span>(<span class="number">50000u64</span>),
-            <span class="ident">private_key_file</span>: <span class="ident">std::path::PathBuf::new</span>(),
-            <span class="ident">max_ask_blocks_per_message</span>: <span class="number">10</span>,
-            <span class="ident">max_operations_per_message</span>: <span class="number">1024</span>,
-            <span class="ident">max_endorsements_per_message</span>: <span class="number">1024</span>,
-            <span class="ident">max_send_wait</span>: <span class="ident">UTime::from</span>(<span class="number">100</span>),
-            <span class="ident">ban_timeout</span>: <span class="ident">UTime::from</span>(<span class="number">100_000_000</span>),
+    <span class="kw">fn</span> <span class="ident">default_peer_info_not_connected</span>(<span class="ident">ip</span>: <span class="ident">IpAddr</span>) -&gt; <span class="ident">PeerInfo</span> {
+        <span class="ident">PeerInfo</span> {
+            <span class="ident">ip</span>,
+            <span class="ident">banned</span>: <span class="bool-val">false</span>,
+            <span class="ident">bootstrap</span>: <span class="bool-val">false</span>,
+            <span class="ident">last_alive</span>: <span class="prelude-val">None</span>,
+            <span class="ident">last_failure</span>: <span class="prelude-val">None</span>,
+            <span class="ident">advertised</span>: <span class="bool-val">true</span>,
+            <span class="ident">active_out_connection_attempts</span>: <span class="number">0</span>,
+            <span class="ident">active_out_connections</span>: <span class="number">0</span>,
+            <span class="ident">active_in_connections</span>: <span class="number">0</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">peer_database_example</span>(<span class="ident">peers_number</span>: <span class="ident">u32</span>) -&gt; <span class="ident">PeerInfoDatabase</span> {
-        <span class="kw">use</span> <span class="ident">rand::Rng</span>;
-
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">rand::thread_rng</span>();
-
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">peers_number</span> {
-            <span class="kw">let</span> <span class="ident">ip</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="ident">rng</span>.<span class="ident">gen</span>(), <span class="ident">rng</span>.<span class="ident">gen</span>(), <span class="ident">rng</span>.<span class="ident">gen</span>(), <span class="ident">rng</span>.<span class="ident">gen</span>()];
-            <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">PeerInfo</span> {
-                <span class="ident">ip</span>: <span class="ident">IpAddr::from</span>(<span class="ident">ip</span>),
-                <span class="ident">banned</span>: (<span class="ident">ip</span>[<span class="number">0</span>] <span class="op">%</span> <span class="number">5</span>) <span class="op">==</span> <span class="number">0</span>,
-                <span class="ident">bootstrap</span>: (<span class="ident">ip</span>[<span class="number">1</span>] <span class="op">%</span> <span class="number">2</span>) <span class="op">==</span> <span class="number">0</span>,
-                <span class="ident">last_alive</span>: <span class="kw">match</span> <span class="ident">i</span> <span class="op">%</span> <span class="number">4</span> {
-                    <span class="number">0</span> =&gt; <span class="prelude-val">None</span>,
-                    <span class="kw">_</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">UTime::now</span>(<span class="number">0</span>).<span class="ident">unwrap</span>().<span class="ident">checked_sub</span>(<span class="number">50000</span>.<span class="ident">into</span>()).<span class="ident">unwrap</span>()),
-                },
-                <span class="ident">last_failure</span>: <span class="kw">match</span> <span class="ident">i</span> <span class="op">%</span> <span class="number">5</span> {
-                    <span class="number">0</span> =&gt; <span class="prelude-val">None</span>,
-                    <span class="kw">_</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">UTime::now</span>(<span class="number">0</span>).<span class="ident">unwrap</span>().<span class="ident">checked_sub</span>(<span class="number">60000</span>.<span class="ident">into</span>()).<span class="ident">unwrap</span>()),
-                },
-                <span class="ident">advertised</span>: (<span class="ident">ip</span>[<span class="number">2</span>] <span class="op">%</span> <span class="number">2</span>) <span class="op">==</span> <span class="number">0</span>,
-                <span class="ident">active_out_connection_attempts</span>: <span class="number">0</span>,
-                <span class="ident">active_out_connections</span>: <span class="number">0</span>,
-                <span class="ident">active_in_connections</span>: <span class="number">0</span>,
-            };
-            <span class="ident">peers</span>.<span class="ident">insert</span>(<span class="ident">peer</span>.<span class="ident">ip</span>, <span class="ident">peer</span>);
-        }
-        <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="ident">example_network_config</span>();
-        <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">wakeup_interval</span>;
-
-        <span class="kw">let</span> (<span class="ident">saver_watch_tx</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">watch::channel</span>(<span class="ident">peers</span>.<span class="ident">clone</span>());
-        <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {});
-        <span class="ident">PeerInfoDatabase</span> {
-            <span class="ident">cfg</span>,
-            <span class="ident">peers</span>,
-            <span class="ident">saver_join_handle</span>,
-            <span class="ident">saver_watch_tx</span>,
-            <span class="ident">active_out_bootstrap_connection_attempts</span>: <span class="number">0</span>,
-            <span class="ident">active_bootstrap_connections</span>: <span class="number">0</span>,
-            <span class="ident">active_out_nonbootstrap_connection_attempts</span>: <span class="number">0</span>,
-            <span class="ident">active_out_nonbootstrap_connections</span>: <span class="number">0</span>,
-            <span class="ident">active_in_nonbootstrap_connections</span>: <span class="number">0</span>,
-            <span class="ident">wakeup_interval</span>,
-            <span class="ident">clock_compensation</span>: <span class="number">0</span>,
+    <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">PeerInfoDatabase</span> {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">peers_number</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
+            <span class="kw">use</span> <span class="ident">rand::Rng</span>;
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">rand::thread_rng</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
+            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">peers_number</span> {
+                <span class="kw">let</span> <span class="ident">ip</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="ident">rng</span>.<span class="ident">gen</span>(), <span class="ident">rng</span>.<span class="ident">gen</span>(), <span class="ident">rng</span>.<span class="ident">gen</span>(), <span class="ident">rng</span>.<span class="ident">gen</span>()];
+                <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">PeerInfo</span> {
+                    <span class="ident">ip</span>: <span class="ident">IpAddr::from</span>(<span class="ident">ip</span>),
+                    <span class="ident">banned</span>: (<span class="ident">ip</span>[<span class="number">0</span>] <span class="op">%</span> <span class="number">5</span>) <span class="op">==</span> <span class="number">0</span>,
+                    <span class="ident">bootstrap</span>: (<span class="ident">ip</span>[<span class="number">1</span>] <span class="op">%</span> <span class="number">2</span>) <span class="op">==</span> <span class="number">0</span>,
+                    <span class="ident">last_alive</span>: <span class="kw">match</span> <span class="ident">i</span> <span class="op">%</span> <span class="number">4</span> {
+                        <span class="number">0</span> =&gt; <span class="prelude-val">None</span>,
+                        <span class="kw">_</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">UTime::now</span>(<span class="number">0</span>).<span class="ident">unwrap</span>().<span class="ident">checked_sub</span>(<span class="number">50000</span>.<span class="ident">into</span>()).<span class="ident">unwrap</span>()),
+                    },
+                    <span class="ident">last_failure</span>: <span class="kw">match</span> <span class="ident">i</span> <span class="op">%</span> <span class="number">5</span> {
+                        <span class="number">0</span> =&gt; <span class="prelude-val">None</span>,
+                        <span class="kw">_</span> =&gt; <span class="prelude-val">Some</span>(<span class="ident">UTime::now</span>(<span class="number">0</span>).<span class="ident">unwrap</span>().<span class="ident">checked_sub</span>(<span class="number">60000</span>.<span class="ident">into</span>()).<span class="ident">unwrap</span>()),
+                    },
+                    <span class="ident">advertised</span>: (<span class="ident">ip</span>[<span class="number">2</span>] <span class="op">%</span> <span class="number">2</span>) <span class="op">==</span> <span class="number">0</span>,
+                    <span class="ident">active_out_connection_attempts</span>: <span class="number">0</span>,
+                    <span class="ident">active_out_connections</span>: <span class="number">0</span>,
+                    <span class="ident">active_in_connections</span>: <span class="number">0</span>,
+                };
+                <span class="ident">peers</span>.<span class="ident">insert</span>(<span class="ident">peer</span>.<span class="ident">ip</span>, <span class="ident">peer</span>);
+            }
+            <span class="kw">let</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
+            <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">wakeup_interval</span>;
+            <span class="kw">let</span> (<span class="ident">saver_watch_tx</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">watch::channel</span>(<span class="ident">peers</span>.<span class="ident">clone</span>());
+            <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {});
+            <span class="ident">PeerInfoDatabase</span> {
+                <span class="ident">network_settings</span>,
+                <span class="ident">peers</span>,
+                <span class="ident">saver_join_handle</span>,
+                <span class="ident">saver_watch_tx</span>,
+                <span class="ident">active_out_bootstrap_connection_attempts</span>: <span class="number">0</span>,
+                <span class="ident">active_bootstrap_connections</span>: <span class="number">0</span>,
+                <span class="ident">active_out_nonbootstrap_connection_attempts</span>: <span class="number">0</span>,
+                <span class="ident">active_out_nonbootstrap_connections</span>: <span class="number">0</span>,
+                <span class="ident">active_in_nonbootstrap_connections</span>: <span class="number">0</span>,
+                <span class="ident">wakeup_interval</span>,
+                <span class="ident">clock_compensation</span>: <span class="number">0</span>,
+            }
         }
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

@@ -158,18 +158,16 @@
 <span id="157">157</span>
 <span id="158">158</span>
 <span id="159">159</span>
-<span id="160">160</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::api</span>::{<span class="ident">LedgerInfo</span>, <span class="ident">RollsInfo</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::hhasher</span>::{<span class="ident">HHashMap</span>, <span class="ident">HHashSet</span>, <span class="ident">PreHashed</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::ADDRESS_SIZE_BYTES</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ModelsError</span>;
-<span class="kw">use</span> <span class="ident">massa_hash::hash</span>::{<span class="ident">Hash</span>, <span class="ident">HASH_SIZE_BYTES</span>};
+<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">signature::PublicKey</span>;
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
-
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ADDRESS_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">HASH_SIZE_BYTES</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Ord</span>, <span class="ident">PartialEq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Address</span>(<span class="ident">Hash</span>);
@@ -320,5 +318,5 @@
     <span class="kw">pub</span> <span class="ident">production_stats</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AddressCycleProductionStats</span><span class="op">&gt;</span>,
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

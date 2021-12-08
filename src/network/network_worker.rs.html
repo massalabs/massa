@@ -1148,13 +1148,13 @@
 <span class="doccomment">//! The network worker actually does the job of managing connections</span>
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">common</span>::{<span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>},
-    <span class="ident">config</span>::{<span class="ident">NetworkConfig</span>, <span class="ident">CHANNEL_SIZE</span>},
     <span class="ident">establisher</span>::{<span class="ident">Establisher</span>, <span class="ident">Listener</span>, <span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>},
     <span class="ident">handshake_worker</span>::{<span class="ident">HandshakeReturnType</span>, <span class="ident">HandshakeWorker</span>},
     <span class="ident">node_worker</span>::{<span class="ident">NodeCommand</span>, <span class="ident">NodeEvent</span>, <span class="ident">NodeEventType</span>, <span class="ident">NodeWorker</span>},
     <span class="ident">peer_info_database</span>::<span class="kw-2">*</span>,
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::{<span class="ident">HandshakeErrorType</span>, <span class="ident">NetworkError</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>::{<span class="ident">NetworkSettings</span>, <span class="ident">CHANNEL_SIZE</span>};
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">stream::FuturesUnordered</span>, <span class="ident">StreamExt</span>};
 <span class="kw">use</span> <span class="ident">logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
@@ -1327,7 +1327,7 @@
 <span class="doccomment">/// Real job is done by network worker</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NetworkWorker</span> {
     <span class="doccomment">/// Network configuration.</span>
-    <span class="ident">cfg</span>: <span class="ident">NetworkConfig</span>,
+    <span class="ident">cfg</span>: <span class="ident">NetworkSettings</span>,
     <span class="doccomment">/// Our private key.</span>
     <span class="ident">private_key</span>: <span class="ident">PrivateKey</span>,
     <span class="doccomment">/// Our node id.</span>
@@ -1374,7 +1374,7 @@
     <span class="doccomment">/// * controller_event_tx: Channel sending out network events.</span>
     <span class="doccomment">/// * controller_manager_rx: Channel receiving network management commands.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">cfg</span>: <span class="ident">NetworkConfig</span>,
+        <span class="ident">cfg</span>: <span class="ident">NetworkSettings</span>,
         <span class="ident">private_key</span>: <span class="ident">PrivateKey</span>,
         <span class="ident">self_node_id</span>: <span class="ident">NodeId</span>,
         <span class="ident">listener</span>: <span class="ident">Listener</span>,
@@ -2288,5 +2288,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

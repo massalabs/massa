@@ -39,7 +39,6 @@
 
 <span class="doccomment">//! Manages a connection with a node</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">common</span>::{<span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">config::NetworkConfig</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::NetworkError</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">establisher::Establisher</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">establisher</span>::<span class="kw-2">*</span>;
@@ -48,10 +47,10 @@
 };
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">network_worker</span>::{<span class="ident">BootstrapPeers</span>, <span class="ident">NetworkCommand</span>, <span class="ident">NetworkEvent</span>, <span class="ident">Peer</span>, <span class="ident">Peers</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">peer_info_database::PeerInfo</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::NetworkSettings</span>;
 
 <span class="kw">mod</span> <span class="ident">binders</span>;
 <span class="kw">mod</span> <span class="ident">common</span>;
-<span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">error</span>;
 <span class="kw">mod</span> <span class="ident">establisher</span>;
 <span class="kw">mod</span> <span class="ident">handshake_worker</span>;
@@ -60,9 +59,10 @@
 <span class="kw">mod</span> <span class="ident">network_worker</span>;
 <span class="kw">mod</span> <span class="ident">node_worker</span>;
 <span class="kw">mod</span> <span class="ident">peer_info_database</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">settings</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span>;
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

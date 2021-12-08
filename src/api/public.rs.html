@@ -518,7 +518,7 @@
     <span class="ident">Address</span>, <span class="ident">BlockHashSet</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementHashSet</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationHashMap</span>,
     <span class="ident">OperationHashSet</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>,
 };
-<span class="kw">use</span> <span class="ident">network</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkConfig</span>};
+<span class="kw">use</span> <span class="ident">network</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkSettings</span>};
 <span class="kw">use</span> <span class="ident">pool::PoolCommandSender</span>;
 <span class="kw">use</span> <span class="ident">signature::PrivateKey</span>;
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
@@ -528,9 +528,9 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
         <span class="ident">api_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">APISettings</span>,
-        <span class="ident">consensus_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ConsensusConfig</span>,
+        <span class="ident">consensus_settings</span>: <span class="ident">ConsensusConfig</span>,
         <span class="ident">pool_command_sender</span>: <span class="ident">PoolCommandSender</span>,
-        <span class="ident">network_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">NetworkConfig</span>,
+        <span class="ident">network_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">NetworkSettings</span>,
         <span class="ident">version</span>: <span class="ident">Version</span>,
         <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
         <span class="ident">compensation_millis</span>: <span class="ident">i64</span>,
@@ -538,7 +538,7 @@
     ) -&gt; <span class="self">Self</span> {
         <span class="ident">API</span>(<span class="ident">Public</span> {
             <span class="ident">consensus_command_sender</span>,
-            <span class="ident">consensus_settings</span>,
+            <span class="ident">consensus_config</span>: <span class="ident">consensus_settings</span>,
             <span class="ident">api_settings</span>,
             <span class="ident">pool_command_sender</span>,
             <span class="ident">network_settings</span>,
@@ -591,11 +591,11 @@
         <span class="kw">let</span> <span class="ident">network_command_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">network_command_sender</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">network_config</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">network_settings</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">version</span>;
-        <span class="kw">let</span> <span class="ident">consensus_settings</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">consensus_settings</span>.<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="ident">consensus_settings</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">consensus_config</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">compensation_millis</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">compensation_millis</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pool_command_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">pool_command_sender</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">node_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">node_id</span>;
-        <span class="kw">let</span> <span class="ident">algo_config</span> <span class="op">=</span> <span class="ident">consensus_settings</span>.<span class="ident">to_algo_config</span>();
+        <span class="kw">let</span> <span class="ident">config</span> <span class="op">=</span> <span class="ident">consensus_settings</span>.<span class="ident">config</span>();
         <span class="kw">let</span> <span class="ident">closure</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">UTime::now</span>(<span class="ident">compensation_millis</span>)<span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">last_slot</span> <span class="op">=</span> <span class="ident">get_latest_block_slot_at_timestamp</span>(
@@ -635,7 +635,7 @@
                 <span class="ident">network_stats</span>: <span class="ident">network_stats</span><span class="question-mark">?</span>,
                 <span class="ident">pool_stats</span>: <span class="ident">pool_stats</span><span class="question-mark">?</span>,
 
-                <span class="ident">algo_config</span>,
+                <span class="ident">config</span>,
                 <span class="ident">current_cycle</span>: <span class="ident">last_slot</span>
                     .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Slot::new</span>(<span class="number">0</span>, <span class="number">0</span>))
                     .<span class="ident">get_cycle</span>(<span class="ident">consensus_settings</span>.<span class="ident">periods_per_cycle</span>),
@@ -794,7 +794,7 @@
         <span class="ident">time</span>: <span class="ident">TimeInterval</span>,
     ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockSummary</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">consensus_command_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">consensus_command_sender</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">consensus_settings</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">consensus_settings</span>.<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="ident">consensus_settings</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">consensus_config</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">closure</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
             <span class="comment">// filter blocks from graph_export</span>
             <span class="kw">let</span> (<span class="ident">start_slot</span>, <span class="ident">end_slot</span>) <span class="op">=</span> <span class="ident">time_range_to_slot_range</span>(
@@ -847,7 +847,7 @@
         <span class="ident">addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AddressInfo</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cmd_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">consensus_command_sender</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">consensus_settings</span>.<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">consensus_config</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">api_cfg</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">api_settings</span>;
         <span class="kw">let</span> <span class="ident">pool_command_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">pool_command_sender</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">compensation_millis</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">compensation_millis</span>;
@@ -992,5 +992,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

@@ -349,6 +349,11 @@
 <span id="348">348</span>
 <span id="349">349</span>
 <span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">std</span>::{
@@ -356,22 +361,22 @@
     <span class="ident">net::IpAddr</span>,
 };
 
-<span class="kw">use</span> <span class="ident">logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">tokio</span>::{
     <span class="ident">sync</span>::{<span class="ident">mpsc</span>, <span class="ident">oneshot</span>},
     <span class="ident">task::JoinHandle</span>,
 };
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">debug</span>, <span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">warn</span>};
 
+<span class="kw">use</span> <span class="ident">logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">models::stats::NetworkStats</span>;
 <span class="kw">use</span> <span class="ident">models</span>::{<span class="ident">massa_hash::PubkeySig</span>, <span class="ident">node::NodeId</span>};
 <span class="kw">use</span> <span class="ident">models</span>::{<span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">Operation</span>, <span class="ident">Version</span>};
 <span class="kw">use</span> <span class="ident">signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>, <span class="ident">PrivateKey</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::NetworkError</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>::{<span class="ident">NetworkSettings</span>, <span class="ident">CHANNEL_SIZE</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">config</span>::{<span class="ident">NetworkConfig</span>, <span class="ident">CHANNEL_SIZE</span>},
     <span class="ident">establisher::Establisher</span>,
     <span class="ident">network_worker</span>::{
         <span class="ident">NetworkCommand</span>, <span class="ident">NetworkEvent</span>, <span class="ident">NetworkManagementCommand</span>, <span class="ident">NetworkWorker</span>, <span class="ident">Peers</span>,
@@ -385,7 +390,7 @@
 <span class="doccomment">/// # Arguments</span>
 <span class="doccomment">/// * cfg : network configuration</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">start_network_controller</span>(
-    <span class="ident">cfg</span>: <span class="ident">NetworkConfig</span>,
+    <span class="ident">network_settings</span>: <span class="ident">NetworkSettings</span>,
     <span class="kw-2">mut</span> <span class="ident">establisher</span>: <span class="ident">Establisher</span>,
     <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
     <span class="ident">initial_peers</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BootstrapPeers</span><span class="op">&gt;</span>,
@@ -403,16 +408,16 @@
     <span class="macro">debug!</span>(<span class="string">&quot;starting network controller&quot;</span>);
 
     <span class="comment">// check that local IP is routable</span>
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">self_ip</span>) <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">routable_ip</span> {
+    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">self_ip</span>) <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">routable_ip</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="ident">self_ip</span>.<span class="ident">is_global</span>() {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::InvalidIpError</span>(<span class="ident">self_ip</span>));
         }
     }
 
     <span class="comment">// try to read node private key from file, otherwise generate it &amp; write to file. Then derive nodeId</span>
-    <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">std::path::Path::is_file</span>(<span class="kw-2">&amp;</span><span class="ident">cfg</span>.<span class="ident">private_key_file</span>) {
+    <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">std::path::Path::is_file</span>(<span class="kw-2">&amp;</span><span class="ident">network_settings</span>.<span class="ident">private_key_file</span>) {
         <span class="comment">// file exists: try to load it</span>
-        <span class="kw">let</span> <span class="ident">private_key_bs58_check</span> <span class="op">=</span> <span class="ident">tokio::fs::read_to_string</span>(<span class="kw-2">&amp;</span><span class="ident">cfg</span>.<span class="ident">private_key_file</span>)
+        <span class="kw">let</span> <span class="ident">private_key_bs58_check</span> <span class="op">=</span> <span class="ident">tokio::fs::read_to_string</span>(<span class="kw-2">&amp;</span><span class="ident">network_settings</span>.<span class="ident">private_key_file</span>)
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
                 <span class="ident">std::io::Error::new</span>(
@@ -429,7 +434,12 @@
     } <span class="kw">else</span> {
         <span class="comment">// node file does not exist: generate the key and save it</span>
         <span class="kw">let</span> <span class="ident">priv_key</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">tokio::fs::write</span>(<span class="kw-2">&amp;</span><span class="ident">cfg</span>.<span class="ident">private_key_file</span>, <span class="kw-2">&amp;</span><span class="ident">priv_key</span>.<span class="ident">to_bs58_check</span>()).<span class="kw">await</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">tokio::fs::write</span>(
+            <span class="kw-2">&amp;</span><span class="ident">network_settings</span>.<span class="ident">private_key_file</span>,
+            <span class="kw-2">&amp;</span><span class="ident">priv_key</span>.<span class="ident">to_bs58_check</span>(),
+        )
+        .<span class="kw">await</span>
+        {
             <span class="macro">warn!</span>(<span class="string">&quot;could not generate node private key file: {}&quot;</span>, <span class="ident">e</span>);
         }
         <span class="ident">priv_key</span>
@@ -441,11 +451,11 @@
     <span class="macro">massa_trace!</span>(<span class="string">&quot;self_node_id&quot;</span>, { <span class="string">&quot;node_id&quot;</span>: <span class="ident">self_node_id</span> });
 
     <span class="comment">// create listener</span>
-    <span class="kw">let</span> <span class="ident">listener</span> <span class="op">=</span> <span class="ident">establisher</span>.<span class="ident">get_listener</span>(<span class="ident">cfg</span>.<span class="ident">bind</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let</span> <span class="ident">listener</span> <span class="op">=</span> <span class="ident">establisher</span>.<span class="ident">get_listener</span>(<span class="ident">network_settings</span>.<span class="ident">bind</span>).<span class="kw">await</span><span class="question-mark">?</span>;
 
     <span class="macro">debug!</span>(<span class="string">&quot;Loading peer database&quot;</span>);
     <span class="comment">// load peer info database</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_info_db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase::new</span>(<span class="kw-2">&amp;</span><span class="ident">cfg</span>, <span class="ident">clock_compensation</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_info_db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase::new</span>(<span class="kw-2">&amp;</span><span class="ident">network_settings</span>, <span class="ident">clock_compensation</span>).<span class="kw">await</span><span class="question-mark">?</span>;
 
     <span class="comment">// add initial peers</span>
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">peers</span>) <span class="op">=</span> <span class="ident">initial_peers</span> {
@@ -456,7 +466,7 @@
     <span class="kw">let</span> (<span class="ident">command_tx</span>, <span class="ident">command_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NetworkCommand</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
     <span class="kw">let</span> (<span class="ident">event_tx</span>, <span class="ident">event_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NetworkEvent</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
     <span class="kw">let</span> (<span class="ident">manager_tx</span>, <span class="ident">manager_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NetworkManagementCommand</span><span class="op">&gt;</span>(<span class="number">1</span>);
-    <span class="kw">let</span> <span class="ident">cfg_copy</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">clone</span>();
+    <span class="kw">let</span> <span class="ident">cfg_copy</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">clone</span>();
     <span class="kw">let</span> <span class="ident">join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">NetworkWorker::new</span>(
             <span class="ident">cfg_copy</span>,
@@ -700,5 +710,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

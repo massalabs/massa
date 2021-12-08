@@ -342,19 +342,20 @@
 <span id="341">341</span>
 <span id="342">342</span>
 <span id="343">343</span>
+<span id="344">344</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::HANDSHAKE_RANDOMNESS_SIZE_BYTES</span>;
+<span class="kw">use</span> <span class="ident">models::BLOCK_ID_SIZE_BYTES</span>;
 <span class="kw">use</span> <span class="ident">models</span>::{
     <span class="ident">array_from_slice</span>, <span class="ident">with_serialization_context</span>, <span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">DeserializeCompact</span>,
     <span class="ident">DeserializeVarInt</span>, <span class="ident">Endorsement</span>, <span class="ident">ModelsError</span>, <span class="ident">Operation</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
-    <span class="ident">Version</span>, <span class="ident">BLOCK_ID_SIZE_BYTES</span>,
+    <span class="ident">Version</span>,
 };
 <span class="kw">use</span> <span class="ident">num_enum</span>::{<span class="ident">IntoPrimitive</span>, <span class="ident">TryFromPrimitive</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">signature</span>::{<span class="ident">PublicKey</span>, <span class="ident">Signature</span>, <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>, <span class="ident">SIGNATURE_SIZE_BYTES</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert::TryInto</span>, <span class="ident">net::IpAddr</span>};
-
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">HANDSHAKE_RANDOMNES_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
 
 <span class="doccomment">/// All messages that can be sent or received.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
@@ -366,7 +367,7 @@
         <span class="doccomment">/// Random data we expect the peer to sign with its private_key.</span>
         <span class="doccomment">/// They should send us their handshake initiation message to</span>
         <span class="doccomment">/// let us know their public key.</span>
-        <span class="ident">random_bytes</span>: [<span class="ident">u8</span>; <span class="ident">HANDSHAKE_RANDOMNES_SIZE_BYTES</span>],
+        <span class="ident">random_bytes</span>: [<span class="ident">u8</span>; <span class="ident">HANDSHAKE_RANDOMNESS_SIZE_BYTES</span>],
         <span class="ident">version</span>: <span class="ident">Version</span>,
     },
     <span class="doccomment">/// Reply to a handshake initiation message.</span>
@@ -516,9 +517,9 @@
                 <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">PublicKey::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
                 <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>;
                 <span class="comment">// random bytes</span>
-                <span class="kw">let</span> <span class="ident">random_bytes</span>: [<span class="ident">u8</span>; <span class="ident">HANDSHAKE_RANDOMNES_SIZE_BYTES</span>] <span class="op">=</span>
+                <span class="kw">let</span> <span class="ident">random_bytes</span>: [<span class="ident">u8</span>; <span class="ident">HANDSHAKE_RANDOMNESS_SIZE_BYTES</span>] <span class="op">=</span>
                     <span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
-                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">HANDSHAKE_RANDOMNES_SIZE_BYTES</span>;
+                <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">HANDSHAKE_RANDOMNESS_SIZE_BYTES</span>;
 
                 <span class="comment">// version</span>
                 <span class="kw">let</span> (<span class="ident">version</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">Version::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
@@ -620,6 +621,7 @@
 
     <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">prelude::StdRng</span>, <span class="ident">RngCore</span>, <span class="ident">SeedableRng</span>};
     <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
+
     <span class="kw">use</span> <span class="ident">signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>};
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -686,5 +688,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["MassaHashError",""]],"mod":[["hash",""]]});
+initSidebarItems({"constant":[["HASH_SIZE_BYTES",""]],"enum":[["MassaHashError",""]],"mod":[["hash",""]]});

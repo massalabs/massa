@@ -151,16 +151,14 @@
 <span id="150">150</span>
 <span id="151">151</span>
 <span id="152">152</span>
-<span id="153">153</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::AMOUNT_DECIMAL_FACTOR</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ModelsError</span>;
 <span class="kw">use</span> <span class="ident">rust_decimal::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">serde::de::Unexpected</span>;
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
-
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">AMOUNT_DECIMAL_FACTOR</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1_000_000_000</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Amount</span>(<span class="ident">u64</span>);
@@ -306,5 +304,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

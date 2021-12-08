@@ -603,8 +603,11 @@
 <span id="602">602</span>
 <span id="603">603</span>
 <span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>::{<span class="ident">BLOCK_ID_SIZE_BYTES</span>, <span class="ident">SLOT_KEY_SIZE</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">address</span>::{<span class="ident">AddressHashMap</span>, <span class="ident">AddressHashSet</span>},
     <span class="ident">array_from_slice</span>,
@@ -612,9 +615,9 @@
     <span class="ident">u8_from_slice</span>, <span class="ident">with_serialization_context</span>, <span class="ident">Address</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeMinBEInt</span>,
     <span class="ident">DeserializeVarInt</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementHashMap</span>, <span class="ident">EndorsementHashSet</span>, <span class="ident">ModelsError</span>, <span class="ident">Operation</span>,
     <span class="ident">OperationHashMap</span>, <span class="ident">OperationHashSet</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeMinBEInt</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">Slot</span>,
-    <span class="ident">SLOT_KEY_SIZE</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_hash::hash</span>::{<span class="ident">Hash</span>, <span class="ident">HASH_SIZE_BYTES</span>};
+<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
+<span class="kw">use</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">signature</span>::{
     <span class="ident">sign</span>, <span class="ident">verify_signature</span>, <span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>, <span class="ident">Signature</span>, <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>,
@@ -623,8 +626,6 @@
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 <span class="kw">use</span> <span class="ident">std::fmt::Formatter</span>;
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
-
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">HASH_SIZE_BYTES</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockId</span>(<span class="kw">pub</span> <span class="ident">Hash</span>);
@@ -1120,10 +1121,13 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::EndorsementContent</span>;
     <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
+
     <span class="kw">use</span> <span class="ident">signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>};
+
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::EndorsementContent</span>;
+
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
@@ -1208,5 +1212,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

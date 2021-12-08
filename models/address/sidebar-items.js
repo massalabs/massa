@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["ADDRESS_SIZE_BYTES",""]],"struct":[["Address",""],["AddressCycleProductionStats",""],["AddressState",""],["Addresses",""]],"type":[["AddressHashMap",""],["AddressHashSet",""]]});
+initSidebarItems({"struct":[["Address",""],["AddressCycleProductionStats",""],["AddressState",""],["Addresses",""]],"type":[["AddressHashMap",""],["AddressHashSet",""]]});

@@ -771,6 +771,7 @@
 <span id="770">770</span>
 <span id="771">771</span>
 <span id="772">772</span>
+<span id="773">773</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::InternalError</span>;
@@ -778,9 +779,10 @@
 <span class="kw">use</span> <span class="ident">models::address</span>::{<span class="ident">AddressHashMap</span>, <span class="ident">AddressHashSet</span>};
 <span class="kw">use</span> <span class="ident">models::hhasher::BuildHHasher</span>;
 <span class="kw">use</span> <span class="ident">models::ledger</span>::{<span class="ident">LedgerChange</span>, <span class="ident">LedgerData</span>};
+<span class="kw">use</span> <span class="ident">models::ADDRESS_SIZE_BYTES</span>;
 <span class="kw">use</span> <span class="ident">models</span>::{
     <span class="ident">array_from_slice</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">Operation</span>,
-    <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">ADDRESS_SIZE_BYTES</span>,
+    <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
 };
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">sled</span>::{<span class="ident">Transactional</span>, <span class="ident">Tree</span>};
@@ -1544,5 +1546,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>

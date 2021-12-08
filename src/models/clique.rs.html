@@ -133,16 +133,22 @@
 <span id="132">132</span>
 <span id="133">133</span>
 <span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
+<span class="kw">use</span> <span class="ident">core::usize</span>;
+<span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
+
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::BLOCK_ID_SIZE_BYTES</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">array_from_slice</span>, <span class="ident">hhasher::BuildHHasher</span>, <span class="ident">u8_from_slice</span>, <span class="ident">with_serialization_context</span>,
     <span class="ident">BlockHashSet</span>, <span class="ident">BlockId</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>, <span class="ident">SerializeCompact</span>,
-    <span class="ident">SerializeVarInt</span>, <span class="ident">BLOCK_ID_SIZE_BYTES</span>,
+    <span class="ident">SerializeVarInt</span>,
 };
-<span class="kw">use</span> <span class="ident">core::usize</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Clique</span> {
@@ -268,5 +274,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0fb1c371d 2021-12-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b6f079e4 2021-12-07)" ></div>
 </body></html>
