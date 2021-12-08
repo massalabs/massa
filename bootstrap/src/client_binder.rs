@@ -1,8 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::messages::BootstrapMessage;
+use crate::error::BootstrapError;
 use crate::establisher::Duplex;
-use crate::{error::BootstrapError, messages::BOOTSTRAP_RANDOMNES_SIZE_BYTES};
+use crate::settings::BOOTSTRAP_RANDOMNESS_SIZE_BYTES;
 use massa_hash::hash::Hash;
 use models::{with_serialization_context, DeserializeCompact, DeserializeMinBEInt};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
@@ -42,7 +43,7 @@ impl BootstrapClientBinder {
     pub async fn handshake(&mut self) -> Result<(), BootstrapError> {
         // send randomnes and their hash
         let rand_hash = {
-            let mut random_bytes = [0u8; BOOTSTRAP_RANDOMNES_SIZE_BYTES];
+            let mut random_bytes = [0u8; BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
             StdRng::from_entropy().fill_bytes(&mut random_bytes);
             self.duplex.write_all(&random_bytes).await?;
             let rand_hash = Hash::from(&random_bytes);

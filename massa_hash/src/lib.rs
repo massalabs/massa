@@ -1,5 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+pub use error::MassaHashError;
+pub use settings::HASH_SIZE_BYTES;
+
 mod error;
 pub mod hash;
-pub use error::MassaHashError;
+mod settings;

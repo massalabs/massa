@@ -12,7 +12,7 @@ use messages::BootstrapMessage;
 use models::Version;
 use network::{BootstrapPeers, NetworkCommandSender};
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
-use settings::BootstrapSettings;
+pub use settings::BootstrapSettings;
 use signature::{PrivateKey, PublicKey};
 use std::collections::{hash_map, HashMap};
 use std::net::SocketAddr;

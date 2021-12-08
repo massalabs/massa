@@ -5,7 +5,7 @@ use crate::ledger::LedgerData;
 use crate::node::NodeId;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
 use crate::{
-    Address, AlgoConfig, Amount, Block, BlockHashSet, BlockId, Endorsement, EndorsementHashSet,
+    Address, Amount, Block, BlockHashSet, BlockId, Config, Endorsement, EndorsementHashSet,
     EndorsementId, Operation, OperationHashSet, OperationId, Slot, Version,
 };
 use serde::{Deserialize, Serialize};
@@ -31,7 +31,7 @@ pub struct NodeStatus {
     pub consensus_stats: ConsensusStats,
     pub pool_stats: PoolStats,
     pub network_stats: NetworkStats,
-    pub algo_config: AlgoConfig,
+    pub config: Config,
 }
 
 impl std::fmt::Display for NodeStatus {

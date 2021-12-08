@@ -1,13 +1,16 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use core::usize;
+use std::convert::TryInto;
+
+use serde::{Deserialize, Serialize};
+
+use crate::settings::BLOCK_ID_SIZE_BYTES;
 use crate::{
     array_from_slice, hhasher::BuildHHasher, u8_from_slice, with_serialization_context,
     BlockHashSet, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact,
-    SerializeVarInt, BLOCK_ID_SIZE_BYTES,
+    SerializeVarInt,
 };
-use core::usize;
-use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Clique {

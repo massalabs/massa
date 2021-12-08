@@ -3,13 +3,13 @@
 //! The network worker actually does the job of managing connections
 use super::{
     common::{ConnectionClosureReason, ConnectionId},
-    config::{NetworkConfig, CHANNEL_SIZE},
     establisher::{Establisher, Listener, ReadHalf, WriteHalf},
     handshake_worker::{HandshakeReturnType, HandshakeWorker},
     node_worker::{NodeCommand, NodeEvent, NodeEventType, NodeWorker},
     peer_info_database::*,
 };
 use crate::error::{HandshakeErrorType, NetworkError};
+use crate::settings::{NetworkSettings, CHANNEL_SIZE};
 use futures::{stream::FuturesUnordered, StreamExt};
 use logging::massa_trace;
 use massa_hash::hash::Hash;
@@ -182,7 +182,7 @@ impl DeserializeCompact for BootstrapPeers {
 /// Real job is done by network worker
 pub struct NetworkWorker {
     /// Network configuration.
-    cfg: NetworkConfig,
+    cfg: NetworkSettings,
     /// Our private key.
     private_key: PrivateKey,
     /// Our node id.
@@ -229,7 +229,7 @@ impl NetworkWorker {
     /// * controller_event_tx: Channel sending out network events.
     /// * controller_manager_rx: Channel receiving network management commands.
     pub fn new(
-        cfg: NetworkConfig,
+        cfg: NetworkSettings,
         private_key: PrivateKey,
         self_node_id: NodeId,
         listener: Listener,

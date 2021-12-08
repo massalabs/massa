@@ -1,10 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::error::MassaHashError;
+use crate::settings::HASH_SIZE_BYTES;
 use bitcoin_hashes;
 use std::{convert::TryInto, str::FromStr};
-
-pub const HASH_SIZE_BYTES: usize = 32;
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
 pub struct Hash(bitcoin_hashes::sha256::Hash);
@@ -212,8 +211,9 @@ impl FromStr for Hash {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serial_test::serial;
+
+    use super::*;
 
     fn example() -> Hash {
         Hash::from("hello world".as_bytes())

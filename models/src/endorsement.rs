@@ -1,21 +1,20 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::settings::{BLOCK_ID_SIZE_BYTES, ENDORSEMENT_ID_SIZE_BYTES};
 use crate::{
     hhasher::{HHashMap, HHashSet, PreHashed},
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
-    with_serialization_context, BlockId, ModelsError, Slot, BLOCK_ID_SIZE_BYTES,
+    with_serialization_context, BlockId, ModelsError, Slot,
 };
-use massa_hash::hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::hash::Hash;
 use serde::{Deserialize, Serialize};
 use signature::{
     sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
     SIGNATURE_SIZE_BYTES,
 };
 use std::{fmt::Display, str::FromStr};
-
-pub const ENDORSEMENT_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct EndorsementId(Hash);
@@ -239,9 +238,11 @@ impl DeserializeCompact for EndorsementContent {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serial_test::serial;
+
     use signature::{derive_public_key, generate_random_private_key};
+
+    use super::*;
 
     #[test]
     #[serial]

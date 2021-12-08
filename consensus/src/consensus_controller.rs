@@ -2,11 +2,11 @@
 
 use super::{
     block_graph::*,
-    config::{ConsensusConfig, CHANNEL_SIZE},
     consensus_worker::{
         ConsensusCommand, ConsensusEvent, ConsensusManagementCommand, ConsensusWorker,
     },
     pos::ProofOfStake,
+    settings::{ConsensusConfig, CHANNEL_SIZE},
 };
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;

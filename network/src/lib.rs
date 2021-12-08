@@ -6,7 +6,6 @@
 
 //! Manages a connection with a node
 pub use common::{ConnectionClosureReason, ConnectionId};
-pub use config::NetworkConfig;
 pub use error::NetworkError;
 pub use establisher::Establisher;
 pub use establisher::*;
@@ -15,10 +14,10 @@ pub use network_controller::{
 };
 pub use network_worker::{BootstrapPeers, NetworkCommand, NetworkEvent, Peer, Peers};
 pub use peer_info_database::PeerInfo;
+pub use settings::NetworkSettings;
 
 mod binders;
 mod common;
-mod config;
 mod error;
 mod establisher;
 mod handshake_worker;
@@ -27,6 +26,7 @@ mod network_controller;
 mod network_worker;
 mod node_worker;
 mod peer_info_database;
+pub mod settings;
 
 #[cfg(test)]
 pub mod tests;
