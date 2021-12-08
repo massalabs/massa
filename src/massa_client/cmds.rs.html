@@ -663,6 +663,10 @@
 <span id="662">662</span>
 <span id="663">663</span>
 <span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
@@ -677,6 +681,7 @@
 };
 <span class="kw">use</span> <span class="ident">serde::Serialize</span>;
 <span class="kw">use</span> <span class="ident">signature</span>::{<span class="ident">generate_random_private_key</span>, <span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>};
+<span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 <span class="kw">use</span> <span class="ident">std::fmt</span>::{<span class="ident">Debug</span>, <span class="ident">Display</span>};
 <span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
 <span class="kw">use</span> <span class="ident">std::process</span>;
@@ -1092,11 +1097,13 @@
             }
 
             <span class="ident">Command::wallet_generate_private_key</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">ad</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">add_private_key</span>(<span class="ident">generate_random_private_key</span>())<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
+                <span class="kw">let</span> <span class="ident">ad</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">add_private_key</span>(<span class="ident">key</span>)<span class="question-mark">?</span>;
                 <span class="kw">if</span> <span class="ident">json</span> {
                     <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">ad</span>.<span class="ident">to_string</span>()))
                 } <span class="kw">else</span> {
                     <span class="macro">println!</span>(<span class="string">&quot;Generated {} address and added it to the wallet&quot;</span>, <span class="ident">ad</span>);
+                    <span class="macro">println!</span>(<span class="string">&quot;Type `node_add_staking_private_keys {}` to start staking with this private_key.\n&quot;</span>,<span class="ident">key</span>);
                     <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(()))
                 }
             }
@@ -1104,13 +1111,14 @@
             <span class="ident">Command::wallet_add_private_keys</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">addresses</span> <span class="op">=</span> <span class="ident">parse_vec</span>::<span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span>(<span class="ident">parameters</span>)<span class="question-mark">?</span>
                     .<span class="ident">into_iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">key</span><span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="ident">wallet</span>.<span class="ident">add_private_key</span>(<span class="ident">key</span>)<span class="question-mark">?</span>))
-                    .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">key</span><span class="op">|</span> <span class="prelude-val">Ok</span>((<span class="ident">wallet</span>.<span class="ident">add_private_key</span>(<span class="ident">key</span>)<span class="question-mark">?</span>, <span class="ident">key</span>)))
+                    .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">PrivateKey</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
                 <span class="kw">if</span> <span class="ident">json</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(())); <span class="comment">// FIXME</span>
+                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">addresses</span>.<span class="ident">into_keys</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="op">&gt;</span>()));
                 } <span class="kw">else</span> {
-                    <span class="kw">for</span> <span class="ident">address</span> <span class="kw">in</span> <span class="ident">addresses</span>.<span class="ident">iter</span>() {
-                        <span class="macro">println!</span>(<span class="string">&quot;Derived and added address {} to the wallet\n&quot;</span>, <span class="ident">address</span>);
+                    <span class="kw">for</span> (<span class="ident">address</span>, <span class="ident">key</span>) <span class="kw">in</span> <span class="ident">addresses</span>.<span class="ident">iter</span>() {
+                        <span class="macro">println!</span>(<span class="string">&quot;Derived and added address {} to the wallet.&quot;</span>, <span class="ident">address</span>);
+                        <span class="macro">println!</span>(<span class="string">&quot;Type `node_add_staking_private_keys {}` to start staking with this private_key.\n&quot;</span>, <span class="ident">key</span>);
                     }
                 }
                 <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(()))
