@@ -46,8 +46,8 @@ For project announcements, we mainly use
 -   [Running a node](https://github.com/massalabs/massa/wiki/run)
 -   [Creating a wallet](https://github.com/massalabs/massa/wiki/wallet)
 -   [Staking](https://github.com/massalabs/massa/wiki/staking)
--   [Routability tutorial](https://github.com/massalabs/massa/wiki/routability) (Optionnal)
--   [Testnet rewards program](https://github.com/massalabs/massa/wiki/testnet_rules) (Optionnal)
+-   [Routability tutorial](https://github.com/massalabs/massa/wiki/routability) (Optional)
+-   [Testnet rewards program](https://github.com/massalabs/massa/wiki/testnet_rules) (Optional)
 
 ## More tutorials
 
