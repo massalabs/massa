@@ -604,7 +604,7 @@ impl Command {
                     Err(e) => bail!("RpcError: {}", e),
                 };
                 let (days, hours, mins, secs) = end
-                    .saturating_sub(MassaTime::now(0)?)
+                    .saturating_sub(MassaTime::now()?)
                     .days_hours_mins_secs()?; // compensation millis is zero
                 let mut res = "".to_string();
                 res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs));

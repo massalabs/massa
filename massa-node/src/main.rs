@@ -42,7 +42,7 @@ async fn launch() -> (
 ) {
     info!("Node version : {}", *crate::settings::VERSION);
     if let Some(end) = *massa_consensus::settings::END_TIMESTAMP {
-        if MassaTime::now(0).expect("could not get now time") > end {
+        if MassaTime::now().expect("could not get now time") > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
     }

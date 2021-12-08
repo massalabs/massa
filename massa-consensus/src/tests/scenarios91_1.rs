@@ -33,7 +33,7 @@ async fn test_ti() {
     cfg.t0 = 32000.into();
     cfg.delta_f0 = 32;
     // to avoid timing pb for block in the future
-    cfg.genesis_timestamp = MassaTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now()
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
@@ -190,7 +190,7 @@ async fn test_gpi() {
     cfg.delta_f0 = 32;
 
     // to avoid timing problems for blocks in the future
-    cfg.genesis_timestamp = MassaTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now()
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
@@ -357,7 +357,7 @@ async fn test_old_stale() {
     cfg.delta_f0 = 32;
 
     // to avoid timing problems for blocks in the future
-    cfg.genesis_timestamp = MassaTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now()
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
