@@ -59,8 +59,13 @@ pub struct SerializationContext {
     pub max_block_endorsements: u32,
     pub parent_count: u8,
     pub max_block_size: u32,
+    // TODO: all field bellow should be removed since there are constant defined in bootstrap::settings
     pub max_peer_list_length: u32,
     pub max_message_size: u32,
+    pub max_ask_blocks_per_message: u32,
+    pub max_operations_per_message: u32,
+    pub max_endorsements_per_message: u32,
+    // TODO: all field bellow should be removed since there are constant defined in bootstrap::settings
     pub max_bootstrap_blocks: u32,
     pub max_bootstrap_cliques: u32,
     pub max_bootstrap_deps: u32,
@@ -68,7 +73,4 @@ pub struct SerializationContext {
     pub max_bootstrap_pos_cycles: u32,
     pub max_bootstrap_pos_entries: u32,
     pub max_bootstrap_message_size: u32,
-    pub max_ask_blocks_per_message: u32,
-    pub max_operations_per_message: u32,
-    pub max_endorsements_per_message: u32,
 }

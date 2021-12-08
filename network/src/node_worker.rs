@@ -1,15 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::{
-    binders::{ReadBinder, WriteBinder},
-    config::{NetworkConfig, NODE_SEND_CHANNEL_SIZE},
-    messages::Message,
-};
-use crate::{error::NetworkError, ConnectionClosureReason};
-use logging::massa_trace;
-use models::node::NodeId;
-use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use std::net::IpAddr;
+
 use tokio::{
     sync::mpsc,
     sync::mpsc::{
@@ -19,6 +11,18 @@ use tokio::{
     time::timeout,
 };
 use tracing::{debug, trace, warn};
+
+use logging::massa_trace;
+use models::node::NodeId;
+use models::{Block, BlockHeader, BlockId, Endorsement, Operation};
+
+use crate::settings::{NetworkSettings, NODE_SEND_CHANNEL_SIZE};
+use crate::{error::NetworkError, ConnectionClosureReason};
+
+use super::{
+    binders::{ReadBinder, WriteBinder},
+    messages::Message,
+};
 
 #[derive(Clone, Debug)]
 pub enum NodeCommand {
@@ -70,7 +74,7 @@ pub struct NodeEvent(pub NodeId, pub NodeEventType);
 /// One worker per node.
 pub struct NodeWorker {
     /// Protocol configuration.
-    cfg: NetworkConfig,
+    cfg: NetworkSettings,
     /// Node id associated to that worker.
     node_id: NodeId,
     /// Reader for incoming data.
@@ -95,7 +99,7 @@ impl NodeWorker {
     /// * node_command_rx: Channel to receive node commands.
     /// * node_event_tx: Channel to send node events.
     pub fn new(
-        cfg: NetworkConfig,
+        cfg: NetworkSettings,
         node_id: NodeId,
         socket_reader: ReadBinder,
         socket_writer: WriteBinder,
@@ -332,7 +336,7 @@ impl NodeWorker {
                         Some(NodeCommand::AskForBlocks(list)) => {
                             // cut hash list on sub list if exceed max_ask_blocks_per_message
                             massa_trace!("node_worker.run_loop. send Message::AskForBlocks", {"hashlist": list, "node": self.node_id});
-                            for to_send_list in list.chunks(self.cfg.max_ask_blocks_per_message as usize) {
+                            for to_send_list in list.chunks(crate::settings::MAX_ASK_BLOCKS_PER_MESSAGE as usize) {
                                 if self.try_send_to_node(&writer_command_tx, Message::AskForBlocks(to_send_list.iter().copied().collect())).is_err() {
                                     break 'select_loop;
                                 }
@@ -347,7 +351,7 @@ impl NodeWorker {
                         Some(NodeCommand::SendOperations(operations)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": self.node_id, "operations": operations});
                             // cut operation list if it exceed max_operations_per_message
-                            for to_send_list in operations.chunks(self.cfg.max_operations_per_message as usize) {
+                            for to_send_list in operations.chunks(crate::settings::MAX_OPERATIONS_PER_MESSAGE as usize) {
                                 if self.try_send_to_node(&writer_command_tx, Message::Operations(to_send_list.to_vec())).is_err() {
                                     break 'select_loop;
                                 }
@@ -356,7 +360,7 @@ impl NodeWorker {
                         Some(NodeCommand::SendEndorsements(endorsements)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendEndorsements", {"node": self.node_id, "endorsements": endorsements});
                             // cut endorsement list if it exceed max_endorsements_per_message
-                            for to_send_list in endorsements.chunks(self.cfg.max_endorsements_per_message as usize) {
+                            for to_send_list in endorsements.chunks(crate::settings::MAX_ENDORSEMENTS_PER_MESSAGE as usize) {
                                 if self.try_send_to_node(&writer_command_tx, Message::Endorsements(to_send_list.to_vec())).is_err() {
                                     break 'select_loop;
                                 }

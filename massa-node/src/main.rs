@@ -5,7 +5,6 @@
 #![doc = include_str!("../../README.md")]
 
 extern crate logging;
-
 use crate::settings::SETTINGS;
 use api::{Private, Public, RpcServer, StopHandle, API};
 use bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
@@ -41,8 +40,8 @@ async fn launch() -> (
     StopHandle,
     StopHandle,
 ) {
-    info!("Node version : {}", SETTINGS.version);
-    if let Some(end) = SETTINGS.consensus.end_timestamp {
+    info!("Node version : {}", *crate::settings::VERSION);
+    if let Some(end) = *consensus::settings::END_TIMESTAMP {
         if UTime::now(0).expect("could not get now time") > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
@@ -50,22 +49,22 @@ async fn launch() -> (
 
     // Init the global serialization context
     init_serialization_context(SerializationContext {
-        max_block_operations: SETTINGS.consensus.max_operations_per_block,
-        parent_count: SETTINGS.consensus.thread_count,
-        max_block_size: SETTINGS.consensus.max_block_size,
-        max_peer_list_length: SETTINGS.network.max_advertise_length,
-        max_message_size: SETTINGS.network.max_message_size,
-        max_bootstrap_blocks: SETTINGS.bootstrap.max_bootstrap_blocks,
-        max_bootstrap_cliques: SETTINGS.bootstrap.max_bootstrap_cliques,
-        max_bootstrap_deps: SETTINGS.bootstrap.max_bootstrap_deps,
-        max_bootstrap_children: SETTINGS.bootstrap.max_bootstrap_children,
-        max_ask_blocks_per_message: SETTINGS.network.max_ask_blocks_per_message,
-        max_operations_per_message: SETTINGS.network.max_operations_per_message,
-        max_endorsements_per_message: SETTINGS.network.max_endorsements_per_message,
-        max_bootstrap_message_size: SETTINGS.bootstrap.max_bootstrap_message_size,
-        max_bootstrap_pos_cycles: SETTINGS.bootstrap.max_bootstrap_pos_cycles,
-        max_bootstrap_pos_entries: SETTINGS.bootstrap.max_bootstrap_pos_entries,
-        max_block_endorsements: SETTINGS.consensus.endorsement_count,
+        max_block_operations: consensus::settings::MAX_OPERATIONS_PER_BLOCK,
+        parent_count: consensus::settings::THREAD_COUNT,
+        max_block_size: consensus::settings::MAX_BLOCK_SIZE,
+        max_block_endorsements: consensus::settings::ENDORSEMENT_COUNT,
+        max_peer_list_length: network::settings::MAX_ADVERTISE_LENGTH,
+        max_message_size: network::settings::MAX_MESSAGE_SIZE,
+        max_bootstrap_blocks: bootstrap::settings::MAX_BOOTSTRAP_BLOCKS,
+        max_bootstrap_cliques: bootstrap::settings::MAX_BOOTSTRAP_CLIQUES,
+        max_bootstrap_deps: bootstrap::settings::MAX_BOOTSTRAP_DEPS,
+        max_bootstrap_children: bootstrap::settings::MAX_BOOTSTRAP_CHILDREN,
+        max_ask_blocks_per_message: network::settings::MAX_ASK_BLOCKS_PER_MESSAGE,
+        max_operations_per_message: network::settings::MAX_OPERATIONS_PER_MESSAGE,
+        max_endorsements_per_message: network::settings::MAX_ENDORSEMENTS_PER_MESSAGE,
+        max_bootstrap_message_size: bootstrap::settings::MAX_BOOTSTRAP_MESSAGE_SIZE,
+        max_bootstrap_pos_cycles: bootstrap::settings::MAX_BOOTSTRAP_POS_CYCLES,
+        max_bootstrap_pos_entries: bootstrap::settings::MAX_BOOTSTRAP_POS_ENTRIES,
     });
 
     // interrupt signal listener
@@ -79,9 +78,9 @@ async fn launch() -> (
         res = get_state(
             &SETTINGS.bootstrap,
             bootstrap::establisher::Establisher::new(),
-            SETTINGS.version,
-            SETTINGS.consensus.genesis_timestamp,
-            SETTINGS.consensus.end_timestamp,
+            *settings::VERSION,
+            *consensus::settings::GENESIS_TIMESTAMP,
+            *consensus::settings::END_TIMESTAMP,
         ) => match res {
             Ok(vals) => vals,
             Err(err) => panic!("critical error detected in the bootstrap process: {}", err)
@@ -95,7 +94,7 @@ async fn launch() -> (
             Establisher::new(),
             clock_compensation,
             initial_peers,
-            SETTINGS.version,
+            *crate::settings::VERSION,
         )
         .await
         .expect("could not start network controller");
@@ -108,7 +107,7 @@ async fn launch() -> (
         protocol_manager,
     ) = start_protocol_controller(
         &SETTINGS.protocol,
-        SETTINGS.consensus.operation_validity_periods,
+        consensus::settings::OPERATION_VALIDITY_PERIODS,
         network_command_sender.clone(),
         network_event_receiver,
     )
@@ -118,8 +117,8 @@ async fn launch() -> (
     // launch pool controller
     let (pool_command_sender, pool_manager) = start_pool_controller(
         &SETTINGS.pool,
-        SETTINGS.consensus.thread_count,
-        SETTINGS.consensus.operation_validity_periods,
+        consensus::settings::THREAD_COUNT,
+        consensus::settings::OPERATION_VALIDITY_PERIODS,
         protocol_command_sender.clone(),
         protocol_pool_event_receiver,
     )
@@ -129,7 +128,7 @@ async fn launch() -> (
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
-            SETTINGS.consensus.clone(), // TODO: get rid of this clone() ... see #1277
+            SETTINGS.consensus.config(),
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender.clone(),
@@ -148,7 +147,7 @@ async fn launch() -> (
         bootstrap::Establisher::new(),
         private_key,
         clock_compensation,
-        SETTINGS.version,
+        *crate::settings::VERSION,
     )
     .await
     .unwrap();
@@ -158,7 +157,7 @@ async fn launch() -> (
         consensus_command_sender.clone(),
         network_command_sender.clone(),
         &SETTINGS.api,
-        &SETTINGS.consensus,
+        SETTINGS.consensus.config(),
     );
     let api_private_handle = api_private.serve(&SETTINGS.api.bind_private);
 
@@ -166,10 +165,10 @@ async fn launch() -> (
     let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
         &SETTINGS.api,
-        &SETTINGS.consensus,
+        SETTINGS.consensus.config(),
         pool_command_sender.clone(),
         &SETTINGS.network,
-        SETTINGS.version,
+        *crate::settings::VERSION,
         network_command_sender.clone(),
         clock_compensation,
         node_id,

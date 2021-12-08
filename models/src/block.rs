@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::settings::{BLOCK_ID_SIZE_BYTES, SLOT_KEY_SIZE};
 use crate::{
     address::{AddressHashMap, AddressHashSet},
     array_from_slice,
@@ -7,9 +8,9 @@ use crate::{
     u8_from_slice, with_serialization_context, Address, DeserializeCompact, DeserializeMinBEInt,
     DeserializeVarInt, Endorsement, EndorsementHashMap, EndorsementHashSet, ModelsError, Operation,
     OperationHashMap, OperationHashSet, SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot,
-    SLOT_KEY_SIZE,
 };
-use massa_hash::hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::hash::Hash;
+use massa_hash::HASH_SIZE_BYTES;
 use serde::{Deserialize, Serialize};
 use signature::{
     sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
@@ -18,8 +19,6 @@ use signature::{
 use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::str::FromStr;
-
-pub const BLOCK_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct BlockId(pub Hash);
@@ -515,10 +514,13 @@ impl DeserializeCompact for BlockHeaderContent {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::EndorsementContent;
     use serial_test::serial;
+
     use signature::{derive_public_key, generate_random_private_key};
+
+    use crate::EndorsementContent;
+
+    use super::*;
 
     #[test]
     #[serial]
