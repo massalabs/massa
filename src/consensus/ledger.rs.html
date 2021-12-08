@@ -770,8 +770,6 @@
 <span id="769">769</span>
 <span id="770">770</span>
 <span id="771">771</span>
-<span id="772">772</span>
-<span id="773">773</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::InternalError</span>;
@@ -936,7 +934,6 @@
         <span class="ident">creator</span>: <span class="ident">Address</span>,
         <span class="ident">endorsers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
         <span class="ident">parent_creator</span>: <span class="ident">Address</span>,
-        <span class="ident">thread_count</span>: <span class="ident">u8</span>,
         <span class="ident">roll_price</span>: <span class="ident">Amount</span>,
         <span class="ident">endorsement_count</span>: <span class="ident">u32</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LedgerChanges</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span>;
@@ -948,7 +945,6 @@
         <span class="ident">creator</span>: <span class="ident">Address</span>,
         <span class="ident">endorsers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
         <span class="ident">parent_creator</span>: <span class="ident">Address</span>,
-        <span class="ident">_thread_count</span>: <span class="ident">u8</span>, <span class="comment">// TODO: why it&#39;s here?</span>
         <span class="ident">roll_price</span>: <span class="ident">Amount</span>,
         <span class="ident">endorsement_count</span>: <span class="ident">u32</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LedgerChanges</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
