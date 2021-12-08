@@ -1,81 +1,13 @@
+use crypto::hash::Hash;
+use models::address::AddressHashMap;
 use models::{Address, Amount, Block, BlockId, OperationType, Slot};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use tracing::debug;
-use wasmer::{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv};
+use wasmtime::*;
 
 use crate::sce_ledger::{SCELedger, SCELedgerChanges, SCELedgerStep};
 use crate::ExecutionConfig;
-
-/// Example ABI available to wasm code, aka "syscall".
-fn foo(shared_env: &SharedExecutionContext, n: i32) -> i32 {
-    n
-}
-
-/// ABI allowing a contract to call another.
-fn call(shared_env: &SharedExecutionContext, addr: Address, func_name: String, max_gas: u64) {
-    //TODO add arbitrary input parameters and return value
-
-    //TODO metering / mem limit
-
-    // prepare execution
-    let old_max_gas;
-    let old_coins;
-    let target_module;
-    let ledger_push;
-    {
-        let mut exec_context_guard = shared_env.0.lock().unwrap();
-
-        // TODO make sure max_gas >= context.remaining_gas
-
-        // get target module
-        if let Some(module) = (*exec_context_guard).ledger_step.get_module(&addr) {
-            target_module = module;
-        } else {
-            // no module to call
-            // TODO error
-            return;
-        }
-
-        // save old context values
-        ledger_push = (*exec_context_guard).ledger_step.caused_changes.clone();
-        old_max_gas = (*exec_context_guard).max_gas; // save old max gas
-        old_coins = (*exec_context_guard).coins;
-
-        // update context
-        (*exec_context_guard).max_gas = max_gas;
-        (*exec_context_guard).coins = Amount::from_raw(0); // TODO maybe allow sending coins in the call
-        (*exec_context_guard).call_stack.push_back(addr);
-    }
-
-    // run
-    let mut run_failed = false;
-    match Instance::new(&target_module, &ImportObject::new()) // TODO bring imports into the execution context (?)
-        .map(|inst| inst.exports.get_function(&func_name).unwrap().clone())
-        .map(|f| f.native::<(), ()>().unwrap()) // TODO figure out the "native" explicit parameters
-        .map(|f| f.call())
-    {
-        Ok(rets) => {
-            // TODO check what to do with the return values.
-        }
-        Err(err) => {
-            // failed to find target func, or invalid parameters, or execution error
-            run_failed = true;
-        }
-    }
-
-    // unstack execution context
-    {
-        let mut exec_context_guard = shared_env.0.lock().unwrap();
-        (*exec_context_guard).max_gas = old_max_gas;
-        (*exec_context_guard).coins = old_coins;
-        (*exec_context_guard).call_stack.pop_back();
-        if run_failed {
-            // if the run failed, cancel its consequences on the ledger
-            (*exec_context_guard).ledger_step.caused_changes = ledger_push;
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct ExecutionStep {
@@ -98,13 +30,12 @@ pub struct ExecutionContext {
     pub call_stack: VecDeque<Address>,
 }
 
-#[derive(WasmerEnv, Clone)]
-pub struct SharedExecutionContext(pub Arc<Mutex<ExecutionContext>>);
+#[derive(Clone)]
+/// A map of modules, a shared u32, and a list of imports.
+pub struct SharedExecutionContext(pub Arc<Mutex<(AddressHashMap<Module>, u32, Vec<Extern>)>>);
 
 pub struct VM {
     cfg: ExecutionConfig,
-    imports: ImportObject,
-    store: Store,
     final_ledger: Arc<Mutex<SCELedger>>,
     step_history: VecDeque<(Slot, Option<BlockId>, SCELedgerChanges)>,
     current_execution_context: SharedExecutionContext,
@@ -112,34 +43,125 @@ pub struct VM {
 
 impl VM {
     pub fn new(cfg: ExecutionConfig) -> VM {
-        let store = Store::default();
+        // Execute a module that will:
+        // 1. Call into another module.
+        // 2. The second module will, when called, mutate some shared state.
+        let engine = Engine::default();
         let final_ledger = Arc::new(Mutex::new(
             SCELedger::default(), // TODO bootstrap
         ));
-        let current_execution_context =
-            SharedExecutionContext(Arc::new(Mutex::new(ExecutionContext {
-                ledger_step: SCELedgerStep {
-                    final_ledger: final_ledger.clone(),
-                    cumulative_history_changes: Default::default(),
-                    caused_changes: Default::default(),
-                },
-                max_gas: Default::default(),
-                coins: Default::default(),
-                gas_price: Default::default(),
-                slot: Slot::new(0, 0),
-                opt_block_id: Default::default(),
-                opt_block_creator_addr: Default::default(),
-                call_stack: Default::default(),
-            })));
-        let imports = imports! {
-            "env" => {
-                "foo" => Function::new_native_with_env(&store, current_execution_context.clone(), foo),
-            },
+
+        let current_execution_context = {
+            // Add a module for the address "hello world".
+            // The module will call `host_set` to mutate the shared u32.
+            let mut modules: AddressHashMap<Module> = Default::default();
+            let wat = r#"
+            (module
+                (import "host" "set" (func $host_set (param i32)))
+                (import "host" "call" (func $host_call (param i32 i32)))
+                (func (export "main")
+                    i32.const 3
+                    call $host_set)
+            )
+        "#;
+            let module = Module::new(&engine, wat).unwrap();
+            let hash = Hash::hash(&"Hello, world!".as_bytes());
+            let serialized = hash.into_bytes();
+            let addr = Address::from_bytes(&serialized).unwrap();
+            modules.insert(addr, module);
+            SharedExecutionContext(Arc::new(Mutex::new((modules, 0, Default::default()))))
         };
+        let mut store = Store::new(&engine, current_execution_context.clone());
+
+        // The two APIs.
+        let host_call = Func::wrap(
+            &mut store,
+            move |mut caller: Caller<'_, SharedExecutionContext>, ptr: i32, len: i32| {
+                println!("Start host call");
+                let mem = match caller.get_export("memory") {
+                    Some(Extern::Memory(mem)) => mem,
+                    _ => return Err(Trap::new("failed to find host memory")),
+                };
+                let data = mem
+                    .data(&caller)
+                    .get(ptr as u32 as usize..)
+                    .and_then(|arr| arr.get(..len as u32 as usize));
+
+                // Read the "address" from the memory of the module.
+                let string = match data {
+                    Some(data) => match std::str::from_utf8(data) {
+                        Ok(s) => s,
+                        Err(_) => return Err(Trap::new("invalid utf-8")),
+                    },
+                    None => return Err(Trap::new("pointer/length out of bounds")),
+                };
+
+                // Get the module for the address.
+                let (module, imports) = {
+                    let context = caller.data().0.lock().unwrap();
+                    let hash = Hash::hash(&string.as_bytes());
+                    let serialized = hash.into_bytes();
+                    let addr = Address::from_bytes(&serialized).unwrap();
+                    let module = context.0.get(&addr).unwrap().clone();
+                    let imports = context.2.clone();
+                    (module, imports)
+                };
+
+                // Instantiate, and call, the module.
+                let instance = Instance::new(&mut caller, &module, &imports).unwrap();
+                let foo = instance
+                    .get_typed_func::<(), (), _>(&mut caller, "main")
+                    .unwrap();
+                foo.call(&mut caller, ()).unwrap();
+                Ok(())
+            },
+        );
+        let host_set = Func::wrap(
+            &mut store,
+            |mut caller: Caller<'_, SharedExecutionContext>, to_set: i32| {
+                println!("Start host set");
+                let mut context = caller.data().0.lock().unwrap();
+                println!("Setting.");
+                // Mutate the shared u32.
+                context.1 = to_set as u32;
+                Ok(())
+            },
+        );
+
+        current_execution_context.0.lock().unwrap().2 = vec![host_set.into(), host_call.into()];
+
+        // The module that will call into `host_call`, to execute another module for the "hello world" address.
+        let wat = r#"
+        (module
+            (import "host" "set" (func $host_set (param i32)))
+            (import "host" "call" (func $host_call (param i32 i32)))
+            (func (export "main")
+                i32.const 4   ;; ptr
+                i32.const 13  ;; len
+                call $host_call)
+            (memory (export "memory") 1)
+            (data (i32.const 4) "Hello, world!"))
+    "#;
+        let module = Module::new(&engine, wat).unwrap();
+
+        // Instantiation of a module requires specifying its imports and then
+        // afterwards we can fetch exports by name, as well as asserting the
+        // type signature of the function with `get_typed_func`.
+        let imports = current_execution_context.0.lock().unwrap().2.clone();
+        let instance = Instance::new(&mut store, &module, &imports).unwrap();
+
+        let foo = instance
+            .get_typed_func::<(), (), _>(&mut store, "main")
+            .unwrap();
+        foo.call(&mut store, ()).unwrap();
+
+        // Check that the value has been set by the second contract.
+        assert_eq!(current_execution_context.0.lock().unwrap().1, 3);
+
+        println!("OK!");
+
         VM {
             cfg,
-            imports,
-            store,
             final_ledger,
             step_history: Default::default(),
             current_execution_context,
@@ -203,17 +225,6 @@ impl VM {
             active_changes.apply_changes(step_changes);
         }
 
-        // setup active execution context
-        {
-            let mut exec_context_guard = self.current_execution_context.0.lock().unwrap();
-            // clear caused changes
-            (*exec_context_guard).ledger_step.caused_changes.0.clear();
-            // accumulated step history
-            (*exec_context_guard).ledger_step.cumulative_history_changes = active_changes;
-            // TODO add more info in the exec_context: slot, PoS draws, optional block, call stack etc...
-            //      if possible prefer Arc/Mutex sharing to copying full blocks
-        }
-
         // run implicit and async calls
         //TODO
 
@@ -230,123 +241,25 @@ impl VM {
 
             // run all operations
             for (op_idx, operation) in block.operations.into_iter().enumerate() {
-                let (module, max_gas, coins, gas_price, init_changes, sender_addr) =
-                    if let OperationType::ExecuteSC {
-                        data,
-                        max_gas,
-                        coins,
-                        gas_price,
-                    } = operation.content.op
-                    {
-                        // get sender address
-                        // TODO remove unwrap
-                        let sender_addr =
-                            Address::from_public_key(&operation.content.sender_public_key).unwrap();
-
-                        // found an ExecuteSC operation
-                        let init_changes = {
-                            // get execution context guard
-                            let mut exec_context_guard =
-                                self.current_execution_context.0.lock().unwrap();
-
-                            // credit the sender with "coins"
-                            // TODO do not ignore result
-                            let _result = (*exec_context_guard).ledger_step.set_balance_delta(
-                                sender_addr,
-                                coins,
-                                true,
-                            );
-
-                            // credit the block creator with max_gas*gas_price
-                            // TODO consider dispatching with edorsers/endorsed as well
-                            // TODO remove unwrap()
-                            // TODO do not ignore result
-                            let _result = (*exec_context_guard).ledger_step.set_balance_delta(
-                                block_creator_addr,
-                                gas_price.checked_mul_u64(max_gas).unwrap(),
-                                true,
-                            );
-
-                            // save caused changes
-                            (*exec_context_guard).ledger_step.caused_changes.clone()
-
-                            // drop execution context guard
-                        };
-
-                        // parse operation bytecode
-                        match Module::from_binary(&self.store, &data) {
-                            Ok(module) => {
-                                (module, max_gas, coins, gas_price, init_changes, sender_addr)
-                            }
-                            Err(err) => {
-                                // parsing failed
-                                debug!(
-                                    "failed parsing bytecode in operation index {} in block {}: {}",
-                                    op_idx, block_id, err
-                                );
-                                continue;
-                            }
-                        }
-                    } else {
-                        // not an ExecuteSC operations
-                        continue;
-                    };
-
-                // a module was successfully parsed and balances are ready
-                // init_changes contains a copy of the initial coin credits that will be popped back if bytecode execution fails in order to cancel its effects
-
-                // fill context for execution
+                if let OperationType::ExecuteSC {
+                    data,
+                    max_gas,
+                    coins,
+                    gas_price,
+                } = operation.content.op
                 {
-                    let mut exec_context_guard = self.current_execution_context.0.lock().unwrap();
-                    (*exec_context_guard).gas_price = gas_price;
-                    (*exec_context_guard).max_gas = max_gas;
-                    (*exec_context_guard).coins = coins;
-                    (*exec_context_guard).slot = step.slot;
-                    (*exec_context_guard).opt_block_id = Some(block_id);
-                    (*exec_context_guard).opt_block_creator_addr = Some(block_creator_addr);
-                    (*exec_context_guard).call_stack = Default::default();
-                    // TODO provide more context:
-                    //   block, PoS seeds/draws, absolute time etc...
-                }
-
-                // TODO add mem limit and metering
-                let instance = Instance::new(&module, &self.imports).unwrap();
-                let program = instance
-                    .exports
-                    .get_function("main")
-                    .unwrap() // TODO do not unwrap !
-                    .native::<(), ()>()
-                    .unwrap(); // TODO do not unwrap !
-                match program.call() {
-                    Ok(_rets) => {
-                        // TODO check what to do with the return values. Probably nothing
-                    }
-                    Err(err) => {
-                        debug!(
-                            "failed running bytecode in operation index {} in block {}: {}",
-                            op_idx, block_id, err
-                        );
-
-                        // cancel the effects of execution only, pop back init_changes
-                        let mut exec_context_guard =
-                            self.current_execution_context.0.lock().unwrap();
-                        (*exec_context_guard).ledger_step.caused_changes = init_changes;
-                    }
-                }
+                    // get sender address
+                    // TODO remove unwrap
+                    let sender_addr =
+                        Address::from_public_key(&operation.content.sender_public_key).unwrap();
+                } else {
+                    // not an ExecuteSC operations
+                    continue;
+                };
             }
         } else {
             // miss
             opt_block_id = None;
-        }
-
-        // push step into history
-        {
-            let exec_context_guard = self.current_execution_context.0.lock().unwrap();
-            self.step_history.push_back((
-                step.slot,
-                opt_block_id,
-                (*exec_context_guard).ledger_step.caused_changes.clone(),
-            ))
         }
     }
 

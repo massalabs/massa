@@ -4,10 +4,10 @@ use crate::ExecutionError;
 use crypto::hash::Hash;
 use models::ModelsError;
 use models::{address::AddressHashMap, hhasher::HHashMap, Address, Amount, AMOUNT_ZERO};
-use wasmer::Module;
+use wasmtime::*;
 
 /// an entry in the SCE ledger
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct SCELedgerEntry {
     pub balance: Amount,
     pub opt_module: Option<Module>,
@@ -42,7 +42,7 @@ impl SCELedgerEntry {
 }
 
 // optional updates to be applied to a ledger entry
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SCELedgerEntryUpdate {
     pub update_balance: Option<Amount>,
     pub update_opt_module: Option<Option<Module>>,
@@ -67,7 +67,7 @@ impl SCELedgerEntryUpdate {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum SCELedgerChange {
     // delete an entry
     Delete,
@@ -131,11 +131,11 @@ impl SCELedgerChange {
 }
 
 /// SCE ledger
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct SCELedger(AddressHashMap<SCELedgerEntry>);
 
 /// list of ledger changes (deletions, resets, updates)
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct SCELedgerChanges(pub AddressHashMap<SCELedgerChange>);
 
 impl SCELedgerChanges {
@@ -185,7 +185,7 @@ impl SCELedger {
 
 /// represents an execution step from the point of view of the SCE ledger
 /// applying cumulative_history_changes then caused_changes to final_ledger yields the current ledger during the ledger step
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SCELedgerStep {
     // arc/mutex reference to the final ledger
     pub final_ledger: Arc<Mutex<SCELedger>>,
