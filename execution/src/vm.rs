@@ -305,7 +305,7 @@ impl VM {
                     (*exec_context_guard).slot = step.slot;
                     (*exec_context_guard).opt_block_id = Some(block_id);
                     (*exec_context_guard).opt_block_creator_addr = Some(block_creator_addr);
-                    (*exec_context_guard).call_stack = Default::default();
+                    (*exec_context_guard).call_stack = vec![sender_addr];
                     // TODO provide more context:
                     //   block, PoS seeds/draws, absolute time etc...
                 }
