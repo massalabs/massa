@@ -1,17 +1,17 @@
 use massa_hash::hash::Hash;
-use std::sync::{Arc, Mutex};
-
+use tokio::sync::Mutex;
+use std::sync::{Arc};
 use crate::ExecutionError;
+use crate::types::Bytecode;
 use models::ModelsError;
 use models::{address::AddressHashMap, hhasher::HHashMap, Address, Amount, AMOUNT_ZERO};
-use wasmer::Module;
 
 /// an entry in the SCE ledger
 #[derive(Debug, Clone, Default)]
 pub struct SCELedgerEntry {
     pub balance: Amount,
-    pub opt_module: Option<Module>,
-    pub data: HHashMap<Hash, Vec<u8>>,
+    pub opt_module: Option<Bytecode>,
+    pub data: HHashMap<Hash, Bytecode>,
 }
 
 impl SCELedgerEntry {
@@ -45,8 +45,8 @@ impl SCELedgerEntry {
 #[derive(Debug, Clone)]
 pub struct SCELedgerEntryUpdate {
     pub update_balance: Option<Amount>,
-    pub update_opt_module: Option<Option<Module>>,
-    pub update_data: HHashMap<Hash, Option<Vec<u8>>>, // None for row deletion
+    pub update_opt_module: Option<Option<Bytecode>>,
+    pub update_data: HHashMap<Hash, Option<Bytecode>>, // None for row deletion
 }
 
 impl SCELedgerEntryUpdate {
@@ -157,6 +157,10 @@ impl SCELedgerChanges {
             .and_modify(|cur_c| cur_c.apply_change(change))
             .or_insert_with(|| change.clone());
     }
+
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
 }
 
 impl SCELedger {
@@ -203,7 +207,7 @@ pub struct SCELedgerStep {
 
 impl SCELedgerStep {
     /// gets the balance of an SCE ledger entry
-    pub fn get_balance(&self, addr: &Address) -> Amount {
+    pub async fn get_balance(&self, addr: &Address) -> Amount {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {
@@ -220,7 +224,7 @@ impl SCELedgerStep {
 
         // check if the final ledger has the info
         {
-            let ledger_guard = self.final_ledger.lock().unwrap();
+            let ledger_guard = self.final_ledger.lock().await;
             if let Some(entry) = (*ledger_guard).0.get(addr) {
                 return entry.balance;
             }
@@ -243,13 +247,13 @@ impl SCELedgerStep {
 
     /// tries to increase/decrease the balance of an address
     /// does not change anything on failure
-    pub fn set_balance_delta(
+    pub async fn set_balance_delta(
         &mut self,
         addr: Address,
         amount: Amount,
         positive: bool,
     ) -> Result<(), ExecutionError> {
-        let mut balance = self.get_balance(&addr);
+        let mut balance = self.get_balance(&addr).await;
         if positive {
             balance = balance
                 .checked_add(amount)
@@ -269,7 +273,7 @@ impl SCELedgerStep {
 
     /// gets the module of an SCE ledger entry
     ///  returns None if the entry was not found or has no module
-    pub fn _get_module(&self, addr: &Address) -> Option<Module> {
+    pub async fn _get_module(&self, addr: &Address) -> Option<Bytecode> {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {
@@ -286,7 +290,7 @@ impl SCELedgerStep {
 
         // check if the final ledger has the info
         {
-            let ledger_guard = self.final_ledger.lock().unwrap();
+            let ledger_guard = self.final_ledger.lock().await;
             if let Some(entry) = (*ledger_guard).0.get(addr) {
                 return entry.opt_module.clone();
             }
@@ -298,7 +302,7 @@ impl SCELedgerStep {
 
     /// returns a data entry
     ///   None if address not found or entry nto found in addr's data
-    pub fn _get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
+    pub async fn _get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {
@@ -317,7 +321,7 @@ impl SCELedgerStep {
 
         // check if the final ledger has the info
         {
-            let ledger_guard = self.final_ledger.lock().unwrap();
+            let ledger_guard = self.final_ledger.lock().await;
             if let Some(entry) = (*ledger_guard).0.get(addr) {
                 return entry.data.get(key).cloned();
             }

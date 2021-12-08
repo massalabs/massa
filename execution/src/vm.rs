@@ -1,348 +1,159 @@
-use models::{Address, Amount, Block, BlockId, OperationType, Slot};
-use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
-use tracing::debug;
-use wasmer::{imports, ImportObject, Instance, Module, Store, WasmerEnv};
+use models::{Address, BlockId};
 
-use crate::sce_ledger::{SCELedger, SCELedgerChanges, SCELedgerStep};
+use crate::types::{ExecutionContext, OperationSC, ExecutionStep, StepHistory};
+use crate::sce_ledger::{SCELedger, SCELedgerChanges};
 use crate::ExecutionConfig;
-
-/// ABI allowing a contract to call another.
-fn _call(shared_env: &SharedExecutionContext, addr: Address, func_name: String, max_gas: u64) {
-    //TODO add arbitrary input parameters and return value
-
-    //TODO metering / mem limit
-
-    // prepare execution
-    let old_max_gas;
-    let old_coins;
-    let target_module;
-    let ledger_push;
-    {
-        let mut exec_context_guard = shared_env.0.lock().unwrap();
-
-        // TODO make sure max_gas >= context.remaining_gas
-
-        // get target module
-        if let Some(module) = (*exec_context_guard).ledger_step._get_module(&addr) {
-            target_module = module;
-        } else {
-            // no module to call
-            // TODO error
-            return;
-        }
-
-        // save old context values
-        ledger_push = (*exec_context_guard).ledger_step.caused_changes.clone();
-        old_max_gas = (*exec_context_guard).max_gas; // save old max gas
-        old_coins = (*exec_context_guard).coins;
-
-        // update context
-        (*exec_context_guard).max_gas = max_gas;
-        (*exec_context_guard).coins = Amount::from_raw(0); // TODO maybe allow sending coins in the call
-        (*exec_context_guard).call_stack.push_back(addr);
-    }
-
-    // run
-    let mut run_failed = false;
-    match Instance::new(&target_module, &ImportObject::new()) // TODO bring imports into the execution context (?)
-        .map(|inst| inst.exports.get_function(&func_name).unwrap().clone())
-        .map(|f| f.native::<(), ()>().unwrap()) // TODO figure out the "native" explicit parameters
-        .map(|f| f.call())
-    {
-        Ok(_rets) => {
-            // TODO check what to do with the return values.
-        }
-        Err(_err) => {
-            // failed to find target func, or invalid parameters, or execution error
-            run_failed = true;
-        }
-    }
-
-    // unstack execution context
-    {
-        let mut exec_context_guard = shared_env.0.lock().unwrap();
-        (*exec_context_guard).max_gas = old_max_gas;
-        (*exec_context_guard).coins = old_coins;
-        (*exec_context_guard).call_stack.pop_back();
-        if run_failed {
-            // if the run failed, cancel its consequences on the ledger
-            (*exec_context_guard).ledger_step.caused_changes = ledger_push;
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct ExecutionStep {
-    pub slot: Slot,
-    // TODO add pos_seed for RNG seeding
-    // TODO add pos_draws to list the draws (block and endorsement creators) for that slot
-    pub block: Option<(BlockId, Block)>, // None if miss
-}
-
-#[derive(Clone)]
-/// Stateful context, providing an execution context to host functions("syscalls").
-pub struct ExecutionContext {
-    pub ledger_step: SCELedgerStep,
-    pub max_gas: u64,
-    pub coins: Amount,
-    pub gas_price: Amount,
-    pub slot: Slot,
-    pub opt_block_id: Option<BlockId>,
-    pub opt_block_creator_addr: Option<Address>,
-    pub call_stack: VecDeque<Address>,
-}
-
-#[derive(WasmerEnv, Clone)]
-pub struct SharedExecutionContext(pub Arc<Mutex<ExecutionContext>>);
 
 pub struct VM {
     _cfg: ExecutionConfig,
-    imports: ImportObject,
-    store: Store,
-    final_ledger: Arc<Mutex<SCELedger>>,
-    step_history: VecDeque<(Slot, Option<BlockId>, SCELedgerChanges)>,
-    current_execution_context: SharedExecutionContext,
+    step_history: StepHistory,
+    context: ExecutionContext,
 }
 
 impl VM {
-    pub fn new(cfg: ExecutionConfig) -> VM {
-        let store = Store::default();
-        let final_ledger = Arc::new(Mutex::new(
-            SCELedger::default(), // TODO bootstrap
-        ));
-        let current_execution_context =
-            SharedExecutionContext(Arc::new(Mutex::new(ExecutionContext {
-                ledger_step: SCELedgerStep {
-                    final_ledger: final_ledger.clone(),
-                    cumulative_history_changes: Default::default(),
-                    caused_changes: Default::default(),
-                },
-                max_gas: Default::default(),
-                coins: Default::default(),
-                gas_price: Default::default(),
-                slot: Slot::new(0, 0),
-                opt_block_id: Default::default(),
-                opt_block_creator_addr: Default::default(),
-                call_stack: Default::default(),
-            })));
-        let imports = imports! {};
+    pub fn new(_cfg: ExecutionConfig) -> VM {
+        let ledger = SCELedger::default(); // TODO Bootstrap
+        let context = ExecutionContext::new(ledger);
         VM {
-            _cfg: cfg,
-            imports,
-            store,
-            final_ledger,
+            _cfg,
             step_history: Default::default(),
-            current_execution_context,
+            context,
         }
     }
 
     /// runs an SCE-final execution step
     /// # Parameters
     ///   * step: execution step to run
-    pub fn run_final_step(&mut self, step: ExecutionStep) {
-        // check if step already in history front
-        let opt_cached = {
-            if let Some((slot, opt_block, ledger_changes)) = self.step_history.pop_front() {
-                if slot != step.slot {
-                    // slot mismatch
-                    None
-                } else {
-                    match (&opt_block, &step.block) {
-                        (None, None) => {
-                            // matching miss
-                            Some(ledger_changes)
-                        }
-                        (Some(b_id_hist), Some((b_id_step, _b_step))) => {
-                            if b_id_hist == b_id_step {
-                                // matching block
-                                Some(ledger_changes)
-                            } else {
-                                // block mismatch
-                                None
-                            }
-                        }
-                        (None, Some(_)) => None, // miss/block mismatch
-                        (Some(_), None) => None, // block/miss mismatch
-                    }
-                }
-            } else {
-                None
-            }
-        };
-        if let Some(cached) = opt_cached {
+    pub(crate) async fn run_final_step(&mut self, step: &ExecutionStep) {
+        if let Some(cached) = self.is_already_done(step) {
             // execution was already done, apply cached ledger changes to final ledger
-            let mut final_ledger_guard = self.final_ledger.lock().unwrap();
+            let mut final_ledger_guard = self.context.ledger_step.final_ledger.lock().await;
             (*final_ledger_guard).apply_changes(&cached);
             return;
         }
-
         // nothing found in cache, or cache mismatch: reset history, run step and make it final
         // this should almost never happen, so the heavy step.clone() is OK
-        self.reset_to_final();
-        self.run_active_step(step.clone());
-        self.run_final_step(step);
+        self.step_history.clear();
+        self.run_active_step(step).await;
+
+        if let Some(cached) = self.is_already_done(step) {
+            // execution was already done, apply cached ledger changes to final ledger
+            // It should always happen
+            let mut final_ledger_guard = self.context.ledger_step.final_ledger.lock().await;
+            (*final_ledger_guard).apply_changes(&cached);
+        }
+    }
+
+    fn is_already_done(&mut self, step: &ExecutionStep) -> Option<SCELedgerChanges> {
+        // check if step already in history front
+        if let Some((slot, opt_block, ledger_changes)) = self.step_history.pop_front() {
+            if slot == step.slot {
+                match (&opt_block, &step.block) {
+                    (None, None) => Some(ledger_changes), // matching miss
+                    (Some(b_id_hist), Some((b_id_step, _b_step))) => {
+                        if b_id_hist == b_id_step {
+                            Some(ledger_changes) // matching block
+                        } else {
+                            None // block mismatch
+                        }
+                    }
+                    (None, Some(_)) => None, // miss/block mismatch
+                    (Some(_), None) => None, // block/miss mismatch
+                }
+            } else {
+                None // slot mismatch
+            }
+        } else {
+            None
+        }
     }
 
     /// runs an SCE-active execution step
+    /// 
+    /// 1. Get step history (cache of final ledger changes by slot and block_id history)
+    /// 2. clear caused changes
+    /// 3. accumulated step history
+    /// 4. Execute each block of each operation
+    /// 
     /// # Parameters
     ///   * step: execution step to run
-    pub fn run_active_step(&mut self, step: ExecutionStep) {
+    pub(crate) async fn run_active_step(&mut self, step: &ExecutionStep) {
         // accumulate active ledger changes history
-        let mut active_changes = SCELedgerChanges::default();
-        for (_step_slot, _step_opt_block, step_changes) in self.step_history.iter() {
-            active_changes.apply_changes(step_changes);
-        }
-
-        // setup active execution context
-        {
-            let mut exec_context_guard = self.current_execution_context.0.lock().unwrap();
-            // clear caused changes
-            (*exec_context_guard).ledger_step.caused_changes.0.clear();
-            // accumulated step history
-            (*exec_context_guard).ledger_step.cumulative_history_changes = active_changes;
-            // TODO add more info in the exec_context: slot, PoS draws, optional block, call stack etc...
-            //      if possible prefer Arc/Mutex sharing to copying full blocks
-        }
+        self.context.ledger_step.caused_changes.clear();
+        self.context.ledger_step.cumulative_history_changes = SCELedgerChanges::from(self.step_history.clone());
 
         // run implicit and async calls
-        //TODO
+        // TODO
 
         // run explicit calls within the block (if the slot is not a miss)
         // note that total block gas is not checked, because currently Protocol makes the block invalid if it overflows gas
         let opt_block_id: Option<BlockId>;
-        if let Some((block_id, block)) = step.block {
-            opt_block_id = Some(block_id);
+        if let Some((block_id, block)) = &step.block {
+            opt_block_id = Some(*block_id);
 
             // get block creator addr
-            // TODO remove unwrap
-            let block_creator_addr =
-                Address::from_public_key(&block.header.content.creator).unwrap();
-
+            let block_creator_addr = Address::from_public_key(&block.header.content.creator).unwrap();
             // run all operations
-            for (op_idx, operation) in block.operations.into_iter().enumerate() {
-                let (module, max_gas, coins, gas_price, init_changes, _sender_addr) =
-                    if let OperationType::ExecuteSC {
-                        data,
-                        max_gas,
-                        coins,
-                        gas_price,
-                    } = operation.content.op
-                    {
-                        // get sender address
-                        // TODO remove unwrap
-                        let sender_addr =
-                            Address::from_public_key(&operation.content.sender_public_key).unwrap();
+            for (_op_idx, operation) in block.operations.clone().into_iter().enumerate() {
+                let operation_sc = OperationSC::try_from(operation.content);
+                if operation_sc.is_err() { // only fail if the operation cannot parse the sender address
+                    continue;
+                }
+                let operation_sc = operation_sc.unwrap();
 
-                        // found an ExecuteSC operation
-                        let init_changes = {
-                            // get execution context guard
-                            let mut exec_context_guard =
-                                self.current_execution_context.0.lock().unwrap();
+                // credit the sender with "coins"
+                // TODO do not ignore result
+                let _result = self.context.ledger_step.set_balance_delta(
+                    operation_sc.sender,
+                    operation_sc.coins,
+                    true,
+                ).await;
 
-                            // credit the sender with "coins"
-                            // TODO do not ignore result
-                            let _result = (*exec_context_guard).ledger_step.set_balance_delta(
-                                sender_addr,
-                                coins,
-                                true,
-                            );
+                // credit the block creator with max_gas*gas_price
+                // TODO consider dispatching with edorsers/endorsed as well
+                let _result = self.context.ledger_step.set_balance_delta(
+                    block_creator_addr,
+                    operation_sc.gas_price.checked_mul_u64(operation_sc.max_gas).unwrap(),
+                    true,
+                ).await;
 
-                            // credit the block creator with max_gas*gas_price
-                            // TODO consider dispatching with edorsers/endorsed as well
-                            // TODO remove unwrap()
-                            // TODO do not ignore result
-                            let _result = (*exec_context_guard).ledger_step.set_balance_delta(
-                                block_creator_addr,
-                                gas_price.checked_mul_u64(max_gas).unwrap(),
-                                true,
-                            );
-
-                            // save caused changes
-                            (*exec_context_guard).ledger_step.caused_changes.clone()
-
-                            // drop execution context guard
-                        };
-
-                        // parse operation bytecode
-                        match Module::from_binary(&self.store, &data) {
-                            Ok(module) => {
-                                (module, max_gas, coins, gas_price, init_changes, sender_addr)
-                            }
-                            Err(err) => {
-                                // parsing failed
-                                debug!(
-                                    "failed parsing bytecode in operation index {} in block {}: {}",
-                                    op_idx, block_id, err
-                                );
-                                continue;
-                            }
-                        }
-                    } else {
-                        // not an ExecuteSC operations
-                        continue;
-                    };
-
-                // a module was successfully parsed and balances are ready
-                // init_changes contains a copy of the initial coin credits that will be popped back if bytecode execution fails in order to cancel its effects
+                // Save the Initial ledger changes before execution
+                // It contains a copy of the initial coin credits that will be popped back if bytecode execution fails in order to cancel its effects
+                let _save_init_changes = self.context.ledger_step.caused_changes.clone();
 
                 // fill context for execution
-                {
-                    let mut exec_context_guard = self.current_execution_context.0.lock().unwrap();
-                    (*exec_context_guard).gas_price = gas_price;
-                    (*exec_context_guard).max_gas = max_gas;
-                    (*exec_context_guard).coins = coins;
-                    (*exec_context_guard).slot = step.slot;
-                    (*exec_context_guard).opt_block_id = Some(block_id);
-                    (*exec_context_guard).opt_block_creator_addr = Some(block_creator_addr);
-                    (*exec_context_guard).call_stack = Default::default();
-                    // TODO provide more context:
-                    //   block, PoS seeds/draws, absolute time etc...
-                }
+                // TODO provide more context: block, PoS seeds/draws, absolute time etc...
+                self.context.gas_price = operation_sc.gas_price;
+                self.context.max_gas = operation_sc.max_gas;
+                self.context.coins = operation_sc.coins;
+                self.context.slot = step.slot;
+                self.context.opt_block_id = Some(*block_id);
+                self.context.opt_block_creator_addr = Some(block_creator_addr);
+                self.context.call_stack = Default::default();
 
-                // TODO add mem limit and metering
-                let instance = Instance::new(&module, &self.imports).unwrap();
-                let program = instance
-                    .exports
-                    .get_function("main")
-                    .unwrap() // TODO do not unwrap !
-                    .native::<(), ()>()
-                    .unwrap(); // TODO do not unwrap !
-                match program.call() {
-                    Ok(_rets) => {
-                        // TODO check what to do with the return values. Probably nothing
-                    }
-                    Err(err) => {
-                        debug!(
-                            "failed running bytecode in operation index {} in block {}: {}",
-                            op_idx, block_id, err
-                        );
-
-                        // cancel the effects of execution only, pop back init_changes
-                        let mut exec_context_guard =
-                            self.current_execution_context.0.lock().unwrap();
-                        (*exec_context_guard).ledger_step.caused_changes = init_changes;
-                    }
-                }
+                // TODO call the run module from the external execution project
+                // Important, if execution fail or return an error, reset changes like this:
+                //
+                //
+                // debug!(
+                //     "failed running bytecode in operation index {} in block {}: {}",
+                //     op_idx, block_id, err
+                // );
+                // // cancel the effects of execution only, pop back init_changes
+                // let mut exec_context_guard = self.current_execution_context.0.lock().unwrap();
+                // (*exec_context_guard).ledger_step.caused_changes = init_changes;
+                //
             }
         } else {
-            // miss
+            // There is no block for this step, miss
             opt_block_id = None;
         }
 
         // push step into history
-        {
-            let exec_context_guard = self.current_execution_context.0.lock().unwrap();
-            self.step_history.push_back((
-                step.slot,
-                opt_block_id,
-                (*exec_context_guard).ledger_step.caused_changes.clone(),
-            ))
-        }
-    }
-
-    /// resets the VM to its latest final state
-    pub fn reset_to_final(&mut self) {
-        self.step_history.clear();
+        self.step_history.push_back((
+            step.slot,
+            opt_block_id,
+            self.context.ledger_step.caused_changes.clone(),
+        ))
     }
 }
