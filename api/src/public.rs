@@ -118,11 +118,6 @@ impl Endpoints for API<Public> {
                 node_id,
                 node_ip: network_config.routable_ip,
                 version,
-                genesis_timestamp: consensus_settings.genesis_timestamp,
-                t0: consensus_settings.t0,
-                delta_f0: consensus_settings.delta_f0,
-                roll_price: consensus_settings.roll_price,
-                thread_count: consensus_settings.thread_count,
                 current_time: now,
                 connected_nodes: peers?
                     .peers

@@ -162,7 +162,6 @@ pub trait OperationLedgerInterface {
         creator: Address,
         endorsers: Vec<Address>,
         parent_creator: Address,
-        thread_count: u8,
         roll_price: Amount,
         endorsement_count: u32,
     ) -> Result<LedgerChanges, ConsensusError>;
@@ -174,7 +173,6 @@ impl OperationLedgerInterface for Operation {
         creator: Address,
         endorsers: Vec<Address>,
         parent_creator: Address,
-        _thread_count: u8, // TODO: why it's here?
         roll_price: Amount,
         endorsement_count: u32,
     ) -> Result<LedgerChanges, ConsensusError> {
