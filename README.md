@@ -30,7 +30,7 @@ and run a Massa node. Running a node during the testnet phase also helps
 us find bugs and improve usability, so it will be rewarded with real
 Massa on mainnet launch.
 
-The mechanics of those rewards are described in the [Testnetrules](docs/testnet_rules.md).
+The mechanics of those rewards are described in the [Testnet rules](https://github.com/massalabs/massa/wiki/testnet_rules).
 
 ## Testnet Discussions
 
