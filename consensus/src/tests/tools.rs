@@ -677,7 +677,6 @@ pub fn default_consensus_config(
         endorsement_count: 0,
         block_db_prune_interval: 1000.into(),
         max_item_return_count: 1000,
-        max_gas_per_block: 10,
     }
 }
 

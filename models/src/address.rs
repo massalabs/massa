@@ -2,13 +2,12 @@
 
 use crate::api::{LedgerInfo, RollsInfo};
 use crate::hhasher::{HHashMap, HHashSet, PreHashed};
+use crate::settings::ADDRESS_SIZE_BYTES;
 use crate::ModelsError;
-use massa_hash::hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::hash::Hash;
 use serde::{Deserialize, Serialize};
 use signature::PublicKey;
 use std::str::FromStr;
-
-pub const ADDRESS_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Address(Hash);

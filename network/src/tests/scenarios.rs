@@ -32,7 +32,7 @@ use tracing::trace;
 async fn test_node_worker_shutdown() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&vec![]);
-    let network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
+    let network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
     let reader = ReadBinder::new(duplex_mock_read);
@@ -617,7 +617,6 @@ async fn test_block_not_found() {
 
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.target_bootstrap_connections = 1;
-    network_conf.max_ask_blocks_per_message = 3;
 
     // Overwrite the context.
     let mut serialization_context = models::get_serialization_context();
@@ -892,7 +891,6 @@ async fn test_operation_messages() {
 
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.target_bootstrap_connections = 1;
-    network_conf.max_ask_blocks_per_message = 3;
 
     // Overwrite the context.
     let mut serialization_context = models::get_serialization_context();
@@ -1014,7 +1012,6 @@ async fn test_endorsements_messages() {
 
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.target_bootstrap_connections = 1;
-    network_conf.max_ask_blocks_per_message = 3;
 
     // Overwrite the context.
     let mut serialization_context = models::get_serialization_context();

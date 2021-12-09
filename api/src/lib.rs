@@ -1,7 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 #![feature(async_closure)]
-#![doc = include_str!("../../docs/api.md")]
 
 use crate::error::ApiError::WrongAPI;
 use consensus::{ConsensusCommandSender, ConsensusConfig};
@@ -19,7 +18,7 @@ use models::massa_hash::PubkeySig;
 use models::node::NodeId;
 use models::operation::{Operation, OperationId};
 use models::{Address, BlockId, EndorsementId, Version};
-use network::{NetworkCommandSender, NetworkConfig};
+use network::{NetworkCommandSender, NetworkSettings};
 use pool::PoolCommandSender;
 use signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
@@ -35,9 +34,9 @@ mod public;
 pub struct Public {
     pub consensus_command_sender: ConsensusCommandSender,
     pub pool_command_sender: PoolCommandSender,
-    pub consensus_settings: &'static ConsensusConfig,
+    pub consensus_config: ConsensusConfig,
     pub api_settings: &'static APISettings,
-    pub network_settings: &'static NetworkConfig,
+    pub network_settings: &'static NetworkSettings,
     pub version: Version,
     pub network_command_sender: NetworkCommandSender,
     pub compensation_millis: i64,
@@ -47,7 +46,7 @@ pub struct Public {
 pub struct Private {
     pub consensus_command_sender: ConsensusCommandSender,
     pub network_command_sender: NetworkCommandSender,
-    pub consensus_settings: &'static ConsensusConfig,
+    pub consensus_config: ConsensusConfig,
     pub api_settings: &'static APISettings,
     pub stop_node_channel: mpsc::Sender<()>,
 }

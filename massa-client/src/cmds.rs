@@ -12,6 +12,7 @@ use models::{
 };
 use serde::Serialize;
 use signature::{generate_random_private_key, PrivateKey, PublicKey};
+use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::process;
@@ -427,11 +428,13 @@ impl Command {
             }
 
             Command::wallet_generate_private_key => {
-                let ad = wallet.add_private_key(generate_random_private_key())?;
+                let key = generate_random_private_key();
+                let ad = wallet.add_private_key(key)?;
                 if json {
                     Ok(Box::new(ad.to_string()))
                 } else {
                     println!("Generated {} address and added it to the wallet", ad);
+                    println!("Type `node_add_staking_private_keys {}` to start staking with this private_key.\n",key);
                     Ok(Box::new(()))
                 }
             }
@@ -439,13 +442,14 @@ impl Command {
             Command::wallet_add_private_keys => {
                 let addresses = parse_vec::<PrivateKey>(parameters)?
                     .into_iter()
-                    .map(|key| Ok(wallet.add_private_key(key)?))
-                    .collect::<Result<Vec<Address>>>()?;
+                    .map(|key| Ok((wallet.add_private_key(key)?, key)))
+                    .collect::<Result<HashMap<Address, PrivateKey>>>()?;
                 if json {
-                    return Ok(Box::new(())); // FIXME
+                    return Ok(Box::new(addresses.into_keys().collect::<Vec<Address>>()));
                 } else {
-                    for address in addresses.iter() {
-                        println!("Derived and added address {} to the wallet\n", address);
+                    for (address, key) in addresses.iter() {
+                        println!("Derived and added address {} to the wallet.", address);
+                        println!("Type `node_add_staking_private_keys {}` to start staking with this private_key.\n", key);
                     }
                 }
                 Ok(Box::new(()))
@@ -480,7 +484,7 @@ impl Command {
                 if !json {
                     let roll_price = match client.public.get_status().await {
                         Err(e) => bail!("RpcError: {}", e),
-                        Ok(status) => status.algo_config.roll_price,
+                        Ok(status) => status.config.roll_price,
                     };
                     match roll_price
                         .checked_mul_u64(roll_count)
@@ -595,17 +599,16 @@ impl Command {
                 .await
             }
             Command::when_episode_ends => {
-                if let Some(end) = match client.public.get_status().await {
-                    Ok(node_status) => node_status.algo_config.end_timestamp,
+                let end = match client.public.get_status().await {
+                    Ok(node_status) => node_status.consensus_stats.end_timespan,
                     Err(e) => bail!("RpcError: {}", e),
-                } {
-                    let (days, hours, mins, secs) =
-                        end.saturating_sub(UTime::now(0)?).days_hours_mins_secs()?; // compensation millis is zero
-                    let mut res = "".to_string();
-                    res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs));
-                    if !json {
-                        println!("{}", res);
-                    }
+                };
+                let (days, hours, mins, secs) =
+                    end.saturating_sub(UTime::now(0)?).days_hours_mins_secs()?; // compensation millis is zero
+                let mut res = "".to_string();
+                res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs));
+                if !json {
+                    println!("{}", res);
                 }
                 Ok(Box::new(()))
             }
@@ -625,7 +628,7 @@ async fn send_operation(
         Ok(node_status) => node_status,
         Err(e) => rpc_error!(e),
     }
-    .algo_config;
+    .config;
 
     let slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp, 0)? // clock compensation is zero
         .unwrap_or_else(|| Slot::new(0, 0));

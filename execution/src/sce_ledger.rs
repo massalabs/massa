@@ -4,7 +4,7 @@ use std::sync::{Arc};
 use crate::ExecutionError;
 use crate::types::Bytecode;
 use models::ModelsError;
-use models::{address::AddressHashMap, hhasher::HHashMap, Address, Amount, AMOUNT_ZERO};
+use models::{address::AddressHashMap, hhasher::HHashMap, Address, Amount};
 
 /// an entry in the SCE ledger
 #[derive(Debug, Clone, Default)]
@@ -211,7 +211,7 @@ impl SCELedgerStep {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {
-                Some(SCELedgerChange::Delete) => return AMOUNT_ZERO,
+                Some(SCELedgerChange::Delete) => return Amount::from_raw(0),
                 Some(SCELedgerChange::Set(new_entry)) => return new_entry.balance,
                 Some(SCELedgerChange::Update(update)) => {
                     if let Some(updated_balance) = update.update_balance {
@@ -231,7 +231,7 @@ impl SCELedgerStep {
         }
 
         // otherwise, just return zero
-        AMOUNT_ZERO
+        Amount::from_raw(0)
     }
 
     /// sets the balance of an address

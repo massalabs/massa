@@ -30,8 +30,7 @@ and run a Massa node. Running a node during the testnet phase also helps
 us find bugs and improve usability, so it will be rewarded with real
 Massa on mainnet launch.
 
-The mechanics of those rewards are described in the [Testnet
-rules](docs/testnet_rules.md).
+The mechanics of those rewards are described in the [Testnetrules](docs/testnet_rules.md).
 
 ## Testnet Discussions
 
@@ -43,22 +42,22 @@ For project announcements, we mainly use
 
 ## Tutorials to follow to join the testnet
 
--   [Installing a node](docs/install.md)
--   [Running a node](docs/run.md)
--   [Creating a wallet](docs/wallet.md)
--   [Staking](docs/staking.md)
--   [Routability tutorial](docs/routability.md) (Optionnal)
--   [Testnet rewards program](docs/testnet_rules.md) (Optionnal)
+-   [Installing a node](https://github.com/massalabs/massa/wiki/install)
+-   [Running a node](https://github.com/massalabs/massa/wiki/run)
+-   [Creating a wallet](https://github.com/massalabs/massa/wiki/wallet)
+-   [Staking](https://github.com/massalabs/massa/wiki/staking)
+-   [Routability tutorial](https://github.com/massalabs/massa/wiki/routability) (Optional)
+-   [Testnet rewards program](https://github.com/massalabs/massa/wiki/testnet_rules) (Optional)
 
 ## More tutorials
 
--   [Updating the node](docs/update.md)
--   [Sending transactions](docs/transaction.md)
+-   [Updating the node](https://github.com/massalabs/massa/wiki/update)
+-   [Sending transactions](https://github.com/massalabs/massa/wiki/transaction)
 
-## [FAQ](docs/faq.md) and Troubleshooting
+## [FAQ](https://github.com/massalabs/massa/wiki/faq) and Troubleshooting
 
 You'll find answers to common issues and questions regarding the Massa
-protocol in the [FAQ](docs/faq.md).
+protocol in the [FAQ](https://github.com/massalabs/massa/wiki/faq).
 
 Don't hesitate to ask questions in the
 [Discord](https://discord.com/invite/massa) testnet channel.

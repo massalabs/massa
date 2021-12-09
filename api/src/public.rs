@@ -21,7 +21,7 @@ use models::{
     Address, BlockHashSet, BlockId, EndorsementHashSet, EndorsementId, Operation, OperationHashMap,
     OperationHashSet, OperationId, Slot, Version,
 };
-use network::{NetworkCommandSender, NetworkConfig};
+use network::{NetworkCommandSender, NetworkSettings};
 use pool::PoolCommandSender;
 use signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
@@ -31,9 +31,9 @@ impl API<Public> {
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         api_settings: &'static APISettings,
-        consensus_settings: &'static ConsensusConfig,
+        consensus_settings: ConsensusConfig,
         pool_command_sender: PoolCommandSender,
-        network_settings: &'static NetworkConfig,
+        network_settings: &'static NetworkSettings,
         version: Version,
         network_command_sender: NetworkCommandSender,
         compensation_millis: i64,
@@ -41,7 +41,7 @@ impl API<Public> {
     ) -> Self {
         API(Public {
             consensus_command_sender,
-            consensus_settings,
+            consensus_config: consensus_settings,
             api_settings,
             pool_command_sender,
             network_settings,
@@ -94,11 +94,11 @@ impl Endpoints for API<Public> {
         let network_command_sender = self.0.network_command_sender.clone();
         let network_config = self.0.network_settings.clone();
         let version = self.0.version;
-        let consensus_settings = self.0.consensus_settings.clone();
+        let consensus_settings = self.0.consensus_config.clone();
         let compensation_millis = self.0.compensation_millis;
         let mut pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
-        let algo_config = consensus_settings.to_algo_config();
+        let config = consensus_settings.config();
         let closure = async move || {
             let now = UTime::now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
@@ -118,11 +118,6 @@ impl Endpoints for API<Public> {
                 node_id,
                 node_ip: network_config.routable_ip,
                 version,
-                genesis_timestamp: consensus_settings.genesis_timestamp,
-                t0: consensus_settings.t0,
-                delta_f0: consensus_settings.delta_f0,
-                roll_price: consensus_settings.roll_price,
-                thread_count: consensus_settings.thread_count,
                 current_time: now,
                 connected_nodes: peers?
                     .peers
@@ -138,7 +133,7 @@ impl Endpoints for API<Public> {
                 network_stats: network_stats?,
                 pool_stats: pool_stats?,
 
-                algo_config,
+                config,
                 current_cycle: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))
                     .get_cycle(consensus_settings.periods_per_cycle),
@@ -297,7 +292,7 @@ impl Endpoints for API<Public> {
         time: TimeInterval,
     ) -> BoxFuture<Result<Vec<BlockSummary>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
-        let consensus_settings = self.0.consensus_settings.clone();
+        let consensus_settings = self.0.consensus_config.clone();
         let closure = async move || {
             // filter blocks from graph_export
             let (start_slot, end_slot) = time_range_to_slot_range(
@@ -350,7 +345,7 @@ impl Endpoints for API<Public> {
         addresses: Vec<Address>,
     ) -> BoxFuture<Result<Vec<AddressInfo>, ApiError>> {
         let cmd_sender = self.0.consensus_command_sender.clone();
-        let cfg = self.0.consensus_settings.clone();
+        let cfg = self.0.consensus_config.clone();
         let api_cfg = self.0.api_settings;
         let pool_command_sender = self.0.pool_command_sender.clone();
         let compensation_millis = self.0.compensation_millis;

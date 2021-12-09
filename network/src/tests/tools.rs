@@ -5,11 +5,8 @@ use super::mock_establisher::MockEstablisherInterface;
 use super::{mock_establisher, tools};
 use crate::handshake_worker::HandshakeWorker;
 use crate::messages::Message;
-use crate::start_network_controller;
-use crate::{
-    NetworkCommandSender, NetworkConfig, NetworkEvent, NetworkEventReceiver, NetworkManager,
-    PeerInfo,
-};
+use crate::{start_network_controller, NetworkSettings};
+use crate::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver, NetworkManager, PeerInfo};
 use massa_hash::hash::Hash;
 use models::node::NodeId;
 use models::{
@@ -51,11 +48,12 @@ pub fn generate_peers_file(peer_vec: &Vec<PeerInfo>) -> NamedTempFile {
 fn get_temp_private_key_file() -> NamedTempFile {
     NamedTempFile::new().expect("cannot create temp file")
 }
+
 /// create a NetworkConfig with typical values
 pub fn create_network_config(
     network_controller_port: u16,
     peers_file_path: &Path,
-) -> NetworkConfig {
+) -> NetworkSettings {
     // Init the serialization context with a default,
     // can be overwritten with a more specific one in the test.
     models::init_serialization_context(models::SerializationContext {
@@ -77,7 +75,7 @@ pub fn create_network_config(
         max_block_endorsements: 8,
     });
 
-    NetworkConfig {
+    NetworkSettings {
         bind: format!("0.0.0.0:{}", network_controller_port)
             .parse()
             .unwrap(),
@@ -94,15 +92,10 @@ pub fn create_network_config(
         max_out_nonbootstrap_connection_attempts: 100,
         max_idle_peers: 100,
         max_banned_peers: 100,
-        max_advertise_length: 10,
         peers_file_dump_interval: UTime::from(30000),
-        max_message_size: 3 * 1024 * 1024,
         message_timeout: UTime::from(5000u64),
         ask_peer_list_interval: UTime::from(50000u64),
         private_key_file: get_temp_private_key_file().path().to_path_buf(),
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_endorsements_per_message: 1024,
         max_send_wait: UTime::from(100),
         ban_timeout: UTime::from(100_000_000),
     }
@@ -385,8 +378,11 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
 }
 
 /// Runs a consensus test, passing a mock pool controller to it.
-pub async fn network_test<F, V>(cfg: NetworkConfig, temp_peers_file: NamedTempFile, test: F)
-where
+pub async fn network_test<F, V>(
+    network_settings: NetworkSettings,
+    temp_peers_file: NamedTempFile,
+    test: F,
+) where
     F: FnOnce(
         NetworkCommandSender,
         NetworkEventReceiver,
@@ -408,7 +404,7 @@ where
     // launch network controller
     let (network_event_sender, network_event_receiver, network_manager, _private_key, _node_id) =
         start_network_controller(
-            cfg.clone(),
+            network_settings,
             establisher,
             0,
             None,

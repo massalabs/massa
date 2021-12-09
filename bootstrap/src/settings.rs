@@ -5,6 +5,29 @@ use signature::PublicKey;
 use std::net::SocketAddr;
 use time::UTime;
 
+/// Max message size for bootstrap
+pub const MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = 1048576000;
+
+/// Max number of blocks we provide/ take into account while bootstrapping
+pub const MAX_BOOTSTRAP_BLOCKS: u32 = 1000000;
+
+pub const MAX_BOOTSTRAP_CLIQUES: u32 = 1000;
+
+pub const MAX_BOOTSTRAP_DEPS: u32 = 1000;
+
+pub const MAX_BOOTSTRAP_CHILDREN: u32 = 1000;
+
+/// Max number of cycles in PoS bootstrap
+pub const MAX_BOOTSTRAP_POS_CYCLES: u32 = 5;
+
+/// Max number of address and rng entries for PoS bootstrap
+pub const MAX_BOOTSTRAP_POS_ENTRIES: u32 = 1000000000;
+
+/// Max size of the IP list
+pub const IP_LIST_MAX_SIZE: usize = 10000;
+
+pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
     /// Ip address of our bootstrap nodes and their public key.
@@ -19,27 +42,16 @@ pub struct BootstrapSettings {
     pub write_timeout: UTime,
     /// Time we wait before retrying a bootstrap
     pub retry_delay: UTime,
-    /// Max message size for bootstrap
-    pub max_bootstrap_message_size: u32,
-    /// Max number of blocks we provide/ take into account while bootstrapping
-    pub max_bootstrap_blocks: u32,
-    pub max_bootstrap_cliques: u32,
-    pub max_bootstrap_deps: u32,
-    pub max_bootstrap_children: u32,
     /// Max ping delay.
     pub max_ping: UTime,
-    /// Max number of cycles in PoS bootstrap
-    pub max_bootstrap_pos_cycles: u32,
-    /// Max number of address and rng entries for PoS bootstrap
-    pub max_bootstrap_pos_entries: u32,
     /// Enable clock synchronization
     pub enable_clock_synchronization: bool,
-    // Cache duration
+    /// Cache duration
     pub cache_duration: UTime,
-    // Max simultaneous bootstraps
+    /// Max simultaneous bootstraps
     pub max_simultaneous_bootstraps: u32,
-    // Minimum interval between two bootstrap attempts from a given IP
+    /// Minimum interval between two bootstrap attempts from a given IP
     pub per_ip_min_interval: UTime,
-    // Max size of the IP list
+    /// Max size of the IP list
     pub ip_list_max_size: usize,
 }

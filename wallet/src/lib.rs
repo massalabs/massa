@@ -1,7 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-#![doc = include_str!("../../docs/wallet.md")]
-
 pub use error::WalletError;
 use massa_hash::hash::Hash;
 use models::address::{Address, AddressHashMap, AddressHashSet};

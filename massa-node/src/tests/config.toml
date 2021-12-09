@@ -13,20 +13,21 @@
     max_future_processing_blocks = 400
     max_dependency_blocks = 2048
     max_operations_fill_attempts = 102400
-    ledger_path = "storage/ledger"
+    ledger_path = "../massa-node/storage/ledger"
     ledger_cache_capacity = 1048576
     ledger_flush_interval = 10000
     ledger_reset_at_startup = true
-    initial_ledger_path = "base_config/initial_ledger.json"
+    initial_ledger_path = "../massa-node/base_config/initial_ledger.json"
     operation_batch_size = 1024
     max_send_wait = 500
     force_keep_final_periods = 20
-    initial_rolls_path = "base_config/initial_rolls.json"
+    initial_rolls_path = "../massa-node/base_config/initial_rolls.json"
     pos_draw_cached_cycles = 10
-    staking_keys_path = "config/staking_keys.json"
+    staking_keys_path = "../massa-node/config/staking_keys.json"
     stats_timespan = 60000
     block_db_prune_interval = 5000
     max_item_return_count = 100
+genesis_timestamp = "1638931299263"
 
 [protocol]
     message_timeout = 5000
@@ -43,7 +44,7 @@
     protocol_port = 31244
     connect_timeout = 3000
     wakeup_interval = 5000
-    peers_file = "storage/peers.json"
+    peers_file = "../massa-node/storage/peers.json"
     target_bootstrap_connections = 1
     max_out_bootstrap_connection_attempts = 1
     target_out_nonbootstrap_connections = 10
@@ -57,7 +58,7 @@
     max_message_size = 1048576000
     message_timeout = 5000
     ask_peer_list_interval = 30000
-    private_key_file = "config/node_privkey.key"
+    private_key_file = "../massa-node/config/node_privkey.key"
     max_ask_blocks_per_message = 128
     max_operations_per_message = 1024
     max_endorsements_per_message = 1024

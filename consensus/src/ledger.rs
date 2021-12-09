@@ -5,9 +5,10 @@ use crate::{ConsensusConfig, ConsensusError};
 use models::address::{AddressHashMap, AddressHashSet};
 use models::hhasher::BuildHHasher;
 use models::ledger::{LedgerChange, LedgerData};
+use models::ADDRESS_SIZE_BYTES;
 use models::{
     array_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, Operation,
-    SerializeCompact, SerializeVarInt, ADDRESS_SIZE_BYTES,
+    SerializeCompact, SerializeVarInt,
 };
 use serde::{Deserialize, Serialize};
 use sled::{Transactional, Tree};
@@ -161,7 +162,6 @@ pub trait OperationLedgerInterface {
         creator: Address,
         endorsers: Vec<Address>,
         parent_creator: Address,
-        thread_count: u8,
         roll_price: Amount,
         endorsement_count: u32,
     ) -> Result<LedgerChanges, ConsensusError>;
@@ -173,7 +173,6 @@ impl OperationLedgerInterface for Operation {
         creator: Address,
         endorsers: Vec<Address>,
         parent_creator: Address,
-        _thread_count: u8, // TODO: why it's here?
         roll_price: Amount,
         endorsement_count: u32,
     ) -> Result<LedgerChanges, ConsensusError> {

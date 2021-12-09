@@ -24,7 +24,7 @@
     "last_failure": null
   },
   {
-    "advertised": true,
+    "advertised": false,
     "banned": false,
     "bootstrap": true,
     "ip": "158.69.23.120",

@@ -9,7 +9,7 @@ use dialoguer::{theme::ColorfulTheme, Completion, History, Input};
 use erased_serde::{Serialize, Serializer};
 use models::address::AddressHashSet;
 use models::api::{AddressInfo, BlockInfo, EndorsementInfo, NodeStatus, OperationInfo};
-use models::OperationId;
+use models::{Address, OperationId};
 use std::collections::VecDeque;
 use strum::IntoEnumIterator;
 use strum::ParseError;
@@ -212,6 +212,14 @@ impl Output for Vec<OperationId> {
     fn pretty_print(&self) {
         for operation_id in self {
             println!("{}", operation_id);
+        }
+    }
+}
+
+impl Output for Vec<Address> {
+    fn pretty_print(&self) {
+        for addr in self {
+            println!("{}", addr);
         }
     }
 }

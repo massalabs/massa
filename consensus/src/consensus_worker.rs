@@ -1,8 +1,9 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::{block_graph::*, config::ConsensusConfig, pos::ProofOfStake};
+use super::{block_graph::*, pos::ProofOfStake, settings::ConsensusConfig};
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
+use crate::settings;
 use massa_hash::hash::Hash;
 use models::api::{EndorsementInfo, LedgerInfo, RollsInfo};
 
@@ -556,7 +557,7 @@ impl ConsensusWorker {
                     serialized_block.len()
                 ))
             })?;
-        let mut remaining_operation_count = self.cfg.max_operations_per_block as usize;
+        let mut remaining_operation_count = settings::MAX_GAS_PER_BLOCK as usize;
 
         // exclude operations that were used in block ancestry
         let mut exclude_operations = OperationHashSet::default();
@@ -632,7 +633,7 @@ impl ConsensusWorker {
                 } else {
                     0
                 };
-                if total_gas + op_gas > self.cfg.max_gas_per_block {
+                if total_gas + op_gas > settings::MAX_GAS_PER_BLOCK {
                     // no more gas left: do not include
                     continue;
                 }

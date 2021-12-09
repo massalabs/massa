@@ -10,8 +10,6 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use time::UTime;
 
-pub const BOOTSTRAP_RANDOMNES_SIZE_BYTES: usize = 32;
-
 /// Messages used during bootstrap
 #[derive(Debug, Serialize, Deserialize)]
 pub enum BootstrapMessage {

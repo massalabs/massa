@@ -5,7 +5,7 @@ use crate::ledger::LedgerData;
 use crate::node::NodeId;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
 use crate::{
-    Address, AlgoConfig, Amount, Block, BlockHashSet, BlockId, Endorsement, EndorsementHashSet,
+    Address, Amount, Block, BlockHashSet, BlockId, Config, Endorsement, EndorsementHashSet,
     EndorsementId, Operation, OperationHashSet, OperationId, Slot, Version,
 };
 use serde::{Deserialize, Serialize};
@@ -18,11 +18,6 @@ pub struct NodeStatus {
     pub node_id: NodeId,
     pub node_ip: Option<IpAddr>,
     pub version: Version,
-    pub genesis_timestamp: UTime,
-    pub t0: UTime,
-    pub delta_f0: u64,
-    pub roll_price: Amount,
-    pub thread_count: u8,
     pub current_time: UTime,
     pub current_cycle: u64,
     pub connected_nodes: HashMap<NodeId, IpAddr>,
@@ -31,7 +26,7 @@ pub struct NodeStatus {
     pub consensus_stats: ConsensusStats,
     pub pool_stats: PoolStats,
     pub network_stats: NetworkStats,
-    pub algo_config: AlgoConfig,
+    pub config: Config,
 }
 
 impl std::fmt::Display for NodeStatus {
@@ -45,15 +40,6 @@ impl std::fmt::Display for NodeStatus {
         writeln!(f)?;
 
         writeln!(f, "Version: {}", self.version)?;
-        writeln!(
-            f,
-            "Genesis timestamp: {}",
-            self.genesis_timestamp.to_utc_string()
-        )?;
-        writeln!(f, "t0: {}ms", self.t0.to_duration().as_millis())?;
-        writeln!(f, "delta f0: {}", self.delta_f0)?;
-        writeln!(f, "Roll price: {}", self.roll_price)?;
-        writeln!(f, "Thread count: {}", self.thread_count)?;
         writeln!(f)?;
 
         writeln!(f, "Current time: {}", self.current_time.to_utc_string())?;

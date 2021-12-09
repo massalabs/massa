@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 //! All information concerning blocks, the block graph and cliques is managed here.
-use super::config::ConsensusConfig;
+use super::settings::ConsensusConfig;
 use crate::error::ConsensusError;
 use crate::{
     ledger::{Ledger, LedgerChanges, LedgerSubset, OperationLedgerInterface},
@@ -1222,7 +1222,6 @@ impl BlockGraph {
             block_creator_address,
             state_accu.endorsers_addresses.clone(),
             state_accu.same_thread_parent_creator,
-            self.cfg.thread_count,
             self.cfg.roll_price,
             self.cfg.endorsement_count,
         )?;
@@ -4305,21 +4304,14 @@ impl BlockGraph {
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
-    use std::str::FromStr;
-
-    use num::rational::Ratio;
-    use serial_test::serial;
-    use tempfile::NamedTempFile;
-
+    use super::*;
+    use crate::tests::tools::get_dummy_block_id;
     use models::ledger::LedgerData;
     use models::{Amount, Endorsement, EndorsementContent};
-    use signature::{generate_random_private_key, PrivateKey, PublicKey, Signature};
-    use time::UTime;
-
-    use crate::tests::tools::get_dummy_block_id;
-
-    use super::*;
+    use serial_test::serial;
+    use signature::{PublicKey, Signature};
+    use std::str::FromStr;
+    use tempfile::NamedTempFile;
 
     fn get_export_active_test_block() -> ExportActiveBlock {
         let block = Block {
@@ -4411,7 +4403,7 @@ mod tests {
         let thread_count: u8 = 2;
         let active_block: ActiveBlock = get_export_active_test_block().try_into().unwrap();
         let ledger_file = generate_ledger_file(&AddressHashMap::default());
-        let mut cfg = example_consensus_config(ledger_file.path());
+        let mut cfg = ConsensusConfig::from(ledger_file.path());
 
         cfg.block_reward = Amount::from_str("1").unwrap();
         // to generate address and public keys
@@ -4885,7 +4877,7 @@ mod tests {
     #[serial]
     async fn test_clique_calculation() {
         let ledger_file = generate_ledger_file(&AddressHashMap::default());
-        let cfg = example_consensus_config(ledger_file.path());
+        let cfg = ConsensusConfig::from(ledger_file.path());
         let mut block_graph = BlockGraph::new(cfg, None).await.unwrap();
         let hashes: Vec<BlockId> = vec![
             "VzCRpnoZVYY1yQZTXtVQbbxwzdu6hYtdCUZB5BXWSabsiXyfP",
@@ -4940,93 +4932,5 @@ mod tests {
             .seek(std::io::SeekFrom::Start(0))
             .expect("could not seek file");
         ledger_file_named
-    }
-
-    #[allow(clippy::ptr_arg)]
-    pub fn generate_staking_keys_file(staking_keys: &Vec<PrivateKey>) -> NamedTempFile {
-        use std::io::prelude::*;
-        let file_named = NamedTempFile::new().expect("cannot create temp file");
-        serde_json::to_writer_pretty(file_named.as_file(), &staking_keys)
-            .expect("unable to write ledger file");
-        file_named
-            .as_file()
-            .seek(std::io::SeekFrom::Start(0))
-            .expect("could not seek file");
-        file_named
-    }
-
-    fn example_consensus_config(initial_ledger_path: &Path) -> ConsensusConfig {
-        let genesis_key = generate_random_private_key();
-        let mut staking_keys = Vec::new();
-        for _ in 0..2 {
-            staking_keys.push(generate_random_private_key());
-        }
-        let staking_file = generate_staking_keys_file(&staking_keys);
-
-        let thread_count: u8 = 2;
-        let max_block_size = 1024 * 1024;
-        let max_operations_per_block = 1024;
-        let tempdir = tempfile::tempdir().expect("cannot create temp dir");
-        let tempdir3 = tempfile::tempdir().expect("cannot create temp dir");
-
-        models::init_serialization_context(models::SerializationContext {
-            max_block_operations: 1024,
-            parent_count: 2,
-            max_peer_list_length: 128,
-            max_message_size: 3 * 1024 * 1024,
-            max_block_size: 3 * 1024 * 1024,
-            max_bootstrap_blocks: 100,
-            max_bootstrap_cliques: 100,
-            max_bootstrap_deps: 100,
-            max_bootstrap_children: 100,
-            max_ask_blocks_per_message: 10,
-            max_operations_per_message: 1024,
-            max_endorsements_per_message: 1024,
-            max_bootstrap_message_size: 100000000,
-            max_bootstrap_pos_entries: 1000,
-            max_bootstrap_pos_cycles: 5,
-            max_block_endorsements: 8,
-        });
-
-        ConsensusConfig {
-            genesis_timestamp: UTime::now(0).unwrap(),
-            thread_count,
-            t0: 32.into(),
-            genesis_key,
-            max_discarded_blocks: 10,
-            future_block_processing_max_periods: 3,
-            max_future_processing_blocks: 10,
-            max_dependency_blocks: 10,
-            delta_f0: 5,
-            disable_block_creation: true,
-            max_block_size,
-            max_operations_per_block,
-            max_operations_fill_attempts: 6,
-            operation_validity_periods: 3,
-            ledger_path: tempdir.path().to_path_buf(),
-            ledger_cache_capacity: 1000000,
-            ledger_flush_interval: Some(200.into()),
-            ledger_reset_at_startup: true,
-            block_reward: Amount::from_str("1").unwrap(),
-            initial_ledger_path: initial_ledger_path.to_path_buf(),
-            operation_batch_size: 100,
-            initial_rolls_path: tempdir3.path().to_path_buf(),
-            initial_draw_seed: "genesis".into(),
-            periods_per_cycle: 100,
-            pos_lookback_cycles: 2,
-            pos_lock_cycles: 1,
-            pos_draw_cached_cycles: 2,
-            pos_miss_rate_deactivation_threshold: Ratio::new(1, 1),
-            roll_price: Amount::from_str("10").unwrap(),
-            stats_timespan: 60000.into(),
-            staking_keys_path: staking_file.path().to_path_buf(),
-            end_timestamp: None,
-            max_send_wait: 500.into(),
-            force_keep_final_periods: 0,
-            endorsement_count: 8,
-            block_db_prune_interval: 1000.into(),
-            max_item_return_count: 1000,
-            max_gas_per_block: 10,
-        }
     }
 }

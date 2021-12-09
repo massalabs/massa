@@ -1,14 +1,15 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::settings::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
 use crate::{
     address::AddressHashSet,
     hhasher::{HHashMap, HHashSet, PreHashed},
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
-    Address, Amount, ModelsError, ADDRESS_SIZE_BYTES,
+    Address, Amount, ModelsError,
 };
-use massa_hash::hash::{Hash, HASH_SIZE_BYTES};
+use massa_hash::hash::Hash;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use signature::{
@@ -17,8 +18,6 @@ use signature::{
 use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::{ops::RangeInclusive, str::FromStr};
-
-pub const OPERATION_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationId(Hash);
@@ -471,9 +470,11 @@ impl DeserializeCompact for Operation {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serial_test::serial;
+
     use signature::{derive_public_key, generate_random_private_key, sign};
+
+    use super::*;
 
     #[test]
     #[serial]
