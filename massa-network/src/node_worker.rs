@@ -333,7 +333,7 @@ impl NodeWorker {
                             // cut hash list on sub list if exceed max_ask_blocks_per_message
                             massa_trace!("node_worker.run_loop. send Message::AskForBlocks", {"hashlist": list, "node": self.node_id});
                             for to_send_list in list.chunks(crate::settings::MAX_ASK_BLOCKS_PER_MESSAGE as usize) {
-                                if self.try_send_to_node(&writer_command_tx, Message::AskForBlocks(to_send_list.iter().copied().collect())).is_err() {
+                                if self.try_send_to_node(&writer_command_tx, Message::AskForBlocks(to_send_list.to_vec())).is_err() {
                                     break 'select_loop;
                                 }
                             }

@@ -469,13 +469,12 @@ pub fn get_export_active_test_block(
         header: BlockHeader {
             content: BlockHeaderContent{
                 creator,
-                operation_merkle_root: Hash::from(&operations.iter().map(|op|{
+                operation_merkle_root: Hash::from(&operations.iter().flat_map(|op|{
                     op
                         .get_operation_id()
                         .unwrap()
                         .to_bytes()
                     })
-                    .flatten()
                     .collect::<Vec<_>>()[..]),
                 parents: parents.iter()
                     .map(|(id,_)| *id)

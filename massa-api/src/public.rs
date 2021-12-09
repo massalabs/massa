@@ -122,8 +122,7 @@ impl Endpoints for API<Public> {
                 connected_nodes: peers?
                     .peers
                     .iter()
-                    .map(|(ip, peer)| peer.active_nodes.iter().map(move |(id, _)| (*id, *ip)))
-                    .flatten()
+                    .flat_map(|(ip, peer)| peer.active_nodes.iter().map(move |(id, _)| (*id, *ip)))
                     .collect(),
                 last_slot,
                 next_slot: last_slot
@@ -442,7 +441,7 @@ impl Endpoints for API<Public> {
                         .collect(),
                     endorsement_draws: next_draws
                         .iter()
-                        .map(|(slot, (_, addrs))| {
+                        .flat_map(|(slot, (_, addrs))| {
                             addrs.iter().enumerate().filter_map(|(index, ad)| {
                                 if *ad == address {
                                     Some(IndexedSlot { slot: *slot, index })
@@ -451,7 +450,6 @@ impl Endpoints for API<Public> {
                                 }
                             })
                         })
-                        .flatten()
                         .collect(),
                     blocks_created: blocks.remove(&address).ok_or(ApiError::NotFound)?,
                     involved_in_endorsements: endorsements

@@ -190,7 +190,7 @@ impl Display for ExtendedWalletEntry {
 pub struct ExtendedWallet(AddressHashMap<ExtendedWalletEntry>);
 
 impl ExtendedWallet {
-    fn new(wallet: &Wallet, addresses_info: &Vec<AddressInfo>) -> Result<Self> {
+    fn new(wallet: &Wallet, addresses_info: &[AddressInfo]) -> Result<Self> {
         Ok(ExtendedWallet(
             addresses_info
                 .iter()
@@ -245,7 +245,7 @@ impl Command {
         &self,
         client: &Client,
         wallet: &mut Wallet,
-        parameters: &Vec<String>,
+        parameters: &[String],
         json: bool,
     ) -> Result<Box<dyn Output>> {
         match self {
@@ -663,6 +663,6 @@ async fn send_operation(
 }
 
 // TODO: ugly utilities functions
-pub fn parse_vec<T: std::str::FromStr>(args: &Vec<String>) -> anyhow::Result<Vec<T>, T::Err> {
+pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, T::Err> {
     args.iter().map(|x| x.parse::<T>()).collect()
 }

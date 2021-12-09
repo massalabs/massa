@@ -462,7 +462,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                     assert_eq!(expected_hash, received_hash);
                 } else {
                     assert!(
-                        !tools::wait_protocol_event(
+                        tools::wait_protocol_event(
                             &mut protocol_event_receiver,
                             150.into(),
                             |evt| match evt {
@@ -471,7 +471,7 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
                             },
                         )
                         .await
-                        .is_some(),
+                        .is_none(),
                         "caching was ignored"
                     );
                 }

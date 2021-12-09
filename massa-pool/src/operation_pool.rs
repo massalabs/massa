@@ -325,9 +325,11 @@ impl OperationPool {
                 .map(|op_id| {
                     self.ops
                         .get(op_id)
-                        .ok_or(PoolError::ContainerInconsistency(
-                            "op in ops by address is not in ops".to_string(),
-                        ))
+                        .ok_or_else(|| {
+                            PoolError::ContainerInconsistency(
+                                "op in ops by address is not in ops".to_string(),
+                            )
+                        })
                         .map(|op| {
                             (
                                 *op_id,

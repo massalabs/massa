@@ -32,7 +32,7 @@ use tracing::trace;
 async fn test_node_worker_shutdown() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&vec![]);
-    let network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
     let reader = ReadBinder::new(duplex_mock_read);
