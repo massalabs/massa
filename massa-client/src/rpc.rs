@@ -2,14 +2,14 @@
 
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
-use models::address::{AddressHashMap, AddressHashSet};
-use models::api::{
+use massa_models::address::{AddressHashMap, AddressHashSet};
+use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, TimeInterval,
 };
-use models::clique::Clique;
-use models::massa_hash::PubkeySig;
-use models::{Address, BlockId, EndorsementId, Operation, OperationId};
-use signature::PrivateKey;
+use massa_models::clique::Clique;
+use massa_models::massa_hash::PubkeySig;
+use massa_models::{Address, BlockId, EndorsementId, Operation, OperationId};
+use massa_signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
 
 pub struct Client {

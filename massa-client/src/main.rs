@@ -8,11 +8,11 @@ use anyhow::Result;
 use atty::Stream;
 use cmds::Command;
 use console::style;
+use massa_wallet::Wallet;
 use serde::Serialize;
 use std::net::IpAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use wallet::Wallet;
 
 mod cmds;
 mod repl;

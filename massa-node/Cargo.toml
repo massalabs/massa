@@ -18,16 +18,16 @@ tokio-util = { version = "0.6", features = ["codec"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 # custom modules
-pool = { path = "../pool" }
-api = { path = "../api" }
-bootstrap = { path = "../bootstrap" }
-network = { path = "../network" }
-protocol-exports = { path = "../protocol-exports" }
-protocol-worker = { path = "../protocol-worker" }
-consensus = { path = "../consensus" }
-logging = { path = "../logging" }
-models = { path = "../models" }
-time = { path = "../time" }
+massa_api = { path = "../massa-api" }
+massa_bootstrap = { path = "../massa-bootstrap" }
+massa_consensus = { path = "../massa-consensus" }
+massa_logging = { path = "../massa-logging" }
+massa_models = { path = "../massa-models" }
+massa_network = { path = "../massa-network" }
+massa_pool = { path = "../massa-pool" }
+massa_protocol_exports = { path = "../massa-protocol-exports" }
+massa_protocol_worker = { path = "../massa-protocol-worker" }
+massa_time = { path = "../massa-time" }
 
 [dev-dependencies]
 pretty_assertions = "1.0"

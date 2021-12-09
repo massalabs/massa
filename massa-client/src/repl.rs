@@ -7,13 +7,13 @@ use crate::utils::longest_common_prefix;
 use console::style;
 use dialoguer::{theme::ColorfulTheme, Completion, History, Input};
 use erased_serde::{Serialize, Serializer};
-use models::address::AddressHashSet;
-use models::api::{AddressInfo, BlockInfo, EndorsementInfo, NodeStatus, OperationInfo};
-use models::{Address, OperationId};
+use massa_models::address::AddressHashSet;
+use massa_models::api::{AddressInfo, BlockInfo, EndorsementInfo, NodeStatus, OperationInfo};
+use massa_models::{Address, OperationId};
+use massa_wallet::Wallet;
 use std::collections::VecDeque;
 use strum::IntoEnumIterator;
 use strum::ParseError;
-use wallet::Wallet;
 
 macro_rules! massa_fancy_ascii_art_logo {
     () => {

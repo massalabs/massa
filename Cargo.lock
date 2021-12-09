@@ -13,15 +13,6 @@ dependencies = [
 
 [[package]]
 name = "ansi_term"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
-dependencies = [
- "winapi",
-]
-
-[[package]]
-name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
@@ -31,31 +22,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.48"
+version = "1.0.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62e1f47f7dc0422027a4e370dd4548d4d66b26782e513e98dca1e689e058a80e"
-
-[[package]]
-name = "api"
-version = "0.1.0"
-dependencies = [
- "consensus",
- "displaydoc",
- "futures 0.3.18",
- "jsonrpc-core",
- "jsonrpc-derive",
- "jsonrpc-http-server",
- "massa_hash",
- "models",
- "network",
- "pool",
- "protocol-exports",
- "signature",
- "thiserror",
- "time 0.1.0",
- "tokio",
- "tracing",
-]
+checksum = "8b26702f315f53b6071259e15dd9d64528213b44d61de1ec926eca7715d62203"
 
 [[package]]
 name = "arrayvec"
@@ -141,32 +110,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bootstrap"
-version = "0.1.0"
-dependencies = [
- "bitvec",
- "consensus",
- "displaydoc",
- "futures 0.3.18",
- "lazy_static",
- "logging",
- "massa_hash",
- "models",
- "network",
- "num_enum",
- "pretty_assertions",
- "rand 0.8.4",
- "serde 1.0.130",
- "serde_json",
- "serial_test",
- "signature",
- "thiserror",
- "time 0.1.0",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "bs58"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -231,17 +174,17 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits 0.2.14",
- "time 0.1.43",
+ "time",
  "winapi",
 ]
 
 [[package]]
 name = "clap"
-version = "2.33.3"
+version = "2.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37e58ac78573c40708d45522f0d80fa2f01cc4f9b4e2bf749807255454312002"
+checksum = "a0610544180c38b88101fecf2dd634b174a62eef6946f84dfc6a7127512b381c"
 dependencies = [
- "ansi_term 0.11.0",
+ "ansi_term",
  "atty",
  "bitflags",
  "strsim",
@@ -283,36 +226,6 @@ dependencies = [
  "serde_json",
  "toml",
  "yaml-rust",
-]
-
-[[package]]
-name = "consensus"
-version = "0.1.0"
-dependencies = [
- "bitvec",
- "displaydoc",
- "futures 0.3.18",
- "lazy_static",
- "logging",
- "massa_hash",
- "models",
- "num",
- "pool",
- "pretty_assertions",
- "protocol-exports",
- "rand 0.8.4",
- "rand_xoshiro",
- "serde 1.0.130",
- "serde_json",
- "serial_test",
- "signature",
- "sled",
- "stderrlog",
- "tempfile",
- "thiserror",
- "time 0.1.0",
- "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -363,9 +276,9 @@ dependencies = [
 
 [[package]]
 name = "crc32fast"
-version = "1.2.2"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3825b1e8580894917dc4468cb634a1b4e9745fddc854edad72d9c04644c0319f"
+checksum = "738c290dfaea84fc1ca15ad9c168d083b05a714e1efddd8edaab678dc28d2836"
 dependencies = [
  "cfg-if 1.0.0",
 ]
@@ -416,9 +329,9 @@ dependencies = [
 
 [[package]]
 name = "derive_more"
-version = "0.99.16"
+version = "0.99.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40eebddd2156ce1bb37b20bbe5151340a31828b1f2d22ba4141f3531710e38df"
+checksum = "4fb810d30a7c1953f91334de7244731fc3f3c10d7fe163338a35b9f640960321"
 dependencies = [
  "convert_case",
  "proc-macro2",
@@ -510,9 +423,9 @@ checksum = "a357d28ed41a50f9c765dbfe56cbc04a64e53e5fc58ba79fbc34c10ef3df831f"
 
 [[package]]
 name = "encoding_rs"
-version = "0.8.29"
+version = "0.8.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a74ea89a0a1b98f6332de42c95baff457ada66d1cb4030f9ff151b2041a1c746"
+checksum = "7896dc8abb250ffdda33912550faa54c88ec8b998dec0b2c55ab224921ce11df"
 dependencies = [
  "cfg-if 1.0.0",
 ]
@@ -899,9 +812,9 @@ checksum = "68f2d64f2edebec4ce84ad108148e67e1064789bee435edc5b60ad398714a3a9"
 
 [[package]]
 name = "itertools"
-version = "0.10.1"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69ddb889f9d0d08a67338271fa9b62996bc788c7796a5c18cf057420aaed5eaf"
+checksum = "a9a9d19fa1e79b6215ff29b9d6880b706147f16e9b1dbb1e4e5947b5b02bc5e3"
 dependencies = [
  "either",
 ]
@@ -1056,9 +969,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.108"
+version = "0.2.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8521a1b57e76b1ec69af7599e75e38e7b7fad6610f037db8c79b127201b5d119"
+checksum = "f98a04dce437184842841303488f70d0188c5f51437d2a834dc097eafa909a01"
 
 [[package]]
 name = "linked-hash-map"
@@ -1085,16 +998,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "logging"
-version = "0.1.0"
-dependencies = [
- "pretty_assertions",
- "serde_json",
- "serial_test",
- "tracing",
-]
-
-[[package]]
 name = "massa-client"
 version = "0.1.0"
 dependencies = [
@@ -1109,47 +1012,125 @@ dependencies = [
  "futures 0.3.18",
  "jsonrpc-core-client",
  "lazy_static",
- "models",
+ "massa_models",
+ "massa_signature",
+ "massa_time",
+ "massa_wallet",
  "paw",
  "serde 1.0.130",
  "serde_json",
  "serial_test",
- "signature",
  "structopt",
  "strum",
  "strum_macros",
- "time 0.1.0",
  "tokio",
  "toml_edit",
- "wallet",
 ]
 
 [[package]]
 name = "massa-node"
 version = "0.1.0"
 dependencies = [
- "api",
- "bootstrap",
  "config",
- "consensus",
  "directories",
  "futures 0.3.18",
  "lazy_static",
- "logging",
- "models",
- "network",
- "pool",
+ "massa_api",
+ "massa_bootstrap",
+ "massa_consensus",
+ "massa_logging",
+ "massa_models",
+ "massa_network",
+ "massa_pool",
+ "massa_protocol_exports",
+ "massa_protocol_worker",
+ "massa_time",
  "pretty_assertions",
- "protocol-exports",
- "protocol-worker",
  "serde 1.0.130",
  "serde_json",
  "serial_test",
- "time 0.1.0",
  "tokio",
  "tokio-util",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "massa_api"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "futures 0.3.18",
+ "jsonrpc-core",
+ "jsonrpc-derive",
+ "jsonrpc-http-server",
+ "massa_consensus",
+ "massa_hash",
+ "massa_models",
+ "massa_network",
+ "massa_pool",
+ "massa_protocol_exports",
+ "massa_signature",
+ "massa_time",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "massa_bootstrap"
+version = "0.1.0"
+dependencies = [
+ "bitvec",
+ "displaydoc",
+ "futures 0.3.18",
+ "lazy_static",
+ "massa_consensus",
+ "massa_hash",
+ "massa_logging",
+ "massa_models",
+ "massa_network",
+ "massa_signature",
+ "massa_time",
+ "num_enum",
+ "pretty_assertions",
+ "rand 0.8.4",
+ "serde 1.0.130",
+ "serde_json",
+ "serial_test",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "massa_consensus"
+version = "0.1.0"
+dependencies = [
+ "bitvec",
+ "displaydoc",
+ "futures 0.3.18",
+ "lazy_static",
+ "massa_hash",
+ "massa_logging",
+ "massa_models",
+ "massa_pool",
+ "massa_protocol_exports",
+ "massa_signature",
+ "massa_time",
+ "num",
+ "pretty_assertions",
+ "rand 0.8.4",
+ "rand_xoshiro",
+ "serde 1.0.130",
+ "serde_json",
+ "serial_test",
+ "sled",
+ "stderrlog",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -1169,6 +1150,186 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_logging"
+version = "0.1.0"
+dependencies = [
+ "pretty_assertions",
+ "serde_json",
+ "serial_test",
+ "tracing",
+]
+
+[[package]]
+name = "massa_models"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "integer-encoding",
+ "lazy_static",
+ "massa_hash",
+ "massa_signature",
+ "massa_time",
+ "num-traits 0.2.14",
+ "num_enum",
+ "pretty_assertions",
+ "rand 0.8.4",
+ "reqwest",
+ "rust_decimal",
+ "serde 1.0.130",
+ "serial_test",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "massa_network"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "futures 0.3.18",
+ "itertools",
+ "massa_hash",
+ "massa_logging",
+ "massa_models",
+ "massa_signature",
+ "massa_time",
+ "num_enum",
+ "pretty_assertions",
+ "rand 0.8.4",
+ "serde 1.0.130",
+ "serde_json",
+ "serial_test",
+ "stderrlog",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "massa_pool"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "futures 0.3.18",
+ "lazy_static",
+ "massa_hash",
+ "massa_logging",
+ "massa_models",
+ "massa_protocol_exports",
+ "massa_signature",
+ "massa_time",
+ "num",
+ "pretty_assertions",
+ "serde 1.0.130",
+ "serde_json",
+ "serial_test",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "massa_protocol_exports"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "futures 0.3.18",
+ "itertools",
+ "lazy_static",
+ "massa_hash",
+ "massa_logging",
+ "massa_models",
+ "massa_network",
+ "massa_signature",
+ "massa_time",
+ "num_enum",
+ "pretty_assertions",
+ "rand 0.8.4",
+ "serde 1.0.130",
+ "serde_json",
+ "serial_test",
+ "stderrlog",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "massa_protocol_worker"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "futures 0.3.18",
+ "itertools",
+ "lazy_static",
+ "massa_hash",
+ "massa_logging",
+ "massa_models",
+ "massa_network",
+ "massa_protocol_exports",
+ "massa_signature",
+ "massa_time",
+ "num_enum",
+ "pretty_assertions",
+ "rand 0.8.4",
+ "serde 1.0.130",
+ "serde_json",
+ "serial_test",
+ "stderrlog",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "massa_signature"
+version = "0.1.0"
+dependencies = [
+ "bitcoin_hashes",
+ "bs58",
+ "displaydoc",
+ "massa_hash",
+ "pretty_assertions",
+ "rand 0.8.4",
+ "secp256k1",
+ "serde 1.0.130",
+ "serde_json",
+ "serial_test",
+ "thiserror",
+]
+
+[[package]]
+name = "massa_time"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "displaydoc",
+ "pretty_assertions",
+ "serde 1.0.130",
+ "serial_test",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "massa_wallet"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "massa_hash",
+ "massa_models",
+ "massa_signature",
+ "massa_time",
+ "serde 1.0.130",
+ "serde_json",
+ "serde_qs",
+ "thiserror",
+]
+
+[[package]]
 name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1182,9 +1343,9 @@ checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 
 [[package]]
 name = "memoffset"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59accc507f1338036a0477ef61afdae33cde60840f4dfe481319ce3ad116ddf9"
+checksum = "5aa361d4faea93603064a027415f07bd8e1d5c88c9fbf68bf56a285428fd79ce"
 dependencies = [
  "autocfg 1.0.1",
 ]
@@ -1218,28 +1379,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "models"
-version = "0.1.0"
-dependencies = [
- "displaydoc",
- "integer-encoding",
- "lazy_static",
- "massa_hash",
- "num-traits 0.2.14",
- "num_enum",
- "pretty_assertions",
- "rand 0.8.4",
- "reqwest",
- "rust_decimal",
- "serde 1.0.130",
- "serial_test",
- "signature",
- "thiserror",
- "time 0.1.0",
- "tokio",
-]
-
-[[package]]
 name = "native-tls"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1266,31 +1405,6 @@ dependencies = [
  "cfg-if 0.1.10",
  "libc",
  "winapi",
-]
-
-[[package]]
-name = "network"
-version = "0.1.0"
-dependencies = [
- "displaydoc",
- "futures 0.3.18",
- "itertools",
- "logging",
- "massa_hash",
- "models",
- "num_enum",
- "pretty_assertions",
- "rand 0.8.4",
- "serde 1.0.130",
- "serde_json",
- "serial_test",
- "signature",
- "stderrlog",
- "tempfile",
- "thiserror",
- "time 0.1.0",
- "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -1552,15 +1666,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
-name = "pest"
-version = "2.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10f4872ae94d7b90ae48754df22fd42ad52ce740b8f370b03da4835417403e53"
-dependencies = [
- "ucd-trie",
-]
-
-[[package]]
 name = "pin-project-lite"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1574,32 +1679,9 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "pkg-config"
-version = "0.3.22"
+version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12295df4f294471248581bc09bef3c38a5e46f1e36d6a37353621a0c6c357e1f"
-
-[[package]]
-name = "pool"
-version = "0.1.0"
-dependencies = [
- "displaydoc",
- "futures 0.3.18",
- "lazy_static",
- "logging",
- "massa_hash",
- "models",
- "num",
- "pretty_assertions",
- "protocol-exports",
- "serde 1.0.130",
- "serde_json",
- "serial_test",
- "signature",
- "thiserror",
- "time 0.1.0",
- "tokio",
- "tracing",
-]
+checksum = "d1a3ea4f0dd7f1f3e512cf97bf100819aa547f36a6eccac8dbaae839eb92363e"
 
 [[package]]
 name = "ppv-lite86"
@@ -1640,7 +1722,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0cfe1b2403f172ba0f234e500906ee0a3e493fb81092dac23ebefe129301cc"
 dependencies = [
- "ansi_term 0.12.1",
+ "ansi_term",
  "ctor",
  "diff",
  "output_vt100",
@@ -1691,66 +1773,11 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.32"
+version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba508cc11742c0dc5c1659771673afbab7a0efab23aa17e854cbab0837ed0b43"
+checksum = "fb37d2df5df740e582f28f8560cf425f52bb267d872fe58358eadb554909f07a"
 dependencies = [
  "unicode-xid",
-]
-
-[[package]]
-name = "protocol-exports"
-version = "0.1.0"
-dependencies = [
- "displaydoc",
- "futures 0.3.18",
- "itertools",
- "lazy_static",
- "logging",
- "massa_hash",
- "models",
- "network",
- "num_enum",
- "pretty_assertions",
- "rand 0.8.4",
- "serde 1.0.130",
- "serde_json",
- "serial_test",
- "signature",
- "stderrlog",
- "tempfile",
- "thiserror",
- "time 0.1.0",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "protocol-worker"
-version = "0.1.0"
-dependencies = [
- "displaydoc",
- "futures 0.3.18",
- "itertools",
- "lazy_static",
- "logging",
- "massa_hash",
- "models",
- "network",
- "num_enum",
- "pretty_assertions",
- "protocol-exports",
- "rand 0.8.4",
- "serde 1.0.130",
- "serde_json",
- "serial_test",
- "signature",
- "stderrlog",
- "tempfile",
- "thiserror",
- "time 0.1.0",
- "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -2026,9 +2053,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.11.6"
+version = "0.11.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66d2927ca2f685faf0fc620ac4834690d29e7abb153add10f5812eef20b5e280"
+checksum = "07bea77bc708afa10e59905c3d4af7c8fd43c9214251673095ff8b14345fcbc5"
 dependencies = [
  "base64",
  "bytes",
@@ -2067,9 +2094,9 @@ checksum = "3e52c148ef37f8c375d49d5a73aa70713125b7f19095948a923f80afdeb22ec2"
 
 [[package]]
 name = "rust_decimal"
-version = "1.17.0"
+version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "353775f96a1f400edcca737f843cb201af3645912e741e64456a257c770173e8"
+checksum = "71b5a9625a7e6060b23db692facf49082cc78889a7e6ac94a735356ae49db4b0"
 dependencies = [
  "arrayvec",
  "num-traits 0.2.14",
@@ -2078,18 +2105,18 @@ dependencies = [
 
 [[package]]
 name = "rustc_version"
-version = "0.3.3"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0dfe2087c51c460008730de8b57e6a320782fbfb312e1f4d520e6c6fae155ee"
+checksum = "bfa0f585226d2e68097d4f95d113b15b83a82e819ab25717ec0590d9584ef366"
 dependencies = [
  "semver",
 ]
 
 [[package]]
 name = "ryu"
-version = "1.0.5"
+version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
+checksum = "3c9613b5a66ab9ba26415184cfc41156594925a9cf3a2057e57f31ff145f6568"
 
 [[package]]
 name = "schannel"
@@ -2151,21 +2178,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "0.11.0"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f301af10236f6df4160f7c3f04eec6dbc70ace82d23326abad5edee88801c6b6"
-dependencies = [
- "semver-parser",
-]
-
-[[package]]
-name = "semver-parser"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00b0bef5b7f9e0df16536d3961cfb6e84331c065b4066afb39768d0e319411f7"
-dependencies = [
- "pest",
-]
+checksum = "568a8e6258aa33c13358f81fd834adb854c6f7c9468520910a9b1e8fac068012"
 
 [[package]]
 name = "serde"
@@ -2207,9 +2222,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.71"
+version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "063bf466a64011ac24040a49009724ee60a57da1b437617ceb32e53ad61bfb19"
+checksum = "d0ffa0837f2dfa6fb90868c2b5468cad482e175f7dad97e7421951e663f2b527"
 dependencies = [
  "itoa",
  "ryu",
@@ -2290,23 +2305,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e51e73328dc4ac0c7ccbda3a494dfa03df1de2f46018127f60c693f2648455b0"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "signature"
-version = "0.1.0"
-dependencies = [
- "bitcoin_hashes",
- "bs58",
- "displaydoc",
- "massa_hash",
- "pretty_assertions",
- "rand 0.8.4",
- "secp256k1",
- "serde 1.0.130",
- "serde_json",
- "serial_test",
- "thiserror",
 ]
 
 [[package]]
@@ -2417,9 +2415,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.81"
+version = "1.0.82"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2afee18b8beb5a596ecb4a2dce128c719b4ba399d34126b9e4396e3f9860966"
+checksum = "8daf5dd0bb60cbd4137b1b587d2fc0ae729bc07cf01cd70b36a1ed5ade3b9d59"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2507,19 +2505,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d40c6d1b69745a6ec6fb1ca717914848da4b44ae29d9b3080cbee91d72a69b14"
 dependencies = [
  "lazy_static",
-]
-
-[[package]]
-name = "time"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "displaydoc",
- "pretty_assertions",
- "serde 1.0.130",
- "serial_test",
- "thiserror",
- "tokio",
 ]
 
 [[package]]
@@ -2685,11 +2670,11 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7507ec620f809cdf07cccb5bc57b13069a88031b795efd4079b1c71b66c1613d"
+checksum = "245da694cc7fc4729f3f418b304cb57789f1bed2a78c575407ab8a23f53cb4d3"
 dependencies = [
- "ansi_term 0.12.1",
+ "ansi_term",
  "sharded-slab",
  "smallvec",
  "thread_local",
@@ -2708,12 +2693,6 @@ name = "typenum"
 version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b63708a265f51345575b27fe43f9500ad611579e764c79edbc2037b1121959ec"
-
-[[package]]
-name = "ucd-trie"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56dee185309b50d1f11bfedef0fe6d036842e3fb77413abef29f8f8d1c5d4c1c"
 
 [[package]]
 name = "unicase"
@@ -2805,21 +2784,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f200f5b12eb75f8c1ed65abd4b2db8a6e1b138a20de009dacee265a2498f3f6"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "wallet"
-version = "0.1.0"
-dependencies = [
- "displaydoc",
- "massa_hash",
- "models",
- "serde 1.0.130",
- "serde_json",
- "serde_qs",
- "signature",
- "thiserror",
- "time 0.1.0",
 ]
 
 [[package]]

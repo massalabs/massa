@@ -4,22 +4,22 @@ use crate::repl::Output;
 use crate::rpc::Client;
 use anyhow::{anyhow, bail, Result};
 use console::style;
-use models::address::AddressHashMap;
-use models::api::{AddressInfo, CompactAddressInfo};
-use models::timeslots::get_current_latest_block_slot;
-use models::{
+use massa_models::address::AddressHashMap;
+use massa_models::api::{AddressInfo, CompactAddressInfo};
+use massa_models::timeslots::get_current_latest_block_slot;
+use massa_models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
 };
+use massa_signature::{generate_random_private_key, PrivateKey, PublicKey};
+use massa_time::UTime;
+use massa_wallet::Wallet;
 use serde::Serialize;
-use signature::{generate_random_private_key, PrivateKey, PublicKey};
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::process;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
-use time::UTime;
-use wallet::Wallet;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
