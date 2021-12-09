@@ -484,7 +484,7 @@ impl Command {
                 if !json {
                     let roll_price = match client.public.get_status().await {
                         Err(e) => bail!("RpcError: {}", e),
-                        Ok(status) => status.roll_price,
+                        Ok(status) => status.config.roll_price,
                     };
                     match roll_price
                         .checked_mul_u64(roll_count)
