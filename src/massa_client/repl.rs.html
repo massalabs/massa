@@ -233,13 +233,13 @@
 <span class="kw">use</span> <span class="ident">console::style</span>;
 <span class="kw">use</span> <span class="ident">dialoguer</span>::{<span class="ident">theme::ColorfulTheme</span>, <span class="ident">Completion</span>, <span class="ident">History</span>, <span class="ident">Input</span>};
 <span class="kw">use</span> <span class="ident">erased_serde</span>::{<span class="ident">Serialize</span>, <span class="ident">Serializer</span>};
-<span class="kw">use</span> <span class="ident">models::address::AddressHashSet</span>;
-<span class="kw">use</span> <span class="ident">models::api</span>::{<span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>};
-<span class="kw">use</span> <span class="ident">models</span>::{<span class="ident">Address</span>, <span class="ident">OperationId</span>};
+<span class="kw">use</span> <span class="ident">massa_models::address::AddressHashSet</span>;
+<span class="kw">use</span> <span class="ident">massa_models::api</span>::{<span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">OperationId</span>};
+<span class="kw">use</span> <span class="ident">massa_wallet::Wallet</span>;
 <span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
 <span class="kw">use</span> <span class="ident">strum::IntoEnumIterator</span>;
 <span class="kw">use</span> <span class="ident">strum::ParseError</span>;
-<span class="kw">use</span> <span class="ident">wallet::Wallet</span>;
 
 <span class="macro">macro_rules!</span> <span class="ident">massa_fancy_ascii_art_logo</span> {
     () =&gt; {

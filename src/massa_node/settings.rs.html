@@ -47,14 +47,14 @@
 <span id="46">46</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="ident">bootstrap::BootstrapSettings</span>;
-<span class="kw">use</span> <span class="ident">consensus::ConsensusSettings</span>;
 <span class="kw">use</span> <span class="ident">directories::ProjectDirs</span>;
-<span class="kw">use</span> <span class="ident">models::api::APISettings</span>;
-<span class="kw">use</span> <span class="ident">models::Version</span>;
-<span class="kw">use</span> <span class="ident">network::NetworkSettings</span>;
-<span class="kw">use</span> <span class="ident">pool::PoolSettings</span>;
-<span class="kw">use</span> <span class="ident">protocol_exports::ProtocolSettings</span>;
+<span class="kw">use</span> <span class="ident">massa_bootstrap::settings::BootstrapSettings</span>;
+<span class="kw">use</span> <span class="ident">massa_consensus::ConsensusSettings</span>;
+<span class="kw">use</span> <span class="ident">massa_models::api::APISettings</span>;
+<span class="kw">use</span> <span class="ident">massa_models::Version</span>;
+<span class="kw">use</span> <span class="ident">massa_network::NetworkSettings</span>;
+<span class="kw">use</span> <span class="ident">massa_pool::PoolSettings</span>;
+<span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolSettings</span>;
 <span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
 
 <span class="macro">lazy_static::lazy_static!</span> {

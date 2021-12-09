@@ -324,22 +324,22 @@
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">destructuring_assignment</span>)]</span>
 <span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]</span>
 
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">logging</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">massa_logging</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::SETTINGS</span>;
-<span class="kw">use</span> <span class="ident">api</span>::{<span class="ident">Private</span>, <span class="ident">Public</span>, <span class="ident">RpcServer</span>, <span class="ident">StopHandle</span>, <span class="ident">API</span>};
-<span class="kw">use</span> <span class="ident">bootstrap</span>::{<span class="ident">get_state</span>, <span class="ident">start_bootstrap_server</span>, <span class="ident">BootstrapManager</span>};
-<span class="kw">use</span> <span class="ident">consensus</span>::{
+<span class="kw">use</span> <span class="ident">massa_api</span>::{<span class="ident">Private</span>, <span class="ident">Public</span>, <span class="ident">RpcServer</span>, <span class="ident">StopHandle</span>, <span class="ident">API</span>};
+<span class="kw">use</span> <span class="ident">massa_bootstrap</span>::{<span class="ident">get_state</span>, <span class="ident">start_bootstrap_server</span>, <span class="ident">BootstrapManager</span>};
+<span class="kw">use</span> <span class="ident">massa_consensus</span>::{
     <span class="ident">start_consensus_controller</span>, <span class="ident">ConsensusCommandSender</span>, <span class="ident">ConsensusEvent</span>, <span class="ident">ConsensusEventReceiver</span>,
     <span class="ident">ConsensusManager</span>,
 };
-<span class="kw">use</span> <span class="ident">logging::massa_trace</span>;
-<span class="kw">use</span> <span class="ident">models</span>::{<span class="ident">init_serialization_context</span>, <span class="ident">SerializationContext</span>};
-<span class="kw">use</span> <span class="ident">network</span>::{<span class="ident">start_network_controller</span>, <span class="ident">Establisher</span>, <span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkManager</span>};
-<span class="kw">use</span> <span class="ident">pool</span>::{<span class="ident">start_pool_controller</span>, <span class="ident">PoolCommandSender</span>, <span class="ident">PoolManager</span>};
-<span class="kw">use</span> <span class="ident">protocol_exports::ProtocolManager</span>;
-<span class="kw">use</span> <span class="ident">protocol_worker::start_protocol_controller</span>;
+<span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">init_serialization_context</span>, <span class="ident">SerializationContext</span>};
+<span class="kw">use</span> <span class="ident">massa_network</span>::{<span class="ident">start_network_controller</span>, <span class="ident">Establisher</span>, <span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkManager</span>};
+<span class="kw">use</span> <span class="ident">massa_pool</span>::{<span class="ident">start_pool_controller</span>, <span class="ident">PoolCommandSender</span>, <span class="ident">PoolManager</span>};
+<span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolManager</span>;
+<span class="kw">use</span> <span class="ident">massa_protocol_worker::start_protocol_controller</span>;
+<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
 <span class="kw">use</span> <span class="ident">std::process</span>;
-<span class="kw">use</span> <span class="ident">time::UTime</span>;
 <span class="kw">use</span> <span class="ident">tokio::signal</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>;
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">warn</span>, <span class="ident">Level</span>};
@@ -361,7 +361,7 @@
     <span class="ident">StopHandle</span>,
 ) {
     <span class="macro">info!</span>(<span class="string">&quot;Node version : {}&quot;</span>, <span class="kw-2">*</span><span class="ident"><span class="kw">crate</span>::settings::VERSION</span>);
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">end</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="ident">consensus::settings::END_TIMESTAMP</span> {
+    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">end</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="ident">massa_consensus::settings::END_TIMESTAMP</span> {
         <span class="kw">if</span> <span class="ident">UTime::now</span>(<span class="number">0</span>).<span class="ident">expect</span>(<span class="string">&quot;could not get now time&quot;</span>) <span class="op">&gt;</span> <span class="ident">end</span> {
             <span class="macro">panic!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
         }
@@ -369,22 +369,22 @@
 
     <span class="comment">// Init the global serialization context</span>
     <span class="ident">init_serialization_context</span>(<span class="ident">SerializationContext</span> {
-        <span class="ident">max_block_operations</span>: <span class="ident">consensus::settings::MAX_OPERATIONS_PER_BLOCK</span>,
-        <span class="ident">parent_count</span>: <span class="ident">consensus::settings::THREAD_COUNT</span>,
-        <span class="ident">max_block_size</span>: <span class="ident">consensus::settings::MAX_BLOCK_SIZE</span>,
-        <span class="ident">max_block_endorsements</span>: <span class="ident">consensus::settings::ENDORSEMENT_COUNT</span>,
-        <span class="ident">max_peer_list_length</span>: <span class="ident">network::settings::MAX_ADVERTISE_LENGTH</span>,
-        <span class="ident">max_message_size</span>: <span class="ident">network::settings::MAX_MESSAGE_SIZE</span>,
-        <span class="ident">max_bootstrap_blocks</span>: <span class="ident">bootstrap::settings::MAX_BOOTSTRAP_BLOCKS</span>,
-        <span class="ident">max_bootstrap_cliques</span>: <span class="ident">bootstrap::settings::MAX_BOOTSTRAP_CLIQUES</span>,
-        <span class="ident">max_bootstrap_deps</span>: <span class="ident">bootstrap::settings::MAX_BOOTSTRAP_DEPS</span>,
-        <span class="ident">max_bootstrap_children</span>: <span class="ident">bootstrap::settings::MAX_BOOTSTRAP_CHILDREN</span>,
-        <span class="ident">max_ask_blocks_per_message</span>: <span class="ident">network::settings::MAX_ASK_BLOCKS_PER_MESSAGE</span>,
-        <span class="ident">max_operations_per_message</span>: <span class="ident">network::settings::MAX_OPERATIONS_PER_MESSAGE</span>,
-        <span class="ident">max_endorsements_per_message</span>: <span class="ident">network::settings::MAX_ENDORSEMENTS_PER_MESSAGE</span>,
-        <span class="ident">max_bootstrap_message_size</span>: <span class="ident">bootstrap::settings::MAX_BOOTSTRAP_MESSAGE_SIZE</span>,
-        <span class="ident">max_bootstrap_pos_cycles</span>: <span class="ident">bootstrap::settings::MAX_BOOTSTRAP_POS_CYCLES</span>,
-        <span class="ident">max_bootstrap_pos_entries</span>: <span class="ident">bootstrap::settings::MAX_BOOTSTRAP_POS_ENTRIES</span>,
+        <span class="ident">max_block_operations</span>: <span class="ident">massa_consensus::settings::MAX_OPERATIONS_PER_BLOCK</span>,
+        <span class="ident">parent_count</span>: <span class="ident">massa_consensus::settings::THREAD_COUNT</span>,
+        <span class="ident">max_block_size</span>: <span class="ident">massa_consensus::settings::MAX_BLOCK_SIZE</span>,
+        <span class="ident">max_block_endorsements</span>: <span class="ident">massa_consensus::settings::ENDORSEMENT_COUNT</span>,
+        <span class="ident">max_peer_list_length</span>: <span class="ident">massa_network::settings::MAX_ADVERTISE_LENGTH</span>,
+        <span class="ident">max_message_size</span>: <span class="ident">massa_network::settings::MAX_MESSAGE_SIZE</span>,
+        <span class="ident">max_bootstrap_blocks</span>: <span class="ident">massa_bootstrap::settings::MAX_BOOTSTRAP_BLOCKS</span>,
+        <span class="ident">max_bootstrap_cliques</span>: <span class="ident">massa_bootstrap::settings::MAX_BOOTSTRAP_CLIQUES</span>,
+        <span class="ident">max_bootstrap_deps</span>: <span class="ident">massa_bootstrap::settings::MAX_BOOTSTRAP_DEPS</span>,
+        <span class="ident">max_bootstrap_children</span>: <span class="ident">massa_bootstrap::settings::MAX_BOOTSTRAP_CHILDREN</span>,
+        <span class="ident">max_ask_blocks_per_message</span>: <span class="ident">massa_network::settings::MAX_ASK_BLOCKS_PER_MESSAGE</span>,
+        <span class="ident">max_operations_per_message</span>: <span class="ident">massa_network::settings::MAX_OPERATIONS_PER_MESSAGE</span>,
+        <span class="ident">max_endorsements_per_message</span>: <span class="ident">massa_network::settings::MAX_ENDORSEMENTS_PER_MESSAGE</span>,
+        <span class="ident">max_bootstrap_message_size</span>: <span class="ident">massa_bootstrap::settings::MAX_BOOTSTRAP_MESSAGE_SIZE</span>,
+        <span class="ident">max_bootstrap_pos_cycles</span>: <span class="ident">massa_bootstrap::settings::MAX_BOOTSTRAP_POS_CYCLES</span>,
+        <span class="ident">max_bootstrap_pos_entries</span>: <span class="ident">massa_bootstrap::settings::MAX_BOOTSTRAP_POS_ENTRIES</span>,
     });
 
     <span class="comment">// interrupt signal listener</span>
@@ -397,10 +397,10 @@
         },
         <span class="ident">res</span> <span class="op">=</span> <span class="ident">get_state</span>(
             <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">bootstrap</span>,
-            <span class="ident">bootstrap::establisher::Establisher::new</span>(),
+            <span class="ident">massa_bootstrap::establisher::Establisher::new</span>(),
             <span class="kw-2">*</span><span class="ident">settings::VERSION</span>,
-            <span class="kw-2">*</span><span class="ident">consensus::settings::GENESIS_TIMESTAMP</span>,
-            <span class="kw-2">*</span><span class="ident">consensus::settings::END_TIMESTAMP</span>,
+            <span class="kw-2">*</span><span class="ident">massa_consensus::settings::GENESIS_TIMESTAMP</span>,
+            <span class="kw-2">*</span><span class="ident">massa_consensus::settings::END_TIMESTAMP</span>,
         ) =&gt; <span class="kw">match</span> <span class="ident">res</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">vals</span>) =&gt; <span class="ident">vals</span>,
             <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, <span class="ident">err</span>)
@@ -427,7 +427,7 @@
         <span class="ident">protocol_manager</span>,
     ) <span class="op">=</span> <span class="ident">start_protocol_controller</span>(
         <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">protocol</span>,
-        <span class="ident">consensus::settings::OPERATION_VALIDITY_PERIODS</span>,
+        <span class="ident">massa_consensus::settings::OPERATION_VALIDITY_PERIODS</span>,
         <span class="ident">network_command_sender</span>.<span class="ident">clone</span>(),
         <span class="ident">network_event_receiver</span>,
     )
@@ -437,8 +437,8 @@
     <span class="comment">// launch pool controller</span>
     <span class="kw">let</span> (<span class="ident">pool_command_sender</span>, <span class="ident">pool_manager</span>) <span class="op">=</span> <span class="ident">start_pool_controller</span>(
         <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">pool</span>,
-        <span class="ident">consensus::settings::THREAD_COUNT</span>,
-        <span class="ident">consensus::settings::OPERATION_VALIDITY_PERIODS</span>,
+        <span class="ident">massa_consensus::settings::THREAD_COUNT</span>,
+        <span class="ident">massa_consensus::settings::OPERATION_VALIDITY_PERIODS</span>,
         <span class="ident">protocol_command_sender</span>.<span class="ident">clone</span>(),
         <span class="ident">protocol_pool_event_receiver</span>,
     )
@@ -464,7 +464,7 @@
         <span class="ident">consensus_command_sender</span>.<span class="ident">clone</span>(),
         <span class="ident">network_command_sender</span>.<span class="ident">clone</span>(),
         <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">bootstrap</span>,
-        <span class="ident">bootstrap::Establisher::new</span>(),
+        <span class="ident">massa_bootstrap::Establisher::new</span>(),
         <span class="ident">private_key</span>,
         <span class="ident">clock_compensation</span>,
         <span class="kw-2">*</span><span class="ident"><span class="kw">crate</span>::settings::VERSION</span>,

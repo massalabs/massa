@@ -1,0 +1,426 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Massa JSON-RPC API"><meta name="keywords" content="rust, rustlang, rust-lang, massa_api"><title>massa_api - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../dark.css" disabled><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../storage.js"></script><script src="../crates.js"></script><script defer src="../main.js"></script>
+    <noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a class="sidebar-logo" href='../massa_api/index.html'><div class='logo-container rust-logo'><img src='../rust-logo.png' alt='logo'></div></a><h2 class="location">Crate massa_api</h2><div class="block version"><div class="narrow-helper"></div><p>Version 0.1.0</p></div><div class="sidebar-elems"><a id="all-types" href="all.html"><p>See all massa_api's items</p></a><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#traits">Traits</a></li></ul></div><div id="sidebar-vars" data-name="massa_api" data-ty="mod" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container rust-logo" href='../massa_api/index.html'><img src='../rust-logo.png' alt='logo'></a><nav class="sub"><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><h1 class="fqn"><span class="in-band">Crate <a class="mod" href="#">massa_api</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span><span class="out-of-band"><span id="render-detail"><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span><a class="srclink" href="../src/massa_api/lib.rs.html#3-182" title="goto source code">[src]</a></span></h1><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="massa-json-rpc-api" class="section-header"><a href="#massa-json-rpc-api">Massa JSON-RPC API</a></h2>
+<p>This crate exposes Rust methods (through the [<code>Endpoints</code> trait) as
+JSON-RPC API endpoints (thanks to the <a href="https://github.com/paritytech/jsonrpc">ParityJSON-RPC</a> crate).</p>
+<p><strong>E.g.</strong> this curl command will call endpoint <code>stop_node</code> (and stop the
+locally running <code>massa-node</code>):</p>
+<div class="example-wrap"><pre class="language-bash"><code>curl -X POST -H &quot;Content-Type: application/json&quot; -d &#39;{&quot;jsonrpc&quot;: &quot;2.0&quot;, &quot;method&quot;: &quot;stop_node&quot;, &quot;id&quot;: 123 }&#39; 127.0.0.1:33034</code></pre></div>
+<p>Endpoints are organized in 2 authorizations levels:</p>
+<h3 id="public-api" class="section-header"><a href="#public-api"><strong>Public</strong> API</a></h3>
+<p><em>a.k.a. <strong>“user mode”</strong> endpoints (running by default on <code>[::]:33035</code>)</em></p>
+<h4 id="get_status" class="section-header"><a href="#get_status"><code>get_status</code></a></h4>
+<p>Summary of the current state: time, last final blocks (hash, thread,
+slot, timestamp), clique count, connected nodes count.</p>
+<ul>
+<li>
+<p>No parameters.</p>
+</li>
+<li>
+<p>Return:</p>
+</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code> {
+  &quot;algo_config&quot;: {
+    &quot;block_reward&quot;: String, // represent an Amount in coins
+    &quot;delta_f0&quot;: Number, // Used to compute finality threshold
+    &quot;end_timestamp&quot;: null or Number, // millis since 1970-01-01 (only in tesnets)
+    &quot;genesis_timestamp&quot;: Number, // millis since 1970-01-01
+    &quot;operation_validity_periods&quot;: Number,
+    &quot;periods_per_cycle&quot;: Number,
+    &quot;pos_lock_cycles&quot;: Number,
+    &quot;pos_lookback_cycles&quot;: Number,
+    &quot;roll_price&quot;: String, // represent an Amount in coins
+    &quot;t0&quot;: Number, // millis between to slots in the same thread
+    &quot;thread_count&quot;: Number
+  },
+  &quot;connected_nodes&quot;: {
+    &quot;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&quot;: String // Node id -&gt; ip address
+  },
+  &quot;consensus_stats&quot;: {
+    &quot;clique_count&quot;: Number,
+    &quot;end_timespan&quot;: Number,// stats time interval, millis since 1970-01-01
+    &quot;final_block_count&quot;: Number,
+    &quot;final_operation_count&quot;: Number,
+    &quot;staker_count&quot;: Number,
+    &quot;stale_block_count&quot;: Number,
+    &quot;start_timespan&quot;: // stats time interval, millis since 1970-01-01
+  },
+  &quot;current_cycle&quot;: Number,
+  &quot;current_time&quot;: Number, // millis since 1970-01-01
+  &quot;delta_f0&quot;: Number, // Used to compute finality thresold
+  &quot;genesis_timestamp&quot;: Number, // millis since 1970-01-01
+  &quot;last_slot&quot;: {
+    &quot;period&quot;: Number,
+    &quot;thread&quot;: Number
+  },
+  &quot;network_stats&quot;: {
+    &quot;active_node_count&quot;: Number,
+    &quot;banned_peer_count&quot;: Number,
+    &quot;in_connection_count&quot;: Number,
+    &quot;known_peer_count&quot;: Number,
+    &quot;out_connection_count&quot;: Number
+  },
+  &quot;next_slot&quot;: {
+    &quot;period&quot;: Number,
+    &quot;thread&quot;: Number
+  },
+  &quot;node_id&quot;: String,
+  &quot;node_ip&quot;: null or String, // ip address if provided
+  &quot;pool_stats&quot;: {
+    &quot;endorsement_count&quot;: Number,
+    &quot;operation_count&quot;: Number
+  },
+  &quot;roll_price&quot;: String, // represent an Amount in coins
+  &quot;t0&quot;: Number,
+  &quot;thread_count&quot;: Number,
+  &quot;version&quot;: String
+}</code></pre></div><h4 id="get_cliques" class="section-header"><a href="#get_cliques"><code>get_cliques</code></a></h4>
+<p>Get cliques.</p>
+<ul>
+<li>
+<p>No parameters.</p>
+</li>
+<li>
+<p>Return:</p>
+</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[
+    {
+        block_ids: [String],
+        fitness: Number,
+        is_blockclique: Boolean,
+    },
+];</code></pre></div><h4 id="get_stakers" class="section-header"><a href="#get_stakers"><code>get_stakers</code></a></h4>
+<p>Returns the active stakers and their roll counts for the current cycle.</p>
+<ul>
+<li>
+<p>No parameters.</p>
+</li>
+<li>
+<p>Return:</p>
+</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>{
+  &quot;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&quot;: Number
+} // Dictionnary associating staker addresses to their active roll counts</code></pre></div><h4 id="get_operations" class="section-header"><a href="#get_operations"><code>get_operations</code></a></h4>
+<p>Returns operations information associated to a given list of operations’ IDs.</p>
+<ul>
+<li>Parameters:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[String]. // String must be an operation Id</code></pre></div>
+<ul>
+<li>Return:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[
+  {
+    &quot;id&quot;: String, // Operation id
+    &quot;in_blocks&quot;: [String], // Block ids
+    &quot;in_pool&quot;: Boolean,
+    &quot;is_final&quot;: Boolean,
+    &quot;operation&quot;: {
+      &quot;content&quot;: {
+        &quot;expire_period&quot;: Number,// after that period, the operation become invalid forever
+        &quot;fee&quot;: String, // represent an Amount in coins
+        &quot;op&quot;: {
+          &quot;Transaction&quot;: {
+            &quot;amount&quot;: String, // represent an Amount in coins
+            &quot;recipient_address&quot;: String
+          }
+          OR
+          &quot;RollBuy&quot;: {
+            &quot;roll_count&quot;: Number
+          }
+          OR
+          &quot;RollSell&quot;: {
+            &quot;roll_count&quot;: Number
+          }
+        },
+        &quot;sender_public_key&quot;: String
+      },
+      &quot;signature&quot;: String
+    }
+  }
+]</code></pre></div><h4 id="get_endorsements" class="section-header"><a href="#get_endorsements"><code>get_endorsements</code></a></h4>
+<p>Get endorsements (not yet implemented)</p>
+<ul>
+<li>Parameters:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[String]; // string must be an endorsement id</code></pre></div>
+<ul>
+<li>Return:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[{
+    &quot;id&quot;: String, // EndorsementId,
+    &quot;in_pool&quot;: Boolean,
+    &quot;in_blocks&quot;: [String], // BlockId,
+    &quot;is_final&quot;: Boolean,
+    &quot;endorsement&quot;: {
+        &quot;content&quot;:{
+            &quot;sender_public_key&quot;: String,
+            &quot;slot&quot;: {
+                &quot;period&quot;: Number,
+                &quot;thread&quot;: Number
+            },
+            &quot;index&quot;: Number,
+            &quot;endorsed_block&quot;: String // BlockId,
+        }
+        &quot;signature&quot;: String
+    }
+ }]</code></pre></div><h4 id="get_block" class="section-header"><a href="#get_block"><code>get_block</code></a></h4>
+<p>Get information on a block given its hash.</p>
+<ul>
+<li>Parameters:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[String]; // Block IDs</code></pre></div>
+<ul>
+<li>Return:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>{
+    &quot;id&quot;: String // BlockId,
+    &quot;content&quot;: Null or {
+        &quot;is_final&quot;: bool,
+        &quot;is_stale&quot;: bool,
+        &quot;is_in_blockclique&quot;: bool,
+        &quot;block&quot;: {
+            &quot;header&quot;: {
+                &quot;content&quot;: {
+                  &quot;endorsed_block&quot;: String, // Block id
+                  &quot;index&quot;: Number,
+                  &quot;sender_public_key&quot;: String,
+                  &quot;slot&quot;: { // endorsed block slot: deifferent from block&#39;s slot
+                    &quot;period&quot;: Number,
+                    &quot;thread&quot;: Number
+                  }
+                },
+                &quot;signature&quot;: String
+              }
+            ],
+            &quot;operation_merkle_root&quot;: String, // Hash of all operations
+            &quot;parents&quot;: [String], // Block ids, as many as thread count
+            &quot;slot&quot;: {
+              &quot;period&quot;: Number,
+              &quot;thread&quot;: Number
+            }
+          },
+          &quot;signature&quot;: String
+        },
+        &quot;operations&quot;: [
+          {
+            &quot;content&quot;: {
+              &quot;expire_period&quot;: Number,
+              &quot;fee&quot;: String, // represent an Amount in coins
+              &quot;op&quot;: {
+                &quot;Transaction&quot;: {
+                  &quot;amount&quot;: String, // represent an Amount in coins
+                  &quot;recipient_address&quot;: String
+                }
+                OR
+                &quot;RollBuy&quot;: {
+                  &quot;roll_count&quot;: Number
+                }
+                OR
+                &quot;RollSell&quot;: {
+                  &quot;roll_count&quot;: Number
+                }
+              },
+              &quot;sender_public_key&quot;: String
+            },
+            &quot;signature&quot;: String
+          }
+        ]
+      },
+      &quot;is_final&quot;: Boolean,
+      &quot;is_in_blockclique&quot;: Boolean,
+      &quot;is_stale&quot;: Boolean
+    },
+}</code></pre></div><h4 id="get_graph_interval" class="section-header"><a href="#get_graph_interval"><code>get_graph_interval</code></a></h4>
+<p>Get the block graph within the specified time interval.</p>
+<ul>
+<li>Parameters:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>{
+    &quot;start&quot;: null or Number, // in millis since 1970-01-01, field may be omitted
+    &quot;end&quot;: null or Number,// in millis since 1970-01-01, field may be omitted
+}</code></pre></div>
+<ul>
+<li>Return:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[
+    {
+        creator: String, // public key
+        id: String, // Block Id
+        is_final: Boolean,
+        is_in_blockclique: Boolean,
+        is_stale: Boolean,
+        parents: [String], // as many block Ids as there are threads
+        slot: {
+            period: Number,
+            thread: Number,
+        },
+    },
+];</code></pre></div><h4 id="get_addresses" class="section-header"><a href="#get_addresses"><code>get_addresses</code></a></h4>
+<p>Get addresses.</p>
+<ul>
+<li>Parameters:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[
+    [String], // Addresses
+];</code></pre></div>
+<ul>
+<li>Return:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[
+    {
+        address: String,
+        balance: {
+            candidate_balance: String, // represent an Amount in coins
+            final_balance: String, // represent an Amount in coins
+            locked_balance: String, // represent an Amount in coins
+        },
+        block_draws: [
+            {
+                period: Number,
+                thread: Number,
+            },
+        ],
+        blocks_created: [String], // Block ids
+        endorsement_draws: [
+            {
+                slot: {
+                    period: Number,
+                    thread: Number,
+                },
+                index: Number,
+            },
+        ],
+        involved_in_endorsements: [String], // Endorsement Id
+        involved_in_operations: [String], // Operation id
+        production_stats: [
+            // as many items as cached cycles
+            {
+                cycle: Number,
+                is_final: Boolean,
+                nok_count: Number,
+                ok_count: Number,
+            },
+        ],
+        rolls: {
+            active_rolls: Number,
+            candidate_rolls: Number,
+            final_rolls: Number,
+        },
+        thread: Number,
+    },
+];</code></pre></div><h4 id="send_operations" class="section-header"><a href="#send_operations"><code>send_operations</code></a></h4>
+<p>Adds operations to pool. Returns operations that were ok and sent to
+pool.</p>
+<ul>
+<li>Parameters:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[[
+  {
+    &quot;content&quot;: {
+      &quot;expire_period&quot;: Number,
+      &quot;fee&quot;: String, // represent an Amount in coins
+      &quot;op&quot;: {
+        &quot;Transaction&quot;: {
+          &quot;amount&quot;: String, // represent an Amount in coins
+          &quot;recipient_address&quot;: String
+        }
+        OR
+        &quot;RollBuy&quot;: {
+          &quot;roll_count&quot;: Number
+        }
+        OR
+        &quot;RollSell&quot;: {
+          &quot;roll_count&quot;: Number
+        }
+      },
+      &quot;sender_public_key&quot;: String
+    },
+    &quot;signature&quot;: String
+  }
+]]</code></pre></div>
+<ul>
+<li>Return:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[String], // Operation ids</code></pre></div><h3 id="private-api" class="section-header"><a href="#private-api"><strong>Private</strong> API</a></h3>
+<p><em>a.k.a. <strong>“manager mode”</strong> endpoints (running by default on <code>127.0.0.1:33034</code>)</em></p>
+<h4 id="stop_node" class="section-header"><a href="#stop_node"><code>stop_node</code></a></h4>
+<p>Gracefully stop the node.</p>
+<ul>
+<li>
+<p>No parameters.</p>
+</li>
+<li>
+<p>No return.</p>
+</li>
+</ul>
+<h4 id="node_sign_message" class="section-header"><a href="#node_sign_message"><code>node_sign_message</code></a></h4>
+<p>Sign message with node’s key.</p>
+<ul>
+<li>Parameter:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[u8];</code></pre></div>
+<ul>
+<li>Return:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>{&quot;public_key&quot;: String, &quot;signature&quot;: String}</code></pre></div>
+<p>Where public_key is the public key used to sign the input and signature,
+the resulting signature.</p>
+<h4 id="add_staking_private_keys" class="section-header"><a href="#add_staking_private_keys"><code>add_staking_private_keys</code></a></h4>
+<p>Add a vec of new private keys for the node to use to stake.</p>
+<ul>
+<li>Parameter:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[String];</code></pre></div>
+<p>The strings must be private keys.</p>
+<ul>
+<li>No return.</li>
+</ul>
+<h4 id="remove_staking_addresses" class="section-header"><a href="#remove_staking_addresses"><code>remove_staking_addresses</code></a></h4>
+<p>Remove a vec of addresses used to stake.</p>
+<ul>
+<li>Parameter:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[String];</code></pre></div>
+<p>The strings must be addresses.</p>
+<ul>
+<li>No return.</li>
+</ul>
+<h4 id="get_staking_addresses" class="section-header"><a href="#get_staking_addresses"><code>get_staking_addresses</code></a></h4>
+<p>Return hashset of staking addresses.</p>
+<ul>
+<li>
+<p>No parameters.</p>
+</li>
+<li>
+<p>Return:</p>
+</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[String];</code></pre></div>
+<p>The strings are addresses.</p>
+<h4 id="ban" class="section-header"><a href="#ban"><code>ban</code></a></h4>
+<p>Bans given IP addresses.</p>
+<ul>
+<li>Parameter:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[String];</code></pre></div>
+<p>The strings must be ip addresses.</p>
+<ul>
+<li>No return.</li>
+</ul>
+<h4 id="unban" class="section-header"><a href="#unban"><code>unban</code></a></h4>
+<p>Unbans given IP addresses.</p>
+<ul>
+<li>Parameter:</li>
+</ul>
+<div class="example-wrap"><pre class="language-javascript"><code>[String];</code></pre></div>
+<p>The strings must be ip addresses.</p>
+<ul>
+<li>No return.</li>
+</ul>
+</div></details><h2 id="structs" class="section-header"><a href="#structs">Structs</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.API.html" title="massa_api::API struct">API</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Private.html" title="massa_api::Private struct">Private</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Public.html" title="massa_api::Public struct">Public</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.StopHandle.html" title="massa_api::StopHandle struct">StopHandle</a></div><div class="item-right docblock-short"></div></div></div><h2 id="traits" class="section-header"><a href="#traits">Traits</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.Endpoints.html" title="massa_api::Endpoints trait">Endpoints</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.RpcServer.html" title="massa_api::RpcServer trait">RpcServer</a></div><div class="item-right docblock-short"></div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (e6b883c74 2021-12-08)" ></div>
+</body></html>
