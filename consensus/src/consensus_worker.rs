@@ -3,11 +3,12 @@
 use super::{block_graph::*, pos::ProofOfStake, settings::ConsensusConfig};
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
+
 use crate::settings;
 use massa_hash::hash::Hash;
 use models::api::{EndorsementInfo, LedgerInfo, RollsInfo};
 
-use execution::ExecutionCommandSender;
+use execution::{ExecutionCommandSender, ExecutionEventReceiver};
 use models::{address::AddressCycleProductionStats, stats::ConsensusStats, OperationType};
 use models::{
     address::{AddressHashMap, AddressHashSet, AddressState},
@@ -119,6 +120,8 @@ pub struct ConsensusWorker {
     protocol_command_sender: ProtocolCommandSender,
     /// Associated protocol event listener.
     protocol_event_receiver: ProtocolEventReceiver,
+    /// Associated execution event listener.
+    execution_event_receiver: ExecutionEventReceiver,
     /// Execution command sender.
     execution_command_sender: ExecutionCommandSender,
     /// Associated Pool command sender.
@@ -170,6 +173,7 @@ impl ConsensusWorker {
         cfg: ConsensusConfig,
         protocol_command_sender: ProtocolCommandSender,
         protocol_event_receiver: ProtocolEventReceiver,
+        execution_event_receiver: ExecutionEventReceiver,
         pool_command_sender: PoolCommandSender,
         execution_command_sender: ExecutionCommandSender,
         block_db: BlockGraph,
@@ -263,12 +267,15 @@ impl ConsensusWorker {
             cfg,
             launch_time: UTime::now(clock_compensation)?,
             endorsed_slots: HashSet::new(),
+            execution_event_receiver,
         })
     }
 
     /// Consensus work is managed here.
     /// It's mostly a tokio::select within a loop.
-    pub async fn run_loop(mut self) -> Result<ProtocolEventReceiver, ConsensusError> {
+    pub async fn run_loop(
+        mut self,
+    ) -> Result<(ProtocolEventReceiver, ExecutionEventReceiver), ConsensusError> {
         // signal initial state to pool
         if let Some(previous_slot) = self.previous_slot {
             self.pool_command_sender
@@ -356,7 +363,7 @@ impl ConsensusWorker {
             }
         }
         // end loop
-        Ok(self.protocol_event_receiver)
+        Ok((self.protocol_event_receiver, self.execution_event_receiver))
     }
 
     async fn slot_tick(

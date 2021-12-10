@@ -4,6 +4,7 @@ use crate::worker::{
     ExecutionCommand, ExecutionEvent, ExecutionManagementCommand, ExecutionWorker,
 };
 use models::{Block, BlockHashMap};
+use std::collections::VecDeque;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
@@ -14,6 +15,19 @@ pub struct ExecutionCommandSender(pub mpsc::Sender<ExecutionCommand>);
 /// A receiver of execution events.
 pub struct ExecutionEventReceiver(pub mpsc::UnboundedReceiver<ExecutionEvent>);
 
+impl ExecutionEventReceiver {
+    /// drains remaining events and returns them in a VecDeque
+    /// note: events are sorted from oldest to newest
+    pub async fn drain(mut self) -> VecDeque<ExecutionEvent> {
+        let mut remaining_events: VecDeque<ExecutionEvent> = VecDeque::new();
+
+        while let Some(evt) = self.0.recv().await {
+            remaining_events.push_back(evt);
+        }
+        remaining_events
+    }
+}
+
 /// A sender of execution management commands.
 pub struct ExecutionManager {
     join_handle: JoinHandle<Result<(), ExecutionError>>,
@@ -21,8 +35,12 @@ pub struct ExecutionManager {
 }
 
 impl ExecutionManager {
-    pub async fn stop(self) -> Result<(), ExecutionError> {
+    pub async fn stop(
+        self,
+        execution_event_receiver: ExecutionEventReceiver,
+    ) -> Result<(), ExecutionError> {
         drop(self.manager_tx);
+        execution_event_receiver.drain().await;
         match self.join_handle.await {
             Err(_) => Err(ExecutionError::JoinError),
             _ => Ok(()),

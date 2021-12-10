@@ -38,8 +38,8 @@ use tracing::{debug, error, info};
 /// * protocol_event_receiver: a ProtocolEventReceiver instance to receive events from Protocol.
 pub async fn start_consensus_controller(
     cfg: ConsensusConfig,
-    _execution_command_sender: ExecutionCommandSender,
-    _execution_event_receiver: ExecutionEventReceiver,
+    execution_command_sender: ExecutionCommandSender,
+    execution_event_receiver: ExecutionEventReceiver,
     protocol_command_sender: ProtocolCommandSender,
     protocol_event_receiver: ProtocolEventReceiver,
     pool_command_sender: PoolCommandSender,
@@ -92,8 +92,9 @@ pub async fn start_consensus_controller(
             cfg_copy,
             protocol_command_sender,
             protocol_event_receiver,
+            execution_event_receiver,
             pool_command_sender,
-            _execution_command_sender,
+            execution_command_sender,
             block_db,
             pos,
             command_rx,
@@ -120,8 +121,8 @@ pub async fn start_consensus_controller(
         ConsensusCommandSender(command_tx),
         ConsensusEventReceiver(event_rx),
         ConsensusManager {
-            join_handle,
             manager_tx,
+            join_handle,
         },
     ))
 }
@@ -599,7 +600,9 @@ impl ConsensusEventReceiver {
 }
 
 pub struct ConsensusManager {
-    join_handle: JoinHandle<Result<ProtocolEventReceiver, ConsensusError>>,
+    join_handle:
+        JoinHandle<Result<(ProtocolEventReceiver, ExecutionEventReceiver), ConsensusError>>,
+
     manager_tx: mpsc::Sender<ConsensusManagementCommand>,
 }
 
@@ -607,11 +610,12 @@ impl ConsensusManager {
     pub async fn stop(
         self,
         consensus_event_receiver: ConsensusEventReceiver,
-    ) -> Result<ProtocolEventReceiver, ConsensusError> {
+    ) -> Result<(ProtocolEventReceiver, ExecutionEventReceiver), ConsensusError> {
         massa_trace!("consensus.consensus_controller.stop", {});
         drop(self.manager_tx);
         let _remaining_events = consensus_event_receiver.drain().await;
-        let protocol_event_receiver = self.join_handle.await??;
-        Ok(protocol_event_receiver)
+        let (protocol_event_receiver, execution_event_receiver) = self.join_handle.await??;
+
+        Ok((protocol_event_receiver, execution_event_receiver))
     }
 }
