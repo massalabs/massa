@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use massa_pool::{PoolCommand, PoolCommandSender};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -23,7 +23,7 @@ impl MockPoolController {
         )
     }
 
-    pub async fn wait_command<F, T>(&mut self, timeout: UTime, filter_map: F) -> Option<T>
+    pub async fn wait_command<F, T>(&mut self, timeout: MassaTime, filter_map: F) -> Option<T>
     where
         F: Fn(PoolCommand) -> Option<T>,
     {

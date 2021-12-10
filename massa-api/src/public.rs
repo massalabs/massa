@@ -24,7 +24,7 @@ use massa_models::{
 use massa_network::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
 use massa_signature::PrivateKey;
-use massa_time::UTime;
+use massa_time::MassaTime;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
@@ -100,7 +100,7 @@ impl Endpoints for API<Public> {
         let node_id = self.0.node_id;
         let config = consensus_settings.config();
         let closure = async move || {
-            let now = UTime::now(compensation_millis)?;
+            let now = MassaTime::now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
                 consensus_settings.thread_count,
                 consensus_settings.t0,
@@ -357,7 +357,7 @@ impl Endpoints for API<Public> {
             let mut res = Vec::with_capacity(addresses.len());
 
             // next draws info
-            let now = UTime::now(compensation_millis)?;
+            let now = MassaTime::now(compensation_millis)?;
             let current_slot = get_latest_block_slot_at_timestamp(
                 cfg.thread_count,
                 cfg.t0,

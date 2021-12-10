@@ -15,7 +15,7 @@ use massa_network::NetworkCommand;
 use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey,
 };
-use massa_time::UTime;
+use massa_time::MassaTime;
 use std::collections::HashMap;
 use tokio::time::sleep;
 
@@ -234,7 +234,7 @@ pub fn create_protocol_settings() -> ProtocolSettings {
         max_node_known_blocks_size: 100,
         max_node_wanted_blocks_size: 100,
         max_simultaneous_ask_blocks_per_node: 10,
-        max_send_wait: UTime::from(100),
+        max_send_wait: MassaTime::from(100),
         max_known_ops_size: 1000,
         max_known_endorsements_size: 1000,
     }
@@ -242,7 +242,7 @@ pub fn create_protocol_settings() -> ProtocolSettings {
 
 pub async fn wait_protocol_event<F>(
     protocol_event_receiver: &mut ProtocolEventReceiver,
-    timeout: UTime,
+    timeout: MassaTime,
     filter_map: F,
 ) -> Option<ProtocolEvent>
 where
@@ -263,7 +263,7 @@ where
 
 pub async fn wait_protocol_pool_event<F>(
     protocol_event_receiver: &mut ProtocolPoolEventReceiver,
-    timeout: UTime,
+    timeout: MassaTime,
     filter_map: F,
 ) -> Option<ProtocolPoolEvent>
 where
@@ -327,7 +327,7 @@ pub async fn assert_banned_nodes(
     mut nodes: Vec<NodeId>,
     network_controller: &mut MockNetworkController,
 ) {
-    let timer = sleep(UTime::from(5000).into());
+    let timer = sleep(MassaTime::from(5000).into());
     tokio::pin!(timer);
     loop {
         tokio::select! {

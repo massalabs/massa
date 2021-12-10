@@ -11,7 +11,7 @@ use massa_models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
 };
 use massa_signature::{generate_random_private_key, PrivateKey, PublicKey};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use massa_wallet::Wallet;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -603,8 +603,9 @@ impl Command {
                     Ok(node_status) => node_status.consensus_stats.end_timespan,
                     Err(e) => bail!("RpcError: {}", e),
                 };
-                let (days, hours, mins, secs) =
-                    end.saturating_sub(UTime::now(0)?).days_hours_mins_secs()?; // compensation millis is zero
+                let (days, hours, mins, secs) = end
+                    .saturating_sub(MassaTime::now(0)?)
+                    .days_hours_mins_secs()?; // compensation millis is zero
                 let mut res = "".to_string();
                 res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs));
                 if !json {

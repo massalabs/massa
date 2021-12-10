@@ -5,7 +5,7 @@ use massa_models::{Address, Amount, BlockId, Slot};
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::{derive_public_key, generate_random_private_key};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use num::rational::Ratio;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use serial_test::serial;
@@ -83,7 +83,7 @@ async fn test_roll() {
     cfg.block_reward = Amount::default();
     cfg.roll_price = Amount::from_str("1000").unwrap();
     cfg.operation_validity_periods = 100;
-    cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
+    cfg.genesis_timestamp = MassaTime::now(0).unwrap().saturating_add(300.into());
 
     tools::consensus_pool_test(
         cfg.clone(),
@@ -540,7 +540,7 @@ async fn test_roll_block_creation() {
         MockProtocolController::new();
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
 
-    cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
+    cfg.genesis_timestamp = MassaTime::now(0).unwrap().saturating_add(300.into());
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
@@ -855,7 +855,7 @@ async fn test_roll_deactivation() {
         MockProtocolController::new();
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
 
-    cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
+    cfg.genesis_timestamp = MassaTime::now(0).unwrap().saturating_add(300.into());
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(

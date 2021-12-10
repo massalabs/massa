@@ -2,7 +2,7 @@
 
 //! warning: assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
 
-use massa_time::UTime;
+use massa_time::MassaTime;
 use std::convert::TryInto;
 
 use crate::{ModelsError, Slot};
@@ -15,16 +15,16 @@ use crate::{ModelsError, Slot};
 /// * slot: the considered slot.
 pub fn get_block_slot_timestamp(
     thread_count: u8,
-    t0: UTime,
-    genesis_timestamp: UTime,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
     slot: Slot,
-) -> Result<UTime, ModelsError> {
-    let base: UTime = t0
+) -> Result<MassaTime, ModelsError> {
+    let base: MassaTime = t0
         .checked_div_u64(thread_count as u64)
         .or(Err(ModelsError::TimeOverflowError))?
         .checked_mul(slot.thread as u64)
         .or(Err(ModelsError::TimeOverflowError))?;
-    let shift: UTime = t0
+    let shift: MassaTime = t0
         .checked_mul(slot.period)
         .or(Err(ModelsError::TimeOverflowError))?;
     genesis_timestamp
@@ -43,9 +43,9 @@ pub fn get_block_slot_timestamp(
 /// * timestamp: target timestamp in millis.
 pub fn get_latest_block_slot_at_timestamp(
     thread_count: u8,
-    t0: UTime,
-    genesis_timestamp: UTime,
-    timestamp: UTime,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
+    timestamp: MassaTime,
 ) -> Result<Option<Slot>, ModelsError> {
     if let Ok(time_since_genesis) = timestamp.checked_sub(genesis_timestamp) {
         let thread: u8 = time_since_genesis
@@ -68,19 +68,19 @@ pub fn get_latest_block_slot_at_timestamp(
 /// * genesis_timestamp: when the blockclique first started, in millis.
 pub fn get_current_latest_block_slot(
     thread_count: u8,
-    t0: UTime,
-    genesis_timestamp: UTime,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
     clock_compensation: i64,
 ) -> Result<Option<Slot>, ModelsError> {
     get_latest_block_slot_at_timestamp(
         thread_count,
         t0,
         genesis_timestamp,
-        UTime::now(clock_compensation)?,
+        MassaTime::now(clock_compensation)?,
     )
 }
 
-/// Turns an UTime range [start, end) with optional start/end to a Slot range [start, end) with optional start/end
+/// Turns an MassaTime range [start, end) with optional start/end to a Slot range [start, end) with optional start/end
 ///
 /// # Arguments
 /// * thread_count: number of threads.
@@ -93,10 +93,10 @@ pub fn get_current_latest_block_slot(
 /// or ConsensusError on error
 pub fn time_range_to_slot_range(
     thread_count: u8,
-    t0: UTime,
-    genesis_timestamp: UTime,
-    start_time: Option<UTime>,
-    end_time: Option<UTime>,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
+    start_time: Option<MassaTime>,
+    end_time: Option<MassaTime>,
 ) -> Result<(Option<Slot>, Option<Slot>), ModelsError> {
     let start_slot = match start_time {
         None => None,
@@ -105,7 +105,7 @@ pub fn time_range_to_slot_range(
             let slot_number: u64 = t
                 .saturating_sub(genesis_timestamp)
                 .checked_add(inter_slot)?
-                .saturating_sub(UTime::EPSILON)
+                .saturating_sub(MassaTime::EPSILON)
                 .checked_div_time(inter_slot)?;
             Some(Slot::new(
                 slot_number
@@ -127,7 +127,7 @@ pub fn time_range_to_slot_range(
             let slot_number: u64 = t
                 .saturating_sub(genesis_timestamp)
                 .checked_add(inter_slot)?
-                .saturating_sub(UTime::EPSILON)
+                .saturating_sub(MassaTime::EPSILON)
                 .checked_div_time(inter_slot)?;
             Some(Slot::new(
                 slot_number
@@ -154,8 +154,8 @@ mod tests {
     #[serial]
     fn test_time_range_to_slot_range() {
         let thread_count = 3u8;
-        let t0: UTime = 30.into();
-        let genesis_timestamp: UTime = 100.into();
+        let t0: MassaTime = 30.into();
+        let genesis_timestamp: MassaTime = 100.into();
         /* slots:   (0, 0)  (0, 1)  (0, 2)  (1, 0)  (1, 1)  (1, 2)  (2, 0)  (2, 1)  (2, 2)
             time:    100      110     120    130      140    150     160     170     180
         */

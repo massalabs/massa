@@ -8,7 +8,7 @@ use crate::{
     Address, Amount, Block, BlockHashSet, BlockId, Config, Endorsement, EndorsementHashSet,
     EndorsementId, Operation, OperationHashSet, OperationId, Slot, Version,
 };
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
@@ -18,7 +18,7 @@ pub struct NodeStatus {
     pub node_id: NodeId,
     pub node_ip: Option<IpAddr>,
     pub version: Version,
-    pub current_time: UTime,
+    pub current_time: MassaTime,
     pub current_cycle: u64,
     pub connected_nodes: HashMap<NodeId, IpAddr>,
     pub last_slot: Option<Slot>,
@@ -355,8 +355,8 @@ fn display_if_true(value: bool, text: &str) -> String {
 
 #[derive(Debug, Deserialize, Clone, Copy, Serialize)]
 pub struct TimeInterval {
-    pub start: Option<UTime>,
-    pub end: Option<UTime>,
+    pub start: Option<MassaTime>,
+    pub end: Option<MassaTime>,
 }
 
 #[derive(Debug, Deserialize, Clone, Copy)]

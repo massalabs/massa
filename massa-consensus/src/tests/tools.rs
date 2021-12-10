@@ -23,7 +23,7 @@ use massa_protocol_exports::ProtocolCommand;
 use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
 };
-use massa_time::UTime;
+use massa_time::MassaTime;
 use num::rational::Ratio;
 use std::str::FromStr;
 use std::{
@@ -312,7 +312,7 @@ pub fn create_roll_transaction(
 
 pub async fn wait_pool_slot(
     pool_controller: &mut MockPoolController,
-    t0: UTime,
+    t0: MassaTime,
     period: u64,
     thread: u8,
 ) -> Slot {
@@ -637,7 +637,7 @@ pub fn default_consensus_config(
     });
 
     ConsensusConfig {
-        genesis_timestamp: UTime::now(0).unwrap(),
+        genesis_timestamp: MassaTime::now(0).unwrap(),
         thread_count,
         t0: 32000.into(),
         genesis_key,

@@ -16,26 +16,26 @@ use serde::{Deserialize, Serialize};
 /// Time structure used every where.
 /// Millis since 01/01/1970.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct UTime(u64);
+pub struct MassaTime(u64);
 
-impl fmt::Display for UTime {
+impl fmt::Display for MassaTime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.to_millis())
     }
 }
 
-impl From<u64> for UTime {
+impl From<u64> for MassaTime {
     /// Conversion from u64, representing timestamp in millis.
     /// ```
     /// # use massa_time::*;
-    /// let time : UTime = UTime::from(42);
+    /// let time : MassaTime = MassaTime::from(42);
     /// ```
     fn from(value: u64) -> Self {
-        UTime(value)
+        MassaTime(value)
     }
 }
 
-impl TryFrom<Duration> for UTime {
+impl TryFrom<Duration> for MassaTime {
     type Error = TimeError;
 
     /// Conversion from `std::time::Duration`.
@@ -44,11 +44,11 @@ impl TryFrom<Duration> for UTime {
     /// # use massa_time::*;
     /// # use std::convert::TryFrom;
     /// let duration: Duration = Duration::from_millis(42);
-    /// let time : UTime = UTime::from(42);
-    /// assert_eq!(time, UTime::try_from(duration).unwrap());
+    /// let time : MassaTime = MassaTime::from(42);
+    /// assert_eq!(time, MassaTime::try_from(duration).unwrap());
     /// ```
     fn try_from(value: Duration) -> Result<Self, Self::Error> {
-        Ok(UTime(
+        Ok(MassaTime(
             value
                 .as_millis()
                 .try_into()
@@ -57,23 +57,23 @@ impl TryFrom<Duration> for UTime {
     }
 }
 
-impl From<UTime> for Duration {
-    /// Conversion Utime to duration, representing timestamp in millis.
+impl From<MassaTime> for Duration {
+    /// Conversion massa_time to duration, representing timestamp in millis.
     /// ```
     /// # use std::time::Duration;
     /// # use massa_time::*;
     /// # use std::convert::Into;
     /// let duration: Duration = Duration::from_millis(42);
-    /// let time : UTime = UTime::from(42);
+    /// let time : MassaTime = MassaTime::from(42);
     /// let res: Duration = time.into();
     /// assert_eq!(res, duration);
     /// ```
-    fn from(value: UTime) -> Self {
+    fn from(value: MassaTime) -> Self {
         value.to_duration()
     }
 }
 
-impl FromStr for UTime {
+impl FromStr for MassaTime {
     type Err = crate::TimeError;
 
     /// Conversion from `&str`.
@@ -82,20 +82,20 @@ impl FromStr for UTime {
     /// # use massa_time::*;
     /// # use std::str::FromStr;
     /// let duration: &str = "42";
-    /// let time : UTime = UTime::from(42);
+    /// let time : MassaTime = MassaTime::from(42);
     ///
-    /// assert_eq!(time, UTime::from_str(duration).unwrap());
+    /// assert_eq!(time, MassaTime::from_str(duration).unwrap());
     /// ```
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(UTime(
+        Ok(MassaTime(
             u64::from_str(s).map_err(|_| Self::Err::ConversionError)?,
         ))
     }
 }
 
-impl UTime {
+impl MassaTime {
     /// Smallest time interval
-    pub const EPSILON: UTime = UTime(1);
+    pub const EPSILON: MassaTime = MassaTime(1);
 
     /// Gets current unix timestamp (resolution: milliseconds).
     ///
@@ -108,9 +108,9 @@ impl UTime {
     /// # use std::convert::TryFrom;
     /// # use std::cmp::max;
     /// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    /// let now_utime : UTime = UTime::now(0).unwrap();
-    /// let converted  :UTime = UTime::try_from(now_duration).unwrap();
-    /// assert!(max(now_utime.saturating_sub(converted), converted.saturating_sub(now_utime)) < 100.into())
+    /// let now_massa_time : MassaTime = MassaTime::now(0).unwrap();
+    /// let converted  :MassaTime = MassaTime::try_from(now_duration).unwrap();
+    /// assert!(max(now_massa_time.saturating_sub(converted), converted.saturating_sub(now_massa_time)) < 100.into())
     /// ```
     pub fn now(compensation_millis: i64) -> Result<Self, TimeError> {
         let now: i64 = SystemTime::now()
@@ -124,7 +124,7 @@ impl UTime {
             .ok_or(TimeError::TimeOverflowError)?
             .try_into()
             .map_err(|_| TimeError::TimeOverflowError)?;
-        Ok(UTime(compensated))
+        Ok(MassaTime(compensated))
     }
 
     /// Conversion to `std::time::Duration`.
@@ -132,7 +132,7 @@ impl UTime {
     /// # use std::time::Duration;
     /// # use massa_time::*;
     /// let duration: Duration = Duration::from_millis(42);
-    /// let time : UTime = UTime::from(42);
+    /// let time : MassaTime = MassaTime::from(42);
     /// let res: Duration = time.to_duration();
     /// assert_eq!(res, duration);
     /// ```
@@ -143,7 +143,7 @@ impl UTime {
     /// Conversion to u64, representing millis.
     /// ```
     /// # use massa_time::*;
-    /// let time : UTime = UTime::from(42);
+    /// let time : MassaTime = MassaTime::from(42);
     /// let res: u64 = time.to_millis();
     /// assert_eq!(res, 42);
     /// ```
@@ -157,16 +157,16 @@ impl UTime {
     /// # use std::convert::TryFrom;
     /// # use std::cmp::max;
     /// # use tokio::time::Instant;
-    /// let (cur_timestamp, cur_instant): (UTime, Instant) = (UTime::now(0).unwrap(), Instant::now());
-    /// let utime_instant: Instant = cur_timestamp.estimate_instant(0).unwrap();
+    /// let (cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now(0).unwrap(), Instant::now());
+    /// let massa_time_instant: Instant = cur_timestamp.estimate_instant(0).unwrap();
     /// assert!(max(
-    ///     utime_instant.saturating_duration_since(cur_instant),
-    ///     cur_instant.saturating_duration_since(utime_instant)
+    ///     massa_time_instant.saturating_duration_since(cur_instant),
+    ///     cur_instant.saturating_duration_since(massa_time_instant)
     /// ) < std::time::Duration::from_millis(10))
     /// ```
     pub fn estimate_instant(self, compensation_millis: i64) -> Result<Instant, TimeError> {
-        let (cur_timestamp, cur_instant): (UTime, Instant) =
-            (UTime::now(compensation_millis)?, Instant::now());
+        let (cur_timestamp, cur_instant): (MassaTime, Instant) =
+            (MassaTime::now(compensation_millis)?, Instant::now());
         cur_instant
             .checked_add(self.to_duration())
             .ok_or(TimeError::TimeOverflowError)?
@@ -176,62 +176,62 @@ impl UTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : UTime = UTime::from(42);
-    /// let time_2 : UTime = UTime::from(7);
-    /// let res : UTime = time_1.saturating_sub(time_2);
-    /// assert_eq!(res, UTime::from(42-7))
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let res : MassaTime = time_1.saturating_sub(time_2);
+    /// assert_eq!(res, MassaTime::from(42-7))
     /// ```
-    pub fn saturating_sub(self, t: UTime) -> Self {
-        UTime(self.0.saturating_sub(t.0))
+    pub fn saturating_sub(self, t: MassaTime) -> Self {
+        MassaTime(self.0.saturating_sub(t.0))
     }
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : UTime = UTime::from(42);
-    /// let time_2 : UTime = UTime::from(7);
-    /// let res : UTime = time_1.saturating_add(time_2);
-    /// assert_eq!(res, UTime::from(42+7))
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let res : MassaTime = time_1.saturating_add(time_2);
+    /// assert_eq!(res, MassaTime::from(42+7))
     /// ```
-    pub fn saturating_add(self, t: UTime) -> Self {
-        UTime(self.0.saturating_add(t.0))
+    pub fn saturating_add(self, t: MassaTime) -> Self {
+        MassaTime(self.0.saturating_add(t.0))
     }
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : UTime = UTime::from(42);
-    /// let time_2 : UTime = UTime::from(7);
-    /// let res : UTime = time_1.checked_sub(time_2).unwrap();
-    /// assert_eq!(res, UTime::from(42-7))
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let res : MassaTime = time_1.checked_sub(time_2).unwrap();
+    /// assert_eq!(res, MassaTime::from(42-7))
     /// ```
-    pub fn checked_sub(self, t: UTime) -> Result<Self, TimeError> {
+    pub fn checked_sub(self, t: MassaTime) -> Result<Self, TimeError> {
         self.0
             .checked_sub(t.0)
             .ok_or_else(|| TimeError::CheckedOperationError("subtraction error".to_string()))
-            .map(UTime)
+            .map(MassaTime)
     }
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : UTime = UTime::from(42);
-    /// let time_2 : UTime = UTime::from(7);
-    /// let res : UTime = time_1.checked_add(time_2).unwrap();
-    /// assert_eq!(res, UTime::from(42+7))
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let res : MassaTime = time_1.checked_add(time_2).unwrap();
+    /// assert_eq!(res, MassaTime::from(42+7))
     /// ```
-    pub fn checked_add(self, t: UTime) -> Result<Self, TimeError> {
+    pub fn checked_add(self, t: MassaTime) -> Result<Self, TimeError> {
         self.0
             .checked_add(t.0)
             .ok_or_else(|| TimeError::CheckedOperationError("addition error".to_string()))
-            .map(UTime)
+            .map(MassaTime)
     }
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : UTime = UTime::from(42);
-    /// let time_2 : UTime = UTime::from(7);
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_2 : MassaTime = MassaTime::from(7);
     /// let res : u64 = time_1.checked_div_time(time_2).unwrap();
     /// assert_eq!(res,42/7)
     /// ```
-    pub fn checked_div_time(self, t: UTime) -> Result<u64, TimeError> {
+    pub fn checked_div_time(self, t: MassaTime) -> Result<u64, TimeError> {
         self.0
             .checked_div(t.0)
             .ok_or_else(|| TimeError::CheckedOperationError("division error".to_string()))
@@ -239,61 +239,61 @@ impl UTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : UTime = UTime::from(42);
-    /// let res : UTime = time_1.checked_div_u64(7).unwrap();
-    /// assert_eq!(res,UTime::from(42/7))
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let res : MassaTime = time_1.checked_div_u64(7).unwrap();
+    /// assert_eq!(res,MassaTime::from(42/7))
     /// ```
-    pub fn checked_div_u64(self, n: u64) -> Result<UTime, TimeError> {
+    pub fn checked_div_u64(self, n: u64) -> Result<MassaTime, TimeError> {
         self.0
             .checked_div(n)
             .ok_or_else(|| TimeError::CheckedOperationError("division error".to_string()))
-            .map(UTime)
+            .map(MassaTime)
     }
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : UTime = UTime::from(42);
-    /// let res : UTime = time_1.checked_mul(7).unwrap();
-    /// assert_eq!(res,UTime::from(42*7))
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let res : MassaTime = time_1.checked_mul(7).unwrap();
+    /// assert_eq!(res,MassaTime::from(42*7))
     /// ```
     pub fn checked_mul(self, n: u64) -> Result<Self, TimeError> {
         self.0
             .checked_mul(n)
             .ok_or_else(|| TimeError::CheckedOperationError("multiplication error".to_string()))
-            .map(UTime)
+            .map(MassaTime)
     }
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : UTime = UTime::from(42);
-    /// let time_2 : UTime = UTime::from(7);
-    /// let res : UTime = time_1.checked_rem_time(time_2).unwrap();
-    /// assert_eq!(res,UTime::from(42%7))
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let time_2 : MassaTime = MassaTime::from(7);
+    /// let res : MassaTime = time_1.checked_rem_time(time_2).unwrap();
+    /// assert_eq!(res,MassaTime::from(42%7))
     /// ```
-    pub fn checked_rem_time(self, t: UTime) -> Result<Self, TimeError> {
+    pub fn checked_rem_time(self, t: MassaTime) -> Result<Self, TimeError> {
         self.0
             .checked_rem(t.0)
             .ok_or_else(|| TimeError::CheckedOperationError("remainder error".to_string()))
-            .map(UTime)
+            .map(MassaTime)
     }
 
     /// ```
     /// # use massa_time::*;
-    /// let time_1 : UTime = UTime::from(42);
-    /// let res : UTime = time_1.checked_rem_u64(7).unwrap();
-    /// assert_eq!(res,UTime::from(42%7))
+    /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let res : MassaTime = time_1.checked_rem_u64(7).unwrap();
+    /// assert_eq!(res,MassaTime::from(42%7))
     /// ```
     pub fn checked_rem_u64(self, n: u64) -> Result<Self, TimeError> {
         self.0
             .checked_rem(n)
             .ok_or_else(|| TimeError::CheckedOperationError("remainder error".to_string()))
-            .map(UTime)
+            .map(MassaTime)
     }
 
     /// ```
     /// # use massa_time::*;
-    /// let utime : UTime = UTime::from(0);
-    /// assert_eq!(utime.to_utc_string(), "1970-01-01 00:00:00 UTC")
+    /// let massa_time : MassaTime = MassaTime::from(0);
+    /// assert_eq!(massa_time.to_utc_string(), "1970-01-01 00:00:00 UTC")
     /// ```
     pub fn to_utc_string(self) -> String {
         let naive = NaiveDateTime::from_timestamp(
@@ -306,8 +306,8 @@ impl UTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let utime = UTime::from(1000 * ( 8 * 24*60*60 + 1 * 60*60 + 3 * 60 + 6 ));
-    /// let (days, hours, mins, secs) = utime.days_hours_mins_secs().unwrap();
+    /// let massa_time = MassaTime::from(1000 * ( 8 * 24*60*60 + 1 * 60*60 + 3 * 60 + 6 ));
+    /// let (days, hours, mins, secs) = massa_time.days_hours_mins_secs().unwrap();
     /// assert_eq!(days, 8);
     /// assert_eq!(hours, 1);
     /// assert_eq!(mins, 3);

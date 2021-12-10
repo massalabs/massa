@@ -4,7 +4,7 @@ use crate::tests::tools::{self, generate_ledger_file};
 use massa_hash::hash::Hash;
 use massa_models::Slot;
 use massa_signature::{generate_random_private_key, PrivateKey};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 
@@ -31,7 +31,7 @@ async fn test_queueing() {
     cfg.delta_f0 = 32;
 
     // to avoid timing problems for block in the future
-    cfg.genesis_timestamp = UTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
@@ -172,7 +172,7 @@ async fn test_doubles() {
     cfg.delta_f0 = 32;
 
     // to avoid timing pb for block in the future
-    cfg.genesis_timestamp = UTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
@@ -288,7 +288,7 @@ async fn test_double_staking() {
     cfg.delta_f0 = 32;
 
     // to avoid timing pb for block in the future
-    cfg.genesis_timestamp = UTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
@@ -415,7 +415,7 @@ async fn test_test_parents() {
     cfg.delta_f0 = 32;
 
     // to avoid timing pb for block in the future
-    cfg.genesis_timestamp = UTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 

@@ -3,7 +3,7 @@
 use crate::error::ModelsError;
 use crate::Amount;
 use integer_encoding::VarInt;
-use massa_time::UTime;
+use massa_time::MassaTime;
 use std::convert::TryInto;
 use std::net::IpAddr;
 
@@ -230,7 +230,7 @@ impl DeserializeCompact for IpAddr {
     }
 }
 
-impl SerializeCompact for UTime {
+impl SerializeCompact for MassaTime {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         Ok(self.to_millis().to_varint_bytes())
     }
@@ -238,7 +238,7 @@ impl SerializeCompact for UTime {
 
 /// Checks performed:
 /// - Buffer contains a valid u64.
-impl DeserializeCompact for UTime {
+impl DeserializeCompact for MassaTime {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let (res_u64, delta) = u64::from_varint_bytes(buffer)?;
         Ok((res_u64.into(), delta))

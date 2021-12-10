@@ -12,7 +12,7 @@ use massa_hash::{self, hash::Hash};
 use massa_models::node::NodeId;
 use massa_models::{BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use massa_signature::sign;
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::{
@@ -484,8 +484,8 @@ async fn test_advertised_and_wakeup_interval() {
         active_in_connections: 0,
     }]);
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.wakeup_interval = UTime::from(500);
-    network_conf.connect_timeout = UTime::from(2000);
+    network_conf.wakeup_interval = MassaTime::from(500);
+    network_conf.connect_timeout = MassaTime::from(2000);
 
     tools::network_test(
         network_conf.clone(),
