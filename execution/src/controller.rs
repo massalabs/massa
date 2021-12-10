@@ -23,12 +23,10 @@ pub struct ExecutionManager {
 impl ExecutionManager {
     pub async fn stop(self) -> Result<(), ExecutionError> {
         drop(self.manager_tx);
-
-        if self.join_handle.await.is_err() {
-            return Err(ExecutionError::JoinError);
-        };
-
-        Ok(())
+        match self.join_handle.await {
+            Err(_) => Err(ExecutionError::JoinError),
+            _ => Ok(()),
+        }
     }
 }
 

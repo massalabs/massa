@@ -1,23 +1,33 @@
-use models::{Address, BlockId};
+use std::str::FromStr;
+use std::sync::Arc;
 
-use crate::types::{ExecutionContext, OperationSC, ExecutionStep, StepHistory};
+use assembly_simulator::Interface;
+use models::{Address, BlockId, Slot};
+use tokio::sync::Mutex;
+use tracing::debug;
+
 use crate::sce_ledger::{SCELedger, SCELedgerChanges};
+use crate::types::{ExecutionContext, ExecutionStep, OperationSC, StepHistory};
 use crate::ExecutionConfig;
+use anyhow::bail;
+
+lazy_static::lazy_static! {
+    pub(crate) static ref CONTEXT: Arc<Mutex::<ExecutionContext>> = {
+        let ledger = SCELedger::default(); // TODO Bootstrap
+        Arc::new(Mutex::new(ExecutionContext::new(ledger)))
+    };
+}
 
 pub struct VM {
     _cfg: ExecutionConfig,
     step_history: StepHistory,
-    context: ExecutionContext,
 }
 
 impl VM {
     pub fn new(_cfg: ExecutionConfig) -> VM {
-        let ledger = SCELedger::default(); // TODO Bootstrap
-        let context = ExecutionContext::new(ledger);
         VM {
             _cfg,
             step_history: Default::default(),
-            context,
         }
     }
 
@@ -27,7 +37,8 @@ impl VM {
     pub(crate) async fn run_final_step(&mut self, step: &ExecutionStep) {
         if let Some(cached) = self.is_already_done(step) {
             // execution was already done, apply cached ledger changes to final ledger
-            let mut final_ledger_guard = self.context.ledger_step.final_ledger.lock().await;
+            let context = CONTEXT.lock().await;
+            let mut final_ledger_guard = context.ledger_step.final_ledger.lock().await;
             (*final_ledger_guard).apply_changes(&cached);
             return;
         }
@@ -39,7 +50,8 @@ impl VM {
         if let Some(cached) = self.is_already_done(step) {
             // execution was already done, apply cached ledger changes to final ledger
             // It should always happen
-            let mut final_ledger_guard = self.context.ledger_step.final_ledger.lock().await;
+            let context = CONTEXT.lock().await;
+            let mut final_ledger_guard = context.ledger_step.final_ledger.lock().await;
             (*final_ledger_guard).apply_changes(&cached);
         }
     }
@@ -68,19 +80,67 @@ impl VM {
         }
     }
 
+    async fn clear_and_update_context(&self) {
+        let mut context = CONTEXT.lock().await;
+        context.ledger_step.caused_changes.clear();
+        context.ledger_step.cumulative_history_changes =
+            SCELedgerChanges::from(self.step_history.clone());
+    }
+
+    /// Prepare (update) the shared context before the new operation
+    /// TODO: do not ignore the results
+    /// TODO consider dispatching with edorsers/endorsed as well
+    async fn prepare_context(
+        &self,
+        operation: &OperationSC,
+        block_creator_addr: Address,
+        block_id: BlockId,
+        slot: Slot,
+    ) -> SCELedgerChanges {
+        let mut context = CONTEXT.lock().await;
+        // credit the sender with "coins"
+        let _result = context
+            .ledger_step
+            .set_balance_delta(operation.sender, operation.coins, true)
+            .await;
+        // credit the block creator with max_gas*gas_price
+        let _result = context
+            .ledger_step
+            .set_balance_delta(
+                block_creator_addr,
+                operation
+                    .gas_price
+                    .checked_mul_u64(operation.max_gas)
+                    .unwrap(),
+                true,
+            )
+            .await;
+        // Save the Initial ledger changes before execution
+        // It contains a copy of the initial coin credits that will be popped back if bytecode execution fails in order to cancel its effects
+
+        // fill context for execution
+        context.gas_price = operation.gas_price;
+        context.max_gas = operation.max_gas;
+        context.coins = operation.coins;
+        context.slot = slot;
+        context.opt_block_id = Some(block_id);
+        context.opt_block_creator_addr = Some(block_creator_addr);
+        context.call_stack = Default::default();
+        context.ledger_step.caused_changes.clone()
+    }
+
     /// runs an SCE-active execution step
-    /// 
+    ///
     /// 1. Get step history (cache of final ledger changes by slot and block_id history)
     /// 2. clear caused changes
     /// 3. accumulated step history
     /// 4. Execute each block of each operation
-    /// 
+    ///
     /// # Parameters
     ///   * step: execution step to run
     pub(crate) async fn run_active_step(&mut self, step: &ExecutionStep) {
         // accumulate active ledger changes history
-        self.context.ledger_step.caused_changes.clear();
-        self.context.ledger_step.cumulative_history_changes = SCELedgerChanges::from(self.step_history.clone());
+        self.clear_and_update_context().await;
 
         // run implicit and async calls
         // TODO
@@ -92,68 +152,63 @@ impl VM {
             opt_block_id = Some(*block_id);
 
             // get block creator addr
-            let block_creator_addr = Address::from_public_key(&block.header.content.creator).unwrap();
+            let block_creator_addr =
+                Address::from_public_key(&block.header.content.creator).unwrap();
             // run all operations
-            for (_op_idx, operation) in block.operations.clone().into_iter().enumerate() {
+            for (op_idx, operation) in block.operations.clone().into_iter().enumerate() {
                 let operation_sc = OperationSC::try_from(operation.content);
-                if operation_sc.is_err() { // only fail if the operation cannot parse the sender address
+                if operation_sc.is_err() {
+                    // only fail if the operation cannot parse the sender address
                     continue;
                 }
-                let operation_sc = operation_sc.unwrap();
+                let operation = &operation_sc.unwrap();
+                let ledger_changes_backup = self
+                    .prepare_context(operation, block_creator_addr, *block_id, step.slot)
+                    .await;
 
-                // credit the sender with "coins"
-                // TODO do not ignore result
-                let _result = self.context.ledger_step.set_balance_delta(
-                    operation_sc.sender,
-                    operation_sc.coins,
-                    true,
-                ).await;
+                let interface = &Interface {
+                    get_module: |address| {
+                        let bytecode =
+                            tokio::runtime::Runtime::new()
+                                .unwrap()
+                                .block_on(async move {
+                                    let context = CONTEXT.lock().await;
+                                    context
+                                        .ledger_step
+                                        .get_module(&Address::from_str(address).unwrap())
+                                        .await
+                                });
+                        match bytecode {
+                            Some(bytecode) => Ok(bytecode),
+                            _ => bail!("Error bytecode not found"),
+                        }
+                    },
+                    ..Default::default()
+                };
 
-                // credit the block creator with max_gas*gas_price
-                // TODO consider dispatching with edorsers/endorsed as well
-                let _result = self.context.ledger_step.set_balance_delta(
-                    block_creator_addr,
-                    operation_sc.gas_price.checked_mul_u64(operation_sc.max_gas).unwrap(),
-                    true,
-                ).await;
-
-                // Save the Initial ledger changes before execution
-                // It contains a copy of the initial coin credits that will be popped back if bytecode execution fails in order to cancel its effects
-                let _save_init_changes = self.context.ledger_step.caused_changes.clone();
-
-                // fill context for execution
-                // TODO provide more context: block, PoS seeds/draws, absolute time etc...
-                self.context.gas_price = operation_sc.gas_price;
-                self.context.max_gas = operation_sc.max_gas;
-                self.context.coins = operation_sc.coins;
-                self.context.slot = step.slot;
-                self.context.opt_block_id = Some(*block_id);
-                self.context.opt_block_creator_addr = Some(block_creator_addr);
-                self.context.call_stack = Default::default();
-
-                // TODO call the run module from the external execution project
-                // Important, if execution fail or return an error, reset changes like this:
-                //
-                //
-                // debug!(
-                //     "failed running bytecode in operation index {} in block {}: {}",
-                //     op_idx, block_id, err
-                // );
-                // // cancel the effects of execution only, pop back init_changes
-                // let mut exec_context_guard = self.current_execution_context.0.lock().unwrap();
-                // (*exec_context_guard).ledger_step.caused_changes = init_changes;
-                //
+                let run_result =
+                    assembly_simulator::run(&operation._module, operation.max_gas, interface);
+                if let Err(err) = run_result {
+                    debug!(
+                        "failed running bytecode in operation index {} in block {}: {}",
+                        op_idx, block_id, err
+                    );
+                    // cancel the effects of execution only, pop back init_changes
+                    let mut context = CONTEXT.lock().await;
+                    context.ledger_step.caused_changes = ledger_changes_backup;
+                }
             }
         } else {
             // There is no block for this step, miss
             opt_block_id = None;
         }
 
+        let context = CONTEXT.lock().await;
         // push step into history
         self.step_history.push_back((
             step.slot,
             opt_block_id,
-            self.context.ledger_step.caused_changes.clone(),
+            context.ledger_step.caused_changes.clone(),
         ))
     }
 }

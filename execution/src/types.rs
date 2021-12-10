@@ -1,12 +1,12 @@
+use crate::sce_ledger::{SCELedger, SCELedgerChanges, SCELedgerStep};
 /// Define types used while executing block bytecodes
-use models::{Amount, Address, OperationType, OperationContent};
-use tokio::sync::Mutex;
-use std::{collections::VecDeque, sync::Arc};
+use models::{Address, Amount, OperationContent, OperationType};
 use models::{Block, BlockId, Slot};
-use crate::sce_ledger::{SCELedgerStep, SCELedgerChanges, SCELedger};
+use std::{collections::VecDeque, sync::Arc};
+use tokio::sync::Mutex;
 
 pub type StepHistory = VecDeque<(Slot, Option<BlockId>, SCELedgerChanges)>;
-pub type Bytecode = Vec::<u8>;
+pub type Bytecode = Vec<u8>;
 
 /// Operation should be used to communicate with the VM, TODO, it doesn't need everything in.
 /// TODO May be the max_gas, the module and the sender address are enough
@@ -70,7 +70,7 @@ impl TryFrom<OperationContent> for OperationSC {
                 data,
                 max_gas,
                 coins,
-                gas_price
+                gas_price,
             } => {
                 Ok(OperationSC {
                     _module: data, // todo use the external lib to check if module is valid
@@ -80,7 +80,7 @@ impl TryFrom<OperationContent> for OperationSC {
                     sender: Address::from_public_key(&content.sender_public_key).unwrap(),
                 })
             }
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -88,7 +88,7 @@ impl TryFrom<OperationContent> for OperationSC {
 impl From<StepHistory> for SCELedgerChanges {
     fn from(step: StepHistory) -> Self {
         let mut ret = SCELedgerChanges::default();
-        step.iter().for_each(|(_,_,step_changes)| {
+        step.iter().for_each(|(_, _, step_changes)| {
             ret.apply_changes(step_changes);
         });
         ret

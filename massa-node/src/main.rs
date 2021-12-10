@@ -130,9 +130,12 @@ async fn launch() -> (
 
     // Launch execution controller.
     let (execution_command_sender, execution_event_receiver, execution_manager) =
-        execution::start_controller(execution::ExecutionConfig::default(), consensus::settings::THREAD_COUNT)
-            .await
-            .expect("Could not start execution controller.");
+        execution::start_controller(
+            execution::ExecutionConfig::default(),
+            consensus::settings::THREAD_COUNT,
+        )
+        .await
+        .expect("Could not start execution controller.");
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =

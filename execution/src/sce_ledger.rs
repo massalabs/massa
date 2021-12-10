@@ -1,10 +1,10 @@
-use massa_hash::hash::Hash;
-use tokio::sync::Mutex;
-use std::sync::{Arc};
-use crate::ExecutionError;
 use crate::types::Bytecode;
+use crate::ExecutionError;
+use massa_hash::hash::Hash;
 use models::ModelsError;
 use models::{address::AddressHashMap, hhasher::HHashMap, Address, Amount};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 /// an entry in the SCE ledger
 #[derive(Debug, Clone, Default)]
@@ -257,15 +257,11 @@ impl SCELedgerStep {
         if positive {
             balance = balance
                 .checked_add(amount)
-                .ok_or_else(|| ModelsError::CheckedOperationError(
-                    "balance overflow".into(),
-                ))?;
+                .ok_or_else(|| ModelsError::CheckedOperationError("balance overflow".into()))?;
         } else {
             balance = balance
                 .checked_sub(amount)
-                .ok_or_else(|| ModelsError::CheckedOperationError(
-                    "balance underflow".into(),
-                ))?;
+                .ok_or_else(|| ModelsError::CheckedOperationError("balance underflow".into()))?;
         }
         self.set_balance(addr, balance);
         Ok(())
@@ -273,7 +269,7 @@ impl SCELedgerStep {
 
     /// gets the module of an SCE ledger entry
     ///  returns None if the entry was not found or has no module
-    pub async fn _get_module(&self, addr: &Address) -> Option<Bytecode> {
+    pub async fn get_module(&self, addr: &Address) -> Option<Bytecode> {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {
@@ -287,7 +283,6 @@ impl SCELedgerStep {
                 None => {}
             }
         }
-
         // check if the final ledger has the info
         {
             let ledger_guard = self.final_ledger.lock().await;
@@ -295,7 +290,6 @@ impl SCELedgerStep {
                 return entry.opt_module.clone();
             }
         }
-
         // otherwise, return None
         None
     }

@@ -1,7 +1,7 @@
-use crate::{config::ExecutionConfig, types::ExecutionStep};
 use crate::error::ExecutionError;
-use models::{Block, BlockHashMap, BlockId, Slot};
 use crate::vm::VM;
+use crate::{config::ExecutionConfig, types::ExecutionStep};
+use models::{Block, BlockHashMap, BlockId, Slot};
 use tokio::sync::mpsc;
 
 /// Commands sent to the `execution` component.
@@ -56,7 +56,6 @@ impl ExecutionWorker {
         controller_command_rx: mpsc::Receiver<ExecutionCommand>,
         controller_manager_rx: mpsc::Receiver<ExecutionManagementCommand>,
     ) -> Result<ExecutionWorker, ExecutionError> {
-
         // return execution worker
         Ok(ExecutionWorker {
             _cfg: _cfg.clone(),
@@ -100,7 +99,8 @@ impl ExecutionWorker {
                 blockclique,
                 finalized_blocks,
             } => {
-                self.blockclique_changed(blockclique, finalized_blocks).await?;
+                self.blockclique_changed(blockclique, finalized_blocks)
+                    .await?;
             }
         }
         Ok(())
@@ -137,23 +137,24 @@ impl ExecutionWorker {
             if block_slot <= self.last_final_slot {
                 continue;
             }
-            loop {   
+            loop {
                 let next_final_slot = self.last_final_slot.get_next_slot(self.thread_count)?;
                 if next_final_slot == block_slot {
-                    self.vm.run_final_step(
-                        &ExecutionStep {
+                    self.vm
+                        .run_final_step(&ExecutionStep {
                             slot: next_final_slot,
-                            block: Some((b_id, block.clone()))
-                        }).await;
+                            block: Some((b_id, block.clone())),
+                        })
+                        .await;
                     self.last_final_slot = next_final_slot;
                     break;
                 } else if next_final_slot < max_thread_slot[next_final_slot.thread as usize] {
-                    self.vm.run_final_step(
-                        &ExecutionStep {
+                    self.vm
+                        .run_final_step(&ExecutionStep {
                             slot: next_final_slot,
                             block: Some((b_id, block.clone())),
-                        }
-                    ).await;
+                        })
+                        .await;
                     self.last_final_slot = next_final_slot;
                 } else {
                     self.ordered_pending_css_final_blocks.push((b_id, block));
@@ -167,9 +168,11 @@ impl ExecutionWorker {
             .ordered_pending_css_final_blocks
             .iter()
             .cloned()
-            .chain(blockclique
-            .into_iter()
-            .filter(|(_b_id, b)| b.header.content.slot > self.last_final_slot))
+            .chain(
+                blockclique
+                    .into_iter()
+                    .filter(|(_b_id, b)| b.header.content.slot > self.last_final_slot),
+            )
             .collect();
 
         // sort active blocks
@@ -184,17 +187,20 @@ impl ExecutionWorker {
                 self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
             }
             while self.last_active_slot < block.header.content.slot {
-                self.vm.run_active_step(
-                    &ExecutionStep {
+                self.vm
+                    .run_active_step(&ExecutionStep {
                         slot: self.last_active_slot,
                         block: None,
-                    }).await;
+                    })
+                    .await;
                 self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
             }
-            self.vm.run_active_step(&ExecutionStep {
-                slot: self.last_active_slot,
-                block: Some((b_id, block)),
-            }).await;
+            self.vm
+                .run_active_step(&ExecutionStep {
+                    slot: self.last_active_slot,
+                    block: Some((b_id, block)),
+                })
+                .await;
         }
         Ok(())
     }
