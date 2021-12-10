@@ -1,15 +1,13 @@
-use std::str::FromStr;
 use std::sync::Arc;
 
-use assembly_simulator::Interface;
 use massa_models::{Address, BlockId, Slot};
 use tokio::sync::Mutex;
 use tracing::debug;
 
+use crate::interface_impl::INTERFACE;
 use crate::sce_ledger::{SCELedger, SCELedgerChanges};
 use crate::types::{ExecutionContext, ExecutionStep, OperationSC, StepHistory};
 use crate::ExecutionConfig;
-use anyhow::bail;
 
 lazy_static::lazy_static! {
     pub(crate) static ref CONTEXT: Arc<Mutex::<ExecutionContext>> = {
@@ -166,28 +164,8 @@ impl VM {
                     .prepare_context(operation, block_creator_addr, *block_id, step.slot)
                     .await;
 
-                let interface = &Interface {
-                    get_module: |address| {
-                        let bytecode =
-                            tokio::runtime::Runtime::new()
-                                .unwrap()
-                                .block_on(async move {
-                                    let context = CONTEXT.lock().await;
-                                    context
-                                        .ledger_step
-                                        .get_module(&Address::from_str(address).unwrap())
-                                        .await
-                                });
-                        match bytecode {
-                            Some(bytecode) => Ok(bytecode),
-                            _ => bail!("Error bytecode not found"),
-                        }
-                    },
-                    ..Default::default()
-                };
-
                 let run_result =
-                    assembly_simulator::run(&operation._module, operation.max_gas, interface);
+                    assembly_simulator::run(&operation._module, operation.max_gas, &INTERFACE);
                 if let Err(err) = run_result {
                     debug!(
                         "failed running bytecode in operation index {} in block {}: {}",
