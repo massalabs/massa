@@ -11,4 +11,6 @@ pub enum ExecutionError {
     JoinError,
     /// crypto error: {0}
     ModelsError(#[from] massa_models::ModelsError),
+    /// time error: {0}
+    TimeError(#[from] massa_time::TimeError),
 }

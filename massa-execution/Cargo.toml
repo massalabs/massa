@@ -18,6 +18,7 @@ tracing = "0.1"
 assembly_simulator = { git = "https://github.com/massalabs/cautious-bassoon", branch = "feature/define_module_as_lib" }
 anyhow = "1"
 lazy_static = "1.4.0"
+massa_time = { path = "../massa-time" }
 
 [dev-dependencies]
 serial_test = "0.5"

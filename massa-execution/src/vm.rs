@@ -3,10 +3,10 @@ use std::sync::{Arc, Mutex};
 use massa_models::{Address, BlockId, Slot};
 use tracing::debug;
 
+use crate::config::ExecutionConfig;
 use crate::interface_impl::INTERFACE;
 use crate::sce_ledger::{SCELedger, SCELedgerChanges};
 use crate::types::{ExecutionContext, ExecutionStep, OperationSC, StepHistory};
-use crate::ExecutionConfig;
 
 lazy_static::lazy_static! {
     pub(crate) static ref CONTEXT: Arc<Mutex::<ExecutionContext>> = {
@@ -15,7 +15,7 @@ lazy_static::lazy_static! {
     };
 }
 
-pub struct VM {
+pub(crate) struct VM {
     _cfg: ExecutionConfig,
     step_history: StepHistory,
 }

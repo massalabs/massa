@@ -4,8 +4,10 @@ use crate::error::ExecutionError;
 use crate::types::{ExecutionQueue, ExecutionRequest};
 use crate::vm::VM;
 use crate::{config::ExecutionConfig, types::ExecutionStep};
+use massa_models::timeslots::{get_block_slot_timestamp, get_current_latest_block_slot};
 use massa_models::{Block, BlockHashMap, BlockId, Slot};
 use tokio::sync::mpsc;
+use tokio::time::sleep_until;
 use tracing::debug;
 
 /// Commands sent to the `execution` component.
@@ -32,7 +34,7 @@ pub enum ExecutionManagementCommand {}
 
 pub struct ExecutionWorker {
     /// Configuration
-    _cfg: ExecutionConfig,
+    cfg: ExecutionConfig,
     /// Thread count
     thread_count: u8,
     /// Receiver of commands.
@@ -67,7 +69,7 @@ impl ExecutionWorker {
         let cfg_clone = cfg.clone();
         // Start vm thread
         let vm_thread = thread::spawn(move || {
-            let mut vm = VM::new(cfg);
+            let mut vm = VM::new(cfg_clone);
             let (lock, condvar) = &*execution_queue_clone;
             let mut requests = lock.lock().unwrap();
             requests.push_back(ExecutionRequest::Starting);
@@ -86,7 +88,7 @@ impl ExecutionWorker {
         });
         // return execution worker
         Ok(ExecutionWorker {
-            _cfg: cfg_clone,
+            cfg,
             thread_count,
             controller_command_rx,
             controller_manager_rx,
@@ -132,13 +134,48 @@ impl ExecutionWorker {
     }
 
     pub async fn run_loop(mut self) -> Result<(), ExecutionError> {
+        // set slot timer
+        let next_slot_timer = sleep_until(
+            get_block_slot_timestamp(
+                self.thread_count,
+                self.cfg.t0,
+                self.cfg.genesis_timestamp,
+                get_current_latest_block_slot(
+                    self.thread_count,
+                    self.cfg.t0,
+                    self.cfg.genesis_timestamp,
+                    self.cfg.clock_compensation,
+                )?
+                .map_or(Ok(Slot::new(0, 0)), |v| v.get_next_slot(self.thread_count))?,
+            )?
+            .estimate_instant(self.cfg.clock_compensation)?,
+        );
+        tokio::pin!(next_slot_timer);
         loop {
             tokio::select! {
                 // Process management commands
                 _ = self.controller_manager_rx.recv() => break,
-
                 // Process commands
                 Some(cmd) = self.controller_command_rx.recv() => self.process_command(cmd)?,
+                // Process slot timer event
+                _ = &mut next_slot_timer => {
+                    self.fill_misses_until_now()?;
+                    next_slot_timer.set(sleep_until(
+                        get_block_slot_timestamp(
+                            self.thread_count,
+                            self.cfg.t0,
+                            self.cfg.genesis_timestamp,
+                            get_current_latest_block_slot(
+                                self.thread_count,
+                                self.cfg.t0,
+                                self.cfg.genesis_timestamp,
+                                self.cfg.clock_compensation,
+                            )?
+                            .map_or(Ok(Slot::new(0, 0)), |v| v.get_next_slot(self.thread_count))?,
+                        )?
+                        .estimate_instant(self.cfg.clock_compensation).unwrap(),
+                    ));
+                }
             }
         }
         // Shutdown VM, cancel all pending execution requests
@@ -165,14 +202,37 @@ impl ExecutionWorker {
         Ok(())
     }
 
+    /// fills the remaining slots until now() with miss executions
+    fn fill_misses_until_now(&mut self) -> Result<(), ExecutionError> {
+        let end_step = get_current_latest_block_slot(
+            self.thread_count,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
+            self.cfg.clock_compensation,
+        )?;
+        if let Some(end_step) = end_step {
+            while self.last_active_slot < end_step {
+                self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
+                self.push_request(ExecutionRequest::RunFinalStep(ExecutionStep {
+                    slot: self.last_active_slot,
+                    block: None,
+                }));
+            }
+        }
+        Ok(())
+    }
+
+    /// called when the blockclique changes
     fn blockclique_changed(
         &mut self,
         blockclique: BlockHashMap<Block>,
         finalized_blocks: BlockHashMap<Block>,
     ) -> Result<(), ExecutionError> {
-        // stop the current VM execution and reset state to final
         // TODO make something more iterative/conservative in the future to reuse unaffected executions
         self.reset_to_final();
+
+        // stop the current VM execution and reset state to final
+        // TODO reset VM
 
         // gather pending finalized CSS
         let mut css_final_blocks: Vec<(BlockId, Block)> = self
@@ -236,6 +296,7 @@ impl ExecutionWorker {
             .sort_unstable_by_key(|(_b_id, b)| b.header.content.slot);
 
         // apply active blocks and misses
+        self.last_active_slot = self.last_final_slot;
         // TODO remove clone() in iterator below
         for (b_id, block) in self.ordered_active_blocks.clone() {
             // process misses
@@ -254,6 +315,10 @@ impl ExecutionWorker {
                 block: Some((b_id, block)),
             }));
         }
+
+        // apply misses until now()
+        self.fill_misses_until_now()?;
+
         Ok(())
     }
 }

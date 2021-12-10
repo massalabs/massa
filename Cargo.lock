@@ -1437,6 +1437,7 @@ dependencies = [
  "lazy_static",
  "massa_hash",
  "massa_models",
+ "massa_time",
  "parking_lot",
  "serde 1.0.131",
  "serial_test",
