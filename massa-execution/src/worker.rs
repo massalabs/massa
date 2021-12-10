@@ -137,20 +137,21 @@ impl ExecutionWorker {
 
     /// fills the remaining slots until now() with miss executions
     fn fill_misses_until_now(&mut self) -> Result<(), ExecutionError> {
-        let end_step = get_current_latest_block_slot(
+        if let Some(end_step) = get_current_latest_block_slot(
             self.thread_count,
             self.t0,
             self.genesis_timestamp,
             self.clock_compensation,
-        )?;
-        while self.last_active_slot < end_step {
-            self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
-            self.vm
-                .run_active_step(&ExecutionStep {
-                    slot: self.last_active_slot,
-                    block: None,
-                })
-                .await;
+        )? {
+            while self.last_active_slot < end_step {
+                self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
+                self.vm
+                    .run_active_step(&ExecutionStep {
+                        slot: self.last_active_slot,
+                        block: None,
+                    })
+                    .await;
+            }
         }
         Ok(())
     }
