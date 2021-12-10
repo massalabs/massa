@@ -221,15 +221,11 @@ impl SCELedgerStep {
                 None => {}
             }
         }
-
         // check if the final ledger has the info
-        {
-            let ledger_guard = self.final_ledger.lock().await;
-            if let Some(entry) = (*ledger_guard).0.get(addr) {
-                return entry.balance;
-            }
+        let ledger_guard = self.final_ledger.lock().await;
+        if let Some(entry) = (*ledger_guard).0.get(addr) {
+            return entry.balance;
         }
-
         // otherwise, just return zero
         Amount::from_raw(0)
     }
@@ -284,14 +280,11 @@ impl SCELedgerStep {
             }
         }
         // check if the final ledger has the info
-        {
-            let ledger_guard = self.final_ledger.lock().await;
-            if let Some(entry) = (*ledger_guard).0.get(addr) {
-                return entry.opt_module.clone();
-            }
+        let ledger_guard = self.final_ledger.lock().await;
+        match (*ledger_guard).0.get(addr) {
+            Some(entry) =>  entry.opt_module.clone(),
+            _ => None
         }
-        // otherwise, return None
-        None
     }
 
     /// returns a data entry
@@ -314,15 +307,11 @@ impl SCELedgerStep {
         }
 
         // check if the final ledger has the info
-        {
-            let ledger_guard = self.final_ledger.lock().await;
-            if let Some(entry) = (*ledger_guard).0.get(addr) {
-                return entry.data.get(key).cloned();
-            }
+        let ledger_guard = self.final_ledger.lock().await;
+        match (*ledger_guard).0.get(addr) {
+            Some(entry) => entry.data.get(key).cloned(),
+            _ => None
         }
-
-        // otherwise, return None
-        None
     }
 
     /// sets data entry
