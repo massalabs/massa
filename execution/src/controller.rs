@@ -6,6 +6,7 @@ use crate::worker::{
 use models::{Block, BlockHashMap};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
+use tracing::{error, info};
 
 /// A sender of execution commands.
 #[derive(Clone)]
@@ -24,10 +25,12 @@ impl ExecutionManager {
     pub async fn stop(self) -> Result<(), ExecutionError> {
         drop(self.manager_tx);
 
-        if self.join_handle.await.is_err() {
+        if let Err(err) = self.join_handle.await {
+            error!("execution worker crashed: {}", err);
             return Err(ExecutionError::JoinError);
         };
 
+        info!("execution worker finished cleanly");
         Ok(())
     }
 }
