@@ -1,0 +1,23 @@
+[package]
+name = "massa_execution"
+version = "0.1.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+displaydoc = "0.2"
+massa_models = {path = "../massa-models"}
+massa_hash = {path = "../massa-hash"}
+parking_lot = { version = "0.11.2" }
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"
+tokio = { version = "1.11", features = ["full"] }
+tracing = "0.1"
+assembly_simulator = { git = "https://github.com/massalabs/cautious-bassoon", branch = "feature/define_module_as_lib" }
+anyhow = "1"
+lazy_static = "1.4.0"
+
+[dev-dependencies]
+serial_test = "0.5"

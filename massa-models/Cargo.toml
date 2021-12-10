@@ -1,0 +1,26 @@
+[package]
+name = "massa_models"
+version = "0.1.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2021"
+
+[dependencies]
+displaydoc = "0.2"
+integer-encoding = "3.0"
+lazy_static = "1.4"
+num_enum = "0.5"
+num-traits = "0.2"
+rand = "0.8"
+reqwest = { version = "0.11", features = ["blocking", "json"] }
+rust_decimal = "1.15"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"
+tokio = { version = "1.11", features = ["full"] }
+# custom modules
+massa_hash = { path = "../massa-hash" }
+massa_signature = { path = "../massa-signature" }
+massa_time = { path = "../massa-time" }
+
+[dev-dependencies]
+pretty_assertions = "1.0"
+serial_test = "0.5"

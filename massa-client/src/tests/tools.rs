@@ -1,7 +1,7 @@
 extern crate toml_edit;
 
+use massa_time::UTime;
 use std::fs;
-use time::UTime;
 use toml_edit::{value, Document};
 
 pub fn _update_genesis_timestamp(config_path: &str) {

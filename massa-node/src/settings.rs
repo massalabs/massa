@@ -1,13 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use bootstrap::BootstrapSettings;
-use consensus::ConsensusSettings;
 use directories::ProjectDirs;
-use models::api::APISettings;
-use models::Version;
-use network::NetworkSettings;
-use pool::PoolSettings;
-use protocol_exports::ProtocolSettings;
+use massa_bootstrap::settings::BootstrapSettings;
+use massa_consensus::ConsensusSettings;
+use massa_models::api::APISettings;
+use massa_models::Version;
+use massa_network::NetworkSettings;
+use massa_pool::PoolSettings;
+use massa_protocol_exports::ProtocolSettings;
 use serde::Deserialize;
 
 lazy_static::lazy_static! {
