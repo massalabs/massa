@@ -2,8 +2,8 @@ use crate::sce_ledger::{SCELedger, SCELedgerChanges, SCELedgerStep};
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, OperationContent, OperationType};
 use massa_models::{Block, BlockId, Slot};
+use std::sync::{Condvar, Mutex};
 use std::{collections::VecDeque, sync::Arc};
-use tokio::sync::Mutex;
 
 pub type StepHistory = VecDeque<(Slot, Option<BlockId>, SCELedgerChanges)>;
 pub type Bytecode = Vec<u8>;
@@ -94,3 +94,19 @@ impl From<StepHistory> for SCELedgerChanges {
         ret
     }
 }
+
+// Thread vm types:
+
+/// execution request
+pub(crate) enum ExecutionRequest {
+    /// Runs a final step
+    RunFinalStep(ExecutionStep),
+    /// Runs an active step
+    RunActiveStep(ExecutionStep),
+    /// Resets the VM to its final state
+    ResetToFinalState,
+    /// Shutdown state, set by the worker to signal shutdown to the VM thread.
+    Shutdown,
+}
+
+pub(crate) type ExecutionQueue = Arc<(Mutex<VecDeque<ExecutionRequest>>, Condvar)>;

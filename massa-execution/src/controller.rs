@@ -73,7 +73,7 @@ pub async fn start_controller(
     // Unbounded, as execution is limited per metering already.
     let (event_tx, event_rx) = mpsc::unbounded_channel::<ExecutionEvent>();
 
-    let worker = ExecutionWorker::new(cfg, thread_count, event_tx, command_rx, manager_rx).await?;
+    let mut worker = ExecutionWorker::new(cfg, thread_count, event_tx, command_rx, manager_rx)?;
 
     let join_handle = tokio::spawn(async move {
         match worker.run_loop().await {
