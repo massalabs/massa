@@ -157,23 +157,22 @@
 <span id="156">156</span>
 <span id="157">157</span>
 <span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">u8_from_slice</span>, <span class="ident">Amount</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">ModelsError</span>, <span class="ident">SerializeCompact</span>};
 <span class="kw">use</span> <span class="ident">core::usize</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerData</span> {
     <span class="kw">pub</span> <span class="ident">balance</span>: <span class="ident">Amount</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">LedgerData</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">LedgerData</span> {
-            <span class="ident">balance</span>: <span class="ident">Amount::default</span>(),
-        }
-    }
 }
 
 <span class="doccomment">/// Checks performed:</span>
@@ -206,17 +205,23 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_change</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">change</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">change</span>.<span class="ident">balance_increment</span> {
-            <span class="self">self</span>.<span class="ident">balance</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">balance</span>.<span class="ident">checked_add</span>(<span class="ident">change</span>.<span class="ident">balance_delta</span>).<span class="ident">ok_or</span>(
-                <span class="ident">ModelsError::InvalidLedgerChange</span>(
-                    <span class="string">&quot;balance overflow in LedgerData::apply_change&quot;</span>.<span class="ident">into</span>(),
-                ),
-            )<span class="question-mark">?</span>;
+            <span class="self">self</span>.<span class="ident">balance</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">balance</span>
+                .<span class="ident">checked_add</span>(<span class="ident">change</span>.<span class="ident">balance_delta</span>)
+                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">ModelsError::InvalidLedgerChange</span>(
+                        <span class="string">&quot;balance overflow in LedgerData::apply_change&quot;</span>.<span class="ident">into</span>(),
+                    )
+                })<span class="question-mark">?</span>;
         } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">balance</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">balance</span>.<span class="ident">checked_sub</span>(<span class="ident">change</span>.<span class="ident">balance_delta</span>).<span class="ident">ok_or</span>(
-                <span class="ident">ModelsError::InvalidLedgerChange</span>(
-                    <span class="string">&quot;balance underflow in LedgerData::apply_change&quot;</span>.<span class="ident">into</span>(),
-                ),
-            )<span class="question-mark">?</span>;
+            <span class="self">self</span>.<span class="ident">balance</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">balance</span>
+                .<span class="ident">checked_sub</span>(<span class="ident">change</span>.<span class="ident">balance_delta</span>)
+                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">ModelsError::InvalidLedgerChange</span>(
+                        <span class="string">&quot;balance overflow in LedgerData::apply_change&quot;</span>.<span class="ident">into</span>(),
+                    )
+                })<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -249,18 +254,27 @@
     <span class="doccomment">/// Applies another ledger change on top of self</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chain</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">change</span>: <span class="kw-2">&amp;</span><span class="ident">LedgerChange</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">balance_increment</span> <span class="op">==</span> <span class="ident">change</span>.<span class="ident">balance_increment</span> {
-            <span class="self">self</span>.<span class="ident">balance_delta</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">balance_delta</span>.<span class="ident">checked_add</span>(<span class="ident">change</span>.<span class="ident">balance_delta</span>).<span class="ident">ok_or</span>(
-                <span class="ident">ModelsError::InvalidLedgerChange</span>(<span class="string">&quot;overflow in LedgerChange::chain&quot;</span>.<span class="ident">into</span>()),
-            )<span class="question-mark">?</span>;
+            <span class="self">self</span>.<span class="ident">balance_delta</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">balance_delta</span>
+                .<span class="ident">checked_add</span>(<span class="ident">change</span>.<span class="ident">balance_delta</span>)
+                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">ModelsError::InvalidLedgerChange</span>(<span class="string">&quot;overflow in LedgerChange::chain&quot;</span>.<span class="ident">into</span>())
+                })<span class="question-mark">?</span>;
         } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">change</span>.<span class="ident">balance_delta</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">balance_delta</span> {
-            <span class="self">self</span>.<span class="ident">balance_delta</span> <span class="op">=</span> <span class="ident">change</span>.<span class="ident">balance_delta</span>.<span class="ident">checked_sub</span>(<span class="self">self</span>.<span class="ident">balance_delta</span>).<span class="ident">ok_or</span>(
-                <span class="ident">ModelsError::InvalidLedgerChange</span>(<span class="string">&quot;underflow in LedgerChange::chain&quot;</span>.<span class="ident">into</span>()),
-            )<span class="question-mark">?</span>;
+            <span class="self">self</span>.<span class="ident">balance_delta</span> <span class="op">=</span> <span class="ident">change</span>
+                .<span class="ident">balance_delta</span>
+                .<span class="ident">checked_sub</span>(<span class="self">self</span>.<span class="ident">balance_delta</span>)
+                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">ModelsError::InvalidLedgerChange</span>(<span class="string">&quot;underflow in LedgerChange::chain&quot;</span>.<span class="ident">into</span>())
+                })<span class="question-mark">?</span>;
             <span class="self">self</span>.<span class="ident">balance_increment</span> <span class="op">=</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">balance_increment</span>;
         } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">balance_delta</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">balance_delta</span>.<span class="ident">checked_sub</span>(<span class="ident">change</span>.<span class="ident">balance_delta</span>).<span class="ident">ok_or</span>(
-                <span class="ident">ModelsError::InvalidLedgerChange</span>(<span class="string">&quot;underflow in LedgerChange::chain&quot;</span>.<span class="ident">into</span>()),
-            )<span class="question-mark">?</span>;
+            <span class="self">self</span>.<span class="ident">balance_delta</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">balance_delta</span>
+                .<span class="ident">checked_sub</span>(<span class="ident">change</span>.<span class="ident">balance_delta</span>)
+                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">ModelsError::InvalidLedgerChange</span>(<span class="string">&quot;underflow in LedgerChange::chain&quot;</span>.<span class="ident">into</span>())
+                })<span class="question-mark">?</span>;
         }
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">balance_delta</span> <span class="op">==</span> <span class="ident">Amount::default</span>() {
             <span class="self">self</span>.<span class="ident">balance_increment</span> <span class="op">=</span> <span class="bool-val">true</span>;

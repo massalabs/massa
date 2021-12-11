@@ -116,7 +116,7 @@
     <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">Version</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_network::BootstrapPeers</span>;
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">num_enum</span>::{<span class="ident">IntoPrimitive</span>, <span class="ident">TryFromPrimitive</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
@@ -127,7 +127,7 @@
     <span class="doccomment">/// Sync clocks,</span>
     <span class="ident">BootstrapTime</span> {
         <span class="doccomment">/// The current time on the bootstrap server.</span>
-        <span class="ident">server_time</span>: <span class="ident">UTime</span>,
+        <span class="ident">server_time</span>: <span class="ident">MassaTime</span>,
         <span class="ident">version</span>: <span class="ident">Version</span>,
     },
     <span class="doccomment">/// Sync clocks,</span>
@@ -191,7 +191,7 @@
 
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">type_id</span> {
             <span class="ident">MessageTypeId::BootstrapTime</span> =&gt; {
-                <span class="kw">let</span> (<span class="ident">server_time</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">UTime::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
+                <span class="kw">let</span> (<span class="ident">server_time</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">MassaTime::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
                 <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
 
                 <span class="kw">let</span> (<span class="ident">version</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">Version::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;

@@ -20,7 +20,7 @@
 <span id="19">19</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
 
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CHANNEL_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">256</span>;
@@ -28,14 +28,14 @@
 <span class="doccomment">/// Protocol Configuration</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolSettings</span> {
-    <span class="kw">pub</span> <span class="ident">ask_block_timeout</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">ask_block_timeout</span>: <span class="ident">MassaTime</span>,
     <span class="kw">pub</span> <span class="ident">max_node_known_blocks_size</span>: <span class="ident">usize</span>,
     <span class="kw">pub</span> <span class="ident">max_node_wanted_blocks_size</span>: <span class="ident">usize</span>,
     <span class="kw">pub</span> <span class="ident">max_known_ops_size</span>: <span class="ident">usize</span>,
     <span class="kw">pub</span> <span class="ident">max_known_endorsements_size</span>: <span class="ident">usize</span>,
     <span class="kw">pub</span> <span class="ident">max_simultaneous_ask_blocks_per_node</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// Max wait time for sending a Network or Node event.</span>
-    <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">MassaTime</span>,
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b42deacc 2021-12-09)" ></div>

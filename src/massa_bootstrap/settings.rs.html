@@ -59,7 +59,7 @@
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">massa_signature::PublicKey</span>;
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
 <span class="kw">use</span> <span class="ident">std::net::SocketAddr</span>;
 
@@ -93,23 +93,23 @@
     <span class="doccomment">/// Port to listen if we choose to allow other nodes to use us as bootstrap node.</span>
     <span class="kw">pub</span> <span class="ident">bind</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span>,
     <span class="doccomment">/// connection timeout</span>
-    <span class="kw">pub</span> <span class="ident">connect_timeout</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">connect_timeout</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// readout timeout</span>
-    <span class="kw">pub</span> <span class="ident">read_timeout</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">read_timeout</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// write timeout</span>
-    <span class="kw">pub</span> <span class="ident">write_timeout</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">write_timeout</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Time we wait before retrying a bootstrap</span>
-    <span class="kw">pub</span> <span class="ident">retry_delay</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">retry_delay</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Max ping delay.</span>
-    <span class="kw">pub</span> <span class="ident">max_ping</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">max_ping</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Enable clock synchronization</span>
     <span class="kw">pub</span> <span class="ident">enable_clock_synchronization</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// Cache duration</span>
-    <span class="kw">pub</span> <span class="ident">cache_duration</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">cache_duration</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Max simultaneous bootstraps</span>
     <span class="kw">pub</span> <span class="ident">max_simultaneous_bootstraps</span>: <span class="ident">u32</span>,
     <span class="doccomment">/// Minimum interval between two bootstrap attempts from a given IP</span>
-    <span class="kw">pub</span> <span class="ident">per_ip_min_interval</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">per_ip_min_interval</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Max size of the IP list</span>
     <span class="kw">pub</span> <span class="ident">ip_list_max_size</span>: <span class="ident">usize</span>,
 }

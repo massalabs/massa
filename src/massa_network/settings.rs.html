@@ -117,7 +117,7 @@
 <span id="116">116</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
 
@@ -162,10 +162,10 @@
     <span class="kw">pub</span> <span class="ident">protocol_port</span>: <span class="ident">u16</span>,
     <span class="doccomment">/// Time interval spent waiting for a response from a peer.</span>
     <span class="doccomment">/// In millis</span>
-    <span class="kw">pub</span> <span class="ident">connect_timeout</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">connect_timeout</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Network_worker will try to connect to available peers every wakeup_interval.</span>
     <span class="doccomment">/// In millis</span>
-    <span class="kw">pub</span> <span class="ident">wakeup_interval</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">wakeup_interval</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Path to the file containing known peers.</span>
     <span class="kw">pub</span> <span class="ident">peers_file</span>: <span class="ident">std::path::PathBuf</span>,
     <span class="doccomment">/// Path to the file containing our private_key</span>
@@ -187,21 +187,21 @@
     <span class="doccomment">/// Limit on the number of banned peers we remember.</span>
     <span class="kw">pub</span> <span class="ident">max_banned_peers</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// Peer database is dumped every peers_file_dump_interval in millis</span>
-    <span class="kw">pub</span> <span class="ident">peers_file_dump_interval</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">peers_file_dump_interval</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// After message_timeout millis we are no longer waiting on handshake message</span>
-    <span class="kw">pub</span> <span class="ident">message_timeout</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">message_timeout</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Every ask_peer_list_interval in millis we ask every one for its advertisable peers list.</span>
-    <span class="kw">pub</span> <span class="ident">ask_peer_list_interval</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">ask_peer_list_interval</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Max wait time for sending a Network or Node event.</span>
-    <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Time after which we forget a node</span>
-    <span class="kw">pub</span> <span class="ident">ban_timeout</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">ban_timeout</span>: <span class="ident">MassaTime</span>,
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::NetworkSettings</span>;
-    <span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+    <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
     <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">Ipv4Addr</span>, <span class="ident">SocketAddr</span>};
 
     <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">NetworkSettings</span> {
@@ -210,8 +210,8 @@
                 <span class="ident">bind</span>: <span class="ident">SocketAddr::new</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">Ipv4Addr::new</span>(<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>)), <span class="number">8080</span>),
                 <span class="ident">routable_ip</span>: <span class="prelude-val">Some</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">Ipv4Addr::new</span>(<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>))),
                 <span class="ident">protocol_port</span>: <span class="number">0</span>,
-                <span class="ident">connect_timeout</span>: <span class="ident">UTime::from</span>(<span class="number">180_000</span>),
-                <span class="ident">wakeup_interval</span>: <span class="ident">UTime::from</span>(<span class="number">10_000</span>),
+                <span class="ident">connect_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">180_000</span>),
+                <span class="ident">wakeup_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">10_000</span>),
                 <span class="ident">peers_file</span>: <span class="ident">std::path::PathBuf::new</span>(),
                 <span class="ident">target_bootstrap_connections</span>: <span class="number">1</span>,
                 <span class="ident">max_out_bootstrap_connection_attempts</span>: <span class="number">1</span>,
@@ -221,12 +221,12 @@
                 <span class="ident">max_out_nonbootstrap_connection_attempts</span>: <span class="number">15</span>,
                 <span class="ident">max_idle_peers</span>: <span class="number">3</span>,
                 <span class="ident">max_banned_peers</span>: <span class="number">3</span>,
-                <span class="ident">peers_file_dump_interval</span>: <span class="ident">UTime::from</span>(<span class="number">10_000</span>),
-                <span class="ident">message_timeout</span>: <span class="ident">UTime::from</span>(<span class="number">5000u64</span>),
-                <span class="ident">ask_peer_list_interval</span>: <span class="ident">UTime::from</span>(<span class="number">50000u64</span>),
+                <span class="ident">peers_file_dump_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">10_000</span>),
+                <span class="ident">message_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">5000u64</span>),
+                <span class="ident">ask_peer_list_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">50000u64</span>),
                 <span class="ident">private_key_file</span>: <span class="ident">std::path::PathBuf::new</span>(),
-                <span class="ident">max_send_wait</span>: <span class="ident">UTime::from</span>(<span class="number">100</span>),
-                <span class="ident">ban_timeout</span>: <span class="ident">UTime::from</span>(<span class="number">100_000_000</span>),
+                <span class="ident">max_send_wait</span>: <span class="ident">MassaTime::from</span>(<span class="number">100</span>),
+                <span class="ident">ban_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">100_000_000</span>),
             }
         }
     }

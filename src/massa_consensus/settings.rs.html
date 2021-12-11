@@ -379,7 +379,7 @@
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
 <span class="kw">use</span> <span class="ident">massa_signature::generate_random_private_key</span>;
 <span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
@@ -391,13 +391,13 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">test</span>))]</span>
 <span class="macro">lazy_static::lazy_static!</span> {
     <span class="doccomment">/// Time in millis when the blockclique started.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_TIMESTAMP</span>: <span class="ident">UTime</span> <span class="op">=</span> <span class="number">1638460800000</span>.<span class="ident">into</span>();
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_TIMESTAMP</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="number">1638460800000</span>.<span class="ident">into</span>();
 
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">END_TIMESTAMP</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UTime</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="number">1640883600000</span>.<span class="ident">into</span>());
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">END_TIMESTAMP</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="number">1640883600000</span>.<span class="ident">into</span>());
 
     <span class="doccomment">/// Time between the periods in the same thread.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">T0</span>: <span class="ident">UTime</span> <span class="op">=</span> <span class="number">16000</span>.<span class="ident">into</span>();
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">T0</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="number">16000</span>.<span class="ident">into</span>();
 
     <span class="doccomment">/// Private_key to sign genesis blocks.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_KEY</span>: <span class="ident">PrivateKey</span> <span class="op">=</span> <span class="string">&quot;SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S&quot;</span>
@@ -417,13 +417,13 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="macro">lazy_static::lazy_static!</span> {
     <span class="doccomment">/// Time in millis when the blockclique started.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_TIMESTAMP</span>: <span class="ident">UTime</span> <span class="op">=</span> <span class="ident">UTime::now</span>(<span class="number">0</span>).<span class="ident">unwrap</span>();
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_TIMESTAMP</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="ident">MassaTime::now</span>(<span class="number">0</span>).<span class="ident">unwrap</span>();
 
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">END_TIMESTAMP</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UTime</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">END_TIMESTAMP</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
 
     <span class="doccomment">/// Time between the periods in the same thread.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">T0</span>: <span class="ident">UTime</span> <span class="op">=</span> <span class="number">32000</span>.<span class="ident">into</span>();
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">T0</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="number">32000</span>.<span class="ident">into</span>();
 
     <span class="doccomment">/// Private_key to sign genesis blocks.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_KEY</span>: <span class="ident">PrivateKey</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
@@ -512,18 +512,18 @@
     <span class="doccomment">/// path to ledger db</span>
     <span class="kw">pub</span> <span class="ident">ledger_path</span>: <span class="ident">PathBuf</span>,
     <span class="kw">pub</span> <span class="ident">ledger_cache_capacity</span>: <span class="ident">u64</span>,
-    <span class="kw">pub</span> <span class="ident">ledger_flush_interval</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UTime</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">ledger_flush_interval</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">ledger_reset_at_startup</span>: <span class="ident">bool</span>,
     <span class="kw">pub</span> <span class="ident">initial_ledger_path</span>: <span class="ident">PathBuf</span>,
     <span class="kw">pub</span> <span class="ident">operation_batch_size</span>: <span class="ident">usize</span>,
     <span class="kw">pub</span> <span class="ident">initial_rolls_path</span>: <span class="ident">PathBuf</span>,
     <span class="comment">// stats timespan</span>
-    <span class="kw">pub</span> <span class="ident">stats_timespan</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">stats_timespan</span>: <span class="ident">MassaTime</span>,
     <span class="comment">// max event send wait</span>
-    <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">MassaTime</span>,
     <span class="comment">// force keep at least this number of final periods in RAM for each thread</span>
     <span class="kw">pub</span> <span class="ident">force_keep_final_periods</span>: <span class="ident">u64</span>,
-    <span class="kw">pub</span> <span class="ident">block_db_prune_interval</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">block_db_prune_interval</span>: <span class="ident">MassaTime</span>,
     <span class="kw">pub</span> <span class="ident">max_item_return_count</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// If we want to generate blocks.</span>
     <span class="doccomment">/// Parameter that shouldn&#39;t be defined in prod.</span>
@@ -580,13 +580,13 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusConfig</span> {
     <span class="doccomment">/// Time in millis when the blockclique started.</span>
-    <span class="kw">pub</span> <span class="ident">genesis_timestamp</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
-    <span class="kw">pub</span> <span class="ident">end_timestamp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UTime</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">end_timestamp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Number of threads</span>
     <span class="kw">pub</span> <span class="ident">thread_count</span>: <span class="ident">u8</span>,
     <span class="doccomment">/// Time between the periods in the same thread.</span>
-    <span class="kw">pub</span> <span class="ident">t0</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Private_key to sign genesis blocks.</span>
     <span class="kw">pub</span> <span class="ident">genesis_key</span>: <span class="ident">PrivateKey</span>,
     <span class="doccomment">/// Staking private keys</span>
@@ -622,7 +622,7 @@
     <span class="doccomment">/// path to ledger db</span>
     <span class="kw">pub</span> <span class="ident">ledger_path</span>: <span class="ident">PathBuf</span>,
     <span class="kw">pub</span> <span class="ident">ledger_cache_capacity</span>: <span class="ident">u64</span>,
-    <span class="kw">pub</span> <span class="ident">ledger_flush_interval</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UTime</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">ledger_flush_interval</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">ledger_reset_at_startup</span>: <span class="ident">bool</span>,
     <span class="kw">pub</span> <span class="ident">initial_ledger_path</span>: <span class="ident">PathBuf</span>,
     <span class="kw">pub</span> <span class="ident">block_reward</span>: <span class="ident">Amount</span>,
@@ -631,13 +631,13 @@
     <span class="kw">pub</span> <span class="ident">initial_draw_seed</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">roll_price</span>: <span class="ident">Amount</span>,
     <span class="doccomment">/// stats timespan</span>
-    <span class="kw">pub</span> <span class="ident">stats_timespan</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">stats_timespan</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// max event send wait</span>
-    <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// force keep at least this number of final periods in RAM for each thread</span>
     <span class="kw">pub</span> <span class="ident">force_keep_final_periods</span>: <span class="ident">u64</span>,
     <span class="kw">pub</span> <span class="ident">endorsement_count</span>: <span class="ident">u32</span>,
-    <span class="kw">pub</span> <span class="ident">block_db_prune_interval</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">block_db_prune_interval</span>: <span class="ident">MassaTime</span>,
     <span class="kw">pub</span> <span class="ident">max_item_return_count</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// If we want to generate blocks.</span>
     <span class="doccomment">/// Parameter that shouldn&#39;t be defined in prod.</span>

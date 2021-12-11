@@ -212,7 +212,7 @@
 
 <span class="doccomment">//! warning: assumes thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0</span>
 
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ModelsError</span>, <span class="ident">Slot</span>};
@@ -225,16 +225,16 @@
 <span class="doccomment">/// * slot: the considered slot.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_slot_timestamp</span>(
     <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="ident">t0</span>: <span class="ident">UTime</span>,
-    <span class="ident">genesis_timestamp</span>: <span class="ident">UTime</span>,
+    <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
+    <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
     <span class="ident">slot</span>: <span class="ident">Slot</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UTime</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">base</span>: <span class="ident">UTime</span> <span class="op">=</span> <span class="ident">t0</span>
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MassaTime</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="ident">base</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="ident">t0</span>
         .<span class="ident">checked_div_u64</span>(<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">u64</span>)
         .<span class="ident">or</span>(<span class="prelude-val">Err</span>(<span class="ident">ModelsError::TimeOverflowError</span>))<span class="question-mark">?</span>
         .<span class="ident">checked_mul</span>(<span class="ident">slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">u64</span>)
         .<span class="ident">or</span>(<span class="prelude-val">Err</span>(<span class="ident">ModelsError::TimeOverflowError</span>))<span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="ident">shift</span>: <span class="ident">UTime</span> <span class="op">=</span> <span class="ident">t0</span>
+    <span class="kw">let</span> <span class="ident">shift</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="ident">t0</span>
         .<span class="ident">checked_mul</span>(<span class="ident">slot</span>.<span class="ident">period</span>)
         .<span class="ident">or</span>(<span class="prelude-val">Err</span>(<span class="ident">ModelsError::TimeOverflowError</span>))<span class="question-mark">?</span>;
     <span class="ident">genesis_timestamp</span>
@@ -253,9 +253,9 @@
 <span class="doccomment">/// * timestamp: target timestamp in millis.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_latest_block_slot_at_timestamp</span>(
     <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="ident">t0</span>: <span class="ident">UTime</span>,
-    <span class="ident">genesis_timestamp</span>: <span class="ident">UTime</span>,
-    <span class="ident">timestamp</span>: <span class="ident">UTime</span>,
+    <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
+    <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
+    <span class="ident">timestamp</span>: <span class="ident">MassaTime</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">time_since_genesis</span>) <span class="op">=</span> <span class="ident">timestamp</span>.<span class="ident">checked_sub</span>(<span class="ident">genesis_timestamp</span>) {
         <span class="kw">let</span> <span class="ident">thread</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="ident">time_since_genesis</span>
@@ -278,19 +278,19 @@
 <span class="doccomment">/// * genesis_timestamp: when the blockclique first started, in millis.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_current_latest_block_slot</span>(
     <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="ident">t0</span>: <span class="ident">UTime</span>,
-    <span class="ident">genesis_timestamp</span>: <span class="ident">UTime</span>,
+    <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
+    <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
     <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
     <span class="ident">get_latest_block_slot_at_timestamp</span>(
         <span class="ident">thread_count</span>,
         <span class="ident">t0</span>,
         <span class="ident">genesis_timestamp</span>,
-        <span class="ident">UTime::now</span>(<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>,
+        <span class="ident">MassaTime::now</span>(<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>,
     )
 }
 
-<span class="doccomment">/// Turns an UTime range [start, end) with optional start/end to a Slot range [start, end) with optional start/end</span>
+<span class="doccomment">/// Turns an MassaTime range [start, end) with optional start/end to a Slot range [start, end) with optional start/end</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Arguments</span>
 <span class="doccomment">/// * thread_count: number of threads.</span>
@@ -303,10 +303,10 @@
 <span class="doccomment">/// or ConsensusError on error</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">time_range_to_slot_range</span>(
     <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="ident">t0</span>: <span class="ident">UTime</span>,
-    <span class="ident">genesis_timestamp</span>: <span class="ident">UTime</span>,
-    <span class="ident">start_time</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UTime</span><span class="op">&gt;</span>,
-    <span class="ident">end_time</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UTime</span><span class="op">&gt;</span>,
+    <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
+    <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
+    <span class="ident">start_time</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
+    <span class="ident">end_time</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">start_slot</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">start_time</span> {
         <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
@@ -315,7 +315,7 @@
             <span class="kw">let</span> <span class="ident">slot_number</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">t</span>
                 .<span class="ident">saturating_sub</span>(<span class="ident">genesis_timestamp</span>)
                 .<span class="ident">checked_add</span>(<span class="ident">inter_slot</span>)<span class="question-mark">?</span>
-                .<span class="ident">saturating_sub</span>(<span class="ident">UTime::EPSILON</span>)
+                .<span class="ident">saturating_sub</span>(<span class="ident">MassaTime::EPSILON</span>)
                 .<span class="ident">checked_div_time</span>(<span class="ident">inter_slot</span>)<span class="question-mark">?</span>;
             <span class="prelude-val">Some</span>(<span class="ident">Slot::new</span>(
                 <span class="ident">slot_number</span>
@@ -337,7 +337,7 @@
             <span class="kw">let</span> <span class="ident">slot_number</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">t</span>
                 .<span class="ident">saturating_sub</span>(<span class="ident">genesis_timestamp</span>)
                 .<span class="ident">checked_add</span>(<span class="ident">inter_slot</span>)<span class="question-mark">?</span>
-                .<span class="ident">saturating_sub</span>(<span class="ident">UTime::EPSILON</span>)
+                .<span class="ident">saturating_sub</span>(<span class="ident">MassaTime::EPSILON</span>)
                 .<span class="ident">checked_div_time</span>(<span class="ident">inter_slot</span>)<span class="question-mark">?</span>;
             <span class="prelude-val">Some</span>(<span class="ident">Slot::new</span>(
                 <span class="ident">slot_number</span>
@@ -364,8 +364,8 @@
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_time_range_to_slot_range</span>() {
         <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="number">3u8</span>;
-        <span class="kw">let</span> <span class="ident">t0</span>: <span class="ident">UTime</span> <span class="op">=</span> <span class="number">30</span>.<span class="ident">into</span>();
-        <span class="kw">let</span> <span class="ident">genesis_timestamp</span>: <span class="ident">UTime</span> <span class="op">=</span> <span class="number">100</span>.<span class="ident">into</span>();
+        <span class="kw">let</span> <span class="ident">t0</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="number">30</span>.<span class="ident">into</span>();
+        <span class="kw">let</span> <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="number">100</span>.<span class="ident">into</span>();
         <span class="comment">/* slots:   (0, 0)  (0, 1)  (0, 2)  (1, 0)  (1, 1)  (1, 2)  (2, 0)  (2, 1)  (2, 2)
             time:    100      110     120    130      140    150     160     170     180
         */</span>

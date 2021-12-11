@@ -1433,7 +1433,7 @@
 <span class="kw">use</span> <span class="ident">massa_pool::PoolCommandSender</span>;
 <span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{<span class="ident">ProtocolCommandSender</span>, <span class="ident">ProtocolEvent</span>, <span class="ident">ProtocolEventReceiver</span>};
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>};
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">cmp::max</span>, <span class="ident">collections::HashSet</span>, <span class="ident">collections::VecDeque</span>};
 <span class="kw">use</span> <span class="ident">tokio</span>::{
     <span class="ident">sync</span>::{<span class="ident">mpsc</span>, <span class="ident">mpsc::error::SendTimeoutError</span>, <span class="ident">oneshot</span>},
@@ -1551,11 +1551,11 @@
     <span class="comment">// staking keys</span>
     <span class="ident">staking_keys</span>: <span class="ident">AddressHashMap</span><span class="op">&lt;</span>(<span class="ident">PublicKey</span>, <span class="ident">PrivateKey</span>)<span class="op">&gt;</span>,
     <span class="comment">// stats (block -&gt; tx_count, creator)</span>
-    <span class="ident">final_block_stats</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span>(<span class="ident">UTime</span>, <span class="ident">u64</span>, <span class="ident">Address</span>)<span class="op">&gt;</span>,
-    <span class="ident">stale_block_stats</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">UTime</span><span class="op">&gt;</span>,
-    <span class="ident">stats_history_timespan</span>: <span class="ident">UTime</span>,
-    <span class="ident">stats_desync_detection_timespan</span>: <span class="ident">UTime</span>,
-    <span class="ident">launch_time</span>: <span class="ident">UTime</span>,
+    <span class="ident">final_block_stats</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span>(<span class="ident">MassaTime</span>, <span class="ident">u64</span>, <span class="ident">Address</span>)<span class="op">&gt;</span>,
+    <span class="ident">stale_block_stats</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
+    <span class="ident">stats_history_timespan</span>: <span class="ident">MassaTime</span>,
+    <span class="ident">stats_desync_detection_timespan</span>: <span class="ident">MassaTime</span>,
+    <span class="ident">launch_time</span>: <span class="ident">MassaTime</span>,
     <span class="comment">// endorsed slots cache</span>
     <span class="ident">endorsed_slots</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
 }
@@ -1584,7 +1584,7 @@
         <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
         <span class="ident">staking_keys</span>: <span class="ident">AddressHashMap</span><span class="op">&lt;</span>(<span class="ident">PublicKey</span>, <span class="ident">PrivateKey</span>)<span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsensusWorker</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">UTime::now</span>(<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">MassaTime::now</span>(<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">previous_slot</span> <span class="op">=</span> <span class="ident">get_latest_block_slot_at_timestamp</span>(
             <span class="ident">cfg</span>.<span class="ident">thread_count</span>,
             <span class="ident">cfg</span>.<span class="ident">t0</span>,
@@ -1664,7 +1664,7 @@
             <span class="ident">stats_desync_detection_timespan</span>,
             <span class="ident">stats_history_timespan</span>: <span class="ident">max</span>(<span class="ident">stats_desync_detection_timespan</span>, <span class="ident">cfg</span>.<span class="ident">stats_timespan</span>),
             <span class="ident">cfg</span>,
-            <span class="ident">launch_time</span>: <span class="ident">UTime::now</span>(<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>,
+            <span class="ident">launch_time</span>: <span class="ident">MassaTime::now</span>(<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>,
             <span class="ident">endorsed_slots</span>: <span class="ident">HashSet::new</span>(),
         })
     }
@@ -1730,7 +1730,7 @@
                 <span class="kw">_</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">next_slot_timer</span> =&gt; {
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.run_loop.select.slot_tick&quot;</span>, {});
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">end</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">end_timestamp</span> {
-                        <span class="kw">if</span> <span class="ident">UTime::now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span> <span class="op">&gt;</span> <span class="ident">end</span> {
+                        <span class="kw">if</span> <span class="ident">MassaTime::now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span> <span class="op">&gt;</span> <span class="ident">end</span> {
                             <span class="macro">info!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
                             <span class="kw">break</span>;
                         }
@@ -1766,7 +1766,7 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">next_slot_timer</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::pin::Pin</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="ident">Sleep</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">UTime::now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">MassaTime::now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">observed_slot</span> <span class="op">=</span> <span class="ident">get_latest_block_slot_at_timestamp</span>(
             <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span>,
             <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">t0</span>,
@@ -2420,7 +2420,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">get_stats</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsensusStats</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">timespan_end</span> <span class="op">=</span> <span class="ident">max</span>(<span class="self">self</span>.<span class="ident">launch_time</span>, <span class="ident">UTime::now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>);
+        <span class="kw">let</span> <span class="ident">timespan_end</span> <span class="op">=</span> <span class="ident">max</span>(<span class="self">self</span>.<span class="ident">launch_time</span>, <span class="ident">MassaTime::now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>);
         <span class="kw">let</span> <span class="ident">timespan_start</span> <span class="op">=</span> <span class="ident">max</span>(
             <span class="ident">timespan_end</span>.<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">stats_timespan</span>),
             <span class="self">self</span>.<span class="ident">launch_time</span>,
@@ -2626,7 +2626,7 @@
     <span class="comment">// prune statistics</span>
     <span class="kw">fn</span> <span class="ident">prune_stats</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">start_time</span> <span class="op">=</span>
-            <span class="ident">UTime::now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>.<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">stats_history_timespan</span>);
+            <span class="ident">MassaTime::now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>.<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">stats_history_timespan</span>);
         <span class="self">self</span>.<span class="ident">final_block_stats</span>.<span class="ident">retain</span>(<span class="op">|</span>(<span class="ident">t</span>, <span class="kw">_</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">t</span> <span class="op">&gt;</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">start_time</span>);
         <span class="self">self</span>.<span class="ident">stale_block_stats</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">t</span> <span class="op">&gt;</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">start_time</span>);
         <span class="prelude-val">Ok</span>(())
@@ -2662,7 +2662,7 @@
             <span class="ident">new_final_block_ids</span>.<span class="ident">len</span>(),
             <span class="ident">BuildHHasher::default</span>(),
         );
-        <span class="kw">let</span> <span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">UTime::now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">MassaTime::now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>;
         <span class="kw">for</span> <span class="ident">b_id</span> <span class="kw">in</span> <span class="ident">new_final_block_ids</span>.<span class="ident">into_iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">a_block</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_active_block</span>(<span class="kw-2">&amp;</span><span class="ident">b_id</span>) {
                 <span class="comment">// List new final ops</span>
@@ -2787,7 +2787,7 @@
 
         <span class="comment">// add stale blocks to stats</span>
         <span class="kw">let</span> <span class="ident">new_stale_block_ids_creators_slots</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_new_stale_blocks</span>();
-        <span class="kw">let</span> <span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">UTime::now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">MassaTime::now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>;
         <span class="kw">for</span> (<span class="ident">b_id</span>, (<span class="ident">b_creator</span>, <span class="ident">b_slot</span>)) <span class="kw">in</span> <span class="ident">new_stale_block_ids_creators_slots</span>.<span class="ident">into_iter</span>() {
             <span class="self">self</span>.<span class="ident">stale_block_stats</span>.<span class="ident">push_back</span>(<span class="ident">timestamp</span>);
 

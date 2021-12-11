@@ -168,7 +168,7 @@
 <span class="kw">use</span> <span class="ident">massa_models::OperationContent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::SerializeCompact</span>;
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">sign</span>, <span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>};
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
 
@@ -302,9 +302,9 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusConfigData</span> {
-    <span class="kw">pub</span> <span class="ident">t0</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
     <span class="kw">pub</span> <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="kw">pub</span> <span class="ident">genesis_timestamp</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
     <span class="kw">pub</span> <span class="ident">delta_f0</span>: <span class="ident">u64</span>,
     <span class="kw">pub</span> <span class="ident">max_block_size</span>: <span class="ident">u32</span>,
     <span class="kw">pub</span> <span class="ident">operation_validity_periods</span>: <span class="ident">u64</span>,

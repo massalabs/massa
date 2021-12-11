@@ -347,26 +347,26 @@
 <span class="doccomment">/// Time structure used every where.</span>
 <span class="doccomment">/// Millis since 01/01/1970.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Hash</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UTime</span>(<span class="ident">u64</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MassaTime</span>(<span class="ident">u64</span>);
 
-<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">UTime</span> {
+<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">MassaTime</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="ident">to_millis</span>())
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">UTime</span> {
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MassaTime</span> {
     <span class="doccomment">/// Conversion from u64, representing timestamp in millis.</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time : UTime = UTime::from(42);</span>
+    <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">value</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">UTime</span>(<span class="ident">value</span>)
+        <span class="ident">MassaTime</span>(<span class="ident">value</span>)
     }
 }
 
-<span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">UTime</span> {
+<span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MassaTime</span> {
     <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">TimeError</span>;
 
     <span class="doccomment">/// Conversion from `std::time::Duration`.</span>
@@ -375,11 +375,11 @@
     <span class="doccomment">/// # use massa_time::*;</span>
     <span class="doccomment">/// # use std::convert::TryFrom;</span>
     <span class="doccomment">/// let duration: Duration = Duration::from_millis(42);</span>
-    <span class="doccomment">/// let time : UTime = UTime::from(42);</span>
-    <span class="doccomment">/// assert_eq!(time, UTime::try_from(duration).unwrap());</span>
+    <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
+    <span class="doccomment">/// assert_eq!(time, MassaTime::try_from(duration).unwrap());</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">Duration</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">UTime</span>(
+        <span class="prelude-val">Ok</span>(<span class="ident">MassaTime</span>(
             <span class="ident">value</span>
                 .<span class="ident">as_millis</span>()
                 .<span class="ident">try_into</span>()
@@ -388,23 +388,23 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">UTime</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Duration</span> {
-    <span class="doccomment">/// Conversion Utime to duration, representing timestamp in millis.</span>
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Duration</span> {
+    <span class="doccomment">/// Conversion massa_time to duration, representing timestamp in millis.</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use std::time::Duration;</span>
     <span class="doccomment">/// # use massa_time::*;</span>
     <span class="doccomment">/// # use std::convert::Into;</span>
     <span class="doccomment">/// let duration: Duration = Duration::from_millis(42);</span>
-    <span class="doccomment">/// let time : UTime = UTime::from(42);</span>
+    <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
     <span class="doccomment">/// let res: Duration = time.into();</span>
     <span class="doccomment">/// assert_eq!(res, duration);</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">value</span>: <span class="ident">UTime</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">value</span>: <span class="ident">MassaTime</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">value</span>.<span class="ident">to_duration</span>()
     }
 }
 
-<span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">UTime</span> {
+<span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">MassaTime</span> {
     <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::TimeError</span>;
 
     <span class="doccomment">/// Conversion from `&amp;str`.</span>
@@ -413,20 +413,20 @@
     <span class="doccomment">/// # use massa_time::*;</span>
     <span class="doccomment">/// # use std::str::FromStr;</span>
     <span class="doccomment">/// let duration: &amp;str = &quot;42&quot;;</span>
-    <span class="doccomment">/// let time : UTime = UTime::from(42);</span>
+    <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// assert_eq!(time, UTime::from_str(duration).unwrap());</span>
+    <span class="doccomment">/// assert_eq!(time, MassaTime::from_str(duration).unwrap());</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">UTime</span>(
+        <span class="prelude-val">Ok</span>(<span class="ident">MassaTime</span>(
             <span class="ident">u64::from_str</span>(<span class="ident">s</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident"><span class="self">Self</span>::Err::ConversionError</span>)<span class="question-mark">?</span>,
         ))
     }
 }
 
-<span class="kw">impl</span> <span class="ident">UTime</span> {
+<span class="kw">impl</span> <span class="ident">MassaTime</span> {
     <span class="doccomment">/// Smallest time interval</span>
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">EPSILON</span>: <span class="ident">UTime</span> <span class="op">=</span> <span class="ident">UTime</span>(<span class="number">1</span>);
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">EPSILON</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="ident">MassaTime</span>(<span class="number">1</span>);
 
     <span class="doccomment">/// Gets current unix timestamp (resolution: milliseconds).</span>
     <span class="doccomment">///</span>
@@ -439,9 +439,9 @@
     <span class="doccomment">/// # use std::convert::TryFrom;</span>
     <span class="doccomment">/// # use std::cmp::max;</span>
     <span class="doccomment">/// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();</span>
-    <span class="doccomment">/// let now_utime : UTime = UTime::now(0).unwrap();</span>
-    <span class="doccomment">/// let converted  :UTime = UTime::try_from(now_duration).unwrap();</span>
-    <span class="doccomment">/// assert!(max(now_utime.saturating_sub(converted), converted.saturating_sub(now_utime)) &lt; 100.into())</span>
+    <span class="doccomment">/// let now_massa_time : MassaTime = MassaTime::now(0).unwrap();</span>
+    <span class="doccomment">/// let converted  :MassaTime = MassaTime::try_from(now_duration).unwrap();</span>
+    <span class="doccomment">/// assert!(max(now_massa_time.saturating_sub(converted), converted.saturating_sub(now_massa_time)) &lt; 100.into())</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">now</span>(<span class="ident">compensation_millis</span>: <span class="ident">i64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">now</span>: <span class="ident">i64</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>()
@@ -455,7 +455,7 @@
             .<span class="ident">ok_or</span>(<span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>
             .<span class="ident">try_into</span>()
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">UTime</span>(<span class="ident">compensated</span>))
+        <span class="prelude-val">Ok</span>(<span class="ident">MassaTime</span>(<span class="ident">compensated</span>))
     }
 
     <span class="doccomment">/// Conversion to `std::time::Duration`.</span>
@@ -463,7 +463,7 @@
     <span class="doccomment">/// # use std::time::Duration;</span>
     <span class="doccomment">/// # use massa_time::*;</span>
     <span class="doccomment">/// let duration: Duration = Duration::from_millis(42);</span>
-    <span class="doccomment">/// let time : UTime = UTime::from(42);</span>
+    <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
     <span class="doccomment">/// let res: Duration = time.to_duration();</span>
     <span class="doccomment">/// assert_eq!(res, duration);</span>
     <span class="doccomment">/// ```</span>
@@ -474,7 +474,7 @@
     <span class="doccomment">/// Conversion to u64, representing millis.</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time : UTime = UTime::from(42);</span>
+    <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
     <span class="doccomment">/// let res: u64 = time.to_millis();</span>
     <span class="doccomment">/// assert_eq!(res, 42);</span>
     <span class="doccomment">/// ```</span>
@@ -488,16 +488,16 @@
     <span class="doccomment">/// # use std::convert::TryFrom;</span>
     <span class="doccomment">/// # use std::cmp::max;</span>
     <span class="doccomment">/// # use tokio::time::Instant;</span>
-    <span class="doccomment">/// let (cur_timestamp, cur_instant): (UTime, Instant) = (UTime::now(0).unwrap(), Instant::now());</span>
-    <span class="doccomment">/// let utime_instant: Instant = cur_timestamp.estimate_instant(0).unwrap();</span>
+    <span class="doccomment">/// let (cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now(0).unwrap(), Instant::now());</span>
+    <span class="doccomment">/// let massa_time_instant: Instant = cur_timestamp.estimate_instant(0).unwrap();</span>
     <span class="doccomment">/// assert!(max(</span>
-    <span class="doccomment">///     utime_instant.saturating_duration_since(cur_instant),</span>
-    <span class="doccomment">///     cur_instant.saturating_duration_since(utime_instant)</span>
+    <span class="doccomment">///     massa_time_instant.saturating_duration_since(cur_instant),</span>
+    <span class="doccomment">///     cur_instant.saturating_duration_since(massa_time_instant)</span>
     <span class="doccomment">/// ) &lt; std::time::Duration::from_millis(10))</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">estimate_instant</span>(<span class="self">self</span>, <span class="ident">compensation_millis</span>: <span class="ident">i64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Instant</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">cur_timestamp</span>, <span class="ident">cur_instant</span>): (<span class="ident">UTime</span>, <span class="ident">Instant</span>) <span class="op">=</span>
-            (<span class="ident">UTime::now</span>(<span class="ident">compensation_millis</span>)<span class="question-mark">?</span>, <span class="ident">Instant::now</span>());
+        <span class="kw">let</span> (<span class="ident">cur_timestamp</span>, <span class="ident">cur_instant</span>): (<span class="ident">MassaTime</span>, <span class="ident">Instant</span>) <span class="op">=</span>
+            (<span class="ident">MassaTime::now</span>(<span class="ident">compensation_millis</span>)<span class="question-mark">?</span>, <span class="ident">Instant::now</span>());
         <span class="ident">cur_instant</span>
             .<span class="ident">checked_add</span>(<span class="self">self</span>.<span class="ident">to_duration</span>())
             .<span class="ident">ok_or</span>(<span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>
@@ -507,62 +507,62 @@
 
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : UTime = UTime::from(42);</span>
-    <span class="doccomment">/// let time_2 : UTime = UTime::from(7);</span>
-    <span class="doccomment">/// let res : UTime = time_1.saturating_sub(time_2);</span>
-    <span class="doccomment">/// assert_eq!(res, UTime::from(42-7))</span>
+    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
+    <span class="doccomment">/// let time_2 : MassaTime = MassaTime::from(7);</span>
+    <span class="doccomment">/// let res : MassaTime = time_1.saturating_sub(time_2);</span>
+    <span class="doccomment">/// assert_eq!(res, MassaTime::from(42-7))</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_sub</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">UTime</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">UTime</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_sub</span>(<span class="ident">t</span>.<span class="number">0</span>))
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_sub</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">MassaTime</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">MassaTime</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_sub</span>(<span class="ident">t</span>.<span class="number">0</span>))
     }
 
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : UTime = UTime::from(42);</span>
-    <span class="doccomment">/// let time_2 : UTime = UTime::from(7);</span>
-    <span class="doccomment">/// let res : UTime = time_1.saturating_add(time_2);</span>
-    <span class="doccomment">/// assert_eq!(res, UTime::from(42+7))</span>
+    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
+    <span class="doccomment">/// let time_2 : MassaTime = MassaTime::from(7);</span>
+    <span class="doccomment">/// let res : MassaTime = time_1.saturating_add(time_2);</span>
+    <span class="doccomment">/// assert_eq!(res, MassaTime::from(42+7))</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_add</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">UTime</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">UTime</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_add</span>(<span class="ident">t</span>.<span class="number">0</span>))
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_add</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">MassaTime</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">MassaTime</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_add</span>(<span class="ident">t</span>.<span class="number">0</span>))
     }
 
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : UTime = UTime::from(42);</span>
-    <span class="doccomment">/// let time_2 : UTime = UTime::from(7);</span>
-    <span class="doccomment">/// let res : UTime = time_1.checked_sub(time_2).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res, UTime::from(42-7))</span>
+    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
+    <span class="doccomment">/// let time_2 : MassaTime = MassaTime::from(7);</span>
+    <span class="doccomment">/// let res : MassaTime = time_1.checked_sub(time_2).unwrap();</span>
+    <span class="doccomment">/// assert_eq!(res, MassaTime::from(42-7))</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_sub</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">UTime</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_sub</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">MassaTime</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">checked_sub</span>(<span class="ident">t</span>.<span class="number">0</span>)
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">TimeError::CheckedOperationError</span>(<span class="string">&quot;subtraction error&quot;</span>.<span class="ident">to_string</span>()))
-            .<span class="ident">map</span>(<span class="ident">UTime</span>)
+            .<span class="ident">map</span>(<span class="ident">MassaTime</span>)
     }
 
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : UTime = UTime::from(42);</span>
-    <span class="doccomment">/// let time_2 : UTime = UTime::from(7);</span>
-    <span class="doccomment">/// let res : UTime = time_1.checked_add(time_2).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res, UTime::from(42+7))</span>
+    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
+    <span class="doccomment">/// let time_2 : MassaTime = MassaTime::from(7);</span>
+    <span class="doccomment">/// let res : MassaTime = time_1.checked_add(time_2).unwrap();</span>
+    <span class="doccomment">/// assert_eq!(res, MassaTime::from(42+7))</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_add</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">UTime</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_add</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">MassaTime</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">checked_add</span>(<span class="ident">t</span>.<span class="number">0</span>)
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">TimeError::CheckedOperationError</span>(<span class="string">&quot;addition error&quot;</span>.<span class="ident">to_string</span>()))
-            .<span class="ident">map</span>(<span class="ident">UTime</span>)
+            .<span class="ident">map</span>(<span class="ident">MassaTime</span>)
     }
 
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : UTime = UTime::from(42);</span>
-    <span class="doccomment">/// let time_2 : UTime = UTime::from(7);</span>
+    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
+    <span class="doccomment">/// let time_2 : MassaTime = MassaTime::from(7);</span>
     <span class="doccomment">/// let res : u64 = time_1.checked_div_time(time_2).unwrap();</span>
     <span class="doccomment">/// assert_eq!(res,42/7)</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_div_time</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">UTime</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_div_time</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">MassaTime</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">checked_div</span>(<span class="ident">t</span>.<span class="number">0</span>)
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">TimeError::CheckedOperationError</span>(<span class="string">&quot;division error&quot;</span>.<span class="ident">to_string</span>()))
@@ -570,61 +570,61 @@
 
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : UTime = UTime::from(42);</span>
-    <span class="doccomment">/// let res : UTime = time_1.checked_div_u64(7).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res,UTime::from(42/7))</span>
+    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
+    <span class="doccomment">/// let res : MassaTime = time_1.checked_div_u64(7).unwrap();</span>
+    <span class="doccomment">/// assert_eq!(res,MassaTime::from(42/7))</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_div_u64</span>(<span class="self">self</span>, <span class="ident">n</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UTime</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_div_u64</span>(<span class="self">self</span>, <span class="ident">n</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MassaTime</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">checked_div</span>(<span class="ident">n</span>)
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">TimeError::CheckedOperationError</span>(<span class="string">&quot;division error&quot;</span>.<span class="ident">to_string</span>()))
-            .<span class="ident">map</span>(<span class="ident">UTime</span>)
+            .<span class="ident">map</span>(<span class="ident">MassaTime</span>)
     }
 
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : UTime = UTime::from(42);</span>
-    <span class="doccomment">/// let res : UTime = time_1.checked_mul(7).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res,UTime::from(42*7))</span>
+    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
+    <span class="doccomment">/// let res : MassaTime = time_1.checked_mul(7).unwrap();</span>
+    <span class="doccomment">/// assert_eq!(res,MassaTime::from(42*7))</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_mul</span>(<span class="self">self</span>, <span class="ident">n</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">checked_mul</span>(<span class="ident">n</span>)
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">TimeError::CheckedOperationError</span>(<span class="string">&quot;multiplication error&quot;</span>.<span class="ident">to_string</span>()))
-            .<span class="ident">map</span>(<span class="ident">UTime</span>)
+            .<span class="ident">map</span>(<span class="ident">MassaTime</span>)
     }
 
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : UTime = UTime::from(42);</span>
-    <span class="doccomment">/// let time_2 : UTime = UTime::from(7);</span>
-    <span class="doccomment">/// let res : UTime = time_1.checked_rem_time(time_2).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res,UTime::from(42%7))</span>
+    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
+    <span class="doccomment">/// let time_2 : MassaTime = MassaTime::from(7);</span>
+    <span class="doccomment">/// let res : MassaTime = time_1.checked_rem_time(time_2).unwrap();</span>
+    <span class="doccomment">/// assert_eq!(res,MassaTime::from(42%7))</span>
     <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_rem_time</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">UTime</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_rem_time</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">MassaTime</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">checked_rem</span>(<span class="ident">t</span>.<span class="number">0</span>)
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">TimeError::CheckedOperationError</span>(<span class="string">&quot;remainder error&quot;</span>.<span class="ident">to_string</span>()))
-            .<span class="ident">map</span>(<span class="ident">UTime</span>)
+            .<span class="ident">map</span>(<span class="ident">MassaTime</span>)
     }
 
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let time_1 : UTime = UTime::from(42);</span>
-    <span class="doccomment">/// let res : UTime = time_1.checked_rem_u64(7).unwrap();</span>
-    <span class="doccomment">/// assert_eq!(res,UTime::from(42%7))</span>
+    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
+    <span class="doccomment">/// let res : MassaTime = time_1.checked_rem_u64(7).unwrap();</span>
+    <span class="doccomment">/// assert_eq!(res,MassaTime::from(42%7))</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">checked_rem_u64</span>(<span class="self">self</span>, <span class="ident">n</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TimeError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">checked_rem</span>(<span class="ident">n</span>)
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">TimeError::CheckedOperationError</span>(<span class="string">&quot;remainder error&quot;</span>.<span class="ident">to_string</span>()))
-            .<span class="ident">map</span>(<span class="ident">UTime</span>)
+            .<span class="ident">map</span>(<span class="ident">MassaTime</span>)
     }
 
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let utime : UTime = UTime::from(0);</span>
-    <span class="doccomment">/// assert_eq!(utime.to_utc_string(), &quot;1970-01-01 00:00:00 UTC&quot;)</span>
+    <span class="doccomment">/// let massa_time : MassaTime = MassaTime::from(0);</span>
+    <span class="doccomment">/// assert_eq!(massa_time.to_utc_string(), &quot;1970-01-01 00:00:00 UTC&quot;)</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_utc_string</span>(<span class="self">self</span>) -&gt; <span class="ident">String</span> {
         <span class="kw">let</span> <span class="ident">naive</span> <span class="op">=</span> <span class="ident">NaiveDateTime::from_timestamp</span>(
@@ -637,8 +637,8 @@
 
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
-    <span class="doccomment">/// let utime = UTime::from(1000 * ( 8 * 24*60*60 + 1 * 60*60 + 3 * 60 + 6 ));</span>
-    <span class="doccomment">/// let (days, hours, mins, secs) = utime.days_hours_mins_secs().unwrap();</span>
+    <span class="doccomment">/// let massa_time = MassaTime::from(1000 * ( 8 * 24*60*60 + 1 * 60*60 + 3 * 60 + 6 ));</span>
+    <span class="doccomment">/// let (days, hours, mins, secs) = massa_time.days_hours_mins_secs().unwrap();</span>
     <span class="doccomment">/// assert_eq!(days, 8);</span>
     <span class="doccomment">/// assert_eq!(hours, 1);</span>
     <span class="doccomment">/// assert_eq!(mins, 3);</span>

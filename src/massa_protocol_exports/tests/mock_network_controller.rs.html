@@ -129,7 +129,7 @@
 <span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">Operation</span>};
 <span class="kw">use</span> <span class="ident">massa_network</span>::{<span class="ident">NetworkCommand</span>, <span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkEvent</span>, <span class="ident">NetworkEventReceiver</span>};
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">tokio</span>::{<span class="ident">sync::mpsc</span>, <span class="ident">time::sleep</span>};
 
 <span class="kw">const</span> <span class="ident">CHANNEL_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">256</span>;
@@ -154,7 +154,7 @@
         )
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_command</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">UTime</span>, <span class="ident">filter_map</span>: <span class="ident">F</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_command</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">MassaTime</span>, <span class="ident">filter_map</span>: <span class="ident">F</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">F</span>: <span class="ident">Fn</span>(<span class="ident">NetworkCommand</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
     {

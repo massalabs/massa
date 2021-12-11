@@ -47,7 +47,7 @@
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::Amount</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ADDRESS_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">HASH_SIZE_BYTES</span>;
@@ -67,13 +67,13 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Config</span> {
     <span class="doccomment">/// Time in millis when the blockclique started.</span>
-    <span class="kw">pub</span> <span class="ident">genesis_timestamp</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
-    <span class="kw">pub</span> <span class="ident">end_timestamp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UTime</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">end_timestamp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Number of threads</span>
     <span class="kw">pub</span> <span class="ident">thread_count</span>: <span class="ident">u8</span>,
     <span class="doccomment">/// Time between the periods in the same thread.</span>
-    <span class="kw">pub</span> <span class="ident">t0</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Threshold for fitness.</span>
     <span class="kw">pub</span> <span class="ident">delta_f0</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// Maximum operation validity period count</span>

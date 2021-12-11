@@ -195,7 +195,7 @@
 <span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Version</span>;
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">sign</span>, <span class="ident">verify_signature</span>, <span class="ident">PrivateKey</span>};
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::StdRng</span>, <span class="ident">RngCore</span>, <span class="ident">SeedableRng</span>};
 <span class="kw">use</span> <span class="ident">tokio::time::timeout</span>;
 
@@ -213,7 +213,7 @@
     <span class="doccomment">/// Our private key.</span>
     <span class="ident">private_key</span>: <span class="ident">PrivateKey</span>,
     <span class="doccomment">/// After timeout_duration millis, the handshake attempt is dropped.</span>
-    <span class="ident">timeout_duration</span>: <span class="ident">UTime</span>,
+    <span class="ident">timeout_duration</span>: <span class="ident">MassaTime</span>,
     <span class="ident">version</span>: <span class="ident">Version</span>,
 }
 
@@ -231,7 +231,7 @@
         <span class="ident">socket_writer</span>: <span class="ident">WriteHalf</span>,
         <span class="ident">self_node_id</span>: <span class="ident">NodeId</span>,
         <span class="ident">private_key</span>: <span class="ident">PrivateKey</span>,
-        <span class="ident">timeout_duration</span>: <span class="ident">UTime</span>,
+        <span class="ident">timeout_duration</span>: <span class="ident">MassaTime</span>,
         <span class="ident">version</span>: <span class="ident">Version</span>,
     ) -&gt; <span class="ident">HandshakeWorker</span> {
         <span class="ident">HandshakeWorker</span> {

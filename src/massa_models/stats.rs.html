@@ -75,7 +75,7 @@
 <span id="74">74</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::fmt::Formatter</span>;
 
@@ -102,8 +102,8 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusStats</span> {
-    <span class="kw">pub</span> <span class="ident">start_timespan</span>: <span class="ident">UTime</span>,
-    <span class="kw">pub</span> <span class="ident">end_timespan</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">start_timespan</span>: <span class="ident">MassaTime</span>,
+    <span class="kw">pub</span> <span class="ident">end_timespan</span>: <span class="ident">MassaTime</span>,
     <span class="kw">pub</span> <span class="ident">final_block_count</span>: <span class="ident">u64</span>,
     <span class="kw">pub</span> <span class="ident">final_operation_count</span>: <span class="ident">u64</span>,
     <span class="kw">pub</span> <span class="ident">stale_block_count</span>: <span class="ident">u64</span>,

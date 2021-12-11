@@ -1142,7 +1142,6 @@
 <span id="1141">1141</span>
 <span id="1142">1142</span>
 <span id="1143">1143</span>
-<span id="1144">1144</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! The network worker actually does the job of managing connections</span>
@@ -1945,7 +1944,7 @@
                                     .<span class="ident">active_connections</span>
                                     .<span class="ident">iter</span>()
                                     .<span class="ident">filter</span>(<span class="op">|</span>(<span class="kw">_</span>, (<span class="ident">ip_addr</span>, <span class="kw">_</span>))<span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">peer</span>.<span class="ident">ip</span> <span class="op">==</span> <span class="ident">ip_addr</span>)
-                                    .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">out_conn_id</span>, (<span class="kw">_</span>, <span class="ident">out_going</span>))<span class="op">|</span> {
+                                    .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">out_conn_id</span>, (<span class="kw">_</span>, <span class="ident">out_going</span>))<span class="op">|</span> {
                                         <span class="self">self</span>.<span class="ident">active_nodes</span>
                                             .<span class="ident">iter</span>()
                                             .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">node_id</span>, (<span class="ident">conn_id</span>, <span class="kw">_</span>))<span class="op">|</span> {
@@ -1958,7 +1957,6 @@
                                             .<span class="ident">next</span>()
                                             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">node_id</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">node_id</span>, <span class="kw-2">*</span><span class="ident">out_going</span>))
                                     })
-                                    .<span class="ident">flatten</span>()
                                     .<span class="ident">collect</span>(),
                             },
                         )

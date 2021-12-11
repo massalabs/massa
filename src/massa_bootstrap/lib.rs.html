@@ -489,7 +489,7 @@
 <span class="kw">use</span> <span class="ident">massa_models::Version</span>;
 <span class="kw">use</span> <span class="ident">massa_network</span>::{<span class="ident">BootstrapPeers</span>, <span class="ident">NetworkCommandSender</span>};
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>};
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">messages::BootstrapMessage</span>;
 <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">prelude::SliceRandom</span>, <span class="ident">rngs::StdRng</span>, <span class="ident">SeedableRng</span>};
 <span class="kw">use</span> <span class="ident">settings::BootstrapSettings</span>;
@@ -525,7 +525,7 @@
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">BootstrapClientBinder::new</span>(<span class="ident">socket</span>, <span class="kw-2">*</span><span class="ident">bootstrap_public_key</span>);
 
     <span class="comment">// handshake</span>
-    <span class="kw">let</span> <span class="ident">send_time_uncompensated</span> <span class="op">=</span> <span class="ident">UTime::now</span>(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let</span> <span class="ident">send_time_uncompensated</span> <span class="op">=</span> <span class="ident">MassaTime::now</span>(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="comment">// client.handshake() is not cancel-safe but we drop the whole client object if cancelled =&gt; it&#39;s OK</span>
     <span class="kw">match</span> <span class="ident">tokio::time::timeout</span>(<span class="ident">cfg</span>.<span class="ident">write_timeout</span>.<span class="ident">into</span>(), <span class="ident">client</span>.<span class="ident">handshake</span>()).<span class="kw">await</span> {
         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
@@ -565,7 +565,7 @@
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="ident">msg</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">BootstrapError::UnexpectedMessage</span>(<span class="ident">msg</span>)),
     };
 
-    <span class="kw">let</span> <span class="ident">recv_time_uncompensated</span> <span class="op">=</span> <span class="ident">UTime::now</span>(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let</span> <span class="ident">recv_time_uncompensated</span> <span class="op">=</span> <span class="ident">MassaTime::now</span>(<span class="number">0</span>)<span class="question-mark">?</span>;
 
     <span class="comment">// compute ping</span>
     <span class="kw">let</span> <span class="ident">ping</span> <span class="op">=</span> <span class="ident">recv_time_uncompensated</span>.<span class="ident">saturating_sub</span>(<span class="ident">send_time_uncompensated</span>);
@@ -636,8 +636,8 @@
     <span class="ident">bootstrap_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">BootstrapSettings</span>,
     <span class="kw-2">mut</span> <span class="ident">establisher</span>: <span class="ident">Establisher</span>,
     <span class="ident">version</span>: <span class="ident">Version</span>,
-    <span class="ident">genesis_timestamp</span>: <span class="ident">UTime</span>,
-    <span class="ident">end_timestamp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UTime</span><span class="op">&gt;</span>,
+    <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
+    <span class="ident">end_timestamp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>
     (
         <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ExportProofOfStake</span><span class="op">&gt;</span>,
@@ -648,7 +648,7 @@
     <span class="ident">BootstrapError</span>,
 <span class="op">&gt;</span> {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state&quot;</span>, {});
-    <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">UTime::now</span>(<span class="number">0</span>)<span class="question-mark">?</span>;
+    <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">MassaTime::now</span>(<span class="number">0</span>)<span class="question-mark">?</span>;
     <span class="comment">// if we are before genesis, do not bootstrap</span>
     <span class="kw">if</span> <span class="ident">now</span> <span class="op">&lt;</span> <span class="ident">genesis_timestamp</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_scratch&quot;</span>, {});
@@ -666,7 +666,7 @@
     <span class="kw">loop</span> {
         <span class="kw">for</span> (<span class="ident">addr</span>, <span class="ident">pub_key</span>) <span class="kw">in</span> <span class="ident">shuffled_list</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">end</span>) <span class="op">=</span> <span class="ident">end_timestamp</span> {
-                <span class="kw">if</span> <span class="ident">UTime::now</span>(<span class="number">0</span>).<span class="ident">expect</span>(<span class="string">&quot;could not get now time&quot;</span>) <span class="op">&gt;</span> <span class="ident">end</span> {
+                <span class="kw">if</span> <span class="ident">MassaTime::now</span>(<span class="number">0</span>).<span class="ident">expect</span>(<span class="string">&quot;could not get now time&quot;</span>) <span class="op">&gt;</span> <span class="ident">end</span> {
                     <span class="macro">panic!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
                 }
             }
@@ -888,7 +888,7 @@
     };
 
     <span class="comment">// First, sync clocks.</span>
-    <span class="kw">let</span> <span class="ident">server_time</span> <span class="op">=</span> <span class="ident">UTime::now</span>(<span class="ident">compensation_millis</span>)<span class="question-mark">?</span>;
+    <span class="kw">let</span> <span class="ident">server_time</span> <span class="op">=</span> <span class="ident">MassaTime::now</span>(<span class="ident">compensation_millis</span>)<span class="question-mark">?</span>;
     <span class="kw">match</span> <span class="ident">tokio::time::timeout</span>(
         <span class="ident">bootstrap_settings</span>.<span class="ident">write_timeout</span>.<span class="ident">into</span>(),
         <span class="ident">server</span>.<span class="ident">send</span>(<span class="ident">messages::BootstrapMessage::BootstrapTime</span> {

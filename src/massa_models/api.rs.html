@@ -377,7 +377,7 @@
     <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockHashSet</span>, <span class="ident">BlockId</span>, <span class="ident">Config</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementHashSet</span>,
     <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationHashSet</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
@@ -387,7 +387,7 @@
     <span class="kw">pub</span> <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
     <span class="kw">pub</span> <span class="ident">node_ip</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">version</span>: <span class="ident">Version</span>,
-    <span class="kw">pub</span> <span class="ident">current_time</span>: <span class="ident">UTime</span>,
+    <span class="kw">pub</span> <span class="ident">current_time</span>: <span class="ident">MassaTime</span>,
     <span class="kw">pub</span> <span class="ident">current_cycle</span>: <span class="ident">u64</span>,
     <span class="kw">pub</span> <span class="ident">connected_nodes</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">IpAddr</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">last_slot</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
@@ -724,8 +724,8 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TimeInterval</span> {
-    <span class="kw">pub</span> <span class="ident">start</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UTime</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">end</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UTime</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">start</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">end</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>

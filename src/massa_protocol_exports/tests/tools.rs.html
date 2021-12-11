@@ -365,7 +365,7 @@
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{
     <span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>, <span class="ident">sign</span>, <span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_time::UTime</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 <span class="kw">use</span> <span class="ident">tokio::time::sleep</span>;
 
@@ -584,7 +584,7 @@
         <span class="ident">max_node_known_blocks_size</span>: <span class="number">100</span>,
         <span class="ident">max_node_wanted_blocks_size</span>: <span class="number">100</span>,
         <span class="ident">max_simultaneous_ask_blocks_per_node</span>: <span class="number">10</span>,
-        <span class="ident">max_send_wait</span>: <span class="ident">UTime::from</span>(<span class="number">100</span>),
+        <span class="ident">max_send_wait</span>: <span class="ident">MassaTime::from</span>(<span class="number">100</span>),
         <span class="ident">max_known_ops_size</span>: <span class="number">1000</span>,
         <span class="ident">max_known_endorsements_size</span>: <span class="number">1000</span>,
     }
@@ -592,7 +592,7 @@
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_protocol_event</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(
     <span class="ident">protocol_event_receiver</span>: <span class="kw-2">&amp;mut</span> <span class="ident">ProtocolEventReceiver</span>,
-    <span class="ident">timeout</span>: <span class="ident">UTime</span>,
+    <span class="ident">timeout</span>: <span class="ident">MassaTime</span>,
     <span class="ident">filter_map</span>: <span class="ident">F</span>,
 ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span>
 <span class="kw">where</span>
@@ -613,7 +613,7 @@
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_protocol_pool_event</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(
     <span class="ident">protocol_event_receiver</span>: <span class="kw-2">&amp;mut</span> <span class="ident">ProtocolPoolEventReceiver</span>,
-    <span class="ident">timeout</span>: <span class="ident">UTime</span>,
+    <span class="ident">timeout</span>: <span class="ident">MassaTime</span>,
     <span class="ident">filter_map</span>: <span class="ident">F</span>,
 ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span>
 <span class="kw">where</span>
@@ -677,7 +677,7 @@
     <span class="kw-2">mut</span> <span class="ident">nodes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>,
     <span class="ident">network_controller</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MockNetworkController</span>,
 ) {
-    <span class="kw">let</span> <span class="ident">timer</span> <span class="op">=</span> <span class="ident">sleep</span>(<span class="ident">UTime::from</span>(<span class="number">5000</span>).<span class="ident">into</span>());
+    <span class="kw">let</span> <span class="ident">timer</span> <span class="op">=</span> <span class="ident">sleep</span>(<span class="ident">MassaTime::from</span>(<span class="number">5000</span>).<span class="ident">into</span>());
     <span class="macro">tokio::pin!</span>(<span class="ident">timer</span>);
     <span class="kw">loop</span> {
         <span class="macro">tokio::select!</span> {
