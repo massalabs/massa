@@ -96,7 +96,7 @@ impl Endpoints for API<Public> {
         let compensation_millis = self.0.compensation_millis;
         let mut pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
-        let config = consensus_settings.config();
+        let config = consensus_settings.compact_config();
         let closure = async move || {
             let now = MassaTime::now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
