@@ -4931,10 +4931,6 @@
 <span id="4930">4930</span>
 <span id="4931">4931</span>
 <span id="4932">4932</span>
-<span id="4933">4933</span>
-<span id="4934">4934</span>
-<span id="4935">4935</span>
-<span id="4936">4936</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! All information concerning blocks, the block graph and cliques is managed here.</span>
@@ -5488,7 +5484,7 @@
     <span class="doccomment">/// in thread i.</span>
     <span class="kw">pub</span> <span class="ident">children</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockHashSet</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Active or final</span>
-    <span class="kw">pub</span> <span class="ident">status</span>: <span class="ident">Status</span>,
+    <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
@@ -5554,11 +5550,7 @@
                                     .<span class="ident">iter</span>()
                                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">thread</span><span class="op">|</span> <span class="ident">thread</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">BlockHashSet</span><span class="op">&gt;</span>())
                                     .<span class="ident">collect</span>(),
-                                <span class="ident">status</span>: <span class="kw">if</span> <span class="ident">a_block</span>.<span class="ident">is_final</span> {
-                                    <span class="ident">Status::Final</span>
-                                } <span class="kw">else</span> {
-                                    <span class="ident">Status::Active</span>
-                                },
+                                <span class="ident">is_final</span>: <span class="ident">a_block</span>.<span class="ident">is_final</span>,
                             },
                         );
                     }
