@@ -4,9 +4,7 @@ use crate::error::ApiError;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
-use massa_consensus::{
-    ConsensusCommandSender, ConsensusConfig, DiscardReason, ExportBlockStatus, Status,
-};
+use massa_consensus::{ConsensusCommandSender, ConsensusConfig, DiscardReason, ExportBlockStatus};
 use massa_models::address::{AddressHashMap, AddressHashSet};
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
@@ -313,7 +311,7 @@ impl Endpoints for API<Public> {
             for (id, exported_block) in graph.active_blocks.into_iter() {
                 res.push(BlockSummary {
                     id,
-                    is_final: exported_block.status == Status::Final,
+                    is_final: exported_block.is_final,
                     is_stale: false,
                     is_in_blockclique: blockclique.block_ids.contains(&id),
                     slot: exported_block.header.content.slot,
