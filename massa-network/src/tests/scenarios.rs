@@ -12,7 +12,7 @@ use massa_hash::{self, hash::Hash};
 use massa_models::node::NodeId;
 use massa_models::{BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use massa_signature::sign;
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::{
@@ -32,7 +32,7 @@ use tracing::trace;
 async fn test_node_worker_shutdown() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&vec![]);
-    let network_conf = super::tools::create_network_config(bind_port, &temp_peers_file.path());
+    let network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
     let reader = ReadBinder::new(duplex_mock_read);
@@ -484,8 +484,8 @@ async fn test_advertised_and_wakeup_interval() {
         active_in_connections: 0,
     }]);
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.wakeup_interval = UTime::from(500);
-    network_conf.connect_timeout = UTime::from(2000);
+    network_conf.wakeup_interval = MassaTime::from(500);
+    network_conf.connect_timeout = MassaTime::from(2000);
 
     tools::network_test(
         network_conf.clone(),

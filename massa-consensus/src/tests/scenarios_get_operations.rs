@@ -10,7 +10,7 @@ use massa_models::{
     Address, Amount, BlockId, Operation, OperationSearchResult, OperationSearchResultStatus, Slot,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -94,7 +94,7 @@ async fn test_get_operation() {
     );
     // there is only one node so it should be drawn at every slot
 
-    cfg.genesis_timestamp = UTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(4).unwrap())
         .saturating_add(300.into());

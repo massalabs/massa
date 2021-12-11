@@ -20,7 +20,7 @@ use massa_network::{BootstrapPeers, NetworkCommand};
 use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
 };
-use massa_time::UTime;
+use massa_time::MassaTime;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::str::FromStr;
 use tokio::io::AsyncReadExt;
@@ -75,7 +75,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSetting
         bind: Some("0.0.0.0:31244".parse().unwrap()),
         connect_timeout: 200.into(),
         retry_delay: 200.into(),
-        max_ping: UTime::from(500),
+        max_ping: MassaTime::from(500),
         read_timeout: 1000.into(),
         write_timeout: 1000.into(),
         bootstrap_list: vec![(SocketAddr::new(BASE_BOOTSTRAP_IP, 16), bootstrap_public_key)],
@@ -95,7 +95,7 @@ pub fn get_keys() -> (PrivateKey, PublicKey) {
 
 pub async fn wait_consensus_command<F, T>(
     consensus_command_receiver: &mut Receiver<ConsensusCommand>,
-    timeout: UTime,
+    timeout: MassaTime,
     filter_map: F,
 ) -> Option<T>
 where
@@ -116,7 +116,7 @@ where
 
 pub async fn wait_network_command<F, T>(
     network_command_receiver: &mut Receiver<NetworkCommand>,
-    timeout: UTime,
+    timeout: MassaTime,
     filter_map: F,
 ) -> Option<T>
 where

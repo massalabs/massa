@@ -800,7 +800,7 @@ impl NetworkWorker {
                                     .active_connections
                                     .iter()
                                     .filter(|(_, (ip_addr, _))| &peer.ip == ip_addr)
-                                    .map(|(out_conn_id, (_, out_going))| {
+                                    .filter_map(|(out_conn_id, (_, out_going))| {
                                         self.active_nodes
                                             .iter()
                                             .filter_map(|(node_id, (conn_id, _))| {
@@ -813,7 +813,6 @@ impl NetworkWorker {
                                             .next()
                                             .map(|node_id| (*node_id, *out_going))
                                     })
-                                    .flatten()
                                     .collect(),
                             },
                         )

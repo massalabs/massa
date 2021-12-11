@@ -4,7 +4,7 @@ use crate::tests::tools::{self, generate_ledger_file};
 use massa_models::ledger::LedgerData;
 use massa_models::{Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -68,7 +68,7 @@ async fn test_get_selection_draws_high_end_slot() {
     cfg.block_reward = Amount::default();
     cfg.roll_price = Amount::from_str("1000").unwrap();
     cfg.operation_validity_periods = 100;
-    cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
+    cfg.genesis_timestamp = MassaTime::now(0).unwrap().saturating_add(300.into());
 
     tools::consensus_without_pool_test(
         cfg.clone(),

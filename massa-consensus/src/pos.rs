@@ -78,21 +78,27 @@ impl RollUpdate {
         self.roll_purchases = self
             .roll_purchases
             .checked_add(change.roll_purchases - compensation_other)
-            .ok_or(ConsensusError::InvalidRollUpdate(
-                "roll_purchases overflow in RollUpdate::chain".into(),
-            ))?;
+            .ok_or_else(|| {
+                ConsensusError::InvalidRollUpdate(
+                    "roll_purchases overflow in RollUpdate::chain".into(),
+                )
+            })?;
         self.roll_sales = self
             .roll_sales
             .checked_add(change.roll_sales - compensation_other)
-            .ok_or(ConsensusError::InvalidRollUpdate(
-                "roll_sales overflow in RollUpdate::chain".into(),
-            ))?;
+            .ok_or_else(|| {
+                ConsensusError::InvalidRollUpdate("roll_sales overflow in RollUpdate::chain".into())
+            })?;
 
         let compensation_self = self.compensate().0;
 
-        let compensation_total = compensation_other.checked_add(compensation_self).ok_or(
-            ConsensusError::InvalidRollUpdate("compensation overflow in RollUpdate::chain".into()),
-        )?;
+        let compensation_total = compensation_other
+            .checked_add(compensation_self)
+            .ok_or_else(|| {
+                ConsensusError::InvalidRollUpdate(
+                    "compensation overflow in RollUpdate::chain".into(),
+                )
+            })?;
         Ok(RollCompensation(compensation_total))
     }
 
@@ -190,6 +196,10 @@ impl RollCounts {
         self.0.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// applies RollUpdates to self with compensations
     pub fn apply_updates(&mut self, updates: &RollUpdates) -> Result<(), ConsensusError> {
         for (addr, update) in updates.0.iter() {
@@ -199,15 +209,19 @@ impl RollCounts {
                     if update.roll_purchases >= update.roll_sales {
                         *occ.get_mut() = cur_val
                             .checked_add(update.roll_purchases - update.roll_sales)
-                            .ok_or(ConsensusError::InvalidRollUpdate(
-                                "overflow while incrementing roll count".into(),
-                            ))?;
+                            .ok_or_else(|| {
+                                ConsensusError::InvalidRollUpdate(
+                                    "overflow while incrementing roll count".into(),
+                                )
+                            })?;
                     } else {
                         *occ.get_mut() = cur_val
                             .checked_sub(update.roll_sales - update.roll_purchases)
-                            .ok_or(ConsensusError::InvalidRollUpdate(
-                                "underflow while decrementing roll count".into(),
-                            ))?;
+                            .ok_or_else(|| {
+                                ConsensusError::InvalidRollUpdate(
+                                    "underflow while decrementing roll count".into(),
+                                )
+                            })?;
                     }
                     if *occ.get() == 0 {
                         // remove if 0

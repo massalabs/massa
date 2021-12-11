@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::fmt::Formatter;
 
@@ -27,8 +27,8 @@ impl std::fmt::Display for NetworkStats {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsensusStats {
-    pub start_timespan: UTime,
-    pub end_timespan: UTime,
+    pub start_timespan: MassaTime,
+    pub end_timespan: MassaTime,
     pub final_block_count: u64,
     pub final_operation_count: u64,
     pub stale_block_count: u64,

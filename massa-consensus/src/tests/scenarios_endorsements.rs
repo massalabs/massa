@@ -5,7 +5,7 @@ use massa_models::{
     Address, Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, sign};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -66,7 +66,7 @@ async fn test_endorsement_check() {
     cfg.block_reward = Amount::default();
     cfg.roll_price = Amount::from_str("1000").unwrap();
     cfg.operation_validity_periods = 100;
-    cfg.genesis_timestamp = UTime::now(0).unwrap().saturating_add(300.into());
+    cfg.genesis_timestamp = MassaTime::now(0).unwrap().saturating_add(300.into());
     cfg.endorsement_count = 1;
 
     tools::consensus_without_pool_test(

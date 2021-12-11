@@ -4,17 +4,9 @@ use crate::{u8_from_slice, Amount, DeserializeCompact, ModelsError, SerializeCom
 use core::usize;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Default, Deserialize, Clone, Copy, Serialize)]
 pub struct LedgerData {
     pub balance: Amount,
-}
-
-impl Default for LedgerData {
-    fn default() -> Self {
-        LedgerData {
-            balance: Amount::default(),
-        }
-    }
 }
 
 /// Checks performed:
@@ -47,17 +39,23 @@ impl LedgerData {
 
     pub fn apply_change(&mut self, change: &LedgerChange) -> Result<(), ModelsError> {
         if change.balance_increment {
-            self.balance = self.balance.checked_add(change.balance_delta).ok_or(
-                ModelsError::InvalidLedgerChange(
-                    "balance overflow in LedgerData::apply_change".into(),
-                ),
-            )?;
+            self.balance = self
+                .balance
+                .checked_add(change.balance_delta)
+                .ok_or_else(|| {
+                    ModelsError::InvalidLedgerChange(
+                        "balance overflow in LedgerData::apply_change".into(),
+                    )
+                })?;
         } else {
-            self.balance = self.balance.checked_sub(change.balance_delta).ok_or(
-                ModelsError::InvalidLedgerChange(
-                    "balance underflow in LedgerData::apply_change".into(),
-                ),
-            )?;
+            self.balance = self
+                .balance
+                .checked_sub(change.balance_delta)
+                .ok_or_else(|| {
+                    ModelsError::InvalidLedgerChange(
+                        "balance overflow in LedgerData::apply_change".into(),
+                    )
+                })?;
         }
         Ok(())
     }
@@ -90,18 +88,27 @@ impl LedgerChange {
     /// Applies another ledger change on top of self
     pub fn chain(&mut self, change: &LedgerChange) -> Result<(), ModelsError> {
         if self.balance_increment == change.balance_increment {
-            self.balance_delta = self.balance_delta.checked_add(change.balance_delta).ok_or(
-                ModelsError::InvalidLedgerChange("overflow in LedgerChange::chain".into()),
-            )?;
+            self.balance_delta = self
+                .balance_delta
+                .checked_add(change.balance_delta)
+                .ok_or_else(|| {
+                    ModelsError::InvalidLedgerChange("overflow in LedgerChange::chain".into())
+                })?;
         } else if change.balance_delta > self.balance_delta {
-            self.balance_delta = change.balance_delta.checked_sub(self.balance_delta).ok_or(
-                ModelsError::InvalidLedgerChange("underflow in LedgerChange::chain".into()),
-            )?;
+            self.balance_delta = change
+                .balance_delta
+                .checked_sub(self.balance_delta)
+                .ok_or_else(|| {
+                    ModelsError::InvalidLedgerChange("underflow in LedgerChange::chain".into())
+                })?;
             self.balance_increment = !self.balance_increment;
         } else {
-            self.balance_delta = self.balance_delta.checked_sub(change.balance_delta).ok_or(
-                ModelsError::InvalidLedgerChange("underflow in LedgerChange::chain".into()),
-            )?;
+            self.balance_delta = self
+                .balance_delta
+                .checked_sub(change.balance_delta)
+                .ok_or_else(|| {
+                    ModelsError::InvalidLedgerChange("underflow in LedgerChange::chain".into())
+                })?;
         }
         if self.balance_delta == Amount::default() {
             self.balance_increment = true;

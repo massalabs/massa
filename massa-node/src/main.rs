@@ -18,7 +18,7 @@ use massa_network::{start_network_controller, Establisher, NetworkCommandSender,
 use massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use massa_protocol_exports::ProtocolManager;
 use massa_protocol_worker::start_protocol_controller;
-use massa_time::UTime;
+use massa_time::MassaTime;
 use std::process;
 use tokio::signal;
 use tokio::sync::mpsc;
@@ -42,7 +42,7 @@ async fn launch() -> (
 ) {
     info!("Node version : {}", *crate::settings::VERSION);
     if let Some(end) = *massa_consensus::settings::END_TIMESTAMP {
-        if UTime::now(0).expect("could not get now time") > end {
+        if MassaTime::now(0).expect("could not get now time") > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
     }

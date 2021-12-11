@@ -13,7 +13,7 @@ use massa_models::{
     Address, Amount, BlockId, Operation, OperationContent, OperationType, SerializeCompact, Version,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, sign};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use std::str::FromStr;
 use std::{
     future::Future,
@@ -81,10 +81,10 @@ pub fn create_network_config(
             .unwrap(),
         routable_ip: Some(BASE_NETWORK_CONTROLLER_IP),
         protocol_port: network_controller_port,
-        connect_timeout: UTime::from(3000),
+        connect_timeout: MassaTime::from(3000),
         peers_file: peers_file_path.to_path_buf(),
         target_out_nonbootstrap_connections: 10,
-        wakeup_interval: UTime::from(3000),
+        wakeup_interval: MassaTime::from(3000),
         target_bootstrap_connections: 0,
         max_out_bootstrap_connection_attempts: 1,
         max_in_nonbootstrap_connections: 100,
@@ -92,12 +92,12 @@ pub fn create_network_config(
         max_out_nonbootstrap_connection_attempts: 100,
         max_idle_peers: 100,
         max_banned_peers: 100,
-        peers_file_dump_interval: UTime::from(30000),
-        message_timeout: UTime::from(5000u64),
-        ask_peer_list_interval: UTime::from(50000u64),
+        peers_file_dump_interval: MassaTime::from(30000),
+        message_timeout: MassaTime::from(5000u64),
+        ask_peer_list_interval: MassaTime::from(50000u64),
         private_key_file: get_temp_private_key_file().path().to_path_buf(),
-        max_send_wait: UTime::from(100),
-        ban_timeout: UTime::from(100_000_000),
+        max_send_wait: MassaTime::from(100),
+        ban_timeout: MassaTime::from(100_000_000),
     }
 }
 
@@ -294,7 +294,7 @@ pub async fn full_connection_from_controller(
 
 pub async fn wait_network_event<F, T>(
     network_event_receiver: &mut NetworkEventReceiver,
-    timeout: UTime,
+    timeout: MassaTime,
     filter_map: F,
 ) -> Option<T>
 where

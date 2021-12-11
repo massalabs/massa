@@ -4,7 +4,7 @@ use massa_models::{Block, BlockHeader, BlockId};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
-use massa_time::UTime;
+use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
 
 const CHANNEL_SIZE: usize = 256;
@@ -29,7 +29,7 @@ impl MockProtocolController {
         )
     }
 
-    pub async fn wait_command<F, T>(&mut self, timeout: UTime, filter_map: F) -> Option<T>
+    pub async fn wait_command<F, T>(&mut self, timeout: MassaTime, filter_map: F) -> Option<T>
     where
         F: Fn(ProtocolCommand) -> Option<T>,
     {

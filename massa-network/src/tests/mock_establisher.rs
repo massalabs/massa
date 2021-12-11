@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use massa_time::UTime;
+use massa_time::MassaTime;
 use std::io;
 use std::net::SocketAddr;
 use tokio::io::DuplexStream;
@@ -66,7 +66,7 @@ impl MockListener {
 #[derive(Debug)]
 pub struct MockConnector {
     connection_connector_tx: mpsc::Sender<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>,
-    timeout_duration: UTime,
+    timeout_duration: MassaTime,
 }
 
 impl MockConnector {
@@ -128,7 +128,7 @@ impl MockEstablisher {
 
     pub async fn get_connector(
         &mut self,
-        timeout_duration: UTime,
+        timeout_duration: MassaTime,
     ) -> std::io::Result<MockConnector> {
         // create connector stream
 

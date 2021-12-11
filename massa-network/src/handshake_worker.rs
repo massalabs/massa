@@ -14,7 +14,7 @@ use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::Version;
 use massa_signature::{sign, verify_signature, PrivateKey};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use tokio::time::timeout;
 
@@ -32,7 +32,7 @@ pub struct HandshakeWorker {
     /// Our private key.
     private_key: PrivateKey,
     /// After timeout_duration millis, the handshake attempt is dropped.
-    timeout_duration: UTime,
+    timeout_duration: MassaTime,
     version: Version,
 }
 
@@ -50,7 +50,7 @@ impl HandshakeWorker {
         socket_writer: WriteHalf,
         self_node_id: NodeId,
         private_key: PrivateKey,
-        timeout_duration: UTime,
+        timeout_duration: MassaTime,
         version: Version,
     ) -> HandshakeWorker {
         HandshakeWorker {
