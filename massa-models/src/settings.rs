@@ -2,7 +2,7 @@
 
 use crate::Amount;
 use massa_hash::HASH_SIZE_BYTES;
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 
 pub const ADDRESS_SIZE_BYTES: usize = HASH_SIZE_BYTES;
@@ -22,13 +22,13 @@ pub const SLOT_KEY_SIZE: usize = 9;
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Config {
     /// Time in millis when the blockclique started.
-    pub genesis_timestamp: UTime,
+    pub genesis_timestamp: MassaTime,
     /// TESTNET: time when the blockclique is ended.
-    pub end_timestamp: Option<UTime>,
+    pub end_timestamp: Option<MassaTime>,
     /// Number of threads
     pub thread_count: u8,
     /// Time between the periods in the same thread.
-    pub t0: UTime,
+    pub t0: MassaTime,
     /// Threshold for fitness.
     pub delta_f0: u64,
     /// Maximum operation validity period count

@@ -4,9 +4,7 @@ use crate::error::ApiError;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
-use massa_consensus::{
-    ConsensusCommandSender, ConsensusConfig, DiscardReason, ExportBlockStatus, Status,
-};
+use massa_consensus::{ConsensusCommandSender, ConsensusConfig, DiscardReason, ExportBlockStatus};
 use massa_models::address::{AddressHashMap, AddressHashSet};
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
@@ -24,7 +22,7 @@ use massa_models::{
 use massa_network::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
 use massa_signature::PrivateKey;
-use massa_time::UTime;
+use massa_time::MassaTime;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
@@ -100,7 +98,7 @@ impl Endpoints for API<Public> {
         let node_id = self.0.node_id;
         let config = consensus_settings.config();
         let closure = async move || {
-            let now = UTime::now(compensation_millis)?;
+            let now = MassaTime::now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
                 consensus_settings.thread_count,
                 consensus_settings.t0,
@@ -122,8 +120,7 @@ impl Endpoints for API<Public> {
                 connected_nodes: peers?
                     .peers
                     .iter()
-                    .map(|(ip, peer)| peer.active_nodes.iter().map(move |(id, _)| (*id, *ip)))
-                    .flatten()
+                    .flat_map(|(ip, peer)| peer.active_nodes.iter().map(move |(id, _)| (*id, *ip)))
                     .collect(),
                 last_slot,
                 next_slot: last_slot
@@ -314,7 +311,7 @@ impl Endpoints for API<Public> {
             for (id, exported_block) in graph.active_blocks.into_iter() {
                 res.push(BlockSummary {
                     id,
-                    is_final: exported_block.status == Status::Final,
+                    is_final: exported_block.is_final,
                     is_stale: false,
                     is_in_blockclique: blockclique.block_ids.contains(&id),
                     slot: exported_block.header.content.slot,
@@ -357,7 +354,7 @@ impl Endpoints for API<Public> {
             let mut res = Vec::with_capacity(addresses.len());
 
             // next draws info
-            let now = UTime::now(compensation_millis)?;
+            let now = MassaTime::now(compensation_millis)?;
             let current_slot = get_latest_block_slot_at_timestamp(
                 cfg.thread_count,
                 cfg.t0,
@@ -442,7 +439,7 @@ impl Endpoints for API<Public> {
                         .collect(),
                     endorsement_draws: next_draws
                         .iter()
-                        .map(|(slot, (_, addrs))| {
+                        .flat_map(|(slot, (_, addrs))| {
                             addrs.iter().enumerate().filter_map(|(index, ad)| {
                                 if *ad == address {
                                     Some(IndexedSlot { slot: *slot, index })
@@ -451,7 +448,6 @@ impl Endpoints for API<Public> {
                                 }
                             })
                         })
-                        .flatten()
                         .collect(),
                     blocks_created: blocks.remove(&address).ok_or(ApiError::NotFound)?,
                     involved_in_endorsements: endorsements

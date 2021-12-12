@@ -9,7 +9,7 @@ use massa_models::ledger::LedgerData;
 use massa_models::{Address, Amount, BlockId, Operation, Slot};
 use massa_pool::PoolCommand;
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -28,7 +28,7 @@ async fn test_update_current_slot_cmd_notification() {
     );
     cfg.t0 = 1000.into();
     cfg.thread_count = 1;
-    cfg.genesis_timestamp = UTime::now(0).unwrap().checked_add(1000.into()).unwrap();
+    cfg.genesis_timestamp = MassaTime::now(0).unwrap().checked_add(1000.into()).unwrap();
 
     let timeout = 150;
 
@@ -42,7 +42,7 @@ async fn test_update_current_slot_cmd_notification() {
                     consensus_event_receiver| {
             let slot_notification_filter = |cmd| match cmd {
                 massa_pool::PoolCommand::UpdateCurrentSlot(slot) => {
-                    Some((slot, UTime::now(0).unwrap()))
+                    Some((slot, MassaTime::now(0).unwrap()))
                 }
                 _ => None,
             };
@@ -54,9 +54,13 @@ async fn test_update_current_slot_cmd_notification() {
             {
                 assert_eq!(slot_cmd, Slot::new(0, 0));
                 if rec_time > cfg.genesis_timestamp {
-                    assert!(rec_time.saturating_sub(cfg.genesis_timestamp) < UTime::from(timeout))
+                    assert!(
+                        rec_time.saturating_sub(cfg.genesis_timestamp) < MassaTime::from(timeout)
+                    )
                 } else {
-                    assert!(cfg.genesis_timestamp.saturating_sub(rec_time) < UTime::from(timeout))
+                    assert!(
+                        cfg.genesis_timestamp.saturating_sub(rec_time) < MassaTime::from(timeout)
+                    )
                 }
             }
 
@@ -69,14 +73,14 @@ async fn test_update_current_slot_cmd_notification() {
                 if rec_time > cfg.genesis_timestamp {
                     assert!(
                         rec_time.saturating_sub(cfg.genesis_timestamp.saturating_add(cfg.t0))
-                            < UTime::from(timeout)
+                            < MassaTime::from(timeout)
                     );
                 } else {
                     assert!(
                         cfg.genesis_timestamp
                             .saturating_add(cfg.t0)
                             .saturating_sub(rec_time)
-                            < UTime::from(timeout)
+                            < MassaTime::from(timeout)
                     );
                 }
             }
@@ -104,7 +108,7 @@ async fn test_update_latest_final_block_cmd_notification() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(100.into()).unwrap();
+    cfg.genesis_timestamp = MassaTime::now(0).unwrap().checked_sub(100.into()).unwrap();
     cfg.delta_f0 = 2;
     cfg.disable_block_creation = false;
 
@@ -167,7 +171,7 @@ async fn test_new_final_ops() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(cfg.t0).unwrap();
+    cfg.genesis_timestamp = MassaTime::now(0).unwrap().checked_sub(cfg.t0).unwrap();
     cfg.delta_f0 = 2;
     cfg.disable_block_creation = true;
 
@@ -282,7 +286,7 @@ async fn test_max_attempts_get_operations() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(cfg.t0).unwrap();
+    cfg.genesis_timestamp = MassaTime::now(0).unwrap().checked_sub(cfg.t0).unwrap();
     cfg.delta_f0 = 2;
     cfg.disable_block_creation = false;
 
@@ -404,7 +408,7 @@ async fn test_max_batch_size_get_operations() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = UTime::now(0).unwrap().checked_sub(cfg.t0).unwrap();
+    cfg.genesis_timestamp = MassaTime::now(0).unwrap().checked_sub(cfg.t0).unwrap();
     cfg.delta_f0 = 2;
     cfg.disable_block_creation = false;
 

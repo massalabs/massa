@@ -13,7 +13,7 @@ use massa_models::{Endorsement, SerializeCompact};
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -74,7 +74,7 @@ async fn test_genesis_block_creation() {
     );
 
     // Set genesis timestamp.
-    cfg.genesis_timestamp = UTime::from_str("1633301290000").unwrap();
+    cfg.genesis_timestamp = MassaTime::from_str("1633301290000").unwrap();
 
     tools::consensus_without_pool_test(
         cfg.clone(),
@@ -155,7 +155,7 @@ async fn test_block_creation_with_draw() {
     cfg.pos_lookback_cycles = 2;
     cfg.thread_count = thread_count;
     cfg.delta_f0 = 3;
-    cfg.genesis_timestamp = UTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now(0)
         .unwrap()
         .checked_sub((cfg.t0.to_millis() * cfg.periods_per_cycle * 3).into())
         .unwrap()
@@ -318,7 +318,7 @@ async fn test_interleaving_block_creation_with_reception() {
     );
     cfg.t0 = 1000.into();
     cfg.thread_count = thread_count;
-    cfg.genesis_timestamp = UTime::now(0).unwrap().checked_add(1000.into()).unwrap();
+    cfg.genesis_timestamp = MassaTime::now(0).unwrap().checked_add(1000.into()).unwrap();
     cfg.disable_block_creation = false;
 
     tools::consensus_without_pool_test(
@@ -464,7 +464,7 @@ async fn test_order_of_inclusion() {
     cfg.operation_batch_size = 3;
     cfg.max_operations_per_block = 50;
     // Increase timestamp a bit to avoid missing the first slot.
-    cfg.genesis_timestamp = UTime::now(0).unwrap().checked_add(1000.into()).unwrap();
+    cfg.genesis_timestamp = MassaTime::now(0).unwrap().checked_add(1000.into()).unwrap();
 
     let op1 = create_transaction(priv_a, pubkey_a, address_b, 5, 10, 1);
     let op2 = create_transaction(priv_a, pubkey_a, address_b, 50, 10, 10);

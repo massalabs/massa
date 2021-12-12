@@ -551,7 +551,7 @@ pub struct ExportCompiledBlock {
     /// in thread i.
     pub children: Vec<BlockHashSet>,
     /// Active or final
-    pub status: Status,
+    pub is_final: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -617,11 +617,7 @@ impl<'a> BlockGraphExport {
                                     .iter()
                                     .map(|thread| thread.keys().copied().collect::<BlockHashSet>())
                                     .collect(),
-                                status: if a_block.is_final {
-                                    Status::Final
-                                } else {
-                                    Status::Active
-                                },
+                                is_final: a_block.is_final,
                             },
                         );
                     }

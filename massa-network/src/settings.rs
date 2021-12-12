@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::{IpAddr, SocketAddr};
 
@@ -45,10 +45,10 @@ pub struct NetworkSettings {
     pub protocol_port: u16,
     /// Time interval spent waiting for a response from a peer.
     /// In millis
-    pub connect_timeout: UTime,
+    pub connect_timeout: MassaTime,
     /// Network_worker will try to connect to available peers every wakeup_interval.
     /// In millis
-    pub wakeup_interval: UTime,
+    pub wakeup_interval: MassaTime,
     /// Path to the file containing known peers.
     pub peers_file: std::path::PathBuf,
     /// Path to the file containing our private_key
@@ -70,21 +70,21 @@ pub struct NetworkSettings {
     /// Limit on the number of banned peers we remember.
     pub max_banned_peers: usize,
     /// Peer database is dumped every peers_file_dump_interval in millis
-    pub peers_file_dump_interval: UTime,
+    pub peers_file_dump_interval: MassaTime,
     /// After message_timeout millis we are no longer waiting on handshake message
-    pub message_timeout: UTime,
+    pub message_timeout: MassaTime,
     /// Every ask_peer_list_interval in millis we ask every one for its advertisable peers list.
-    pub ask_peer_list_interval: UTime,
+    pub ask_peer_list_interval: MassaTime,
     /// Max wait time for sending a Network or Node event.
-    pub max_send_wait: UTime,
+    pub max_send_wait: MassaTime,
     /// Time after which we forget a node
-    pub ban_timeout: UTime,
+    pub ban_timeout: MassaTime,
 }
 
 #[cfg(test)]
 mod tests {
     use crate::NetworkSettings;
-    use massa_time::UTime;
+    use massa_time::MassaTime;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
     impl Default for NetworkSettings {
@@ -93,8 +93,8 @@ mod tests {
                 bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
                 routable_ip: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
                 protocol_port: 0,
-                connect_timeout: UTime::from(180_000),
-                wakeup_interval: UTime::from(10_000),
+                connect_timeout: MassaTime::from(180_000),
+                wakeup_interval: MassaTime::from(10_000),
                 peers_file: std::path::PathBuf::new(),
                 target_bootstrap_connections: 1,
                 max_out_bootstrap_connection_attempts: 1,
@@ -104,12 +104,12 @@ mod tests {
                 max_out_nonbootstrap_connection_attempts: 15,
                 max_idle_peers: 3,
                 max_banned_peers: 3,
-                peers_file_dump_interval: UTime::from(10_000),
-                message_timeout: UTime::from(5000u64),
-                ask_peer_list_interval: UTime::from(50000u64),
+                peers_file_dump_interval: MassaTime::from(10_000),
+                message_timeout: MassaTime::from(5000u64),
+                ask_peer_list_interval: MassaTime::from(50000u64),
                 private_key_file: std::path::PathBuf::new(),
-                max_send_wait: UTime::from(100),
-                ban_timeout: UTime::from(100_000_000),
+                max_send_wait: MassaTime::from(100),
+                ban_timeout: MassaTime::from(100_000_000),
             }
         }
     }

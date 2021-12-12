@@ -5,7 +5,7 @@ use massa_models::{
     DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Version,
 };
 use massa_network::BootstrapPeers;
-use massa_time::UTime;
+use massa_time::MassaTime;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -16,7 +16,7 @@ pub enum BootstrapMessage {
     /// Sync clocks,
     BootstrapTime {
         /// The current time on the bootstrap server.
-        server_time: UTime,
+        server_time: MassaTime,
         version: Version,
     },
     /// Sync clocks,
@@ -80,7 +80,7 @@ impl DeserializeCompact for BootstrapMessage {
 
         let res = match type_id {
             MessageTypeId::BootstrapTime => {
-                let (server_time, delta) = UTime::from_bytes_compact(&buffer[cursor..])?;
+                let (server_time, delta) = MassaTime::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
                 let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;

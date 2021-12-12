@@ -4,7 +4,7 @@ use massa_models::{Amount, Config};
 #[allow(unused_imports)]
 use massa_signature::generate_random_private_key;
 use massa_signature::PrivateKey;
-use massa_time::UTime;
+use massa_time::MassaTime;
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
 #[allow(unused_imports)]
@@ -16,13 +16,13 @@ pub const CHANNEL_SIZE: usize = 256;
 #[cfg(not(test))]
 lazy_static::lazy_static! {
     /// Time in millis when the blockclique started.
-    pub static ref GENESIS_TIMESTAMP: UTime = 1638460800000.into();
+    pub static ref GENESIS_TIMESTAMP: MassaTime = 1638460800000.into();
 
     /// TESTNET: time when the blockclique is ended.
-    pub static ref END_TIMESTAMP: Option<UTime> = Some(1640883600000.into());
+    pub static ref END_TIMESTAMP: Option<MassaTime> = Some(1640883600000.into());
 
     /// Time between the periods in the same thread.
-    pub static ref T0: UTime = 16000.into();
+    pub static ref T0: MassaTime = 16000.into();
 
     /// Private_key to sign genesis blocks.
     pub static ref GENESIS_KEY: PrivateKey = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
@@ -42,13 +42,13 @@ lazy_static::lazy_static! {
 #[cfg(test)]
 lazy_static::lazy_static! {
     /// Time in millis when the blockclique started.
-    pub static ref GENESIS_TIMESTAMP: UTime = UTime::now(0).unwrap();
+    pub static ref GENESIS_TIMESTAMP: MassaTime = MassaTime::now(0).unwrap();
 
     /// TESTNET: time when the blockclique is ended.
-    pub static ref END_TIMESTAMP: Option<UTime> = None;
+    pub static ref END_TIMESTAMP: Option<MassaTime> = None;
 
     /// Time between the periods in the same thread.
-    pub static ref T0: UTime = 32000.into();
+    pub static ref T0: MassaTime = 32000.into();
 
     /// Private_key to sign genesis blocks.
     pub static ref GENESIS_KEY: PrivateKey = generate_random_private_key();
@@ -139,18 +139,18 @@ pub struct ConsensusSettings {
     /// path to ledger db
     pub ledger_path: PathBuf,
     pub ledger_cache_capacity: u64,
-    pub ledger_flush_interval: Option<UTime>,
+    pub ledger_flush_interval: Option<MassaTime>,
     pub ledger_reset_at_startup: bool,
     pub initial_ledger_path: PathBuf,
     pub operation_batch_size: usize,
     pub initial_rolls_path: PathBuf,
     // stats timespan
-    pub stats_timespan: UTime,
+    pub stats_timespan: MassaTime,
     // max event send wait
-    pub max_send_wait: UTime,
+    pub max_send_wait: MassaTime,
     // force keep at least this number of final periods in RAM for each thread
     pub force_keep_final_periods: u64,
-    pub block_db_prune_interval: UTime,
+    pub block_db_prune_interval: MassaTime,
     pub max_item_return_count: usize,
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.
@@ -207,13 +207,13 @@ impl ConsensusSettings {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ConsensusConfig {
     /// Time in millis when the blockclique started.
-    pub genesis_timestamp: UTime,
+    pub genesis_timestamp: MassaTime,
     /// TESTNET: time when the blockclique is ended.
-    pub end_timestamp: Option<UTime>,
+    pub end_timestamp: Option<MassaTime>,
     /// Number of threads
     pub thread_count: u8,
     /// Time between the periods in the same thread.
-    pub t0: UTime,
+    pub t0: MassaTime,
     /// Private_key to sign genesis blocks.
     pub genesis_key: PrivateKey,
     /// Staking private keys
@@ -249,7 +249,7 @@ pub struct ConsensusConfig {
     /// path to ledger db
     pub ledger_path: PathBuf,
     pub ledger_cache_capacity: u64,
-    pub ledger_flush_interval: Option<UTime>,
+    pub ledger_flush_interval: Option<MassaTime>,
     pub ledger_reset_at_startup: bool,
     pub initial_ledger_path: PathBuf,
     pub block_reward: Amount,
@@ -258,13 +258,13 @@ pub struct ConsensusConfig {
     pub initial_draw_seed: String,
     pub roll_price: Amount,
     /// stats timespan
-    pub stats_timespan: UTime,
+    pub stats_timespan: MassaTime,
     /// max event send wait
-    pub max_send_wait: UTime,
+    pub max_send_wait: MassaTime,
     /// force keep at least this number of final periods in RAM for each thread
     pub force_keep_final_periods: u64,
     pub endorsement_count: u32,
-    pub block_db_prune_interval: UTime,
+    pub block_db_prune_interval: MassaTime,
     pub max_item_return_count: usize,
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.

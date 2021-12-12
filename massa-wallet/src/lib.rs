@@ -9,7 +9,7 @@ use massa_models::Operation;
 use massa_models::OperationContent;
 use massa_models::SerializeCompact;
 use massa_signature::{derive_public_key, sign, PrivateKey, PublicKey};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -143,9 +143,9 @@ impl std::fmt::Display for Wallet {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ConsensusConfigData {
-    pub t0: UTime,
+    pub t0: MassaTime,
     pub thread_count: u8,
-    pub genesis_timestamp: UTime,
+    pub genesis_timestamp: MassaTime,
     pub delta_f0: u64,
     pub max_block_size: u32,
     pub operation_validity_periods: u64,

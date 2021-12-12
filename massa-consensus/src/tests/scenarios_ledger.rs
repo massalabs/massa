@@ -15,7 +15,7 @@ use massa_models::ledger::LedgerChange;
 use massa_models::ledger::LedgerData;
 use massa_models::{Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -645,7 +645,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = UTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now(0)
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(10).unwrap());
     cfg.delta_f0 = 4;

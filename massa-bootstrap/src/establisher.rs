@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 #[cfg(not(test))]
-use massa_time::UTime;
+use massa_time::MassaTime;
 #[cfg(not(test))]
 use std::{io, net::SocketAddr};
 #[cfg(not(test))]
@@ -45,7 +45,7 @@ impl DefaultListener {
 /// Initiates a connection with given timeout in millis
 #[cfg(not(test))]
 #[derive(Debug)]
-pub struct DefaultConnector(UTime);
+pub struct DefaultConnector(MassaTime);
 
 #[cfg(not(test))]
 impl DefaultConnector {
@@ -86,7 +86,10 @@ impl DefaultEstablisher {
     ///
     /// # Argument
     /// * timeout_duration: timeout duration in millis
-    pub async fn get_connector(&mut self, timeout_duration: UTime) -> io::Result<DefaultConnector> {
+    pub async fn get_connector(
+        &mut self,
+        timeout_duration: MassaTime,
+    ) -> io::Result<DefaultConnector> {
         Ok(DefaultConnector(timeout_duration))
     }
 }

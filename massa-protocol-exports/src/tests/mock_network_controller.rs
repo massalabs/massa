@@ -3,7 +3,7 @@
 use massa_models::node::NodeId;
 use massa_models::{Block, BlockHeader, BlockId, Endorsement, Operation};
 use massa_network::{NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
 
 const CHANNEL_SIZE: usize = 256;
@@ -28,7 +28,7 @@ impl MockNetworkController {
         )
     }
 
-    pub async fn wait_command<F, T>(&mut self, timeout: UTime, filter_map: F) -> Option<T>
+    pub async fn wait_command<F, T>(&mut self, timeout: MassaTime, filter_map: F) -> Option<T>
     where
         F: Fn(NetworkCommand) -> Option<T>,
     {

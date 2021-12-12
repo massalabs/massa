@@ -16,7 +16,7 @@ use massa_consensus::{ConsensusCommand, ConsensusCommandSender};
 use massa_models::Version;
 use massa_network::{NetworkCommand, NetworkCommandSender};
 use massa_signature::PrivateKey;
-use massa_time::UTime;
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::str::FromStr;
 use tokio::sync::mpsc;
@@ -58,7 +58,7 @@ async fn test_bootstrap_server() {
             bootstrap_settings,
             remote_establisher,
             Version::from_str("TEST.1.2").unwrap(),
-            UTime::now(0).unwrap().saturating_sub(1000.into()),
+            MassaTime::now(0).unwrap().saturating_sub(1000.into()),
             None,
         )
         .await
