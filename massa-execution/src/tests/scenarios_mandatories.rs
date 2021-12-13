@@ -12,27 +12,21 @@ async fn test_execution_basic() {
 #[tokio::test]
 #[serial]
 async fn test_execution_shutdown() {
-    let (_command_sender, event_receiver, manager) = start_controller(ExecutionConfig {}, 2)
+    let (_command_sender, _event_receiver, manager) = start_controller(ExecutionConfig {}, 2)
         .await
         .expect("Failed to start execution.");
-    manager
-        .stop(event_receiver)
-        .await
-        .expect("Failed to stop execution.");
+    manager.stop().await.expect("Failed to stop execution.");
 }
 
 #[tokio::test]
 #[serial]
 async fn test_sending_command() {
-    let (mut command_sender, event_receiver, manager) = start_controller(ExecutionConfig {}, 2)
+    let (mut command_sender, _event_receiver, manager) = start_controller(ExecutionConfig {}, 2)
         .await
         .expect("Failed to start execution.");
     command_sender
         .update_blockclique(Default::default(), Default::default())
         .await
         .expect("Failed to send command");
-    manager
-        .stop(event_receiver)
-        .await
-        .expect("Failed to stop execution.");
+    manager.stop().await.expect("Failed to stop execution.");
 }

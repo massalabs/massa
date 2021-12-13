@@ -234,14 +234,14 @@ async fn stop(
     api_private_handle.stop();
 
     // stop consensus controller
-    let (protocol_event_receiver, execution_event_receiver) = consensus_manager
+    let (protocol_event_receiver, _execution_event_receiver) = consensus_manager
         .stop(consensus_event_receiver)
         .await
         .expect("consensus shutdown failed");
 
     // Stop execution controller.
     execution_manager
-        .stop(execution_event_receiver)
+        .stop()
         .await
         .expect("Failed to shutdown execution.");
 

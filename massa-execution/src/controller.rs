@@ -7,6 +7,7 @@ use massa_models::{Block, BlockHashMap};
 use std::collections::VecDeque;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
+use tracing::{error, info};
 
 /// A sender of execution commands.
 #[derive(Clone)]
@@ -35,16 +36,15 @@ pub struct ExecutionManager {
 }
 
 impl ExecutionManager {
-    pub async fn stop(
-        self,
-        execution_event_receiver: ExecutionEventReceiver,
-    ) -> Result<(), ExecutionError> {
+    pub async fn stop(self) -> Result<(), ExecutionError> {
         drop(self.manager_tx);
-        execution_event_receiver.drain().await;
-        match self.join_handle.await {
-            Err(_) => Err(ExecutionError::JoinError),
-            _ => Ok(()),
-        }
+        if let Err(err) = self.join_handle.await {
+            error!("execution worker crashed: {}", err);
+            return Err(ExecutionError::JoinError);
+        };
+
+        info!("execution worker finished cleanly");
+        Ok(())
     }
 }
 
@@ -72,16 +72,13 @@ pub async fn start_controller(
 
     // Unbounded, as execution is limited per metering already.
     let (event_tx, event_rx) = mpsc::unbounded_channel::<ExecutionEvent>();
-
-    let mut worker = ExecutionWorker::new(cfg, thread_count, event_tx, command_rx, manager_rx)?;
-
+    let worker = ExecutionWorker::new(cfg, thread_count, event_tx, command_rx, manager_rx)?;
     let join_handle = tokio::spawn(async move {
         match worker.run_loop().await {
             Err(err) => Err(err),
             Ok(v) => Ok(v),
         }
     });
-
     Ok((
         ExecutionCommandSender(command_tx),
         ExecutionEventReceiver(event_rx),
