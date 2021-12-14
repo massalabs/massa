@@ -240,10 +240,9 @@ impl OperationPool {
             .final_operations
             .iter()
             .filter(|(_, (exp, thread))| *exp <= self.last_final_periods[*thread as usize])
-            .map(|(id, _)| *id)
-            .collect::<Vec<_>>();
+            .map(|(id, _)| *id);
 
-        for id in ids.into_iter() {
+        for id in ids.collect::<Vec<_>>() {
             self.final_operations.remove(&id);
         }
 

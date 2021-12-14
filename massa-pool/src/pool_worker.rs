@@ -142,7 +142,7 @@ impl PoolWorker {
                     match evt {
                         Ok(event) => {
                             self.process_protocol_pool_event(event).await?},
-                        Err(err) => return Err(PoolError::ProtocolError(err))
+                        Err(err) => return Err(PoolError::ProtocolError(Box::new(err)))
                     }
                 },
             }

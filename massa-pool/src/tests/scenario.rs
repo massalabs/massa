@@ -74,12 +74,11 @@ async fn test_pool() {
                     .await
                     .unwrap();
 
-                match protocol_controller
+                if let Some(cmd) = protocol_controller
                     .wait_command(250.into(), op_filter)
                     .await
                 {
-                    Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
-                    None => {} // no propagation
+                    panic!("unexpected protocol command {:?}", cmd)
                 };
 
                 thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
@@ -162,12 +161,11 @@ async fn test_pool() {
 
                 pool_command_sender.add_operations(ops).await.unwrap();
 
-                match protocol_controller
+                if let Some(cmd) = protocol_controller
                     .wait_command(250.into(), op_filter)
                     .await
                 {
-                    Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
-                    None => {} // no propagation
+                    panic!("unexpected protocol command {:?}", cmd)
                 };
                 let res = pool_command_sender
                     .get_operation_batch(
@@ -231,12 +229,11 @@ async fn test_pool_with_protocol_events() {
                 // duplicate
                 protocol_controller.received_operations(ops.clone()).await;
 
-                match protocol_controller
+                if let Some(cmd) = protocol_controller
                     .wait_command(250.into(), op_filter)
                     .await
                 {
-                    Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
-                    None => {} // no propagation
+                    panic!("unexpected protocol command {:?}", cmd)
                 };
 
                 thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
@@ -289,12 +286,11 @@ async fn test_pool_propagate_newly_added_endorsements() {
                 .received_endorsements(endorsements)
                 .await;
 
-            match protocol_controller
+            if let Some(cmd) = protocol_controller
                 .wait_command(250.into(), op_filter)
                 .await
             {
-                Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
-                None => {} // no propagation
+                panic!("unexpected protocol command {:?}", cmd)
             };
 
             let res = pool_command_sender
@@ -343,12 +339,11 @@ async fn test_pool_add_old_endorsements() {
                 .received_endorsements(endorsements.clone())
                 .await;
 
-            match protocol_controller
+            if let Some(cmd) = protocol_controller
                 .wait_command(250.into(), op_filter)
                 .await
             {
-                Some(cmd) => panic!("unexpected protocol command {:?}", cmd),
-                None => {} // no propagation: endorsement is too old compared to final periods
+                panic!("unexpected protocol command {:?}", cmd)
             };
 
             (protocol_controller, pool_command_sender, pool_manager)
