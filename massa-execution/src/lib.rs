@@ -1,7 +1,6 @@
 mod config;
 mod controller;
 mod error;
-mod interface_impl;
 mod sce_ledger;
 mod types;
 mod vm;
