@@ -3,9 +3,10 @@ use crate::error::ExecutionError;
 use crate::worker::{
     ExecutionCommand, ExecutionEvent, ExecutionManagementCommand, ExecutionWorker,
 };
+use crate::BootstrapExecutionState;
 use massa_models::{Block, BlockHashMap};
 use std::collections::VecDeque;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tracing::{error, info};
 
@@ -59,6 +60,7 @@ impl ExecutionManager {
 pub async fn start_controller(
     cfg: ExecutionConfig,
     thread_count: u8,
+    bootstrap_state: Option<BootstrapExecutionState>,
 ) -> Result<
     (
         ExecutionCommandSender,
@@ -72,7 +74,14 @@ pub async fn start_controller(
 
     // Unbounded, as execution is limited per metering already.
     let (event_tx, event_rx) = mpsc::unbounded_channel::<ExecutionEvent>();
-    let worker = ExecutionWorker::new(cfg, thread_count, event_tx, command_rx, manager_rx)?;
+    let worker = ExecutionWorker::new(
+        cfg,
+        thread_count,
+        event_tx,
+        command_rx,
+        manager_rx,
+        bootstrap_state,
+    )?;
     let join_handle = tokio::spawn(async move {
         match worker.run_loop().await {
             Err(err) => Err(err),
@@ -92,7 +101,7 @@ pub async fn start_controller(
 impl ExecutionCommandSender {
     /// notify of a blockclique change
     pub async fn update_blockclique(
-        &mut self,
+        &self,
         finalized_blocks: BlockHashMap<Block>,
         blockclique: BlockHashMap<Block>,
     ) -> Result<(), ExecutionError> {
@@ -108,5 +117,18 @@ impl ExecutionCommandSender {
                 )
             })?;
         Ok(())
+    }
+
+    pub async fn get_bootstrap_state(&self) -> Result<BootstrapExecutionState, ExecutionError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(ExecutionCommand::GetBootstrapState(response_tx))
+            .await
+            .map_err(|_| {
+                ExecutionError::ChannelError("could not send GetBootstrapState command".into())
+            })?;
+        Ok(response_rx.await.map_err(|_| {
+            ExecutionError::ChannelError("could not send GetBootstrapState upstream".into())
+        })?)
     }
 }

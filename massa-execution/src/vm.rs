@@ -10,8 +10,9 @@ use crate::ExecutionConfig;
 
 lazy_static::lazy_static! {
     pub(crate) static ref CONTEXT: Arc<Mutex::<ExecutionContext>> = {
-        let ledger = SCELedger::default(); // TODO Bootstrap
-        Arc::new(Mutex::new(ExecutionContext::new(ledger)))
+        let ledger = SCELedger::default();  // will be bootstrapped later
+        let ledger_at_slot = Slot::new(0, 0); // will be bootstrapped later
+        Arc::new(Mutex::new(ExecutionContext::new(ledger, ledger_at_slot)))
     };
 }
 
@@ -21,11 +22,33 @@ pub struct VM {
 }
 
 impl VM {
-    pub fn new(_cfg: ExecutionConfig) -> VM {
+    pub fn new(cfg: ExecutionConfig, ledger_bootstrap: Option<(SCELedger, Slot)>) -> VM {
+        // bootstrap ledger
+        if let Some((ledger_bootstrap, ledger_slot)) = ledger_bootstrap {
+            // bootstrap from snapshot
+            let context = CONTEXT.lock().unwrap();
+            let mut final_ledger_guard = context.ledger_step.final_ledger_slot.lock().unwrap();
+            *final_ledger_guard = (ledger_bootstrap, ledger_slot);
+        } else {
+            // TODO load initial SCE ledger from file
+        }
+
         VM {
-            _cfg,
+            _cfg: cfg,
             step_history: Default::default(),
         }
+    }
+
+    // clone bootstrap state (final ledger and slot)
+    pub fn get_bootstrap_state(&self) -> (SCELedger, Slot) {
+        CONTEXT
+            .lock()
+            .unwrap()
+            .ledger_step
+            .final_ledger_slot
+            .lock()
+            .unwrap()
+            .clone()
     }
 
     /// runs an SCE-final execution step
@@ -35,8 +58,9 @@ impl VM {
         if let Some(cached) = self.is_already_done(step) {
             // execution was already done, apply cached ledger changes to final ledger
             let context = CONTEXT.lock().unwrap();
-            let mut final_ledger_guard = context.ledger_step.final_ledger.lock().unwrap();
-            (*final_ledger_guard).apply_changes(&cached);
+            let mut final_ledger_guard = context.ledger_step.final_ledger_slot.lock().unwrap();
+            final_ledger_guard.0.apply_changes(&cached);
+            final_ledger_guard.1 = step.slot;
             return;
         }
         // nothing found in cache, or cache mismatch: reset history, run step and make it final
@@ -48,8 +72,8 @@ impl VM {
             // execution was already done, apply cached ledger changes to final ledger
             // It should always happen
             let context = CONTEXT.lock().unwrap();
-            let mut final_ledger_guard = context.ledger_step.final_ledger.lock().unwrap();
-            (*final_ledger_guard).apply_changes(&cached);
+            let mut final_ledger_guard = context.ledger_step.final_ledger_slot.lock().unwrap();
+            final_ledger_guard.0.apply_changes(&cached);
         }
     }
 

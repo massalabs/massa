@@ -245,6 +245,24 @@ impl ConsensusWorker {
             .t0
             .checked_mul(cfg.periods_per_cycle * (cfg.pos_lookback_cycles + 1))?;
 
+        // notify execution module of current blockclique and final blocks
+        // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
+        // because the two modules run concurrently and out of sync
+        execution_command_sender
+            .update_blockclique(
+                block_db.clone_all_final_blocks(),
+                block_db
+                    .get_blockclique()
+                    .into_iter()
+                    .filter_map(|block_id| {
+                        block_db
+                            .get_active_block(&block_id)
+                            .map(|a_block| (block_id, a_block.block.clone()))
+                    })
+                    .collect(),
+            )
+            .await?;
+
         Ok(ConsensusWorker {
             genesis_public_key,
             protocol_command_sender,

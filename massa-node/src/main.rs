@@ -74,7 +74,7 @@ async fn launch() -> (
     // interrupt signal listener
     let stop_signal = signal::ctrl_c();
     tokio::pin!(stop_signal);
-    let (boot_pos, boot_graph, clock_compensation, initial_peers) = tokio::select! {
+    let (boot_pos, boot_graph, clock_compensation, initial_peers, execution_state) = tokio::select! {
         _ = &mut stop_signal => {
             info!("interrupt signal received in bootstrap loop");
             process::exit(0);
@@ -130,14 +130,15 @@ async fn launch() -> (
     .await
     .expect("could not start pool controller");
 
-    // Launch execution controller.
+    // launch execution controller
     let (execution_command_sender, execution_event_receiver, execution_manager) =
         massa_execution::start_controller(
             massa_execution::ExecutionConfig::default(),
             massa_consensus::settings::THREAD_COUNT,
+            execution_state,
         )
         .await
-        .expect("Could not start execution controller.");
+        .expect("could not start execution controller");
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =

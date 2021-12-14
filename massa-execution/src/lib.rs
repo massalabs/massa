@@ -1,3 +1,4 @@
+mod bootstrap_state;
 mod config;
 mod controller;
 mod error;
@@ -7,8 +8,8 @@ mod types;
 mod vm;
 mod worker;
 
+pub use bootstrap_state::BootstrapExecutionState;
 pub use config::ExecutionConfig;
-
 pub use controller::{
     start_controller, ExecutionCommandSender, ExecutionEventReceiver, ExecutionManager,
 };
