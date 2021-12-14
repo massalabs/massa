@@ -4,24 +4,25 @@ use massa_models::{Address, BlockId, Slot};
 use tracing::debug;
 
 use crate::sce_ledger::{SCELedger, SCELedgerChanges};
-use crate::types::{ExecutionContext, ExecutionStep, OperationSC, StepHistory};
+use crate::types::{
+    self, ExecutionContext, ExecutionStep, Interface, InterfaceImpl, OperationSC, StepHistory,
+};
 use crate::ExecutionConfig;
-use assembly_simulator::Interface;
 
 pub struct VM {
     _cfg: ExecutionConfig,
     step_history: StepHistory,
     context: Arc<Mutex<ExecutionContext>>,
-    interface: Interface,
+    interface: Box<dyn Interface>,
 }
 
 impl VM {
     pub fn new(_cfg: ExecutionConfig) -> VM {
         let ledger = SCELedger::default(); // TODO Bootstrap
         let context = Arc::new(Mutex::new(ExecutionContext::new(ledger)));
-        let interface = Interface {
-            ..Default::default()
-        };
+        let interface = Box::new(InterfaceImpl {
+            context: Arc::clone(&context),
+        });
         VM {
             _cfg,
             step_history: Default::default(),
@@ -161,8 +162,7 @@ impl VM {
                 let ledger_changes_backup =
                     self.prepare_context(operation, block_creator_addr, *block_id, step.slot);
 
-                let run_result =
-                    assembly_simulator::run(&operation._module, operation.max_gas, &self.interface);
+                let run_result = types::run(&operation._module, operation.max_gas, &self.interface);
                 if let Err(err) = run_result {
                     debug!(
                         "failed running bytecode in operation index {} in block {}: {}",
