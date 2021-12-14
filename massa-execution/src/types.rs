@@ -40,13 +40,11 @@ pub(crate) struct ExecutionStep {
 }
 
 impl ExecutionContext {
-    pub fn new(ledger: SCELedger) -> Self {
-        let final_ledger = Arc::new(Mutex::new(
-            ledger, // TODO bootstrap
-        ));
+    pub fn new(ledger: SCELedger, ledger_at_slot: Slot) -> Self {
+        let final_ledger_slot = Arc::new(Mutex::new((ledger, ledger_at_slot)));
         ExecutionContext {
             ledger_step: SCELedgerStep {
-                final_ledger,
+                final_ledger_slot,
                 cumulative_history_changes: Default::default(),
                 caused_changes: Default::default(),
             },

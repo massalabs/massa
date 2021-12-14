@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use massa_consensus::{BootstrapableGraph, ExportProofOfStake};
+use massa_execution::BootstrapExecutionState;
 use massa_models::{
     DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Version,
 };
@@ -13,23 +14,28 @@ use std::convert::TryInto;
 /// Messages used during bootstrap
 #[derive(Debug, Serialize, Deserialize)]
 pub enum BootstrapMessage {
-    /// Sync clocks,
+    /// Sync clocks
     BootstrapTime {
         /// The current time on the bootstrap server.
         server_time: MassaTime,
         version: Version,
     },
-    /// Sync clocks,
+    /// Bootstrap peers
     BootstrapPeers {
         /// Server peers
         peers: BootstrapPeers,
     },
-    /// Global consensus state
+    /// Consensus state
     ConsensusState {
         /// PoS
         pos: ExportProofOfStake,
         /// block graph
         graph: BootstrapableGraph,
+    },
+    /// Execution state
+    ExecutionState {
+        /// execution state
+        execution_state: ExecutionBootstrapState,
     },
 }
 
@@ -39,6 +45,7 @@ enum MessageTypeId {
     BootstrapTime = 0u32,
     Peers = 1u32,
     ConsensusState = 2u32,
+    ExecutionState = 3u32,
 }
 
 impl SerializeCompact for BootstrapMessage {
@@ -61,6 +68,10 @@ impl SerializeCompact for BootstrapMessage {
                 res.extend(u32::from(MessageTypeId::ConsensusState).to_varint_bytes());
                 res.extend(&pos.to_bytes_compact()?);
                 res.extend(&graph.to_bytes_compact()?);
+            }
+            BootstrapMessage::ExecutionState { execution_state } => {
+                res.extend(u32::from(MessageTypeId::ExecutionState).to_varint_bytes());
+                res.extend(&execution_state.to_bytes_compact()?);
             }
         }
         Ok(res)
@@ -103,6 +114,13 @@ impl DeserializeCompact for BootstrapMessage {
                 cursor += delta;
 
                 BootstrapMessage::ConsensusState { pos, graph }
+            }
+            MessageTypeId::ExecutionState => {
+                let (execution_state, delta) =
+                    ExecutionBootstrapState::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+
+                BootstrapMessage::ExecutionState { execution_state }
             }
         };
         Ok((res, cursor))

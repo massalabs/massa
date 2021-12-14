@@ -1,12 +1,14 @@
+use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 
 use crate::error::ExecutionError;
 use crate::types::{ExecutionQueue, ExecutionRequest};
 use crate::vm::VM;
+use crate::BootstrapExecutionState;
 use crate::{config::ExecutionConfig, types::ExecutionStep};
 use massa_models::{Block, BlockHashMap, BlockId, Slot};
 use tokio::sync::mpsc;
-use tracing::debug;
+use tracing::{debug, warn};
 
 /// Commands sent to the `execution` component.
 #[derive(Debug)]
@@ -18,6 +20,9 @@ pub enum ExecutionCommand {
         blockclique: BlockHashMap<Block>,
         finalized_blocks: BlockHashMap<Block>,
     },
+
+    /// Get a snapshot of the current state for bootstrap
+    GetBootstrapState(tokio::sync::oneshot::Sender<BootstrapExecutionState>),
 }
 
 // Events produced by the execution component.
@@ -33,6 +38,8 @@ pub enum ExecutionManagementCommand {}
 pub struct ExecutionWorker {
     /// Configuration
     _cfg: ExecutionConfig,
+    /// VM
+    vm: Arc<Mutex<VM>>,
     /// Thread count
     thread_count: u8,
     /// Receiver of commands.
@@ -48,7 +55,7 @@ pub struct ExecutionWorker {
     ordered_active_blocks: Vec<(BlockId, Block)>,
     /// pending CSS final blocks
     ordered_pending_css_final_blocks: Vec<(BlockId, Block)>,
-    /// VM
+    /// VM thread
     vm_thread: JoinHandle<()>,
     /// VM execution requests queue
     execution_queue: ExecutionQueue,
@@ -61,22 +68,46 @@ impl ExecutionWorker {
         event_sender: mpsc::UnboundedSender<ExecutionEvent>,
         controller_command_rx: mpsc::Receiver<ExecutionCommand>,
         controller_manager_rx: mpsc::Receiver<ExecutionManagementCommand>,
+        bootstrap_state: Option<BootstrapExecutionState>,
     ) -> Result<ExecutionWorker, ExecutionError> {
         let execution_queue = ExecutionQueue::default();
         let execution_queue_clone = execution_queue.clone();
         let cfg_clone = cfg.clone();
-        // Start vm thread
+
+        // Check bootstrap
+        let bootstrap_final_slot;
+        let bootstrap_ledger;
+        if let Some(bootstrap_state) = bootstrap_state {
+            // init from bootstrap
+            bootstrap_final_slot = bootstrap_state.final_slot;
+            bootstrap_ledger = Some((bootstrap_state.final_ledger, bootstrap_final_slot));
+        } else {
+            // init without bootstrap
+            bootstrap_final_slot = Slot::new(0, thread_count.saturating_sub(1));
+            bootstrap_ledger = None;
+        };
+
+        // Init VM
+        let vm = Arc::new(Mutex::new(VM::new(cfg, bootstrap_ledger)));
+        let vm_clone = vm.clone();
+
+        // Start VM thread
         let vm_thread = thread::spawn(move || {
-            let mut vm = VM::new(cfg);
             let (lock, condvar) = &*execution_queue_clone;
             let mut requests = lock.lock().unwrap();
             requests.push_back(ExecutionRequest::Starting);
             // Run until shutdown.
             loop {
                 match &requests.pop_front() {
-                    Some(ExecutionRequest::RunFinalStep(step)) => vm.run_final_step(step),
-                    Some(ExecutionRequest::RunActiveStep(step)) => vm.run_active_step(step),
-                    Some(ExecutionRequest::ResetToFinalState) => vm.reset_to_final(),
+                    Some(ExecutionRequest::RunFinalStep(step)) => {
+                        vm_clone.lock().unwrap().run_final_step(step)
+                    }
+                    Some(ExecutionRequest::RunActiveStep(step)) => {
+                        vm_clone.lock().unwrap().run_active_step(step)
+                    }
+                    Some(ExecutionRequest::ResetToFinalState) => {
+                        vm_clone.lock().unwrap().reset_to_final()
+                    }
                     Some(ExecutionRequest::Shutdown) => return,
                     Some(ExecutionRequest::Starting) => {}
                     None => panic!("Unexpected request None"),
@@ -84,16 +115,18 @@ impl ExecutionWorker {
                 requests = condvar.wait(requests).unwrap();
             }
         });
+
         // return execution worker
         Ok(ExecutionWorker {
             _cfg: cfg_clone,
+            vm,
             thread_count,
             controller_command_rx,
             controller_manager_rx,
             _event_sender: event_sender,
             //TODO bootstrap or init
-            last_final_slot: Slot::new(0, 0),
-            last_active_slot: Slot::new(0, 0),
+            last_final_slot: bootstrap_final_slot,
+            last_active_slot: bootstrap_final_slot,
             ordered_active_blocks: Default::default(),
             ordered_pending_css_final_blocks: Default::default(),
             vm_thread,
@@ -161,15 +194,31 @@ impl ExecutionWorker {
             } => {
                 self.blockclique_changed(blockclique, finalized_blocks)?;
             }
+
+            ExecutionCommand::GetBootstrapState(response_tx) => {
+                let (vm_ledger, vm_slot) = self.vm.lock().unwrap().get_bootstrap_state();
+                let bootstrap_state = BootstrapExecutionState {
+                    final_ledger: vm_ledger,
+                    final_slot: vm_slot,
+                };
+                if response_tx.send(bootstrap_state).is_err() {
+                    warn!("execution: could not send get_bootstrap_state answer");
+                }
+            }
         }
         Ok(())
     }
 
     fn blockclique_changed(
         &mut self,
-        blockclique: BlockHashMap<Block>,
-        finalized_blocks: BlockHashMap<Block>,
+        mut blockclique: BlockHashMap<Block>,
+        mut finalized_blocks: BlockHashMap<Block>,
     ) -> Result<(), ExecutionError> {
+        // filter out any already-finalized blocks
+        // this can happen for example on bootstrap because the consensus vs execution bootstrap snapshots may be out of sync
+        blockclique.retain(|_b_id, b| b.header.content.slot > self.last_final_slot);
+        finalized_blocks.retain(|_b_id, b| b.header.content.slot > self.last_final_slot);
+
         // stop the current VM execution and reset state to final
         // TODO make something more iterative/conservative in the future to reuse unaffected executions
         self.reset_to_final();
