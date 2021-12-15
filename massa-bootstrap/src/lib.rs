@@ -386,6 +386,10 @@ impl BootstrapServer {
                     if bootstrap_data.is_none() {
                         massa_trace!("bootstrap.lib.run.select.accept.cache_load.start", {});
 
+                        // note that all requests are done simultaneously
+                        // except for the consensus graph that is done after the others
+                        // this is done to ensure that the execution bootstrap state is older than the consensus state
+                        // (and not more recent which could cause problems with execution bootstrap)
                         let get_peers = self.network_command_sender.get_bootstrap_peers();
                         let get_pos_graph = self.consensus_command_sender.get_bootstrap_state();
                         let execution_state = self.execution_command_sender.get_bootstrap_state();
