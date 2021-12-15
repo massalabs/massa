@@ -284,7 +284,7 @@ impl SCELedgerChange {
 
 /// SCE ledger
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SCELedger(AddressHashMap<SCELedgerEntry>);
+pub struct SCELedger(pub AddressHashMap<SCELedgerEntry>);
 
 impl SerializeCompact for SCELedger {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {

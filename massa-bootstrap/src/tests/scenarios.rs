@@ -7,12 +7,16 @@ use super::{
         wait_consensus_command, wait_network_command,
     },
 };
-use crate::BootstrapSettings;
 use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{assert_eq_bootstrap_graph, assert_eq_thread_cycle_states},
 };
+use crate::{
+    tests::tools::{assert_eq_exec, get_execution_state, wait_execution_command},
+    BootstrapSettings,
+};
 use massa_consensus::{ConsensusCommand, ConsensusCommandSender};
+use massa_execution::{ExecutionCommand, ExecutionCommandSender};
 use massa_models::Version;
 use massa_network::{NetworkCommand, NetworkCommandSender};
 use massa_signature::PrivateKey;
@@ -36,11 +40,13 @@ async fn test_bootstrap_server() {
 
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
+    let (execution_cmd_tx, mut execution_cmd_rx) = mpsc::channel::<ExecutionCommand>(5);
 
     let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
     let bootstrap_manager = start_bootstrap_server(
         ConsensusCommandSender(consensus_cmd_tx),
         NetworkCommandSender(network_cmd_tx),
+        ExecutionCommandSender(execution_cmd_tx),
         bootstrap_settings,
         bootstrap_establisher,
         *private_key,
@@ -125,8 +131,22 @@ async fn test_bootstrap_server() {
         .send((sent_pos.clone(), sent_graph.clone()))
         .unwrap();
 
+    // wait for bootstrap to ask executon for bootstrap state, send it
+    let response = match wait_execution_command(&mut execution_cmd_rx, 1000.into(), |cmd| match cmd
+    {
+        ExecutionCommand::GetBootstrapState(resp) => Some(resp),
+        _ => None,
+    })
+    .await
+    {
+        Some(resp) => resp,
+        None => panic!("timeout waiting for get boot execution command"),
+    };
+    let sent_execution_state = get_execution_state();
+    response.send(sent_execution_state.clone()).unwrap();
+
     // wait for get_state
-    let (maybe_recv_pos, maybe_recv_graph, _comp, maybe_recv_peers) = get_state_h
+    let (maybe_recv_pos, maybe_recv_graph, _comp, maybe_recv_peers, maybe_recv_exec) = get_state_h
         .await
         .expect("error while waiting for get_state to finish");
 
@@ -147,6 +167,10 @@ async fn test_bootstrap_server() {
         sent_peers.0, recv_peers.0,
         "mismatch between sent and received peers"
     );
+
+    // check execution
+    let recv_exec = maybe_recv_exec.unwrap();
+    assert_eq_exec(&sent_execution_state, &recv_exec);
 
     // stop bootstrap server
     bootstrap_manager
