@@ -293,7 +293,7 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
 
 pub fn get_execution_state() -> BootstrapExecutionState {
     BootstrapExecutionState {
-        final_slot: Slot::new(14, 16),
+        final_slot: Slot::new(14, 1),
         final_ledger: SCELedger(
             vec![
                 (

@@ -7,6 +7,9 @@
     bind_public = "0.0.0.0:33035"
     max_arguments = 128
 
+[execution]
+    initial_sce_ledger_path = "base_config/initial_sce_ledger.json"
+
 [consensus]
     max_discarded_blocks = 100
     future_block_processing_max_periods = 100
@@ -27,7 +30,8 @@
     stats_timespan = 60000
     block_db_prune_interval = 5000
     max_item_return_count = 100
-genesis_timestamp = "1638931299263"
+    genesis_timestamp = 1638931299263
+    end_timestammp = 1638931299263
 
 [protocol]
     message_timeout = 5000
