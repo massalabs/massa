@@ -134,6 +134,7 @@ impl DeserializeCompact for SCELedgerEntry {
 
             // read items
             if let Some(slice) = buffer.get(cursor..(cursor + (length as usize))) {
+                cursor += length as usize;
                 Some(slice.to_vec())
             } else {
                 return Err(ModelsError::DeserializeError(
@@ -160,12 +161,14 @@ impl DeserializeCompact for SCELedgerEntry {
             cursor += HASH_SIZE_BYTES;
 
             // read data length
-            let (length, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-            // TOOD limit length with from_varint_bytes_bounded
+            let (d_length, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+            // TOOD limit d_length with from_varint_bytes_bounded
             cursor += delta;
 
             // read data
-            let entry_data = if let Some(slice) = buffer.get(cursor..(cursor + (length as usize))) {
+            let entry_data = if let Some(slice) = buffer.get(cursor..(cursor + (d_length as usize)))
+            {
+                cursor += d_length as usize;
                 slice.to_vec()
             } else {
                 return Err(ModelsError::DeserializeError(

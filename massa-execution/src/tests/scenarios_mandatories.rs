@@ -27,7 +27,7 @@ pub fn get_random_address() -> Address {
     Address::from_public_key(&pub_key).unwrap()
 }
 
-fn get_sample_settings() -> ExecutionSettings {
+fn get_sample_settings() -> (NamedTempFile, ExecutionSettings) {
     let initial_file = generate_ledger_bootstrap_file(
         &vec![
             (get_random_address(), Amount::from_str("14785.22").unwrap()),
@@ -36,9 +36,10 @@ fn get_sample_settings() -> ExecutionSettings {
         .into_iter()
         .collect(),
     );
-    ExecutionSettings {
+    let res = ExecutionSettings {
         initial_sce_ledger_path: initial_file.path().into(),
-    }
+    };
+    (initial_file, res)
 }
 
 fn get_sample_ledger() -> SCELedger {
@@ -95,28 +96,27 @@ fn get_sample_ledger() -> SCELedger {
 #[tokio::test]
 #[serial]
 async fn test_execution_basic() {
-    assert!(start_controller(get_sample_settings(), 2, None)
-        .await
-        .is_ok());
+    let (_config_file_keepalive, settings) = get_sample_settings();
+    assert!(start_controller(settings, 2, None).await.is_ok());
 }
 
 #[tokio::test]
 #[serial]
 async fn test_execution_shutdown() {
-    let (_command_sender, _event_receiver, manager) =
-        start_controller(get_sample_settings(), 2, None)
-            .await
-            .expect("Failed to start execution.");
+    let (_config_file_keepalive, settings) = get_sample_settings();
+    let (_command_sender, _event_receiver, manager) = start_controller(settings, 2, None)
+        .await
+        .expect("Failed to start execution.");
     manager.stop().await.expect("Failed to stop execution.");
 }
 
 #[tokio::test]
 #[serial]
 async fn test_sending_command() {
-    let (command_sender, _event_receiver, manager) =
-        start_controller(get_sample_settings(), 2, None)
-            .await
-            .expect("Failed to start execution.");
+    let (_config_file_keepalive, settings) = get_sample_settings();
+    let (command_sender, _event_receiver, manager) = start_controller(settings, 2, None)
+        .await
+        .expect("Failed to start execution.");
     command_sender
         .update_blockclique(Default::default(), Default::default())
         .await
@@ -131,8 +131,9 @@ async fn test_execution_with_bootstrap() {
         final_slot: Slot::new(12, 5),
         final_ledger: get_sample_ledger(),
     };
+    let (_config_file_keepalive, settings) = get_sample_settings();
     let (command_sender, _event_receiver, manager) =
-        start_controller(get_sample_settings(), 2, Some(bootstrap_state))
+        start_controller(settings, 2, Some(bootstrap_state))
             .await
             .expect("Failed to start execution.");
     command_sender

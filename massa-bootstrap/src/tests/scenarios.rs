@@ -102,18 +102,43 @@ async fn test_bootstrap_server() {
         bridge_mock_streams(remote_rw, bootstrap_rw).await;
     });
 
-    // wait for bootstrap to ask network for peers, send them
-    let response = match wait_network_command(&mut network_cmd_rx, 1000.into(), |cmd| match cmd {
-        NetworkCommand::GetBootstrapPeers(resp) => Some(resp),
-        _ => None,
-    })
-    .await
-    {
-        Some(resp) => resp,
-        None => panic!("timeout waiting for get peers command"),
+    // peers and execution are asked simultaneously
+    let wait_peers = async move || {
+        // wait for bootstrap to ask network for peers, send them
+        let response = match wait_network_command(&mut network_cmd_rx, 1000.into(), |cmd| match cmd
+        {
+            NetworkCommand::GetBootstrapPeers(resp) => Some(resp),
+            _ => None,
+        })
+        .await
+        {
+            Some(resp) => resp,
+            None => panic!("timeout waiting for get peers command"),
+        };
+        let sent_peers = get_peers();
+        response.send(sent_peers.clone()).unwrap();
+        sent_peers
     };
-    let sent_peers = get_peers();
-    response.send(sent_peers.clone()).unwrap();
+
+    let wait_execution = async move || {
+        // wait for bootstrap to ask execution for bootstrap state, send it
+        let response =
+            match wait_execution_command(&mut execution_cmd_rx, 1000.into(), |cmd| match cmd {
+                ExecutionCommand::GetBootstrapState(resp) => Some(resp),
+                _ => None,
+            })
+            .await
+            {
+                Some(resp) => resp,
+                None => panic!("timeout waiting for get boot execution command"),
+            };
+        let sent_execution_state = get_execution_state();
+        response.send(sent_execution_state.clone()).unwrap();
+        sent_execution_state
+    };
+
+    // wait for peers and execution at the same time
+    let (sent_peers, sent_execution_state) = tokio::join!(wait_peers(), wait_execution());
 
     // wait for bootstrap to ask consensus for bootstrap graph, send it
     let response = match wait_consensus_command(&mut consensus_cmd_rx, 1000.into(), |cmd| match cmd
@@ -130,20 +155,6 @@ async fn test_bootstrap_server() {
     response
         .send((sent_pos.clone(), sent_graph.clone()))
         .unwrap();
-
-    // wait for bootstrap to ask executon for bootstrap state, send it
-    let response = match wait_execution_command(&mut execution_cmd_rx, 1000.into(), |cmd| match cmd
-    {
-        ExecutionCommand::GetBootstrapState(resp) => Some(resp),
-        _ => None,
-    })
-    .await
-    {
-        Some(resp) => resp,
-        None => panic!("timeout waiting for get boot execution command"),
-    };
-    let sent_execution_state = get_execution_state();
-    response.send(sent_execution_state.clone()).unwrap();
 
     // wait for get_state
     let (maybe_recv_pos, maybe_recv_graph, _comp, maybe_recv_peers, maybe_recv_exec) = get_state_h

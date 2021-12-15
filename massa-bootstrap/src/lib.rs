@@ -1,5 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+#![feature(async_closure)]
+
 use crate::client_binder::BootstrapClientBinder;
 use crate::establisher::Duplex;
 use crate::server_binder::BootstrapServerBinder;
