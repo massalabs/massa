@@ -291,6 +291,7 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
     }
 }
 
+/// generates a sample BootstrapExecutionState with a few ledger entries
 pub fn get_execution_state() -> BootstrapExecutionState {
     BootstrapExecutionState {
         final_slot: Slot::new(14, 1),

@@ -74,7 +74,7 @@ async fn launch() -> (
     // interrupt signal listener
     let stop_signal = signal::ctrl_c();
     tokio::pin!(stop_signal);
-    let (boot_pos, boot_graph, clock_compensation, initial_peers, execution_state) = tokio::select! {
+    let bootstrap_state = tokio::select! {
         _ = &mut stop_signal => {
             info!("interrupt signal received in bootstrap loop");
             process::exit(0);
@@ -96,8 +96,8 @@ async fn launch() -> (
         start_network_controller(
             SETTINGS.network.clone(), // TODO: get rid of this clone() ... see #1277
             Establisher::new(),
-            clock_compensation,
-            initial_peers,
+            bootstrap_state.compensation_millis,
+            bootstrap_state.peers,
             *crate::settings::VERSION,
         )
         .await
@@ -135,7 +135,7 @@ async fn launch() -> (
         massa_execution::start_controller(
             massa_execution::ExecutionSettings::default(),
             massa_consensus::settings::THREAD_COUNT,
-            execution_state,
+            bootstrap_state.execution,
         )
         .await
         .expect("could not start execution controller");
@@ -149,9 +149,9 @@ async fn launch() -> (
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender.clone(),
-            boot_pos,
-            boot_graph,
-            clock_compensation,
+            bootstrap_state.pos,
+            bootstrap_state.graph,
+            bootstrap_state.compensation_millis,
         )
         .await
         .expect("could not start consensus controller");
@@ -164,7 +164,7 @@ async fn launch() -> (
         &SETTINGS.bootstrap,
         massa_bootstrap::Establisher::new(),
         private_key,
-        clock_compensation,
+        bootstrap_state.compensation_millis,
         *crate::settings::VERSION,
     )
     .await
@@ -188,7 +188,7 @@ async fn launch() -> (
         &SETTINGS.network,
         *crate::settings::VERSION,
         network_command_sender.clone(),
-        clock_compensation,
+        bootstrap_state.compensation_millis,
         node_id,
     );
     let api_public_handle = api_public.serve(&SETTINGS.api.bind_public);

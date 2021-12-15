@@ -4215,7 +4215,9 @@ impl BlockGraph {
     }
 
     /// Clones all stored final blocks, not only the still-useful ones
-    /// This is used when bootstrapping consensus
+    /// This is used when initializing Execution from Consensus.
+    /// Since the Execution bootstrap snapshot is older than the Consensus snapshot,
+    /// we might need to signal older final blocks for Execution to catch up.
     pub fn clone_all_final_blocks(&self) -> BlockHashMap<Block> {
         self.active_index
             .iter()

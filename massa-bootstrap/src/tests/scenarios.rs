@@ -157,7 +157,7 @@ async fn test_bootstrap_server() {
         .unwrap();
 
     // wait for get_state
-    let (maybe_recv_pos, maybe_recv_graph, _comp, maybe_recv_peers, maybe_recv_exec) = get_state_h
+    let bootstrap_res = get_state_h
         .await
         .expect("error while waiting for get_state to finish");
 
@@ -165,23 +165,18 @@ async fn test_bootstrap_server() {
     bridge.await.expect("bridge join failed");
 
     // check states
-    let recv_pos = maybe_recv_pos.unwrap();
-
-    assert_eq_thread_cycle_states(&sent_pos, &recv_pos);
-
-    let recv_graph = maybe_recv_graph.unwrap();
-    assert_eq_bootstrap_graph(&sent_graph, &recv_graph);
+    assert_eq_thread_cycle_states(&sent_pos, &bootstrap_res.pos.unwrap());
+    assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
 
     // check peers
-    let recv_peers = maybe_recv_peers.unwrap();
     assert_eq!(
-        sent_peers.0, recv_peers.0,
+        sent_peers.0,
+        bootstrap_res.peers.unwrap().0,
         "mismatch between sent and received peers"
     );
 
     // check execution
-    let recv_exec = maybe_recv_exec.unwrap();
-    assert_eq_exec(&sent_execution_state, &recv_exec);
+    assert_eq_exec(&sent_execution_state, &bootstrap_res.execution.unwrap());
 
     // stop bootstrap server
     bootstrap_manager

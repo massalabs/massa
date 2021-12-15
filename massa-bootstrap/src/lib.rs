@@ -32,6 +32,25 @@ mod messages;
 mod server_binder;
 pub mod settings;
 
+/// a summary of the bootstrap state snapshots
+#[derive(Default, Debug)]
+pub struct BootstrapStateSummary {
+    /// state of the proof of stake state (distributions, seeds...)
+    pub pos: Option<ExportProofOfStake>,
+
+    /// state of the consensus graph
+    pub graph: Option<BootstrapableGraph>,
+
+    /// timestamp correction in milliseconds
+    pub compensation_millis: i64,
+
+    /// list of network peers
+    pub peers: Option<BootstrapPeers>,
+
+    /// state of the execution state
+    pub execution: Option<BootstrapExecutionState>,
+}
+
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
 async fn get_state_internal(
@@ -40,16 +59,7 @@ async fn get_state_internal(
     bootstrap_public_key: &PublicKey,
     establisher: &mut Establisher,
     our_version: Version,
-) -> Result<
-    (
-        ExportProofOfStake,
-        BootstrapableGraph,
-        i64,
-        BootstrapPeers,
-        BootstrapExecutionState,
-    ),
-    BootstrapError,
-> {
+) -> Result<BootstrapStateSummary, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
     info!("Start bootstrapping from {}", bootstrap_addr);
 
@@ -162,7 +172,7 @@ async fn get_state_internal(
 
     // Fourth, get execution state
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    let execution_state = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
+    let execution = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
         Err(_) => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
@@ -177,7 +187,13 @@ async fn get_state_internal(
 
     info!("Successful bootstrap");
 
-    Ok((pos, graph, compensation_millis, peers, execution_state))
+    Ok(BootstrapStateSummary {
+        pos: Some(pos),
+        graph: Some(graph),
+        compensation_millis,
+        peers: Some(peers),
+        execution: Some(execution),
+    })
 }
 
 /// Gets the state from a bootstrap server
@@ -188,22 +204,13 @@ pub async fn get_state(
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
-) -> Result<
-    (
-        Option<ExportProofOfStake>,
-        Option<BootstrapableGraph>,
-        i64,
-        Option<BootstrapPeers>,
-        Option<BootstrapExecutionState>,
-    ),
-    BootstrapError,
-> {
+) -> Result<BootstrapStateSummary, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
     let now = MassaTime::now(0)?;
     // if we are before genesis, do not bootstrap
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
-        return Ok((None, None, 0, None, None));
+        return Ok(BootstrapStateSummary::default());
     }
     // we are after genesis => bootstrap
     massa_trace!("bootstrap.lib.get_state.init_from_others", {});
@@ -228,8 +235,8 @@ pub async fn get_state(
                     warn!("error while bootstrapping: {}", e);
                     sleep(bootstrap_settings.retry_delay.into()).await;
                 }
-                Ok((pos, graph, compensation, peers, execution_state)) => {
-                    return Ok((Some(pos), Some(graph), compensation, Some(peers), Some(execution_state)))
+                Ok(res) => {
+                    return Ok(res)
                 }
             }
         }
@@ -386,10 +393,10 @@ impl BootstrapServer {
                     if bootstrap_data.is_none() {
                         massa_trace!("bootstrap.lib.run.select.accept.cache_load.start", {});
 
-                        // note that all requests are done simultaneously
-                        // except for the consensus graph that is done after the others
-                        // this is done to ensure that the execution bootstrap state is older than the consensus state
-                        // (and not more recent which could cause problems with execution bootstrap)
+                        // Note that all requests are done simultaneously except for the consensus graph that is done after the others.
+                        // This is done to ensure that the execution bootstrap state is older than the consensus state.
+                        // If the consensus state snapshot is older than the execution state snapshot,
+                        //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
                         let get_peers = self.network_command_sender.get_bootstrap_peers();
                         let get_pos_graph = self.consensus_command_sender.get_bootstrap_state();
                         let execution_state = self.execution_command_sender.get_bootstrap_state();
