@@ -133,7 +133,7 @@ async fn launch() -> (
     // launch execution controller
     let (execution_command_sender, execution_event_receiver, execution_manager) =
         massa_execution::start_controller(
-            massa_execution::ExecutionConfig::default(),
+            massa_execution::ExecutionSettings::default(),
             massa_consensus::settings::THREAD_COUNT,
             execution_state,
         )
@@ -144,7 +144,7 @@ async fn launch() -> (
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             SETTINGS.consensus.config(),
-            execution_command_sender,
+            execution_command_sender.clone(),
             execution_event_receiver,
             protocol_command_sender.clone(),
             protocol_event_receiver,
@@ -160,6 +160,7 @@ async fn launch() -> (
     let bootstrap_manager = start_bootstrap_server(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
+        execution_command_sender.clone(),
         &SETTINGS.bootstrap,
         massa_bootstrap::Establisher::new(),
         private_key,

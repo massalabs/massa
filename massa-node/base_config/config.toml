@@ -9,6 +9,9 @@
     bind_public = "0.0.0.0:33035"
     max_arguments = 128
 
+[execution]
+    initial_sce_ledger_path = "base_config/initial_sce_ledger.json"
+
 [consensus]
     max_discarded_blocks = 100
     future_block_processing_max_periods = 100

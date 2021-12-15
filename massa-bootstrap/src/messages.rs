@@ -35,7 +35,7 @@ pub enum BootstrapMessage {
     /// Execution state
     ExecutionState {
         /// execution state
-        execution_state: ExecutionBootstrapState,
+        execution_state: BootstrapExecutionState,
     },
 }
 
@@ -117,7 +117,7 @@ impl DeserializeCompact for BootstrapMessage {
             }
             MessageTypeId::ExecutionState => {
                 let (execution_state, delta) =
-                    ExecutionBootstrapState::from_bytes_compact(&buffer[cursor..])?;
+                    BootstrapExecutionState::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
                 BootstrapMessage::ExecutionState { execution_state }
