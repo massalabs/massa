@@ -14,6 +14,7 @@ pub use controller::{
     start_controller, ExecutionCommandSender, ExecutionEventReceiver, ExecutionManager,
 };
 pub use error::ExecutionError;
+pub use sce_ledger::{SCELedger, SCELedgerEntry};
 pub use worker::ExecutionCommand;
 pub use worker::ExecutionEvent;
 

@@ -22,3 +22,6 @@ lazy_static = "1.4.0"
 
 [dev-dependencies]
 serial_test = "0.5"
+pretty_assertions = "1.0"
+tempfile = "3.2"
+massa_signature = {path = "../massa-signature"}

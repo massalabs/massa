@@ -8,6 +8,7 @@ use massa_consensus::{
     BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportProofOfStake, LedgerSubset,
     RollCounts, RollUpdate, RollUpdates, ThreadCycleState,
 };
+use massa_execution::{BootstrapExecutionState, ExecutionCommand, SCELedger, SCELedgerEntry};
 use massa_hash::hash::Hash;
 use massa_models::clique::Clique;
 use massa_models::ledger::LedgerChange;
@@ -108,6 +109,27 @@ where
             cmd = consensus_command_receiver.recv() => match cmd {
                 Some(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
                 _ => panic!("network event channel died")
+            },
+            _ = &mut timer => return None
+        }
+    }
+}
+
+pub async fn wait_execution_command<F, T>(
+    execution_command_receiver: &mut Receiver<ExecutionCommand>,
+    timeout: MassaTime,
+    filter_map: F,
+) -> Option<T>
+where
+    F: Fn(ExecutionCommand) -> Option<T>,
+{
+    let timer = sleep(timeout.into());
+    tokio::pin!(timer);
+    loop {
+        tokio::select! {
+            cmd = execution_command_receiver.recv() => match cmd {
+                Some(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
+                _ => panic!("execution event channel died")
             },
             _ = &mut timer => return None
         }
@@ -266,6 +288,79 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
             itm1.is_blockclique, itm2.is_blockclique,
             "is_blockclique mistmatch"
         );
+    }
+}
+
+pub fn get_execution_state() -> BootstrapExecutionState {
+    BootstrapExecutionState {
+        final_slot: Slot::new(14, 16),
+        final_ledger: SCELedger(
+            vec![
+                (
+                    get_random_address(),
+                    SCELedgerEntry {
+                        balance: Amount::from_str("129").unwrap(),
+                        opt_module: None,
+                        data: vec![
+                            (
+                                massa_hash::hash::Hash::from("key_testA".as_bytes()),
+                                "test1_data".into(),
+                            ),
+                            (
+                                massa_hash::hash::Hash::from("key_testB".as_bytes()),
+                                "test2_data".into(),
+                            ),
+                            (
+                                massa_hash::hash::Hash::from("key_testC".as_bytes()),
+                                "test3_data".into(),
+                            ),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    },
+                ),
+                (
+                    get_random_address(),
+                    SCELedgerEntry {
+                        balance: Amount::from_str("878").unwrap(),
+                        opt_module: Some("bytecodebytecode".into()),
+                        data: vec![
+                            (
+                                massa_hash::hash::Hash::from("key_testD".as_bytes()),
+                                "test4_data".into(),
+                            ),
+                            (
+                                massa_hash::hash::Hash::from("key_testE".as_bytes()),
+                                "test5_data".into(),
+                            ),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    },
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        ),
+    }
+}
+
+pub fn assert_eq_exec(v1: &BootstrapExecutionState, v2: &BootstrapExecutionState) {
+    assert_eq!(v1.final_slot, v2.final_slot, "final slot mismatch");
+    assert_eq!(
+        v1.final_ledger.0.len(),
+        v2.final_ledger.0.len(),
+        "ledger len mismatch"
+    );
+    for k in v1.final_ledger.0.keys() {
+        let itm1 = v1.final_ledger.0.get(k).unwrap();
+        let itm2 = v2.final_ledger.0.get(k).expect("ledger key mismatch");
+        assert_eq!(itm1.balance, itm2.balance, "ledger balance mismatch");
+        assert_eq!(
+            itm1.opt_module, itm2.opt_module,
+            "ledger opt_module mismatch"
+        );
+        assert_eq!(itm1.data, itm2.data, "ledger data mismatch");
     }
 }
 
