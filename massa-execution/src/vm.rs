@@ -29,39 +29,37 @@ impl VM {
         ledger_bootstrap: Option<(SCELedger, Slot)>,
     ) -> Result<VM, ExecutionError> {
         // bootstrap ledger
-        {
-            let context = CONTEXT.lock().unwrap();
-            let mut final_ledger_guard = context.ledger_step.final_ledger_slot.lock().unwrap();
+        let context = CONTEXT.lock().unwrap();
+        let mut final_ledger_guard = context.ledger_step.final_ledger_slot.lock().unwrap();
 
-            if let Some((ledger_bootstrap, ledger_slot)) = ledger_bootstrap {
-                // bootstrap from snapshot
-                *final_ledger_guard = (ledger_bootstrap, ledger_slot);
-            } else {
-                // not bootstrapping: load initial SCE ledger from file
-                let ledger_slot = Slot::new(0, thread_count.saturating_sub(1)); // last genesis block
-                let ledgger_balances = serde_json::from_str::<AddressHashMap<Amount>>(
-                    &std::fs::read_to_string(&cfg.initial_sce_ledger_path).map_err(|err| {
-                        ExecutionError::FileError(format!(
-                            "error loading initial SCE ledger file {}: {}",
-                            cfg.initial_sce_ledger_path
-                                .to_str()
-                                .unwrap_or("(non-utf8 path)"),
-                            err
-                        ))
-                    })?,
-                )
-                .map_err(|err| {
+        if let Some((ledger_bootstrap, ledger_slot)) = ledger_bootstrap {
+            // bootstrap from snapshot
+            *final_ledger_guard = (ledger_bootstrap, ledger_slot);
+        } else {
+            // not bootstrapping: load initial SCE ledger from file
+            let ledger_slot = Slot::new(0, thread_count.saturating_sub(1)); // last genesis block
+            let ledgger_balances = serde_json::from_str::<AddressHashMap<Amount>>(
+                &std::fs::read_to_string(&cfg.initial_sce_ledger_path).map_err(|err| {
                     ExecutionError::FileError(format!(
-                        "error parsing initial SCE ledger file {}: {}",
+                        "error loading initial SCE ledger file {}: {}",
                         cfg.initial_sce_ledger_path
                             .to_str()
                             .unwrap_or("(non-utf8 path)"),
                         err
                     ))
-                })?;
-                let ledger_bootstrap = SCELedger::from_balances_map(ledgger_balances);
-                *final_ledger_guard = (ledger_bootstrap, ledger_slot);
-            }
+                })?,
+            )
+            .map_err(|err| {
+                ExecutionError::FileError(format!(
+                    "error parsing initial SCE ledger file {}: {}",
+                    cfg.initial_sce_ledger_path
+                        .to_str()
+                        .unwrap_or("(non-utf8 path)"),
+                    err
+                ))
+            })?;
+            let ledger_bootstrap = SCELedger::from_balances_map(ledgger_balances);
+            *final_ledger_guard = (ledger_bootstrap, ledger_slot);
         }
 
         Ok(VM {

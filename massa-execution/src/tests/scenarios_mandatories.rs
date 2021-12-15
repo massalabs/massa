@@ -9,7 +9,7 @@ use serial_test::serial;
 use tempfile::NamedTempFile;
 
 /// generate a named temporary initial ledger file
-pub fn generate_ledger_bootstrap_file(values: &AddressHashMap<Amount>) -> NamedTempFile {
+pub fn generate_ledger_initial_file(values: &AddressHashMap<Amount>) -> NamedTempFile {
     use std::io::prelude::*;
     let file_named = NamedTempFile::new().expect("cannot create temp file");
     serde_json::to_writer_pretty(file_named.as_file(), &values)
@@ -28,7 +28,7 @@ pub fn get_random_address() -> Address {
 }
 
 fn get_sample_settings() -> (NamedTempFile, ExecutionSettings) {
-    let initial_file = generate_ledger_bootstrap_file(
+    let initial_file = generate_ledger_initial_file(
         &vec![
             (get_random_address(), Amount::from_str("14785.22").unwrap()),
             (get_random_address(), Amount::from_str("4778.1").unwrap()),
