@@ -1,8 +1,9 @@
 use massa_models::{DeserializeCompact, SerializeCompact, Slot};
+use serde::{Deserialize, Serialize};
 
 use crate::sce_ledger::SCELedger;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BootstrapExecutionState {
     pub final_ledger: SCELedger,
     pub final_slot: Slot,

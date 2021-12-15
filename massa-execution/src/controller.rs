@@ -1,4 +1,4 @@
-use crate::config::{ExecutionConfig, CHANNEL_SIZE};
+use crate::config::{ExecutionSettings, CHANNEL_SIZE};
 use crate::error::ExecutionError;
 use crate::worker::{
     ExecutionCommand, ExecutionEvent, ExecutionManagementCommand, ExecutionWorker,
@@ -58,7 +58,7 @@ impl ExecutionManager {
 /// TODO: add a consensus command sender,
 /// to be able to send the `TransferToConsensus` message.
 pub async fn start_controller(
-    cfg: ExecutionConfig,
+    cfg: ExecutionSettings,
     thread_count: u8,
     bootstrap_state: Option<BootstrapExecutionState>,
 ) -> Result<

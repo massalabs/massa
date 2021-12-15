@@ -5,7 +5,7 @@ use crate::error::ExecutionError;
 use crate::types::{ExecutionQueue, ExecutionRequest};
 use crate::vm::VM;
 use crate::BootstrapExecutionState;
-use crate::{config::ExecutionConfig, types::ExecutionStep};
+use crate::{config::ExecutionSettings, types::ExecutionStep};
 use massa_models::{Block, BlockHashMap, BlockId, Slot};
 use tokio::sync::mpsc;
 use tracing::{debug, warn};
@@ -37,7 +37,7 @@ pub enum ExecutionManagementCommand {}
 
 pub struct ExecutionWorker {
     /// Configuration
-    _cfg: ExecutionConfig,
+    _cfg: ExecutionSettings,
     /// VM
     vm: Arc<Mutex<VM>>,
     /// Thread count
@@ -63,7 +63,7 @@ pub struct ExecutionWorker {
 
 impl ExecutionWorker {
     pub fn new(
-        cfg: ExecutionConfig,
+        cfg: ExecutionSettings,
         thread_count: u8,
         event_sender: mpsc::UnboundedSender<ExecutionEvent>,
         controller_command_rx: mpsc::Receiver<ExecutionCommand>,
@@ -88,7 +88,7 @@ impl ExecutionWorker {
         };
 
         // Init VM
-        let vm = Arc::new(Mutex::new(VM::new(cfg, bootstrap_ledger)));
+        let vm = Arc::new(Mutex::new(VM::new(cfg, thread_count, bootstrap_ledger)?));
         let vm_clone = vm.clone();
 
         // Start VM thread

@@ -387,7 +387,7 @@ impl BootstrapServer {
                         let get_peers = self.network_command_sender.get_bootstrap_peers();
                         let get_pos_graph = self.consensus_command_sender.get_bootstrap_state();
                         let execution_state = self.execution_command_sender.get_bootstrap_state();
-                        let (res_peers, res_execution) = tokio::join!(get_peers, get_pos_graph);
+                        let (res_peers, res_execution) = tokio::join!(get_peers, execution_state);
                         let peer_boot = res_peers?;
                         let execution_state = res_execution?;
                         let (pos_boot, graph_boot) = get_pos_graph.await?;

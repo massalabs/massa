@@ -9,7 +9,7 @@ mod vm;
 mod worker;
 
 pub use bootstrap_state::BootstrapExecutionState;
-pub use config::ExecutionConfig;
+pub use config::ExecutionSettings;
 pub use controller::{
     start_controller, ExecutionCommandSender, ExecutionEventReceiver, ExecutionManager,
 };

@@ -365,6 +365,24 @@ impl SCELedgerChanges {
 }
 
 impl SCELedger {
+    /// creates an SCELedger from a hashmap of balances
+    pub fn from_balances_map(balances_map: AddressHashMap<Amount>) -> Self {
+        SCELedger(
+            balances_map
+                .into_iter()
+                .map(|(k, v)| {
+                    (
+                        k,
+                        SCELedgerEntry {
+                            balance: v,
+                            ..Default::default()
+                        },
+                    )
+                })
+                .collect(),
+        )
+    }
+
     /// applies ledger changes to ledger
     pub fn apply_changes(&mut self, changes: &SCELedgerChanges) {
         for (addr, change) in changes.0.iter() {
