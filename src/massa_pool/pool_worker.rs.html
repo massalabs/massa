@@ -476,7 +476,7 @@
                     <span class="kw">match</span> <span class="ident">evt</span> {
                         <span class="prelude-val">Ok</span>(<span class="ident">event</span>) =&gt; {
                             <span class="self">self</span>.<span class="ident">process_protocol_pool_event</span>(<span class="ident">event</span>).<span class="kw">await</span><span class="question-mark">?</span>},
-                        <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">PoolError::ProtocolError</span>(<span class="ident">err</span>))
+                        <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">PoolError::ProtocolError</span>(<span class="ident">Box::new</span>(<span class="ident">err</span>)))
                     }
                 },
             }
@@ -666,5 +666,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (0b42deacc 2021-12-09)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (404c8471a 2021-12-14)" ></div>
 </body></html>
