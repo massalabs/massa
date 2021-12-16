@@ -32,9 +32,9 @@ mod messages;
 mod server_binder;
 pub mod settings;
 
-/// a summary of the bootstrap state snapshots
+/// a collection of the bootstrap state snapshots of all relevant modules
 #[derive(Default, Debug)]
-pub struct BootstrapStateSummary {
+pub struct GlobalBootstrapState {
     /// state of the proof of stake state (distributions, seeds...)
     pub pos: Option<ExportProofOfStake>,
 
@@ -59,7 +59,7 @@ async fn get_state_internal(
     bootstrap_public_key: &PublicKey,
     establisher: &mut Establisher,
     our_version: Version,
-) -> Result<BootstrapStateSummary, BootstrapError> {
+) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
     info!("Start bootstrapping from {}", bootstrap_addr);
 
@@ -187,7 +187,7 @@ async fn get_state_internal(
 
     info!("Successful bootstrap");
 
-    Ok(BootstrapStateSummary {
+    Ok(GlobalBootstrapState {
         pos: Some(pos),
         graph: Some(graph),
         compensation_millis,
@@ -204,13 +204,13 @@ pub async fn get_state(
     version: Version,
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
-) -> Result<BootstrapStateSummary, BootstrapError> {
+) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
     let now = MassaTime::now(0)?;
     // if we are before genesis, do not bootstrap
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
-        return Ok(BootstrapStateSummary::default());
+        return Ok(GlobalBootstrapState::default());
     }
     // we are after genesis => bootstrap
     massa_trace!("bootstrap.lib.get_state.init_from_others", {});
