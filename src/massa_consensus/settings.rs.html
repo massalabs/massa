@@ -373,9 +373,26 @@
 <span id="372">372</span>
 <span id="373">373</span>
 <span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Amount</span>, <span class="ident">Config</span>};
+<span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::assertions_on_constants</span>)]</span>
+
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Amount</span>, <span class="ident">CompactConfig</span>};
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
 <span class="kw">use</span> <span class="ident">massa_signature::generate_random_private_key</span>;
 <span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
@@ -386,6 +403,9 @@
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">default::Default</span>, <span class="ident">path::PathBuf</span>, <span class="ident">usize</span>};
 
+<span class="comment">// Consensus static parameters (defined by protocol used)</span>
+<span class="comment">// Changing one of the following values is considered as a breaking change</span>
+<span class="comment">// Values differ in `test` flavor building for faster CI and simpler scenarios</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CHANNEL_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">256</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">test</span>))]</span>
@@ -491,8 +511,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">const</span> <span class="ident">POS_LOCK_CYCLES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1</span>;
 
-<span class="doccomment">/// Consensus configuration</span>
-<span class="doccomment">/// Assumes thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0</span>
+<span class="doccomment">/// Consensus user-settings (that could be changes in `config.toml` file without rebuilding the binary)</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusSettings</span> {
     <span class="doccomment">/// Staking private keys</span>
@@ -532,7 +551,14 @@
 }
 
 <span class="kw">impl</span> <span class="ident">ConsensusSettings</span> {
+    <span class="doccomment">/// Utility method to derivate a full configuration (static + user defined) from an user defined one</span>
+    <span class="doccomment">/// This is really handy in tests where we want to mutate static defined values</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">config</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ConsensusConfig</span> {
+        <span class="comment">// TODO: these assertion should be checked at compile time</span>
+        <span class="comment">// https://github.com/rust-lang/rfcs/issues/2790</span>
+        <span class="macro">assert!</span>(<span class="ident">THREAD_COUNT</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">1</span>);
+        <span class="macro">assert!</span>((<span class="kw-2">*</span><span class="ident">T0</span>).<span class="ident">to_millis</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="number">1</span>);
+        <span class="macro">assert!</span>((<span class="kw-2">*</span><span class="ident">T0</span>).<span class="ident">to_millis</span>() <span class="op">%</span> (<span class="ident">THREAD_COUNT</span> <span class="kw">as</span> <span class="ident">u64</span>) <span class="op">==</span> <span class="number">0</span>);
         <span class="ident">ConsensusConfig</span> {
             <span class="ident">genesis_timestamp</span>: <span class="kw-2">*</span><span class="ident">GENESIS_TIMESTAMP</span>,
             <span class="ident">end_timestamp</span>: <span class="kw-2">*</span><span class="ident">END_TIMESTAMP</span>,
@@ -575,8 +601,9 @@
     }
 }
 
-<span class="doccomment">/// Consensus configuration</span>
-<span class="doccomment">/// Assumes thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0</span>
+<span class="doccomment">/// Consensus full configuration (static + user defined)</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// Assert that `THREAD_COUNT &gt;= 1 || T0.to_millis() &gt;= 1 || T0.to_millis() % THREAD_COUNT == 0`</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusConfig</span> {
     <span class="doccomment">/// Time in millis when the blockclique started.</span>
@@ -646,24 +673,26 @@
 }
 
 <span class="macro">lazy_static::lazy_static!</span> {
-    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">CONFIG</span>: <span class="ident">Config</span> <span class="op">=</span> <span class="ident">Config</span> {
-        <span class="ident">genesis_timestamp</span>: <span class="kw-2">*</span><span class="ident"><span class="kw">crate</span>::settings::GENESIS_TIMESTAMP</span>,
-        <span class="ident">end_timestamp</span>: <span class="kw-2">*</span><span class="ident"><span class="kw">crate</span>::settings::END_TIMESTAMP</span>,
-        <span class="ident">thread_count</span>: <span class="ident"><span class="kw">crate</span>::settings::THREAD_COUNT</span>,
-        <span class="ident">t0</span>: <span class="kw-2">*</span><span class="ident"><span class="kw">crate</span>::settings::T0</span>,
-        <span class="ident">delta_f0</span>: <span class="ident"><span class="kw">crate</span>::settings::DELTA_F0</span>,
-        <span class="ident">operation_validity_periods</span>: <span class="ident"><span class="kw">crate</span>::settings::OPERATION_VALIDITY_PERIODS</span>,
-        <span class="ident">periods_per_cycle</span>: <span class="ident"><span class="kw">crate</span>::settings::PERIODS_PER_CYCLE</span>,
-        <span class="ident">pos_lookback_cycles</span>: <span class="ident"><span class="kw">crate</span>::settings::POS_LOOKBACK_CYCLES</span>,
-        <span class="ident">pos_lock_cycles</span>: <span class="ident"><span class="kw">crate</span>::settings::POS_LOCK_CYCLES</span>,
-        <span class="ident">block_reward</span>: <span class="kw-2">*</span><span class="ident"><span class="kw">crate</span>::settings::BLOCK_REWARD</span>,
-        <span class="ident">roll_price</span>: <span class="kw-2">*</span><span class="ident"><span class="kw">crate</span>::settings::ROLL_PRICE</span>,
+    <span class="doccomment">/// Compact representation of key values of consensus algorithm used in API</span>
+    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">STATIC_CONFIG</span>: <span class="ident">CompactConfig</span> <span class="op">=</span> <span class="ident">CompactConfig</span> {
+        <span class="ident">genesis_timestamp</span>: <span class="kw-2">*</span><span class="ident">GENESIS_TIMESTAMP</span>,
+        <span class="ident">end_timestamp</span>: <span class="kw-2">*</span><span class="ident">END_TIMESTAMP</span>,
+        <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
+        <span class="ident">t0</span>: <span class="kw-2">*</span><span class="ident">T0</span>,
+        <span class="ident">delta_f0</span>: <span class="ident">DELTA_F0</span>,
+        <span class="ident">operation_validity_periods</span>: <span class="ident">OPERATION_VALIDITY_PERIODS</span>,
+        <span class="ident">periods_per_cycle</span>: <span class="ident">PERIODS_PER_CYCLE</span>,
+        <span class="ident">pos_lookback_cycles</span>: <span class="ident">POS_LOOKBACK_CYCLES</span>,
+        <span class="ident">pos_lock_cycles</span>: <span class="ident">POS_LOCK_CYCLES</span>,
+        <span class="ident">block_reward</span>: <span class="kw-2">*</span><span class="ident">BLOCK_REWARD</span>,
+        <span class="ident">roll_price</span>: <span class="kw-2">*</span><span class="ident">ROLL_PRICE</span>,
     };
 }
 
 <span class="kw">impl</span> <span class="ident">ConsensusConfig</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">config</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Config</span> {
-        <span class="kw-2">*</span><span class="ident">CONFIG</span>
+    <span class="doccomment">/// Utility method to derivate a compact configuration (for API use) from a full one</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compact_config</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">CompactConfig</span> {
+        <span class="kw-2">*</span><span class="ident">STATIC_CONFIG</span>
     }
 }
 
@@ -707,6 +736,7 @@
     }
 
     <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Path</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ConsensusConfig</span> {
+        <span class="doccomment">/// Utility trait used in tests to get a full consensus configuration from an initial ledger path</span>
         <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">initial_ledger_path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span>) -&gt; <span class="self">Self</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">staking_keys</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
             <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">2</span> {
@@ -748,5 +778,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (404c8471a 2021-12-14)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (c5ecc1570 2021-12-15)" ></div>
 </body></html>

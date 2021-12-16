@@ -42,7 +42,6 @@
 <span id="41">41</span>
 <span id="42">42</span>
 <span id="43">43</span>
-<span id="44">44</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::Amount</span>;
@@ -62,10 +61,9 @@
 
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SLOT_KEY_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">9</span>;
 
-<span class="doccomment">/// Configuration of consensus algorithm</span>
-<span class="doccomment">/// Assumes thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0</span>
+<span class="doccomment">/// Compact representation of key values of consensus algorithm used in API</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Config</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CompactConfig</span> {
     <span class="doccomment">/// Time in millis when the blockclique started.</span>
     <span class="kw">pub</span> <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
@@ -88,5 +86,5 @@
     <span class="kw">pub</span> <span class="ident">roll_price</span>: <span class="ident">Amount</span>,
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (404c8471a 2021-12-14)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (c5ecc1570 2021-12-15)" ></div>
 </body></html>
