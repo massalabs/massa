@@ -151,6 +151,17 @@ pub enum Command {
         message = "send coins from a wallet address"
     )]
     send_transaction,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(
+            args = "SenderAddress PathToBytecode MaxGas GasPrice Fee",
+            todo = "[unstable] "
+        ),
+        message = "create and sends an operation containing byte code"
+    )]
+    send_smart_contract,
+
     #[strum(
         ascii_case_insensitive,
         message = "show time remaining to end of current episode"
@@ -233,7 +244,7 @@ impl Command {
                 style("no args").color256(8).italic() // grey
             },
             if self.get_str("todo").is_some() {
-                style("[not yet implemented] ").red()
+                style(self.get_str("todo").unwrap_or("[not yet implemented] ")).red()
             } else {
                 style("")
             },
@@ -613,6 +624,7 @@ impl Command {
                 }
                 Ok(Box::new(()))
             }
+            Command::send_smart_contract => todo!(),
         }
     }
 }
