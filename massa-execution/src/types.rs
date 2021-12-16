@@ -1,5 +1,7 @@
 use crate::error::ExecutionError;
 use crate::sce_ledger::{SCELedger, SCELedgerChanges, SCELedgerStep};
+use anyhow::{bail, Result};
+use assembly_simulator::{Interface, InterfaceClone};
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, OperationContent, OperationType};
 use massa_models::{Block, BlockId, Slot};
@@ -9,27 +11,21 @@ use std::{collections::VecDeque, sync::Arc};
 pub type StepHistory = VecDeque<(Slot, Option<BlockId>, SCELedgerChanges)>;
 pub type Bytecode = Vec<u8>;
 
-pub(crate) fn run(
-    module: &[u8],
-    limit: u64,
-    interface: &Box<dyn Interface>,
-) -> Result<u64, ExecutionError> {
-    Ok(limit)
-}
-
+#[derive(Clone)]
 pub(crate) struct InterfaceImpl {
     pub context: Arc<Mutex<ExecutionContext>>,
 }
 
 impl Interface for InterfaceImpl {
-    fn get_module(&self, address: &Address) -> Result<Bytecode, ExecutionError> {
+    fn get_module(&self, address: &String) -> Result<Bytecode> {
         Ok(Default::default())
     }
 }
 
-pub(crate) trait Interface {
-    /// Requires the module in the given address
-    fn get_module(&self, address: &Address) -> Result<Bytecode, ExecutionError>;
+impl InterfaceClone for InterfaceImpl {
+    fn clone_box(&self) -> Box<dyn Interface> {
+        Box::new(self.clone())
+    }
 }
 
 /// Operation should be used to communicate with the VM, TODO, it doesn't need everything in.
