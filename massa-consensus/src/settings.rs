@@ -1,6 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use massa_models::{Amount, Config};
+#![allow(clippy::assertions_on_constants)]
+
+use massa_models::{Amount, CompactConfig};
 #[allow(unused_imports)]
 use massa_signature::generate_random_private_key;
 use massa_signature::PrivateKey;
@@ -11,6 +13,9 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::{default::Default, path::PathBuf, usize};
 
+// Consensus static parameters (defined by protocol used)
+// Changing one of the following values is considered as a breaking change
+// Values differ in `test` flavor building for faster CI and simpler scenarios
 pub const CHANNEL_SIZE: usize = 256;
 
 #[cfg(not(test))]
@@ -116,8 +121,7 @@ pub const POS_LOCK_CYCLES: u64 = 1;
 #[cfg(test)]
 const POS_LOCK_CYCLES: u64 = 1;
 
-/// Consensus configuration
-/// Assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
+/// Consensus user-settings (that could be changes in `config.toml` file without rebuilding the binary)
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ConsensusSettings {
     /// Staking private keys
@@ -157,7 +161,14 @@ pub struct ConsensusSettings {
 }
 
 impl ConsensusSettings {
+    /// Utility method to derivate a full configuration (static + user defined) from an user defined one
+    /// This is really handy in tests where we want to mutate static defined values
     pub fn config(&self) -> ConsensusConfig {
+        // TODO: these assertion should be checked at compile time
+        // https://github.com/rust-lang/rfcs/issues/2790
+        assert!(THREAD_COUNT >= 1);
+        assert!((*T0).to_millis() >= 1);
+        assert!((*T0).to_millis() % (THREAD_COUNT as u64) == 0);
         ConsensusConfig {
             genesis_timestamp: *GENESIS_TIMESTAMP,
             end_timestamp: *END_TIMESTAMP,
@@ -200,8 +211,9 @@ impl ConsensusSettings {
     }
 }
 
-/// Consensus configuration
-/// Assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
+/// Consensus full configuration (static + user defined)
+///
+/// Assert that `THREAD_COUNT >= 1 || T0.to_millis() >= 1 || T0.to_millis() % THREAD_COUNT == 0`
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ConsensusConfig {
     /// Time in millis when the blockclique started.
@@ -271,24 +283,26 @@ pub struct ConsensusConfig {
 }
 
 lazy_static::lazy_static! {
-    static ref CONFIG: Config = Config {
-        genesis_timestamp: *crate::settings::GENESIS_TIMESTAMP,
-        end_timestamp: *crate::settings::END_TIMESTAMP,
-        thread_count: crate::settings::THREAD_COUNT,
-        t0: *crate::settings::T0,
-        delta_f0: crate::settings::DELTA_F0,
-        operation_validity_periods: crate::settings::OPERATION_VALIDITY_PERIODS,
-        periods_per_cycle: crate::settings::PERIODS_PER_CYCLE,
-        pos_lookback_cycles: crate::settings::POS_LOOKBACK_CYCLES,
-        pos_lock_cycles: crate::settings::POS_LOCK_CYCLES,
-        block_reward: *crate::settings::BLOCK_REWARD,
-        roll_price: *crate::settings::ROLL_PRICE,
+    /// Compact representation of key values of consensus algorithm used in API
+    static ref STATIC_CONFIG: CompactConfig = CompactConfig {
+        genesis_timestamp: *GENESIS_TIMESTAMP,
+        end_timestamp: *END_TIMESTAMP,
+        thread_count: THREAD_COUNT,
+        t0: *T0,
+        delta_f0: DELTA_F0,
+        operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+        periods_per_cycle: PERIODS_PER_CYCLE,
+        pos_lookback_cycles: POS_LOOKBACK_CYCLES,
+        pos_lock_cycles: POS_LOCK_CYCLES,
+        block_reward: *BLOCK_REWARD,
+        roll_price: *ROLL_PRICE,
     };
 }
 
 impl ConsensusConfig {
-    pub fn config(&self) -> Config {
-        *CONFIG
+    /// Utility method to derivate a compact configuration (for API use) from a full one
+    pub fn compact_config(&self) -> CompactConfig {
+        *STATIC_CONFIG
     }
 }
 
@@ -332,6 +346,7 @@ mod tests {
     }
 
     impl From<&Path> for ConsensusConfig {
+        /// Utility trait used in tests to get a full consensus configuration from an initial ledger path
         fn from(initial_ledger_path: &Path) -> Self {
             let mut staking_keys = Vec::new();
             for _ in 0..2 {
