@@ -16,8 +16,6 @@ use massa_wallet::Wallet;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
-use std::fs::File;
-use std::io::Read;
 use std::net::IpAddr;
 use std::path::PathBuf;
 use std::process;
@@ -663,7 +661,7 @@ impl Command {
                         }
                     }
                 };
-                let data = get_file_as_byte_vec(&path)?;
+                let data = get_file_as_byte_vec(&path).await?;
 
                 send_operation(
                     client,
@@ -735,11 +733,6 @@ pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>
     args.iter().map(|x| x.parse::<T>()).collect()
 }
 
-fn get_file_as_byte_vec(filename: &PathBuf) -> Result<Vec<u8>> {
-    let mut f = File::open(&filename)?;
-    let metadata = std::fs::metadata(&filename)?;
-    let mut buffer = vec![0; metadata.len() as usize];
-    f.read(&mut buffer)?;
-
-    Ok(buffer)
+async fn get_file_as_byte_vec(filename: &PathBuf) -> Result<Vec<u8>> {
+    Ok(tokio::fs::read(filename).await?)
 }
