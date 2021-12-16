@@ -291,7 +291,23 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
     }
 }
 
-/// generates a sample BootstrapExecutionState with a few ledger entries
+/// generates a sample BootstrapExecutionState with a few ledger entries:
+///
+/// * final_slot: (period 14, thread 1)
+/// * final_ledger:
+///   * (random address 1):
+///     * balance: 129
+///     * opt_module: None
+///     * data:
+///       * hash(bytes("key_testA")): bytes("test1_data")
+///       * hash(bytes("key_testB")): bytes("test2_data")
+///       * hash(bytes("key_testC")): bytes("test3_data")
+///   * (random address 2):
+///     * balance: 878
+///     * opt_module: Some(bytes("bytecodebytecode"))
+///     * data:
+///       * hash(bytes("key_testD")): bytes("test4_data")
+///       * hash(bytes("key_testE")): bytes("test5_data")
 pub fn get_execution_state() -> BootstrapExecutionState {
     BootstrapExecutionState {
         final_slot: Slot::new(14, 1),
