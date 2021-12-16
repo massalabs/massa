@@ -354,7 +354,7 @@ impl Command {
 
             Command::node_testnet_rewards_program_ownership_proof => {
                 if parameters.len() != 2 {
-                    bail!("wrong param numbers");
+                    bail!("wrong number of parameters");
                 }
                 // parse
                 let addr = parameters[0].parse::<Address>()?;
@@ -487,7 +487,7 @@ impl Command {
 
             Command::buy_rolls => {
                 if parameters.len() != 3 {
-                    bail!("wrong param numbers");
+                    bail!("wrong number of parameters");
                 }
                 let addr = parameters[0].parse::<Address>()?;
                 let roll_count = parameters[1].parse::<u64>()?;
@@ -534,7 +534,7 @@ impl Command {
 
             Command::sell_rolls => {
                 if parameters.len() != 3 {
-                    bail!("wrong param numbers");
+                    bail!("wrong number of parameters");
                 }
                 let addr = parameters[0].parse::<Address>()?;
                 let roll_count = parameters[1].parse::<u64>()?;
@@ -568,7 +568,7 @@ impl Command {
 
             Command::send_transaction => {
                 if parameters.len() != 4 {
-                    bail!("wrong param numbers");
+                    bail!("wrong number of parameters");
                 }
                 let addr = parameters[0].parse::<Address>()?;
                 let recipient_address = parameters[1].parse::<Address>()?;
@@ -627,7 +627,7 @@ impl Command {
             }
             Command::send_smart_contract => {
                 if parameters.len() != 6 {
-                    bail!("wrong param numbers");
+                    bail!("wrong number of parameters");
                 }
                 let addr = parameters[0].parse::<Address>()?;
                 let path = parameters[1].parse::<PathBuf>()?;
