@@ -161,7 +161,7 @@ pub enum Command {
             args = "SenderAddress PathToBytecode MaxGas GasPrice Coins Fee",
             todo = "[unstable] "
         ),
-        message = "create and sends an operation containing byte code"
+        message = "create and send an operation containing byte code"
     )]
     send_smart_contract,
 
@@ -519,7 +519,7 @@ impl Command {
                             }
                         }
                         None => {
-                            println!("WARNING: The total amount hit the limit overflow, operation will certainly be rejected");
+                            println!("WARNING: the total amount hit the limit overflow, operation will certainly be rejected");
                         }
                     }
                 }
@@ -594,7 +594,7 @@ impl Command {
                             }
                         }
                         None => {
-                            println!("WARNING: The total amount hit the limit overflow, operation will certainly be rejected");
+                            println!("WARNING: the total amount hit the limit overflow, operation will certainly be rejected");
                         }
                     }
                 }
@@ -659,7 +659,7 @@ impl Command {
                             }
                         }
                         None => {
-                            println!("WARNING: The total amount hit the limit overflow, operation will certainly be rejected");
+                            println!("WARNING: the total amount hit the limit overflow, operation will certainly be rejected");
                         }
                     }
                 };
