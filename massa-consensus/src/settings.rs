@@ -47,7 +47,7 @@ lazy_static::lazy_static! {
 #[cfg(test)]
 lazy_static::lazy_static! {
     /// Time in millis when the blockclique started.
-    pub static ref GENESIS_TIMESTAMP: MassaTime = MassaTime::now(0).unwrap();
+    pub static ref GENESIS_TIMESTAMP: MassaTime = MassaTime::now(0).unwrap().saturating_add(MassaTime::from(1000 * 60 *3)); // 3 minutes to compile and start the node ?
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = None;
