@@ -132,14 +132,12 @@ async fn launch() -> (
 
     // Launch execution controller.
     let (execution_command_sender, execution_event_receiver, execution_manager) =
-        massa_execution::start_controller(
-            massa_execution::ExecutionConfig {
-                genesis_timestamp: *massa_consensus::settings::GENESIS_TIMESTAMP,
-                t0: *massa_consensus::settings::T0,
-                clock_compensation,
-            },
-            massa_consensus::settings::THREAD_COUNT,
-        )
+        massa_execution::start_controller(massa_execution::ExecutionConfig {
+            thread_count: massa_consensus::settings::THREAD_COUNT,
+            genesis_timestamp: *massa_consensus::settings::GENESIS_TIMESTAMP,
+            t0: *massa_consensus::settings::T0,
+            clock_compensation,
+        })
         .await
         .expect("Could not start execution controller.");
 

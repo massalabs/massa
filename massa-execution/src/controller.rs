@@ -51,14 +51,12 @@ impl ExecutionManager {
 /// Creates a new execution controller.
 ///
 /// # Arguments
-/// * thread_count: thread count architecture parameter
 /// * cfg: execution configuration
 ///
 /// TODO: add a consensus command sender,
 /// to be able to send the `TransferToConsensus` message.
 pub async fn start_controller(
     cfg: ExecutionConfig,
-    thread_count: u8,
 ) -> Result<
     (
         ExecutionCommandSender,
@@ -72,7 +70,7 @@ pub async fn start_controller(
 
     // Unbounded, as execution is limited per metering already.
     let (event_tx, event_rx) = mpsc::unbounded_channel::<ExecutionEvent>();
-    let worker = ExecutionWorker::new(cfg, thread_count, event_tx, command_rx, manager_rx)?;
+    let worker = ExecutionWorker::new(cfg, event_tx, command_rx, manager_rx)?;
     let join_handle = tokio::spawn(async move {
         match worker.run_loop().await {
             Err(err) => Err(err),

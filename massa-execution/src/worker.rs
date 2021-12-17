@@ -35,8 +35,6 @@ pub enum ExecutionManagementCommand {}
 pub struct ExecutionWorker {
     /// Configuration
     cfg: ExecutionConfig,
-    /// Thread count
-    thread_count: u8,
     /// Receiver of commands.
     controller_command_rx: mpsc::Receiver<ExecutionCommand>,
     /// Receiver of management commands.
@@ -59,7 +57,6 @@ pub struct ExecutionWorker {
 impl ExecutionWorker {
     pub fn new(
         cfg: ExecutionConfig,
-        thread_count: u8,
         event_sender: mpsc::UnboundedSender<ExecutionEvent>,
         controller_command_rx: mpsc::Receiver<ExecutionCommand>,
         controller_manager_rx: mpsc::Receiver<ExecutionManagementCommand>,
@@ -89,7 +86,6 @@ impl ExecutionWorker {
         // return execution worker
         Ok(ExecutionWorker {
             cfg,
-            thread_count,
             controller_command_rx,
             controller_manager_rx,
             _event_sender: event_sender,
@@ -133,23 +129,29 @@ impl ExecutionWorker {
         condvar.notify_one();
     }
 
-    pub async fn run_loop(mut self) -> Result<(), ExecutionError> {
-        // set slot timer
-        let next_slot_timer = sleep_until(
+    fn get_timer_to_next_slot(&self) -> Result<tokio::time::Sleep, ExecutionError> {
+        Ok(sleep_until(
             get_block_slot_timestamp(
-                self.thread_count,
+                self.cfg.thread_count,
                 self.cfg.t0,
                 self.cfg.genesis_timestamp,
                 get_current_latest_block_slot(
-                    self.thread_count,
+                    self.cfg.thread_count,
                     self.cfg.t0,
                     self.cfg.genesis_timestamp,
                     self.cfg.clock_compensation,
                 )?
-                .map_or(Ok(Slot::new(0, 0)), |v| v.get_next_slot(self.thread_count))?,
+                .map_or(Ok(Slot::new(0, 0)), |v| {
+                    v.get_next_slot(self.cfg.thread_count)
+                })?,
             )?
             .estimate_instant(self.cfg.clock_compensation)?,
-        );
+        ))
+    }
+
+    pub async fn run_loop(mut self) -> Result<(), ExecutionError> {
+        // set slot timer
+        let next_slot_timer = self.get_timer_to_next_slot()?;
         tokio::pin!(next_slot_timer);
         loop {
             tokio::select! {
@@ -160,21 +162,7 @@ impl ExecutionWorker {
                 // Process slot timer event
                 _ = &mut next_slot_timer => {
                     self.fill_misses_until_now()?;
-                    next_slot_timer.set(sleep_until(
-                        get_block_slot_timestamp(
-                            self.thread_count,
-                            self.cfg.t0,
-                            self.cfg.genesis_timestamp,
-                            get_current_latest_block_slot(
-                                self.thread_count,
-                                self.cfg.t0,
-                                self.cfg.genesis_timestamp,
-                                self.cfg.clock_compensation,
-                            )?
-                            .map_or(Ok(Slot::new(0, 0)), |v| v.get_next_slot(self.thread_count))?,
-                        )?
-                        .estimate_instant(self.cfg.clock_compensation).unwrap(),
-                    ));
+                    next_slot_timer.set(self.get_timer_to_next_slot()?);
                 }
             }
         }
@@ -205,14 +193,15 @@ impl ExecutionWorker {
     /// fills the remaining slots until now() with miss executions
     fn fill_misses_until_now(&mut self) -> Result<(), ExecutionError> {
         let end_step = get_current_latest_block_slot(
-            self.thread_count,
+            self.cfg.thread_count,
             self.cfg.t0,
             self.cfg.genesis_timestamp,
             self.cfg.clock_compensation,
         )?;
         if let Some(end_step) = end_step {
             while self.last_active_slot < end_step {
-                self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
+                self.last_active_slot =
+                    self.last_active_slot.get_next_slot(self.cfg.thread_count)?;
                 self.push_request(ExecutionRequest::RunFinalStep(ExecutionStep {
                     slot: self.last_active_slot,
                     block: None,
@@ -243,7 +232,7 @@ impl ExecutionWorker {
         css_final_blocks.sort_unstable_by_key(|(_, b)| b.header.content.slot);
 
         // list maximum thread slots
-        let mut max_thread_slot = vec![self.last_final_slot; self.thread_count as usize];
+        let mut max_thread_slot = vec![self.last_final_slot; self.cfg.thread_count as usize];
         for (_b_id, block) in css_final_blocks.iter() {
             max_thread_slot[block.header.content.slot.thread as usize] = std::cmp::max(
                 max_thread_slot[block.header.content.slot.thread as usize],
@@ -258,7 +247,7 @@ impl ExecutionWorker {
                 continue;
             }
             loop {
-                let next_final_slot = self.last_final_slot.get_next_slot(self.thread_count)?;
+                let next_final_slot = self.last_final_slot.get_next_slot(self.cfg.thread_count)?;
                 if next_final_slot == block_slot {
                     self.push_request(ExecutionRequest::RunFinalStep(ExecutionStep {
                         slot: next_final_slot,
@@ -301,14 +290,16 @@ impl ExecutionWorker {
         for (b_id, block) in self.ordered_active_blocks.clone() {
             // process misses
             if self.last_active_slot == self.last_final_slot {
-                self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
+                self.last_active_slot =
+                    self.last_active_slot.get_next_slot(self.cfg.thread_count)?;
             }
             while self.last_active_slot < block.header.content.slot {
                 self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
                     slot: self.last_active_slot,
                     block: None,
                 }));
-                self.last_active_slot = self.last_active_slot.get_next_slot(self.thread_count)?;
+                self.last_active_slot =
+                    self.last_active_slot.get_next_slot(self.cfg.thread_count)?;
             }
             self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
                 slot: self.last_active_slot,
