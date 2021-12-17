@@ -14,3 +14,18 @@ pub enum ExecutionError {
     /// File error
     FileError(String),
 }
+
+macro_rules! bootstrap_file_error {
+    ($st:expr, $cfg:ident) => {
+        |err| {
+            ExecutionError::FileError(format!(
+                "error $st initial SCE ledger file {}: {}",
+                $cfg.initial_sce_ledger_path
+                    .to_str()
+                    .unwrap_or("(non-utf8 path)"),
+                err
+            ))
+        }
+    };
+}
+pub(crate) use bootstrap_file_error;

@@ -4,6 +4,7 @@ use massa_models::address::AddressHashMap;
 use massa_models::{Address, Amount, BlockId, Slot};
 use tracing::debug;
 
+use crate::error::bootstrap_file_error;
 use crate::interface_impl::INTERFACE;
 use crate::sce_ledger::{SCELedger, SCELedgerChanges};
 use crate::types::{ExecutionContext, ExecutionStep, OperationSC, StepHistory};
@@ -39,25 +40,10 @@ impl VM {
             // not bootstrapping: load initial SCE ledger from file
             let ledger_slot = Slot::new(0, thread_count.saturating_sub(1)); // last genesis block
             let ledgger_balances = serde_json::from_str::<AddressHashMap<Amount>>(
-                &std::fs::read_to_string(&cfg.initial_sce_ledger_path).map_err(|err| {
-                    ExecutionError::FileError(format!(
-                        "error loading initial SCE ledger file {}: {}",
-                        cfg.initial_sce_ledger_path
-                            .to_str()
-                            .unwrap_or("(non-utf8 path)"),
-                        err
-                    ))
-                })?,
+                &std::fs::read_to_string(&cfg.initial_sce_ledger_path)
+                    .map_err(bootstrap_file_error!("loading", cfg))?,
             )
-            .map_err(|err| {
-                ExecutionError::FileError(format!(
-                    "error parsing initial SCE ledger file {}: {}",
-                    cfg.initial_sce_ledger_path
-                        .to_str()
-                        .unwrap_or("(non-utf8 path)"),
-                    err
-                ))
-            })?;
+            .map_err(bootstrap_file_error!("parsing", cfg))?;
             let ledger_bootstrap = SCELedger::from_balances_map(ledgger_balances);
             *final_ledger_guard = (ledger_bootstrap, ledger_slot);
         }
