@@ -862,7 +862,7 @@ async fn test_roll_deactivation() {
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
     let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
         MockExecutionController::new();
-    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
+    cfg.genesis_timestamp = MassaTime::now(0).unwrap().saturating_add(300.into());
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(

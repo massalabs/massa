@@ -4,7 +4,7 @@ use massa_execution::{
     ExecutionCommand, ExecutionCommandSender, ExecutionEvent, ExecutionEventReceiver,
 };
 use massa_models::{Block, BlockHashMap};
-use massa_time::UTime;
+use massa_time::MassaTime;
 use tokio::{
     sync::mpsc::{channel, unbounded_channel, Receiver, Sender, UnboundedSender},
     time::sleep,
@@ -34,7 +34,7 @@ impl MockExecutionController {
         )
     }
 
-    pub async fn wait_command<F, T>(&mut self, timeout: UTime, filter_map: F) -> Option<T>
+    pub async fn wait_command<F, T>(&mut self, timeout: MassaTime, filter_map: F) -> Option<T>
     where
         F: Fn(ExecutionCommand) -> Option<T>,
     {
