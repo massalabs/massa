@@ -1,7 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 #![feature(ip)]
-#![feature(destructuring_assignment)]
 #![doc = include_str!("../../README.md")]
 
 extern crate massa_logging;
