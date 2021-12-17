@@ -95,7 +95,6 @@ impl ExecutionWorker {
         let vm_thread = thread::spawn(move || {
             let (lock, condvar) = &*execution_queue_clone;
             let mut requests = lock.lock().unwrap();
-            requests.push_back(ExecutionRequest::Starting);
             // Run until shutdown.
             loop {
                 match &requests.pop_front() {
@@ -109,8 +108,7 @@ impl ExecutionWorker {
                         vm_clone.lock().unwrap().reset_to_final()
                     }
                     Some(ExecutionRequest::Shutdown) => return,
-                    Some(ExecutionRequest::Starting) => {}
-                    None => panic!("Unexpected request None"),
+                    None => { /* startup or spurious wakeup */ }
                 };
                 requests = condvar.wait(requests).unwrap();
             }

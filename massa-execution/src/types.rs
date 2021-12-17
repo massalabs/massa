@@ -105,8 +105,6 @@ pub(crate) enum ExecutionRequest {
     ResetToFinalState,
     /// Shutdown state, set by the worker to signal shutdown to the VM thread.
     Shutdown,
-    /// Starting state
-    Starting,
 }
 
 pub(crate) type ExecutionQueue = Arc<(Mutex<VecDeque<ExecutionRequest>>, Condvar)>;
