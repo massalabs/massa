@@ -7,6 +7,8 @@ use serde::de::Unexpected;
 use std::fmt;
 use std::str::FromStr;
 
+pub const AMOUNT_ZERO: Amount = Amount::from_raw(0);
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);
 
