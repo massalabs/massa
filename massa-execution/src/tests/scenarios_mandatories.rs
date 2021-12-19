@@ -5,6 +5,7 @@ use std::str::FromStr;
 use crate::{start_controller, ExecutionSettings, SCELedger, SCELedgerEntry};
 use massa_models::{address::AddressHashMap, Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key};
+use massa_time::MassaTime;
 use serial_test::serial;
 use tempfile::NamedTempFile;
 
@@ -37,6 +38,10 @@ fn get_sample_settings() -> (NamedTempFile, ExecutionSettings) {
         .collect(),
     );
     let res = ExecutionSettings {
+        thread_count: 2,
+        genesis_timestamp: MassaTime::now(0).unwrap(),
+        t0: 16000.into(),
+        clock_compensation: 0,
         initial_sce_ledger_path: initial_file.path().into(),
     };
     (initial_file, res)
@@ -97,14 +102,14 @@ fn get_sample_ledger() -> SCELedger {
 #[serial]
 async fn test_execution_basic() {
     let (_config_file_keepalive, settings) = get_sample_settings();
-    assert!(start_controller(settings, 2, None).await.is_ok());
+    assert!(start_controller(settings, None).await.is_ok());
 }
 
 #[tokio::test]
 #[serial]
 async fn test_execution_shutdown() {
     let (_config_file_keepalive, settings) = get_sample_settings();
-    let (_command_sender, _event_receiver, manager) = start_controller(settings, 2, None)
+    let (_command_sender, _event_receiver, manager) = start_controller(settings, None)
         .await
         .expect("Failed to start execution.");
     manager.stop().await.expect("Failed to stop execution.");
@@ -114,7 +119,7 @@ async fn test_execution_shutdown() {
 #[serial]
 async fn test_sending_command() {
     let (_config_file_keepalive, settings) = get_sample_settings();
-    let (command_sender, _event_receiver, manager) = start_controller(settings, 2, None)
+    let (command_sender, _event_receiver, manager) = start_controller(settings, None)
         .await
         .expect("Failed to start execution.");
     command_sender
@@ -133,7 +138,7 @@ async fn test_execution_with_bootstrap() {
     };
     let (_config_file_keepalive, settings) = get_sample_settings();
     let (command_sender, _event_receiver, manager) =
-        start_controller(settings, 2, Some(bootstrap_state))
+        start_controller(settings, Some(bootstrap_state))
             .await
             .expect("Failed to start execution.");
     command_sender

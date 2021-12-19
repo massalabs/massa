@@ -150,7 +150,7 @@ impl ExecutionWorker {
     /// # Arguments
     /// * slot: target slot
     /// * block: None if miss, Some(block_id, block) otherwise
-    fn push_request(&mut self, request: ExecutionRequest) {
+    fn push_request(&self, request: ExecutionRequest) {
         let (queue_lock, condvar) = &*self.execution_queue;
         let queue_guard = &mut queue_lock.lock().unwrap();
         queue_guard.push_back(request);
