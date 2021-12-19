@@ -61,10 +61,12 @@ checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
 [[package]]
 name = "assembly_simulator"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/cautious-bassoon?branch=feature/define_module_as_lib#85a3a75efd1574ec0c74a50eb0ee9217d6da5141"
+source = "git+https://github.com/massalabs/sc-runtime#5c31448c3a06414edeb98fa86c558922f2ba0367"
 dependencies = [
  "anyhow",
  "lazy_static",
+ "serde 1.0.131",
+ "serde_json",
  "wasmer",
  "wasmer-as",
  "wasmer-compiler-cranelift",
