@@ -71,7 +71,6 @@ impl ExecutionWorker {
     ) -> Result<ExecutionWorker, ExecutionError> {
         let execution_queue = ExecutionQueue::default();
         let execution_queue_clone = execution_queue.clone();
-        let cfg_clone = cfg.clone();
 
         // Check bootstrap
         let bootstrap_final_slot;
@@ -87,11 +86,7 @@ impl ExecutionWorker {
         };
 
         // Init VM
-        let vm = Arc::new(Mutex::new(VM::new(
-            cfg,
-            cfg.thread_count,
-            bootstrap_ledger,
-        )?));
+        let vm = Arc::new(Mutex::new(VM::new(cfg.clone(), bootstrap_ledger)?));
         let vm_clone = vm.clone();
 
         // Start VM thread

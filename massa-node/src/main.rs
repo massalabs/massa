@@ -137,7 +137,8 @@ async fn launch() -> (
                 thread_count: massa_consensus::settings::THREAD_COUNT,
                 genesis_timestamp: *massa_consensus::settings::GENESIS_TIMESTAMP,
                 t0: *massa_consensus::settings::T0,
-                clock_compensation,
+                clock_compensation: bootstrap_state.compensation_millis,
+                initial_sce_ledger_path: SETTINGS.execution.initial_sce_ledger_path.clone(),
             },
             bootstrap_state.execution,
         )
