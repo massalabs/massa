@@ -19,6 +19,7 @@ tracing = "0.1"
 assembly_simulator = { git = "https://github.com/massalabs/sc-runtime", tag = "BEFORE_TRAITS" }
 anyhow = "1"
 lazy_static = "1.4.0"
+massa_time = { path = "../massa-time" }
 
 [dev-dependencies]
 serial_test = "0.5"

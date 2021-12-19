@@ -1,14 +1,13 @@
 use std::sync::{Arc, Mutex};
 
-use massa_models::address::AddressHashMap;
-use massa_models::{Address, Amount, BlockId, Slot};
-use tracing::debug;
-
 use crate::error::bootstrap_file_error;
 use crate::interface_impl::INTERFACE;
 use crate::sce_ledger::{SCELedger, SCELedgerChanges};
 use crate::types::{ExecutionContext, ExecutionStep, OperationSC, StepHistory};
 use crate::{ExecutionError, ExecutionSettings};
+use massa_models::address::AddressHashMap;
+use massa_models::{Address, Amount, BlockId, Slot};
+use tracing::debug;
 
 lazy_static::lazy_static! {
     pub(crate) static ref CONTEXT: Arc<Mutex::<ExecutionContext>> = {
@@ -18,7 +17,7 @@ lazy_static::lazy_static! {
     };
 }
 
-pub struct VM {
+pub(crate) struct VM {
     _cfg: ExecutionSettings,
     step_history: StepHistory,
 }
@@ -26,7 +25,6 @@ pub struct VM {
 impl VM {
     pub fn new(
         cfg: ExecutionSettings,
-        thread_count: u8,
         ledger_bootstrap: Option<(SCELedger, Slot)>,
     ) -> Result<VM, ExecutionError> {
         // bootstrap ledger
@@ -38,7 +36,7 @@ impl VM {
             *final_ledger_guard = (ledger_bootstrap, ledger_slot);
         } else {
             // not bootstrapping: load initial SCE ledger from file
-            let ledger_slot = Slot::new(0, thread_count.saturating_sub(1)); // last genesis block
+            let ledger_slot = Slot::new(0, cfg.thread_count.saturating_sub(1)); // last genesis block
             let ledgger_balances = serde_json::from_str::<AddressHashMap<Amount>>(
                 &std::fs::read_to_string(&cfg.initial_sce_ledger_path)
                     .map_err(bootstrap_file_error!("loading", cfg))?,
