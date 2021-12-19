@@ -3,6 +3,7 @@
 use crate::messages::BootstrapMessage;
 use displaydoc::Display;
 use massa_consensus::error::ConsensusError;
+use massa_execution::ExecutionError;
 use massa_hash::MassaHashError;
 use massa_network::NetworkError;
 use massa_time::TimeError;
@@ -29,6 +30,8 @@ pub enum BootstrapError {
     ConsensusError(#[from] ConsensusError),
     /// network error: {0}
     NetworkError(#[from] NetworkError),
+    /// execution error: {0}
+    ExecutionError(#[from] ExecutionError),
     /// join error: {0}
     JoinError(#[from] tokio::task::JoinError),
     /// missing private key file

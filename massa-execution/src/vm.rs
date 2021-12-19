@@ -1,31 +1,68 @@
 use std::sync::{Arc, Mutex};
 
-use massa_models::{Address, BlockId, Slot};
-use tracing::debug;
-
-use crate::config::ExecutionConfig;
+use crate::error::bootstrap_file_error;
 use crate::interface_impl::INTERFACE;
 use crate::sce_ledger::{SCELedger, SCELedgerChanges};
 use crate::types::{ExecutionContext, ExecutionStep, OperationSC, StepHistory};
+use crate::{ExecutionError, ExecutionSettings};
+use massa_models::address::AddressHashMap;
+use massa_models::{Address, Amount, BlockId, Slot};
+use tracing::debug;
 
 lazy_static::lazy_static! {
     pub(crate) static ref CONTEXT: Arc<Mutex::<ExecutionContext>> = {
-        let ledger = SCELedger::default(); // TODO Bootstrap
-        Arc::new(Mutex::new(ExecutionContext::new(ledger)))
+        let ledger = SCELedger::default();  // will be bootstrapped later
+        let ledger_at_slot = Slot::new(0, 0); // will be bootstrapped later
+        Arc::new(Mutex::new(ExecutionContext::new(ledger, ledger_at_slot)))
     };
 }
 
 pub(crate) struct VM {
-    _cfg: ExecutionConfig,
+    _cfg: ExecutionSettings,
     step_history: StepHistory,
 }
 
 impl VM {
-    pub fn new(_cfg: ExecutionConfig) -> VM {
-        VM {
-            _cfg,
-            step_history: Default::default(),
+    pub fn new(
+        cfg: ExecutionSettings,
+        thread_count: u8,
+        ledger_bootstrap: Option<(SCELedger, Slot)>,
+    ) -> Result<VM, ExecutionError> {
+        // bootstrap ledger
+        let context = CONTEXT.lock().unwrap();
+        let mut final_ledger_guard = context.ledger_step.final_ledger_slot.lock().unwrap();
+
+        if let Some((ledger_bootstrap, ledger_slot)) = ledger_bootstrap {
+            // bootstrap from snapshot
+            *final_ledger_guard = (ledger_bootstrap, ledger_slot);
+        } else {
+            // not bootstrapping: load initial SCE ledger from file
+            let ledger_slot = Slot::new(0, thread_count.saturating_sub(1)); // last genesis block
+            let ledgger_balances = serde_json::from_str::<AddressHashMap<Amount>>(
+                &std::fs::read_to_string(&cfg.initial_sce_ledger_path)
+                    .map_err(bootstrap_file_error!("loading", cfg))?,
+            )
+            .map_err(bootstrap_file_error!("parsing", cfg))?;
+            let ledger_bootstrap = SCELedger::from_balances_map(ledgger_balances);
+            *final_ledger_guard = (ledger_bootstrap, ledger_slot);
         }
+
+        Ok(VM {
+            _cfg: cfg,
+            step_history: Default::default(),
+        })
+    }
+
+    // clone bootstrap state (final ledger and slot)
+    pub fn get_bootstrap_state(&self) -> (SCELedger, Slot) {
+        CONTEXT
+            .lock()
+            .unwrap()
+            .ledger_step
+            .final_ledger_slot
+            .lock()
+            .unwrap()
+            .clone()
     }
 
     /// runs an SCE-final execution step
@@ -35,8 +72,9 @@ impl VM {
         if let Some(cached) = self.is_already_done(step) {
             // execution was already done, apply cached ledger changes to final ledger
             let context = CONTEXT.lock().unwrap();
-            let mut final_ledger_guard = context.ledger_step.final_ledger.lock().unwrap();
-            (*final_ledger_guard).apply_changes(&cached);
+            let mut final_ledger_guard = context.ledger_step.final_ledger_slot.lock().unwrap();
+            final_ledger_guard.0.apply_changes(&cached);
+            final_ledger_guard.1 = step.slot;
             return;
         }
         // nothing found in cache, or cache mismatch: reset history, run step and make it final
@@ -48,8 +86,8 @@ impl VM {
             // execution was already done, apply cached ledger changes to final ledger
             // It should always happen
             let context = CONTEXT.lock().unwrap();
-            let mut final_ledger_guard = context.ledger_step.final_ledger.lock().unwrap();
-            (*final_ledger_guard).apply_changes(&cached);
+            let mut final_ledger_guard = context.ledger_step.final_ledger_slot.lock().unwrap();
+            final_ledger_guard.0.apply_changes(&cached);
         }
     }
 

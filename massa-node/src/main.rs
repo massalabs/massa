@@ -74,7 +74,7 @@ async fn launch() -> (
     // interrupt signal listener
     let stop_signal = signal::ctrl_c();
     tokio::pin!(stop_signal);
-    let (boot_pos, boot_graph, clock_compensation, initial_peers) = tokio::select! {
+    let bootstrap_state = tokio::select! {
         _ = &mut stop_signal => {
             info!("interrupt signal received in bootstrap loop");
             process::exit(0);
@@ -96,8 +96,8 @@ async fn launch() -> (
         start_network_controller(
             SETTINGS.network.clone(), // TODO: get rid of this clone() ... see #1277
             Establisher::new(),
-            clock_compensation,
-            initial_peers,
+            bootstrap_state.compensation_millis,
+            bootstrap_state.peers,
             *crate::settings::VERSION,
         )
         .await
@@ -130,29 +130,32 @@ async fn launch() -> (
     .await
     .expect("could not start pool controller");
 
-    // Launch execution controller.
+    // launch execution controller
     let (execution_command_sender, execution_event_receiver, execution_manager) =
-        massa_execution::start_controller(massa_execution::ExecutionConfig {
-            thread_count: massa_consensus::settings::THREAD_COUNT,
-            genesis_timestamp: *massa_consensus::settings::GENESIS_TIMESTAMP,
-            t0: *massa_consensus::settings::T0,
-            clock_compensation,
-        })
+        massa_execution::start_controller(
+            massa_execution::ExecutionSettings {
+                thread_count: massa_consensus::settings::THREAD_COUNT,
+                genesis_timestamp: *massa_consensus::settings::GENESIS_TIMESTAMP,
+                t0: *massa_consensus::settings::T0,
+                clock_compensation,
+            },
+            bootstrap_state.execution,
+        )
         .await
-        .expect("Could not start execution controller.");
+        .expect("could not start execution controller");
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             SETTINGS.consensus.config(),
-            execution_command_sender,
+            execution_command_sender.clone(),
             execution_event_receiver,
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender.clone(),
-            boot_pos,
-            boot_graph,
-            clock_compensation,
+            bootstrap_state.pos,
+            bootstrap_state.graph,
+            bootstrap_state.compensation_millis,
         )
         .await
         .expect("could not start consensus controller");
@@ -161,10 +164,11 @@ async fn launch() -> (
     let bootstrap_manager = start_bootstrap_server(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
+        execution_command_sender.clone(),
         &SETTINGS.bootstrap,
         massa_bootstrap::Establisher::new(),
         private_key,
-        clock_compensation,
+        bootstrap_state.compensation_millis,
         *crate::settings::VERSION,
     )
     .await
@@ -188,7 +192,7 @@ async fn launch() -> (
         &SETTINGS.network,
         *crate::settings::VERSION,
         network_command_sender.clone(),
-        clock_compensation,
+        bootstrap_state.compensation_millis,
         node_id,
     );
     let api_public_handle = api_public.serve(&SETTINGS.api.bind_public);
