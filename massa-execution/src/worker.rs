@@ -6,9 +6,11 @@ use crate::types::{ExecutionQueue, ExecutionRequest};
 use crate::vm::VM;
 use crate::BootstrapExecutionState;
 use crate::{config::ExecutionSettings, types::ExecutionStep};
+use massa_models::timeslots::{get_block_slot_timestamp, get_current_latest_block_slot};
 use massa_models::{Block, BlockHashMap, BlockId, Slot};
-use std::collections::{btree_map, BTreeMap};
+use std::collections::BTreeMap;
 use tokio::sync::mpsc;
+use tokio::time::sleep_until;
 use tracing::{debug, warn};
 
 /// Commands sent to the `execution` component.
@@ -38,11 +40,9 @@ pub enum ExecutionManagementCommand {}
 
 pub struct ExecutionWorker {
     /// Configuration
-    _cfg: ExecutionSettings,
+    cfg: ExecutionSettings,
     /// VM
     vm: Arc<Mutex<VM>>,
-    /// Thread count
-    thread_count: u8,
     /// Receiver of commands.
     controller_command_rx: mpsc::Receiver<ExecutionCommand>,
     /// Receiver of management commands.
@@ -52,8 +52,6 @@ pub struct ExecutionWorker {
     /// Time cursors
     last_final_slot: Slot,
     last_active_slot: Slot,
-    /// ordered active blocks
-    ordered_active_blocks: Vec<(BlockId, Block)>,
     /// pending CSS final blocks
     pending_css_final_blocks: BTreeMap<Slot, (BlockId, Block)>,
     /// VM thread
@@ -65,7 +63,6 @@ pub struct ExecutionWorker {
 impl ExecutionWorker {
     pub fn new(
         cfg: ExecutionSettings,
-        thread_count: u8,
         event_sender: mpsc::UnboundedSender<ExecutionEvent>,
         controller_command_rx: mpsc::Receiver<ExecutionCommand>,
         controller_manager_rx: mpsc::Receiver<ExecutionManagementCommand>,
@@ -73,7 +70,6 @@ impl ExecutionWorker {
     ) -> Result<ExecutionWorker, ExecutionError> {
         let execution_queue = ExecutionQueue::default();
         let execution_queue_clone = execution_queue.clone();
-        let cfg_clone = cfg.clone();
 
         // Check bootstrap
         let bootstrap_final_slot;
@@ -84,12 +80,12 @@ impl ExecutionWorker {
             bootstrap_ledger = Some((bootstrap_state.final_ledger, bootstrap_final_slot));
         } else {
             // init without bootstrap
-            bootstrap_final_slot = Slot::new(0, thread_count.saturating_sub(1));
+            bootstrap_final_slot = Slot::new(0, cfg.thread_count.saturating_sub(1));
             bootstrap_ledger = None;
         };
 
         // Init VM
-        let vm = Arc::new(Mutex::new(VM::new(cfg, thread_count, bootstrap_ledger)?));
+        let vm = Arc::new(Mutex::new(VM::new(cfg.clone(), bootstrap_ledger)?));
         let vm_clone = vm.clone();
 
         // Start VM thread
@@ -117,9 +113,8 @@ impl ExecutionWorker {
 
         // return execution worker
         Ok(ExecutionWorker {
-            _cfg: cfg_clone,
+            cfg,
             vm,
-            thread_count,
             controller_command_rx,
             controller_manager_rx,
             _event_sender: event_sender,
@@ -162,14 +157,41 @@ impl ExecutionWorker {
         condvar.notify_one();
     }
 
+    fn get_timer_to_next_slot(&self) -> Result<tokio::time::Sleep, ExecutionError> {
+        Ok(sleep_until(
+            get_block_slot_timestamp(
+                self.cfg.thread_count,
+                self.cfg.t0,
+                self.cfg.genesis_timestamp,
+                get_current_latest_block_slot(
+                    self.cfg.thread_count,
+                    self.cfg.t0,
+                    self.cfg.genesis_timestamp,
+                    self.cfg.clock_compensation,
+                )?
+                .map_or(Ok(Slot::new(0, 0)), |v| {
+                    v.get_next_slot(self.cfg.thread_count)
+                })?,
+            )?
+            .estimate_instant(self.cfg.clock_compensation)?,
+        ))
+    }
+
     pub async fn run_loop(mut self) -> Result<(), ExecutionError> {
+        // set slot timer
+        let next_slot_timer = self.get_timer_to_next_slot()?;
+        tokio::pin!(next_slot_timer);
         loop {
             tokio::select! {
                 // Process management commands
                 _ = self.controller_manager_rx.recv() => break,
-
                 // Process commands
                 Some(cmd) = self.controller_command_rx.recv() => self.process_command(cmd)?,
+                // Process slot timer event
+                _ = &mut next_slot_timer => {
+                    self.fill_misses_until_now()?;
+                    next_slot_timer.set(self.get_timer_to_next_slot()?);
+                }
             }
         }
         // Shutdown VM, cancel all pending execution requests
@@ -207,6 +229,28 @@ impl ExecutionWorker {
         Ok(())
     }
 
+    /// fills the remaining slots until now() with miss executions
+    fn fill_misses_until_now(&mut self) -> Result<(), ExecutionError> {
+        let end_step = get_current_latest_block_slot(
+            self.cfg.thread_count,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
+            self.cfg.clock_compensation,
+        )?;
+        if let Some(end_step) = end_step {
+            while self.last_active_slot < end_step {
+                self.last_active_slot =
+                    self.last_active_slot.get_next_slot(self.cfg.thread_count)?;
+                self.push_request(ExecutionRequest::RunFinalStep(ExecutionStep {
+                    slot: self.last_active_slot,
+                    block: None,
+                }));
+            }
+        }
+        Ok(())
+    }
+
+    /// called when the blockclique changes
     fn blockclique_changed(
         &mut self,
         blockclique: BlockHashMap<Block>,
@@ -224,14 +268,14 @@ impl ExecutionWorker {
                     // eliminate blocks that are not from a stricly later slot than the current latest SCE-final one
                     return None;
                 }
-                Some((b.header.content.slot, (b_if, b)))
+                Some((b.header.content.slot, (b_id, b)))
             }));
         if let Some(max_css_final_slot) = self
             .pending_css_final_blocks
             .last_key_value()
             .map(|(s, _v)| *s)
         {
-            let mut cur_slot = self.last_final_slot.get_next_slot(self.thread_count)?;
+            let mut cur_slot = self.last_final_slot.get_next_slot(self.cfg.thread_count)?;
             while cur_slot <= max_css_final_slot {
                 match self
                     .pending_css_final_blocks
@@ -241,7 +285,7 @@ impl ExecutionWorker {
                     // there is a CSS-final block at cur_slot
                     Some(b_slot) if b_slot == cur_slot => {
                         // remove the entry from pending_css_final_blocks (cannot panic, checked above)
-                        let Some((_b_slot, (b_id, block))) =
+                        let (_b_slot, (b_id, block)) =
                             self.pending_css_final_blocks.pop_first().unwrap();
                         // execute the block as a SCE-final VM step
                         self.push_request(ExecutionRequest::RunFinalStep(ExecutionStep {
@@ -283,12 +327,12 @@ impl ExecutionWorker {
                     None => break,
                 }
 
-                cur_slot = cur_slot.get_next_slot(self.thread_count)?;
+                cur_slot = cur_slot.get_next_slot(self.cfg.thread_count)?;
             }
         }
 
         // process SCE-active blocks
-        let sce_active_blocks: BTreeMap<Slot, (&BlockId, &Block)> = blockclique
+        let mut sce_active_blocks: BTreeMap<Slot, (&BlockId, &Block)> = blockclique
             .iter()
             .filter_map(|(b_id, b)| {
                 if b.header.content.slot <= self.last_final_slot {
@@ -297,17 +341,20 @@ impl ExecutionWorker {
                 }
                 Some((b.header.content.slot, (b_id, b)))
             })
-            .chain(self.pending_css_final_blocks.iter().map(|k, v| (*k, v)))
+            .chain(
+                self.pending_css_final_blocks
+                    .iter()
+                    .map(|(k, (b_id, b))| (*k, (b_id, b))),
+            )
             .collect();
-        if let Some(max_css_active_slot) = self.sce_active_blocks.last_key_value().map(|(s, _v)| *s)
-        {
-            let mut cur_slot = self.last_final_slot.get_next_slot(self.thread_count)?;
+        if let Some(max_css_active_slot) = sce_active_blocks.last_key_value().map(|(s, _v)| *s) {
+            let mut cur_slot = self.last_final_slot.get_next_slot(self.cfg.thread_count)?;
             while cur_slot <= max_css_active_slot {
                 match sce_active_blocks.first_key_value().map(|(s, _v)| *s) {
                     // there is a CSS-active block at cur_slot
                     Some(b_slot) if b_slot == cur_slot => {
                         // remove the entry from sce_active_blocks (cannot panic, checked above)
-                        let Some((_b_slot, (b_id, block))) = sce_active_blocks.pop_first().unwrap();
+                        let (_b_slot, (b_id, block)) = sce_active_blocks.pop_first().unwrap();
                         // execute the block as a SCE-active VM step
                         self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
                             slot: cur_slot,
@@ -332,12 +379,12 @@ impl ExecutionWorker {
                     None => break,
                 }
 
-                cur_slot = cur_slot.get_next_slot(self.thread_count)?;
+                cur_slot = cur_slot.get_next_slot(self.cfg.thread_count)?;
             }
         }
 
         // fill with misses until current slot
-        //TODO
+        self.fill_misses_until_now()?;
 
         Ok(())
     }
