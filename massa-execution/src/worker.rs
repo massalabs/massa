@@ -241,7 +241,7 @@ impl ExecutionWorker {
             while self.last_active_slot < end_step {
                 self.last_active_slot =
                     self.last_active_slot.get_next_slot(self.cfg.thread_count)?;
-                self.push_request(ExecutionRequest::RunFinalStep(ExecutionStep {
+                self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
                     slot: self.last_active_slot,
                     block: None,
                 }));
