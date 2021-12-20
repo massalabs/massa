@@ -28,7 +28,7 @@ async fn test_update_current_slot_cmd_notification() {
     );
     cfg.t0 = 1000.into();
     cfg.thread_count = 1;
-    cfg.genesis_timestamp = MassaTime::now(0).unwrap().checked_add(1000.into()).unwrap();
+    cfg.genesis_timestamp = MassaTime::now().unwrap().checked_add(1000.into()).unwrap();
 
     let timeout = 150;
 
@@ -42,7 +42,7 @@ async fn test_update_current_slot_cmd_notification() {
                     consensus_event_receiver| {
             let slot_notification_filter = |cmd| match cmd {
                 massa_pool::PoolCommand::UpdateCurrentSlot(slot) => {
-                    Some((slot, MassaTime::now(0).unwrap()))
+                    Some((slot, MassaTime::now().unwrap()))
                 }
                 _ => None,
             };
@@ -108,7 +108,7 @@ async fn test_update_latest_final_block_cmd_notification() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = MassaTime::now(0).unwrap().checked_sub(100.into()).unwrap();
+    cfg.genesis_timestamp = MassaTime::now().unwrap().checked_sub(100.into()).unwrap();
     cfg.delta_f0 = 2;
     cfg.disable_block_creation = false;
 
@@ -171,7 +171,7 @@ async fn test_new_final_ops() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = MassaTime::now(0).unwrap().checked_sub(cfg.t0).unwrap();
+    cfg.genesis_timestamp = MassaTime::now().unwrap().checked_sub(cfg.t0).unwrap();
     cfg.delta_f0 = 2;
     cfg.disable_block_creation = true;
 
@@ -286,7 +286,7 @@ async fn test_max_attempts_get_operations() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = MassaTime::now(0).unwrap().checked_sub(cfg.t0).unwrap();
+    cfg.genesis_timestamp = MassaTime::now().unwrap().checked_sub(cfg.t0).unwrap();
     cfg.delta_f0 = 2;
     cfg.disable_block_creation = false;
 
@@ -408,7 +408,7 @@ async fn test_max_batch_size_get_operations() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = MassaTime::now(0).unwrap().checked_sub(cfg.t0).unwrap();
+    cfg.genesis_timestamp = MassaTime::now().unwrap().checked_sub(cfg.t0).unwrap();
     cfg.delta_f0 = 2;
     cfg.disable_block_creation = false;
 

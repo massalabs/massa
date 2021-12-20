@@ -31,7 +31,7 @@ async fn test_queueing() {
     cfg.delta_f0 = 32;
 
     // to avoid timing problems for block in the future
-    cfg.genesis_timestamp = MassaTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now()
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
@@ -172,7 +172,7 @@ async fn test_doubles() {
     cfg.delta_f0 = 32;
 
     // to avoid timing pb for block in the future
-    cfg.genesis_timestamp = MassaTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now()
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
@@ -288,7 +288,7 @@ async fn test_double_staking() {
     cfg.delta_f0 = 32;
 
     // to avoid timing pb for block in the future
-    cfg.genesis_timestamp = MassaTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now()
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
@@ -415,7 +415,7 @@ async fn test_test_parents() {
     cfg.delta_f0 = 32;
 
     // to avoid timing pb for block in the future
-    cfg.genesis_timestamp = MassaTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now()
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
 
