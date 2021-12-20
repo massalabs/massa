@@ -1,3 +1,5 @@
+#![feature(map_first_last)]
+
 pub mod config;
 mod controller;
 mod error;

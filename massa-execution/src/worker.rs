@@ -8,6 +8,7 @@ use crate::BootstrapExecutionState;
 use crate::{config::ExecutionSettings, types::ExecutionStep};
 use massa_models::timeslots::{get_block_slot_timestamp, get_current_latest_block_slot};
 use massa_models::{Block, BlockHashMap, BlockId, Slot};
+use std::collections::BTreeMap;
 use tokio::sync::mpsc;
 use tokio::time::sleep_until;
 use tracing::{debug, warn};
@@ -51,10 +52,8 @@ pub struct ExecutionWorker {
     /// Time cursors
     last_final_slot: Slot,
     last_active_slot: Slot,
-    /// ordered active blocks
-    ordered_active_blocks: Vec<(BlockId, Block)>,
     /// pending CSS final blocks
-    ordered_pending_css_final_blocks: Vec<(BlockId, Block)>,
+    pending_css_final_blocks: BTreeMap<Slot, (BlockId, Block)>,
     /// VM thread
     vm_thread: JoinHandle<()>,
     /// VM execution requests queue
@@ -122,8 +121,7 @@ impl ExecutionWorker {
             //TODO bootstrap or init
             last_final_slot: bootstrap_final_slot,
             last_active_slot: bootstrap_final_slot,
-            ordered_active_blocks: Default::default(),
-            ordered_pending_css_final_blocks: Default::default(),
+            pending_css_final_blocks: Default::default(),
             vm_thread,
             execution_queue,
         })
@@ -152,7 +150,7 @@ impl ExecutionWorker {
     /// # Arguments
     /// * slot: target slot
     /// * block: None if miss, Some(block_id, block) otherwise
-    fn push_request(&mut self, request: ExecutionRequest) {
+    fn push_request(&self, request: ExecutionRequest) {
         let (queue_lock, condvar) = &*self.execution_queue;
         let queue_guard = &mut queue_lock.lock().unwrap();
         queue_guard.push_back(request);
@@ -232,6 +230,7 @@ impl ExecutionWorker {
     }
 
     /// fills the remaining slots until now() with miss executions
+    /// see step 4 in spec https://github.com/massalabs/massa/wiki/vm-block-feed
     fn fill_misses_until_now(&mut self) -> Result<(), ExecutionError> {
         let end_step = get_current_latest_block_slot(
             self.cfg.thread_count,
@@ -240,121 +239,194 @@ impl ExecutionWorker {
             self.cfg.clock_compensation,
         )?;
         if let Some(end_step) = end_step {
-            while self.last_active_slot < end_step {
-                self.last_active_slot =
-                    self.last_active_slot.get_next_slot(self.cfg.thread_count)?;
-                self.push_request(ExecutionRequest::RunFinalStep(ExecutionStep {
+            // slot S
+            let s = self.last_active_slot.get_next_slot(self.cfg.thread_count)?;
+
+            while s <= end_step {
+                // call the VM to execute an SCE-active miss at slot S
+                self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
                     slot: self.last_active_slot,
                     block: None,
                 }));
+
+                // set last_active_slot = S
+                self.last_active_slot = s;
+
+                s = s.get_next_slot(self.cfg.thread_count)?;
             }
         }
         Ok(())
     }
 
+    /// checks whether a miss at slot S would be SCE-final by looking up subsequent CSS-final blocks in the same thread
+    /// see spec at https://github.com/massalabs/massa/wiki/vm-block-feed
+    ///
+    /// # Arguments
+    /// * s: missed slot
+    /// * max_css_final_slot: maximum lookup slot (included)
+    fn is_miss_sce_final(&self, s: Slot, max_css_final_slot: Slot) -> bool {
+        let mut check_slot = Slot::new(s.period + 1, s.thread);
+        while check_slot <= max_css_final_slot {
+            if self.pending_css_final_blocks.contains_key(&check_slot) {
+                break;
+            }
+            check_slot.period += 1;
+        }
+        return check_slot <= max_css_final_slot;
+    }
+
     /// called when the blockclique changes
+    /// see spec at https://github.com/massalabs/massa/wiki/vm-block-feed
     fn blockclique_changed(
         &mut self,
-        mut blockclique: BlockHashMap<Block>,
-        mut finalized_blocks: BlockHashMap<Block>,
+        blockclique: BlockHashMap<Block>,
+        finalized_blocks: BlockHashMap<Block>,
     ) -> Result<(), ExecutionError> {
-        // filter out any already-finalized blocks
-        // this can happen for example on bootstrap because the consensus vs execution bootstrap snapshots may be out of sync
-        blockclique.retain(|_b_id, b| b.header.content.slot > self.last_final_slot);
-        finalized_blocks.retain(|_b_id, b| b.header.content.slot > self.last_final_slot);
+        // 1 - reset the SCE state back to its latest final state
 
-        // stop the current VM execution and reset state to final
+        // revert the VM to its latest SCE-final state by clearing its active slot history.
         // TODO make something more iterative/conservative in the future to reuse unaffected executions
         self.reset_to_final();
 
-        // stop the current VM execution and reset state to final
-        // TODO reset VM
+        // set `last_active_slot = last_final_slot
+        self.last_active_slot = self.last_final_slot;
 
-        // gather pending finalized CSS
-        let mut css_final_blocks: Vec<(BlockId, Block)> = self
-            .ordered_pending_css_final_blocks
-            .drain(..)
-            .chain(finalized_blocks.into_iter())
-            .collect();
-        css_final_blocks.sort_unstable_by_key(|(_, b)| b.header.content.slot);
+        // 2 - process CSS-final blocks
 
-        // list maximum thread slots
-        let mut max_thread_slot = vec![self.last_final_slot; self.cfg.thread_count as usize];
-        for (_b_id, block) in css_final_blocks.iter() {
-            max_thread_slot[block.header.content.slot.thread as usize] = std::cmp::max(
-                max_thread_slot[block.header.content.slot.thread as usize],
-                block.header.content.slot,
-            );
-        }
-
-        // list SCE-final slots/blocks
-        for (b_id, block) in css_final_blocks.into_iter() {
-            let block_slot = block.header.content.slot;
-            if block_slot <= self.last_final_slot {
-                continue;
+        // extend `pending_css_final_blocks` with `new_css_final_blocks`
+        let new_css_final_blocks = finalized_blocks.into_iter().filter_map(|(b_id, b)| {
+            if b.header.content.slot <= self.last_active_slot {
+                // eliminate blocks that are not from a stricly later slot than the current latest SCE-final one
+                // this is an optimization
+                return None;
             }
-            loop {
-                let next_final_slot = self.last_final_slot.get_next_slot(self.cfg.thread_count)?;
-                if next_final_slot == block_slot {
-                    self.push_request(ExecutionRequest::RunFinalStep(ExecutionStep {
-                        slot: next_final_slot,
-                        block: Some((b_id, block.clone())),
-                    }));
-                    self.last_final_slot = next_final_slot;
-                    break;
-                } else if next_final_slot < max_thread_slot[next_final_slot.thread as usize] {
-                    self.push_request(ExecutionRequest::RunFinalStep(ExecutionStep {
-                        slot: next_final_slot,
-                        block: Some((b_id, block.clone())),
-                    }));
-                    self.last_final_slot = next_final_slot;
-                } else {
-                    self.ordered_pending_css_final_blocks.push((b_id, block));
-                    break;
+            Some((b.header.content.slot, (b_id, b)))
+        });
+        self.pending_css_final_blocks.extend(new_css_final_blocks);
+
+        if let Some(max_css_final_slot) = self
+            .pending_css_final_blocks
+            .last_key_value()
+            .map(|(s, _v)| *s)
+        {
+            // iterate over every slot S starting from `last_final_slot.get_next_slot()` up to the latest slot in `pending_css_final_blocks` (included)
+            let mut s = self.last_final_slot.get_next_slot(self.cfg.thread_count)?;
+            while s <= max_css_final_slot {
+                match self
+                    .pending_css_final_blocks
+                    .first_key_value()
+                    .map(|(s, _v)| *s)
+                {
+                    // there is a block B at slot S in `pending_css_final_blocks`:
+                    Some(b_slot) if b_slot == s => {
+                        // remove B from `pending_css_final_blocks`
+                        // cannot panic, checked above
+                        let (_s, (b_id, b)) = self
+                            .pending_css_final_blocks
+                            .pop_first()
+                            .expect("pending_css_final_blocks wa unexpectedly empty");
+                        // call the VM to execute the SCE-final block B at slot S
+                        self.push_request(ExecutionRequest::RunFinalStep(ExecutionStep {
+                            slot: s,
+                            block: Some((b_id, b)),
+                        }));
+                        // set `last_active_slot = last_final_slot = S`
+                        self.last_active_slot = s;
+                        self.last_final_slot = s;
+                    }
+
+                    // there is no CSS-final block at s, but there are CSS-final blocks later
+                    Some(_b_slot) => {
+                        // check whether there is a CSS-final block later in the same thread
+                        if self.is_miss_sce_final(s, max_css_final_slot) {
+                            // subsequent CSS-final block found in the same thread as s
+                            // call the VM to execute an SCE-final miss at slot S
+                            self.push_request(ExecutionRequest::RunFinalStep(ExecutionStep {
+                                slot: s,
+                                block: None,
+                            }));
+                            // set `last_active_slot = last_final_slot = S`
+                            self.last_active_slot = s;
+                            self.last_final_slot = s;
+                        } else {
+                            // no subsequent CSS-final block found in the same thread as s
+                            break;
+                        }
+                    }
+
+                    // there are no more CSS-final blocks
+                    None => break,
                 }
+
+                s = s.get_next_slot(self.cfg.thread_count)?;
             }
         }
 
-        // list remaining CSS finals + new blockclique
-        self.ordered_active_blocks = self
-            .ordered_pending_css_final_blocks
-            .iter()
-            .cloned()
+        // 3 - process CSS-active blocks
+
+        // define `sce_active_blocks = blockclique_blocks UNION pending_css_final_blocks`
+        let new_blockclique_blocks = blockclique.iter().filter_map(|(b_id, b)| {
+            if b.header.content.slot <= self.last_final_slot {
+                // eliminate blocks that are not from a stricly later slot than the current latest SCE-final one
+                // (this is an optimizeation)
+                return None;
+            }
+            Some((b.header.content.slot, (b_id, b)))
+        });
+        let mut sce_active_blocks: BTreeMap<Slot, (&BlockId, &Block)> = new_blockclique_blocks
             .chain(
-                blockclique
-                    .into_iter()
-                    .filter(|(_b_id, b)| b.header.content.slot > self.last_final_slot),
+                self.pending_css_final_blocks
+                    .iter()
+                    .map(|(k, (b_id, b))| (*k, (b_id, b))),
             )
             .collect();
 
-        // sort active blocks
-        self.ordered_active_blocks
-            .sort_unstable_by_key(|(_b_id, b)| b.header.content.slot);
+        if let Some(max_css_active_slot) = sce_active_blocks.last_key_value().map(|(s, _v)| *s) {
+            // iterate over every slot S starting from `last_active_slot.get_next_slot()` up to the latest slot in `sce_active_blocks` (included)
+            let mut s = self.last_final_slot.get_next_slot(self.cfg.thread_count)?;
+            while s <= max_css_active_slot {
+                let first_sce_active_slot = sce_active_blocks.first_key_value().map(|(s, _v)| *s);
+                match first_sce_active_slot {
+                    // there is a block B at slot S in `sce_active_blocks`:
+                    Some(b_slot) if b_slot == s => {
+                        // remove the entry from sce_active_blocks (cannot panic, checked above)
+                        let (_b_slot, (b_id, block)) = sce_active_blocks
+                            .pop_first()
+                            .expect("sce_active_blocks should not be empty");
+                        // call the VM to execute the SCE-active block B at slot S
+                        self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
+                            slot: s,
+                            block: Some((*b_id, block.clone())),
+                        }));
+                        // set `last_active_slot = S`
+                        self.last_active_slot = s;
+                    }
 
-        // apply active blocks and misses
-        self.last_active_slot = self.last_final_slot;
-        // TODO remove clone() in iterator below
-        for (b_id, block) in self.ordered_active_blocks.clone() {
-            // process misses
-            if self.last_active_slot == self.last_final_slot {
-                self.last_active_slot =
-                    self.last_active_slot.get_next_slot(self.cfg.thread_count)?;
+                    // otherwise, if there is no CSS-active block at S
+                    Some(b_slot) => {
+                        // make sure b_slot is after s
+                        if b_slot <= s {
+                            panic!("remaining CSS-active blocks should be later than S");
+                        }
+
+                        // call the VM to execute an SCE-active miss at slot S
+                        self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
+                            slot: s,
+                            block: None,
+                        }));
+                        // set `last_active_slot = S`
+                        self.last_active_slot = s;
+                    }
+
+                    // there are no more CSS-active blocks
+                    None => break,
+                }
+
+                s = s.get_next_slot(self.cfg.thread_count)?;
             }
-            while self.last_active_slot < block.header.content.slot {
-                self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
-                    slot: self.last_active_slot,
-                    block: None,
-                }));
-                self.last_active_slot =
-                    self.last_active_slot.get_next_slot(self.cfg.thread_count)?;
-            }
-            self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
-                slot: self.last_active_slot,
-                block: Some((b_id, block)),
-            }));
         }
 
-        // apply misses until now()
+        // 4 - fill the remaining slots with misses
         self.fill_misses_until_now()?;
 
         Ok(())
