@@ -20,9 +20,6 @@ mod rpc;
 mod settings;
 mod utils;
 
-#[cfg(test)]
-pub mod tests;
-
 #[derive(StructOpt)]
 struct Args {
     /// Port to listen on (Massa public API).
