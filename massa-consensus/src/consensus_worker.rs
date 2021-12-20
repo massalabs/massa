@@ -584,7 +584,7 @@ impl ConsensusWorker {
                     serialized_block.len()
                 ))
             })?;
-        let mut remaining_operation_count = settings::MAX_GAS_PER_BLOCK as usize;
+        let mut remaining_operation_count = self.cfg.max_operations_per_block as usize;
 
         // exclude operations that were used in block ancestry
         let mut exclude_operations = OperationHashSet::default();
