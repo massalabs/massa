@@ -660,7 +660,7 @@ impl ConsensusWorker {
                 } else {
                     0
                 };
-                if total_gas + op_gas > settings::MAX_GAS_PER_BLOCK {
+                if total_gas.saturating_add(op_gas) > settings::MAX_GAS_PER_BLOCK {
                     // no more gas left: do not include
                     continue;
                 }
