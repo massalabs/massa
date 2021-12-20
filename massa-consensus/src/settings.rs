@@ -21,7 +21,11 @@ pub const CHANNEL_SIZE: usize = 256;
 #[cfg(not(test))]
 lazy_static::lazy_static! {
     /// Time in millis when the blockclique started.
-    pub static ref GENESIS_TIMESTAMP: MassaTime = 1638460800000.into();
+    pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "test") {
+        MassaTime::now(0).unwrap().saturating_add(MassaTime::from(1000 * 60 *3))
+    } else {
+        1638460800000.into()
+    };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = Some(1640883600000.into());
@@ -197,7 +201,7 @@ impl ConsensusSettings {
             initial_ledger_path: self.initial_ledger_path.clone(),
             block_reward: *BLOCK_REWARD,
             operation_batch_size: self.operation_batch_size,
-            initial_rolls_path: self.initial_ledger_path.clone(),
+            initial_rolls_path: self.initial_rolls_path.clone(),
             initial_draw_seed: INITIAL_DRAW_SEED.clone(),
             roll_price: *ROLL_PRICE,
             stats_timespan: self.stats_timespan,

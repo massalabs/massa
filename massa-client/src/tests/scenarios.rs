@@ -1,5 +1,4 @@
 use std::{
-    process::Output,
     thread::{sleep, JoinHandle},
     time::Duration,
 };
@@ -32,19 +31,16 @@ async fn run_client_cmd(cmd: &str) -> Result<String> {
 }
 
 fn run_node(duration: Duration) -> JoinHandle<String> {
-    // TODO: do we have a better way to spawn `massa_node`?
-    std::thread::spawn(|| {
-        std::str::from_utf8(
-            &Command::new("cargo")
-                .args(["run", "--feature", "test"]) // TODO add at least genesis timestamp to a test feature
-                .current_dir("../massa-node")
-                .timeout(duration)
-                .assert()
-                .get_output()
-                .stdout,
-        )
-        .unwrap()
-        .to_string()
+    std::thread::spawn(move || {
+        let out = Command::new("cargo")
+            .args(["run", "--features", "test"])
+            .current_dir("../massa-node")
+            .timeout(duration)
+            .assert()
+            .get_output()
+            .clone();
+        println!("{}", std::str::from_utf8(&out.stderr).unwrap());
+        std::str::from_utf8(&out.stdout).unwrap().to_string()
     })
 }
 
@@ -52,9 +48,9 @@ fn run_node(duration: Duration) -> JoinHandle<String> {
 #[serial]
 async fn test_run_node() {
     let handle = run_node(Duration::from_secs(60 * 3));
-    sleep(Duration::from_secs(180)); // let it compile and start
+    sleep(Duration::from_secs(30)); // let it compile and start
     let a = handle.join().unwrap();
-    println!("{:?}", a);
+    println!("{}", a);
 }
 
 #[tokio::test]
