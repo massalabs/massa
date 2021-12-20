@@ -230,7 +230,7 @@ impl ExecutionWorker {
     }
 
     /// fills the remaining slots until now() with miss executions
-    /// see step 4 in spec https://github.com/massalabs/massa/wiki/From-blocks-to-VM-execution
+    /// see step 4 in spec https://github.com/massalabs/massa/wiki/vm-block-feed
     fn fill_misses_until_now(&mut self) -> Result<(), ExecutionError> {
         let end_step = get_current_latest_block_slot(
             self.cfg.thread_count,
@@ -259,7 +259,7 @@ impl ExecutionWorker {
     }
 
     /// checks whether a miss at slot S would be SCE-final by looking up subsequent CSS-final blocks in the same thread
-    /// see spec at https://github.com/massalabs/massa/wiki/From-blocks-to-VM-execution
+    /// see spec at https://github.com/massalabs/massa/wiki/vm-block-feed
     ///
     /// # Arguments
     /// * s: missed slot
@@ -276,7 +276,7 @@ impl ExecutionWorker {
     }
 
     /// called when the blockclique changes
-    /// see spec at https://github.com/massalabs/massa/wiki/From-blocks-to-VM-execution
+    /// see spec at https://github.com/massalabs/massa/wiki/vm-block-feed
     fn blockclique_changed(
         &mut self,
         blockclique: BlockHashMap<Block>,
