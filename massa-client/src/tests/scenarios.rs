@@ -67,5 +67,5 @@ async fn node_stop_gracefully() {
     run_client_cmd("node_stop").await.unwrap();
 
     // check that `massa-node` did stop
-    let a = handle.join().expect("did not succeed to close the node");
+    let _a = handle.join().expect("did not succeed to close the node");
 }

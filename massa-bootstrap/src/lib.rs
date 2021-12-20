@@ -84,7 +84,7 @@ async fn get_state_internal(
     }
 
     // compute ping
-    let ping = MassaTime::now(0)?.saturating_sub(send_time_uncompensated);
+    let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
         return Err(BootstrapError::GeneralError(
             "bootstrap ping too high".into(),
@@ -127,9 +127,10 @@ async fn get_state_internal(
         ));
     }
 
+    // compute compensation
     let compensation_millis = if cfg.enable_clock_synchronization {
         let local_time_uncompensated =
-            clock_recv_time_uncompensated.checked_sub(ping.checked_div_u64(2)?)?;
+            recv_time_uncompensated.checked_sub(ping.checked_div_u64(2)?)?;
         let compensation_millis = if server_time >= local_time_uncompensated {
             server_time
                 .saturating_sub(local_time_uncompensated)
