@@ -614,6 +614,7 @@
 <span id="612">612</span>
 <span id="613">613</span>
 <span id="614">614</span>
+<span id="615">615</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
@@ -674,6 +675,7 @@
         {}
     );
 
+    <span class="comment">// todo that is checked when loading the config, should be removed</span>
     <span class="comment">// ensure that the parameters are sane</span>
     <span class="kw">if</span> <span class="ident">cfg</span>.<span class="ident">thread_count</span> <span class="op">==</span> <span class="number">0</span> {
         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConsensusError::ConfigError</span>(

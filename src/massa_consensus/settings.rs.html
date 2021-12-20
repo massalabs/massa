@@ -389,18 +389,22 @@
 <span id="387">387</span>
 <span id="388">388</span>
 <span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::assertions_on_constants</span>)]</span>
 
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Amount</span>, <span class="ident">CompactConfig</span>};
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">use</span> <span class="ident">massa_signature::generate_random_private_key</span>;
 <span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">test</span>))]</span>
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">default::Default</span>, <span class="ident">path::PathBuf</span>, <span class="ident">usize</span>};
 
@@ -412,7 +416,11 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">test</span>))]</span>
 <span class="macro">lazy_static::lazy_static!</span> {
     <span class="doccomment">/// Time in millis when the blockclique started.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_TIMESTAMP</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="number">1638460800000</span>.<span class="ident">into</span>();
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_TIMESTAMP</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test&quot;</span>) {
+        <span class="ident">MassaTime::now</span>().<span class="ident">unwrap</span>().<span class="ident">saturating_add</span>(<span class="ident">MassaTime::from</span>(<span class="number">1000</span> <span class="op">*</span> <span class="number">60</span> <span class="op">*</span> <span class="number">3</span>))
+    } <span class="kw">else</span> {
+        <span class="number">1638460800000</span>.<span class="ident">into</span>()
+    };
 
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">END_TIMESTAMP</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="number">1640883600000</span>.<span class="ident">into</span>());
@@ -588,7 +596,7 @@
             <span class="ident">initial_ledger_path</span>: <span class="self">self</span>.<span class="ident">initial_ledger_path</span>.<span class="ident">clone</span>(),
             <span class="ident">block_reward</span>: <span class="kw-2">*</span><span class="ident">BLOCK_REWARD</span>,
             <span class="ident">operation_batch_size</span>: <span class="self">self</span>.<span class="ident">operation_batch_size</span>,
-            <span class="ident">initial_rolls_path</span>: <span class="self">self</span>.<span class="ident">initial_ledger_path</span>.<span class="ident">clone</span>(),
+            <span class="ident">initial_rolls_path</span>: <span class="self">self</span>.<span class="ident">initial_rolls_path</span>.<span class="ident">clone</span>(),
             <span class="ident">initial_draw_seed</span>: <span class="ident">INITIAL_DRAW_SEED</span>.<span class="ident">clone</span>(),
             <span class="ident">roll_price</span>: <span class="kw-2">*</span><span class="ident">ROLL_PRICE</span>,
             <span class="ident">stats_timespan</span>: <span class="self">self</span>.<span class="ident">stats_timespan</span>,
