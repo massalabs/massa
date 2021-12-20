@@ -1,9 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::{PoolError, PoolSettings};
-use massa_models::{
+use crate::{PoolConfig, PoolError};
+use models::{
     address::AddressHashMap, Address, BlockHashMap, Operation, OperationHashMap, OperationHashSet,
-    OperationId, OperationSearchResult, OperationSearchResultStatus, SerializeCompact, Slot,
+    OperationId, OperationSearchResult, OperationSearchResultStatus, OperationType,
+    SerializeCompact, Slot,
 };
 use num::rational::Ratio;
 use std::{collections::BTreeSet, usize};
@@ -51,9 +52,22 @@ impl WrappedOperation {
         })
     }
 
-    /// Used to compare operations
+    /// Gets the priority of the operation baeed on how much it profits the block producer
+    /// vs how much space it takes in the block
     fn get_fee_density(&self) -> Ratio<u64> {
-        Ratio::new(self.op.content.fee.to_raw(), self.byte_count)
+        // add inclusion fee
+        let mut total_return = self.op.content.fee;
+
+        // add gas fees
+        if let OperationType::ExecuteSC {
+            max_gas, gas_price, ..
+        } = self.op.content.op
+        {
+            total_return = total_return.saturating_add(gas_price.saturating_mul_u64(max_gas));
+        }
+
+        // return ratio with size
+        Ratio::new(total_return.to_raw(), self.byte_count)
     }
 }
 
@@ -69,7 +83,7 @@ pub struct OperationPool {
     /// current slot
     current_slot: Option<Slot>,
     /// config
-    pool_settings: &'static PoolSettings,
+    cfg: PoolConfig,
     /// thread count
     thread_count: u8,
     /// operation validity periods
@@ -80,7 +94,7 @@ pub struct OperationPool {
 
 impl OperationPool {
     pub fn new(
-        pool_settings: &'static PoolSettings,
+        cfg: PoolConfig,
         thread_count: u8,
         operation_validity_periods: u64,
     ) -> OperationPool {
@@ -89,7 +103,7 @@ impl OperationPool {
             ops_by_thread_and_interest: vec![BTreeSet::new(); thread_count as usize],
             current_slot: None,
             last_final_periods: vec![0; thread_count as usize],
-            pool_settings,
+            cfg,
             thread_count,
             operation_validity_periods,
             final_operations: Default::default(),
@@ -137,13 +151,11 @@ impl OperationPool {
                     .start();
 
                 if validity_start_period.saturating_sub(cur_period_in_thread)
-                    > self
-                        .pool_settings
-                        .max_operation_future_validity_start_periods
+                    > self.cfg.max_operation_future_validity_start_periods
                 {
                     massa_trace!("pool add_operations validity_start_period >  self.cfg.max_operation_future_validity_start_periods", {
                         "range": validity_start_period.saturating_sub(cur_period_in_thread),
-                        "max_operation_future_validity_start_periods": self.pool_settings.max_operation_future_validity_start_periods
+                        "max_operation_future_validity_start_periods": self.cfg.max_operation_future_validity_start_periods
                     });
                     continue;
                 }
@@ -177,7 +189,7 @@ impl OperationPool {
         // remove excess operations if pool is full
         for thread in 0..self.thread_count {
             while self.ops_by_thread_and_interest[thread as usize].len()
-                > self.pool_settings.max_pool_size_per_thread as usize
+                > self.cfg.max_pool_size_per_thread as usize
             {
                 let (_removed_rentability, removed_id) = self.ops_by_thread_and_interest
                     [thread as usize]
@@ -321,15 +333,13 @@ impl OperationPool {
     ) -> Result<OperationHashMap<OperationSearchResult>, PoolError> {
         if let Some(ids) = self.ops_by_address.get_ops_for_address(address) {
             ids.iter()
-                .take(self.pool_settings.max_item_return_count)
+                .take(self.cfg.max_item_return_count)
                 .map(|op_id| {
                     self.ops
                         .get(op_id)
-                        .ok_or_else(|| {
-                            PoolError::ContainerInconsistency(
-                                "op in ops by address is not in ops".to_string(),
-                            )
-                        })
+                        .ok_or(PoolError::ContainerInconsistency(
+                            "op in ops by address is not in ops".to_string(),
+                        ))
                         .map(|op| {
                             (
                                 *op_id,
@@ -350,30 +360,18 @@ impl OperationPool {
 }
 
 #[cfg(test)]
-pub mod tests {
+mod tests {
     use super::*;
-    use massa_hash::hash::Hash;
-    use massa_models::{Amount, Operation, OperationContent, OperationType};
-    use massa_signature::{derive_public_key, generate_random_private_key, sign};
+    use crypto::hash::Hash;
+    use models::{Amount, Operation, OperationContent, OperationType};
     use serial_test::serial;
     use std::str::FromStr;
 
-    lazy_static::lazy_static! {
-        pub static ref POOL_SETTINGS: (PoolSettings, u8, u64, u64) = {
-            let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
-
-            let max_pool_size_per_thread = 10;
-            cfg.max_pool_size_per_thread = max_pool_size_per_thread;
-
-            (cfg, thread_count, operation_validity_periods, max_pool_size_per_thread)
-        };
-    }
-
-    fn example_pool_config() -> (PoolSettings, u8, u64) {
+    fn example_pool_config() -> (PoolConfig, u8, u64) {
         let mut nodes = Vec::new();
         for _ in 0..2 {
-            let private_key = generate_random_private_key();
-            let public_key = derive_public_key(&private_key);
+            let private_key = crypto::generate_random_private_key();
+            let public_key = crypto::derive_public_key(&private_key);
             nodes.push((public_key, private_key));
         }
         let thread_count: u8 = 2;
@@ -383,12 +381,12 @@ pub mod tests {
 
         // Init the serialization context with a default,
         // can be overwritten with a more specific one in the test.
-        massa_models::init_serialization_context(massa_models::SerializationContext {
+        models::init_serialization_context(models::SerializationContext {
             max_block_operations: max_operations_per_block,
             parent_count: thread_count,
             max_peer_list_length: 128,
             max_message_size: 3 * 1024 * 1024,
-            max_block_size,
+            max_block_size: max_block_size,
             max_bootstrap_blocks: 100,
             max_bootstrap_cliques: 100,
             max_bootstrap_deps: 100,
@@ -399,11 +397,11 @@ pub mod tests {
             max_bootstrap_message_size: 100000000,
             max_bootstrap_pos_entries: 1000,
             max_bootstrap_pos_cycles: 5,
-            max_block_endorsements: 8,
+            max_block_endorsments: 8,
         });
 
         (
-            PoolSettings {
+            PoolConfig {
                 max_pool_size_per_thread: 100000,
                 max_operation_future_validity_start_periods: 200,
                 max_endorsement_count: 1000,
@@ -415,11 +413,11 @@ pub mod tests {
     }
 
     fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
-        let sender_priv = generate_random_private_key();
-        let sender_pub = derive_public_key(&sender_priv);
+        let sender_priv = crypto::generate_random_private_key();
+        let sender_pub = crypto::derive_public_key(&sender_priv);
 
-        let recv_priv = generate_random_private_key();
-        let recv_pub = derive_public_key(&recv_priv);
+        let recv_priv = crypto::generate_random_private_key();
+        let recv_pub = crypto::derive_public_key(&recv_priv);
 
         let op = OperationType::Transaction {
             recipient_address: Address::from_public_key(&recv_pub).unwrap(),
@@ -431,8 +429,8 @@ pub mod tests {
             sender_public_key: sender_pub,
             expire_period,
         };
-        let hash = Hash::from(&content.to_bytes_compact().unwrap());
-        let signature = sign(&hash, &sender_priv).unwrap();
+        let hash = Hash::hash(&content.to_bytes_compact().unwrap());
+        let signature = crypto::sign(&hash, &sender_priv).unwrap();
 
         (
             Operation { content, signature },
@@ -443,22 +441,19 @@ pub mod tests {
     #[test]
     #[serial]
     fn test_pool() {
-        let (pool_settings, thread_count, operation_validity_periods, max_pool_size_per_thread): &(
-            PoolSettings,
-            u8,
-            u64,
-            u64,
-        ) = &POOL_SETTINGS;
+        let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
 
-        let mut pool =
-            OperationPool::new(pool_settings, *thread_count, *operation_validity_periods);
+        let max_pool_size_per_thread = 10;
+        cfg.max_pool_size_per_thread = max_pool_size_per_thread;
+
+        let mut pool = OperationPool::new(cfg, thread_count, operation_validity_periods);
 
         // generate transactions
-        let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
+        let mut thread_tx_lists = vec![Vec::new(); thread_count as usize];
         for i in 0..18 {
             let fee = 40 + i;
             let expire_period: u64 = 40 + i;
-            let start_period = expire_period.saturating_sub(*operation_validity_periods);
+            let start_period = expire_period.saturating_sub(operation_validity_periods);
             let (op, thread) = get_transaction(expire_period, fee);
             let id = op.verify_integrity().unwrap();
 
@@ -478,7 +473,7 @@ pub mod tests {
         // sort from bigger fee to smaller and truncate
         for lst in thread_tx_lists.iter_mut() {
             lst.reverse();
-            lst.truncate(*max_pool_size_per_thread as usize);
+            lst.truncate(max_pool_size_per_thread as usize);
         }
 
         // checks ops for thread 0 and 1 and various periods
@@ -502,7 +497,7 @@ pub mod tests {
 
         // op ending before or at period 45 should be discarded
         let final_period = 45u64;
-        pool.update_latest_final_periods(vec![final_period; *thread_count as usize])
+        pool.update_latest_final_periods(vec![final_period; thread_count as usize])
             .unwrap();
         for lst in thread_tx_lists.iter_mut() {
             lst.retain(|(_, op, _)| op.content.expire_period > final_period);
