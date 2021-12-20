@@ -404,7 +404,10 @@ impl ExecutionWorker {
 
                     // otherwise, if there is no CSS-active block at S
                     Some(b_slot) => {
-                        (b_slot > s).expect("remaining CSS-active blocks should be later than S");
+                        // make sure b_slot is after s
+                        if b_slot <= s {
+                            panic!("remaining CSS-active blocks should be later than S");
+                        }
 
                         // call the VM to execute an SCE-active miss at slot S
                         self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
