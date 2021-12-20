@@ -1,4 +1,4 @@
-mod config;
+pub mod config;
 mod controller;
 mod error;
 mod exports;
@@ -17,6 +17,8 @@ pub use exports::BootstrapExecutionState;
 pub use sce_ledger::{SCELedger, SCELedgerEntry};
 pub use worker::ExecutionCommand;
 pub use worker::ExecutionEvent;
+pub use worker::ExecutionManagementCommand;
+pub use worker::ExecutionWorker;
 
 #[cfg(test)]
 mod tests;
