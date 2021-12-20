@@ -70,6 +70,17 @@ impl Amount {
     /// # use massa_models::Amount;
     /// # use std::str::FromStr;
     /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let res : Amount = amount_1.saturating_mul_u64(7)
+    /// assert_eq!(res, Amount::from_str("294").unwrap())
+    /// ```
+    pub fn saturating_mul_u64(self, factor: u64) -> Self {
+        Amount(self.0.saturating_mul(factor))
+    }
+
+    /// ```
+    /// # use massa_models::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
     /// let res : Amount = amount_1.checked_div_u64(7).unwrap();
     /// assert_eq!(res, Amount::from_str("6").unwrap());
     /// ```
