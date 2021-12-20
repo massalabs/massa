@@ -186,7 +186,7 @@ impl ConsensusWorker {
         clock_compensation: i64,
         staking_keys: AddressHashMap<(PublicKey, PrivateKey)>,
     ) -> Result<ConsensusWorker, ConsensusError> {
-        let now = MassaTime::now(clock_compensation)?;
+        let now = MassaTime::compensated_now(clock_compensation)?;
         let previous_slot = get_latest_block_slot_at_timestamp(
             cfg.thread_count,
             cfg.t0,
@@ -285,7 +285,7 @@ impl ConsensusWorker {
             stats_desync_detection_timespan,
             stats_history_timespan: max(stats_desync_detection_timespan, cfg.stats_timespan),
             cfg,
-            launch_time: MassaTime::now(clock_compensation)?,
+            launch_time: MassaTime::compensated_now(clock_compensation)?,
             endorsed_slots: HashSet::new(),
             execution_event_receiver,
         })
@@ -354,7 +354,7 @@ impl ConsensusWorker {
                 _ = &mut next_slot_timer => {
                     massa_trace!("consensus.consensus_worker.run_loop.select.slot_tick", {});
                     if let Some(end) = self.cfg.end_timestamp {
-                        if MassaTime::now(self.clock_compensation)? > end {
+                        if MassaTime::compensated_now(self.clock_compensation)? > end {
                             info!("This episode has come to an end, please get the latest testnet node version to continue");
                             break;
                         }
@@ -390,7 +390,7 @@ impl ConsensusWorker {
         &mut self,
         next_slot_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ConsensusError> {
-        let now = MassaTime::now(self.clock_compensation)?;
+        let now = MassaTime::compensated_now(self.clock_compensation)?;
         let observed_slot = get_latest_block_slot_at_timestamp(
             self.cfg.thread_count,
             self.cfg.t0,
@@ -1057,7 +1057,10 @@ impl ConsensusWorker {
     }
 
     fn get_stats(&mut self) -> Result<ConsensusStats, ConsensusError> {
-        let timespan_end = max(self.launch_time, MassaTime::now(self.clock_compensation)?);
+        let timespan_end = max(
+            self.launch_time,
+            MassaTime::compensated_now(self.clock_compensation)?,
+        );
         let timespan_start = max(
             timespan_end.saturating_sub(self.cfg.stats_timespan),
             self.launch_time,
@@ -1262,8 +1265,8 @@ impl ConsensusWorker {
 
     // prune statistics
     fn prune_stats(&mut self) -> Result<(), ConsensusError> {
-        let start_time =
-            MassaTime::now(self.clock_compensation)?.saturating_sub(self.stats_history_timespan);
+        let start_time = MassaTime::compensated_now(self.clock_compensation)?
+            .saturating_sub(self.stats_history_timespan);
         self.final_block_stats.retain(|(t, _, _)| t >= &start_time);
         self.stale_block_stats.retain(|t| t >= &start_time);
         Ok(())
@@ -1325,7 +1328,7 @@ impl ConsensusWorker {
             new_final_block_ids.len(),
             BuildHHasher::default(),
         );
-        let timestamp = MassaTime::now(self.clock_compensation)?;
+        let timestamp = MassaTime::compensated_now(self.clock_compensation)?;
         for b_id in new_final_block_ids.into_iter() {
             if let Some(a_block) = self.block_db.get_active_block(&b_id) {
                 // List new final ops
@@ -1450,7 +1453,7 @@ impl ConsensusWorker {
 
         // add stale blocks to stats
         let new_stale_block_ids_creators_slots = self.block_db.get_new_stale_blocks();
-        let timestamp = MassaTime::now(self.clock_compensation)?;
+        let timestamp = MassaTime::compensated_now(self.clock_compensation)?;
         for (b_id, (b_creator, b_slot)) in new_stale_block_ids_creators_slots.into_iter() {
             self.stale_block_stats.push_back(timestamp);
 

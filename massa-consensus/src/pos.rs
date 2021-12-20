@@ -598,8 +598,7 @@ impl ProofOfStake {
 
             (export.cycle_states, initial_rolls)
         } else {
-            // iinitializing from scratch
-
+            // initializing from scratch
             let mut cycle_states = Vec::with_capacity(cfg.thread_count as usize);
             let initial_rolls = ProofOfStake::get_initial_rolls(&cfg).await?;
             for (thread, thread_rolls) in initial_rolls.iter().enumerate() {

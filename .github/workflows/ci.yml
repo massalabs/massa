@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -55,16 +55,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: nightly
           override: true
       - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build # needed by assert_cmd based tests
       - uses: actions-rs/cargo@v1
         with:
           command: test
@@ -77,7 +74,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -97,7 +94,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -125,16 +122,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: nightly
           override: true
       - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
       - uses: actions-rs/cargo@v1
         with:
           command: test
@@ -153,7 +147,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -186,7 +180,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal

@@ -26,7 +26,7 @@ pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,
     SerializeCompact, SerializeMinBEInt, SerializeVarInt,
 };
-pub use settings::Config;
+pub use settings::CompactConfig;
 pub use settings::{
     ADDRESS_SIZE_BYTES, BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES, SLOT_KEY_SIZE,
 };

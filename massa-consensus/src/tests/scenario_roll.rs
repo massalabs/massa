@@ -85,7 +85,7 @@ async fn test_roll() {
     cfg.block_reward = Amount::default();
     cfg.roll_price = Amount::from_str("1000").unwrap();
     cfg.operation_validity_periods = 100;
-    cfg.genesis_timestamp = MassaTime::now(0).unwrap().saturating_add(300.into());
+    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
 
     tools::consensus_pool_test(
         cfg.clone(),
@@ -544,7 +544,7 @@ async fn test_roll_block_creation() {
     let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
         MockExecutionController::new();
 
-    cfg.genesis_timestamp = MassaTime::now(0).unwrap().saturating_add(300.into());
+    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(

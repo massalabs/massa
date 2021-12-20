@@ -94,7 +94,7 @@ async fn test_get_operation() {
     );
     // there is only one node so it should be drawn at every slot
 
-    cfg.genesis_timestamp = MassaTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now()
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(4).unwrap())
         .saturating_add(300.into());
