@@ -240,7 +240,7 @@ impl ExecutionWorker {
         )?;
         if let Some(end_step) = end_step {
             // slot S
-            let s = self.last_active_slot.get_next_slot(self.cfg.thread_count)?;
+            let mut s = self.last_active_slot.get_next_slot(self.cfg.thread_count)?;
 
             while s <= end_step {
                 // call the VM to execute an SCE-active miss at slot S
