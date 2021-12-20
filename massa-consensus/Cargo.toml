@@ -34,3 +34,6 @@ pretty_assertions = "1.0"
 serial_test = "0.5"
 stderrlog = "0.5"
 tempfile = "3.2"
+
+[features]
+test = []

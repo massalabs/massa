@@ -58,6 +58,7 @@ pub async fn start_consensus_controller(
         {}
     );
 
+    // todo that is checked when loading the config, should be removed
     // ensure that the parameters are sane
     if cfg.thread_count == 0 {
         return Err(ConsensusError::ConfigError(

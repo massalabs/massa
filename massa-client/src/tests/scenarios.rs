@@ -1,40 +1,71 @@
+use std::{
+    thread::{sleep, JoinHandle},
+    time::Duration,
+};
+
+use anyhow::{bail, Result};
 use assert_cmd::Command;
 use serial_test::serial;
-use std::thread;
 
-#[tokio::test]
-#[serial]
-async fn test_if_exit_gracefully() {
-    let mut cmd = Command::cargo_bin("massa-client").unwrap();
-    cmd.arg("exit").assert().success();
+const TIMEOUT: u64 = 10;
+const TENTATIVES: u64 = 5;
+
+async fn run_client_cmd(cmd: &str) -> Result<String> {
+    for _ in 0..TENTATIVES {
+        let output = std::str::from_utf8(
+            &Command::new("cargo")
+                .args(&["run", "--", cmd, "--json"])
+                .assert()
+                .get_output()
+                .stdout,
+        )?
+        .to_string();
+        println!("{}", output);
+        // TODO: compare with tcp connect error as a JSON object?
+        if !output.contains("tcp connect error") {
+            return Ok(output);
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(TIMEOUT)).await;
+    }
+    bail!("was not able to send command")
 }
 
-const CONFIG_PATH: &str = "../massa-node/src/tests/config.toml";
-const TIMEOUT: u64 = 5;
+fn run_node(duration: Duration) -> JoinHandle<String> {
+    std::thread::spawn(move || {
+        let out = Command::new("cargo")
+            .args(["run", "--features", "test"])
+            .current_dir("../massa-node")
+            .timeout(duration)
+            .assert()
+            .get_output()
+            .clone();
+        println!("{}", std::str::from_utf8(&out.stderr).unwrap());
+        std::str::from_utf8(&out.stdout).unwrap().to_string()
+    })
+}
+
 #[tokio::test]
 #[serial]
-async fn test_if_node_stop() {
-    let massa_node_thread_handle = thread::spawn(|| {
-        Command::cargo_bin("massa-node")
-            .unwrap()
-            .env("MASSA_CONFIG_PATH", CONFIG_PATH)
-            .timeout(std::time::Duration::from_secs(61))
-            .assert()
-            .success();
-    });
-    let mut cmd = Command::cargo_bin("massa-client").unwrap();
-    let mut success = false;
-    for _ in 0..5 {
-        tokio::time::sleep(std::time::Duration::from_secs(TIMEOUT)).await;
-        let assert_cli = cmd.arg("node_stop").assert();
-        let output = std::str::from_utf8(&assert_cli.get_output().stdout).unwrap();
-        if !output.contains("tcp connect error") {
-            println!("Client output: {}", output);
-            success = true;
-            break;
-        }
-    }
-    massa_node_thread_handle.join().unwrap();
-    assert!(success, "Error: Failed to close correctly the node 3 times");
-    cmd.arg("exit").assert().success();
+async fn test_run_node() {
+    let handle = run_node(Duration::from_secs(60 * 2));
+    sleep(Duration::from_secs(30)); // let it compile and start
+    let a = handle.join().unwrap();
+    println!("{}", a);
+}
+
+#[tokio::test]
+#[serial]
+async fn client_exit_gracefully() {
+    run_client_cmd("exit").await.unwrap();
+}
+
+#[tokio::test]
+#[serial]
+async fn node_stop_gracefully() {
+    let handle = run_node(Duration::from_secs(60 * 3));
+    sleep(Duration::from_secs(30)); // let it compile and start
+    run_client_cmd("node_stop").await.unwrap();
+
+    // check that `massa-node` did stop
+    let a = handle.join().expect("did not succeed to close the node");
 }
