@@ -644,7 +644,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = MassaTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now()
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(10).unwrap());
     cfg.delta_f0 = 4;

@@ -3,13 +3,13 @@
 #![allow(clippy::assertions_on_constants)]
 
 use massa_models::{Amount, CompactConfig};
-#[allow(unused_imports)]
+#[cfg(test)]
 use massa_signature::generate_random_private_key;
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
-#[allow(unused_imports)]
+#[cfg(not(test))]
 use std::str::FromStr;
 use std::{default::Default, path::PathBuf, usize};
 
@@ -22,7 +22,7 @@ pub const CHANNEL_SIZE: usize = 256;
 lazy_static::lazy_static! {
     /// Time in millis when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "test") {
-        MassaTime::now(0).unwrap().saturating_add(MassaTime::from(1000 * 60 *3))
+        MassaTime::now().unwrap().saturating_add(MassaTime::from(1000 * 60 * 3))
     } else {
         1638460800000.into()
     };
@@ -51,7 +51,7 @@ lazy_static::lazy_static! {
 #[cfg(test)]
 lazy_static::lazy_static! {
     /// Time in millis when the blockclique started.
-    pub static ref GENESIS_TIMESTAMP: MassaTime = MassaTime::now(0).unwrap().saturating_add(MassaTime::from(1000 * 60 *3)); // 3 minutes to compile and start the node ?
+    pub static ref GENESIS_TIMESTAMP: MassaTime = MassaTime::now().unwrap();
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = None;

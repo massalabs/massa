@@ -47,7 +47,7 @@ async fn get_state_internal(
     let mut client = BootstrapClientBinder::new(socket, *bootstrap_public_key);
 
     // handshake
-    let send_time_uncompensated = MassaTime::now(0)?;
+    let send_time_uncompensated = MassaTime::now()?;
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     match tokio::time::timeout(cfg.write_timeout.into(), client.handshake()).await {
         Err(_) => {
@@ -87,7 +87,7 @@ async fn get_state_internal(
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
 
-    let recv_time_uncompensated = MassaTime::now(0)?;
+    let recv_time_uncompensated = MassaTime::now()?;
 
     // compute ping
     let ping = recv_time_uncompensated.saturating_sub(send_time_uncompensated);
@@ -170,7 +170,7 @@ pub async fn get_state(
     BootstrapError,
 > {
     massa_trace!("bootstrap.lib.get_state", {});
-    let now = MassaTime::now(0)?;
+    let now = MassaTime::now()?;
     // if we are before genesis, do not bootstrap
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
@@ -188,7 +188,7 @@ pub async fn get_state(
     loop {
         for (addr, pub_key) in shuffled_list.iter() {
             if let Some(end) = end_timestamp {
-                if MassaTime::now(0).expect("could not get now time") > end {
+                if MassaTime::now().expect("could not get now time") > end {
                     panic!("This episode has come to an end, please get the latest testnet node version to continue");
                 }
             }
@@ -410,7 +410,7 @@ async fn manage_bootstrap(
     };
 
     // First, sync clocks.
-    let server_time = MassaTime::now(compensation_millis)?;
+    let server_time = MassaTime::compensated_now(compensation_millis)?;
     match tokio::time::timeout(
         bootstrap_settings.write_timeout.into(),
         server.send(messages::BootstrapMessage::BootstrapTime {

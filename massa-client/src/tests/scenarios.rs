@@ -47,7 +47,7 @@ fn run_node(duration: Duration) -> JoinHandle<String> {
 #[tokio::test]
 #[serial]
 async fn test_run_node() {
-    let handle = run_node(Duration::from_secs(60 * 3));
+    let handle = run_node(Duration::from_secs(60 * 2));
     sleep(Duration::from_secs(30)); // let it compile and start
     let a = handle.join().unwrap();
     println!("{}", a);
@@ -63,7 +63,7 @@ async fn client_exit_gracefully() {
 #[serial]
 async fn node_stop_gracefully() {
     let handle = run_node(Duration::from_secs(60 * 3));
-    sleep(Duration::from_secs(180)); // let it compile and start
+    sleep(Duration::from_secs(30)); // let it compile and start
     run_client_cmd("node_stop").await.unwrap();
 
     // check that `massa-node` did stop

@@ -636,7 +636,7 @@ pub fn default_consensus_config(
     });
 
     ConsensusConfig {
-        genesis_timestamp: MassaTime::now(0).unwrap(),
+        genesis_timestamp: MassaTime::now().unwrap(),
         thread_count,
         t0: 32000.into(),
         genesis_key,
