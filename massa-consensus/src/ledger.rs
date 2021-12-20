@@ -230,7 +230,7 @@ impl OperationLedgerInterface for Operation {
             }
             // roll sale is handled separately with a delay
             massa_models::OperationType::RollSell { .. } => {}
-            models::OperationType::ExecuteSC {
+            massa_models::OperationType::ExecuteSC {
                 max_gas,
                 gas_price,
                 coins,
