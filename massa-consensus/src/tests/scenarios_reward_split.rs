@@ -116,7 +116,7 @@ async fn test_reward_split() {
             let (b1_id, b1, _) =
                 tools::create_block(&cfg, Slot::new(1, 0), parents, slot_one_priv_key);
 
-            tools::propagate_block(&mut protocol_controller, b1, true, 500).await;
+            tools::propagate_block(&mut protocol_controller, b1, true, 1000).await;
 
             let slot_two_block_addr = draws.get(&Slot::new(2, 0)).unwrap().0;
 
