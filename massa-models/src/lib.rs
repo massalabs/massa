@@ -4,7 +4,7 @@
 extern crate lazy_static;
 
 pub use address::Address;
-pub use amount::Amount;
+pub use amount::{Amount, AMOUNT_ZERO};
 pub use block::{Block, BlockHashMap, BlockHashSet, BlockHeader, BlockHeaderContent, BlockId};
 
 pub use composite::{
