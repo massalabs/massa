@@ -163,7 +163,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = MassaTime::now(0).unwrap().saturating_sub(2000.into()); // slot 1 is in the past
+    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_sub(2000.into()); // slot 1 is in the past
     cfg.future_block_processing_max_periods = 3;
     cfg.max_future_processing_blocks = 5;
 
@@ -266,7 +266,7 @@ async fn test_too_many_blocks_in_the_future() {
     cfg.future_block_processing_max_periods = 100;
     cfg.max_future_processing_blocks = 2;
     cfg.delta_f0 = 1000;
-    cfg.genesis_timestamp = MassaTime::now(0).unwrap().saturating_sub(2000.into()); // slot 1 is in the past
+    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_sub(2000.into()); // slot 1 is in the past
 
     tools::consensus_without_pool_test(
         cfg.clone(),
@@ -336,7 +336,11 @@ async fn test_too_many_blocks_in_the_future() {
             expected_clone.extend(graph.genesis_blocks);
             assert_eq!(
                 expected_clone,
-                graph.active_blocks.keys().copied().collect(),
+                graph
+                    .active_blocks
+                    .keys()
+                    .copied()
+                    .collect::<HashSet<BlockId>>(),
                 "unexpected block graph"
             );
             (
@@ -367,7 +371,7 @@ async fn test_dep_in_back_order() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = MassaTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now()
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
     cfg.max_dependency_blocks = 10;
@@ -540,7 +544,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = MassaTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now()
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
     cfg.max_dependency_blocks = 2;
@@ -674,7 +678,7 @@ async fn test_add_block_that_depends_on_invalid_block() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = MassaTime::now(0)
+    cfg.genesis_timestamp = MassaTime::now()
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
     cfg.max_dependency_blocks = 7;

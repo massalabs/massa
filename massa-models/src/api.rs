@@ -5,7 +5,7 @@ use crate::ledger::LedgerData;
 use crate::node::NodeId;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
 use crate::{
-    Address, Amount, Block, BlockHashSet, BlockId, Config, Endorsement, EndorsementHashSet,
+    Address, Amount, Block, BlockHashSet, BlockId, CompactConfig, Endorsement, EndorsementHashSet,
     EndorsementId, Operation, OperationHashSet, OperationId, Slot, Version,
 };
 use massa_time::MassaTime;
@@ -26,7 +26,7 @@ pub struct NodeStatus {
     pub consensus_stats: ConsensusStats,
     pub pool_stats: PoolStats,
     pub network_stats: NetworkStats,
-    pub config: Config,
+    pub config: CompactConfig,
 }
 
 impl std::fmt::Display for NodeStatus {

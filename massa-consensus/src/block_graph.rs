@@ -4214,6 +4214,24 @@ impl BlockGraph {
             .map_or_else(BlockHashSet::default, |(_, v)| v.block_ids.clone())
     }
 
+    /// Clones all stored final blocks, not only the still-useful ones
+    /// This is used when initializing Execution from Consensus.
+    /// Since the Execution bootstrap snapshot is older than the Consensus snapshot,
+    /// we might need to signal older final blocks for Execution to catch up.
+    pub fn clone_all_final_blocks(&self) -> BlockHashMap<Block> {
+        self.active_index
+            .iter()
+            .filter_map(|b_id| {
+                if let Some(a_b) = self.get_active_block(b_id) {
+                    if a_b.is_final {
+                        return Some((*b_id, a_b.block.clone()));
+                    }
+                }
+                None
+            })
+            .collect()
+    }
+
     /// Get the headers to be propagated.
     /// Must be called by the consensus worker within `block_db_changed`.
     pub fn get_blocks_to_propagate(

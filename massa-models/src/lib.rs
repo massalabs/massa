@@ -4,7 +4,7 @@
 extern crate lazy_static;
 
 pub use address::Address;
-pub use amount::Amount;
+pub use amount::{Amount, AMOUNT_ZERO};
 pub use block::{Block, BlockHashMap, BlockHashSet, BlockHeader, BlockHeaderContent, BlockId};
 
 pub use composite::{
@@ -26,7 +26,7 @@ pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,
     SerializeCompact, SerializeMinBEInt, SerializeVarInt,
 };
-pub use settings::Config;
+pub use settings::CompactConfig;
 pub use settings::{
     ADDRESS_SIZE_BYTES, BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES, SLOT_KEY_SIZE,
 };

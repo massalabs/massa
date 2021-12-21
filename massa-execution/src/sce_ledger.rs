@@ -1,16 +1,22 @@
 use crate::types::Bytecode;
 use crate::ExecutionError;
 use massa_hash::hash::Hash;
-use massa_models::ModelsError;
-use massa_models::{address::AddressHashMap, hhasher::HHashMap, Address, Amount};
+use massa_hash::HASH_SIZE_BYTES;
+use massa_models::hhasher::BuildHHasher;
+use massa_models::{address::AddressHashMap, hhasher::HHashMap, Address, Amount, AMOUNT_ZERO};
+use massa_models::{
+    array_from_slice, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact,
+    SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
+};
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
 /// an entry in the SCE ledger
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SCELedgerEntry {
     pub balance: Amount,
     pub opt_module: Option<Bytecode>,
-    pub data: HHashMap<Hash, Bytecode>,
+    pub data: HHashMap<Hash, Vec<u8>>,
 }
 
 impl SCELedgerEntry {
@@ -37,6 +43,152 @@ impl SCELedgerEntry {
                 }
             }
         }
+    }
+}
+
+impl SerializeCompact for SCELedgerEntry {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+
+        // write balance
+        res.extend(self.balance.to_bytes_compact()?);
+
+        // write opt module data
+        if let Some(module_data) = &self.opt_module {
+            // write that it is present
+            res.push(1);
+
+            // write length
+            let length: u32 = module_data.len().try_into().map_err(|_| {
+                ModelsError::SerializeError(
+                    "SCE ledger entry module data too long for serialization".into(),
+                )
+            })?;
+            // TODO check against max length
+            res.extend(length.to_varint_bytes());
+
+            // write bytecode
+            res.extend(module_data);
+        } else {
+            // write that it is absent
+            res.push(0);
+        }
+
+        // write data store
+
+        // write length
+        let length: u32 = self.data.len().try_into().map_err(|_| {
+            ModelsError::SerializeError(
+                "SCE ledger entry data store too long for serialization".into(),
+            )
+        })?;
+        // TODO limit length
+        res.extend(length.to_varint_bytes());
+
+        // write entry pairs
+        for (h, data_entry) in self.data.iter() {
+            // write hash
+            res.extend(h.to_bytes());
+
+            // write length
+            let length: u32 = data_entry.len().try_into().map_err(|_| {
+                ModelsError::SerializeError(
+                    "SCE ledger entry data store entry too long for serialization".into(),
+                )
+            })?;
+            // TODO check against max length
+            res.extend(length.to_varint_bytes());
+
+            // write data entry
+            res.extend(data_entry);
+        }
+
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for SCELedgerEntry {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
+        let mut cursor = 0usize;
+
+        // read balance
+        let (balance, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
+        cursor += delta;
+
+        // read opt module data
+        let has_module = match buffer.get(cursor) {
+            Some(1) => true,
+            Some(0) => false,
+            _ => {
+                return Err(ModelsError::DeserializeError(
+                    "could not deserialize ledger entry opt module data byte".into(),
+                ))
+            }
+        };
+        cursor += 1;
+        let opt_module: Option<Bytecode> = if has_module {
+            // read length
+            let (length, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+            // TOOD limit length with from_varint_bytes_bounded
+            cursor += delta;
+
+            // read items
+            if let Some(slice) = buffer.get(cursor..(cursor + (length as usize))) {
+                cursor += length as usize;
+                Some(slice.to_vec())
+            } else {
+                return Err(ModelsError::DeserializeError(
+                    "could not deserialize ledger entry module bytes: buffer too small".into(),
+                ));
+            }
+        } else {
+            None
+        };
+
+        // read data store
+
+        // read length
+        let (length, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        // TOOD limit length with from_varint_bytes_bounded
+        cursor += delta;
+
+        // read entry pairs
+        let mut data: HHashMap<Hash, Vec<u8>> =
+            HHashMap::with_capacity_and_hasher(length as usize, BuildHHasher::default());
+        for _ in 0..length {
+            // read hash
+            let h = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += HASH_SIZE_BYTES;
+
+            // read data length
+            let (d_length, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+            // TOOD limit d_length with from_varint_bytes_bounded
+            cursor += delta;
+
+            // read data
+            let entry_data = if let Some(slice) = buffer.get(cursor..(cursor + (d_length as usize)))
+            {
+                cursor += d_length as usize;
+                slice.to_vec()
+            } else {
+                return Err(ModelsError::DeserializeError(
+                    "could not deserialize ledger entry data store entry bytes: buffer too small"
+                        .into(),
+                ));
+            };
+
+            // insert
+            data.insert(h, entry_data);
+        }
+
+        Ok((
+            SCELedgerEntry {
+                balance,
+                opt_module,
+                data,
+            },
+            cursor,
+        ))
     }
 }
 
@@ -134,8 +286,61 @@ impl SCELedgerChange {
 }
 
 /// SCE ledger
-#[derive(Debug, Clone, Default)]
-pub struct SCELedger(AddressHashMap<SCELedgerEntry>);
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SCELedger(pub AddressHashMap<SCELedgerEntry>);
+
+impl SerializeCompact for SCELedger {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+
+        // write length
+        let length: u32 = self.0.len().try_into().map_err(|_| {
+            ModelsError::SerializeError("SCE ledger too long for serialization".into())
+        })?;
+        // TODO limit length
+        res.extend(length.to_varint_bytes());
+
+        // write entry pairs
+        for (addr, ledger_entry) in self.0.iter() {
+            // write address
+            res.extend(addr.to_bytes());
+
+            // write ledger entry
+            res.extend(ledger_entry.to_bytes_compact()?);
+        }
+
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for SCELedger {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
+        let mut cursor = 0usize;
+
+        // read length
+        let (length, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        // TOOD limit length with from_varint_bytes_bounded
+        cursor += delta;
+
+        // read entry pairs
+        let mut res_ledger: AddressHashMap<SCELedgerEntry> =
+            AddressHashMap::with_capacity_and_hasher(length as usize, BuildHHasher::default());
+        for _ in 0..length {
+            // read address
+            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += ADDRESS_SIZE_BYTES;
+
+            // read ledger entry
+            let (ledger_entry, delta) = SCELedgerEntry::from_bytes_compact(&buffer[cursor..])?;
+            cursor += delta;
+
+            // add to output ledger
+            res_ledger.insert(address, ledger_entry);
+        }
+
+        Ok((SCELedger(res_ledger), cursor))
+    }
+}
 
 /// list of ledger changes (deletions, resets, updates)
 #[derive(Debug, Clone, Default)]
@@ -163,6 +368,24 @@ impl SCELedgerChanges {
 }
 
 impl SCELedger {
+    /// creates an SCELedger from a hashmap of balances
+    pub fn from_balances_map(balances_map: AddressHashMap<Amount>) -> Self {
+        SCELedger(
+            balances_map
+                .into_iter()
+                .map(|(k, v)| {
+                    (
+                        k,
+                        SCELedgerEntry {
+                            balance: v,
+                            ..Default::default()
+                        },
+                    )
+                })
+                .collect(),
+        )
+    }
+
     /// applies ledger changes to ledger
     pub fn apply_changes(&mut self, changes: &SCELedgerChanges) {
         for (addr, change) in changes.0.iter() {
@@ -194,8 +417,8 @@ impl SCELedger {
 /// applying cumulative_history_changes then caused_changes to final_ledger yields the current ledger during the ledger step
 #[derive(Debug, Clone)]
 pub struct SCELedgerStep {
-    // arc/mutex reference to the final ledger
-    pub final_ledger: Arc<Mutex<SCELedger>>,
+    // arc/mutex reference to the final ledger and its slot
+    pub final_ledger_slot: Arc<Mutex<(SCELedger, Slot)>>,
 
     // accumulator of existing ledger changes
     pub cumulative_history_changes: SCELedgerChanges,
@@ -210,7 +433,7 @@ impl SCELedgerStep {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {
-                Some(SCELedgerChange::Delete) => return Amount::from_raw(0),
+                Some(SCELedgerChange::Delete) => return AMOUNT_ZERO,
                 Some(SCELedgerChange::Set(new_entry)) => return new_entry.balance,
                 Some(SCELedgerChange::Update(update)) => {
                     if let Some(updated_balance) = update.update_balance {
@@ -221,12 +444,12 @@ impl SCELedgerStep {
             }
         }
         // check if the final ledger has the info
-        let ledger_guard = self.final_ledger.lock().unwrap();
-        if let Some(entry) = (*ledger_guard).0.get(addr) {
+        let ledger_guard = self.final_ledger_slot.lock().unwrap();
+        if let Some(entry) = (*ledger_guard).0 .0.get(addr) {
             return entry.balance;
         }
         // otherwise, just return zero
-        Amount::from_raw(0)
+        AMOUNT_ZERO
     }
 
     /// sets the balance of an address
@@ -279,8 +502,8 @@ impl SCELedgerStep {
             }
         }
         // check if the final ledger has the info
-        let ledger_guard = self.final_ledger.lock().unwrap();
-        match (*ledger_guard).0.get(addr) {
+        let ledger_guard = self.final_ledger_slot.lock().unwrap();
+        match (*ledger_guard).0 .0.get(addr) {
             Some(entry) => entry.opt_module.clone(),
             _ => None,
         }
@@ -306,8 +529,8 @@ impl SCELedgerStep {
         }
 
         // check if the final ledger has the info
-        let ledger_guard = self.final_ledger.lock().unwrap();
-        match (*ledger_guard).0.get(addr) {
+        let ledger_guard = self.final_ledger_slot.lock().unwrap();
+        match (*ledger_guard).0 .0.get(addr) {
             Some(entry) => entry.data.get(key).cloned(),
             _ => None,
         }

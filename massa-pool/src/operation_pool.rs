@@ -3,7 +3,8 @@
 use crate::{PoolError, PoolSettings};
 use massa_models::{
     address::AddressHashMap, Address, BlockHashMap, Operation, OperationHashMap, OperationHashSet,
-    OperationId, OperationSearchResult, OperationSearchResultStatus, SerializeCompact, Slot,
+    OperationId, OperationSearchResult, OperationSearchResultStatus, OperationType,
+    SerializeCompact, Slot,
 };
 use num::rational::Ratio;
 use std::{collections::BTreeSet, usize};
@@ -51,9 +52,22 @@ impl WrappedOperation {
         })
     }
 
-    /// Used to compare operations
+    /// Gets the priority of the operation baeed on how much it profits the block producer
+    /// vs how much space it takes in the block
     fn get_fee_density(&self) -> Ratio<u64> {
-        Ratio::new(self.op.content.fee.to_raw(), self.byte_count)
+        // add inclusion fee
+        let mut total_return = self.op.content.fee;
+
+        // add gas fees
+        if let OperationType::ExecuteSC {
+            max_gas, gas_price, ..
+        } = self.op.content.op
+        {
+            total_return = total_return.saturating_add(gas_price.saturating_mul_u64(max_gas));
+        }
+
+        // return ratio with size
+        Ratio::new(total_return.to_raw(), self.byte_count)
     }
 }
 
@@ -240,10 +254,9 @@ impl OperationPool {
             .final_operations
             .iter()
             .filter(|(_, (exp, thread))| *exp <= self.last_final_periods[*thread as usize])
-            .map(|(id, _)| *id)
-            .collect::<Vec<_>>();
+            .map(|(id, _)| *id);
 
-        for id in ids.into_iter() {
+        for id in ids.collect::<Vec<_>>() {
             self.final_operations.remove(&id);
         }
 
