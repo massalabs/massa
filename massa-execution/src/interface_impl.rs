@@ -7,7 +7,6 @@ use anyhow::{bail, Result};
 use assembly_simulator::{Interface, InterfaceClone};
 use massa_models::Address;
 use std::sync::{Arc, Mutex};
-use tokio::runtime::Runtime; // todo change runtime to std
 
 #[derive(Clone)]
 pub(crate) struct InterfaceImpl {
