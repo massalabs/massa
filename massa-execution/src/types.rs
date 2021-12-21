@@ -1,4 +1,4 @@
-use crate::sce_ledger::{SCELedger, SCELedgerChanges, SCELedgerStep};
+use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, OperationContent, OperationType};
 use massa_models::{Block, BlockId, Slot};
@@ -41,7 +41,10 @@ pub(crate) struct ExecutionStep {
 
 impl ExecutionContext {
     pub fn new(ledger: SCELedger, ledger_at_slot: Slot) -> Self {
-        let final_ledger_slot = (ledger, ledger_at_slot);
+        let final_ledger_slot = FinalLedger {
+            ledger,
+            slot: ledger_at_slot,
+        };
         ExecutionContext {
             ledger_step: SCELedgerStep {
                 final_ledger_slot,

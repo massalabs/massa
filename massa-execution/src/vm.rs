@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::error::bootstrap_file_error;
 use crate::interface_impl::InterfaceImpl;
-use crate::sce_ledger::{SCELedger, SCELedgerChanges};
+use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges};
 use crate::types::{ExecutionContext, ExecutionStep, OperationSC, StepHistory};
 use crate::{ExecutionError, ExecutionSettings};
 use assembly_simulator::Interface;
@@ -56,7 +56,7 @@ impl VM {
     }
 
     // clone bootstrap state (final ledger and slot)
-    pub fn get_bootstrap_state(&self) -> (SCELedger, Slot) {
+    pub fn get_bootstrap_state(&self) -> FinalLedger {
         self.execution_context
             .lock()
             .unwrap()
@@ -73,8 +73,8 @@ impl VM {
             // execution was already done, apply cached ledger changes to final ledger
             let mut context = self.execution_context.lock().unwrap();
             let mut ledger_step = &mut (*context).ledger_step;
-            ledger_step.final_ledger_slot.0.apply_changes(&cached);
-            ledger_step.final_ledger_slot.1 = step.slot;
+            ledger_step.final_ledger_slot.ledger.apply_changes(&cached);
+            ledger_step.final_ledger_slot.slot = step.slot;
             return;
         }
         // nothing found in cache, or cache mismatch: reset history, run step and make it final
@@ -89,7 +89,7 @@ impl VM {
             (*context)
                 .ledger_step
                 .final_ledger_slot
-                .0
+                .ledger
                 .apply_changes(&cached);
         }
     }
