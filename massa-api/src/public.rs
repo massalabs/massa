@@ -494,20 +494,38 @@ impl Endpoints for API<Public> {
         start: Slot,
         end: Slot,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
-        unimplemented!()
+        let execution_command_sender = self.0.execution_command_sender.clone();
+        let closure = async move || {
+            Ok(execution_command_sender
+                .get_sc_output_event_by_slot_range(start, end)
+                .await?)
+        };
+        Box::pin(closure())
     }
 
     fn get_sc_output_event_by_sc_address(
         &self,
-        _: Address,
+        address: Address,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
-        unimplemented!()
+        let execution_command_sender = self.0.execution_command_sender.clone();
+        let closure = async move || {
+            Ok(execution_command_sender
+                .get_sc_output_event_by_sc_address(address)
+                .await?)
+        };
+        Box::pin(closure())
     }
 
     fn get_sc_output_event_by_caller_address(
         &self,
-        _: Address,
+        address: Address,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
-        unimplemented!()
+        let execution_command_sender = self.0.execution_command_sender.clone();
+        let closure = async move || {
+            Ok(execution_command_sender
+                .get_sc_output_event_by_caller_address(address)
+                .await?)
+        };
+        Box::pin(closure())
     }
 }
