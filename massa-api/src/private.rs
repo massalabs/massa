@@ -12,7 +12,8 @@ use massa_models::api::{
 };
 use massa_models::clique::Clique;
 use massa_models::massa_hash::PubkeySig;
-use massa_models::{Address, BlockId, EndorsementId, Operation, OperationId};
+use massa_models::output_event::SCOutputEvent;
+use massa_models::{Address, BlockId, EndorsementId, Operation, OperationId, Slot};
 use massa_network::NetworkCommandSender;
 use massa_signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
@@ -140,5 +141,27 @@ impl Endpoints for API<Private> {
 
     fn send_operations(&self, _: Vec<Operation>) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         crate::wrong_api::<Vec<OperationId>>()
+    }
+
+    fn get_sc_output_event_by_slot_range(
+        &self,
+        start: Slot,
+        end: Slot,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+        crate::wrong_api::<Vec<SCOutputEvent>>()
+    }
+
+    fn get_sc_output_event_by_sc_address(
+        &self,
+        _: Address,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+        crate::wrong_api::<Vec<SCOutputEvent>>()
+    }
+
+    fn get_sc_output_event_by_caller_address(
+        &self,
+        _: Address,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+        crate::wrong_api::<Vec<SCOutputEvent>>()
     }
 }

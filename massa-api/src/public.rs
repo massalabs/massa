@@ -15,6 +15,7 @@ use massa_models::clique::Clique;
 use massa_models::hhasher::BuildHHasher;
 use massa_models::massa_hash::PubkeySig;
 use massa_models::node::NodeId;
+use massa_models::output_event::SCOutputEvent;
 use massa_models::timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range};
 use massa_models::{
     Address, BlockHashSet, BlockId, EndorsementHashSet, EndorsementId, Operation, OperationHashMap,
@@ -486,5 +487,27 @@ impl Endpoints for API<Public> {
             Ok(ids)
         };
         Box::pin(closure())
+    }
+
+    fn get_sc_output_event_by_slot_range(
+        &self,
+        start: Slot,
+        end: Slot,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+        unimplemented!()
+    }
+
+    fn get_sc_output_event_by_sc_address(
+        &self,
+        _: Address,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+        unimplemented!()
+    }
+
+    fn get_sc_output_event_by_caller_address(
+        &self,
+        _: Address,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+        unimplemented!()
     }
 }
