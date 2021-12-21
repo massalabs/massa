@@ -6,11 +6,12 @@ use crate::types::{ExecutionQueue, ExecutionRequest};
 use crate::vm::VM;
 use crate::BootstrapExecutionState;
 use crate::{config::ExecutionSettings, types::ExecutionStep};
+use massa_models::output_event::SCOutputEvent;
 use massa_models::timeslots::{get_block_slot_timestamp, get_current_latest_block_slot};
-use massa_models::{Block, BlockHashMap, BlockId, Slot};
+use massa_models::{Address, Block, BlockHashMap, BlockId, Slot};
 use massa_time::MassaTime;
 use std::collections::BTreeMap;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use tokio::time::sleep_until;
 use tracing::{debug, warn};
 
@@ -27,6 +28,19 @@ pub enum ExecutionCommand {
 
     /// Get a snapshot of the current state for bootstrap
     GetBootstrapState(tokio::sync::oneshot::Sender<BootstrapExecutionState>),
+    GetSCOutputEventBySlotRange {
+        start: Slot,
+        end: Slot,
+        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
+    },
+    GetSCOutputEventByCaller {
+        caller_address: Address,
+        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
+    },
+    GetSCOutputEventBySCAddress {
+        sc_address: Address,
+        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
+    },
 }
 
 // Events produced by the execution component.
@@ -244,6 +258,19 @@ impl ExecutionWorker {
                     warn!("execution: could not send get_bootstrap_state answer");
                 }
             }
+            ExecutionCommand::GetSCOutputEventBySlotRange {
+                start,
+                end,
+                response_tx,
+            } => todo!(),
+            ExecutionCommand::GetSCOutputEventByCaller {
+                caller_address,
+                response_tx,
+            } => todo!(),
+            ExecutionCommand::GetSCOutputEventBySCAddress {
+                sc_address,
+                response_tx,
+            } => todo!(),
         }
         Ok(())
     }

@@ -4,7 +4,8 @@ use crate::worker::{
     ExecutionCommand, ExecutionEvent, ExecutionManagementCommand, ExecutionWorker,
 };
 use crate::BootstrapExecutionState;
-use massa_models::{Block, BlockHashMap};
+use massa_models::output_event::SCOutputEvent;
+use massa_models::{Address, Block, BlockHashMap, Slot};
 use massa_time::MassaTime;
 use std::collections::VecDeque;
 use tokio::sync::{mpsc, oneshot};
@@ -140,6 +141,77 @@ impl ExecutionCommandSender {
             })?;
         Ok(response_rx.await.map_err(|_| {
             ExecutionError::ChannelError("could not send GetBootstrapState upstream".into())
+        })?)
+    }
+
+    pub async fn get_sc_output_event_by_slot_range(
+        &self,
+        start: Slot,
+        end: Slot,
+    ) -> Result<Vec<SCOutputEvent>, ExecutionError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(ExecutionCommand::GetSCOutputEventBySlotRange {
+                start,
+                end,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                ExecutionError::ChannelError(
+                    "could not send GetSCOutputEventBySlotRange command".into(),
+                )
+            })?;
+        Ok(response_rx.await.map_err(|_| {
+            ExecutionError::ChannelError(
+                "could not send GetSCOutputEventBySlotRange upstream".into(),
+            )
+        })?)
+    }
+
+    pub async fn get_sc_output_event_by_sc_address(
+        &self,
+        sc_address: Address,
+    ) -> Result<Vec<SCOutputEvent>, ExecutionError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(ExecutionCommand::GetSCOutputEventBySCAddress {
+                sc_address,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                ExecutionError::ChannelError(
+                    "could not send GetSCOutputEventBySCAddress command".into(),
+                )
+            })?;
+        Ok(response_rx.await.map_err(|_| {
+            ExecutionError::ChannelError(
+                "could not send GetSCOutputEventBySCAddress upstream".into(),
+            )
+        })?)
+    }
+
+    pub async fn get_sc_output_event_by_caller_address(
+        &self,
+        caller_address: Address,
+    ) -> Result<Vec<SCOutputEvent>, ExecutionError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(ExecutionCommand::GetSCOutputEventByCaller {
+                caller_address,
+                response_tx,
+            })
+            .await
+            .map_err(|_| {
+                ExecutionError::ChannelError(
+                    "could not send GetSCOutputEventBySCAddress command".into(),
+                )
+            })?;
+        Ok(response_rx.await.map_err(|_| {
+            ExecutionError::ChannelError(
+                "could not send GetSCOutputEventBySCAddress upstream".into(),
+            )
         })?)
     }
 }
