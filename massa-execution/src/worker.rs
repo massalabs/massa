@@ -316,7 +316,7 @@ impl ExecutionWorker {
         let new_css_final_blocks = finalized_blocks.into_iter().filter_map(|(b_id, b)| {
             if b.header.content.slot <= self.last_active_slot {
                 // eliminate blocks that are not from a stricly later slot than the current latest SCE-final one
-                // this is an optimization
+                // (this is an optimization)
                 return None;
             }
             Some((b.header.content.slot, (b_id, b)))
@@ -343,7 +343,7 @@ impl ExecutionWorker {
                         let (_s, (b_id, b)) = self
                             .pending_css_final_blocks
                             .pop_first()
-                            .expect("pending_css_final_blocks wa unexpectedly empty");
+                            .expect("pending_css_final_blocks was unexpectedly empty");
                         // call the VM to execute the SCE-final block B at slot S
                         self.push_request(ExecutionRequest::RunFinalStep(ExecutionStep {
                             slot: s,
@@ -387,7 +387,7 @@ impl ExecutionWorker {
         let new_blockclique_blocks = blockclique.iter().filter_map(|(b_id, b)| {
             if b.header.content.slot <= self.last_final_slot {
                 // eliminate blocks that are not from a stricly later slot than the current latest SCE-final one
-                // (this is an optimizeation)
+                // (this is an optimization)
                 return None;
             }
             Some((b.header.content.slot, (b_id, b)))
