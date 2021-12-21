@@ -8,6 +8,7 @@ use jsonrpc_core::{BoxFuture, IoHandler, Value};
 use jsonrpc_derive::rpc;
 use jsonrpc_http_server::{CloseHandle, ServerBuilder};
 use massa_consensus::{ConsensusCommandSender, ConsensusConfig};
+use massa_execution::ExecutionCommandSender;
 use massa_models::address::{AddressHashMap, AddressHashSet};
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
@@ -33,6 +34,7 @@ mod public;
 
 pub struct Public {
     pub consensus_command_sender: ConsensusCommandSender,
+    pub execution_command_sender: ExecutionCommandSender,
     pub pool_command_sender: PoolCommandSender,
     pub consensus_config: ConsensusConfig,
     pub api_settings: &'static APISettings,

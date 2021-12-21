@@ -23,3 +23,4 @@ massa_pool = { path = "../massa-pool" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
+massa_execution = { path = "../massa-execution" }

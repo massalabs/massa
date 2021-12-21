@@ -5,6 +5,7 @@ use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
 use massa_consensus::{ConsensusCommandSender, ConsensusConfig, DiscardReason, ExportBlockStatus};
+use massa_execution::ExecutionCommandSender;
 use massa_models::address::{AddressHashMap, AddressHashSet};
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
@@ -28,6 +29,7 @@ use std::net::{IpAddr, SocketAddr};
 impl API<Public> {
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
+        execution_command_sender: ExecutionCommandSender,
         api_settings: &'static APISettings,
         consensus_settings: ConsensusConfig,
         pool_command_sender: PoolCommandSender,
@@ -47,6 +49,7 @@ impl API<Public> {
             network_command_sender,
             compensation_millis,
             node_id,
+            execution_command_sender,
         })
     }
 }
