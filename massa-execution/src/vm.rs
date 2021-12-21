@@ -1,10 +1,11 @@
 use std::sync::{Arc, Mutex};
 
 use crate::error::bootstrap_file_error;
-use crate::interface_impl::INTERFACE;
+use crate::interface_impl::InterfaceImpl;
 use crate::sce_ledger::{SCELedger, SCELedgerChanges};
 use crate::types::{ExecutionContext, ExecutionStep, OperationSC, StepHistory};
 use crate::{ExecutionError, ExecutionSettings};
+use assembly_simulator::Interface;
 use massa_models::address::AddressHashMap;
 use massa_models::{Address, Amount, BlockId, Slot};
 use tracing::debug;
@@ -20,6 +21,7 @@ lazy_static::lazy_static! {
 pub(crate) struct VM {
     _cfg: ExecutionSettings,
     step_history: StepHistory,
+    execution_interface: Box<dyn Interface>,
 }
 
 impl VM {
@@ -30,6 +32,9 @@ impl VM {
         // bootstrap ledger
         let context = CONTEXT.lock().unwrap();
         let mut final_ledger_guard = context.ledger_step.final_ledger_slot.lock().unwrap();
+
+        // Instantiate the interface used by the assembly simulator.
+        let execution_interface = Box::new(InterfaceImpl::new(Arc::clone(&CONTEXT)));
 
         if let Some((ledger_bootstrap, ledger_slot)) = ledger_bootstrap {
             // bootstrap from snapshot
@@ -49,6 +54,7 @@ impl VM {
         Ok(VM {
             _cfg: cfg,
             step_history: Default::default(),
+            execution_interface,
         })
     }
 
@@ -196,8 +202,11 @@ impl VM {
                 let ledger_changes_backup =
                     self.prepare_context(operation, block_creator_addr, *block_id, step.slot);
 
-                let run_result =
-                    assembly_simulator::run(&operation._module, operation.max_gas, &INTERFACE);
+                let run_result = assembly_simulator::run(
+                    &operation._module,
+                    operation.max_gas,
+                    &*self.execution_interface,
+                );
                 if let Err(err) = run_result {
                     debug!(
                         "failed running bytecode in operation index {} in block {}: {}",
