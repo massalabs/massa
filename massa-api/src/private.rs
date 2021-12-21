@@ -145,8 +145,8 @@ impl Endpoints for API<Private> {
 
     fn get_sc_output_event_by_slot_range(
         &self,
-        start: Slot,
-        end: Slot,
+        _: Slot,
+        _: Slot,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
         crate::wrong_api::<Vec<SCOutputEvent>>()
     }
