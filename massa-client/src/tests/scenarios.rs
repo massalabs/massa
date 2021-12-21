@@ -5,7 +5,7 @@ use serde::de::DeserializeOwned;
 use serial_test::serial;
 use std::{thread::JoinHandle, time::Duration};
 
-const TIMEOUT: u64 = 10;
+const TIMEOUT: u64 = 30;
 const TENTATIVES: u64 = 5;
 
 async fn send_cmd(cmd: &str) -> Result<String> {
@@ -54,7 +54,7 @@ fn spawn_node(timeout: Duration) -> JoinHandle<String> {
 #[tokio::test]
 #[serial]
 async fn test_run_node() {
-    let handle = spawn_node(Duration::from_secs(60 * 2));
+    let handle = spawn_node(Duration::from_secs(60 * 5));
 
     let output = send_cmd_with_output::<NodeStatus>("get_status")
         .await
