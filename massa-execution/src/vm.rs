@@ -37,7 +37,7 @@ impl VM {
                 let ledger_bootstrap = SCELedger::from_balances_map(ledgger_balances);
                 (ledger_bootstrap, ledger_slot)
             };
-        
+
         // Context shared between VM and the interface provided to the assembly simulator.
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
             ledger_bootstrap,

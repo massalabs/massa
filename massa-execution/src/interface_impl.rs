@@ -28,13 +28,12 @@ impl InterfaceClone for InterfaceImpl {
 impl Interface for InterfaceImpl {
     fn get_module(&self, address: &String) -> Result<Vec<u8>> {
         let bytecode = {
+            let address = Address::from_str(address).expect("Failed to convert sting to address.");
             let context = self
                 .context
                 .lock()
                 .expect("Failed to acquire lock on context.");
-            context.ledger_step.get_module(
-                &Address::from_str(address).expect("Failed to convert sting to address."),
-            )
+            context.ledger_step.get_module(&address)
         };
         match bytecode {
             Some(bytecode) => Ok(bytecode),
