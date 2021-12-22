@@ -34,7 +34,7 @@ impl Wallet {
             .iter()
             .map(|key| {
                 let pub_key = derive_public_key(key);
-                Ok((Address::from_public_key(&pub_key)?, (pub_key, *key)))
+                Ok((Address::from_public_key(&pub_key), (pub_key, *key)))
             })
             .collect::<Result<AddressHashMap<_>, WalletError>>()?;
         Ok(Wallet {
@@ -62,7 +62,7 @@ impl Wallet {
     pub fn add_private_key(&mut self, key: PrivateKey) -> Result<Address, WalletError> {
         if !self.keys.iter().any(|(_, (_, file_key))| file_key == &key) {
             let pub_key = derive_public_key(&key);
-            let ad = Address::from_public_key(&pub_key)?;
+            let ad = Address::from_public_key(&pub_key);
             self.keys.insert(ad, (pub_key, key));
             self.save()?;
             Ok(ad)
@@ -131,7 +131,7 @@ impl std::fmt::Display for Wallet {
         for k in &self.keys {
             let private_key = k.1 .1; // TODO: why not taking other fields of this struct?
             let public_key = derive_public_key(&private_key);
-            let addr = Address::from_public_key(&public_key).map_err(|_| std::fmt::Error)?;
+            let addr = Address::from_public_key(&public_key);
             writeln!(f)?;
             writeln!(f, "Private key: {}", private_key)?;
             writeln!(f, "Public key: {}", public_key)?;

@@ -142,7 +142,7 @@ async fn load_initial_staking_keys(
         .map(|private_key| {
             let public_key = derive_public_key(private_key);
             Ok((
-                Address::from_public_key(&public_key)?,
+                Address::from_public_key(&public_key),
                 (public_key, *private_key),
             ))
         })

@@ -293,7 +293,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Create 1 node.
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
-            let address = Address::from_public_key(&nodes[0].id.0).unwrap();
+            let address = Address::from_public_key(&nodes[0].id.0);
             let serialization_context = massa_models::get_serialization_context();
             let thread = address.get_thread(serialization_context.parent_count);
 
@@ -398,7 +398,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Create 1 node.
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
-            let address = Address::from_public_key(&nodes[0].id.0).unwrap();
+            let address = Address::from_public_key(&nodes[0].id.0);
             let serialization_context = massa_models::get_serialization_context();
             let thread = address.get_thread(serialization_context.parent_count);
 
@@ -508,7 +508,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Create 2 nodes.
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
-            let address = Address::from_public_key(&nodes[0].id.0).unwrap();
+            let address = Address::from_public_key(&nodes[0].id.0);
             let serialization_context = massa_models::get_serialization_context();
             let thread = address.get_thread(serialization_context.parent_count);
 

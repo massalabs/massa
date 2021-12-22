@@ -225,7 +225,7 @@ impl ConsensusWorker {
 
         // add genesis blocks to stats
         let genesis_public_key = derive_public_key(&cfg.genesis_key);
-        let genesis_addr = Address::from_public_key(&genesis_public_key)?;
+        let genesis_addr = Address::from_public_key(&genesis_public_key);
         let mut final_block_stats = VecDeque::new();
         for thread in 0..cfg.thread_count {
             final_block_stats.push_back((
@@ -844,10 +844,10 @@ impl ConsensusWorker {
                     res.push((
                         cur_slot,
                         if cur_slot.period == 0 {
-                            match Address::from_public_key(&self.genesis_public_key) {
-                                Ok(addr) => (addr, Vec::new()),
-                                Err(err) => break Err(err.into()),
-                            }
+                            (
+                                Address::from_public_key(&self.genesis_public_key),
+                                Vec::new(),
+                            )
                         } else {
                             (
                                 match self.pos.draw_block_producer(cur_slot) {
@@ -956,7 +956,7 @@ impl ConsensusWorker {
             ConsensusCommand::RegisterStakingPrivateKeys(keys) => {
                 for key in keys.into_iter() {
                     let public = derive_public_key(&key);
-                    let address = Address::from_public_key(&public)?;
+                    let address = Address::from_public_key(&public);
                     info!("Staking with address {}", address);
                     self.staking_keys.insert(address, (public, key));
                 }
@@ -1343,7 +1343,7 @@ impl ConsensusWorker {
                 self.final_block_stats.push_back((
                     timestamp,
                     a_block.operation_set.len() as u64,
-                    Address::from_public_key(&a_block.block.header.content.creator)?,
+                    Address::from_public_key(&a_block.block.header.content.creator),
                 ));
             }
         }
@@ -1457,7 +1457,7 @@ impl ConsensusWorker {
         for (b_id, (b_creator, b_slot)) in new_stale_block_ids_creators_slots.into_iter() {
             self.stale_block_stats.push_back(timestamp);
 
-            let creator_addr = Address::from_public_key(&b_creator)?;
+            let creator_addr = Address::from_public_key(&b_creator);
             if self.staking_keys.contains_key(&creator_addr) {
                 warn!("block {} that was produced by our address {} at slot {} became stale. This is probably due to a temporary desynchronization.", b_id, b_slot, creator_addr);
             }

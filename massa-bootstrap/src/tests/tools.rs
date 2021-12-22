@@ -42,7 +42,7 @@ pub fn get_random_public_key() -> PublicKey {
 pub fn get_random_address() -> Address {
     let priv_key = generate_random_private_key();
     let pub_key = derive_public_key(&priv_key);
-    Address::from_public_key(&pub_key).unwrap()
+    Address::from_public_key(&pub_key)
 }
 
 pub fn get_dummy_signature(s: &str) -> Signature {
@@ -384,7 +384,7 @@ pub fn assert_eq_exec(v1: &BootstrapExecutionState, v2: &BootstrapExecutionState
 pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key).unwrap();
+    let address = Address::from_public_key(&public_key);
 
     let mut ledger_subset = LedgerSubset::default();
     ledger_subset.0.insert(

@@ -1,6 +1,6 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
 /// Define types used while executing block bytecodes
-use massa_models::{Address, Amount, OperationContent, OperationType};
+use massa_models::{Address, Amount};
 use massa_models::{Block, BlockId, Slot};
 use std::sync::{Condvar, Mutex};
 use std::{collections::VecDeque, sync::Arc};
@@ -19,16 +19,6 @@ pub(crate) struct StepHistoryItem {
 
     // list of SCE ledger changes caused by this execution step
     pub ledger_changes: SCELedgerChanges,
-}
-
-/// Operation should be used to communicate with the VM, TODO, it doesn't need everything in.
-/// TODO May be the max_gas, the module and the sender address are enough
-pub(crate) struct OperationSC {
-    pub _module: Bytecode,
-    pub max_gas: u64,
-    pub coins: Amount,
-    pub gas_price: Amount,
-    pub sender: Address,
 }
 
 #[derive(Clone)]
@@ -71,30 +61,6 @@ impl ExecutionContext {
             opt_block_id: Default::default(),
             opt_block_creator_addr: Default::default(),
             call_stack: Default::default(),
-        }
-    }
-}
-
-impl TryFrom<OperationContent> for OperationSC {
-    type Error = ();
-
-    fn try_from(content: OperationContent) -> Result<Self, Self::Error> {
-        match content.op {
-            OperationType::ExecuteSC {
-                data,
-                max_gas,
-                coins,
-                gas_price,
-            } => {
-                Ok(OperationSC {
-                    _module: data, // todo use the external lib to check if module is valid
-                    max_gas,
-                    coins,
-                    gas_price,
-                    sender: Address::from_public_key(&content.sender_public_key).unwrap(),
-                })
-            }
-            _ => Err(()),
         }
     }
 }
