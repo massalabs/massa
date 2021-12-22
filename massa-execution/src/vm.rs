@@ -127,6 +127,7 @@ impl VM {
     }
 
     /// Prepare (update) the shared context before the new operation
+    /// returns a snapshot copy of the current caused ledger changes
     /// TODO: do not ignore the results
     /// TODO consider dispatching with edorsers/endorsed as well
     fn prepare_context(
@@ -137,11 +138,7 @@ impl VM {
         slot: Slot,
     ) -> SCELedgerChanges {
         let mut context = self.execution_context.lock().unwrap();
-        // credit the sender with "coins"
-        let _result =
-            context
-                .ledger_step
-                .set_balance_delta(operation.sender, operation.coins, true);
+
         // credit the block creator with max_gas*gas_price
         let _result = context.ledger_step.set_balance_delta(
             block_creator_addr,
@@ -151,8 +148,12 @@ impl VM {
                 .unwrap(),
             true,
         );
-        // Save the Initial ledger changes before execution
-        // It contains a copy of the initial coin credits that will be popped back if bytecode execution fails in order to cancel its effects
+
+        // credit the sender with "coins"
+        let _result =
+            context
+                .ledger_step
+                .set_balance_delta(operation.sender, operation.coins, true);
 
         // fill context for execution
         context.gas_price = operation.gas_price;
@@ -162,7 +163,7 @@ impl VM {
         context.opt_block_id = Some(block_id);
         context.opt_block_creator_addr = Some(block_creator_addr);
         context.call_stack = vec![operation.sender].into();
-        context.ledger_step.caused_changes.clone()
+        context.ledger_step.caused_changes.clone();
     }
 
     /// runs an SCE-active execution step
@@ -194,10 +195,14 @@ impl VM {
             for (op_idx, operation) in block.operations.clone().into_iter().enumerate() {
                 let operation_sc = OperationSC::try_from(operation.content);
                 if operation_sc.is_err() {
-                    // only fail if the operation cannot parse the sender address
+                    // fails if the operation cannot parse the sender address or if the bytecode is invalid
                     continue;
                 }
                 let operation = &operation_sc.unwrap();
+
+                // Prepare context and save the Initial ledger changes before execution
+                // The returned snapshot contains a copy of the initial coin credits
+                // that will be popped back if bytecode execution fails in order to cancel its effects
                 let ledger_changes_backup =
                     self.prepare_context(operation, block_creator_addr, *block_id, step.slot);
 
