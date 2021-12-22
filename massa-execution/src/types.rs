@@ -5,8 +5,21 @@ use massa_models::{Block, BlockId, Slot};
 use std::sync::{Condvar, Mutex};
 use std::{collections::VecDeque, sync::Arc};
 
-pub type StepHistory = VecDeque<(Slot, Option<BlockId>, SCELedgerChanges)>;
+pub(crate) type StepHistory = VecDeque<StepHistoryItem>;
 pub type Bytecode = Vec<u8>;
+
+/// A StepHistory item representing the consequences of a given execution step
+#[derive(Debug, Clone)]
+pub(crate) struct StepHistoryItem {
+    // step slot
+    pub slot: Slot,
+
+    // optional block ID (or miss if None) at that slot
+    pub opt_block_id: Option<BlockId>,
+
+    // list of SCE ledger changes caused by this execution step
+    pub ledger_changes: SCELedgerChanges,
+}
 
 /// Operation should be used to communicate with the VM, TODO, it doesn't need everything in.
 /// TODO May be the max_gas, the module and the sender address are enough
@@ -89,9 +102,10 @@ impl TryFrom<OperationContent> for OperationSC {
 impl From<StepHistory> for SCELedgerChanges {
     fn from(step: StepHistory) -> Self {
         let mut ret = SCELedgerChanges::default();
-        step.iter().for_each(|(_, _, step_changes)| {
-            ret.apply_changes(step_changes);
-        });
+        step.iter()
+            .for_each(|StepHistoryItem { ledger_changes, .. }| {
+                ret.apply_changes(ledger_changes);
+            });
         ret
     }
 }

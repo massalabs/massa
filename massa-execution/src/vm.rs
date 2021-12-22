@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use crate::error::bootstrap_file_error;
 use crate::interface_impl::InterfaceImpl;
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges};
-use crate::types::{ExecutionContext, ExecutionStep, OperationSC, StepHistory};
+use crate::types::{ExecutionContext, ExecutionStep, OperationSC, StepHistory, StepHistoryItem};
 use crate::{ExecutionError, ExecutionSettings};
 use assembly_simulator::Interface;
 use massa_models::address::AddressHashMap;
@@ -97,9 +97,14 @@ impl VM {
 
     fn is_already_done(&mut self, step: &ExecutionStep) -> Option<SCELedgerChanges> {
         // check if step already in history front
-        if let Some((slot, opt_block, ledger_changes)) = self.step_history.pop_front() {
+        if let Some(StepHistoryItem {
+            slot,
+            opt_block_id,
+            ledger_changes,
+        }) = self.step_history.pop_front()
+        {
             if slot == step.slot {
-                match (&opt_block, &step.block) {
+                match (&opt_block_id, &step.block) {
                     (None, None) => Some(ledger_changes), // matching miss
                     (Some(b_id_hist), Some((b_id_step, _b_step))) => {
                         if b_id_hist == b_id_step {
@@ -228,11 +233,11 @@ impl VM {
 
         let context = self.execution_context.lock().unwrap();
         // push step into history
-        self.step_history.push_back((
-            step.slot,
+        self.step_history.push_back(StepHistoryItem {
+            slot: step.slot,
             opt_block_id,
-            context.ledger_step.caused_changes.clone(),
-        ))
+            ledger_changes: context.ledger_step.caused_changes.clone(),
+        });
     }
 
     pub fn reset_to_final(&mut self) {
