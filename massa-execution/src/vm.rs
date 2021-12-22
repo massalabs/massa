@@ -29,7 +29,7 @@ impl VM {
                 (ledger_bootstrap, ledger_slot)
             } else {
                 // not bootstrapping: load initial SCE ledger from file
-                let ledger_slot = Slot::new(0, cfg.thread_count.saturating_sub(1)); // last genesis block
+                let ledger_slot = Slot::new(0, thread_count.saturating_sub(1)); // last genesis block
                 let ledgger_balances = serde_json::from_str::<AddressHashMap<Amount>>(
                     &std::fs::read_to_string(&cfg.initial_sce_ledger_path)
                         .map_err(bootstrap_file_error!("loading", cfg))?,
