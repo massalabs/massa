@@ -163,7 +163,7 @@ impl VM {
         context.opt_block_id = Some(block_id);
         context.opt_block_creator_addr = Some(block_creator_addr);
         context.call_stack = vec![operation.sender].into();
-        context.ledger_step.caused_changes.clone();
+        context.ledger_step.caused_changes.clone()
     }
 
     /// runs an SCE-active execution step
