@@ -3,7 +3,7 @@ use crate::ExecutionError;
 use massa_hash::hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::hhasher::BuildHHasher;
-use massa_models::{address::AddressHashMap, hhasher::HHashMap, Address, Amount};
+use massa_models::{address::AddressHashMap, hhasher::HHashMap, Address, Amount, AMOUNT_ZERO};
 use massa_models::{
     array_from_slice, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact,
     SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
@@ -441,7 +441,7 @@ impl SCELedgerStep {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {
-                Some(SCELedgerChange::Delete) => return Amount::from_raw(0),
+                Some(SCELedgerChange::Delete) => return AMOUNT_ZERO,
                 Some(SCELedgerChange::Set(new_entry)) => return new_entry.balance,
                 Some(SCELedgerChange::Update(update)) => {
                     if let Some(updated_balance) = update.update_balance {
@@ -456,7 +456,7 @@ impl SCELedgerStep {
             return entry.balance;
         }
         // otherwise, just return zero
-        Amount::from_raw(0)
+        AMOUNT_ZERO
     }
 
     /// sets the balance of an address

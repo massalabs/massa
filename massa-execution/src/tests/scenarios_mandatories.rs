@@ -5,6 +5,7 @@ use std::str::FromStr;
 use crate::{start_controller, ExecutionSettings, SCELedger, SCELedgerEntry};
 use massa_models::{address::AddressHashMap, Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key};
+use massa_time::MassaTime;
 use serial_test::serial;
 use tempfile::NamedTempFile;
 
@@ -97,16 +98,32 @@ fn get_sample_ledger() -> SCELedger {
 #[serial]
 async fn test_execution_basic() {
     let (_config_file_keepalive, settings) = get_sample_settings();
-    assert!(start_controller(settings, 2, None).await.is_ok());
+    assert!(start_controller(
+        settings,
+        2,
+        MassaTime::now().unwrap(),
+        16000.into(),
+        0,
+        None
+    )
+    .await
+    .is_ok());
 }
 
 #[tokio::test]
 #[serial]
 async fn test_execution_shutdown() {
     let (_config_file_keepalive, settings) = get_sample_settings();
-    let (_command_sender, _event_receiver, manager) = start_controller(settings, 2, None)
-        .await
-        .expect("Failed to start execution.");
+    let (_command_sender, _event_receiver, manager) = start_controller(
+        settings,
+        2,
+        MassaTime::now().unwrap(),
+        16000.into(),
+        0,
+        None,
+    )
+    .await
+    .expect("Failed to start execution.");
     manager.stop().await.expect("Failed to stop execution.");
 }
 
@@ -114,9 +131,16 @@ async fn test_execution_shutdown() {
 #[serial]
 async fn test_sending_command() {
     let (_config_file_keepalive, settings) = get_sample_settings();
-    let (command_sender, _event_receiver, manager) = start_controller(settings, 2, None)
-        .await
-        .expect("Failed to start execution.");
+    let (command_sender, _event_receiver, manager) = start_controller(
+        settings,
+        2,
+        MassaTime::now().unwrap(),
+        16000.into(),
+        0,
+        None,
+    )
+    .await
+    .expect("Failed to start execution.");
     command_sender
         .update_blockclique(Default::default(), Default::default())
         .await
@@ -132,10 +156,16 @@ async fn test_execution_with_bootstrap() {
         final_ledger: get_sample_ledger(),
     };
     let (_config_file_keepalive, settings) = get_sample_settings();
-    let (command_sender, _event_receiver, manager) =
-        start_controller(settings, 2, Some(bootstrap_state))
-            .await
-            .expect("Failed to start execution.");
+    let (command_sender, _event_receiver, manager) = start_controller(
+        settings,
+        2,
+        MassaTime::now().unwrap(),
+        16000.into(),
+        0,
+        Some(bootstrap_state),
+    )
+    .await
+    .expect("Failed to start execution.");
     command_sender
         .update_blockclique(Default::default(), Default::default())
         .await

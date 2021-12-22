@@ -20,6 +20,7 @@ pub(crate) struct VM {
 impl VM {
     pub fn new(
         cfg: ExecutionSettings,
+        thread_count: u8,
         ledger_bootstrap: Option<(SCELedger, Slot)>,
     ) -> Result<VM, ExecutionError> {
         let (ledger_bootstrap, ledger_slot) =

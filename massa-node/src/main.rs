@@ -1,7 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 #![feature(ip)]
-#![feature(destructuring_assignment)]
 #![doc = include_str!("../../README.md")]
 
 extern crate massa_logging;
@@ -46,7 +45,7 @@ async fn launch() -> (
 ) {
     info!("Node version : {}", *crate::settings::VERSION);
     if let Some(end) = *massa_consensus::settings::END_TIMESTAMP {
-        if MassaTime::now(0).expect("could not get now time") > end {
+        if MassaTime::now().expect("could not get now time") > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
     }
@@ -133,13 +132,11 @@ async fn launch() -> (
     // launch execution controller
     let (execution_command_sender, execution_event_receiver, execution_manager) =
         massa_execution::start_controller(
-            massa_execution::ExecutionSettings {
-                thread_count: massa_consensus::settings::THREAD_COUNT,
-                genesis_timestamp: *massa_consensus::settings::GENESIS_TIMESTAMP,
-                t0: *massa_consensus::settings::T0,
-                clock_compensation: bootstrap_state.compensation_millis,
-                initial_sce_ledger_path: SETTINGS.execution.initial_sce_ledger_path.clone(),
-            },
+            SETTINGS.execution.clone(),
+            massa_consensus::settings::THREAD_COUNT,
+            *massa_consensus::settings::GENESIS_TIMESTAMP,
+            *massa_consensus::settings::T0,
+            bootstrap_state.compensation_millis,
             bootstrap_state.execution,
         )
         .await

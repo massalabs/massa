@@ -230,8 +230,24 @@ impl OperationLedgerInterface for Operation {
             }
             // roll sale is handled separately with a delay
             massa_models::OperationType::RollSell { .. } => {}
-            // TODO: execute smart contract
-            massa_models::OperationType::ExecuteSC { .. } => {}
+            massa_models::OperationType::ExecuteSC {
+                max_gas,
+                gas_price,
+                coins,
+                ..
+            } => {
+                res.apply(
+                    &sender_address,
+                    &LedgerChange {
+                        balance_delta: gas_price
+                            .checked_mul_u64(*max_gas)
+                            .ok_or(ConsensusError::AmountOverflowError)?
+                            .checked_add(*coins)
+                            .ok_or(ConsensusError::AmountOverflowError)?,
+                        balance_increment: false,
+                    },
+                )?;
+            }
         }
 
         Ok(res)

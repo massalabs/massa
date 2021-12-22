@@ -17,10 +17,9 @@ pub const OPERATION_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 pub const SLOT_KEY_SIZE: usize = 9;
 
-/// Configuration of consensus algorithm
-/// Assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
+/// Compact representation of key values of consensus algorithm used in API
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
-pub struct Config {
+pub struct CompactConfig {
     /// Time in millis when the blockclique started.
     pub genesis_timestamp: MassaTime,
     /// TESTNET: time when the blockclique is ended.
