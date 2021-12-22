@@ -139,6 +139,12 @@ impl VM {
     ) -> SCELedgerChanges {
         let mut context = self.execution_context.lock().unwrap();
 
+        // credit the sender with "coins"
+        let _result =
+            context
+                .ledger_step
+                .set_balance_delta(operation.sender, operation.coins, true);
+
         // credit the block creator with max_gas*gas_price
         let _result = context.ledger_step.set_balance_delta(
             block_creator_addr,
@@ -148,12 +154,6 @@ impl VM {
                 .unwrap(),
             true,
         );
-
-        // credit the sender with "coins"
-        let _result =
-            context
-                .ledger_step
-                .set_balance_delta(operation.sender, operation.coins, true);
 
         // fill context for execution
         context.gas_price = operation.gas_price;
