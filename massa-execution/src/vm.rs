@@ -1,3 +1,4 @@
+use std::mem;
 use std::sync::{Arc, Mutex};
 
 use crate::error::bootstrap_file_error;
@@ -71,38 +72,23 @@ impl VM {
     ///   * step: execution step to run
     pub(crate) fn run_final_step(&mut self, step: &ExecutionStep) {
         // check if that step was already executed as the earliest active step
-        // if so, pop it and apply it to the final ledger
-        if let Some(cached) = self.pop_cached_step(step) {
-            // execution was already done, apply cached ledger changes to final ledger
-            let mut context = self.execution_context.lock().unwrap();
-            let mut ledger_step = &mut (*context).ledger_step;
-            ledger_step
-                .final_ledger_slot
-                .ledger
-                .apply_changes(&cached.ledger_changes);
-            ledger_step.final_ledger_slot.slot = step.slot;
-            return;
-        }
-
-        // nothing found in cache, or cache mismatch: reset history, run step and make it final
-        self.step_history.clear();
-        self.run_active_step(step);
-
-        // now, the result of the active run should be the sole element of the active step history
-        // retrieve its result and apply it to the final ledger
-        if let Some(cached) = self.pop_cached_step(step) {
-            // execution is done, apply cached ledger changes to final ledger
-            let mut context = self.execution_context.lock().unwrap();
-            let mut ledger_step = &mut (*context).ledger_step;
-            ledger_step
-                .final_ledger_slot
-                .ledger
-                .apply_changes(&cached.ledger_changes);
-            ledger_step.final_ledger_slot.slot = step.slot;
-            return;
+        let history_item = if let Some(cached) = self.pop_cached_step(step) {
+            // if so, pop it
+            cached
         } else {
-            panic!("result of final step execution unavailable");
-        }
+            // otherwise, clear step history an run it again explicitly
+            self.step_history.clear();
+            self.run_step_internal(step)
+        };
+
+        // apply ledger changes to final ledger
+        let mut context = self.execution_context.lock().unwrap();
+        let mut ledger_step = &mut (*context).ledger_step;
+        ledger_step
+            .final_ledger_slot
+            .ledger
+            .apply_changes(&history_item.ledger_changes);
+        ledger_step.final_ledger_slot.slot = step.slot;
     }
 
     /// check if step already at history front, if so, pop it
@@ -185,7 +171,7 @@ impl VM {
         context.ledger_step.caused_changes.clone()
     }
 
-    /// runs an SCE-active execution step
+    /// Runs an active step
     ///
     /// 1. Get step history (cache of final ledger changes by slot and block_id history)
     /// 2. clear caused changes
@@ -194,8 +180,8 @@ impl VM {
     ///
     /// # Parameters
     ///   * step: execution step to run
-    pub(crate) fn run_active_step(&mut self, step: &ExecutionStep) {
-        // accumulate active ledger changes history
+    fn run_step_internal(&mut self, step: &ExecutionStep) -> StepHistoryItem {
+        // reset active ledger changes history
         self.clear_and_update_context();
 
         // run implicit and async calls
@@ -258,13 +244,25 @@ impl VM {
             opt_block_id = None;
         }
 
-        let context = self.execution_context.lock().unwrap();
-        // push step into history
-        self.step_history.push_back(StepHistoryItem {
+        // generate history item
+        let mut context = self.execution_context.lock().unwrap();
+        StepHistoryItem {
             slot: step.slot,
             opt_block_id,
-            ledger_changes: context.ledger_step.caused_changes.clone(),
-        });
+            ledger_changes: mem::take(&mut context.ledger_step.caused_changes),
+        }
+    }
+
+    /// runs an SCE-active execution step
+    ///
+    /// # Parameters
+    ///   * step: execution step to run
+    pub(crate) fn run_active_step(&mut self, step: &ExecutionStep) {
+        // run step
+        let history_item = self.run_step_internal(step);
+
+        // push step into history
+        self.step_history.push_back(history_item);
     }
 
     pub fn reset_to_final(&mut self) {
