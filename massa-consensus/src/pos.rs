@@ -281,7 +281,7 @@ impl OperationRollInterface for Operation {
             OperationType::Transaction { .. } => {}
             OperationType::RollBuy { roll_count } => {
                 res.apply(
-                    &Address::from_public_key(&self.content.sender_public_key)?,
+                    &Address::from_public_key(&self.content.sender_public_key),
                     &RollUpdate {
                         roll_purchases: roll_count,
                         roll_sales: 0,
@@ -290,7 +290,7 @@ impl OperationRollInterface for Operation {
             }
             OperationType::RollSell { roll_count } => {
                 res.apply(
-                    &Address::from_public_key(&self.content.sender_public_key)?,
+                    &Address::from_public_key(&self.content.sender_public_key),
                     &RollUpdate {
                         roll_purchases: 0,
                         roll_sales: roll_count,
@@ -803,7 +803,7 @@ impl ProofOfStake {
         let cycle_last_period = (cycle + 1) * self.cfg.periods_per_cycle - 1;
         if cycle_first_period == 0 {
             // genesis slots: force block creator and endorsement creator address draw
-            let genesis_addr = Address::from_public_key(&derive_public_key(&self.cfg.genesis_key))?;
+            let genesis_addr = Address::from_public_key(&derive_public_key(&self.cfg.genesis_key));
             for draw_thread in 0..self.cfg.thread_count {
                 draws.insert(
                     Slot::new(0, draw_thread),

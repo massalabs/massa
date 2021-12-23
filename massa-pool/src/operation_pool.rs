@@ -46,7 +46,7 @@ impl WrappedOperation {
     fn new(op: Operation, thread_count: u8) -> Result<Self, PoolError> {
         Ok(WrappedOperation {
             byte_count: op.to_bytes_compact()?.len() as u64,
-            thread: Address::from_public_key(&op.content.sender_public_key)?
+            thread: Address::from_public_key(&op.content.sender_public_key)
                 .get_thread(thread_count),
             op,
         })
@@ -435,7 +435,7 @@ pub mod tests {
         let recv_pub = derive_public_key(&recv_priv);
 
         let op = OperationType::Transaction {
-            recipient_address: Address::from_public_key(&recv_pub).unwrap(),
+            recipient_address: Address::from_public_key(&recv_pub),
             amount: Amount::default(),
         };
         let content = OperationContent {
@@ -449,7 +449,7 @@ pub mod tests {
 
         (
             Operation { content, signature },
-            Address::from_public_key(&sender_pub).unwrap().get_thread(2),
+            Address::from_public_key(&sender_pub).get_thread(2),
         )
     }
 

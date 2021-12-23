@@ -315,7 +315,7 @@ impl Endpoints for API<Public> {
                     is_stale: false,
                     is_in_blockclique: blockclique.block_ids.contains(&id),
                     slot: exported_block.header.content.slot,
-                    creator: Address::from_public_key(&exported_block.header.content.creator)?,
+                    creator: Address::from_public_key(&exported_block.header.content.creator),
                     parents: exported_block.header.content.parents,
                 });
             }
@@ -327,7 +327,7 @@ impl Endpoints for API<Public> {
                         is_stale: true,
                         is_in_blockclique: false,
                         slot: header.content.slot,
-                        creator: Address::from_public_key(&header.content.creator)?,
+                        creator: Address::from_public_key(&header.content.creator),
                         parents: header.content.parents,
                     });
                 }

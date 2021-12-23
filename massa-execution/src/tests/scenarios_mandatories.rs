@@ -25,7 +25,7 @@ pub fn generate_ledger_initial_file(values: &AddressHashMap<Amount>) -> NamedTem
 pub fn get_random_address() -> Address {
     let priv_key = generate_random_private_key();
     let pub_key = derive_public_key(&priv_key);
-    Address::from_public_key(&pub_key).unwrap()
+    Address::from_public_key(&pub_key)
 }
 
 fn get_sample_settings() -> (NamedTempFile, ExecutionSettings) {

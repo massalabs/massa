@@ -44,7 +44,7 @@ async fn test_operations_check() {
     loop {
         private_key_1 = generate_random_private_key();
         public_key_1 = derive_public_key(&private_key_1);
-        address_1 = Address::from_public_key(&public_key_1).unwrap();
+        address_1 = Address::from_public_key(&public_key_1);
         if address_1.get_thread(thread_count) == 0 {
             break;
         }
@@ -52,7 +52,7 @@ async fn test_operations_check() {
     loop {
         private_key_2 = generate_random_private_key();
         public_key_2 = derive_public_key(&private_key_2);
-        address_2 = Address::from_public_key(&public_key_2).unwrap();
+        address_2 = Address::from_public_key(&public_key_2);
         if address_2.get_thread(thread_count) == 1 {
             break;
         }

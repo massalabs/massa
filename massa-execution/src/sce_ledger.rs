@@ -13,8 +13,13 @@ use serde::{Deserialize, Serialize};
 /// an entry in the SCE ledger
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SCELedgerEntry {
+    // SCE balance
     pub balance: Amount,
+
+    // optional executable module
     pub opt_module: Option<Bytecode>,
+
+    // datastore
     pub data: HHashMap<Hash, Vec<u8>>,
 }
 
@@ -196,7 +201,7 @@ impl DeserializeCompact for SCELedgerEntry {
 pub struct SCELedgerEntryUpdate {
     pub update_balance: Option<Amount>,
     pub update_opt_module: Option<Option<Bytecode>>,
-    pub update_data: HHashMap<Hash, Option<Bytecode>>, // None for row deletion
+    pub update_data: HHashMap<Hash, Option<Vec<u8>>>, // None for row deletion
 }
 
 impl SCELedgerEntryUpdate {

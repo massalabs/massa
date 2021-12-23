@@ -29,21 +29,21 @@ async fn test_get_operation() {
     // addresses a and b both in thread 0
     let mut priv_a = generate_random_private_key();
     let mut pubkey_a = derive_public_key(&priv_a);
-    let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
+    let mut address_a = Address::from_public_key(&pubkey_a);
     while 0 != address_a.get_thread(thread_count) {
         priv_a = generate_random_private_key();
         pubkey_a = derive_public_key(&priv_a);
-        address_a = Address::from_public_key(&pubkey_a).unwrap();
+        address_a = Address::from_public_key(&pubkey_a);
     }
     assert_eq!(0, address_a.get_thread(thread_count));
 
     let mut priv_b = generate_random_private_key();
     let mut pubkey_b = derive_public_key(&priv_b);
-    let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
+    let mut address_b = Address::from_public_key(&pubkey_b);
     while 0 != address_b.get_thread(thread_count) {
         priv_b = generate_random_private_key();
         pubkey_b = derive_public_key(&priv_b);
-        address_b = Address::from_public_key(&pubkey_b).unwrap();
+        address_b = Address::from_public_key(&pubkey_b);
     }
     assert_eq!(0, address_b.get_thread(thread_count));
 

@@ -181,7 +181,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
         let addresses_to_endorsements =
             a_block.block.addresses_to_endorsements(&endorsement_ids)?;
         Ok(ActiveBlock {
-            creator_address: Address::from_public_key(&a_block.block.header.content.creator)?,
+            creator_address: Address::from_public_key(&a_block.block.header.content.creator),
             block: a_block.block,
             parents: a_block.parents,
             children: a_block.children,
@@ -1049,7 +1049,7 @@ impl BlockGraph {
             block_statuses.insert(
                 block_id,
                 BlockStatus::Active(Box::new(ActiveBlock {
-                    creator_address: Address::from_public_key(&block.header.content.creator)?,
+                    creator_address: Address::from_public_key(&block.header.content.creator),
                     parents: Vec::new(),
                     children: vec![BlockHashMap::default(); cfg.thread_count as usize],
                     dependencies: BlockHashSet::default(),
@@ -1209,7 +1209,7 @@ impl BlockGraph {
         operation: &Operation,
         pos: &mut ProofOfStake,
     ) -> Result<(), ConsensusError> {
-        let block_creator_address = Address::from_public_key(&header.content.creator)?;
+        let block_creator_address = Address::from_public_key(&header.content.creator);
 
         // get roll updates
         let op_roll_updates = operation.get_roll_updates()?;
@@ -1460,7 +1460,7 @@ impl BlockGraph {
     ) -> Result<BlockStateAccumulator, ConsensusError> {
         let block_thread = header.content.slot.thread;
         let block_cycle = header.content.slot.get_cycle(self.cfg.periods_per_cycle);
-        let block_creator_address = Address::from_public_key(&header.content.creator)?;
+        let block_creator_address = Address::from_public_key(&header.content.creator);
 
         // get same thread parent cycle
         let same_thread_parent = &self
@@ -1475,14 +1475,14 @@ impl BlockGraph {
             .get_cycle(self.cfg.periods_per_cycle);
 
         let same_thread_parent_creator =
-            Address::from_public_key(&same_thread_parent.header.content.creator)?;
+            Address::from_public_key(&same_thread_parent.header.content.creator);
 
-        let endorsers_addresses = header
+        let endorsers_addresses: Vec<Address> = header
             .content
             .endorsements
             .iter()
             .map(|ed| Address::from_public_key(&ed.content.sender_public_key))
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect();
 
         // init block state accumulator
         let mut accu = BlockStateAccumulator {
@@ -2481,7 +2481,7 @@ impl BlockGraph {
         let mut deps = BlockHashSet::default();
         let mut incomp = BlockHashSet::default();
         let mut missing_deps = BlockHashSet::default();
-        let creator_addr = Address::from_public_key(&header.content.creator)?;
+        let creator_addr = Address::from_public_key(&header.content.creator);
 
         // basic structural checks
         if header.content.parents.len() != (self.cfg.thread_count as usize)
@@ -2815,7 +2815,7 @@ impl BlockGraph {
             };
         for endorsement in header.content.endorsements.iter() {
             // check that the draw is correct
-            if Address::from_public_key(&endorsement.content.sender_public_key)?
+            if Address::from_public_key(&endorsement.content.sender_public_key)
                 != endorsement_draws[endorsement.content.index as usize]
             {
                 return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
@@ -2940,21 +2940,8 @@ impl BlockGraph {
         let mut dependencies: BlockHashSet = BlockHashSet::default();
         for operation in block_to_check.operations.iter() {
             // get thread
-            let op_thread = match Address::from_public_key(&operation.content.sender_public_key) {
-                Ok(addr) => addr.get_thread(self.cfg.thread_count),
-                Err(err) => {
-                    warn!(
-                        "block graph check_operations error, bad operation sender_public_key address :{}",
-                        err
-                    );
-                    return Ok(BlockOperationsCheckOutcome::Discard(
-                        DiscardReason::Invalid(format!(
-                            "bad operation sender_public_key address :{}",
-                            err
-                        )),
-                    ));
-                }
-            };
+            let op_thread = Address::from_public_key(&operation.content.sender_public_key)
+                .get_thread(self.cfg.thread_count);
 
             let op_start_validity_period = *operation
                 .get_validity_range(self.cfg.operation_validity_periods)
@@ -3238,7 +3225,7 @@ impl BlockGraph {
         self.block_statuses.insert(
             add_block_id,
             BlockStatus::Active(Box::new(ActiveBlock {
-                creator_address: Address::from_public_key(&add_block.header.content.creator)?,
+                creator_address: Address::from_public_key(&add_block.header.content.creator),
                 parents: parents_hash_period.clone(),
                 dependencies: deps,
                 descendants: BlockHashSet::default(),
@@ -4437,13 +4424,13 @@ mod tests {
         let pubkey_a =
             PublicKey::from_bs58_check("5UvFn66yoQerrEmikCxDVvhkLvCo9R2hJAYFMh2pZfYUQDMuCE")
                 .unwrap();
-        let address_a = Address::from_public_key(&pubkey_a).unwrap();
+        let address_a = Address::from_public_key(&pubkey_a);
         assert_eq!(0, address_a.get_thread(thread_count));
 
         let pubkey_b =
             PublicKey::from_bs58_check("4uRbkzUvQwW19dD6cxQ9WiYo8BZTPQsmsCbBrFLxMiUYTSbo2p")
                 .unwrap();
-        let address_b = Address::from_public_key(&pubkey_b).unwrap();
+        let address_b = Address::from_public_key(&pubkey_b);
         assert_eq!(1, address_b.get_thread(thread_count));
 
         let address_c =

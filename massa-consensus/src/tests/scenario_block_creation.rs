@@ -29,21 +29,21 @@ async fn test_genesis_block_creation() {
     // addr 2 is in consensus and has 0 roll and 1000 coins
     let mut priv_1 = generate_random_private_key();
     let mut pubkey_1 = derive_public_key(&priv_1);
-    let mut address_1 = Address::from_public_key(&pubkey_1).unwrap();
+    let mut address_1 = Address::from_public_key(&pubkey_1);
     while 0 != address_1.get_thread(thread_count) {
         priv_1 = generate_random_private_key();
         pubkey_1 = derive_public_key(&priv_1);
-        address_1 = Address::from_public_key(&pubkey_1).unwrap();
+        address_1 = Address::from_public_key(&pubkey_1);
     }
     assert_eq!(0, address_1.get_thread(thread_count));
 
     let mut priv_2 = generate_random_private_key();
     let mut pubkey_2 = derive_public_key(&priv_2);
-    let mut address_2 = Address::from_public_key(&pubkey_2).unwrap();
+    let mut address_2 = Address::from_public_key(&pubkey_2);
     while 0 != address_2.get_thread(thread_count) {
         priv_2 = generate_random_private_key();
         pubkey_2 = derive_public_key(&priv_2);
-        address_2 = Address::from_public_key(&pubkey_2).unwrap();
+        address_2 = Address::from_public_key(&pubkey_2);
     }
     assert_eq!(0, address_2.get_thread(thread_count));
 
@@ -106,21 +106,21 @@ async fn test_block_creation_with_draw() {
     // addr 2 is in consensus and has 0 roll and 1000 coins
     let mut priv_1 = generate_random_private_key();
     let mut pubkey_1 = derive_public_key(&priv_1);
-    let mut address_1 = Address::from_public_key(&pubkey_1).unwrap();
+    let mut address_1 = Address::from_public_key(&pubkey_1);
     while 0 != address_1.get_thread(thread_count) {
         priv_1 = generate_random_private_key();
         pubkey_1 = derive_public_key(&priv_1);
-        address_1 = Address::from_public_key(&pubkey_1).unwrap();
+        address_1 = Address::from_public_key(&pubkey_1);
     }
     assert_eq!(0, address_1.get_thread(thread_count));
 
     let mut priv_2 = generate_random_private_key();
     let mut pubkey_2 = derive_public_key(&priv_2);
-    let mut address_2 = Address::from_public_key(&pubkey_2).unwrap();
+    let mut address_2 = Address::from_public_key(&pubkey_2);
     while 0 != address_2.get_thread(thread_count) {
         priv_2 = generate_random_private_key();
         pubkey_2 = derive_public_key(&priv_2);
-        address_2 = Address::from_public_key(&pubkey_2).unwrap();
+        address_2 = Address::from_public_key(&pubkey_2);
     }
     assert_eq!(0, address_2.get_thread(thread_count));
 
@@ -249,7 +249,7 @@ async fn test_block_creation_with_draw() {
                     .expect("block did not propagate in time");
                 assert_eq!(
                     draws[&cur_slot],
-                    Address::from_public_key(&block_creator).unwrap(),
+                    Address::from_public_key(&block_creator),
                     "wrong block creator"
                 );
                 cur_slot = cur_slot.get_next_slot(cfg.thread_count).unwrap();
@@ -273,21 +273,21 @@ async fn test_interleaving_block_creation_with_reception() {
     // addresses a and b both in thread 0
     let mut priv_1 = generate_random_private_key();
     let mut pubkey_1 = derive_public_key(&priv_1);
-    let mut address_1 = Address::from_public_key(&pubkey_1).unwrap();
+    let mut address_1 = Address::from_public_key(&pubkey_1);
     while 0 != address_1.get_thread(thread_count) {
         priv_1 = generate_random_private_key();
         pubkey_1 = derive_public_key(&priv_1);
-        address_1 = Address::from_public_key(&pubkey_1).unwrap();
+        address_1 = Address::from_public_key(&pubkey_1);
     }
     assert_eq!(0, address_1.get_thread(thread_count));
 
     let mut priv_2 = generate_random_private_key();
     let mut pubkey_2 = derive_public_key(&priv_2);
-    let mut address_2 = Address::from_public_key(&pubkey_2).unwrap();
+    let mut address_2 = Address::from_public_key(&pubkey_2);
     while 0 != address_2.get_thread(thread_count) {
         priv_2 = generate_random_private_key();
         pubkey_2 = derive_public_key(&priv_2);
-        address_2 = Address::from_public_key(&pubkey_2).unwrap();
+        address_2 = Address::from_public_key(&pubkey_2);
     }
     assert_eq!(0, address_2.get_thread(thread_count));
 
@@ -375,7 +375,7 @@ async fn test_interleaving_block_creation_with_reception() {
                         .expect("block did not propagate in time");
                     assert_eq!(
                         *creator,
-                        Address::from_public_key(&header.content.creator).unwrap(),
+                        Address::from_public_key(&header.content.creator),
                         "wrong block creator"
                     );
                     id
@@ -426,21 +426,21 @@ async fn test_order_of_inclusion() {
     // addresses a and b both in thread 0
     let mut priv_a = generate_random_private_key();
     let mut pubkey_a = derive_public_key(&priv_a);
-    let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
+    let mut address_a = Address::from_public_key(&pubkey_a);
     while 0 != address_a.get_thread(thread_count) {
         priv_a = generate_random_private_key();
         pubkey_a = derive_public_key(&priv_a);
-        address_a = Address::from_public_key(&pubkey_a).unwrap();
+        address_a = Address::from_public_key(&pubkey_a);
     }
     assert_eq!(0, address_a.get_thread(thread_count));
 
     let mut priv_b = generate_random_private_key();
     let mut pubkey_b = derive_public_key(&priv_b);
-    let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
+    let mut address_b = Address::from_public_key(&pubkey_b);
     while 0 != address_b.get_thread(thread_count) {
         priv_b = generate_random_private_key();
         pubkey_b = derive_public_key(&priv_b);
-        address_b = Address::from_public_key(&pubkey_b).unwrap();
+        address_b = Address::from_public_key(&pubkey_b);
     }
     assert_eq!(0, address_b.get_thread(thread_count));
 
@@ -590,19 +590,19 @@ async fn test_block_filling() {
     // addresses a and b both in thread 0
     let mut priv_a = generate_random_private_key();
     let mut pubkey_a = derive_public_key(&priv_a);
-    let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
+    let mut address_a = Address::from_public_key(&pubkey_a);
     while 0 != address_a.get_thread(thread_count) {
         priv_a = generate_random_private_key();
         pubkey_a = derive_public_key(&priv_a);
-        address_a = Address::from_public_key(&pubkey_a).unwrap();
+        address_a = Address::from_public_key(&pubkey_a);
     }
     let mut priv_b = generate_random_private_key();
     let mut pubkey_b = derive_public_key(&priv_b);
-    let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
+    let mut address_b = Address::from_public_key(&pubkey_b);
     while 1 != address_b.get_thread(thread_count) {
         priv_b = generate_random_private_key();
         pubkey_b = derive_public_key(&priv_b);
-        address_b = Address::from_public_key(&pubkey_b).unwrap();
+        address_b = Address::from_public_key(&pubkey_b);
     }
     let mut ledger = HashMap::new();
     ledger.insert(

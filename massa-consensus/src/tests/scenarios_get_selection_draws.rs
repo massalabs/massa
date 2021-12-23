@@ -25,21 +25,21 @@ async fn test_get_selection_draws_high_end_slot() {
     // addresses 1 and 2 both in thread 0
     let mut priv_1 = generate_random_private_key();
     let mut pubkey_1 = derive_public_key(&priv_1);
-    let mut address_1 = Address::from_public_key(&pubkey_1).unwrap();
+    let mut address_1 = Address::from_public_key(&pubkey_1);
     while 0 != address_1.get_thread(thread_count) {
         priv_1 = generate_random_private_key();
         pubkey_1 = derive_public_key(&priv_1);
-        address_1 = Address::from_public_key(&pubkey_1).unwrap();
+        address_1 = Address::from_public_key(&pubkey_1);
     }
     assert_eq!(0, address_1.get_thread(thread_count));
 
     let mut priv_2 = generate_random_private_key();
     let mut pubkey_2 = derive_public_key(&priv_2);
-    let mut address_2 = Address::from_public_key(&pubkey_2).unwrap();
+    let mut address_2 = Address::from_public_key(&pubkey_2);
     while 0 != address_2.get_thread(thread_count) {
         priv_2 = generate_random_private_key();
         pubkey_2 = derive_public_key(&priv_2);
-        address_2 = Address::from_public_key(&pubkey_2).unwrap();
+        address_2 = Address::from_public_key(&pubkey_2);
     }
     assert_eq!(0, address_2.get_thread(thread_count));
 
