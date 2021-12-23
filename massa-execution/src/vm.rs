@@ -68,6 +68,8 @@ impl VM {
     }
 
     /// runs an SCE-final execution step
+    /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
+    ///
     /// # Parameters
     ///   * step: execution step to run
     pub(crate) fn run_final_step(&mut self, step: &ExecutionStep) {
@@ -136,6 +138,7 @@ impl VM {
 
     /// Prepares (updates) the shared context before the new operation.
     /// Returns a snapshot of the current caused ledger changes.
+    /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
     /// TODO: do not ignore the results
     /// TODO: consider dispatching gas fees with edorsers/endorsees as well
     fn prepare_context(
@@ -150,10 +153,10 @@ impl VM {
     ) -> SCELedgerChanges {
         let mut context = self.execution_context.lock().unwrap();
 
-        // Credit the sender with "coins"
+        // make context.ledger_step credit Op's sender with Op.coins in the SCE ledger
         let _result = context.ledger_step.set_balance_delta(sender, coins, true);
 
-        // credit the block creator with max_gas*gas_price
+        // make context.ledger_step credit the producer of the block B with Op.max_gas * Op.gas_price in the SCE ledger
         let _result = context.ledger_step.set_balance_delta(
             block_creator_addr,
             gas_price.saturating_mul_u64(max_gas),
@@ -172,6 +175,7 @@ impl VM {
     }
 
     /// Runs an active step
+    /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
     ///
     /// 1. Get step history (cache of final ledger changes by slot and block_id history)
     /// 2. clear caused changes
@@ -254,6 +258,7 @@ impl VM {
     }
 
     /// runs an SCE-active execution step
+    /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
     ///
     /// # Parameters
     ///   * step: execution step to run
