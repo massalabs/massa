@@ -134,10 +134,10 @@ impl VM {
             SCELedgerChanges::from(self.step_history.clone());
     }
 
-    /// Prepare (update) the shared context before the new operation
-    /// returns a snapshot copy of the current caused ledger changes
+    /// Prepares (updates) the shared context before the new operation.
+    /// Returns a snapshot of the current caused ledger changes.
     /// TODO: do not ignore the results
-    /// TODO consider dispatching with edorsers/endorsed as well
+    /// TODO: consider dispatching gas fees with edorsers/endorsees as well
     fn prepare_context(
         &self,
         sender: Address,
@@ -150,7 +150,7 @@ impl VM {
     ) -> SCELedgerChanges {
         let mut context = self.execution_context.lock().unwrap();
 
-        // credit the sender with "coins"
+        // Credit the sender with "coins"
         let _result = context.ledger_step.set_balance_delta(sender, coins, true);
 
         // credit the block creator with max_gas*gas_price
@@ -213,9 +213,9 @@ impl VM {
                         continue;
                     };
 
-                // Prepare context and save the Initial ledger changes before execution
-                // The returned snapshot contains a copy of the initial coin credits
-                // that will be popped back if bytecode execution fails in order to cancel its effects only
+                // Prepare context and save the initial ledger changes before execution.
+                // The returned snapshot takes into account the initial coin credits.
+                // This snapshot will be popped back if bytecode execution fails.
                 let ledger_changes_backup = self.prepare_context(
                     sender,
                     gas_price,
