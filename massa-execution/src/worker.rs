@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 
 use crate::error::ExecutionError;
+use crate::sce_ledger::FinalLedger;
 use crate::types::{ExecutionQueue, ExecutionRequest};
 use crate::vm::VM;
 use crate::BootstrapExecutionState;
@@ -249,10 +250,10 @@ impl ExecutionWorker {
             }
 
             ExecutionCommand::GetBootstrapState(response_tx) => {
-                let (vm_ledger, vm_slot) = self.vm.lock().unwrap().get_bootstrap_state();
+                let FinalLedger { ledger, slot } = self.vm.lock().unwrap().get_bootstrap_state();
                 let bootstrap_state = BootstrapExecutionState {
-                    final_ledger: vm_ledger,
-                    final_slot: vm_slot,
+                    final_ledger: ledger,
+                    final_slot: slot,
                 };
                 if response_tx.send(bootstrap_state).is_err() {
                     warn!("execution: could not send get_bootstrap_state answer");

@@ -9,13 +9,17 @@ use massa_models::{
     SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
 };
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
 
 /// an entry in the SCE ledger
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SCELedgerEntry {
+    // SCE balance
     pub balance: Amount,
+
+    // optional executable module
     pub opt_module: Option<Bytecode>,
+
+    // datastore
     pub data: HHashMap<Hash, Vec<u8>>,
 }
 
@@ -197,7 +201,7 @@ impl DeserializeCompact for SCELedgerEntry {
 pub struct SCELedgerEntryUpdate {
     pub update_balance: Option<Amount>,
     pub update_opt_module: Option<Option<Bytecode>>,
-    pub update_data: HHashMap<Hash, Option<Bytecode>>, // None for row deletion
+    pub update_data: HHashMap<Hash, Option<Vec<u8>>>, // None for row deletion
 }
 
 impl SCELedgerEntryUpdate {
@@ -413,12 +417,21 @@ impl SCELedger {
     }
 }
 
+/// The final ledger.
+#[derive(Debug, Clone)]
+pub struct FinalLedger {
+    /// The slot of the ledger.
+    pub slot: Slot,
+    /// The ledger.
+    pub ledger: SCELedger,
+}
+
 /// represents an execution step from the point of view of the SCE ledger
 /// applying cumulative_history_changes then caused_changes to final_ledger yields the current ledger during the ledger step
 #[derive(Debug, Clone)]
 pub struct SCELedgerStep {
-    // arc/mutex reference to the final ledger and its slot
-    pub final_ledger_slot: Arc<Mutex<(SCELedger, Slot)>>,
+    // The final ledger and its slot
+    pub final_ledger_slot: FinalLedger,
 
     // accumulator of existing ledger changes
     pub cumulative_history_changes: SCELedgerChanges,
@@ -444,8 +457,7 @@ impl SCELedgerStep {
             }
         }
         // check if the final ledger has the info
-        let ledger_guard = self.final_ledger_slot.lock().unwrap();
-        if let Some(entry) = (*ledger_guard).0 .0.get(addr) {
+        if let Some(entry) = self.final_ledger_slot.ledger.0.get(addr) {
             return entry.balance;
         }
         // otherwise, just return zero
@@ -502,8 +514,7 @@ impl SCELedgerStep {
             }
         }
         // check if the final ledger has the info
-        let ledger_guard = self.final_ledger_slot.lock().unwrap();
-        match (*ledger_guard).0 .0.get(addr) {
+        match self.final_ledger_slot.ledger.0.get(addr) {
             Some(entry) => entry.opt_module.clone(),
             _ => None,
         }
@@ -529,8 +540,7 @@ impl SCELedgerStep {
         }
 
         // check if the final ledger has the info
-        let ledger_guard = self.final_ledger_slot.lock().unwrap();
-        match (*ledger_guard).0 .0.get(addr) {
+        match self.final_ledger_slot.ledger.0.get(addr) {
             Some(entry) => entry.data.get(key).cloned(),
             _ => None,
         }

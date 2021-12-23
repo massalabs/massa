@@ -87,8 +87,7 @@ impl std::fmt::Display for Operation {
             }
         )?;
         writeln!(f, "Signature: {}", self.signature)?;
-        let addr = Address::from_public_key(&self.content.sender_public_key)
-            .map_err(|_| std::fmt::Error)?;
+        let addr = Address::from_public_key(&self.content.sender_public_key);
         let amount = self.content.fee.to_string();
         writeln!(
             f,
@@ -400,7 +399,7 @@ impl Operation {
 
     pub fn get_ledger_involved_addresses(&self) -> Result<AddressHashSet, ModelsError> {
         let mut res = AddressHashSet::default();
-        let emitter_address = Address::from_public_key(&self.content.sender_public_key)?;
+        let emitter_address = Address::from_public_key(&self.content.sender_public_key);
         res.insert(emitter_address);
         match self.content.op {
             OperationType::Transaction {
@@ -420,10 +419,10 @@ impl Operation {
         match self.content.op {
             OperationType::Transaction { .. } => {}
             OperationType::RollBuy { .. } => {
-                res.insert(Address::from_public_key(&self.content.sender_public_key)?);
+                res.insert(Address::from_public_key(&self.content.sender_public_key));
             }
             OperationType::RollSell { .. } => {
-                res.insert(Address::from_public_key(&self.content.sender_public_key)?);
+                res.insert(Address::from_public_key(&self.content.sender_public_key));
             }
             OperationType::ExecuteSC { .. } => {}
         }
@@ -484,7 +483,7 @@ mod tests {
         let recv_pub = derive_public_key(&recv_priv);
 
         let op = OperationType::Transaction {
-            recipient_address: Address::from_public_key(&recv_pub).unwrap(),
+            recipient_address: Address::from_public_key(&recv_pub),
             amount: Amount::default(),
         };
         let ser_type = op.to_bytes_compact().unwrap();

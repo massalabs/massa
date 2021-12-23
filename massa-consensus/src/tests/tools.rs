@@ -583,7 +583,7 @@ pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempF
     let mut roll_counts = RollCounts::default();
     for key in stakers.iter() {
         let pub_key = derive_public_key(key);
-        let address = Address::from_public_key(&pub_key).unwrap();
+        let address = Address::from_public_key(&pub_key);
         let update = RollUpdate {
             roll_purchases: 1,
             roll_sales: 0,
@@ -598,7 +598,7 @@ pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempF
 pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<PrivateKey>) -> PrivateKey {
     for key in nodes.iter() {
         let pub_key = derive_public_key(key);
-        let address = Address::from_public_key(&pub_key).unwrap();
+        let address = Address::from_public_key(&pub_key);
         if address == *draw {
             return *key;
         }

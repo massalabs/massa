@@ -1,25 +1,21 @@
+use std::mem;
 use std::sync::{Arc, Mutex};
 
 use crate::error::bootstrap_file_error;
-use crate::interface_impl::INTERFACE;
-use crate::sce_ledger::{SCELedger, SCELedgerChanges};
-use crate::types::{ExecutionContext, ExecutionStep, OperationSC, StepHistory};
+use crate::interface_impl::InterfaceImpl;
+use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges};
+use crate::types::{ExecutionContext, ExecutionStep, StepHistory, StepHistoryItem};
 use crate::{ExecutionError, ExecutionSettings};
+use assembly_simulator::Interface;
 use massa_models::address::AddressHashMap;
-use massa_models::{Address, Amount, BlockId, Slot};
+use massa_models::{Address, Amount, BlockId, OperationType, Slot};
 use tracing::debug;
-
-lazy_static::lazy_static! {
-    pub(crate) static ref CONTEXT: Arc<Mutex::<ExecutionContext>> = {
-        let ledger = SCELedger::default();  // will be bootstrapped later
-        let ledger_at_slot = Slot::new(0, 0); // will be bootstrapped later
-        Arc::new(Mutex::new(ExecutionContext::new(ledger, ledger_at_slot)))
-    };
-}
 
 pub(crate) struct VM {
     _cfg: ExecutionSettings,
     step_history: StepHistory,
+    execution_interface: Box<dyn Interface>,
+    execution_context: Arc<Mutex<ExecutionContext>>,
 }
 
 impl VM {
@@ -28,140 +24,158 @@ impl VM {
         thread_count: u8,
         ledger_bootstrap: Option<(SCELedger, Slot)>,
     ) -> Result<VM, ExecutionError> {
-        // bootstrap ledger
-        let context = CONTEXT.lock().unwrap();
-        let mut final_ledger_guard = context.ledger_step.final_ledger_slot.lock().unwrap();
+        let (ledger_bootstrap, ledger_slot) =
+            if let Some((ledger_bootstrap, ledger_slot)) = ledger_bootstrap {
+                // bootstrap from snapshot
+                (ledger_bootstrap, ledger_slot)
+            } else {
+                // not bootstrapping: load initial SCE ledger from file
+                let ledger_slot = Slot::new(0, thread_count.saturating_sub(1)); // last genesis block
+                let ledgger_balances = serde_json::from_str::<AddressHashMap<Amount>>(
+                    &std::fs::read_to_string(&cfg.initial_sce_ledger_path)
+                        .map_err(bootstrap_file_error!("loading", cfg))?,
+                )
+                .map_err(bootstrap_file_error!("parsing", cfg))?;
+                let ledger_bootstrap = SCELedger::from_balances_map(ledgger_balances);
+                (ledger_bootstrap, ledger_slot)
+            };
 
-        if let Some((ledger_bootstrap, ledger_slot)) = ledger_bootstrap {
-            // bootstrap from snapshot
-            *final_ledger_guard = (ledger_bootstrap, ledger_slot);
-        } else {
-            // not bootstrapping: load initial SCE ledger from file
-            let ledger_slot = Slot::new(0, thread_count.saturating_sub(1)); // last genesis block
-            let ledgger_balances = serde_json::from_str::<AddressHashMap<Amount>>(
-                &std::fs::read_to_string(&cfg.initial_sce_ledger_path)
-                    .map_err(bootstrap_file_error!("loading", cfg))?,
-            )
-            .map_err(bootstrap_file_error!("parsing", cfg))?;
-            let ledger_bootstrap = SCELedger::from_balances_map(ledgger_balances);
-            *final_ledger_guard = (ledger_bootstrap, ledger_slot);
-        }
+        // Context shared between VM and the interface provided to the assembly simulator.
+        let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
+            ledger_bootstrap,
+            ledger_slot,
+        )));
+
+        // Instantiate the interface used by the assembly simulator.
+        let execution_interface = Box::new(InterfaceImpl::new(Arc::clone(&execution_context)));
 
         Ok(VM {
             _cfg: cfg,
             step_history: Default::default(),
+            execution_interface,
+            execution_context,
         })
     }
 
     // clone bootstrap state (final ledger and slot)
-    pub fn get_bootstrap_state(&self) -> (SCELedger, Slot) {
-        CONTEXT
+    pub fn get_bootstrap_state(&self) -> FinalLedger {
+        self.execution_context
             .lock()
             .unwrap()
             .ledger_step
             .final_ledger_slot
-            .lock()
-            .unwrap()
             .clone()
     }
 
     /// runs an SCE-final execution step
+    /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
+    ///
     /// # Parameters
     ///   * step: execution step to run
     pub(crate) fn run_final_step(&mut self, step: &ExecutionStep) {
-        if let Some(cached) = self.is_already_done(step) {
-            // execution was already done, apply cached ledger changes to final ledger
-            let context = CONTEXT.lock().unwrap();
-            let mut final_ledger_guard = context.ledger_step.final_ledger_slot.lock().unwrap();
-            final_ledger_guard.0.apply_changes(&cached);
-            final_ledger_guard.1 = step.slot;
-            return;
-        }
-        // nothing found in cache, or cache mismatch: reset history, run step and make it final
-        // this should almost never happen, so the heavy step.clone() is OK
-        self.step_history.clear();
-        self.run_active_step(step);
+        // check if that step was already executed as the earliest active step
+        let history_item = if let Some(cached) = self.pop_cached_step(step) {
+            // if so, pop it
+            cached
+        } else {
+            // otherwise, clear step history an run it again explicitly
+            self.step_history.clear();
+            self.run_step_internal(step)
+        };
 
-        if let Some(cached) = self.is_already_done(step) {
-            // execution was already done, apply cached ledger changes to final ledger
-            // It should always happen
-            let context = CONTEXT.lock().unwrap();
-            let mut final_ledger_guard = context.ledger_step.final_ledger_slot.lock().unwrap();
-            final_ledger_guard.0.apply_changes(&cached);
-        }
+        // apply ledger changes to final ledger
+        let mut context = self.execution_context.lock().unwrap();
+        let mut ledger_step = &mut (*context).ledger_step;
+        ledger_step
+            .final_ledger_slot
+            .ledger
+            .apply_changes(&history_item.ledger_changes);
+        ledger_step.final_ledger_slot.slot = step.slot;
     }
 
-    fn is_already_done(&mut self, step: &ExecutionStep) -> Option<SCELedgerChanges> {
-        // check if step already in history front
-        if let Some((slot, opt_block, ledger_changes)) = self.step_history.pop_front() {
-            if slot == step.slot {
-                match (&opt_block, &step.block) {
-                    (None, None) => Some(ledger_changes), // matching miss
-                    (Some(b_id_hist), Some((b_id_step, _b_step))) => {
-                        if b_id_hist == b_id_step {
-                            Some(ledger_changes) // matching block
-                        } else {
-                            None // block mismatch
-                        }
-                    }
-                    (None, Some(_)) => None, // miss/block mismatch
-                    (Some(_), None) => None, // block/miss mismatch
+    /// check if step already at history front, if so, pop it
+    fn pop_cached_step(&mut self, step: &ExecutionStep) -> Option<StepHistoryItem> {
+        let found = if let Some(StepHistoryItem {
+            slot, opt_block_id, ..
+        }) = self.step_history.front()
+        {
+            if *slot == step.slot {
+                match (&opt_block_id, &step.block) {
+                    // matching miss
+                    (None, None) => true,
+
+                    // matching block
+                    (Some(b_id_hist), Some((b_id_step, _b_step))) => (b_id_hist == b_id_step),
+
+                    // miss/block mismatch
+                    (None, Some(_)) => false,
+
+                    // block/miss mismatch
+                    (Some(_), None) => false,
                 }
             } else {
-                None // slot mismatch
+                false // slot mismatch
             }
+        } else {
+            false // no item
+        };
+
+        // rerturn the step if found
+        if found {
+            self.step_history.pop_front()
         } else {
             None
         }
     }
 
+    /// clear the execution context
     fn clear_and_update_context(&self) {
-        let mut context = CONTEXT.lock().unwrap();
+        let mut context = self.execution_context.lock().unwrap();
         context.ledger_step.caused_changes.clear();
         context.ledger_step.cumulative_history_changes =
             SCELedgerChanges::from(self.step_history.clone());
     }
 
-    /// Prepare (update) the shared context before the new operation
+    /// Prepares (updates) the shared context before the new operation.
+    /// Returns a snapshot of the current caused ledger changes.
+    /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
     /// TODO: do not ignore the results
-    /// TODO consider dispatching with edorsers/endorsed as well
+    /// TODO: consider dispatching gas fees with edorsers/endorsees as well
     fn prepare_context(
         &self,
-        operation: &OperationSC,
+        sender: Address,
+        gas_price: Amount,
+        max_gas: u64,
+        coins: Amount,
         block_creator_addr: Address,
         block_id: BlockId,
         slot: Slot,
     ) -> SCELedgerChanges {
-        let mut context = CONTEXT.lock().unwrap();
-        // credit the sender with "coins"
-        let _result =
-            context
-                .ledger_step
-                .set_balance_delta(operation.sender, operation.coins, true);
-        // credit the block creator with max_gas*gas_price
+        let mut context = self.execution_context.lock().unwrap();
+
+        // make context.ledger_step credit Op's sender with Op.coins in the SCE ledger
+        let _result = context.ledger_step.set_balance_delta(sender, coins, true);
+
+        // make context.ledger_step credit the producer of the block B with Op.max_gas * Op.gas_price in the SCE ledger
         let _result = context.ledger_step.set_balance_delta(
             block_creator_addr,
-            operation
-                .gas_price
-                .checked_mul_u64(operation.max_gas)
-                .unwrap(),
+            gas_price.saturating_mul_u64(max_gas),
             true,
         );
-        // Save the Initial ledger changes before execution
-        // It contains a copy of the initial coin credits that will be popped back if bytecode execution fails in order to cancel its effects
 
         // fill context for execution
-        context.gas_price = operation.gas_price;
-        context.max_gas = operation.max_gas;
-        context.coins = operation.coins;
+        context.gas_price = gas_price;
+        context.max_gas = max_gas;
+        context.coins = coins;
         context.slot = slot;
         context.opt_block_id = Some(block_id);
         context.opt_block_creator_addr = Some(block_creator_addr);
-        context.call_stack = vec![operation.sender].into();
+        context.call_stack = vec![sender].into();
         context.ledger_step.caused_changes.clone()
     }
 
-    /// runs an SCE-active execution step
+    /// Runs an active step
+    /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
     ///
     /// 1. Get step history (cache of final ledger changes by slot and block_id history)
     /// 2. clear caused changes
@@ -170,8 +184,8 @@ impl VM {
     ///
     /// # Parameters
     ///   * step: execution step to run
-    pub(crate) fn run_active_step(&mut self, step: &ExecutionStep) {
-        // accumulate active ledger changes history
+    fn run_step_internal(&mut self, step: &ExecutionStep) -> StepHistoryItem {
+        // reset active ledger changes history
         self.clear_and_update_context();
 
         // run implicit and async calls
@@ -184,28 +198,48 @@ impl VM {
             opt_block_id = Some(*block_id);
 
             // get block creator addr
-            let block_creator_addr =
-                Address::from_public_key(&block.header.content.creator).unwrap();
+            let block_creator_addr = Address::from_public_key(&block.header.content.creator);
             // run all operations
-            for (op_idx, operation) in block.operations.clone().into_iter().enumerate() {
-                let operation_sc = OperationSC::try_from(operation.content);
-                if operation_sc.is_err() {
-                    // only fail if the operation cannot parse the sender address
-                    continue;
-                }
-                let operation = &operation_sc.unwrap();
-                let ledger_changes_backup =
-                    self.prepare_context(operation, block_creator_addr, *block_id, step.slot);
+            for (op_idx, operation) in block.operations.iter().enumerate() {
+                // process ExecuteSC operations only
+                let (bytecode, max_gas, gas_price, coins, sender) =
+                    if let OperationType::ExecuteSC {
+                        data,
+                        max_gas,
+                        gas_price,
+                        coins,
+                        ..
+                    } = &operation.content.op
+                    {
+                        let sender = Address::from_public_key(&operation.content.sender_public_key);
+                        (data, *max_gas, *gas_price, *coins, sender)
+                    } else {
+                        continue;
+                    };
 
+                // Prepare context and save the initial ledger changes before execution.
+                // The returned snapshot takes into account the initial coin credits.
+                // This snapshot will be popped back if bytecode execution fails.
+                let ledger_changes_backup = self.prepare_context(
+                    sender,
+                    gas_price,
+                    max_gas,
+                    coins,
+                    block_creator_addr,
+                    *block_id,
+                    step.slot,
+                );
+
+                // run in the intepreter
                 let run_result =
-                    assembly_simulator::run(&operation._module, operation.max_gas, &INTERFACE);
+                    assembly_simulator::run(&bytecode, max_gas, &*self.execution_interface);
                 if let Err(err) = run_result {
                     debug!(
                         "failed running bytecode in operation index {} in block {}: {}",
                         op_idx, block_id, err
                     );
                     // cancel the effects of execution only, pop back init_changes
-                    let mut context = CONTEXT.lock().unwrap();
+                    let mut context = self.execution_context.lock().unwrap();
                     context.ledger_step.caused_changes = ledger_changes_backup;
                 }
             }
@@ -214,13 +248,26 @@ impl VM {
             opt_block_id = None;
         }
 
-        let context = CONTEXT.lock().unwrap();
-        // push step into history
-        self.step_history.push_back((
-            step.slot,
+        // generate history item
+        let mut context = self.execution_context.lock().unwrap();
+        StepHistoryItem {
+            slot: step.slot,
             opt_block_id,
-            context.ledger_step.caused_changes.clone(),
-        ))
+            ledger_changes: mem::take(&mut context.ledger_step.caused_changes),
+        }
+    }
+
+    /// runs an SCE-active execution step
+    /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
+    ///
+    /// # Parameters
+    ///   * step: execution step to run
+    pub(crate) fn run_active_step(&mut self, step: &ExecutionStep) {
+        // run step
+        let history_item = self.run_step_internal(step);
+
+        // push step into history
+        self.step_history.push_back(history_item);
     }
 
     pub fn reset_to_final(&mut self) {

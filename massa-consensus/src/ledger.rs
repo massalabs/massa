@@ -178,7 +178,7 @@ impl OperationLedgerInterface for Operation {
         let mut res = LedgerChanges::default();
 
         // sender fee
-        let sender_address = Address::from_public_key(&self.content.sender_public_key)?;
+        let sender_address = Address::from_public_key(&self.content.sender_public_key);
         res.apply(
             &sender_address,
             &LedgerChange {
