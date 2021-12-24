@@ -4411,7 +4411,7 @@ mod tests {
         /*        let private_key = generate_random_private_key();
         let public_key = derive_public_key(&private_key);
 
-        let add = Address::from_public_key(&public_key).unwrap();
+        let add = Address::from_public_key(&public_key);
 
         println!(
             "public key:{}, address:{}, th:{}",
