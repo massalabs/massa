@@ -308,7 +308,6 @@ impl ExecutionWorker {
         // TODO make something more iterative/conservative in the future to reuse unaffected executions
         self.reset_to_final();
 
-        // set `last_active_slot = last_final_slot
         self.last_active_slot = self.last_final_slot;
 
         // 2 - process CSS-final blocks
@@ -350,7 +349,7 @@ impl ExecutionWorker {
                             slot: s,
                             block: Some((b_id, b)),
                         }));
-                        // set `last_active_slot = last_final_slot = S`
+
                         self.last_active_slot = s;
                         self.last_final_slot = s;
                     }
@@ -365,7 +364,7 @@ impl ExecutionWorker {
                                 slot: s,
                                 block: None,
                             }));
-                            // set `last_active_slot = last_final_slot = S`
+
                             self.last_active_slot = s;
                             self.last_final_slot = s;
                         } else {
@@ -418,7 +417,7 @@ impl ExecutionWorker {
                             slot: s,
                             block: Some((*b_id, block.clone())),
                         }));
-                        // set `last_active_slot = S`
+
                         self.last_active_slot = s;
                     }
 
@@ -434,7 +433,7 @@ impl ExecutionWorker {
                             slot: s,
                             block: None,
                         }));
-                        // set `last_active_slot = S`
+
                         self.last_active_slot = s;
                     }
 
