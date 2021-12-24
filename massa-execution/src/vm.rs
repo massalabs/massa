@@ -8,7 +8,10 @@ use crate::types::{ExecutionContext, ExecutionStep, StepHistory, StepHistoryItem
 use crate::{ExecutionError, ExecutionSettings};
 use assembly_simulator::Interface;
 use massa_models::address::AddressHashMap;
+use massa_models::execution::{ExecuteReadOnlyResponse, ReadOnlyResult};
 use massa_models::{Address, Amount, BlockId, OperationType, Slot};
+use massa_signature::{derive_public_key, generate_random_private_key};
+use tokio::sync::oneshot;
 use tracing::debug;
 
 pub(crate) struct VM {
@@ -72,15 +75,15 @@ impl VM {
     ///
     /// # Parameters
     ///   * step: execution step to run
-    pub(crate) fn run_final_step(&mut self, step: &ExecutionStep) {
+    pub(crate) fn run_final_step(&mut self, step: ExecutionStep) {
         // check if that step was already executed as the earliest active step
-        let history_item = if let Some(cached) = self.pop_cached_step(step) {
+        let history_item = if let Some(cached) = self.pop_cached_step(&step) {
             // if so, pop it
             cached
         } else {
             // otherwise, clear step history an run it again explicitly
             self.step_history.clear();
-            self.run_step_internal(step)
+            self.run_step_internal(&step)
         };
 
         // apply ledger changes to final ledger
@@ -174,6 +177,58 @@ impl VM {
         context.ledger_step.caused_changes.clone()
     }
 
+    /// Run code in read-only mode
+    pub(crate) fn run_read_only(
+        &self,
+        slot: Slot,
+        max_gas: u64,
+        simulated_gas_price: Amount,
+        bytecode: Vec<u8>,
+        address: Option<Address>,
+        result_sender: oneshot::Sender<ExecuteReadOnlyResponse>,
+    ) {
+        // Reset active ledger changes history
+        self.clear_and_update_context();
+
+        {
+            let mut context = self.execution_context.lock().unwrap();
+
+            // Set the call stack, using the provided address, or a random one.
+            let address = address.unwrap_or_else(|| {
+                let private_key = generate_random_private_key();
+                let public_key = derive_public_key(&private_key);
+                Address::from_public_key(&public_key)
+            });
+            context.call_stack = vec![address].into();
+
+            // Set the max gas.
+            context.max_gas = max_gas;
+
+            // Set the simulated gas price.
+            context.gas_price = simulated_gas_price;
+        }
+
+        // run in the intepreter
+        let run_result = assembly_simulator::run(&bytecode, max_gas, &*self.execution_interface);
+
+        // Send result back.
+        let execution_response = ExecuteReadOnlyResponse {
+            executed_at: slot,
+            // TODO: specify result.
+            result: run_result.map_or_else(
+                |_| ReadOnlyResult::Error("Failed to run in read-only mode".to_string()),
+                |_| ReadOnlyResult::Ok,
+            ),
+            // TODO: integrate with output events.
+            output_events: None,
+        };
+        if result_sender.send(execution_response).is_err() {
+            debug!("Execution: could not send ExecuteReadOnlyResponse.");
+        }
+
+        // Note: changes are not applied to the ledger.
+    }
+
     /// Runs an active step
     /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
     ///
@@ -262,9 +317,9 @@ impl VM {
     ///
     /// # Parameters
     ///   * step: execution step to run
-    pub(crate) fn run_active_step(&mut self, step: &ExecutionStep) {
+    pub(crate) fn run_active_step(&mut self, step: ExecutionStep) {
         // run step
-        let history_item = self.run_step_internal(step);
+        let history_item = self.run_step_internal(&step);
 
         // push step into history
         self.step_history.push_back(history_item);
