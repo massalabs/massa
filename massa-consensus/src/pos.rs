@@ -15,7 +15,6 @@ use massa_models::{
 };
 use massa_signature::derive_public_key;
 use num::rational::Ratio;
-use num::Integer;
 use rand::distributions::Uniform;
 use rand::Rng;
 use rand_xoshiro::rand_core::SeedableRng;
@@ -519,7 +518,7 @@ impl DeserializeCompact for ThreadCycleState {
                 "invalid number entries when deserializing ExportThreadCycleStat rng_seed".into(),
             ));
         }
-        let bits_u8_len = n_entries.div_ceil(&u8::BITS) as usize;
+        let bits_u8_len = n_entries.div_ceil(u8::BITS) as usize;
         if buffer[cursor..].len() < bits_u8_len {
             return Err(ModelsError::SerializeError(
                 "too few remaining bytes when deserializing ExportThreadCycleStat rng_seed".into(),
