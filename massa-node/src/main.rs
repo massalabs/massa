@@ -12,7 +12,7 @@ use massa_consensus::{
     ConsensusManager,
 };
 
-use massa_execution::ExecutionManager;
+use massa_execution::{ExecutionConfigs, ExecutionManager};
 
 use massa_logging::massa_trace;
 use massa_models::{init_serialization_context, SerializationContext};
@@ -129,9 +129,17 @@ async fn launch() -> (
     .await
     .expect("could not start pool controller");
 
+    let execution_config = ExecutionConfigs {
+        settings: SETTINGS.execution.clone(),
+        thread_count: massa_consensus::settings::THREAD_COUNT,
+        genesis_timestamp: *massa_consensus::settings::GENESIS_TIMESTAMP,
+        t0: *massa_consensus::settings::T0,
+        clock_compensation: bootstrap_state.compensation_millis,
+    };
+
     // launch execution controller
     let (execution_command_sender, execution_event_receiver, execution_manager) =
-        massa_execution::start_controller(SETTINGS.execution.clone(), bootstrap_state.execution)
+        massa_execution::start_controller(execution_config, bootstrap_state.execution)
             .await
             .expect("could not start execution controller");
 

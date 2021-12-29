@@ -6,7 +6,7 @@ use crate::sce_ledger::FinalLedger;
 use crate::types::{ExecutionQueue, ExecutionRequest};
 use crate::vm::VM;
 use crate::BootstrapExecutionState;
-use crate::{config::ExecutionSettings, types::ExecutionStep};
+use crate::{config::ExecutionConfigs, types::ExecutionStep};
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::timeslots::{get_block_slot_timestamp, get_current_latest_block_slot};
 use massa_models::{Address, Amount, Block, BlockHashMap, BlockId, Slot};
@@ -57,7 +57,7 @@ pub enum ExecutionManagementCommand {}
 
 pub struct ExecutionWorker {
     /// Configuration
-    cfg: ExecutionSettings,
+    cfg: ExecutionConfigs,
     /// VM
     vm: Arc<Mutex<VM>>,
     /// Receiver of commands.
@@ -79,7 +79,7 @@ pub struct ExecutionWorker {
 
 impl ExecutionWorker {
     pub fn new(
-        cfg: ExecutionSettings,
+        cfg: ExecutionConfigs,
         event_sender: mpsc::UnboundedSender<ExecutionEvent>,
         controller_command_rx: mpsc::Receiver<ExecutionCommand>,
         controller_manager_rx: mpsc::Receiver<ExecutionManagementCommand>,

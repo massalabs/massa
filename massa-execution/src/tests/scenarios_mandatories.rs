@@ -2,7 +2,9 @@
 
 use std::str::FromStr;
 
-use crate::{start_controller, ExecutionSettings, SCELedger, SCELedgerEntry};
+use crate::{
+    config::ExecutionConfigs, start_controller, ExecutionSettings, SCELedger, SCELedgerEntry,
+};
 use massa_models::{address::AddressHashMap, Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key};
 use massa_time::MassaTime;
@@ -28,7 +30,7 @@ pub fn get_random_address() -> Address {
     Address::from_public_key(&pub_key)
 }
 
-fn get_sample_settings() -> (NamedTempFile, ExecutionSettings) {
+fn get_sample_settings() -> (NamedTempFile, ExecutionConfigs) {
     let initial_file = generate_ledger_initial_file(
         &vec![
             (get_random_address(), Amount::from_str("14785.22").unwrap()),
@@ -37,8 +39,10 @@ fn get_sample_settings() -> (NamedTempFile, ExecutionSettings) {
         .into_iter()
         .collect(),
     );
-    let res = ExecutionSettings {
-        initial_sce_ledger_path: initial_file.path().into(),
+    let res = ExecutionConfigs {
+        settings: ExecutionSettings {
+            initial_sce_ledger_path: initial_file.path().into(),
+        },
         thread_count: 2,
         genesis_timestamp: MassaTime::now().unwrap(),
         t0: 16000.into(),

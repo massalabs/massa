@@ -33,6 +33,7 @@ pub(crate) struct ExecutionContext {
     pub opt_block_id: Option<BlockId>,
     pub opt_block_creator_addr: Option<Address>,
     pub call_stack: VecDeque<Address>,
+    pub owned_addresses: VecDeque<Address>,
 }
 
 #[derive(Clone)]
@@ -62,6 +63,7 @@ impl ExecutionContext {
             opt_block_id: Default::default(),
             opt_block_creator_addr: Default::default(),
             call_stack: Default::default(),
+            owned_addresses: Default::default(),
         }
     }
 }

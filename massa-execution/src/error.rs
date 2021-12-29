@@ -26,7 +26,8 @@ macro_rules! bootstrap_file_error {
         |err| {
             ExecutionError::FileError(format!(
                 "error $st initial SCE ledger file {}: {}",
-                $cfg.initial_sce_ledger_path
+                $cfg.settings
+                    .initial_sce_ledger_path
                     .to_str()
                     .unwrap_or("(non-utf8 path)"),
                 err

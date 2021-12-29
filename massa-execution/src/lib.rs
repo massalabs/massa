@@ -1,6 +1,6 @@
 #![feature(map_first_last)]
 
-pub mod config;
+mod config;
 mod controller;
 mod error;
 mod exports;
@@ -10,7 +10,7 @@ mod types;
 mod vm;
 mod worker;
 
-pub use config::ExecutionSettings;
+pub use config::{ExecutionConfigs, ExecutionSettings};
 pub use controller::{
     start_controller, ExecutionCommandSender, ExecutionEventReceiver, ExecutionManager,
 };
