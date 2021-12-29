@@ -1,10 +1,10 @@
+///! Tested only with feature "local"
 use anyhow::{bail, Result};
 use assert_cmd::Command;
 use massa_models::api::NodeStatus;
 use serde::de::DeserializeOwned;
 use serial_test::serial;
 use std::{thread::JoinHandle, time::Duration};
-
 const TIMEOUT: u64 = 30;
 const TENTATIVES: u64 = 5;
 
