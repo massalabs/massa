@@ -131,16 +131,9 @@ async fn launch() -> (
 
     // launch execution controller
     let (execution_command_sender, execution_event_receiver, execution_manager) =
-        massa_execution::start_controller(
-            SETTINGS.execution.clone(),
-            massa_consensus::settings::THREAD_COUNT,
-            *massa_consensus::settings::GENESIS_TIMESTAMP,
-            *massa_consensus::settings::T0,
-            bootstrap_state.compensation_millis,
-            bootstrap_state.execution,
-        )
-        .await
-        .expect("could not start execution controller");
+        massa_execution::start_controller(SETTINGS.execution.clone(), bootstrap_state.execution)
+            .await
+            .expect("could not start execution controller");
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =

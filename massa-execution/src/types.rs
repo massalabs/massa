@@ -1,8 +1,7 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
 use massa_models::execution::ExecuteReadOnlyResponse;
 /// Define types used while executing block bytecodes
-use massa_models::{Address, Amount};
-use massa_models::{Block, BlockId, Slot};
+use massa_models::{Address, Amount, Block, BlockId, Slot};
 use std::sync::{Condvar, Mutex};
 use std::{collections::VecDeque, sync::Arc};
 use tokio::sync::oneshot;
@@ -109,3 +108,39 @@ pub(crate) enum ExecutionRequest {
 }
 
 pub(crate) type ExecutionQueue = Arc<(Mutex<VecDeque<ExecutionRequest>>, Condvar)>;
+
+/// Wrapping structure for an ExecutionSC and a sender
+pub struct ExecutionData {
+    /// Sender address
+    pub sender_address: Address,
+    /// Smart contract bytecode.
+    pub bytecode: Bytecode,
+    /// The maximum amount of gas that the execution of the contract is allowed to cost.
+    pub max_gas: u64,
+    /// Extra coins that are spent by consensus and are available in the execution context of the contract.
+    pub coins: Amount,
+    /// The price per unit of gas that the caller is willing to pay for the execution.
+    pub gas_price: Amount,
+}
+
+impl TryFrom<&massa_models::Operation> for ExecutionData {
+    type Error = anyhow::Error;
+
+    fn try_from(operation: &massa_models::Operation) -> anyhow::Result<Self> {
+        match &operation.content.op {
+            massa_models::OperationType::ExecuteSC {
+                data,
+                max_gas,
+                gas_price,
+                coins,
+            } => Ok(ExecutionData {
+                bytecode: data.to_owned(),
+                sender_address: Address::from_public_key(&operation.content.sender_public_key),
+                max_gas: *max_gas,
+                gas_price: *gas_price,
+                coins: *coins,
+            }),
+            _ => anyhow::bail!("Conversion require an `OperationType::ExecuteSC`"),
+        }
+    }
+}
