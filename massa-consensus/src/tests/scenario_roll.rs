@@ -540,7 +540,9 @@ async fn test_roll_block_creation() {
         MockProtocolController::new();
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
 
-    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
+    let init_time: MassaTime = 1000.into();
+    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(init_time);
+
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
@@ -565,20 +567,23 @@ async fn test_roll_block_creation() {
 
     // wait for first slot
     pool_controller
-        .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
-            PoolCommand::UpdateCurrentSlot(s) => {
-                if s == Slot::new(1, 0) {
-                    Some(())
-                } else {
+        .wait_command(
+            cfg.t0.saturating_mul_u64(2).saturating_add(init_time),
+            |cmd| match cmd {
+                PoolCommand::UpdateCurrentSlot(s) => {
+                    if s == Slot::new(1, 0) {
+                        Some(())
+                    } else {
+                        None
+                    }
+                }
+                PoolCommand::GetEndorsements { response_tx, .. } => {
+                    response_tx.send(Vec::new()).unwrap();
                     None
                 }
-            }
-            PoolCommand::GetEndorsements { response_tx, .. } => {
-                response_tx.send(Vec::new()).unwrap();
-                None
-            }
-            _ => None,
-        })
+                _ => None,
+            },
+        )
         .await
         .expect("timeout while waiting for slot");
 
