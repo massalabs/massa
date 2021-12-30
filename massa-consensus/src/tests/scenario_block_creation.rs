@@ -484,7 +484,7 @@ async fn test_order_of_inclusion() {
             // wait for first slot
             pool_controller
                 .wait_command(
-                    cfg.t0.saturating_mul_u64(2).saturating_add(init_time),
+                    cfg.t0.saturating_mul(2).saturating_add(init_time),
                     |cmd| match cmd {
                         PoolCommand::UpdateCurrentSlot(s) => {
                             if s == Slot::new(1, 0) {
