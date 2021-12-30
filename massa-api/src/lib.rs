@@ -8,16 +8,18 @@ use jsonrpc_core::{BoxFuture, IoHandler, Value};
 use jsonrpc_derive::rpc;
 use jsonrpc_http_server::{CloseHandle, ServerBuilder};
 use massa_consensus::{ConsensusCommandSender, ConsensusConfig};
+use massa_execution::ExecutionCommandSender;
 use massa_models::address::{AddressHashMap, AddressHashSet};
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
     TimeInterval,
 };
 use massa_models::clique::Clique;
+use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::massa_hash::PubkeySig;
 use massa_models::node::NodeId;
 use massa_models::operation::{Operation, OperationId};
-use massa_models::{Address, BlockId, EndorsementId, Version};
+use massa_models::{Address, Amount, BlockId, EndorsementId, Version};
 use massa_network::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
 use massa_signature::PrivateKey;
@@ -46,6 +48,7 @@ pub struct Public {
 pub struct Private {
     pub consensus_command_sender: ConsensusCommandSender,
     pub network_command_sender: NetworkCommandSender,
+    execution_command_sender: ExecutionCommandSender,
     pub consensus_config: ConsensusConfig,
     pub api_settings: &'static APISettings,
     pub stop_node_channel: mpsc::Sender<()>,
@@ -106,6 +109,16 @@ pub trait Endpoints {
     /// No confirmation to expect.
     #[rpc(name = "add_staking_private_keys")]
     fn add_staking_private_keys(&self, _: Vec<PrivateKey>) -> BoxFuture<Result<(), ApiError>>;
+
+    /// Execute code in read-only mode.
+    #[rpc(name = "execute_read_only_request")]
+    fn execute_read_only_request(
+        &self,
+        _max_gas: u64,
+        _simulated_gas_price: Amount,
+        _bytecode: Vec<u8>,
+        _address: Option<Address>,
+    ) -> BoxFuture<Result<ExecuteReadOnlyResponse, ApiError>>;
 
     /// Remove a vec of addresses used to stake.
     /// No confirmation to expect.

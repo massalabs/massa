@@ -176,6 +176,7 @@ async fn launch() -> (
     let (api_private, api_private_stop_rx) = API::<Private>::new(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
+        execution_command_sender.clone(),
         &SETTINGS.api,
         SETTINGS.consensus.config(),
     );
