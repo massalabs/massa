@@ -84,10 +84,10 @@ impl Interface for InterfaceImpl {
         // @damip is it ok to get a hash like that?
         let key = massa_hash::hash::Hash::from_bs58_check(key)?;
         let context = context_guard!(self);
-        return match context.ledger_step.get_data_entry(addr, &key) {
+        match context.ledger_step.get_data_entry(addr, &key) {
             Some(bytecode) => Ok(bytecode),
             _ => bail!("Data entry not found"),
-        };
+        }
     }
 
     /// Requires to replace the data in the current address
@@ -116,10 +116,10 @@ impl Interface for InterfaceImpl {
             _ => bail!("Failed to read call stack current address"),
         };
         let key = massa_hash::hash::Hash::from_bs58_check(key)?;
-        return match context.ledger_step.get_data_entry(addr, &key) {
+        match context.ledger_step.get_data_entry(addr, &key) {
             Some(bytecode) => Ok(bytecode),
             _ => bail!("Data entry not found"),
-        };
+        }
     }
 
     fn set_data(&self, key: &str, value: &Bytecode) -> Result<()> {
