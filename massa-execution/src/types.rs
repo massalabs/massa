@@ -1,9 +1,11 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
+use massa_models::execution::ExecuteReadOnlyResponse;
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount};
 use massa_models::{Block, BlockId, Slot};
 use std::sync::{Condvar, Mutex};
 use std::{collections::VecDeque, sync::Arc};
+use tokio::sync::oneshot;
 
 pub(crate) type StepHistory = VecDeque<StepHistoryItem>;
 pub type Bytecode = Vec<u8>;
@@ -85,6 +87,22 @@ pub(crate) enum ExecutionRequest {
     /// Runs an active step
     RunActiveStep(ExecutionStep),
     /// Resets the VM to its final state
+    /// Run code in read-only mode
+    RunReadOnly {
+        /// The slot at which the execution will occur.
+        slot: Slot,
+        /// Maximum gas spend in execution.
+        max_gas: u64,
+        /// The simulated price of gas for the read-only execution.
+        simulated_gas_price: Amount,
+        /// The code to execute.
+        bytecode: Vec<u8>,
+        /// The channel used to send the result of execution.
+        result_sender: oneshot::Sender<ExecuteReadOnlyResponse>,
+        /// The address, or a default random one if none is provided,
+        /// which will simulate the sender of the operation.
+        address: Option<Address>,
+    },
     ResetToFinalState,
     /// Shutdown state, set by the worker to signal shutdown to the VM thread.
     Shutdown,

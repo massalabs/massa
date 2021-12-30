@@ -150,6 +150,32 @@ async fn test_sending_command() {
 
 #[tokio::test]
 #[serial]
+async fn test_sending_read_only_execution_command() {
+    let (_config_file_keepalive, settings) = get_sample_settings();
+    let (command_sender, _event_receiver, manager) = start_controller(
+        settings,
+        2,
+        MassaTime::now().unwrap(),
+        16000.into(),
+        0,
+        None,
+    )
+    .await
+    .expect("Failed to start execution.");
+    command_sender
+        .execute_read_only_request(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        )
+        .await
+        .expect("Failed to send command");
+    manager.stop().await.expect("Failed to stop execution.");
+}
+
+#[tokio::test]
+#[serial]
 async fn test_execution_with_bootstrap() {
     let bootstrap_state = crate::BootstrapExecutionState {
         final_slot: Slot::new(12, 5),

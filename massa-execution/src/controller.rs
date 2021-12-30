@@ -4,7 +4,8 @@ use crate::worker::{
     ExecutionCommand, ExecutionEvent, ExecutionManagementCommand, ExecutionWorker,
 };
 use crate::BootstrapExecutionState;
-use massa_models::{Block, BlockHashMap};
+use massa_models::execution::ExecuteReadOnlyResponse;
+use massa_models::{Address, Amount, Block, BlockHashMap};
 use massa_time::MassaTime;
 use std::collections::VecDeque;
 use tokio::sync::{mpsc, oneshot};
@@ -140,6 +141,32 @@ impl ExecutionCommandSender {
             })?;
         Ok(response_rx.await.map_err(|_| {
             ExecutionError::ChannelError("could not send GetBootstrapState upstream".into())
+        })?)
+    }
+
+    /// Execute code in read-only mode.
+    pub async fn execute_read_only_request(
+        &self,
+        max_gas: u64,
+        simulated_gas_price: Amount,
+        bytecode: Vec<u8>,
+        address: Option<Address>,
+    ) -> Result<ExecuteReadOnlyResponse, ExecutionError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(ExecutionCommand::ExecuteReadOnlyRequest {
+                max_gas,
+                simulated_gas_price,
+                bytecode,
+                result_sender: response_tx,
+                address,
+            })
+            .await
+            .map_err(|_| {
+                ExecutionError::ChannelError("could not send ExecuteReadOnlyRequest command".into())
+            })?;
+        Ok(response_rx.await.map_err(|_| {
+            ExecutionError::ChannelError("could not send ExecuteReadOnlyResponse upstream".into())
         })?)
     }
 }

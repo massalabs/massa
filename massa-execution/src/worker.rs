@@ -7,11 +7,12 @@ use crate::types::{ExecutionQueue, ExecutionRequest};
 use crate::vm::VM;
 use crate::BootstrapExecutionState;
 use crate::{config::ExecutionSettings, types::ExecutionStep};
+use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::timeslots::{get_block_slot_timestamp, get_current_latest_block_slot};
-use massa_models::{Block, BlockHashMap, BlockId, Slot};
+use massa_models::{Address, Amount, Block, BlockHashMap, BlockId, Slot};
 use massa_time::MassaTime;
 use std::collections::BTreeMap;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 use tokio::time::sleep_until;
 use tracing::{debug, warn};
 
@@ -28,6 +29,21 @@ pub enum ExecutionCommand {
 
     /// Get a snapshot of the current state for bootstrap
     GetBootstrapState(tokio::sync::oneshot::Sender<BootstrapExecutionState>),
+
+    /// Execute bytecode in read-only mode
+    ExecuteReadOnlyRequest {
+        /// Maximum gas spend in execution.
+        max_gas: u64,
+        /// The simulated price of gas for the read-only execution.
+        simulated_gas_price: Amount,
+        /// The code to execute.
+        bytecode: Vec<u8>,
+        /// The channel used to send the result of execution.
+        result_sender: oneshot::Sender<ExecuteReadOnlyResponse>,
+        /// The address, or a default random one if none is provided,
+        /// which will simulate the sender of the operation.
+        address: Option<Address>,
+    },
 }
 
 // Events produced by the execution component.
@@ -112,12 +128,29 @@ impl ExecutionWorker {
             let mut requests = lock.lock().unwrap();
             // Run until shutdown.
             loop {
-                match &requests.pop_front() {
+                match requests.pop_front() {
                     Some(ExecutionRequest::RunFinalStep(step)) => {
                         vm_clone.lock().unwrap().run_final_step(step)
                     }
                     Some(ExecutionRequest::RunActiveStep(step)) => {
                         vm_clone.lock().unwrap().run_active_step(step)
+                    }
+                    Some(ExecutionRequest::RunReadOnly {
+                        slot,
+                        max_gas,
+                        simulated_gas_price,
+                        bytecode,
+                        result_sender,
+                        address,
+                    }) => {
+                        vm_clone.lock().unwrap().run_read_only(
+                            slot,
+                            max_gas,
+                            simulated_gas_price,
+                            bytecode,
+                            address,
+                            result_sender,
+                        );
                     }
                     Some(ExecutionRequest::ResetToFinalState) => {
                         vm_clone.lock().unwrap().reset_to_final()
@@ -244,6 +277,24 @@ impl ExecutionWorker {
                 if response_tx.send(bootstrap_state).is_err() {
                     warn!("execution: could not send get_bootstrap_state answer");
                 }
+            }
+
+            ExecutionCommand::ExecuteReadOnlyRequest {
+                max_gas,
+                simulated_gas_price,
+                bytecode,
+                result_sender,
+                address,
+            } => {
+                // call the VM to execute in read-only mode at the last active slot.
+                self.push_request(ExecutionRequest::RunReadOnly {
+                    slot: self.last_active_slot,
+                    max_gas,
+                    simulated_gas_price,
+                    bytecode,
+                    result_sender,
+                    address,
+                });
             }
         }
         Ok(())
