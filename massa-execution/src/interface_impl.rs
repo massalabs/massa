@@ -104,13 +104,15 @@ impl Interface for InterfaceImpl {
         };
         if context.owned_addresses.contains(&addr) || is_curr {
             context.ledger_step.set_data_entry(addr, key, value.clone());
+            Ok(())
+        } else {
+            bail!("You don't have the write access to this entry")
         }
-        bail!("You don't have the write access to this entry")
     }
 
     fn get_data(&self, key: &str) -> Result<Bytecode> {
         let context = context_guard!(self);
-        let addr = match context.call_stack.front() {
+        let addr = match context.call_stack.back() {
             Some(addr) => addr,
             _ => bail!("Failed to read call stack current address"),
         };
