@@ -32,9 +32,7 @@ impl SCELedgerEntry {
         }
 
         // module
-        if let Some(opt_module) = &update.update_opt_module {
-            self.opt_module = opt_module.clone();
-        }
+        self.opt_module = update.update_opt_module.clone();
 
         // data
         for (data_key, data_update) in update.update_data.iter() {
@@ -197,10 +195,10 @@ impl DeserializeCompact for SCELedgerEntry {
 }
 
 // optional updates to be applied to a ledger entry
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SCELedgerEntryUpdate {
     pub update_balance: Option<Amount>,
-    pub update_opt_module: Option<Option<Bytecode>>,
+    pub update_opt_module: Option<Bytecode>,
     pub update_data: HHashMap<Hash, Option<Vec<u8>>>, // None for row deletion
 }
 
@@ -505,11 +503,7 @@ impl SCELedgerStep {
             match changes.0.get(addr) {
                 Some(SCELedgerChange::Delete) => return None,
                 Some(SCELedgerChange::Set(new_entry)) => return new_entry.opt_module.clone(),
-                Some(SCELedgerChange::Update(update)) => {
-                    if let Some(updates_opt_module) = &update.update_opt_module {
-                        return updates_opt_module.clone();
-                    }
-                }
+                Some(SCELedgerChange::Update(update)) => return update.update_opt_module.clone(),
                 None => {}
             }
         }
@@ -522,7 +516,7 @@ impl SCELedgerStep {
 
     /// returns a data entry
     ///   None if address not found or entry nto found in addr's data
-    pub fn _get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
+    pub fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {
@@ -547,11 +541,19 @@ impl SCELedgerStep {
     }
 
     /// sets data entry
-    pub fn _set_data_entry(&mut self, addr: Address, key: Hash, value: Vec<u8>) {
+    pub fn set_data_entry(&mut self, addr: Address, key: Hash, value: Vec<u8>) {
         let update = SCELedgerEntryUpdate {
-            update_balance: Default::default(),
-            update_opt_module: Default::default(),
             update_data: [(key, Some(value))].into_iter().collect(),
+            ..Default::default()
+        };
+        self.caused_changes
+            .apply_change(addr, &SCELedgerChange::Update(update));
+    }
+
+    pub fn set_module(&mut self, addr: Address, module: Vec<u8>) {
+        let update = SCELedgerEntryUpdate {
+            update_opt_module: Some(module),
+            ..Default::default()
         };
         self.caused_changes
             .apply_change(addr, &SCELedgerChange::Update(update));

@@ -1,12 +1,10 @@
-use crate::config::{ExecutionSettings, CHANNEL_SIZE};
+use crate::config::{ExecutionConfigs, CHANNEL_SIZE};
 use crate::error::ExecutionError;
 use crate::worker::{
     ExecutionCommand, ExecutionEvent, ExecutionManagementCommand, ExecutionWorker,
 };
 use crate::BootstrapExecutionState;
-use massa_models::execution::ExecuteReadOnlyResponse;
-use massa_models::{Address, Amount, Block, BlockHashMap};
-use massa_time::MassaTime;
+use massa_models::{execution::ExecuteReadOnlyResponse, Address, Amount, Block, BlockHashMap};
 use std::collections::VecDeque;
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
@@ -64,11 +62,7 @@ impl ExecutionManager {
 /// TODO: add a consensus command sender,
 /// to be able to send the `TransferToConsensus` message.
 pub async fn start_controller(
-    cfg: ExecutionSettings,
-    thread_count: u8,
-    genesis_timestamp: MassaTime,
-    t0: MassaTime,
-    clock_compensation: i64,
+    cfg: ExecutionConfigs,
     bootstrap_state: Option<BootstrapExecutionState>,
 ) -> Result<
     (
@@ -83,17 +77,7 @@ pub async fn start_controller(
 
     // Unbounded, as execution is limited per metering already.
     let (event_tx, event_rx) = mpsc::unbounded_channel::<ExecutionEvent>();
-    let worker = ExecutionWorker::new(
-        cfg,
-        thread_count,
-        genesis_timestamp,
-        t0,
-        clock_compensation,
-        event_tx,
-        command_rx,
-        manager_rx,
-        bootstrap_state,
-    )?;
+    let worker = ExecutionWorker::new(cfg, event_tx, command_rx, manager_rx, bootstrap_state)?;
     let join_handle = tokio::spawn(async move {
         match worker.run_loop().await {
             Err(err) => Err(err),

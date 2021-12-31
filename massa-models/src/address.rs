@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct Address(Hash);
+pub struct Address(pub Hash);
 
 pub type AddressHashMap<T> = HHashMap<Address, T>;
 pub type AddressHashSet = HHashSet<Address>;
