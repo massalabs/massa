@@ -140,7 +140,7 @@ impl VM {
         context.ledger_step.caused_changes.clear();
         context.ledger_step.cumulative_history_changes =
             SCELedgerChanges::from(self.step_history.clone());
-        context.operation_index = None;
+        context.created_addr_index = 0;
         context.owned_addresses.clear();
         context.call_stack.clear();
     }
@@ -150,14 +150,14 @@ impl VM {
     /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
     /// TODO: do not ignore the results
     /// TODO: consider dispatching gas fees with edorsers/endorsees as well
+    /// Returns (backup of local ledger changes, backup of created_addr_index)
     fn prepare_context(
         &self,
         data: &ExecutionData,
-        index: u64,
         block_creator_addr: Address,
         block_id: BlockId,
         slot: Slot,
-    ) -> SCELedgerChanges {
+    ) -> (SCELedgerChanges, u64) {
         let mut context = self.execution_context.lock().unwrap();
         // make context.ledger_step credit Op's sender with Op.coins in the SCE ledger
         let _result = context
@@ -172,6 +172,7 @@ impl VM {
         );
 
         // fill context for execution
+        // created_addr_index is not reset here (it is used at the slot scale)
         context.gas_price = data.gas_price;
         context.max_gas = data.max_gas;
         context.coins = data.coins;
@@ -179,10 +180,12 @@ impl VM {
         context.opt_block_id = Some(block_id);
         context.opt_block_creator_addr = Some(block_creator_addr);
         context.call_stack = vec![data.sender_address].into();
-        context.operation_index = Some(index);
-        context.call_stack.clear();
         context.owned_addresses.clear();
-        context.ledger_step.caused_changes.clone()
+
+        (
+            context.ledger_step.caused_changes.clone(),
+            context.created_addr_index,
+        )
     }
 
     /// Run code in read-only mode
@@ -214,7 +217,6 @@ impl VM {
 
             // Set the simulated gas price.
             context.gas_price = simulated_gas_price;
-            context.operation_index = Some(0)
         }
 
         // run in the intepreter
@@ -274,23 +276,8 @@ impl VM {
                 // Prepare context and save the initial ledger changes before execution.
                 // The returned snapshot takes into account the initial coin credits.
                 // This snapshot will be popped back if bytecode execution fails.
-                let ledger_changes_backup = match u64::try_from(op_idx) {
-                    Ok(index) => self.prepare_context(
-                        &execution_data,
-                        index,
-                        block_creator_addr,
-                        *block_id,
-                        step.slot,
-                    ),
-                    Err(err) => {
-                        // Should not fail but if failed, then the next index will fail too, so we break after that.
-                        debug!(
-                            "failed running bytecode in operation index {} in block {}: {}",
-                            op_idx, block_id, err
-                        );
-                        break;
-                    }
-                };
+                let (ledger_changes_backup, created_addr_index_backup) =
+                    self.prepare_context(&execution_data, block_creator_addr, *block_id, step.slot);
 
                 // run in the intepreter
                 let run_result = assembly_simulator::run(
@@ -306,6 +293,7 @@ impl VM {
                     // cancel the effects of execution only, pop back init_changes
                     let mut context = self.execution_context.lock().unwrap();
                     context.ledger_step.caused_changes = ledger_changes_backup;
+                    context.created_addr_index = created_addr_index_backup;
                 }
             }
         } else {

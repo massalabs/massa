@@ -62,23 +62,14 @@ impl Interface for InterfaceImpl {
     /// Insert in the ledger the given bytecode in the generated address
     fn create_module(&self, module: &Bytecode) -> Result<assembly_simulator::Address> {
         let mut context = context_guard!(self);
-        let (block_id, sc_index, operation_index) = (
-            context.opt_block_id,
-            context.owned_addresses.len(),
-            context.operation_index,
-        );
-        let (block_id, sc_index, operation_index) =
-            match (block_id, u64::try_from(sc_index), operation_index) {
-                (Some(id), Ok(sc_index), Some(op_index)) => (id, sc_index, op_index),
-                _ => bail!("Failed to read current context"),
-            };
-        let mut data = block_id.to_bytes().to_vec();
-        data.append(&mut operation_index.to_be_bytes().to_vec());
-        data.append(&mut sc_index.to_be_bytes().to_vec());
+        let (slot, created_addr_index) = (context.slot, context.created_addr_index);
+        let mut data: Vec<u8> = slot.to_bytes_key().to_vec();
+        data.append(&mut created_addr_index.to_be_bytes().to_vec());
         let address = Address(massa_hash::hash::Hash::from(&data));
         let res = address.to_bs58_check();
         context.ledger_step.set_module(address, module.clone());
         context.owned_addresses.insert(address);
+        context.created_addr_index += 1;
         Ok(res)
     }
 
