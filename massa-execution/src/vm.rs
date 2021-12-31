@@ -130,12 +130,19 @@ impl VM {
         }
     }
 
-    /// clear the execution context
+    /// Tooling function that has to be run before each new step execution, even if we are in read-only
+    ///
+    /// Clear all caused changes in the context
+    /// Set cumulative_hisory_changes = step_history.into_changes
+    /// Reset the execution call stack and the owned addresses
     fn clear_and_update_context(&self) {
         let mut context = self.execution_context.lock().unwrap();
         context.ledger_step.caused_changes.clear();
         context.ledger_step.cumulative_history_changes =
             SCELedgerChanges::from(self.step_history.clone());
+        context.operation_index = None;
+        context.owned_addresses.clear();
+        context.call_stack.clear();
     }
 
     /// Prepares (updates) the shared context before the new operation.
@@ -146,6 +153,7 @@ impl VM {
     fn prepare_context(
         &self,
         data: &ExecutionData,
+        index: u64,
         block_creator_addr: Address,
         block_id: BlockId,
         slot: Slot,
@@ -171,6 +179,9 @@ impl VM {
         context.opt_block_id = Some(block_id);
         context.opt_block_creator_addr = Some(block_creator_addr);
         context.call_stack = vec![data.sender_address].into();
+        context.operation_index = Some(index);
+        context.call_stack.clear();
+        context.owned_addresses.clear();
         context.ledger_step.caused_changes.clone()
     }
 
@@ -203,6 +214,7 @@ impl VM {
 
             // Set the simulated gas price.
             context.gas_price = simulated_gas_price;
+            context.operation_index = Some(0)
         }
 
         // run in the intepreter
@@ -262,8 +274,23 @@ impl VM {
                 // Prepare context and save the initial ledger changes before execution.
                 // The returned snapshot takes into account the initial coin credits.
                 // This snapshot will be popped back if bytecode execution fails.
-                let ledger_changes_backup =
-                    self.prepare_context(&execution_data, block_creator_addr, *block_id, step.slot);
+                let ledger_changes_backup = match u64::try_from(op_idx) {
+                    Ok(index) => self.prepare_context(
+                        &execution_data,
+                        index,
+                        block_creator_addr,
+                        *block_id,
+                        step.slot,
+                    ),
+                    Err(err) => {
+                        // Should not fail but if failed, then the next index will fail too, so we break after that.
+                        debug!(
+                            "failed running bytecode in operation index {} in block {}: {}",
+                            op_idx, block_id, err
+                        );
+                        break;
+                    }
+                };
 
                 // run in the intepreter
                 let run_result = assembly_simulator::run(

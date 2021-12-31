@@ -56,25 +56,29 @@ impl Interface for InterfaceImpl {
 
     /// Requires a new address that contains the sent bytecode.
     ///
-    /// Generate a new address with a concatenation of the block_id hash and the index of address owned in context.
+    /// Generate a new address with a concatenation of the block_id hash, the
+    /// operation index in the block and the index of address owned in context.
     ///
     /// Insert in the ledger the given bytecode in the generated address
     fn create_module(&self, module: &Bytecode) -> Result<assembly_simulator::Address> {
-        let (block_id, index) = {
-            let context = context_guard!(self);
-            (context.opt_block_id, context.owned_addresses.len())
-        };
-        let block_id = match block_id {
-            Some(block_id) => block_id,
-            _ => bail!("Failed to read current context"),
-        };
+        let mut context = context_guard!(self);
+        let (block_id, sc_index, operation_index) = (
+            context.opt_block_id,
+            context.owned_addresses.len(),
+            context.operation_index,
+        );
+        let (block_id, sc_index, operation_index) =
+            match (block_id, u64::try_from(sc_index), operation_index) {
+                (Some(id), Ok(sc_index), Some(op_index)) => (id, sc_index, op_index),
+                _ => bail!("Failed to read current context"),
+            };
         let mut data = block_id.to_bytes().to_vec();
-        data.append(&mut index.to_be_bytes().to_vec());
+        data.append(&mut operation_index.to_be_bytes().to_vec());
+        data.append(&mut sc_index.to_be_bytes().to_vec());
         let address = Address(massa_hash::hash::Hash::from(&data));
         let res = address.to_bs58_check();
-        let mut context = context_guard!(self);
         context.ledger_step.set_module(address, module.clone());
-        context.owned_addresses.push_back(address);
+        context.owned_addresses.insert(address);
         Ok(res)
     }
 
@@ -103,7 +107,11 @@ impl Interface for InterfaceImpl {
         let addr = Address::from_str(address)?;
         let key = massa_hash::hash::Hash::from_bs58_check(key)?;
         let mut context = context_guard!(self);
-        if context.owned_addresses.contains(&addr) {
+        let is_curr = match context.call_stack.back() {
+            Some(curr_address) => addr == *curr_address,
+            _ => false,
+        };
+        if context.owned_addresses.contains(&addr) || is_curr {
             context.ledger_step.set_data_entry(addr, key, value.clone());
         }
         bail!("You don't have the write access to this entry")
@@ -124,7 +132,7 @@ impl Interface for InterfaceImpl {
 
     fn set_data(&self, key: &str, value: &Bytecode) -> Result<()> {
         let mut context = context_guard!(self);
-        let addr = match context.call_stack.front() {
+        let addr = match context.call_stack.back() {
             Some(addr) => *addr,
             _ => bail!("Failed to read call stack current address"),
         };
