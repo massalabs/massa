@@ -1,6 +1,3 @@
-use std::sync::{Arc, Mutex};
-use std::thread::{self, JoinHandle};
-
 use crate::error::ExecutionError;
 use crate::sce_ledger::FinalLedger;
 use crate::types::{ExecutionQueue, ExecutionRequest};
@@ -11,9 +8,10 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::timeslots::{get_block_slot_timestamp, get_current_latest_block_slot};
 use massa_models::{Address, Amount, Block, BlockHashMap, BlockId, Slot};
 use std::collections::BTreeMap;
+use std::thread::{self, JoinHandle};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::sleep_until;
-use tracing::{debug, warn};
+use tracing::debug;
 
 /// Commands sent to the `execution` component.
 #[derive(Debug)]
@@ -58,8 +56,6 @@ pub enum ExecutionManagementCommand {}
 pub struct ExecutionWorker {
     /// Configuration
     cfg: ExecutionConfigs,
-    /// VM
-    vm: Arc<Mutex<VM>>,
     /// Receiver of commands.
     controller_command_rx: mpsc::Receiver<ExecutionCommand>,
     /// Receiver of management commands.
@@ -102,8 +98,7 @@ impl ExecutionWorker {
         };
 
         // Init VM
-        let vm = Arc::new(Mutex::new(VM::new(cfg.clone(), bootstrap_ledger)?));
-        let vm_clone = vm.clone();
+        let mut vm = VM::new(cfg.clone(), bootstrap_ledger)?;
 
         // Start VM thread
         let vm_thread = thread::spawn(move || {
@@ -113,10 +108,10 @@ impl ExecutionWorker {
             loop {
                 match requests.pop_front() {
                     Some(ExecutionRequest::RunFinalStep(step)) => {
-                        vm_clone.lock().unwrap().run_final_step(step)
+                        vm.run_final_step(step);
                     }
                     Some(ExecutionRequest::RunActiveStep(step)) => {
-                        vm_clone.lock().unwrap().run_active_step(step)
+                        vm.run_active_step(step);
                     }
                     Some(ExecutionRequest::RunReadOnly {
                         slot,
@@ -126,7 +121,7 @@ impl ExecutionWorker {
                         result_sender,
                         address,
                     }) => {
-                        vm_clone.lock().unwrap().run_read_only(
+                        vm.run_read_only(
                             slot,
                             max_gas,
                             simulated_gas_price,
@@ -135,8 +130,16 @@ impl ExecutionWorker {
                             result_sender,
                         );
                     }
-                    Some(ExecutionRequest::ResetToFinalState) => {
-                        vm_clone.lock().unwrap().reset_to_final()
+                    Some(ExecutionRequest::ResetToFinalState) => vm.reset_to_final(),
+                    Some(ExecutionRequest::GetBootstrapState { response_tx }) => {
+                        let FinalLedger { ledger, slot } = vm.get_bootstrap_state();
+                        let bootstrap_state = BootstrapExecutionState {
+                            final_ledger: ledger,
+                            final_slot: slot,
+                        };
+                        if response_tx.send(bootstrap_state).is_err() {
+                            debug!("execution: could not send get_bootstrap_state answer");
+                        }
                     }
                     Some(ExecutionRequest::Shutdown) => return,
                     None => { /* startup or spurious wakeup */ }
@@ -148,11 +151,9 @@ impl ExecutionWorker {
         // return execution worker
         Ok(ExecutionWorker {
             cfg,
-            vm,
             controller_command_rx,
             controller_manager_rx,
             _event_sender: event_sender,
-            //TODO bootstrap or init
             last_final_slot: bootstrap_final_slot,
             last_active_slot: bootstrap_final_slot,
             pending_css_final_blocks: Default::default(),
@@ -170,7 +171,9 @@ impl ExecutionWorker {
         queue_guard.retain(|req| {
             matches!(
                 req,
-                ExecutionRequest::RunFinalStep(..) | ExecutionRequest::Shutdown
+                ExecutionRequest::RunFinalStep(..)
+                    | ExecutionRequest::Shutdown
+                    | ExecutionRequest::GetBootstrapState { .. }
             )
         });
         // request reset to final state
@@ -250,14 +253,7 @@ impl ExecutionWorker {
             }
 
             ExecutionCommand::GetBootstrapState(response_tx) => {
-                let FinalLedger { ledger, slot } = self.vm.lock().unwrap().get_bootstrap_state();
-                let bootstrap_state = BootstrapExecutionState {
-                    final_ledger: ledger,
-                    final_slot: slot,
-                };
-                if response_tx.send(bootstrap_state).is_err() {
-                    warn!("execution: could not send get_bootstrap_state answer");
-                }
+                self.push_request(ExecutionRequest::GetBootstrapState { response_tx });
             }
 
             ExecutionCommand::ExecuteReadOnlyRequest {

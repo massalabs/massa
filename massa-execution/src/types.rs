@@ -1,4 +1,5 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
+use crate::BootstrapExecutionState;
 use massa_models::address::AddressHashSet;
 use massa_models::execution::ExecuteReadOnlyResponse;
 /// Define types used while executing block bytecodes
@@ -107,7 +108,12 @@ pub(crate) enum ExecutionRequest {
         /// which will simulate the sender of the operation.
         address: Option<Address>,
     },
+    /// Reset to latest final state
     ResetToFinalState,
+    /// Get bootstrap state
+    GetBootstrapState {
+        response_tx: oneshot::Sender<BootstrapExecutionState>,
+    },
     /// Shutdown state, set by the worker to signal shutdown to the VM thread.
     Shutdown,
 }
