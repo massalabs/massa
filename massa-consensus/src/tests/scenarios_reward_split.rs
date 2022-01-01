@@ -7,6 +7,7 @@ use massa_models::{
     Address, Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, sign};
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -66,6 +67,9 @@ async fn test_reward_split() {
     cfg.endorsement_count = 5;
     cfg.block_reward = Amount::from_str("1").unwrap();
 
+    let init_time: MassaTime = 1000.into();
+    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(init_time);
+
     tools::consensus_without_pool_test(
         cfg.clone(),
         async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
@@ -116,7 +120,15 @@ async fn test_reward_split() {
             let (b1_id, b1, _) =
                 tools::create_block(&cfg, Slot::new(1, 0), parents, slot_one_priv_key);
 
-            tools::propagate_block(&mut protocol_controller, b1, true, 1000).await;
+            tools::propagate_block(
+                &mut protocol_controller,
+                b1,
+                true,
+                init_time
+                    .saturating_add(cfg.t0.saturating_mul(2))
+                    .to_millis(),
+            )
+            .await;
 
             let slot_two_block_addr = draws.get(&Slot::new(2, 0)).unwrap().0;
 
