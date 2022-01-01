@@ -1,7 +1,8 @@
 use crate::Slot;
+use serde::{Deserialize, Serialize};
 
 /// The result of the read-only execution.
-#[derive(Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum ReadOnlyResult {
     /// An error occured during execution.
     Error(String),
@@ -11,7 +12,7 @@ pub enum ReadOnlyResult {
 }
 
 /// The response to a request for a read-only execution.
-#[derive(Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ExecuteReadOnlyResponse {
     /// The slot at which the read-only execution occured.
     pub executed_at: Slot,
