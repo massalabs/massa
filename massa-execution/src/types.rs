@@ -36,6 +36,7 @@ pub(crate) struct ExecutionContext {
     pub opt_block_creator_addr: Option<Address>,
     pub call_stack: VecDeque<Address>,
     pub owned_addresses: AddressHashSet,
+    pub read_only: bool,
 }
 
 #[derive(Clone)]
@@ -67,6 +68,7 @@ impl ExecutionContext {
             call_stack: Default::default(),
             owned_addresses: Default::default(),
             created_addr_index: Default::default(),
+            read_only: Default::default(),
         }
     }
 }

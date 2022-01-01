@@ -143,6 +143,7 @@ impl VM {
         context.created_addr_index = 0;
         context.owned_addresses.clear();
         context.call_stack.clear();
+        context.read_only = false;
     }
 
     /// Prepares (updates) the shared context before the new operation.
@@ -211,6 +212,9 @@ impl VM {
                 Address::from_public_key(&public_key)
             });
             context.call_stack = vec![address].into();
+
+            // Set read-only
+            context.read_only = true;
 
             // Set the max gas.
             context.max_gas = max_gas;

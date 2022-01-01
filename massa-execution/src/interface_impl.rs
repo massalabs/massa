@@ -65,6 +65,11 @@ impl Interface for InterfaceImpl {
         let (slot, created_addr_index) = (context.slot, context.created_addr_index);
         let mut data: Vec<u8> = slot.to_bytes_key().to_vec();
         data.append(&mut created_addr_index.to_be_bytes().to_vec());
+        if context.read_only {
+            data.push(0u8);
+        } else {
+            data.push(1u8);
+        }
         let address = Address(massa_hash::hash::Hash::from(&data));
         let res = address.to_bs58_check();
         context.ledger_step.set_module(address, module.clone());
