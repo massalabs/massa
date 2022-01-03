@@ -354,6 +354,16 @@
 <span id="352">352</span>
 <span id="353">353</span>
 <span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">mod</span> <span class="ident">error</span>;
@@ -633,6 +643,16 @@
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
     <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
+    <span class="doccomment">/// let res : MassaTime = time_1.saturating_mul(7);</span>
+    <span class="doccomment">/// assert_eq!(res,MassaTime::from(42*7))</span>
+    <span class="doccomment">/// ```</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_mul</span>(<span class="self">self</span>, <span class="ident">n</span>: <span class="ident">u64</span>) -&gt; <span class="ident">MassaTime</span> {
+        <span class="ident">MassaTime</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_mul</span>(<span class="ident">n</span>))
+    }
+
+    <span class="doccomment">/// ```</span>
+    <span class="doccomment">/// # use massa_time::*;</span>
+    <span class="doccomment">/// let time_1 : MassaTime = MassaTime::from(42);</span>
     <span class="doccomment">/// let res : MassaTime = time_1.checked_mul(7).unwrap();</span>
     <span class="doccomment">/// assert_eq!(res,MassaTime::from(42*7))</span>
     <span class="doccomment">/// ```</span>
@@ -709,5 +729,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_time" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (23f69235a 2021-12-20)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_time" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (8f3238f89 2022-01-02)" ></div>
 </body></html>
