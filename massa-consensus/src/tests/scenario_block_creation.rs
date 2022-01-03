@@ -464,7 +464,8 @@ async fn test_order_of_inclusion() {
     cfg.operation_batch_size = 3;
     cfg.max_operations_per_block = 50;
     // Increase timestamp a bit to avoid missing the first slot.
-    cfg.genesis_timestamp = MassaTime::now().unwrap().checked_add(1000.into()).unwrap();
+    let init_time: MassaTime = 1000.into();
+    cfg.genesis_timestamp = MassaTime::now().unwrap().checked_add(init_time).unwrap();
 
     let op1 = create_transaction(priv_a, pubkey_a, address_b, 5, 10, 1);
     let op2 = create_transaction(priv_a, pubkey_a, address_b, 50, 10, 10);
@@ -482,20 +483,23 @@ async fn test_order_of_inclusion() {
                     consensus_event_receiver| {
             // wait for first slot
             pool_controller
-                .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
-                    PoolCommand::UpdateCurrentSlot(s) => {
-                        if s == Slot::new(1, 0) {
-                            Some(())
-                        } else {
+                .wait_command(
+                    cfg.t0.saturating_mul(2).saturating_add(init_time),
+                    |cmd| match cmd {
+                        PoolCommand::UpdateCurrentSlot(s) => {
+                            if s == Slot::new(1, 0) {
+                                Some(())
+                            } else {
+                                None
+                            }
+                        }
+                        PoolCommand::GetEndorsements { response_tx, .. } => {
+                            response_tx.send(Vec::new()).unwrap();
                             None
                         }
-                    }
-                    PoolCommand::GetEndorsements { response_tx, .. } => {
-                        response_tx.send(Vec::new()).unwrap();
-                        None
-                    }
-                    _ => None,
-                })
+                        _ => None,
+                    },
+                )
                 .await
                 .expect("timeout while waiting for slot");
 
