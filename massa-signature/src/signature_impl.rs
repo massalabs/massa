@@ -462,7 +462,7 @@ impl Signature {
     /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
-    /// let data = Hash::from("Hello World!".as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = sign(&data, &private_key).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
@@ -479,7 +479,7 @@ impl Signature {
     /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
-    /// let data = Hash::from("Hello World!".as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = sign(&data, &private_key).unwrap();
     ///
     /// let serialized = signature.to_bytes();
@@ -496,7 +496,7 @@ impl Signature {
     /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
-    /// let data = Hash::from("Hello World!".as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = sign(&data, &private_key).unwrap();
     ///
     /// let serialized = signature.into_bytes();
@@ -513,7 +513,7 @@ impl Signature {
     /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
-    /// let data = Hash::from("Hello World!".as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = sign(&data, &private_key).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
@@ -544,7 +544,7 @@ impl Signature {
     /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
-    /// let data = Hash::from("Hello World!".as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = sign(&data, &private_key).unwrap();
     ///
     /// let serialized = signature.to_bytes();
@@ -573,7 +573,7 @@ impl ::serde::Serialize for Signature {
     /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
-    /// let data = Hash::from("Hello World!".as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = sign(&data, &private_key).unwrap();
     ///
     /// let serialized: String = serde_json::to_string(&signature).unwrap();
@@ -602,7 +602,7 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
     /// # use massa_hash::hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
-    /// let data = Hash::from("Hello World!".as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = sign(&data, &private_key).unwrap();
     ///
     /// let serialized = serde_json::to_string(&signature).unwrap();
@@ -694,7 +694,7 @@ impl SignatureEngine {
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let public_key: PublicKey = derive_public_key(&private_key);
-    /// let data = Hash::from("Hello World!".as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = sign(&data, &private_key).unwrap();
     /// ```
     fn sign(&self, hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaHashError> {
@@ -712,7 +712,7 @@ impl SignatureEngine {
     /// # use serde::{Deserialize, Serialize};
     /// let private_key = generate_random_private_key();
     /// let public_key: PublicKey = derive_public_key(&private_key);
-    /// let data = Hash::from("Hello World!".as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = sign(&data, &private_key).unwrap();
     /// let verification: bool = verify_signature(&data, &signature, &public_key).is_ok();
     /// ```
