@@ -201,7 +201,7 @@
 
     <span class="doccomment">/// Computes address associated with given public key</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_public_key</span>(<span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">PublicKey</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">Address</span>(<span class="ident">Hash::from</span>(<span class="kw-2">&amp;</span><span class="ident">public_key</span>.<span class="ident">to_bytes</span>())))
+        <span class="prelude-val">Ok</span>(<span class="ident">Address</span>(<span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">public_key</span>.<span class="ident">to_bytes</span>())))
     }
 
     <span class="doccomment">/// ## Example</span>

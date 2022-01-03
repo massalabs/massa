@@ -2692,7 +2692,7 @@
                 .<span class="ident">iter</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">op_id</span><span class="op">|</span> <span class="ident">op_id</span>.<span class="ident">to_bytes</span>().<span class="ident">to_vec</span>())
                 .<span class="ident">concat</span>();
-            <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">operation_merkle_root</span> <span class="op">!</span><span class="op">=</span> <span class="ident">Hash::from</span>(<span class="kw-2">&amp;</span><span class="ident">concat_bytes</span>) {
+            <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">operation_merkle_root</span> <span class="op">!</span><span class="op">=</span> <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">concat_bytes</span>) {
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_block_from_node.err_op_root_hash&quot;</span>,
                     { <span class="string">&quot;node&quot;</span>: <span class="ident">source_node_id</span>,<span class="string">&quot;block_id&quot;</span>:<span class="ident">block_id</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">block</span> });
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
@@ -2992,7 +2992,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_dummy_block_id</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">BlockId</span> {
-        <span class="ident">BlockId</span>(<span class="ident">Hash::from</span>(<span class="ident">s</span>.<span class="ident">as_bytes</span>()))
+        <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="ident">s</span>.<span class="ident">as_bytes</span>()))
     }
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>

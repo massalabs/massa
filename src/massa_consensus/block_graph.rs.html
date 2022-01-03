@@ -4932,6 +4932,9 @@
 <span id="4930">4930</span>
 <span id="4931">4931</span>
 <span id="4932">4932</span>
+<span id="4933">4933</span>
+<span id="4934">4934</span>
+<span id="4935">4935</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! All information concerning blocks, the block graph and cliques is managed here.</span>
@@ -5947,7 +5950,7 @@
             <span class="ident">creator</span>: <span class="ident">public_key</span>,
             <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="number">0</span>, <span class="ident">thread_number</span>),
             <span class="ident">parents</span>: <span class="ident">Vec::new</span>(),
-            <span class="ident">operation_merkle_root</span>: <span class="ident">Hash::from</span>(<span class="kw-2">&amp;</span><span class="ident">Vec::new</span>()),
+            <span class="ident">operation_merkle_root</span>: <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">Vec::new</span>()),
             <span class="ident">endorsements</span>: <span class="ident">Vec::new</span>(),
         },
     )<span class="question-mark">?</span>;
@@ -9248,7 +9251,7 @@
             <span class="ident">header</span>: <span class="ident">BlockHeader</span> {
                 <span class="ident">content</span>: <span class="ident">BlockHeaderContent</span>{
                     <span class="ident">creator</span>: <span class="ident">PublicKey::from_bs58_check</span>(<span class="string">&quot;4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb&quot;</span>).<span class="ident">unwrap</span>(),
-                    <span class="ident">operation_merkle_root</span>: <span class="ident">Hash::from</span>(<span class="kw-2">&amp;</span><span class="ident">Vec::new</span>()),
+                    <span class="ident">operation_merkle_root</span>: <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">Vec::new</span>()),
                     <span class="ident">parents</span>: <span class="macro">vec!</span>[
                         <span class="ident">get_dummy_block_id</span>(<span class="string">&quot;parent1&quot;</span>),
                         <span class="ident">get_dummy_block_id</span>(<span class="string">&quot;parent2&quot;</span>),
@@ -9293,21 +9296,24 @@
             <span class="ident">block_ledger_changes</span>: <span class="ident">LedgerChanges</span>(
                 <span class="macro">vec!</span>[
                     (
-                        <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::from</span>(<span class="string">&quot;addr01&quot;</span>.<span class="ident">as_bytes</span>()).<span class="ident">into_bytes</span>()).<span class="ident">unwrap</span>(),
+                        <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::compute_from</span>(<span class="string">&quot;addr01&quot;</span>.<span class="ident">as_bytes</span>()).<span class="ident">into_bytes</span>())
+                            .<span class="ident">unwrap</span>(),
                         <span class="ident">LedgerChange</span> {
                             <span class="ident">balance_delta</span>: <span class="ident">Amount::from_str</span>(<span class="string">&quot;1&quot;</span>).<span class="ident">unwrap</span>(),
                             <span class="ident">balance_increment</span>: <span class="bool-val">true</span>, <span class="comment">// whether to increment or decrement balance of delta</span>
                         },
                     ),
                     (
-                        <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::from</span>(<span class="string">&quot;addr02&quot;</span>.<span class="ident">as_bytes</span>()).<span class="ident">into_bytes</span>()).<span class="ident">unwrap</span>(),
+                        <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::compute_from</span>(<span class="string">&quot;addr02&quot;</span>.<span class="ident">as_bytes</span>()).<span class="ident">into_bytes</span>())
+                            .<span class="ident">unwrap</span>(),
                         <span class="ident">LedgerChange</span> {
                             <span class="ident">balance_delta</span>: <span class="ident">Amount::from_str</span>(<span class="string">&quot;2&quot;</span>).<span class="ident">unwrap</span>(),
                             <span class="ident">balance_increment</span>: <span class="bool-val">false</span>, <span class="comment">// whether to increment or decrement balance of delta</span>
                         },
                     ),
                     (
-                        <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::from</span>(<span class="string">&quot;addr11&quot;</span>.<span class="ident">as_bytes</span>()).<span class="ident">into_bytes</span>()).<span class="ident">unwrap</span>(),
+                        <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::compute_from</span>(<span class="string">&quot;addr11&quot;</span>.<span class="ident">as_bytes</span>()).<span class="ident">into_bytes</span>())
+                            .<span class="ident">unwrap</span>(),
                         <span class="ident">LedgerChange</span> {
                             <span class="ident">balance_delta</span>: <span class="ident">Amount::from_str</span>(<span class="string">&quot;3&quot;</span>).<span class="ident">unwrap</span>(),
                             <span class="ident">balance_increment</span>: <span class="bool-val">false</span>, <span class="comment">// whether to increment or decrement balance of delta</span>

@@ -184,7 +184,7 @@
     <span class="doccomment">/// #     max_block_endorsements: 8,</span>
     <span class="doccomment">/// # });</span>
     <span class="doccomment">/// # pub fn get_dummy_block_id(s: &amp;str) -&gt; BlockId {</span>
-    <span class="doccomment">/// #     BlockId(Hash::from(s.as_bytes()))</span>
+    <span class="doccomment">/// #     BlockId(Hash::compute_from(s.as_bytes()))</span>
     <span class="doccomment">/// # }</span>
     <span class="doccomment">/// let clique = Clique {</span>
     <span class="doccomment">///         block_ids: vec![get_dummy_block_id(&quot;parent1&quot;), get_dummy_block_id(&quot;parent2&quot;)].into_iter().collect(),</span>

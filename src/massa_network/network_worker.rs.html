@@ -2023,7 +2023,7 @@
                     <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::NodeSignMessage&quot;</span>,
                     { <span class="string">&quot;mdg&quot;</span>: <span class="ident">msg</span> }
                 );
-                <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::from</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>), <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">private_key</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>), <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">private_key</span>)<span class="question-mark">?</span>;
                 <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">private_key</span>);
                 <span class="kw">if</span> <span class="ident">response_tx</span>
                     .<span class="ident">send</span>(<span class="ident">PubkeySig</span> {

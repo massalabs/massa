@@ -603,6 +603,8 @@
 <span id="601">601</span>
 <span id="602">602</span>
 <span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>::{<span class="ident">BLOCK_ID_SIZE_BYTES</span>, <span class="ident">SLOT_KEY_SIZE</span>};
@@ -664,7 +666,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_first_bit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="ident">Hash::from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bytes</span>()).<span class="ident">to_bytes</span>()[<span class="number">0</span>] <span class="op">&gt;</span><span class="op">&gt;</span> <span class="number">7</span> <span class="op">==</span> <span class="number">1</span>
+        <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bytes</span>()).<span class="ident">to_bytes</span>()[<span class="number">0</span>] <span class="op">&gt;</span><span class="op">&gt;</span> <span class="number">7</span> <span class="op">==</span> <span class="number">1</span>
     }
 }
 
@@ -916,7 +918,7 @@
     <span class="doccomment">/// Generate the block id without verifying the integrity of the it,</span>
     <span class="doccomment">/// used only in tests.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compute_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">BlockId</span>(<span class="ident">Hash::from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>)))
+        <span class="prelude-val">Ok</span>(<span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>)))
     }
 
     <span class="comment">// Hash([slot, hash])</span>
@@ -925,7 +927,7 @@
         <span class="ident">res</span>[..<span class="ident">SLOT_KEY_SIZE</span>].<span class="ident">copy_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">slot</span>.<span class="ident">to_bytes_key</span>());
         <span class="ident">res</span>[<span class="ident">SLOT_KEY_SIZE</span>..].<span class="ident">copy_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>.<span class="ident">to_bytes</span>());
         <span class="comment">// rehash for safety</span>
-        <span class="ident">Hash::from</span>(<span class="kw-2">&amp;</span><span class="ident">res</span>)
+        <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">res</span>)
     }
 
     <span class="comment">// check if a [slot, hash] pair was signed by a public_key</span>
@@ -1004,7 +1006,7 @@
 
 <span class="kw">impl</span> <span class="ident">BlockHeaderContent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compute_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">Hash::from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>))
+        <span class="prelude-val">Ok</span>(<span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>))
     }
 }
 
@@ -1156,29 +1158,31 @@
                 <span class="ident">creator</span>: <span class="ident">public_key</span>,
                 <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="number">1</span>, <span class="number">2</span>),
                 <span class="ident">parents</span>: <span class="macro">vec!</span>[
-                    <span class="ident">BlockId</span>(<span class="ident">Hash::from</span>(<span class="string">&quot;abc&quot;</span>.<span class="ident">as_bytes</span>())),
-                    <span class="ident">BlockId</span>(<span class="ident">Hash::from</span>(<span class="string">&quot;def&quot;</span>.<span class="ident">as_bytes</span>())),
-                    <span class="ident">BlockId</span>(<span class="ident">Hash::from</span>(<span class="string">&quot;ghi&quot;</span>.<span class="ident">as_bytes</span>())),
+                    <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;abc&quot;</span>.<span class="ident">as_bytes</span>())),
+                    <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;def&quot;</span>.<span class="ident">as_bytes</span>())),
+                    <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;ghi&quot;</span>.<span class="ident">as_bytes</span>())),
                 ],
-                <span class="ident">operation_merkle_root</span>: <span class="ident">Hash::from</span>(<span class="string">&quot;mno&quot;</span>.<span class="ident">as_bytes</span>()),
+                <span class="ident">operation_merkle_root</span>: <span class="ident">Hash::compute_from</span>(<span class="string">&quot;mno&quot;</span>.<span class="ident">as_bytes</span>()),
                 <span class="ident">endorsements</span>: <span class="macro">vec!</span>[
                     <span class="ident">Endorsement</span> {
                         <span class="ident">content</span>: <span class="ident">EndorsementContent</span> {
                             <span class="ident">sender_public_key</span>: <span class="ident">public_key</span>,
                             <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="number">1</span>, <span class="number">1</span>),
                             <span class="ident">index</span>: <span class="number">1</span>,
-                            <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>(<span class="ident">Hash::from</span>(<span class="string">&quot;blk1&quot;</span>.<span class="ident">as_bytes</span>())),
+                            <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;blk1&quot;</span>.<span class="ident">as_bytes</span>())),
                         },
-                        <span class="ident">signature</span>: <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::from</span>(<span class="string">&quot;dta&quot;</span>.<span class="ident">as_bytes</span>()), <span class="kw-2">&amp;</span><span class="ident">private_key</span>).<span class="ident">unwrap</span>(),
+                        <span class="ident">signature</span>: <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::compute_from</span>(<span class="string">&quot;dta&quot;</span>.<span class="ident">as_bytes</span>()), <span class="kw-2">&amp;</span><span class="ident">private_key</span>)
+                            .<span class="ident">unwrap</span>(),
                     },
                     <span class="ident">Endorsement</span> {
                         <span class="ident">content</span>: <span class="ident">EndorsementContent</span> {
                             <span class="ident">sender_public_key</span>: <span class="ident">public_key</span>,
                             <span class="ident">slot</span>: <span class="ident">Slot::new</span>(<span class="number">4</span>, <span class="number">0</span>),
                             <span class="ident">index</span>: <span class="number">3</span>,
-                            <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>(<span class="ident">Hash::from</span>(<span class="string">&quot;blk2&quot;</span>.<span class="ident">as_bytes</span>())),
+                            <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="string">&quot;blk2&quot;</span>.<span class="ident">as_bytes</span>())),
                         },
-                        <span class="ident">signature</span>: <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::from</span>(<span class="string">&quot;dat&quot;</span>.<span class="ident">as_bytes</span>()), <span class="kw-2">&amp;</span><span class="ident">private_key</span>).<span class="ident">unwrap</span>(),
+                        <span class="ident">signature</span>: <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">Hash::compute_from</span>(<span class="string">&quot;dat&quot;</span>.<span class="ident">as_bytes</span>()), <span class="kw-2">&amp;</span><span class="ident">private_key</span>)
+                            .<span class="ident">unwrap</span>(),
                     },
                 ],
             },

@@ -983,7 +983,7 @@
             <span class="ident">sender_public_key</span>: <span class="ident">sender_pub</span>,
             <span class="ident">expire_period</span>,
         };
-        <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">Hash::from</span>(<span class="kw-2">&amp;</span><span class="ident">content</span>.<span class="ident">to_bytes_compact</span>().<span class="ident">unwrap</span>());
+        <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">content</span>.<span class="ident">to_bytes_compact</span>().<span class="ident">unwrap</span>());
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>, <span class="kw-2">&amp;</span><span class="ident">sender_priv</span>).<span class="ident">unwrap</span>();
 
         (

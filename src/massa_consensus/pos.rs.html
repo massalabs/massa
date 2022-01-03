@@ -1223,6 +1223,8 @@
 <span id="1221">1221</span>
 <span id="1222">1222</span>
 <span id="1223">1223</span>
+<span id="1224">1224</span>
+<span id="1225">1225</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../pos.md&quot;</span>)]</span>
@@ -1887,7 +1889,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cur_seed</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">initial_draw_seed</span>.<span class="ident">as_bytes</span>().<span class="ident">to_vec</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">initial_seeds</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>((<span class="ident">cfg</span>.<span class="ident">pos_lookback_cycles</span> <span class="op">+</span> <span class="number">1</span>) <span class="kw">as</span> <span class="ident">usize</span>);
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">cfg</span>.<span class="ident">pos_lookback_cycles</span> <span class="op">+</span> <span class="number">1</span>) {
-            <span class="ident">cur_seed</span> <span class="op">=</span> <span class="ident">Hash::from</span>(<span class="kw-2">&amp;</span><span class="ident">cur_seed</span>).<span class="ident">to_bytes</span>().<span class="ident">to_vec</span>();
+            <span class="ident">cur_seed</span> <span class="op">=</span> <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">cur_seed</span>).<span class="ident">to_bytes</span>().<span class="ident">to_vec</span>();
             <span class="ident">initial_seeds</span>.<span class="ident">push</span>(<span class="ident">cur_seed</span>.<span class="ident">clone</span>());
         }
         <span class="ident">initial_seeds</span>
@@ -1979,7 +1981,9 @@
                 }
             }
             <span class="comment">// compute the RNG seed from the seed bits</span>
-            <span class="kw">let</span> <span class="ident">rng_seed</span> <span class="op">=</span> <span class="ident">Hash::from</span>(<span class="kw-2">&amp;</span><span class="ident">rng_seed_bits</span>.<span class="ident">into_vec</span>()).<span class="ident">to_bytes</span>().<span class="ident">to_vec</span>();
+            <span class="kw">let</span> <span class="ident">rng_seed</span> <span class="op">=</span> <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">rng_seed_bits</span>.<span class="ident">into_vec</span>())
+                .<span class="ident">to_bytes</span>()
+                .<span class="ident">to_vec</span>();
 
             (<span class="ident">cum_sum</span>, <span class="ident">rng_seed</span>)
         } <span class="kw">else</span> {

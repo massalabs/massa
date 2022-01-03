@@ -250,7 +250,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_first_bit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="ident">Hash::from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bytes_key</span>()).<span class="ident">to_bytes</span>()[<span class="number">0</span>] <span class="op">&gt;</span><span class="op">&gt;</span> <span class="number">7</span> <span class="op">==</span> <span class="number">1</span>
+        <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bytes_key</span>()).<span class="ident">to_bytes</span>()[<span class="number">0</span>] <span class="op">&gt;</span><span class="op">&gt;</span> <span class="number">7</span> <span class="op">==</span> <span class="number">1</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_cycle</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">periods_per_cycle</span>: <span class="ident">u64</span>) -&gt; <span class="ident">u64</span> {

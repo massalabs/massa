@@ -1270,7 +1270,7 @@
     <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let data = Hash::from(&quot;Hello World!&quot;.as_bytes());</span>
+    <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
     <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized: String = signature.to_bs58_check();</span>
@@ -1287,7 +1287,7 @@
     <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let data = Hash::from(&quot;Hello World!&quot;.as_bytes());</span>
+    <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
     <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized = signature.to_bytes();</span>
@@ -1304,7 +1304,7 @@
     <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let data = Hash::from(&quot;Hello World!&quot;.as_bytes());</span>
+    <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
     <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized = signature.into_bytes();</span>
@@ -1321,7 +1321,7 @@
     <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let data = Hash::from(&quot;Hello World!&quot;.as_bytes());</span>
+    <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
     <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized: String = signature.to_bs58_check();</span>
@@ -1352,7 +1352,7 @@
     <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let data = Hash::from(&quot;Hello World!&quot;.as_bytes());</span>
+    <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
     <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized = signature.to_bytes();</span>
@@ -1381,7 +1381,7 @@
     <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let data = Hash::from(&quot;Hello World!&quot;.as_bytes());</span>
+    <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
     <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized: String = serde_json::to_string(&amp;signature).unwrap();</span>
@@ -1410,7 +1410,7 @@
     <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
-    <span class="doccomment">/// let data = Hash::from(&quot;Hello World!&quot;.as_bytes());</span>
+    <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
     <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// let serialized = serde_json::to_string(&amp;signature).unwrap();</span>
@@ -1502,7 +1502,7 @@
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let public_key: PublicKey = derive_public_key(&amp;private_key);</span>
-    <span class="doccomment">/// let data = Hash::from(&quot;Hello World!&quot;.as_bytes());</span>
+    <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
     <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">hash</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>, <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">MassaHashError</span><span class="op">&gt;</span> {
@@ -1520,7 +1520,7 @@
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let public_key: PublicKey = derive_public_key(&amp;private_key);</span>
-    <span class="doccomment">/// let data = Hash::from(&quot;Hello World!&quot;.as_bytes());</span>
+    <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
     <span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
     <span class="doccomment">/// let verification: bool = verify_signature(&amp;data, &amp;signature, &amp;public_key).is_ok();</span>
     <span class="doccomment">/// ```</span>
@@ -1570,7 +1570,7 @@
         <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
         <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">private_key</span>);
         <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;Hello World!&quot;</span>.<span class="ident">as_bytes</span>();
-        <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">Hash::from</span>(<span class="ident">message</span>);
+        <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">Hash::compute_from</span>(<span class="ident">message</span>);
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>, <span class="kw-2">&amp;</span><span class="ident">private_key</span>).<span class="ident">unwrap</span>();
         <span class="macro">assert!</span>(<span class="ident">verify_signature</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>, <span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="kw-2">&amp;</span><span class="ident">public_key</span>).<span class="ident">is_ok</span>())
     }
@@ -1603,7 +1603,7 @@
     <span class="kw">fn</span> <span class="ident">test_serde_signature</span>() {
         <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
         <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;Hello World!&quot;</span>.<span class="ident">as_bytes</span>();
-        <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">Hash::from</span>(<span class="ident">message</span>);
+        <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">Hash::compute_from</span>(<span class="ident">message</span>);
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>, <span class="kw-2">&amp;</span><span class="ident">private_key</span>).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span>
             <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>).<span class="ident">expect</span>(<span class="string">&quot;could not serialize signature key&quot;</span>);
