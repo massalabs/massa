@@ -1013,7 +1013,7 @@ fn create_genesis_block(
             creator: public_key,
             slot: Slot::new(0, thread_number),
             parents: Vec::new(),
-            operation_merkle_root: Hash::from(&Vec::new()),
+            operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
         },
     )?;
@@ -4314,7 +4314,7 @@ mod tests {
             header: BlockHeader {
                 content: BlockHeaderContent{
                     creator: PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
-                    operation_merkle_root: Hash::from(&Vec::new()),
+                    operation_merkle_root: Hash::compute_from(&Vec::new()),
                     parents: vec![
                         get_dummy_block_id("parent1"),
                         get_dummy_block_id("parent2"),
@@ -4359,21 +4359,24 @@ mod tests {
             block_ledger_changes: LedgerChanges(
                 vec![
                     (
-                        Address::from_bytes(&Hash::from("addr01".as_bytes()).into_bytes()).unwrap(),
+                        Address::from_bytes(&Hash::compute_from("addr01".as_bytes()).into_bytes())
+                            .unwrap(),
                         LedgerChange {
                             balance_delta: Amount::from_str("1").unwrap(),
                             balance_increment: true, // whether to increment or decrement balance of delta
                         },
                     ),
                     (
-                        Address::from_bytes(&Hash::from("addr02".as_bytes()).into_bytes()).unwrap(),
+                        Address::from_bytes(&Hash::compute_from("addr02".as_bytes()).into_bytes())
+                            .unwrap(),
                         LedgerChange {
                             balance_delta: Amount::from_str("2").unwrap(),
                             balance_increment: false, // whether to increment or decrement balance of delta
                         },
                     ),
                     (
-                        Address::from_bytes(&Hash::from("addr11".as_bytes()).into_bytes()).unwrap(),
+                        Address::from_bytes(&Hash::compute_from("addr11".as_bytes()).into_bytes())
+                            .unwrap(),
                         LedgerChange {
                             balance_delta: Amount::from_str("3").unwrap(),
                             balance_increment: false, // whether to increment or decrement balance of delta

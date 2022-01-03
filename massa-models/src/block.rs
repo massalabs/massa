@@ -59,7 +59,7 @@ impl BlockId {
     }
 
     pub fn get_first_bit(&self) -> bool {
-        Hash::from(&self.to_bytes()).to_bytes()[0] >> 7 == 1
+        Hash::compute_from(&self.to_bytes()).to_bytes()[0] >> 7 == 1
     }
 }
 
@@ -311,7 +311,7 @@ impl BlockHeader {
     /// Generate the block id without verifying the integrity of the it,
     /// used only in tests.
     pub fn compute_block_id(&self) -> Result<BlockId, ModelsError> {
-        Ok(BlockId(Hash::from(&self.to_bytes_compact()?)))
+        Ok(BlockId(Hash::compute_from(&self.to_bytes_compact()?)))
     }
 
     // Hash([slot, hash])
@@ -320,7 +320,7 @@ impl BlockHeader {
         res[..SLOT_KEY_SIZE].copy_from_slice(&slot.to_bytes_key());
         res[SLOT_KEY_SIZE..].copy_from_slice(&hash.to_bytes());
         // rehash for safety
-        Hash::from(&res)
+        Hash::compute_from(&res)
     }
 
     // check if a [slot, hash] pair was signed by a public_key
@@ -399,7 +399,7 @@ impl DeserializeCompact for BlockHeader {
 
 impl BlockHeaderContent {
     pub fn compute_hash(&self) -> Result<Hash, ModelsError> {
-        Ok(Hash::from(&self.to_bytes_compact()?))
+        Ok(Hash::compute_from(&self.to_bytes_compact()?))
     }
 }
 
@@ -551,29 +551,31 @@ mod test {
                 creator: public_key,
                 slot: Slot::new(1, 2),
                 parents: vec![
-                    BlockId(Hash::from("abc".as_bytes())),
-                    BlockId(Hash::from("def".as_bytes())),
-                    BlockId(Hash::from("ghi".as_bytes())),
+                    BlockId(Hash::compute_from("abc".as_bytes())),
+                    BlockId(Hash::compute_from("def".as_bytes())),
+                    BlockId(Hash::compute_from("ghi".as_bytes())),
                 ],
-                operation_merkle_root: Hash::from("mno".as_bytes()),
+                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![
                     Endorsement {
                         content: EndorsementContent {
                             sender_public_key: public_key,
                             slot: Slot::new(1, 1),
                             index: 1,
-                            endorsed_block: BlockId(Hash::from("blk1".as_bytes())),
+                            endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
                         },
-                        signature: sign(&Hash::from("dta".as_bytes()), &private_key).unwrap(),
+                        signature: sign(&Hash::compute_from("dta".as_bytes()), &private_key)
+                            .unwrap(),
                     },
                     Endorsement {
                         content: EndorsementContent {
                             sender_public_key: public_key,
                             slot: Slot::new(4, 0),
                             index: 3,
-                            endorsed_block: BlockId(Hash::from("blk2".as_bytes())),
+                            endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
                         },
-                        signature: sign(&Hash::from("dat".as_bytes()), &private_key).unwrap(),
+                        signature: sign(&Hash::compute_from("dat".as_bytes()), &private_key)
+                            .unwrap(),
                     },
                 ],
             },

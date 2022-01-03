@@ -43,7 +43,7 @@ impl Slot {
     }
 
     pub fn get_first_bit(&self) -> bool {
-        Hash::from(&self.to_bytes_key()).to_bytes()[0] >> 7 == 1
+        Hash::compute_from(&self.to_bytes_key()).to_bytes()[0] >> 7 == 1
     }
 
     pub fn get_cycle(&self, periods_per_cycle: u64) -> u64 {

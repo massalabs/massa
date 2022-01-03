@@ -29,7 +29,7 @@ use tracing::trace;
 pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
-    BlockId(Hash::from(s.as_bytes()))
+    BlockId(Hash::compute_from(s.as_bytes()))
 }
 
 /// generate a named temporary JSON peers file
@@ -368,7 +368,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
         sender_public_key: sender_pub,
         expire_period,
     };
-    let hash = Hash::from(&content.to_bytes_compact().unwrap());
+    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
     let signature = sign(&hash, &sender_priv).unwrap();
 
     (
