@@ -11,13 +11,14 @@ use massa_models::api::{
     IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
 };
 use massa_models::clique::Clique;
+use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::hhasher::BuildHHasher;
 use massa_models::massa_hash::PubkeySig;
 use massa_models::node::NodeId;
 use massa_models::timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range};
 use massa_models::{
-    Address, BlockHashSet, BlockId, EndorsementHashSet, EndorsementId, Operation, OperationHashMap,
-    OperationHashSet, OperationId, Slot, Version,
+    Address, Amount, BlockHashSet, BlockId, EndorsementHashSet, EndorsementId, Operation,
+    OperationHashMap, OperationHashSet, OperationId, Slot, Version,
 };
 use massa_network::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
@@ -69,6 +70,16 @@ impl Endpoints for API<Public> {
 
     fn add_staking_private_keys(&self, _: Vec<PrivateKey>) -> BoxFuture<Result<(), ApiError>> {
         crate::wrong_api::<()>()
+    }
+
+    fn execute_read_only_request(
+        &self,
+        _max_gas: u64,
+        _simulated_gas_price: Amount,
+        _bytecode: Vec<u8>,
+        _address: Option<Address>,
+    ) -> BoxFuture<Result<ExecuteReadOnlyResponse, ApiError>> {
+        crate::wrong_api::<ExecuteReadOnlyResponse>()
     }
 
     fn remove_staking_addresses(&self, _: Vec<Address>) -> BoxFuture<Result<(), ApiError>> {
@@ -315,7 +326,7 @@ impl Endpoints for API<Public> {
                     is_stale: false,
                     is_in_blockclique: blockclique.block_ids.contains(&id),
                     slot: exported_block.header.content.slot,
-                    creator: Address::from_public_key(&exported_block.header.content.creator)?,
+                    creator: Address::from_public_key(&exported_block.header.content.creator),
                     parents: exported_block.header.content.parents,
                 });
             }
@@ -327,7 +338,7 @@ impl Endpoints for API<Public> {
                         is_stale: true,
                         is_in_blockclique: false,
                         slot: header.content.slot,
-                        creator: Address::from_public_key(&header.content.creator)?,
+                        creator: Address::from_public_key(&header.content.creator),
                         parents: header.content.parents,
                     });
                 }

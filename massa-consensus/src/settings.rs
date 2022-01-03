@@ -125,7 +125,10 @@ pub const POS_LOCK_CYCLES: u64 = 1;
 #[cfg(test)]
 const POS_LOCK_CYCLES: u64 = 1;
 
-/// Consensus user-settings (that could be changes in `config.toml` file without rebuilding the binary)
+pub const MAX_GAS_PER_BLOCK: u64 = 10;
+
+/// Consensus configuration
+/// Assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ConsensusSettings {
     /// Staking private keys

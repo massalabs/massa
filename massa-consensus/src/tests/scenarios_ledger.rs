@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::{
+    mock_execution_controller::MockExecutionController,
     mock_pool_controller::{MockPoolController, PoolCommandSink},
     mock_protocol_controller::MockProtocolController,
     tools,
@@ -73,7 +74,7 @@ async fn test_ledger_final_balance_increment_new_address() {
 
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key).unwrap();
+    let address = Address::from_public_key(&public_key);
     let thread = address.get_thread(cfg.thread_count);
 
     let changes = LedgerChanges(
@@ -120,7 +121,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
 
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key).unwrap();
+    let address = Address::from_public_key(&public_key);
     let thread = address.get_thread(cfg.thread_count);
 
     let changes = LedgerChanges(
@@ -180,7 +181,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
 
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key).unwrap();
+    let address = Address::from_public_key(&public_key);
     let thread = address.get_thread(cfg.thread_count);
 
     // Increment.
@@ -253,7 +254,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
 
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key).unwrap();
+    let address = Address::from_public_key(&public_key);
     let thread = address.get_thread(cfg.thread_count);
 
     // Increment.
@@ -340,7 +341,7 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
 
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key).unwrap();
+    let address = Address::from_public_key(&public_key);
     let thread = address.get_thread(cfg.thread_count);
 
     // Decrement.
@@ -374,7 +375,7 @@ async fn test_ledger_final_balance_non_existing_address() {
 
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key).unwrap();
+    let address = Address::from_public_key(&public_key);
 
     let final_datas = ledger
         .get_final_data(vec![address].into_iter().collect())
@@ -402,7 +403,7 @@ async fn test_ledger_final_balance_duplicate_address() {
 
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key).unwrap();
+    let address = Address::from_public_key(&public_key);
 
     // Same address twice.
     let final_datas = ledger
@@ -436,7 +437,7 @@ async fn test_ledger_final_balance_multiple_addresses() {
     for _ in 0..5 {
         let private_key = generate_random_private_key();
         let public_key = derive_public_key(&private_key);
-        let address = Address::from_public_key(&public_key).unwrap();
+        let address = Address::from_public_key(&public_key);
         addresses.push(address);
     }
 
@@ -471,7 +472,7 @@ async fn test_ledger_clear() {
 
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key).unwrap();
+    let address = Address::from_public_key(&public_key);
     let thread = address.get_thread(cfg.thread_count);
 
     let changes = LedgerChanges(
@@ -529,7 +530,7 @@ async fn test_ledger_read_whole() {
 
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key).unwrap();
+    let address = Address::from_public_key(&public_key);
     let thread = address.get_thread(cfg.thread_count);
 
     let changes = LedgerChanges(
@@ -592,7 +593,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         // A
         private_key_1 = generate_random_private_key();
         public_key_1 = derive_public_key(&private_key_1);
-        address_1 = Address::from_public_key(&public_key_1).unwrap();
+        address_1 = Address::from_public_key(&public_key_1);
         if address_1.get_thread(thread_count) == 0 {
             break;
         }
@@ -601,7 +602,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         // B
         private_key_2 = generate_random_private_key();
         public_key_2 = derive_public_key(&private_key_2);
-        address_2 = Address::from_public_key(&public_key_2).unwrap();
+        address_2 = Address::from_public_key(&public_key_2);
         if address_2.get_thread(thread_count) == 1 {
             break;
         }
@@ -610,7 +611,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         // C
         private_key_3 = generate_random_private_key();
         public_key_3 = derive_public_key(&private_key_3);
-        address_3 = Address::from_public_key(&public_key_3).unwrap();
+        address_3 = Address::from_public_key(&public_key_3);
         if address_3.get_thread(thread_count) == 0 {
             break;
         }
@@ -656,11 +657,15 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
+    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
+        MockExecutionController::new();
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
+            execution_command_sender,
+            execution_event_receiver,
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,

@@ -25,6 +25,8 @@ use crate::{
 };
 use massa_models::ledger::LedgerData;
 
+use super::mock_execution_controller::MockExecutionController;
+
 #[tokio::test]
 #[serial]
 async fn test_roll() {
@@ -41,21 +43,21 @@ async fn test_roll() {
     // addresses 1 and 2 both in thread 0
     let mut priv_1 = generate_random_private_key();
     let mut pubkey_1 = derive_public_key(&priv_1);
-    let mut address_1 = Address::from_public_key(&pubkey_1).unwrap();
+    let mut address_1 = Address::from_public_key(&pubkey_1);
     while 0 != address_1.get_thread(thread_count) {
         priv_1 = generate_random_private_key();
         pubkey_1 = derive_public_key(&priv_1);
-        address_1 = Address::from_public_key(&pubkey_1).unwrap();
+        address_1 = Address::from_public_key(&pubkey_1);
     }
     assert_eq!(0, address_1.get_thread(thread_count));
 
     let mut priv_2 = generate_random_private_key();
     let mut pubkey_2 = derive_public_key(&priv_2);
-    let mut address_2 = Address::from_public_key(&pubkey_2).unwrap();
+    let mut address_2 = Address::from_public_key(&pubkey_2);
     while 0 != address_2.get_thread(thread_count) {
         priv_2 = generate_random_private_key();
         pubkey_2 = derive_public_key(&priv_2);
-        address_2 = Address::from_public_key(&pubkey_2).unwrap();
+        address_2 = Address::from_public_key(&pubkey_2);
     }
     assert_eq!(0, address_2.get_thread(thread_count));
 
@@ -488,21 +490,21 @@ async fn test_roll_block_creation() {
     // addresses 1 and 2 both in thread 0
     let mut priv_1 = generate_random_private_key();
     let mut pubkey_1 = derive_public_key(&priv_1);
-    let mut address_1 = Address::from_public_key(&pubkey_1).unwrap();
+    let mut address_1 = Address::from_public_key(&pubkey_1);
     while 0 != address_1.get_thread(thread_count) {
         priv_1 = generate_random_private_key();
         pubkey_1 = derive_public_key(&priv_1);
-        address_1 = Address::from_public_key(&pubkey_1).unwrap();
+        address_1 = Address::from_public_key(&pubkey_1);
     }
     assert_eq!(0, address_1.get_thread(thread_count));
 
     let mut priv_2 = generate_random_private_key();
     let mut pubkey_2 = derive_public_key(&priv_2);
-    let mut address_2 = Address::from_public_key(&pubkey_2).unwrap();
+    let mut address_2 = Address::from_public_key(&pubkey_2);
     while 0 != address_2.get_thread(thread_count) {
         priv_2 = generate_random_private_key();
         pubkey_2 = derive_public_key(&priv_2);
-        address_2 = Address::from_public_key(&pubkey_2).unwrap();
+        address_2 = Address::from_public_key(&pubkey_2);
     }
     assert_eq!(0, address_2.get_thread(thread_count));
 
@@ -539,12 +541,18 @@ async fn test_roll_block_creation() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
+    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
+        MockExecutionController::new();
 
-    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
+    let init_time: MassaTime = 1000.into();
+    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(init_time);
+
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
+            execution_command_sender,
+            execution_event_receiver,
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
@@ -565,20 +573,23 @@ async fn test_roll_block_creation() {
 
     // wait for first slot
     pool_controller
-        .wait_command(cfg.t0.checked_mul(2).unwrap(), |cmd| match cmd {
-            PoolCommand::UpdateCurrentSlot(s) => {
-                if s == Slot::new(1, 0) {
-                    Some(())
-                } else {
+        .wait_command(
+            cfg.t0.saturating_mul(2).saturating_add(init_time),
+            |cmd| match cmd {
+                PoolCommand::UpdateCurrentSlot(s) => {
+                    if s == Slot::new(1, 0) {
+                        Some(())
+                    } else {
+                        None
+                    }
+                }
+                PoolCommand::GetEndorsements { response_tx, .. } => {
+                    response_tx.send(Vec::new()).unwrap();
                     None
                 }
-            }
-            PoolCommand::GetEndorsements { response_tx, .. } => {
-                response_tx.send(Vec::new()).unwrap();
-                None
-            }
-            _ => None,
-        })
+                _ => None,
+            },
+        )
         .await
         .expect("timeout while waiting for slot");
 
@@ -789,7 +800,7 @@ async fn test_roll_deactivation() {
     loop {
         privkey_a0 = generate_random_private_key();
         pubkey_a0 = derive_public_key(&privkey_a0);
-        address_a0 = Address::from_public_key(&pubkey_a0).unwrap();
+        address_a0 = Address::from_public_key(&pubkey_a0);
         if address_a0.get_thread(thread_count) == 0 {
             break;
         }
@@ -800,7 +811,7 @@ async fn test_roll_deactivation() {
     loop {
         privkey_b0 = generate_random_private_key();
         pubkey_b0 = derive_public_key(&privkey_b0);
-        address_b0 = Address::from_public_key(&pubkey_b0).unwrap();
+        address_b0 = Address::from_public_key(&pubkey_b0);
         if address_b0.get_thread(thread_count) == 0 {
             break;
         }
@@ -812,7 +823,7 @@ async fn test_roll_deactivation() {
     loop {
         privkey_a1 = generate_random_private_key();
         pubkey_a1 = derive_public_key(&privkey_a1);
-        address_a1 = Address::from_public_key(&pubkey_a1).unwrap();
+        address_a1 = Address::from_public_key(&pubkey_a1);
         if address_a1.get_thread(thread_count) == 1 {
             break;
         }
@@ -823,7 +834,7 @@ async fn test_roll_deactivation() {
     loop {
         privkey_b1 = generate_random_private_key();
         pubkey_b1 = derive_public_key(&privkey_b1);
-        address_b1 = Address::from_public_key(&pubkey_b1).unwrap();
+        address_b1 = Address::from_public_key(&pubkey_b1);
         if address_b1.get_thread(thread_count) == 1 {
             break;
         }
@@ -854,12 +865,15 @@ async fn test_roll_deactivation() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
-
+    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
+        MockExecutionController::new();
     cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
+            execution_command_sender,
+            execution_event_receiver,
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,

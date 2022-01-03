@@ -187,7 +187,7 @@ pub fn create_operation_with_expire_period(
     let recv_pub = derive_public_key(&recv_priv);
 
     let op = OperationType::Transaction {
-        recipient_address: Address::from_public_key(&recv_pub).unwrap(),
+        recipient_address: Address::from_public_key(&recv_pub),
         amount: Amount::default(),
     };
     let content = OperationContent {

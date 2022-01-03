@@ -336,7 +336,11 @@ async fn test_too_many_blocks_in_the_future() {
             expected_clone.extend(graph.genesis_blocks);
             assert_eq!(
                 expected_clone,
-                graph.active_blocks.keys().copied().collect(),
+                graph
+                    .active_blocks
+                    .keys()
+                    .copied()
+                    .collect::<HashSet<BlockId>>(),
                 "unexpected block graph"
             );
             (

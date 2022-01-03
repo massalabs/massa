@@ -51,11 +51,7 @@ impl EndorsementPool {
             .endorsements
             .iter()
             .filter_map(|(endo_id, endorsement)| {
-                let creator = match Address::from_public_key(&endorsement.content.sender_public_key)
-                {
-                    Ok(addr) => addr,
-                    Err(e) => return Some(Err(e.into())),
-                };
+                let creator = Address::from_public_key(&endorsement.content.sender_public_key);
                 if endorsement.content.endorsed_block == parent
                     && endorsement.content.slot == target_slot
                     && creators.get(endorsement.content.index as usize) == Some(&creator)
@@ -159,7 +155,7 @@ impl EndorsementPool {
     ) -> Result<EndorsementHashMap<Endorsement>, PoolError> {
         let mut res = EndorsementHashMap::default();
         for (id, ed) in self.endorsements.iter() {
-            if Address::from_public_key(&ed.content.sender_public_key)? == address {
+            if Address::from_public_key(&ed.content.sender_public_key) == address {
                 res.insert(*id, ed.clone());
             }
         }

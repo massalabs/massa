@@ -277,6 +277,16 @@ impl MassaTime {
     /// ```
     /// # use massa_time::*;
     /// let time_1 : MassaTime = MassaTime::from(42);
+    /// let res : MassaTime = time_1.saturating_mul(7);
+    /// assert_eq!(res,MassaTime::from(42*7))
+    /// ```
+    pub fn saturating_mul(self, n: u64) -> MassaTime {
+        MassaTime(self.0.saturating_mul(n))
+    }
+
+    /// ```
+    /// # use massa_time::*;
+    /// let time_1 : MassaTime = MassaTime::from(42);
     /// let res : MassaTime = time_1.checked_mul(7).unwrap();
     /// assert_eq!(res,MassaTime::from(42*7))
     /// ```

@@ -7,6 +7,7 @@ use massa_models::{
     Address, Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, sign};
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -26,21 +27,21 @@ async fn test_reward_split() {
     // A
     let mut priv_a = generate_random_private_key();
     let mut pubkey_a = derive_public_key(&priv_a);
-    let mut address_a = Address::from_public_key(&pubkey_a).unwrap();
+    let mut address_a = Address::from_public_key(&pubkey_a);
     while 0 != address_a.get_thread(thread_count) {
         priv_a = generate_random_private_key();
         pubkey_a = derive_public_key(&priv_a);
-        address_a = Address::from_public_key(&pubkey_a).unwrap();
+        address_a = Address::from_public_key(&pubkey_a);
     }
 
     // B
     let mut priv_b = generate_random_private_key();
     let mut pubkey_b = derive_public_key(&priv_b);
-    let mut address_b = Address::from_public_key(&pubkey_b).unwrap();
+    let mut address_b = Address::from_public_key(&pubkey_b);
     while 0 != address_b.get_thread(thread_count) {
         priv_b = generate_random_private_key();
         pubkey_b = derive_public_key(&priv_b);
-        address_b = Address::from_public_key(&pubkey_b).unwrap();
+        address_b = Address::from_public_key(&pubkey_b);
     }
 
     let mut ledger = HashMap::new();
@@ -65,6 +66,9 @@ async fn test_reward_split() {
     cfg.max_block_size = 2000;
     cfg.endorsement_count = 5;
     cfg.block_reward = Amount::from_str("1").unwrap();
+
+    let init_time: MassaTime = 1000.into();
+    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(init_time);
 
     tools::consensus_without_pool_test(
         cfg.clone(),
@@ -116,7 +120,15 @@ async fn test_reward_split() {
             let (b1_id, b1, _) =
                 tools::create_block(&cfg, Slot::new(1, 0), parents, slot_one_priv_key);
 
-            tools::propagate_block(&mut protocol_controller, b1, true, 1000).await;
+            tools::propagate_block(
+                &mut protocol_controller,
+                b1,
+                true,
+                init_time
+                    .saturating_add(cfg.t0.saturating_mul(2))
+                    .to_millis(),
+            )
+            .await;
 
             let slot_two_block_addr = draws.get(&Slot::new(2, 0)).unwrap().0;
 
@@ -145,7 +157,7 @@ async fn test_reward_split() {
             // Creator of second block endorses the first.
             let index = slot_one_endorsements_addrs
                 .iter()
-                .position(|&addr| addr == Address::from_public_key(&slot_two_pub_key).unwrap())
+                .position(|&addr| addr == Address::from_public_key(&slot_two_pub_key))
                 .unwrap() as u32;
             let content = EndorsementContent {
                 sender_public_key: slot_two_pub_key,
@@ -163,7 +175,7 @@ async fn test_reward_split() {
             // Creator of first block endorses the first.
             let index = slot_one_endorsements_addrs
                 .iter()
-                .position(|&addr| addr == Address::from_public_key(&slot_one_pub_key).unwrap())
+                .position(|&addr| addr == Address::from_public_key(&slot_one_pub_key))
                 .unwrap() as u32;
             let content = EndorsementContent {
                 sender_public_key: slot_one_pub_key,
@@ -181,7 +193,7 @@ async fn test_reward_split() {
             // Creator of second block endorses the first, again.
             let index = slot_one_endorsements_addrs
                 .iter()
-                .position(|&addr| addr == Address::from_public_key(&slot_two_pub_key).unwrap())
+                .position(|&addr| addr == Address::from_public_key(&slot_two_pub_key))
                 .unwrap() as u32;
             let content = EndorsementContent {
                 sender_public_key: slot_two_pub_key,

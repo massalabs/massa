@@ -3,6 +3,7 @@
 use directories::ProjectDirs;
 use massa_bootstrap::settings::BootstrapSettings;
 use massa_consensus::ConsensusSettings;
+use massa_execution::ExecutionSettings;
 use massa_models::api::APISettings;
 use massa_models::Version;
 use massa_network::NetworkSettings;
@@ -43,4 +44,5 @@ pub struct Settings {
     pub api: APISettings,
     pub bootstrap: BootstrapSettings,
     pub pool: PoolSettings,
+    pub execution: ExecutionSettings,
 }

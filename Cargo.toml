@@ -4,6 +4,7 @@ members = [
   "massa-bootstrap",
   "massa-client",
   "massa-consensus",
+  "massa-execution",
   "massa-hash",
   "massa-logging",
   "massa-models",

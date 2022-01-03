@@ -2,6 +2,7 @@
 
 use displaydoc::Display;
 use massa_consensus::ConsensusError;
+use massa_execution::ExecutionError;
 use massa_hash::MassaHashError;
 use massa_models::ModelsError;
 use massa_network::NetworkError;
@@ -20,6 +21,8 @@ pub enum ApiError {
     SendChannelError(String),
     /// receive channel error: {0}
     ReceiveChannelError(String),
+    /// execution error: {0}
+    MassaExecutionError(#[from] ExecutionError),
     /// massa_hash error: {0}
     MassaHashError(#[from] MassaHashError),
     /// consensus error: {0}
