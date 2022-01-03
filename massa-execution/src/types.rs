@@ -1,4 +1,5 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
+use crate::BootstrapExecutionState;
 use massa_models::address::AddressHashSet;
 use massa_models::execution::ExecuteReadOnlyResponse;
 /// Define types used while executing block bytecodes
@@ -36,6 +37,7 @@ pub(crate) struct ExecutionContext {
     pub opt_block_creator_addr: Option<Address>,
     pub call_stack: VecDeque<Address>,
     pub owned_addresses: AddressHashSet,
+    pub read_only: bool,
 }
 
 #[derive(Clone)]
@@ -67,6 +69,7 @@ impl ExecutionContext {
             call_stack: Default::default(),
             owned_addresses: Default::default(),
             created_addr_index: Default::default(),
+            read_only: Default::default(),
         }
     }
 }
@@ -107,7 +110,12 @@ pub(crate) enum ExecutionRequest {
         /// which will simulate the sender of the operation.
         address: Option<Address>,
     },
+    /// Reset to latest final state
     ResetToFinalState,
+    /// Get bootstrap state
+    GetBootstrapState {
+        response_tx: oneshot::Sender<BootstrapExecutionState>,
+    },
     /// Shutdown state, set by the worker to signal shutdown to the VM thread.
     Shutdown,
 }
