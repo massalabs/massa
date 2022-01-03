@@ -762,7 +762,7 @@ mod tests {
         let private_key = generate_random_private_key();
         let public_key = derive_public_key(&private_key);
         let message = "Hello World!".as_bytes();
-        let hash = Hash::from(message);
+        let hash = Hash::compute_from(message);
         let signature = sign(&hash, &private_key).unwrap();
         assert!(verify_signature(&hash, &signature, &public_key).is_ok())
     }
@@ -795,7 +795,7 @@ mod tests {
     fn test_serde_signature() {
         let private_key = generate_random_private_key();
         let message = "Hello World!".as_bytes();
-        let hash = Hash::from(message);
+        let hash = Hash::compute_from(message);
         let signature = sign(&hash, &private_key).unwrap();
         let serialized =
             serde_json::to_string(&signature).expect("could not serialize signature key");

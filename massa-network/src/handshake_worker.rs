@@ -71,7 +71,7 @@ impl HandshakeWorker {
         // generate random bytes
         let mut self_random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
-        let self_random_hash = Hash::from(&self_random_bytes);
+        let self_random_hash = Hash::compute_from(&self_random_bytes);
         // send handshake init future
         let send_init_msg = Message::HandshakeInitiation {
             public_key: self.self_node_id.0,
@@ -130,7 +130,7 @@ impl HandshakeWorker {
         }
 
         // sign their random bytes
-        let other_random_hash = Hash::from(&other_random_bytes);
+        let other_random_hash = Hash::compute_from(&other_random_bytes);
         let self_signature = sign(&other_random_hash, &self.private_key)?;
 
         // send handshake reply future

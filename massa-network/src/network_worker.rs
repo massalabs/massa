@@ -878,7 +878,7 @@ impl NetworkWorker {
                     "network_worker.manage_network_command receive NetworkCommand::NodeSignMessage",
                     { "mdg": msg }
                 );
-                let signature = sign(&Hash::from(&msg), &self.private_key)?;
+                let signature = sign(&Hash::compute_from(&msg), &self.private_key)?;
                 let public_key = derive_public_key(&self.private_key);
                 if response_tx
                     .send(PubkeySig {

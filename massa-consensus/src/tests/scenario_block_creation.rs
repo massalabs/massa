@@ -796,7 +796,7 @@ async fn test_block_filling() {
                     creator: block.header.content.creator,
                     slot: block.header.content.slot,
                     parents: block.header.content.parents.clone(),
-                    operation_merkle_root: Hash::from(&Vec::new()[..]),
+                    operation_merkle_root: Hash::compute_from(&Vec::new()[..]),
                     endorsements: eds.iter().map(|(_e_id, endo)| endo.clone()).collect(),
                 },
             )

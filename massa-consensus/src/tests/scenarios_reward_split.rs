@@ -153,7 +153,7 @@ async fn test_reward_split() {
                 index,
                 endorsed_block: b1_id,
             };
-            let hash = Hash::from(&content.to_bytes_compact().unwrap());
+            let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
             let signature = sign(&hash, &slot_two_priv_key).unwrap();
             let ed_1 = Endorsement {
                 content: content.clone(),
@@ -171,7 +171,7 @@ async fn test_reward_split() {
                 index,
                 endorsed_block: b1_id,
             };
-            let hash = Hash::from(&content.to_bytes_compact().unwrap());
+            let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
             let signature = sign(&hash, &slot_one_priv_key).unwrap();
             let ed_2 = Endorsement {
                 content: content.clone(),
@@ -189,7 +189,7 @@ async fn test_reward_split() {
                 index,
                 endorsed_block: b1_id,
             };
-            let hash = Hash::from(&content.to_bytes_compact().unwrap());
+            let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
             let signature = sign(&hash, &slot_two_priv_key).unwrap();
             let ed_3 = Endorsement {
                 content: content.clone(),

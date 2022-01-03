@@ -662,7 +662,7 @@ impl ProofOfStake {
         let mut cur_seed = cfg.initial_draw_seed.as_bytes().to_vec();
         let mut initial_seeds = Vec::with_capacity((cfg.pos_lookback_cycles + 1) as usize);
         for _ in 0..(cfg.pos_lookback_cycles + 1) {
-            cur_seed = Hash::from(&cur_seed).to_bytes().to_vec();
+            cur_seed = Hash::compute_from(&cur_seed).to_bytes().to_vec();
             initial_seeds.push(cur_seed.clone());
         }
         initial_seeds
@@ -754,7 +754,9 @@ impl ProofOfStake {
                 }
             }
             // compute the RNG seed from the seed bits
-            let rng_seed = Hash::from(&rng_seed_bits.into_vec()).to_bytes().to_vec();
+            let rng_seed = Hash::compute_from(&rng_seed_bits.into_vec())
+                .to_bytes()
+                .to_vec();
 
             (cum_sum, rng_seed)
         } else {

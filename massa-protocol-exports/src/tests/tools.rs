@@ -55,10 +55,10 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
             creator: *public_key,
             slot: Slot::new(1, 0),
             parents: vec![
-                BlockId(Hash::from("Genesis 0".as_bytes())),
-                BlockId(Hash::from("Genesis 1".as_bytes())),
+                BlockId(Hash::compute_from("Genesis 0".as_bytes())),
+                BlockId(Hash::compute_from("Genesis 1".as_bytes())),
             ],
-            operation_merkle_root: Hash::from(&Vec::new()),
+            operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
         },
     )
@@ -76,7 +76,7 @@ pub fn create_block_with_operations(
     slot: Slot,
     operations: Vec<Operation>,
 ) -> Block {
-    let operation_merkle_root = Hash::from(
+    let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
             [acc, v.get_operation_id().unwrap().to_bytes().to_vec()].concat()
         })[..],
@@ -87,8 +87,8 @@ pub fn create_block_with_operations(
             creator: *public_key,
             slot,
             parents: vec![
-                BlockId(Hash::from("Genesis 0".as_bytes())),
-                BlockId(Hash::from("Genesis 1".as_bytes())),
+                BlockId(Hash::compute_from("Genesis 0".as_bytes())),
+                BlockId(Hash::compute_from("Genesis 1".as_bytes())),
             ],
             operation_merkle_root,
             endorsements: Vec::new(),
@@ -111,10 +111,10 @@ pub fn create_block_with_endorsements(
             creator: *public_key,
             slot,
             parents: vec![
-                BlockId(Hash::from("Genesis 0".as_bytes())),
-                BlockId(Hash::from("Genesis 1".as_bytes())),
+                BlockId(Hash::compute_from("Genesis 0".as_bytes())),
+                BlockId(Hash::compute_from("Genesis 1".as_bytes())),
             ],
-            operation_merkle_root: Hash::from(&Vec::new()),
+            operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements,
         },
     )
@@ -169,9 +169,9 @@ pub fn create_endorsement() -> Endorsement {
         sender_public_key,
         slot: Slot::new(10, 1),
         index: 0,
-        endorsed_block: BlockId(Hash::from(&[])),
+        endorsed_block: BlockId(Hash::compute_from(&[])),
     };
-    let hash = Hash::from(&content.to_bytes_compact().unwrap());
+    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
     let signature = sign(&hash, &sender_priv).unwrap();
     Endorsement { content, signature }
 }
@@ -196,7 +196,7 @@ pub fn create_operation_with_expire_period(
         sender_public_key: sender_pub,
         expire_period,
     };
-    let hash = Hash::from(&content.to_bytes_compact().unwrap());
+    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
     let signature = sign(&hash, sender_priv).unwrap();
 
     Operation { content, signature }

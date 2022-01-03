@@ -86,14 +86,14 @@ impl Display for Endorsement {
 
 impl EndorsementContent {
     pub fn compute_hash(&self) -> Result<Hash, ModelsError> {
-        Ok(Hash::from(&self.to_bytes_compact()?))
+        Ok(Hash::compute_from(&self.to_bytes_compact()?))
     }
 }
 
 impl Endorsement {
     /// Verify the signature and integrity of the endorsement and computes ID
     pub fn verify_signature(&self) -> Result<(), ModelsError> {
-        let content_hash = Hash::from(&self.content.to_bytes_compact()?);
+        let content_hash = Hash::compute_from(&self.content.to_bytes_compact()?);
         verify_signature(
             &content_hash,
             &self.signature,
@@ -114,7 +114,7 @@ impl Endorsement {
     }
 
     pub fn compute_endorsement_id(&self) -> Result<EndorsementId, ModelsError> {
-        Ok(EndorsementId(Hash::from(&self.to_bytes_compact()?)))
+        Ok(EndorsementId(Hash::compute_from(&self.to_bytes_compact()?)))
     }
 }
 
@@ -272,9 +272,9 @@ mod tests {
             sender_public_key,
             slot: Slot::new(10, 1),
             index: 0,
-            endorsed_block: BlockId(Hash::from("blk".as_bytes())),
+            endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
-        let hash = Hash::from(&content.to_bytes_compact().unwrap());
+        let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
         let signature = sign(&hash, &sender_priv).unwrap();
         let endorsement = Endorsement {
             content: content.clone(),
