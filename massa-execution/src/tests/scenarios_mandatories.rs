@@ -61,15 +61,15 @@ fn get_sample_ledger() -> SCELedger {
                     opt_module: None,
                     data: vec![
                         (
-                            massa_hash::hash::Hash::from("key_testA".as_bytes()),
+                            massa_hash::hash::Hash::compute_from("key_testA".as_bytes()),
                             "test1_data".into(),
                         ),
                         (
-                            massa_hash::hash::Hash::from("key_testB".as_bytes()),
+                            massa_hash::hash::Hash::compute_from("key_testB".as_bytes()),
                             "test2_data".into(),
                         ),
                         (
-                            massa_hash::hash::Hash::from("key_testC".as_bytes()),
+                            massa_hash::hash::Hash::compute_from("key_testC".as_bytes()),
                             "test3_data".into(),
                         ),
                     ]
@@ -84,11 +84,11 @@ fn get_sample_ledger() -> SCELedger {
                     opt_module: Some("bytecodebytecode".into()),
                     data: vec![
                         (
-                            massa_hash::hash::Hash::from("key_testD".as_bytes()),
+                            massa_hash::hash::Hash::compute_from("key_testD".as_bytes()),
                             "test4_data".into(),
                         ),
                         (
-                            massa_hash::hash::Hash::from("key_testE".as_bytes()),
+                            massa_hash::hash::Hash::compute_from("key_testE".as_bytes()),
                             "test5_data".into(),
                         ),
                     ]

@@ -70,7 +70,7 @@ impl Interface for InterfaceImpl {
         } else {
             data.push(1u8);
         }
-        let address = Address(massa_hash::hash::Hash::from(&data));
+        let address = Address(massa_hash::hash::Hash::compute_from(&data));
         let res = address.to_bs58_check();
         context.ledger_step.set_module(address, module.clone());
         context.owned_addresses.insert(address);
