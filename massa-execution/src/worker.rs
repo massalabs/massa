@@ -43,6 +43,7 @@ pub enum ExecutionCommand {
     GetSCOutputEventBySCAddress {
         sc_address: Address,
         response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
+    },
 
     /// Execute bytecode in read-only mode
     ExecuteReadOnlyRequest {

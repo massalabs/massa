@@ -5,7 +5,9 @@ use crate::worker::{
 };
 use crate::BootstrapExecutionState;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::{execution::ExecuteReadOnlyResponse, Address, Amount, Block, BlockHashMap, Slot};
+use massa_models::{
+    execution::ExecuteReadOnlyResponse, Address, Amount, Block, BlockHashMap, Slot,
+};
 use massa_time::MassaTime;
 use std::collections::VecDeque;
 use tokio::sync::{mpsc, oneshot};
@@ -198,6 +200,8 @@ impl ExecutionCommandSender {
             ExecutionError::ChannelError(
                 "could not send GetSCOutputEventBySCAddress upstream".into(),
             )
+        })?)
+    }
 
     /// Execute code in read-only mode.
     pub async fn execute_read_only_request(
