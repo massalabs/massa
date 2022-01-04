@@ -155,4 +155,8 @@ impl Interface for InterfaceImpl {
             .map(|addr| addr.to_bs58_check())
             .collect())
     }
+
+    fn generate_event(&self, event: String) -> Result<()> {
+        unimplemented!()
+    }
 }
