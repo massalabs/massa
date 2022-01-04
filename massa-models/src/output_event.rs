@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{Address, BlockId, DeserializeCompact, SerializeCompact, Slot};
@@ -5,27 +7,27 @@ use crate::{Address, BlockId, DeserializeCompact, SerializeCompact, Slot};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// By product of a byte code execution
 pub struct SCOutputEvent {
-    context: ExecutionContext,
+    pub context: EventExecutionContext,
     /// json data string
-    data: String,
+    pub data: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExecutionContext {
-    slot: Slot,
-    bytes_address: Address,
-    caller_address: Address,
-    block: Option<BlockId>,
-    // todo I don't know how to represent the call stack
+pub struct EventExecutionContext {
+    pub slot: Slot,
+    pub bytes_address: Address,
+    pub caller_address: Address,
+    pub block: Option<BlockId>,
+    pub call_stack: VecDeque<Address>,
 }
 
-impl SerializeCompact for ExecutionContext {
+impl SerializeCompact for EventExecutionContext {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, crate::ModelsError> {
         todo!()
     }
 }
 
-impl DeserializeCompact for ExecutionContext {
+impl DeserializeCompact for EventExecutionContext {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), crate::ModelsError> {
         todo!()
     }

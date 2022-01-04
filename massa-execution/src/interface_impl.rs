@@ -5,7 +5,10 @@ use std::str::FromStr;
 use crate::types::ExecutionContext;
 use anyhow::{bail, Result};
 use assembly_simulator::{Bytecode, Interface, InterfaceClone};
-use massa_models::Address;
+use massa_models::{
+    output_event::{EventExecutionContext, SCOutputEvent},
+    Address,
+};
 use std::sync::{Arc, Mutex};
 
 macro_rules! context_guard {
@@ -156,7 +159,21 @@ impl Interface for InterfaceImpl {
             .collect())
     }
 
-    fn generate_event(&self, event: String) -> Result<()> {
-        unimplemented!()
+    fn generate_event(&self, data: String) -> Result<()> {
+        let slot = context_guard!(self).slot;
+        let bytes_address = *context_guard!(self).call_stack.back().unwrap(); // TODO what's an empty stack ?
+        let caller_address = *context_guard!(self).call_stack.front().unwrap();
+        let block = context_guard!(self).opt_block_id;
+        let call_stack = context_guard!(self).call_stack.clone();
+        let context = EventExecutionContext {
+            slot,
+            bytes_address,
+            caller_address,
+            block,
+            call_stack,
+        };
+        let event = SCOutputEvent { context, data };
+        // store the event somewhere
+        Ok(())
     }
 }
