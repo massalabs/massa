@@ -38,7 +38,7 @@ use tempfile::NamedTempFile;
 use tracing::info;
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
-    BlockId(Hash::from(s.as_bytes()))
+    BlockId(Hash::compute_from(s.as_bytes()))
 }
 
 /// return true if another block has been seen
@@ -308,7 +308,7 @@ pub fn create_roll_transaction(
         expire_period,
         op,
     };
-    let hash = Hash::from(&content.to_bytes_compact().unwrap());
+    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
     let signature = sign(&hash, &priv_key).unwrap();
     Operation { content, signature }
 }
@@ -353,7 +353,7 @@ pub fn create_transaction(
         expire_period,
         op,
     };
-    let hash = Hash::from(&content.to_bytes_compact().unwrap());
+    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
     let signature = sign(&hash, &priv_key).unwrap();
     Operation { content, signature }
 }
@@ -372,7 +372,7 @@ pub fn create_roll_buy(
         expire_period,
         op,
     };
-    let hash = Hash::from(&content.to_bytes_compact().unwrap());
+    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
     let signature = sign(&hash, &priv_key).unwrap();
     Operation { content, signature }
 }
@@ -391,7 +391,7 @@ pub fn create_roll_sell(
         expire_period,
         op,
     };
-    let hash = Hash::from(&content.to_bytes_compact().unwrap());
+    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
     let signature = sign(&hash, &priv_key).unwrap();
     Operation { content, signature }
 }
@@ -405,7 +405,7 @@ pub fn create_block(
 ) -> (BlockId, Block, PrivateKey) {
     create_block_with_merkle_root(
         cfg,
-        Hash::from("default_val".as_bytes()),
+        Hash::compute_from("default_val".as_bytes()),
         slot,
         best_parents,
         creator,
@@ -456,7 +456,7 @@ pub fn create_endorsement(
         index,
         endorsed_block,
     };
-    let hash = Hash::from(&content.to_bytes_compact().unwrap());
+    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
     let signature = sign(&hash, &sender_priv).unwrap();
     Endorsement { content, signature }
 }
@@ -472,7 +472,7 @@ pub fn get_export_active_test_block(
         header: BlockHeader {
             content: BlockHeaderContent{
                 creator,
-                operation_merkle_root: Hash::from(&operations.iter().flat_map(|op|{
+                operation_merkle_root: Hash::compute_from(&operations.iter().flat_map(|op|{
                     op
                         .get_operation_id()
                         .unwrap()
@@ -516,7 +516,7 @@ pub fn create_block_with_operations(
 ) -> (BlockId, Block, PrivateKey) {
     let public_key = derive_public_key(&creator);
 
-    let operation_merkle_root = Hash::from(
+    let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
             [acc, v.to_bytes_compact().unwrap()].concat()
         })[..],

@@ -563,7 +563,7 @@ impl ConsensusWorker {
                 creator: *creator_public_key,
                 slot: cur_slot,
                 parents: parents.iter().map(|(b, _p)| *b).collect(),
-                operation_merkle_root: Hash::from(&Vec::new()[..]),
+                operation_merkle_root: Hash::compute_from(&Vec::new()[..]),
                 endorsements: endorsements.clone(),
             },
         )?;
@@ -698,7 +698,7 @@ impl ConsensusWorker {
                 creator: *creator_public_key,
                 slot: cur_slot,
                 parents: parents.iter().map(|(b, _p)| *b).collect(),
-                operation_merkle_root: Hash::from(&total_hash),
+                operation_merkle_root: Hash::compute_from(&total_hash),
                 endorsements,
             },
         )?;

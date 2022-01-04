@@ -84,7 +84,7 @@ async fn test_ti() {
             // Create other clique bock T0S2
             let (fork_block_hash, block, _) = tools::create_block_with_merkle_root(
                 &cfg,
-                Hash::from("Other hash!".as_bytes()),
+                Hash::compute_from("Other hash!".as_bytes()),
                 Slot::new(2, 0),
                 genesis_hashes.clone(),
                 staking_keys[0],

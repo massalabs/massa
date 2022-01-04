@@ -1044,9 +1044,9 @@ async fn test_endorsements_messages() {
                 sender_public_key,
                 slot: Slot::new(10, 1),
                 index: 0,
-                endorsed_block: BlockId(Hash::from(&[])),
+                endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let hash = Hash::from(&content.to_bytes_compact().unwrap());
+            let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
             let signature = sign(&hash, &sender_priv).unwrap();
             let endorsement = Endorsement {
                 content: content.clone(),
@@ -1084,9 +1084,9 @@ async fn test_endorsements_messages() {
                 sender_public_key,
                 slot: Slot::new(11, 1),
                 index: 0,
-                endorsed_block: BlockId(Hash::from(&[])),
+                endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let hash = Hash::from(&content.to_bytes_compact().unwrap());
+            let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
             let signature = massa_signature::sign(&hash, &sender_priv).unwrap();
             let endorsement = Endorsement {
                 content: content.clone(),
