@@ -17,6 +17,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::net::IpAddr;
+use std::path::PathBuf;
 use std::process;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
@@ -151,6 +152,17 @@ pub enum Command {
         message = "send coins from a wallet address"
     )]
     send_transaction,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(
+            args = "SenderAddress PathToBytecode MaxGas GasPrice Coins Fee",
+            todo = "[unstable] "
+        ),
+        message = "create and send an operation containing byte code"
+    )]
+    send_smart_contract,
+
     #[strum(
         ascii_case_insensitive,
         message = "show time remaining to end of current episode"
@@ -233,7 +245,7 @@ impl Command {
                 style("no args").color256(8).italic() // grey
             },
             if self.get_str("todo").is_some() {
-                style("[not yet implemented] ").red()
+                style(self.get_str("todo").unwrap_or("[not yet implemented] ")).red()
             } else {
                 style("")
             },
@@ -342,7 +354,7 @@ impl Command {
 
             Command::node_testnet_rewards_program_ownership_proof => {
                 if parameters.len() != 2 {
-                    bail!("wrong param numbers");
+                    bail!("wrong number of parameters");
                 }
                 // parse
                 let addr = parameters[0].parse::<Address>()?;
@@ -475,7 +487,7 @@ impl Command {
 
             Command::buy_rolls => {
                 if parameters.len() != 3 {
-                    bail!("wrong param numbers");
+                    bail!("wrong number of parameters");
                 }
                 let addr = parameters[0].parse::<Address>()?;
                 let roll_count = parameters[1].parse::<u64>()?;
@@ -505,7 +517,7 @@ impl Command {
                             }
                         }
                         None => {
-                            println!("WARNING: The total amount hit the limit overflow, operation will certainly be rejected");
+                            println!("WARNING: the total amount hit the limit overflow, operation will certainly be rejected");
                         }
                     }
                 }
@@ -522,7 +534,7 @@ impl Command {
 
             Command::sell_rolls => {
                 if parameters.len() != 3 {
-                    bail!("wrong param numbers");
+                    bail!("wrong number of parameters");
                 }
                 let addr = parameters[0].parse::<Address>()?;
                 let roll_count = parameters[1].parse::<u64>()?;
@@ -556,7 +568,7 @@ impl Command {
 
             Command::send_transaction => {
                 if parameters.len() != 4 {
-                    bail!("wrong param numbers");
+                    bail!("wrong number of parameters");
                 }
                 let addr = parameters[0].parse::<Address>()?;
                 let recipient_address = parameters[1].parse::<Address>()?;
@@ -580,7 +592,7 @@ impl Command {
                             }
                         }
                         None => {
-                            println!("WARNING: The total amount hit the limit overflow, operation will certainly be rejected");
+                            println!("WARNING: the total amount hit the limit overflow, operation will certainly be rejected");
                         }
                     }
                 }
@@ -612,6 +624,59 @@ impl Command {
                     println!("{}", res);
                 }
                 Ok(Box::new(()))
+            }
+            Command::send_smart_contract => {
+                if parameters.len() != 6 {
+                    bail!("wrong number of parameters");
+                }
+                let addr = parameters[0].parse::<Address>()?;
+                let path = parameters[1].parse::<PathBuf>()?;
+                let max_gas = parameters[2].parse::<u64>()?;
+                let gas_price = parameters[3].parse::<Amount>()?;
+                let coins = parameters[4].parse::<Amount>()?;
+                let fee = parameters[5].parse::<Amount>()?;
+
+                if !json {
+                    match gas_price
+                        .checked_mul_u64(max_gas)
+                        .and_then(|x| x.checked_add(coins))
+                        .and_then(|x| x.checked_add(fee))
+                    {
+                        Some(total) => {
+                            if let Ok(addresses_info) =
+                                client.public.get_addresses(vec![addr]).await
+                            {
+                                match addresses_info.get(0) {
+                                    Some(info) => {
+                                        if info.ledger_info.candidate_ledger_info.balance < total {
+                                            println!("WARNING: this operation may be rejected due to insuffisant balance");
+                                        }
+                                    }
+                                    None => println!("WARNING: address {} not found", addr),
+                                }
+                            }
+                        }
+                        None => {
+                            println!("WARNING: the total amount hit the limit overflow, operation will certainly be rejected");
+                        }
+                    }
+                };
+                let data = get_file_as_byte_vec(&path).await?;
+
+                send_operation(
+                    client,
+                    wallet,
+                    OperationType::ExecuteSC {
+                        data,
+                        max_gas,
+                        coins,
+                        gas_price,
+                    },
+                    fee,
+                    addr,
+                    json,
+                )
+                .await
             }
         }
     }
@@ -666,4 +731,8 @@ async fn send_operation(
 // TODO: ugly utilities functions
 pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, T::Err> {
     args.iter().map(|x| x.parse::<T>()).collect()
+}
+
+async fn get_file_as_byte_vec(filename: &PathBuf) -> Result<Vec<u8>> {
+    Ok(tokio::fs::read(filename).await?)
 }

@@ -376,7 +376,7 @@ impl Operation {
     }
 
     pub fn verify_signature(&self) -> Result<(), ModelsError> {
-        let content_hash = Hash::from(&self.content.to_bytes_compact()?);
+        let content_hash = Hash::compute_from(&self.content.to_bytes_compact()?);
         verify_signature(
             &content_hash,
             &self.signature,
@@ -386,7 +386,7 @@ impl Operation {
     }
 
     pub fn get_operation_id(&self) -> Result<OperationId, ModelsError> {
-        Ok(OperationId(Hash::from(&self.to_bytes_compact()?)))
+        Ok(OperationId(Hash::compute_from(&self.to_bytes_compact()?)))
     }
 
     pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
@@ -501,7 +501,7 @@ mod tests {
         let (res_content, _) = OperationContent::from_bytes_compact(&ser_content).unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
 
-        let hash = Hash::from(&content.to_bytes_compact().unwrap());
+        let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
         let signature = sign(&hash, &sender_priv).unwrap();
 
         let op = Operation { content, signature };

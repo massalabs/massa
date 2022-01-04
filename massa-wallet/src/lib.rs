@@ -45,7 +45,7 @@ impl Wallet {
 
     pub fn sign_message(&self, address: Address, msg: Vec<u8>) -> Option<PubkeySig> {
         if let Some((public_key, key)) = self.keys.get(&address) {
-            if let Ok(signature) = sign(&Hash::from(&msg), key) {
+            if let Ok(signature) = sign(&Hash::compute_from(&msg), key) {
                 Some(PubkeySig {
                     public_key: *public_key,
                     signature,
@@ -116,7 +116,7 @@ impl Wallet {
         content: OperationContent,
         address: Address,
     ) -> Result<Operation, WalletError> {
-        let hash = Hash::from(&content.to_bytes_compact()?);
+        let hash = Hash::compute_from(&content.to_bytes_compact()?);
         let sender_priv = self
             .find_associated_private_key(address)
             .ok_or(WalletError::MissingKeyError(address))?;

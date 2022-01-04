@@ -42,6 +42,7 @@ mod composite;
 mod context;
 mod endorsement;
 pub mod error;
+pub mod execution;
 pub mod hhasher;
 pub mod ledger;
 pub mod massa_hash;

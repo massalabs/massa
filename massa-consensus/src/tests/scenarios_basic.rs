@@ -214,7 +214,8 @@ async fn test_double_staking_does_not_propagate() {
             let (_, mut block_1) = block_factory.create_and_receive_block(true).await;
 
             // Same creator, same slot, different block
-            block_1.header.content.operation_merkle_root = Hash::from("hello world".as_bytes());
+            block_1.header.content.operation_merkle_root =
+                Hash::compute_from("hello world".as_bytes());
             let block = block_factory.sign_header(block_1.header.content);
 
             // Note: currently does propagate, see #190.

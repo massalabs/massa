@@ -118,7 +118,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 let op = create_operation_with_expire_period(&private_key, 5);
 
                 let block = {
-                    let operation_merkle_root = Hash::from("merkle root".as_bytes());
+                    let operation_merkle_root = Hash::compute_from("merkle root".as_bytes());
 
                     let (_, header) = BlockHeader::new_signed(
                         &creator_node.private_key,

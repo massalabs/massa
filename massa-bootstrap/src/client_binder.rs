@@ -46,7 +46,7 @@ impl BootstrapClientBinder {
             let mut random_bytes = [0u8; BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
             StdRng::from_entropy().fill_bytes(&mut random_bytes);
             self.duplex.write_all(&random_bytes).await?;
-            let rand_hash = Hash::from(&random_bytes);
+            let rand_hash = Hash::compute_from(&random_bytes);
             self.duplex.write_all(&rand_hash.to_bytes()).await?;
             rand_hash
         };
@@ -90,7 +90,7 @@ impl BootstrapClientBinder {
             self.duplex
                 .read_exact(&mut sig_msg_bytes[SIGNATURE_SIZE_BYTES..])
                 .await?;
-            let msg_hash = Hash::from(&sig_msg_bytes);
+            let msg_hash = Hash::compute_from(&sig_msg_bytes);
             verify_signature(&msg_hash, &sig, &self.remote_pubkey)?;
             let (msg, _len) =
                 BootstrapMessage::from_bytes_compact(&sig_msg_bytes[SIGNATURE_SIZE_BYTES..])?;

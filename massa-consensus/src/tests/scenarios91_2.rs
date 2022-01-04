@@ -353,7 +353,7 @@ async fn test_double_staking() {
             }
 
             // same creator same slot, different block
-            let operation_merkle_root = Hash::from("42".as_bytes());
+            let operation_merkle_root = Hash::compute_from("42".as_bytes());
             let (hash_1, block_1, _key) = tools::create_block_with_merkle_root(
                 &cfg,
                 operation_merkle_root,
@@ -364,7 +364,7 @@ async fn test_double_staking() {
             tools::propagate_block(&mut protocol_controller, block_1, true, 150).await;
 
             let operation_merkle_root =
-                Hash::from("so long and thanks for all the fish".as_bytes());
+                Hash::compute_from("so long and thanks for all the fish".as_bytes());
             let (hash_2, block_2, _key) = tools::create_block_with_merkle_root(
                 &cfg,
                 operation_merkle_root,

@@ -31,7 +31,7 @@ use tokio::{sync::mpsc::Receiver, time::sleep};
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
-    BlockId(Hash::from(s.as_bytes()))
+    BlockId(Hash::compute_from(s.as_bytes()))
 }
 
 pub fn get_random_public_key() -> PublicKey {
@@ -47,7 +47,7 @@ pub fn get_random_address() -> Address {
 
 pub fn get_dummy_signature(s: &str) -> Signature {
     let priv_key = generate_random_private_key();
-    sign(&Hash::from(s.as_bytes()), &priv_key).unwrap()
+    sign(&Hash::compute_from(s.as_bytes()), &priv_key).unwrap()
 }
 
 pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSettings {
@@ -444,7 +444,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                     creator: get_random_public_key(),
                     slot: Slot::new(1, 1),
                     parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
-                    operation_merkle_root: Hash::from("op_hash".as_bytes()),
+                    operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
                     endorsements: vec![
                         Endorsement {
                             content: EndorsementContent {

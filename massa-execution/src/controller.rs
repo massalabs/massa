@@ -1,11 +1,11 @@
-use crate::config::{ExecutionSettings, CHANNEL_SIZE};
+use crate::config::{ExecutionConfigs, CHANNEL_SIZE};
 use crate::error::ExecutionError;
 use crate::worker::{
     ExecutionCommand, ExecutionEvent, ExecutionManagementCommand, ExecutionWorker,
 };
 use crate::BootstrapExecutionState;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::{Address, Block, BlockHashMap, Slot};
+use massa_models::{execution::ExecuteReadOnlyResponse, Address, Amount, Block, BlockHashMap, Slot};
 use massa_time::MassaTime;
 use std::collections::VecDeque;
 use tokio::sync::{mpsc, oneshot};
@@ -64,11 +64,7 @@ impl ExecutionManager {
 /// TODO: add a consensus command sender,
 /// to be able to send the `TransferToConsensus` message.
 pub async fn start_controller(
-    cfg: ExecutionSettings,
-    thread_count: u8,
-    genesis_timestamp: MassaTime,
-    t0: MassaTime,
-    clock_compensation: i64,
+    cfg: ExecutionConfigs,
     bootstrap_state: Option<BootstrapExecutionState>,
 ) -> Result<
     (
@@ -83,17 +79,7 @@ pub async fn start_controller(
 
     // Unbounded, as execution is limited per metering already.
     let (event_tx, event_rx) = mpsc::unbounded_channel::<ExecutionEvent>();
-    let worker = ExecutionWorker::new(
-        cfg,
-        thread_count,
-        genesis_timestamp,
-        t0,
-        clock_compensation,
-        event_tx,
-        command_rx,
-        manager_rx,
-        bootstrap_state,
-    )?;
+    let worker = ExecutionWorker::new(cfg, event_tx, command_rx, manager_rx, bootstrap_state)?;
     let join_handle = tokio::spawn(async move {
         match worker.run_loop().await {
             Err(err) => Err(err),
@@ -212,6 +198,30 @@ impl ExecutionCommandSender {
             ExecutionError::ChannelError(
                 "could not send GetSCOutputEventBySCAddress upstream".into(),
             )
+
+    /// Execute code in read-only mode.
+    pub async fn execute_read_only_request(
+        &self,
+        max_gas: u64,
+        simulated_gas_price: Amount,
+        bytecode: Vec<u8>,
+        address: Option<Address>,
+    ) -> Result<ExecuteReadOnlyResponse, ExecutionError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(ExecutionCommand::ExecuteReadOnlyRequest {
+                max_gas,
+                simulated_gas_price,
+                bytecode,
+                result_sender: response_tx,
+                address,
+            })
+            .await
+            .map_err(|_| {
+                ExecutionError::ChannelError("could not send ExecuteReadOnlyRequest command".into())
+            })?;
+        Ok(response_rx.await.map_err(|_| {
+            ExecutionError::ChannelError("could not send ExecuteReadOnlyResponse upstream".into())
         })?)
     }
 }
