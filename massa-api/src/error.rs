@@ -21,8 +21,6 @@ pub enum ApiError {
     SendChannelError(String),
     /// receive channel error: {0}
     ReceiveChannelError(String),
-    /// execution error: {0}
-    MassaExecutionError(#[from] ExecutionError),
     /// massa_hash error: {0}
     MassaHashError(#[from] MassaHashError),
     /// consensus error: {0}
