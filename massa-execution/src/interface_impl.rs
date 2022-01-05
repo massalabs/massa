@@ -5,7 +5,7 @@ use std::str::FromStr;
 use crate::types::ExecutionContext;
 use anyhow::{bail, Result};
 use assembly_simulator::{Bytecode, Interface, InterfaceClone};
-use massa_models::Address;
+use massa_models::{Address, Amount};
 use std::sync::{Arc, Mutex};
 
 macro_rules! context_guard {
@@ -137,7 +137,7 @@ impl Interface for InterfaceImpl {
     /// Transfer coins from the current address to a target address
     /// to_address: target address
     /// raw_amount: amount to transfer (in raw u64)
-    fn transfer_coins(&self, to_address: &str, raw_amount: u64) -> Result<()> {
+    fn transfer_coins(&self, to_address: &String, raw_amount: u64) -> Result<()> {
         let to_address = Address::from_str(to_address)?;
         let mut context = context_guard!(self);
         let from_address = match context.call_stack.back() {
@@ -159,7 +159,7 @@ impl Interface for InterfaceImpl {
                 .ledger_step
                 .set_balance_delta(from_address, amount, true)
                 .expect("credit failed after same-amount debit succeeded");
-            return Err(err);
+            bail!("Error crediting destination balance: {}", err);
         }
         Ok(())
     }
@@ -170,8 +170,8 @@ impl Interface for InterfaceImpl {
     /// raw_amount: amount to transfer (in raw u64)
     fn transfer_coins_for(
         &self,
-        from_address: &str,
-        to_address: &str,
+        from_address: &String,
+        to_address: &String,
         raw_amount: u64,
     ) -> Result<()> {
         let from_address = Address::from_str(from_address)?;
@@ -199,7 +199,7 @@ impl Interface for InterfaceImpl {
                 .ledger_step
                 .set_balance_delta(from_address, amount, true)
                 .expect("credit failed after same-amount debit succeeded");
-            return Err(err);
+            bail!("Error crediting destination balance: {}", err);
         }
         Ok(())
     }

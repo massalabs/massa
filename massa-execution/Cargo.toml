@@ -17,7 +17,7 @@ serde_json = "1.0"
 thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
 tracing = "0.1"
-assembly_simulator = { git = "https://github.com/massalabs/sc-runtime", tag = "v0.2.3" }
+assembly_simulator = { git = "https://github.com/massalabs/massa-sc-runtime", tag = "v0.2.4" }
 anyhow = "1"
 lazy_static = "1.4.0"
 massa_time = { path = "../massa-time" }
