@@ -4,8 +4,9 @@
 extern crate lazy_static;
 
 pub use address::Address;
-pub use amount::Amount;
+pub use amount::{Amount, AMOUNT_ZERO};
 pub use block::{Block, BlockHashMap, BlockHashSet, BlockHeader, BlockHeaderContent, BlockId};
+
 pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
     StakersCycleProductionStats,
@@ -41,11 +42,13 @@ mod composite;
 mod context;
 mod endorsement;
 pub mod error;
+pub mod execution;
 pub mod hhasher;
 pub mod ledger;
 pub mod massa_hash;
 pub mod node;
 pub mod operation;
+pub mod output_event;
 mod serialization;
 mod settings;
 pub mod slot;

@@ -7,6 +7,8 @@ use serde::de::Unexpected;
 use std::fmt;
 use std::str::FromStr;
 
+pub const AMOUNT_ZERO: Amount = Amount::from_raw(0);
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);
 
@@ -15,7 +17,7 @@ impl Amount {
         self.0
     }
 
-    pub fn from_raw(raw: u64) -> Self {
+    pub const fn from_raw(raw: u64) -> Self {
         Self(raw)
     }
 
@@ -25,6 +27,10 @@ impl Amount {
 
     pub fn saturating_sub(self, amount: Amount) -> Self {
         Amount(self.0.saturating_sub(amount.0))
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.0 == 0
     }
 
     /// ```
@@ -60,6 +66,17 @@ impl Amount {
     /// ```
     pub fn checked_mul_u64(self, factor: u64) -> Option<Self> {
         self.0.checked_mul(factor).map(Amount)
+    }
+
+    /// ```
+    /// # use massa_models::Amount;
+    /// # use std::str::FromStr;
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let res : Amount = amount_1.saturating_mul_u64(7);
+    /// assert_eq!(res, Amount::from_str("294").unwrap());
+    /// ```
+    pub fn saturating_mul_u64(self, factor: u64) -> Self {
+        Amount(self.0.saturating_mul(factor))
     }
 
     /// ```

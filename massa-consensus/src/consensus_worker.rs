@@ -3,7 +3,12 @@
 use super::{block_graph::*, pos::ProofOfStake, settings::ConsensusConfig};
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
+
+use crate::settings;
 use massa_hash::hash::Hash;
+
+use massa_execution::{ExecutionCommandSender, ExecutionEventReceiver};
+
 use massa_models::api::{EndorsementInfo, LedgerInfo, RollsInfo};
 use massa_models::{address::AddressCycleProductionStats, stats::ConsensusStats};
 use massa_models::{
@@ -18,7 +23,8 @@ use massa_models::{hhasher::BuildHHasher, ledger::LedgerData};
 use massa_models::{
     Address, Block, BlockHashMap, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
     EndorsementContent, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
-    OperationHashSet, OperationSearchResult, SerializeCompact, Slot, StakersCycleProductionStats,
+    OperationHashSet, OperationSearchResult, OperationType, SerializeCompact, Slot,
+    StakersCycleProductionStats,
 };
 use massa_pool::PoolCommandSender;
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver};
@@ -116,6 +122,10 @@ pub struct ConsensusWorker {
     protocol_command_sender: ProtocolCommandSender,
     /// Associated protocol event listener.
     protocol_event_receiver: ProtocolEventReceiver,
+    /// Associated execution event listener.
+    execution_event_receiver: ExecutionEventReceiver,
+    /// Execution command sender.
+    execution_command_sender: ExecutionCommandSender,
     /// Associated Pool command sender.
     pool_command_sender: PoolCommandSender,
     /// Database containing all information about blocks, the blockgraph and cliques.
@@ -165,7 +175,9 @@ impl ConsensusWorker {
         cfg: ConsensusConfig,
         protocol_command_sender: ProtocolCommandSender,
         protocol_event_receiver: ProtocolEventReceiver,
+        execution_event_receiver: ExecutionEventReceiver,
         pool_command_sender: PoolCommandSender,
+        execution_command_sender: ExecutionCommandSender,
         block_db: BlockGraph,
         pos: ProofOfStake,
         controller_command_rx: mpsc::Receiver<ConsensusCommand>,
@@ -213,7 +225,7 @@ impl ConsensusWorker {
 
         // add genesis blocks to stats
         let genesis_public_key = derive_public_key(&cfg.genesis_key);
-        let genesis_addr = Address::from_public_key(&genesis_public_key)?;
+        let genesis_addr = Address::from_public_key(&genesis_public_key);
         let mut final_block_stats = VecDeque::new();
         for thread in 0..cfg.thread_count {
             final_block_stats.push_back((
@@ -233,10 +245,29 @@ impl ConsensusWorker {
             .t0
             .checked_mul(cfg.periods_per_cycle * (cfg.pos_lookback_cycles + 1))?;
 
+        // notify execution module of current blockclique and final blocks
+        // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
+        // because the two modules run concurrently and out of sync
+        execution_command_sender
+            .update_blockclique(
+                block_db.clone_all_final_blocks(),
+                block_db
+                    .get_blockclique()
+                    .into_iter()
+                    .filter_map(|block_id| {
+                        block_db
+                            .get_active_block(&block_id)
+                            .map(|a_block| (block_id, a_block.block.clone()))
+                    })
+                    .collect(),
+            )
+            .await?;
+
         Ok(ConsensusWorker {
             genesis_public_key,
             protocol_command_sender,
             protocol_event_receiver,
+            execution_command_sender,
             block_db,
             controller_command_rx,
             controller_event_tx,
@@ -256,12 +287,15 @@ impl ConsensusWorker {
             cfg,
             launch_time: MassaTime::compensated_now(clock_compensation)?,
             endorsed_slots: HashSet::new(),
+            execution_event_receiver,
         })
     }
 
     /// Consensus work is managed here.
     /// It's mostly a tokio::select within a loop.
-    pub async fn run_loop(mut self) -> Result<ProtocolEventReceiver, ConsensusError> {
+    pub async fn run_loop(
+        mut self,
+    ) -> Result<(ProtocolEventReceiver, ExecutionEventReceiver), ConsensusError> {
         // signal initial state to pool
         if let Some(previous_slot) = self.previous_slot {
             self.pool_command_sender
@@ -349,7 +383,7 @@ impl ConsensusWorker {
             }
         }
         // end loop
-        Ok(self.protocol_event_receiver)
+        Ok((self.protocol_event_receiver, self.execution_event_receiver))
     }
 
     async fn slot_tick(
@@ -591,6 +625,7 @@ impl ConsensusWorker {
             || remaining_operation_count == 0
             || self.cfg.max_operations_fill_attempts == 0;
         let mut attempts = 0;
+        let mut total_gas = 0u64;
         while !finished {
             // get a batch of operations
             let operation_batch = self
@@ -619,6 +654,17 @@ impl ConsensusWorker {
                     continue;
                 }
 
+                // check that we have block gas left
+                let op_gas = if let OperationType::ExecuteSC { max_gas, .. } = &op.content.op {
+                    *max_gas
+                } else {
+                    0
+                };
+                if total_gas.saturating_add(op_gas) > settings::MAX_GAS_PER_BLOCK {
+                    // no more gas left: do not include
+                    continue;
+                }
+
                 // try to apply operation to block state
                 // on failure, the block state is not modified
                 if self
@@ -634,6 +680,7 @@ impl ConsensusWorker {
                 operations.push(op);
                 remaining_block_space -= op_size;
                 remaining_operation_count -= 1;
+                total_gas += op_gas;
                 total_hash.extend(op_id.to_bytes());
 
                 // check if the block still has some space
@@ -797,10 +844,10 @@ impl ConsensusWorker {
                     res.push((
                         cur_slot,
                         if cur_slot.period == 0 {
-                            match Address::from_public_key(&self.genesis_public_key) {
-                                Ok(addr) => (addr, Vec::new()),
-                                Err(err) => break Err(err.into()),
-                            }
+                            (
+                                Address::from_public_key(&self.genesis_public_key),
+                                Vec::new(),
+                            )
                         } else {
                             (
                                 match self.pos.draw_block_producer(cur_slot) {
@@ -909,7 +956,7 @@ impl ConsensusWorker {
             ConsensusCommand::RegisterStakingPrivateKeys(keys) => {
                 for key in keys.into_iter() {
                     let public = derive_public_key(&key);
-                    let address = Address::from_public_key(&public)?;
+                    let address = Address::from_public_key(&public);
                     info!("Staking with address {}", address);
                     self.staking_keys.insert(address, (public, key));
                 }
@@ -1248,8 +1295,34 @@ impl ConsensusWorker {
             });
         }
 
-        // Process new final blocks
+        // get new final blocks
         let new_final_block_ids = self.block_db.get_new_final_blocks();
+
+        // get blockclique
+        let blockclique_set = self.block_db.get_blockclique();
+
+        // notify Execution
+        {
+            let finalized_blocks = new_final_block_ids
+                .iter()
+                .filter_map(|b_id| match self.block_db.get_active_block(b_id) {
+                    Some(b) => Some((*b_id, b.block.clone())),
+                    None => None,
+                })
+                .collect();
+            let blockclique = blockclique_set
+                .iter()
+                .filter_map(|b_id| match self.block_db.get_active_block(b_id) {
+                    Some(b) => Some((*b_id, b.block.clone())),
+                    None => None,
+                })
+                .collect();
+            self.execution_command_sender
+                .update_blockclique(finalized_blocks, blockclique)
+                .await?;
+        }
+
+        // Process new final blocks
         let mut new_final_ops: OperationHashMap<(u64, u8)> = OperationHashMap::default();
         let mut new_final_blocks = BlockHashMap::with_capacity_and_hasher(
             new_final_block_ids.len(),
@@ -1270,7 +1343,7 @@ impl ConsensusWorker {
                 self.final_block_stats.push_back((
                     timestamp,
                     a_block.operation_set.len() as u64,
-                    Address::from_public_key(&a_block.block.header.content.creator)?,
+                    Address::from_public_key(&a_block.block.header.content.creator),
                 ));
             }
         }
@@ -1320,7 +1393,7 @@ impl ConsensusWorker {
         // Produce endorsements
         if !self.cfg.disable_block_creation {
             // iterate on all blockclique blocks
-            for block_id in self.block_db.get_blockclique().into_iter() {
+            for block_id in blockclique_set.into_iter() {
                 let block_slot = match self.block_db.get_active_block(&block_id) {
                     Some(b) => b.block.header.content.slot,
                     None => continue,
@@ -1384,7 +1457,7 @@ impl ConsensusWorker {
         for (b_id, (b_creator, b_slot)) in new_stale_block_ids_creators_slots.into_iter() {
             self.stale_block_stats.push_back(timestamp);
 
-            let creator_addr = Address::from_public_key(&b_creator)?;
+            let creator_addr = Address::from_public_key(&b_creator);
             if self.staking_keys.contains_key(&creator_addr) {
                 warn!("block {} that was produced by our address {} at slot {} became stale. This is probably due to a temporary desynchronization.", b_id, b_slot, creator_addr);
             }

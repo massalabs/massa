@@ -359,7 +359,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
     let recv_pub = derive_public_key(&recv_priv);
 
     let op = OperationType::Transaction {
-        recipient_address: Address::from_public_key(&recv_pub).unwrap(),
+        recipient_address: Address::from_public_key(&recv_pub),
         amount: Amount::default(),
     };
     let content = OperationContent {
@@ -373,7 +373,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
 
     (
         Operation { content, signature },
-        Address::from_public_key(&sender_pub).unwrap().get_thread(2),
+        Address::from_public_key(&sender_pub).get_thread(2),
     )
 }
 

@@ -11,6 +11,9 @@ use massa_consensus::{
     start_consensus_controller, ConsensusCommandSender, ConsensusEvent, ConsensusEventReceiver,
     ConsensusManager,
 };
+
+use massa_execution::{ExecutionConfigs, ExecutionManager};
+
 use massa_logging::massa_trace;
 use massa_models::{init_serialization_context, SerializationContext};
 use massa_network::{start_network_controller, Establisher, NetworkCommandSender, NetworkManager};
@@ -32,6 +35,7 @@ async fn launch() -> (
     NetworkCommandSender,
     Option<BootstrapManager>,
     ConsensusManager,
+    ExecutionManager,
     PoolManager,
     ProtocolManager,
     NetworkManager,
@@ -69,7 +73,7 @@ async fn launch() -> (
     // interrupt signal listener
     let stop_signal = signal::ctrl_c();
     tokio::pin!(stop_signal);
-    let (boot_pos, boot_graph, clock_compensation, initial_peers) = tokio::select! {
+    let bootstrap_state = tokio::select! {
         _ = &mut stop_signal => {
             info!("interrupt signal received in bootstrap loop");
             process::exit(0);
@@ -91,8 +95,8 @@ async fn launch() -> (
         start_network_controller(
             SETTINGS.network.clone(), // TODO: get rid of this clone() ... see #1277
             Establisher::new(),
-            clock_compensation,
-            initial_peers,
+            bootstrap_state.compensation_millis,
+            bootstrap_state.peers,
             *crate::settings::VERSION,
         )
         .await
@@ -107,6 +111,7 @@ async fn launch() -> (
     ) = start_protocol_controller(
         &SETTINGS.protocol,
         massa_consensus::settings::OPERATION_VALIDITY_PERIODS,
+        massa_consensus::settings::MAX_GAS_PER_BLOCK,
         network_command_sender.clone(),
         network_event_receiver,
     )
@@ -124,16 +129,32 @@ async fn launch() -> (
     .await
     .expect("could not start pool controller");
 
+    let execution_config = ExecutionConfigs {
+        settings: SETTINGS.execution.clone(),
+        thread_count: massa_consensus::settings::THREAD_COUNT,
+        genesis_timestamp: *massa_consensus::settings::GENESIS_TIMESTAMP,
+        t0: *massa_consensus::settings::T0,
+        clock_compensation: bootstrap_state.compensation_millis,
+    };
+
+    // launch execution controller
+    let (execution_command_sender, execution_event_receiver, execution_manager) =
+        massa_execution::start_controller(execution_config, bootstrap_state.execution)
+            .await
+            .expect("could not start execution controller");
+
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             SETTINGS.consensus.config(),
+            execution_command_sender.clone(),
+            execution_event_receiver,
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender.clone(),
-            boot_pos,
-            boot_graph,
-            clock_compensation,
+            bootstrap_state.pos,
+            bootstrap_state.graph,
+            bootstrap_state.compensation_millis,
         )
         .await
         .expect("could not start consensus controller");
@@ -142,10 +163,11 @@ async fn launch() -> (
     let bootstrap_manager = start_bootstrap_server(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
+        execution_command_sender.clone(),
         &SETTINGS.bootstrap,
         massa_bootstrap::Establisher::new(),
         private_key,
-        clock_compensation,
+        bootstrap_state.compensation_millis,
         *crate::settings::VERSION,
     )
     .await
@@ -155,6 +177,7 @@ async fn launch() -> (
     let (api_private, api_private_stop_rx) = API::<Private>::new(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
+        execution_command_sender.clone(),
         &SETTINGS.api,
         SETTINGS.consensus.config(),
     );
@@ -163,13 +186,14 @@ async fn launch() -> (
     // spawn public API
     let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
+        execution_command_sender,
         &SETTINGS.api,
         SETTINGS.consensus.config(),
         pool_command_sender.clone(),
         &SETTINGS.network,
         *crate::settings::VERSION,
         network_command_sender.clone(),
-        clock_compensation,
+        bootstrap_state.compensation_millis,
         node_id,
     );
     let api_public_handle = api_public.serve(&SETTINGS.api.bind_public);
@@ -181,6 +205,7 @@ async fn launch() -> (
         network_command_sender,
         bootstrap_manager,
         consensus_manager,
+        execution_manager,
         pool_manager,
         protocol_manager,
         network_manager,
@@ -194,6 +219,7 @@ async fn stop(
     bootstrap_manager: Option<BootstrapManager>,
     consensus_manager: ConsensusManager,
     consensus_event_receiver: ConsensusEventReceiver,
+    execution_manager: ExecutionManager,
     pool_manager: PoolManager,
     protocol_manager: ProtocolManager,
     network_manager: NetworkManager,
@@ -215,10 +241,16 @@ async fn stop(
     api_private_handle.stop();
 
     // stop consensus controller
-    let protocol_event_receiver = consensus_manager
+    let (protocol_event_receiver, _execution_event_receiver) = consensus_manager
         .stop(consensus_event_receiver)
         .await
         .expect("consensus shutdown failed");
+
+    // Stop execution controller.
+    execution_manager
+        .stop()
+        .await
+        .expect("Failed to shutdown execution.");
 
     // stop pool controller
     let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
@@ -258,6 +290,7 @@ async fn main() {
             _network_command_sender,
             bootstrap_manager,
             consensus_manager,
+            execution_manager,
             pool_manager,
             protocol_manager,
             network_manager,
@@ -303,6 +336,7 @@ async fn main() {
             bootstrap_manager,
             consensus_manager,
             consensus_event_receiver,
+            execution_manager,
             pool_manager,
             protocol_manager,
             network_manager,

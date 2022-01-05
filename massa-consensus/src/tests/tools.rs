@@ -1,8 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 #![allow(clippy::ptr_arg)] // this allow &Vec<..> as function argument type
 
-use super::mock_pool_controller::{MockPoolController, PoolCommandSink};
-use super::mock_protocol_controller::MockProtocolController;
+use super::{
+    mock_execution_controller::MockExecutionController,
+    mock_pool_controller::{MockPoolController, PoolCommandSink},
+    mock_protocol_controller::MockProtocolController,
+};
 use crate::{
     block_graph::{BlockGraphExport, ExportActiveBlock},
     pos::{RollCounts, RollUpdate, RollUpdates},
@@ -580,7 +583,7 @@ pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempF
     let mut roll_counts = RollCounts::default();
     for key in stakers.iter() {
         let pub_key = derive_public_key(key);
-        let address = Address::from_public_key(&pub_key).unwrap();
+        let address = Address::from_public_key(&pub_key);
         let update = RollUpdate {
             roll_purchases: 1,
             roll_sales: 0,
@@ -595,7 +598,7 @@ pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempF
 pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<PrivateKey>) -> PrivateKey {
     for key in nodes.iter() {
         let pub_key = derive_public_key(key);
-        let address = Address::from_public_key(&pub_key).unwrap();
+        let address = Address::from_public_key(&pub_key);
         if address == *draw {
             return *key;
         }
@@ -702,11 +705,15 @@ pub async fn consensus_pool_test<F, V>(
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
+    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
+        MockExecutionController::new();
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
+            execution_command_sender,
+            execution_event_receiver,
             protocol_command_sender,
             protocol_event_receiver,
             pool_command_sender,
@@ -758,12 +765,16 @@ where
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
+    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
+        MockExecutionController::new();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
+            execution_command_sender,
+            execution_event_receiver,
             protocol_command_sender,
             protocol_event_receiver,
             pool_command_sender,

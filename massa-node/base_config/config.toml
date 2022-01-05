@@ -1,3 +1,5 @@
+
+
 [logging]
     level = 2
 
@@ -6,6 +8,9 @@
     bind_private = "127.0.0.1:33034"
     bind_public = "0.0.0.0:33035"
     max_arguments = 128
+
+[execution]
+    initial_sce_ledger_path = "base_config/initial_sce_ledger.json"
 
 [consensus]
     max_discarded_blocks = 100

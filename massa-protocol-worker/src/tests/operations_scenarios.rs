@@ -294,7 +294,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Create 1 node.
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
-            let address = Address::from_public_key(&nodes[0].id.0).unwrap();
+            let address = Address::from_public_key(&nodes[0].id.0);
             let serialization_context = massa_models::get_serialization_context();
             let thread = address.get_thread(serialization_context.parent_count);
 
@@ -404,7 +404,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Create 1 node.
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
-            let address = Address::from_public_key(&nodes[0].id.0).unwrap();
+            let address = Address::from_public_key(&nodes[0].id.0);
             let serialization_context = massa_models::get_serialization_context();
             let thread = address.get_thread(serialization_context.parent_count);
 
@@ -513,7 +513,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Create 2 nodes.
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
-            let address = Address::from_public_key(&nodes[0].id.0).unwrap();
+            let address = Address::from_public_key(&nodes[0].id.0);
             let serialization_context = massa_models::get_serialization_context();
             let thread = address.get_thread(serialization_context.parent_count);
 
@@ -602,7 +602,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Create 3 nodes.
             let nodes = tools::create_and_connect_nodes(3, &mut network_controller).await;
 
-            let address = Address::from_public_key(&nodes[0].id.0).unwrap();
+            let address = Address::from_public_key(&nodes[0].id.0);
             let serialization_context = massa_models::get_serialization_context();
             let thread = address.get_thread(serialization_context.parent_count);
 
@@ -703,7 +703,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
             let operation =
                 tools::create_operation_with_expire_period(&creator_node.private_key, 1);
 
-            let address = Address::from_public_key(&creator_node.id.0).unwrap();
+            let address = Address::from_public_key(&creator_node.id.0);
             let serialization_context = massa_models::get_serialization_context();
             let thread = address.get_thread(serialization_context.parent_count);
 

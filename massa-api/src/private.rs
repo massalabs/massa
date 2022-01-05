@@ -5,14 +5,17 @@ use crate::{Endpoints, Private, RpcServer, StopHandle, API};
 use jsonrpc_core::BoxFuture;
 use jsonrpc_http_server::tokio::sync::mpsc;
 use massa_consensus::{ConsensusCommandSender, ConsensusConfig};
+use massa_execution::ExecutionCommandSender;
 use massa_models::address::{AddressHashMap, AddressHashSet};
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
     TimeInterval,
 };
 use massa_models::clique::Clique;
+use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::massa_hash::PubkeySig;
-use massa_models::{Address, BlockId, EndorsementId, Operation, OperationId};
+use massa_models::output_event::SCOutputEvent;
+use massa_models::{Address, Amount, BlockId, EndorsementId, Operation, OperationId, Slot};
 use massa_network::NetworkCommandSender;
 use massa_signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
@@ -21,6 +24,7 @@ impl API<Private> {
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         network_command_sender: NetworkCommandSender,
+        execution_command_sender: ExecutionCommandSender,
         api_settings: &'static APISettings,
         consensus_settings: ConsensusConfig,
     ) -> (Self, mpsc::Receiver<()>) {
@@ -29,6 +33,7 @@ impl API<Private> {
             API(Private {
                 consensus_command_sender,
                 network_command_sender,
+                execution_command_sender,
                 consensus_config: consensus_settings,
                 api_settings,
                 stop_node_channel,
@@ -66,6 +71,22 @@ impl Endpoints for API<Private> {
     fn add_staking_private_keys(&self, keys: Vec<PrivateKey>) -> BoxFuture<Result<(), ApiError>> {
         let cmd_sender = self.0.consensus_command_sender.clone();
         let closure = async move || Ok(cmd_sender.register_staking_private_keys(keys).await?);
+        Box::pin(closure())
+    }
+
+    fn execute_read_only_request(
+        &self,
+        max_gas: u64,
+        simulated_gas_price: Amount,
+        bytecode: Vec<u8>,
+        address: Option<Address>,
+    ) -> BoxFuture<Result<ExecuteReadOnlyResponse, ApiError>> {
+        let cmd_sender = self.0.execution_command_sender.clone();
+        let closure = async move || {
+            Ok(cmd_sender
+                .execute_read_only_request(max_gas, simulated_gas_price, bytecode, address)
+                .await?)
+        };
         Box::pin(closure())
     }
 
@@ -140,5 +161,27 @@ impl Endpoints for API<Private> {
 
     fn send_operations(&self, _: Vec<Operation>) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         crate::wrong_api::<Vec<OperationId>>()
+    }
+
+    fn get_sc_output_event_by_slot_range(
+        &self,
+        _: Slot,
+        _: Slot,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+        crate::wrong_api::<Vec<SCOutputEvent>>()
+    }
+
+    fn get_sc_output_event_by_sc_address(
+        &self,
+        _: Address,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+        crate::wrong_api::<Vec<SCOutputEvent>>()
+    }
+
+    fn get_sc_output_event_by_caller_address(
+        &self,
+        _: Address,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+        crate::wrong_api::<Vec<SCOutputEvent>>()
     }
 }

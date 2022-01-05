@@ -178,7 +178,7 @@ impl OperationLedgerInterface for Operation {
         let mut res = LedgerChanges::default();
 
         // sender fee
-        let sender_address = Address::from_public_key(&self.content.sender_public_key)?;
+        let sender_address = Address::from_public_key(&self.content.sender_public_key);
         res.apply(
             &sender_address,
             &LedgerChange {
@@ -223,13 +223,31 @@ impl OperationLedgerInterface for Operation {
                     &LedgerChange {
                         balance_delta: roll_price
                             .checked_mul_u64(*roll_count)
-                            .ok_or(ConsensusError::RollOverflowError)?,
+                            .ok_or(ConsensusError::AmountOverflowError)?,
                         balance_increment: false,
                     },
                 )?;
             }
             // roll sale is handled separately with a delay
             massa_models::OperationType::RollSell { .. } => {}
+            massa_models::OperationType::ExecuteSC {
+                max_gas,
+                gas_price,
+                coins,
+                ..
+            } => {
+                res.apply(
+                    &sender_address,
+                    &LedgerChange {
+                        balance_delta: gas_price
+                            .checked_mul_u64(*max_gas)
+                            .ok_or(ConsensusError::AmountOverflowError)?
+                            .checked_add(*coins)
+                            .ok_or(ConsensusError::AmountOverflowError)?,
+                        balance_increment: false,
+                    },
+                )?;
+            }
         }
 
         Ok(res)

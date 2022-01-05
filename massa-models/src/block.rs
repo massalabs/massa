@@ -135,7 +135,7 @@ impl Block {
             .endorsements
             .iter()
             .try_for_each::<_, Result<(), ModelsError>>(|e| {
-                let address = Address::from_public_key(&e.content.sender_public_key)?;
+                let address = Address::from_public_key(&e.content.sender_public_key);
                 if let Some(old) = res.get_mut(&address) {
                     old.insert(e.compute_endorsement_id()?);
                 } else {

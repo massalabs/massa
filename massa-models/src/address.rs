@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct Address(Hash);
+pub struct Address(pub Hash);
 
 pub type AddressHashMap<T> = HHashMap<Address, T>;
 pub type AddressHashSet = HHashSet<Address>;
@@ -39,8 +39,8 @@ impl Address {
     }
 
     /// Computes address associated with given public key
-    pub fn from_public_key(public_key: &PublicKey) -> Result<Self, ModelsError> {
-        Ok(Address(Hash::compute_from(&public_key.to_bytes())))
+    pub fn from_public_key(public_key: &PublicKey) -> Self {
+        Address(Hash::compute_from(&public_key.to_bytes()))
     }
 
     /// ## Example
@@ -52,7 +52,7 @@ impl Address {
     /// # use massa_models::Address;
     /// # let private_key = generate_random_private_key();
     /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key).unwrap();
+    /// # let address = Address::from_public_key(&public_key);
     /// let bytes = address.to_bytes();
     /// let res_addr = Address::from_bytes(&bytes).unwrap();
     /// assert_eq!(address, res_addr);
@@ -70,7 +70,7 @@ impl Address {
     /// # use massa_models::Address;
     /// # let private_key = generate_random_private_key();
     /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key).unwrap();
+    /// # let address = Address::from_public_key(&public_key);
     /// let bytes = address.clone().into_bytes();
     /// let res_addr = Address::from_bytes(&bytes).unwrap();
     /// assert_eq!(address, res_addr);
@@ -88,7 +88,7 @@ impl Address {
     /// # use massa_models::Address;
     /// # let private_key = generate_random_private_key();
     /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key).unwrap();
+    /// # let address = Address::from_public_key(&public_key);
     /// let bytes = address.to_bytes();
     /// let res_addr = Address::from_bytes(&bytes).unwrap();
     /// assert_eq!(address, res_addr);
@@ -108,7 +108,7 @@ impl Address {
     /// # use massa_models::Address;
     /// # let private_key = generate_random_private_key();
     /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key).unwrap();
+    /// # let address = Address::from_public_key(&public_key);
     /// let ser = address.to_bs58_check();
     /// let res_addr = Address::from_bs58_check(&ser).unwrap();
     /// assert_eq!(address, res_addr);
@@ -128,7 +128,7 @@ impl Address {
     /// # use massa_models::Address;
     /// # let private_key = generate_random_private_key();
     /// # let public_key = derive_public_key(&private_key);
-    /// # let address = Address::from_public_key(&public_key).unwrap();
+    /// # let address = Address::from_public_key(&public_key);
     /// let ser = address.to_bs58_check();
     /// let res_addr = Address::from_bs58_check(&ser).unwrap();
     /// assert_eq!(address, res_addr);

@@ -25,6 +25,7 @@ massa_models = { path = "../massa-models" }
 massa_network = { path = "../massa-network" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
+massa_execution = { path = "../massa-execution" }
 
 [dev-dependencies]
 bitvec = { version = "0.22", features = ["serde"] }

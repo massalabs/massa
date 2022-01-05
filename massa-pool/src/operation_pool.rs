@@ -3,7 +3,8 @@
 use crate::{PoolError, PoolSettings};
 use massa_models::{
     address::AddressHashMap, Address, BlockHashMap, Operation, OperationHashMap, OperationHashSet,
-    OperationId, OperationSearchResult, OperationSearchResultStatus, SerializeCompact, Slot,
+    OperationId, OperationSearchResult, OperationSearchResultStatus, OperationType,
+    SerializeCompact, Slot,
 };
 use num::rational::Ratio;
 use std::{collections::BTreeSet, usize};
@@ -45,15 +46,28 @@ impl WrappedOperation {
     fn new(op: Operation, thread_count: u8) -> Result<Self, PoolError> {
         Ok(WrappedOperation {
             byte_count: op.to_bytes_compact()?.len() as u64,
-            thread: Address::from_public_key(&op.content.sender_public_key)?
+            thread: Address::from_public_key(&op.content.sender_public_key)
                 .get_thread(thread_count),
             op,
         })
     }
 
-    /// Used to compare operations
+    /// Gets the priority of the operation baeed on how much it profits the block producer
+    /// vs how much space it takes in the block
     fn get_fee_density(&self) -> Ratio<u64> {
-        Ratio::new(self.op.content.fee.to_raw(), self.byte_count)
+        // add inclusion fee
+        let mut total_return = self.op.content.fee;
+
+        // add gas fees
+        if let OperationType::ExecuteSC {
+            max_gas, gas_price, ..
+        } = self.op.content.op
+        {
+            total_return = total_return.saturating_add(gas_price.saturating_mul_u64(max_gas));
+        }
+
+        // return ratio with size
+        Ratio::new(total_return.to_raw(), self.byte_count)
     }
 }
 
@@ -421,7 +435,7 @@ pub mod tests {
         let recv_pub = derive_public_key(&recv_priv);
 
         let op = OperationType::Transaction {
-            recipient_address: Address::from_public_key(&recv_pub).unwrap(),
+            recipient_address: Address::from_public_key(&recv_pub),
             amount: Amount::default(),
         };
         let content = OperationContent {
@@ -435,7 +449,7 @@ pub mod tests {
 
         (
             Operation { content, signature },
-            Address::from_public_key(&sender_pub).unwrap().get_thread(2),
+            Address::from_public_key(&sender_pub).get_thread(2),
         )
     }
 

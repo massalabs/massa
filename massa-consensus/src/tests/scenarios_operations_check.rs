@@ -3,6 +3,7 @@
 use crate::{
     start_consensus_controller,
     tests::{
+        mock_execution_controller::MockExecutionController,
         mock_pool_controller::{MockPoolController, PoolCommandSink},
         mock_protocol_controller::MockProtocolController,
         tools::{
@@ -43,7 +44,7 @@ async fn test_operations_check() {
     loop {
         private_key_1 = generate_random_private_key();
         public_key_1 = derive_public_key(&private_key_1);
-        address_1 = Address::from_public_key(&public_key_1).unwrap();
+        address_1 = Address::from_public_key(&public_key_1);
         if address_1.get_thread(thread_count) == 0 {
             break;
         }
@@ -51,7 +52,7 @@ async fn test_operations_check() {
     loop {
         private_key_2 = generate_random_private_key();
         public_key_2 = derive_public_key(&private_key_2);
-        address_2 = Address::from_public_key(&public_key_2).unwrap();
+        address_2 = Address::from_public_key(&public_key_2);
         if address_2.get_thread(thread_count) == 1 {
             break;
         }
@@ -83,11 +84,15 @@ async fn test_operations_check() {
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
+    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
+        MockExecutionController::new();
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
+            execution_command_sender,
+            execution_event_receiver,
             protocol_command_sender.clone(),
             protocol_event_receiver,
             pool_command_sender,
