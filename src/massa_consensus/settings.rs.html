@@ -393,6 +393,9 @@
 <span id="391">391</span>
 <span id="392">392</span>
 <span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::assertions_on_constants</span>)]</span>
@@ -520,7 +523,10 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">const</span> <span class="ident">POS_LOCK_CYCLES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1</span>;
 
-<span class="doccomment">/// Consensus user-settings (that could be changes in `config.toml` file without rebuilding the binary)</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_GAS_PER_BLOCK</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
+
+<span class="doccomment">/// Consensus configuration</span>
+<span class="doccomment">/// Assumes thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusSettings</span> {
     <span class="doccomment">/// Staking private keys</span>
@@ -787,5 +793,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (8f3238f89 2022-01-02)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (7d6f94817 2022-01-04)" ></div>
 </body></html>

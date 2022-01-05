@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Amount",""]]});
+initSidebarItems({"constant":[["AMOUNT_ZERO",""]],"struct":[["Amount",""]]});

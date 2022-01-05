@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["Command",""]],"fn":[["help",""],["parse_vec",""],["send_operation",""]],"macro":[["rpc_error",""]],"struct":[["CommandIter",""],["ExtendedWallet",""],["ExtendedWalletEntry",""]]});
+initSidebarItems({"enum":[["Command",""]],"fn":[["get_file_as_byte_vec",""],["help",""],["parse_vec",""],["send_operation",""]],"macro":[["rpc_error",""]],"struct":[["CommandIter",""],["ExtendedWallet",""],["ExtendedWalletEntry",""]]});

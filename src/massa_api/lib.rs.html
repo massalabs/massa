@@ -182,10 +182,44 @@
 <span id="180">180</span>
 <span id="181">181</span>
 <span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
-<span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../../docs/api.md&quot;</span>)]</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError::WrongAPI</span>;
 <span class="kw">use</span> <span class="ident">error::ApiError</span>;
@@ -193,16 +227,19 @@
 <span class="kw">use</span> <span class="ident">jsonrpc_derive::rpc</span>;
 <span class="kw">use</span> <span class="ident">jsonrpc_http_server</span>::{<span class="ident">CloseHandle</span>, <span class="ident">ServerBuilder</span>};
 <span class="kw">use</span> <span class="ident">massa_consensus</span>::{<span class="ident">ConsensusCommandSender</span>, <span class="ident">ConsensusConfig</span>};
+<span class="kw">use</span> <span class="ident">massa_execution::ExecutionCommandSender</span>;
 <span class="kw">use</span> <span class="ident">massa_models::address</span>::{<span class="ident">AddressHashMap</span>, <span class="ident">AddressHashSet</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
     <span class="ident">APISettings</span>, <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>,
     <span class="ident">TimeInterval</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_models::clique::Clique</span>;
+<span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
 <span class="kw">use</span> <span class="ident">massa_models::massa_hash::PubkeySig</span>;
 <span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident">massa_models::operation</span>::{<span class="ident">Operation</span>, <span class="ident">OperationId</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Version</span>};
+<span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>};
 <span class="kw">use</span> <span class="ident">massa_network</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkSettings</span>};
 <span class="kw">use</span> <span class="ident">massa_pool::PoolCommandSender</span>;
 <span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
@@ -211,13 +248,13 @@
 <span class="kw">use</span> <span class="ident">std::thread::JoinHandle</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>;
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">info</span>, <span class="ident">warn</span>};
-
 <span class="kw">mod</span> <span class="ident">error</span>;
 <span class="kw">mod</span> <span class="ident">private</span>;
 <span class="kw">mod</span> <span class="ident">public</span>;
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Public</span> {
     <span class="kw">pub</span> <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
+    <span class="kw">pub</span> <span class="ident">execution_command_sender</span>: <span class="ident">ExecutionCommandSender</span>,
     <span class="kw">pub</span> <span class="ident">pool_command_sender</span>: <span class="ident">PoolCommandSender</span>,
     <span class="kw">pub</span> <span class="ident">consensus_config</span>: <span class="ident">ConsensusConfig</span>,
     <span class="kw">pub</span> <span class="ident">api_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">APISettings</span>,
@@ -231,6 +268,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Private</span> {
     <span class="kw">pub</span> <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
     <span class="kw">pub</span> <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
+    <span class="ident">execution_command_sender</span>: <span class="ident">ExecutionCommandSender</span>,
     <span class="kw">pub</span> <span class="ident">consensus_config</span>: <span class="ident">ConsensusConfig</span>,
     <span class="kw">pub</span> <span class="ident">api_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">APISettings</span>,
     <span class="kw">pub</span> <span class="ident">stop_node_channel</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
@@ -291,6 +329,16 @@
     <span class="doccomment">/// No confirmation to expect.</span>
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;add_staking_private_keys&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">add_staking_private_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+
+    <span class="doccomment">/// Execute code in read-only mode.</span>
+    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;execute_read_only_request&quot;</span>)]</span>
+    <span class="kw">fn</span> <span class="ident">execute_read_only_request</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">_max_gas</span>: <span class="ident">u64</span>,
+        <span class="ident">_simulated_gas_price</span>: <span class="ident">Amount</span>,
+        <span class="ident">_bytecode</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+        <span class="ident">_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// Remove a vec of addresses used to stake.</span>
     <span class="doccomment">/// No confirmation to expect.</span>
@@ -354,6 +402,28 @@
     <span class="doccomment">/// Adds operations to pool. Returns operations that were ok and sent to pool.</span>
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;send_operations&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">send_operations</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Operation</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+
+    <span class="doccomment">/// get sc output event between start and end excluded</span>
+    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_sc_output_event_by_slot_range&quot;</span>)]</span>
+    <span class="kw">fn</span> <span class="ident">get_sc_output_event_by_slot_range</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">start</span>: <span class="ident">Slot</span>,
+        <span class="ident">end</span>: <span class="ident">Slot</span>,
+    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+
+    <span class="doccomment">/// get sc output event for given sc addresss</span>
+    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_sc_output_event_by_sc_address&quot;</span>)]</span>
+    <span class="kw">fn</span> <span class="ident">get_sc_output_event_by_sc_address</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw">_</span>: <span class="ident">Address</span>,
+    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+
+    <span class="doccomment">/// get sc output event for given call address</span>
+    <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_sc_output_event_by_caller_address&quot;</span>)]</span>
+    <span class="kw">fn</span> <span class="ident">get_sc_output_event_by_caller_address</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw">_</span>: <span class="ident">Address</span>,
+    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 }
 
 <span class="kw">fn</span> <span class="ident">wrong_api</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>() -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
@@ -365,5 +435,5 @@
     <span class="comment">// TODO: jsonrpc_client_transports::RawClient::call_method ... see #1182</span>
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (8f3238f89 2022-01-02)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (7d6f94817 2022-01-04)" ></div>
 </body></html>
