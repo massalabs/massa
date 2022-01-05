@@ -19,7 +19,8 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::massa_hash::PubkeySig;
 use massa_models::node::NodeId;
 use massa_models::operation::{Operation, OperationId};
-use massa_models::{Address, Amount, BlockId, EndorsementId, Version};
+use massa_models::output_event::SCOutputEvent;
+use massa_models::{Address, Amount, BlockId, EndorsementId, Slot, Version};
 use massa_network::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
 use massa_signature::PrivateKey;
@@ -28,13 +29,13 @@ use std::thread;
 use std::thread::JoinHandle;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
-
 mod error;
 mod private;
 mod public;
 
 pub struct Public {
     pub consensus_command_sender: ConsensusCommandSender,
+    pub execution_command_sender: ExecutionCommandSender,
     pub pool_command_sender: PoolCommandSender,
     pub consensus_config: ConsensusConfig,
     pub api_settings: &'static APISettings,
@@ -182,6 +183,28 @@ pub trait Endpoints {
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
     #[rpc(name = "send_operations")]
     fn send_operations(&self, _: Vec<Operation>) -> BoxFuture<Result<Vec<OperationId>, ApiError>>;
+
+    /// get sc output event between start and end excluded
+    #[rpc(name = "get_sc_output_event_by_slot_range")]
+    fn get_sc_output_event_by_slot_range(
+        &self,
+        start: Slot,
+        end: Slot,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>>;
+
+    /// get sc output event for given sc addresss
+    #[rpc(name = "get_sc_output_event_by_sc_address")]
+    fn get_sc_output_event_by_sc_address(
+        &self,
+        _: Address,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>>;
+
+    /// get sc output event for given call address
+    #[rpc(name = "get_sc_output_event_by_caller_address")]
+    fn get_sc_output_event_by_caller_address(
+        &self,
+        _: Address,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>>;
 }
 
 fn wrong_api<T>() -> BoxFuture<Result<T, ApiError>> {

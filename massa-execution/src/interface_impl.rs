@@ -5,7 +5,10 @@ use std::str::FromStr;
 use crate::types::ExecutionContext;
 use anyhow::{bail, Result};
 use assembly_simulator::{Bytecode, Interface, InterfaceClone};
-use massa_models::{Address, Amount};
+use massa_models::{
+    output_event::{EventExecutionContext, SCOutputEvent},
+    Address, Amount,
+};
 use std::sync::{Arc, Mutex};
 
 macro_rules! context_guard {
@@ -224,5 +227,20 @@ impl Interface for InterfaceImpl {
             .iter()
             .map(|addr| addr.to_bs58_check())
             .collect())
+    }
+
+    fn generate_event(&self, data: String) -> Result<()> {
+        let context = context_guard!(self);
+        let slot = context.slot;
+        let block = context.opt_block_id;
+        let call_stack = context.call_stack.clone();
+        let context = EventExecutionContext {
+            slot,
+            block,
+            call_stack,
+        };
+        let event = SCOutputEvent { context, data };
+        // store the event somewhere
+        Ok(())
     }
 }

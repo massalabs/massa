@@ -186,6 +186,7 @@ async fn launch() -> (
     // spawn public API
     let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
+        execution_command_sender,
         &SETTINGS.api,
         SETTINGS.consensus.config(),
         pool_command_sender.clone(),

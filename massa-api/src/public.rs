@@ -5,6 +5,7 @@ use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
 use massa_consensus::{ConsensusCommandSender, ConsensusConfig, DiscardReason, ExportBlockStatus};
+use massa_execution::ExecutionCommandSender;
 use massa_models::address::{AddressHashMap, AddressHashSet};
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
@@ -15,6 +16,7 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::hhasher::BuildHHasher;
 use massa_models::massa_hash::PubkeySig;
 use massa_models::node::NodeId;
+use massa_models::output_event::SCOutputEvent;
 use massa_models::timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range};
 use massa_models::{
     Address, Amount, BlockHashSet, BlockId, EndorsementHashSet, EndorsementId, Operation,
@@ -29,6 +31,7 @@ use std::net::{IpAddr, SocketAddr};
 impl API<Public> {
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
+        execution_command_sender: ExecutionCommandSender,
         api_settings: &'static APISettings,
         consensus_settings: ConsensusConfig,
         pool_command_sender: PoolCommandSender,
@@ -48,6 +51,7 @@ impl API<Public> {
             network_command_sender,
             compensation_millis,
             node_id,
+            execution_command_sender,
         })
     }
 }
@@ -492,6 +496,46 @@ impl Endpoints for API<Public> {
             let ids = to_send.keys().copied().collect();
             cmd_sender.add_operations(to_send).await?;
             Ok(ids)
+        };
+        Box::pin(closure())
+    }
+
+    fn get_sc_output_event_by_slot_range(
+        &self,
+        start: Slot,
+        end: Slot,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+        let execution_command_sender = self.0.execution_command_sender.clone();
+        let closure = async move || {
+            Ok(execution_command_sender
+                .get_sc_output_event_by_slot_range(start, end)
+                .await?)
+        };
+        Box::pin(closure())
+    }
+
+    fn get_sc_output_event_by_sc_address(
+        &self,
+        address: Address,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+        let execution_command_sender = self.0.execution_command_sender.clone();
+        let closure = async move || {
+            Ok(execution_command_sender
+                .get_sc_output_event_by_sc_address(address)
+                .await?)
+        };
+        Box::pin(closure())
+    }
+
+    fn get_sc_output_event_by_caller_address(
+        &self,
+        address: Address,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+        let execution_command_sender = self.0.execution_command_sender.clone();
+        let closure = async move || {
+            Ok(execution_command_sender
+                .get_sc_output_event_by_caller_address(address)
+                .await?)
         };
         Box::pin(closure())
     }

@@ -3,10 +3,12 @@ use crate::sce_ledger::FinalLedger;
 use crate::types::{ExecutionQueue, ExecutionRequest};
 use crate::vm::VM;
 use crate::BootstrapExecutionState;
-use crate::{config::ExecutionConfigs, types::ExecutionStep};
+use crate::{config::ExecutionConfigs, config::ExecutionSettings, types::ExecutionStep};
 use massa_models::execution::ExecuteReadOnlyResponse;
+use massa_models::output_event::SCOutputEvent;
 use massa_models::timeslots::{get_block_slot_timestamp, get_current_latest_block_slot};
 use massa_models::{Address, Amount, Block, BlockHashMap, BlockId, Slot};
+use massa_time::MassaTime;
 use std::collections::BTreeMap;
 use std::thread::{self, JoinHandle};
 use tokio::sync::{mpsc, oneshot};
@@ -26,6 +28,22 @@ pub enum ExecutionCommand {
 
     /// Get a snapshot of the current state for bootstrap
     GetBootstrapState(tokio::sync::oneshot::Sender<BootstrapExecutionState>),
+
+    GetSCOutputEventBySlotRange {
+        start: Slot,
+        end: Slot,
+        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
+    },
+
+    GetSCOutputEventByCaller {
+        caller_address: Address,
+        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
+    },
+
+    GetSCOutputEventBySCAddress {
+        sc_address: Address,
+        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
+    },
 
     /// Execute bytecode in read-only mode
     ExecuteReadOnlyRequest {
@@ -273,6 +291,19 @@ impl ExecutionWorker {
                     address,
                 });
             }
+            ExecutionCommand::GetSCOutputEventBySlotRange {
+                start,
+                end,
+                response_tx,
+            } => todo!(),
+            ExecutionCommand::GetSCOutputEventByCaller {
+                caller_address,
+                response_tx,
+            } => todo!(),
+            ExecutionCommand::GetSCOutputEventBySCAddress {
+                sc_address,
+                response_tx,
+            } => todo!(),
         }
         Ok(())
     }

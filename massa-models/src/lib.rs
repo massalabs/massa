@@ -48,6 +48,7 @@ pub mod ledger;
 pub mod massa_hash;
 pub mod node;
 pub mod operation;
+pub mod output_event;
 mod serialization;
 mod settings;
 pub mod slot;
