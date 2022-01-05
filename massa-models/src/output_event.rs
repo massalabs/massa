@@ -15,8 +15,6 @@ pub struct SCOutputEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventExecutionContext {
     pub slot: Slot,
-    pub bytes_address: Address,
-    pub caller_address: Address,
     pub block: Option<BlockId>,
     pub call_stack: VecDeque<Address>,
 }

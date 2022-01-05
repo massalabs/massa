@@ -160,15 +160,12 @@ impl Interface for InterfaceImpl {
     }
 
     fn generate_event(&self, data: String) -> Result<()> {
-        let slot = context_guard!(self).slot;
-        let bytes_address = *context_guard!(self).call_stack.back().unwrap(); // TODO what's an empty stack ?
-        let caller_address = *context_guard!(self).call_stack.front().unwrap();
-        let block = context_guard!(self).opt_block_id;
-        let call_stack = context_guard!(self).call_stack.clone();
+        let context = context_guard!(self);
+        let slot = context.slot;
+        let block = context.opt_block_id;
+        let call_stack = context.call_stack.clone();
         let context = EventExecutionContext {
             slot,
-            bytes_address,
-            caller_address,
             block,
             call_stack,
         };
