@@ -9,6 +9,7 @@ use massa_signature::{generate_random_private_key, PrivateKey};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::{HashMap, HashSet};
+use std::time::Duration;
 
 #[tokio::test]
 #[serial]
@@ -548,6 +549,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
         .unwrap()
         .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
     cfg.max_dependency_blocks = 2;
+    tokio::time::sleep(Duration::from_millis(1000)).await;
 
     tools::consensus_without_pool_test(
         cfg.clone(),
