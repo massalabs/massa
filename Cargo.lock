@@ -77,7 +77,7 @@ dependencies = [
 [[package]]
 name = "assembly_simulator"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/sc-runtime?branch=feature/add_generate_event#c737da0461ad49bcac5cc722d9db22468f488bdf"
+source = "git+https://github.com/massalabs/sc-runtime?tag=v0.2.4#8c643c2824ec16c33ecf587f2a126392b144ede7"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
