@@ -7,7 +7,7 @@ use anyhow::{bail, Result};
 use assembly_simulator::{Bytecode, Interface, InterfaceClone};
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
-    Address,
+    Address, Amount,
 };
 use std::sync::{Arc, Mutex};
 
@@ -139,6 +139,76 @@ impl Interface for InterfaceImpl {
         };
         let key = massa_hash::hash::Hash::from_bs58_check(key)?;
         context.ledger_step.set_data_entry(addr, key, value.clone());
+        Ok(())
+    }
+
+    /// Transfer coins from the current address to a target address
+    /// to_address: target address
+    /// raw_amount: amount to transfer (in raw u64)
+    fn transfer_coins(&self, to_address: &String, raw_amount: u64) -> Result<()> {
+        let to_address = Address::from_str(to_address)?;
+        let mut context = context_guard!(self);
+        let from_address = match context.call_stack.back() {
+            Some(addr) => *addr,
+            _ => bail!("Failed to read call stack current address"),
+        };
+        let amount = Amount::from_raw(raw_amount);
+        // debit
+        context
+            .ledger_step
+            .set_balance_delta(from_address, amount, false)?;
+        // credit
+        if let Err(err) = context
+            .ledger_step
+            .set_balance_delta(to_address, amount, true)
+        {
+            // cancel debit
+            context
+                .ledger_step
+                .set_balance_delta(from_address, amount, true)
+                .expect("credit failed after same-amount debit succeeded");
+            bail!("Error crediting destination balance: {}", err);
+        }
+        Ok(())
+    }
+
+    /// Transfer coins from the current address to a target address
+    /// from_address: source address
+    /// to_address: target address
+    /// raw_amount: amount to transfer (in raw u64)
+    fn transfer_coins_for(
+        &self,
+        from_address: &String,
+        to_address: &String,
+        raw_amount: u64,
+    ) -> Result<()> {
+        let from_address = Address::from_str(from_address)?;
+        let to_address = Address::from_str(to_address)?;
+        let mut context = context_guard!(self);
+        let is_curr = match context.call_stack.back() {
+            Some(curr_address) => from_address == *curr_address,
+            _ => false,
+        };
+        if !context.owned_addresses.contains(&from_address) && !is_curr {
+            bail!("You don't have the spending access to this entry")
+        }
+        let amount = Amount::from_raw(raw_amount);
+        // debit
+        context
+            .ledger_step
+            .set_balance_delta(from_address, amount, false)?;
+        // credit
+        if let Err(err) = context
+            .ledger_step
+            .set_balance_delta(to_address, amount, true)
+        {
+            // cancel debit
+            context
+                .ledger_step
+                .set_balance_delta(from_address, amount, true)
+                .expect("credit failed after same-amount debit succeeded");
+            bail!("Error crediting destination balance: {}", err);
+        }
         Ok(())
     }
 
