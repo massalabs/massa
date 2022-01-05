@@ -85,7 +85,8 @@ async fn test_roll() {
     cfg.block_reward = Amount::default();
     cfg.roll_price = Amount::from_str("1000").unwrap();
     cfg.operation_validity_periods = 100;
-    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
+    let init_time: MassaTime = 1000.into();
+    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(init_time);
 
     tools::consensus_pool_test(
         cfg.clone(),
@@ -124,6 +125,7 @@ async fn test_roll() {
                 priv_1,
                 vec![rb_a1_r1_err],
             );
+            tokio::time::sleep(init_time.to_duration()).await;
             wait_pool_slot(&mut pool_controller, cfg.t0, 1, 0).await;
             // invalid because a1 has not enough coins to buy a roll
             propagate_block(&mut protocol_controller, block1_err1, false, 150).await;
