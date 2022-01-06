@@ -28,7 +28,7 @@ lazy_static::lazy_static! {
     };
 
     /// TESTNET: time when the blockclique is ended.
-    pub static ref END_TIMESTAMP: Option<MassaTime> = Some(1640883600000.into());
+    pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "test") {None} else {Some(1640883600000.into())};
 
     /// Time between the periods in the same thread.
     pub static ref T0: MassaTime = 16000.into();
