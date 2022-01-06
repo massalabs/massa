@@ -512,6 +512,7 @@
 <span id="510">510</span>
 <span id="511">511</span>
 <span id="512">512</span>
+<span id="513">513</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::sce_ledger::FinalLedger</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types</span>::{<span class="ident">ExecutionQueue</span>, <span class="ident">ExecutionRequest</span>};
@@ -674,9 +675,10 @@
                         }
                     }
                     <span class="prelude-val">Some</span>(<span class="ident">ExecutionRequest::Shutdown</span>) =&gt; <span class="kw">return</span>,
-                    <span class="prelude-val">None</span> =&gt; { <span class="comment">/* startup or spurious wakeup */</span> }
+                    <span class="prelude-val">None</span> =&gt; {
+                        <span class="ident">requests</span> <span class="op">=</span> <span class="ident">condvar</span>.<span class="ident">wait</span>(<span class="ident">requests</span>).<span class="ident">unwrap</span>();
+                    }
                 };
-                <span class="ident">requests</span> <span class="op">=</span> <span class="ident">condvar</span>.<span class="ident">wait</span>(<span class="ident">requests</span>).<span class="ident">unwrap</span>();
             }
         });
 
@@ -1025,5 +1027,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (7d6f94817 2022-01-04)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (f1ce0e6a0 2022-01-05)" ></div>
 </body></html>
