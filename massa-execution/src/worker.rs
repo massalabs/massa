@@ -3,12 +3,11 @@ use crate::sce_ledger::FinalLedger;
 use crate::types::{ExecutionQueue, ExecutionRequest};
 use crate::vm::VM;
 use crate::BootstrapExecutionState;
-use crate::{config::ExecutionConfigs, config::ExecutionSettings, types::ExecutionStep};
+use crate::{config::ExecutionConfigs, types::ExecutionStep};
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::timeslots::{get_block_slot_timestamp, get_current_latest_block_slot};
 use massa_models::{Address, Amount, Block, BlockHashMap, BlockId, Slot};
-use massa_time::MassaTime;
 use std::collections::BTreeMap;
 use std::thread::{self, JoinHandle};
 use tokio::sync::{mpsc, oneshot};
@@ -160,9 +159,10 @@ impl ExecutionWorker {
                         }
                     }
                     Some(ExecutionRequest::Shutdown) => return,
-                    None => { /* startup or spurious wakeup */ }
+                    None => {
+                        requests = condvar.wait(requests).unwrap();
+                    }
                 };
-                requests = condvar.wait(requests).unwrap();
             }
         });
 
