@@ -8,7 +8,6 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::{
     execution::ExecuteReadOnlyResponse, Address, Amount, Block, BlockHashMap, Slot,
 };
-use massa_time::MassaTime;
 use std::collections::VecDeque;
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
