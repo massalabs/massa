@@ -1,6 +1,8 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
 use crate::BootstrapExecutionState;
+use massa_models::api::SCELedgerInfo;
 use massa_models::execution::ExecuteReadOnlyResponse;
+use massa_models::prehash::Map;
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, Block, BlockId, Slot};
 use massa_sc_runtime::Bytecode;
@@ -9,7 +11,6 @@ use rand_xoshiro::Xoshiro256PlusPlus;
 use std::sync::{Condvar, Mutex};
 use std::{collections::VecDeque, sync::Arc};
 use tokio::sync::oneshot;
-
 pub(crate) type StepHistory = VecDeque<StepHistoryItem>;
 
 /// A StepHistory item representing the consequences of a given execution step
@@ -120,6 +121,11 @@ pub(crate) enum ExecutionRequest {
     },
     /// Shutdown state, set by the worker to signal shutdown to the VM thread.
     Shutdown,
+    /// Get ledger entry for address
+    GetSCELedgerForAddresses {
+        response_tx: oneshot::Sender<Map<Address, SCELedgerInfo>>,
+        addresses: Vec<Address>,
+    },
 }
 
 pub(crate) type ExecutionQueue = Arc<(Mutex<VecDeque<ExecutionRequest>>, Condvar)>;
