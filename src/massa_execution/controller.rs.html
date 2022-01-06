@@ -230,7 +230,6 @@
 <span id="228">228</span>
 <span id="229">229</span>
 <span id="230">230</span>
-<span id="231">231</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">ExecutionConfigs</span>, <span class="ident">CHANNEL_SIZE</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::worker</span>::{
@@ -241,7 +240,6 @@
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">execution::ExecuteReadOnlyResponse</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockHashMap</span>, <span class="ident">Slot</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">mpsc</span>, <span class="ident">oneshot</span>};
 <span class="kw">use</span> <span class="ident">tokio::task::JoinHandle</span>;
