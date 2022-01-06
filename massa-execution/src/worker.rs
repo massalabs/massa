@@ -160,9 +160,10 @@ impl ExecutionWorker {
                         }
                     }
                     Some(ExecutionRequest::Shutdown) => return,
-                    None => { /* startup or spurious wakeup */ }
+                    None => {
+                        requests = condvar.wait(requests).unwrap();
+                    }
                 };
-                requests = condvar.wait(requests).unwrap();
             }
         });
 
