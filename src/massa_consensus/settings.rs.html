@@ -523,7 +523,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">const</span> <span class="ident">POS_LOCK_CYCLES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_GAS_PER_BLOCK</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_GAS_PER_BLOCK</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">100_000_000</span>;
 
 <span class="doccomment">/// Consensus configuration</span>
 <span class="doccomment">/// Assumes thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0</span>
