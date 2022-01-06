@@ -241,7 +241,7 @@ impl Interface for InterfaceImpl {
             call_stack,
         };
         let event = SCOutputEvent { context, data };
-        info!("execution event: {}", event);
+        info!("execution event: {:?}", event);
         // TODO store the event somewhere
         Ok(())
     }
