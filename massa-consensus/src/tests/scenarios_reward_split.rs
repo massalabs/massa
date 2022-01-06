@@ -212,7 +212,8 @@ async fn test_reward_split() {
             b2.header.content.endorsements = vec![ed_1, ed_2, ed_3];
 
             // Propagate block.
-            tools::propagate_block(&mut protocol_controller, b2, true, 600).await;
+            tokio::time::sleep(cfg.t0.to_duration()).await;
+            tools::propagate_block(&mut protocol_controller, b2, true, 300).await;
 
             // Check balances after second block.
             let addresses_state = consensus_command_sender
