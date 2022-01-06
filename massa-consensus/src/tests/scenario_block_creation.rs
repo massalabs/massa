@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use massa_hash::hash::Hash;
-use massa_models::{ledger::LedgerData, EndorsementId};
+use massa_models::{ledger::LedgerData, EndorsementId, OperationType};
 use massa_models::{Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot};
 use massa_models::{Endorsement, SerializeCompact};
 use massa_pool::PoolCommand;
@@ -18,6 +18,8 @@ use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::time::sleep_until;
+
+use super::tools::create_executesc;
 
 #[tokio::test]
 #[serial]
@@ -632,7 +634,17 @@ async fn test_block_filling() {
     cfg.max_operations_per_block = 5000;
     cfg.max_block_size = 2000;
     cfg.endorsement_count = 10;
-    let mut ops = Vec::new();
+    let mut ops = vec![create_executesc(
+        priv_a,
+        pubkey_a,
+        10,
+        10,
+        vec![1; 200], // dummy bytes as here we do not test the content
+        1_000,
+        0,
+        1,
+    )]; // this operation has an higher rentability than any other
+
     for _ in 0..500 {
         ops.push(create_transaction(priv_a, pubkey_a, address_a, 5, 10, 1))
     }
@@ -783,6 +795,12 @@ async fn test_block_filling() {
 
             // assert it's the expected block
             assert_eq!(block.header.content.slot, Slot::new(2, 0));
+
+            // assert it has included the sc operation first
+            match block.operations[0].content.op {
+                OperationType::ExecuteSC { .. } => {}
+                _ => panic!("unexpected operation included first"),
+            }
 
             // assert it includes the sent endorsements
             assert_eq!(block.header.content.endorsements.len(), eds.len());

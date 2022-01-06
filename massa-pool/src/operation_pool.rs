@@ -52,7 +52,7 @@ impl WrappedOperation {
         })
     }
 
-    /// Gets the priority of the operation baeed on how much it profits the block producer
+    /// Gets the priority of the operation based on how much it profits the block producer
     /// vs how much space it takes in the block
     fn get_fee_density(&self) -> Ratio<u64> {
         // add inclusion fee
