@@ -125,7 +125,7 @@ pub const POS_LOCK_CYCLES: u64 = 1;
 #[cfg(test)]
 const POS_LOCK_CYCLES: u64 = 1;
 
-pub const MAX_GAS_PER_BLOCK: u64 = 10;
+pub const MAX_GAS_PER_BLOCK: u64 = 100_000_000;
 
 /// Consensus configuration
 /// Assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0

@@ -358,6 +358,34 @@ pub fn create_transaction(
     Operation { content, signature }
 }
 
+pub fn create_executesc(
+    priv_key: PrivateKey,
+    sender_public_key: PublicKey,
+    expire_period: u64,
+    fee: u64,
+    data: Vec<u8>,
+    max_gas: u64,
+    coins: u64,
+    gas_price: u64,
+) -> Operation {
+    let op = OperationType::ExecuteSC {
+        data,
+        max_gas,
+        coins: Amount::from_str(&coins.to_string()).unwrap(),
+        gas_price: Amount::from_str(&gas_price.to_string()).unwrap(),
+    };
+
+    let content = OperationContent {
+        sender_public_key,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
+        expire_period,
+        op,
+    };
+    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
+    let signature = sign(&hash, &priv_key).unwrap();
+    Operation { content, signature }
+}
+
 pub fn create_roll_buy(
     priv_key: PrivateKey,
     roll_count: u64,
