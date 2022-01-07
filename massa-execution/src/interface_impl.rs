@@ -51,6 +51,15 @@ impl Interface for InterfaceImpl {
         }
     }
 
+    /// Returns zero as a default if address not found.
+    fn get_balance(&self, address: &String) -> Result<u64> {
+        let address = Address::from_str(address)?;
+        Ok(context_guard!(self)
+            .ledger_step
+            .get_balance(&address)
+            .to_raw())
+    }
+
     fn exit_success(&self) -> Result<()> {
         match context_guard!(self).call_stack.pop_back() {
             Some(_) => Ok(()),
