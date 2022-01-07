@@ -333,6 +333,16 @@
 <span id="331">331</span>
 <span id="332">332</span>
 <span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::mem</span>;
 <span class="kw">use</span> <span class="ident">std::sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
 
@@ -343,6 +353,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">config::ExecutionConfigs</span>, <span class="ident">ExecutionError</span>};
 <span class="kw">use</span> <span class="ident">assembly_simulator::Interface</span>;
 <span class="kw">use</span> <span class="ident">massa_models::address::AddressHashMap</span>;
+<span class="kw">use</span> <span class="ident">massa_models::timeslots::slot_count_in_range</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">execution</span>::{<span class="ident">ExecuteReadOnlyResponse</span>, <span class="ident">ReadOnlyResult</span>},
     <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">BlockId</span>, <span class="ident">Slot</span>,
@@ -352,6 +363,7 @@
 <span class="kw">use</span> <span class="ident">tracing::debug</span>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">VM</span> {
+    <span class="ident">thread_count</span>: <span class="ident">u8</span>,
     <span class="ident">step_history</span>: <span class="ident">StepHistory</span>,
     <span class="ident">execution_interface</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Interface</span><span class="op">&gt;</span>,
     <span class="ident">execution_context</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionContext</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -388,6 +400,7 @@
         <span class="kw">let</span> <span class="ident">execution_interface</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="ident">InterfaceImpl::new</span>(<span class="ident">Arc::clone</span>(<span class="kw-2">&amp;</span><span class="ident">execution_context</span>)));
 
         <span class="prelude-val">Ok</span>(<span class="ident">VM</span> {
+            <span class="ident">thread_count</span>: <span class="ident">cfg</span>.<span class="ident">thread_count</span>,
             <span class="ident">step_history</span>: <span class="ident">Default::default</span>(),
             <span class="ident">execution_interface</span>,
             <span class="ident">execution_context</span>,
@@ -655,6 +668,13 @@
     <span class="doccomment">/// # Parameters</span>
     <span class="doccomment">///   * step: execution step to run</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">run_active_step</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">step</span>: <span class="ident">ExecutionStep</span>) {
+        <span class="comment">// rewind history to optimize execution</span>
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">front_slot</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">step_history</span>.<span class="ident">front</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> <span class="ident">h</span>.<span class="ident">slot</span>) {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">len</span>) <span class="op">=</span> <span class="ident">slot_count_in_range</span>(<span class="ident">front_slot</span>, <span class="ident">step</span>.<span class="ident">slot</span>, <span class="self">self</span>.<span class="ident">thread_count</span>) {
+                <span class="self">self</span>.<span class="ident">step_history</span>.<span class="ident">truncate</span>(<span class="ident">len</span> <span class="kw">as</span> <span class="ident">usize</span>);
+            }
+        }
+
         <span class="comment">// run step</span>
         <span class="kw">let</span> <span class="ident">history_item</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">run_step_internal</span>(<span class="kw-2">&amp;</span><span class="ident">step</span>);
 

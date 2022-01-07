@@ -508,10 +508,6 @@
 <span id="506">506</span>
 <span id="507">507</span>
 <span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
-<span id="512">512</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::sce_ledger::FinalLedger</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types</span>::{<span class="ident">ExecutionQueue</span>, <span class="ident">ExecutionRequest</span>};
@@ -694,7 +690,7 @@
         })
     }
 
-    <span class="comment">// asks the VM to reset to its final</span>
+    <span class="doccomment">/// asks the VM to reset to its final state</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reset_to_final</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">let</span> (<span class="ident">queue_lock</span>, <span class="ident">condvar</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">execution_queue</span>;
         <span class="kw">let</span> <span class="ident">queue_guard</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">queue_lock</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
@@ -714,11 +710,7 @@
         <span class="ident">condvar</span>.<span class="ident">notify_one</span>();
     }
 
-    <span class="doccomment">/// runs an SCE-active step (slot)</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * slot: target slot</span>
-    <span class="doccomment">/// * block: None if miss, Some(block_id, block) otherwise</span>
+    <span class="doccomment">/// sends an arbitrary VM request</span>
     <span class="kw">fn</span> <span class="ident">push_request</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">request</span>: <span class="ident">ExecutionRequest</span>) {
         <span class="kw">let</span> (<span class="ident">queue_lock</span>, <span class="ident">condvar</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">execution_queue</span>;
         <span class="kw">let</span> <span class="ident">queue_guard</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">queue_lock</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
