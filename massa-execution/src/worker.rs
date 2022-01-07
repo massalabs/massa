@@ -180,7 +180,7 @@ impl ExecutionWorker {
         })
     }
 
-    // asks the VM to reset to its final
+    /// asks the VM to reset to its final state
     pub fn reset_to_final(&mut self) {
         let (queue_lock, condvar) = &*self.execution_queue;
         let queue_guard = &mut queue_lock.lock().unwrap();
@@ -200,11 +200,7 @@ impl ExecutionWorker {
         condvar.notify_one();
     }
 
-    /// runs an SCE-active step (slot)
-    ///
-    /// # Arguments
-    /// * slot: target slot
-    /// * block: None if miss, Some(block_id, block) otherwise
+    /// sends an arbitrary VM request
     fn push_request(&self, request: ExecutionRequest) {
         let (queue_lock, condvar) = &*self.execution_queue;
         let queue_guard = &mut queue_lock.lock().unwrap();
