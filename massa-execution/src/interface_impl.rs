@@ -39,6 +39,11 @@ impl InterfaceClone for InterfaceImpl {
 }
 
 impl Interface for InterfaceImpl {
+    fn print(&self, message: &str) -> Result<()> {
+        info!("SC print: {}", message);
+        Ok(())
+    }
+
     fn get_module(&self, address: &String) -> Result<Vec<u8>> {
         let address = Address::from_str(address)?;
         let bytecode = { context_guard!(self).ledger_step.get_module(&address) };
@@ -49,6 +54,25 @@ impl Interface for InterfaceImpl {
             }
             _ => bail!("Error bytecode not found"),
         }
+    }
+
+    /// Returns zero as a default if address not found.
+    fn get_balance(&self) -> Result<u64> {
+        let context = context_guard!(self);
+        let address = match context.call_stack.back() {
+            Some(addr) => addr,
+            _ => bail!("Failed to read call stack current address"),
+        };
+        Ok(context.ledger_step.get_balance(&address).to_raw())
+    }
+
+    /// Returns zero as a default if address not found.
+    fn get_balance_for(&self, address: &String) -> Result<u64> {
+        let address = Address::from_str(address)?;
+        Ok(context_guard!(self)
+            .ledger_step
+            .get_balance(&address)
+            .to_raw())
     }
 
     fn exit_success(&self) -> Result<()> {
