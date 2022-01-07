@@ -8,6 +8,7 @@ use crate::types::{ExecutionContext, ExecutionData, ExecutionStep, StepHistory, 
 use crate::{config::ExecutionConfigs, ExecutionError};
 use assembly_simulator::Interface;
 use massa_models::address::AddressHashMap;
+use massa_models::timeslots::slot_count_in_range;
 use massa_models::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyResult},
     Address, Amount, BlockId, Slot,
@@ -17,6 +18,7 @@ use tokio::sync::oneshot;
 use tracing::debug;
 
 pub(crate) struct VM {
+    thread_count: u8,
     step_history: StepHistory,
     execution_interface: Box<dyn Interface>,
     execution_context: Arc<Mutex<ExecutionContext>>,
@@ -53,6 +55,7 @@ impl VM {
         let execution_interface = Box::new(InterfaceImpl::new(Arc::clone(&execution_context)));
 
         Ok(VM {
+            thread_count: cfg.thread_count,
             step_history: Default::default(),
             execution_interface,
             execution_context,
@@ -320,6 +323,13 @@ impl VM {
     /// # Parameters
     ///   * step: execution step to run
     pub(crate) fn run_active_step(&mut self, step: ExecutionStep) {
+        // rewind history to optimize execution
+        if let Some(front_slot) = self.step_history.front().map(|h| h.slot) {
+            if let Ok(len) = slot_count_in_range(front_slot, step.slot, self.thread_count) {
+                self.step_history.truncate(len as usize);
+            }
+        }
+
         // run step
         let history_item = self.run_step_internal(&step);
 

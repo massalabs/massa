@@ -7,6 +7,24 @@ use std::convert::TryInto;
 
 use crate::{ModelsError, Slot};
 
+/// Counts the number of slots in a slot range [a, b)
+///
+/// # Arguments
+/// * a: starting slot (included)
+/// * b: ending slot (excluded)
+/// * thread_count: number of threads
+pub fn slot_count_in_range(a: Slot, b: Slot, thread_count: u8) -> Result<u64, ModelsError> {
+    b.period
+        .checked_sub(a.period)
+        .ok_or(ModelsError::TimeOverflowError)?
+        .checked_mul(thread_count as u64)
+        .ok_or(ModelsError::TimeOverflowError)?
+        .checked_add(b.thread as u64)
+        .ok_or(ModelsError::TimeOverflowError)?
+        .checked_sub(a.thread as u64)
+        .ok_or(ModelsError::TimeOverflowError)
+}
+
 /// Gets timestamp in millis for given slot.
 ///
 /// # Arguments
@@ -149,6 +167,27 @@ pub fn time_range_to_slot_range(
 mod tests {
     use super::*;
     use serial_test::serial;
+
+    #[test]
+    #[serial]
+    fn test_slot_count_in_range() {
+        assert_eq!(
+            slot_count_in_range(Slot::new(100, 3), Slot::new(100, 3), 32).unwrap(),
+            0
+        );
+        assert_eq!(
+            slot_count_in_range(Slot::new(100, 3), Slot::new(100, 5), 32).unwrap(),
+            2
+        );
+        assert_eq!(
+            slot_count_in_range(Slot::new(100, 4), Slot::new(103, 13), 32).unwrap(),
+            105
+        );
+        assert_eq!(
+            slot_count_in_range(Slot::new(100, 13), Slot::new(103, 4), 32).unwrap(),
+            87
+        );
+    }
 
     #[test]
     #[serial]
