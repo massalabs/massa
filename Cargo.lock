@@ -66,9 +66,9 @@ checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
 name = "as-ffi-bindings"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f20b1ac80a9cabe565f3f079586f0c3de015de3d9e4a50b5033e0903d62638c8"
+checksum = "9310e5caebea48afcb14dd116075a8338ffb4fd6800817641c67e82df8e36c28"
 dependencies = [
  "anyhow",
  "wasmer",
@@ -77,7 +77,7 @@ dependencies = [
 [[package]]
 name = "assembly_simulator"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.2.4#8c643c2824ec16c33ecf587f2a126392b144ede7"
+source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.2.5#2b7d8980022c7dfdf1c2cba07ff17523ad953d4d"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
