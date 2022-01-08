@@ -2946,7 +2946,7 @@
 
             <span class="kw">let</span> <span class="ident">creator_addr</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">b_creator</span>);
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">staking_keys</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">creator_addr</span>) {
-                <span class="macro">warn!</span>(<span class="string">&quot;block {} that was produced by our address {} at slot {} became stale. This is probably due to a temporary desynchronization.&quot;</span>, <span class="ident">b_id</span>, <span class="ident">b_slot</span>, <span class="ident">creator_addr</span>);
+                <span class="macro">warn!</span>(<span class="string">&quot;block {} that was produced by our address {} at slot {} became stale. This is probably due to a temporary desynchronization.&quot;</span>, <span class="ident">b_id</span>, <span class="ident">creator_addr</span>, <span class="ident">b_slot</span>);
             }
         }
 
