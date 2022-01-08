@@ -1459,7 +1459,7 @@ impl ConsensusWorker {
 
             let creator_addr = Address::from_public_key(&b_creator);
             if self.staking_keys.contains_key(&creator_addr) {
-                warn!("block {} that was produced by our address {} at slot {} became stale. This is probably due to a temporary desynchronization.", b_id, b_slot, creator_addr);
+                warn!("block {} that was produced by our address {} at slot {} became stale. This is probably due to a temporary desynchronization.", b_id, creator_addr, b_slot);
             }
         }
 
