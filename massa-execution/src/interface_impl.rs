@@ -10,7 +10,7 @@ use massa_models::{
     Address, Amount,
 };
 use std::sync::{Arc, Mutex};
-use tracing::info;
+use tracing::{debug, info};
 
 macro_rules! context_guard {
     ($self:ident) => {
@@ -40,7 +40,7 @@ impl InterfaceClone for InterfaceImpl {
 
 impl Interface for InterfaceImpl {
     fn print(&self, message: &str) -> Result<()> {
-        info!("SC print: {}", message);
+        debug!("SC print: {}", message);
         Ok(())
     }
 
@@ -265,7 +265,7 @@ impl Interface for InterfaceImpl {
             call_stack,
         };
         let event = SCOutputEvent { context, data };
-        info!("execution event: {:?}", event);
+        debug!("SC event: {:?}", event);
         // TODO store the event somewhere
         Ok(())
     }
