@@ -24,7 +24,11 @@ use massa_time::MassaTime;
 use std::process;
 use tokio::signal;
 use tokio::sync::mpsc;
-use tracing::{error, info, warn, Level};
+use tracing::{error, info, warn};
+use tracing_subscriber::{
+    filter::{filter_fn, LevelFilter},
+    prelude::*,
+};
 
 mod settings;
 
@@ -271,15 +275,18 @@ async fn stop(
 #[tokio::main]
 async fn main() {
     // setup logging
-    tracing_subscriber::fmt()
-        .with_max_level(match SETTINGS.logging.level {
-            4 => Level::TRACE,
-            3 => Level::DEBUG,
-            2 => Level::INFO,
-            1 => Level::WARN,
-            _ => Level::ERROR,
+    let fmt_layer = tracing_subscriber::fmt::layer()
+        .with_filter(match SETTINGS.logging.level {
+            4 => LevelFilter::TRACE,
+            3 => LevelFilter::DEBUG,
+            2 => LevelFilter::INFO,
+            1 => LevelFilter::WARN,
+            _ => LevelFilter::ERROR,
         })
-        .init();
+        .with_filter(filter_fn(|metadata| {
+            metadata.target().starts_with("massa") // ignore non-massa logs
+        }));
+    tracing_subscriber::registry().with(fmt_layer).init();
 
     // run
     loop {
