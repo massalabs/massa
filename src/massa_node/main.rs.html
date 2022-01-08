@@ -352,6 +352,13 @@
 <span id="350">350</span>
 <span id="351">351</span>
 <span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
@@ -378,7 +385,11 @@
 <span class="kw">use</span> <span class="ident">std::process</span>;
 <span class="kw">use</span> <span class="ident">tokio::signal</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>;
-<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">warn</span>, <span class="ident">Level</span>};
+<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">warn</span>};
+<span class="kw">use</span> <span class="ident">tracing_subscriber</span>::{
+    <span class="ident">filter</span>::{<span class="ident">filter_fn</span>, <span class="ident">LevelFilter</span>},
+    <span class="ident">prelude</span>::<span class="kw-2">*</span>,
+};
 
 <span class="kw">mod</span> <span class="ident">settings</span>;
 
@@ -625,15 +636,18 @@
 <span class="attribute">#[<span class="ident">tokio::main</span>]</span>
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() {
     <span class="comment">// setup logging</span>
-    <span class="ident">tracing_subscriber::fmt</span>()
-        .<span class="ident">with_max_level</span>(<span class="kw">match</span> <span class="ident">SETTINGS</span>.<span class="ident">logging</span>.<span class="ident">level</span> {
-            <span class="number">4</span> =&gt; <span class="ident">Level::TRACE</span>,
-            <span class="number">3</span> =&gt; <span class="ident">Level::DEBUG</span>,
-            <span class="number">2</span> =&gt; <span class="ident">Level::INFO</span>,
-            <span class="number">1</span> =&gt; <span class="ident">Level::WARN</span>,
-            <span class="kw">_</span> =&gt; <span class="ident">Level::ERROR</span>,
+    <span class="kw">let</span> <span class="ident">fmt_layer</span> <span class="op">=</span> <span class="ident">tracing_subscriber::fmt::layer</span>()
+        .<span class="ident">with_filter</span>(<span class="kw">match</span> <span class="ident">SETTINGS</span>.<span class="ident">logging</span>.<span class="ident">level</span> {
+            <span class="number">4</span> =&gt; <span class="ident">LevelFilter::TRACE</span>,
+            <span class="number">3</span> =&gt; <span class="ident">LevelFilter::DEBUG</span>,
+            <span class="number">2</span> =&gt; <span class="ident">LevelFilter::INFO</span>,
+            <span class="number">1</span> =&gt; <span class="ident">LevelFilter::WARN</span>,
+            <span class="kw">_</span> =&gt; <span class="ident">LevelFilter::ERROR</span>,
         })
-        .<span class="ident">init</span>();
+        .<span class="ident">with_filter</span>(<span class="ident">filter_fn</span>(<span class="op">|</span><span class="ident">metadata</span><span class="op">|</span> {
+            <span class="ident">metadata</span>.<span class="ident">target</span>().<span class="ident">starts_with</span>(<span class="string">&quot;massa&quot;</span>) <span class="comment">// ignore non-massa logs</span>
+        }));
+    <span class="ident">tracing_subscriber::registry</span>().<span class="ident">with</span>(<span class="ident">fmt_layer</span>).<span class="ident">init</span>();
 
     <span class="comment">// run</span>
     <span class="kw">loop</span> {
@@ -705,5 +719,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (cfa4ac66c 2022-01-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (e012a191d 2022-01-06)" ></div>
 </body></html>
