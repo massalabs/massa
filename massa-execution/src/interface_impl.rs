@@ -10,7 +10,7 @@ use massa_models::{
     Address, Amount,
 };
 use std::sync::{Arc, Mutex};
-use tracing::{debug, info};
+use tracing::debug;
 
 macro_rules! context_guard {
     ($self:ident) => {
