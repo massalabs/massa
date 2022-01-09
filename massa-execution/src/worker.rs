@@ -307,6 +307,7 @@ impl ExecutionWorker {
     /// fills the remaining slots until now() with miss executions
     /// see step 4 in spec https://github.com/massalabs/massa/wiki/vm-block-feed
     fn fill_misses_until_now(&mut self) -> Result<(), ExecutionError> {
+        /* TODO DISABLED TEMPORARILY https://github.com/massalabs/massa/issues/2101
         let end_step = get_current_latest_block_slot(
             self.cfg.thread_count,
             self.cfg.t0,
@@ -330,6 +331,7 @@ impl ExecutionWorker {
                 s = s.get_next_slot(self.cfg.thread_count)?;
             }
         }
+        */
         Ok(())
     }
 
@@ -468,12 +470,13 @@ impl ExecutionWorker {
                             .pop_first()
                             .expect("sce_active_blocks should not be empty");
                         // call the VM to execute the SCE-active block B at slot S
+                        /* TODO DISABLED TEMPORARILY https://github.com/massalabs/massa/issues/2101
                         self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
                             slot: s,
                             block: Some((*b_id, block.clone())),
                         }));
-
                         self.last_active_slot = s;
+                        */
                     }
 
                     // otherwise, if there is no CSS-active block at S
@@ -484,12 +487,13 @@ impl ExecutionWorker {
                         }
 
                         // call the VM to execute an SCE-active miss at slot S
+                        /*  TODO DISABLED TEMPORARILY https://github.com/massalabs/massa/issues/2101
                         self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
                             slot: s,
                             block: None,
                         }));
-
                         self.last_active_slot = s;
+                        */
                     }
 
                     // there are no more CSS-active blocks
