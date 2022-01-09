@@ -9,7 +9,6 @@ use massa_signature::PrivateKey;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
-#[cfg(not(test))]
 use std::str::FromStr;
 use std::{default::Default, path::PathBuf, usize};
 
@@ -45,7 +44,7 @@ lazy_static::lazy_static! {
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(7, 10);
 
-    pub static ref ROLL_PRICE: Amount = Amount::from_raw(100);
+    pub static ref ROLL_PRICE: Amount = Amount::from_str("100.0").unwrap();
 }
 
 #[cfg(test)]
@@ -62,14 +61,14 @@ lazy_static::lazy_static! {
     /// Private_key to sign genesis blocks.
     pub static ref GENESIS_KEY: PrivateKey = generate_random_private_key();
 
-    pub static ref BLOCK_REWARD: Amount = Amount::from_raw(1);
+    pub static ref BLOCK_REWARD: Amount = Amount::from_str("1.0").unwrap();
 
     pub static ref INITIAL_DRAW_SEED: String = "massa_genesis_seed".to_string();
 
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(1, 1);
 
-    pub static ref ROLL_PRICE: Amount = Amount::default();
+    pub static ref ROLL_PRICE: Amount = Amount::from_str("100.0").unwrap();
 }
 
 /// Number of threads
