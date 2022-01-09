@@ -395,7 +395,6 @@
 <span id="393">393</span>
 <span id="394">394</span>
 <span id="395">395</span>
-<span id="396">396</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::assertions_on_constants</span>)]</span>
@@ -407,7 +406,6 @@
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">test</span>))]</span>
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">default::Default</span>, <span class="ident">path::PathBuf</span>, <span class="ident">usize</span>};
 
@@ -443,7 +441,7 @@
     <span class="doccomment">/// number of cycle misses (strictly) above which stakers are deactivated</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">POS_MISS_RATE_DEACTIVATION_THRESHOLD</span>: <span class="ident">Ratio</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Ratio::new</span>(<span class="number">7</span>, <span class="number">10</span>);
 
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">ROLL_PRICE</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::from_raw</span>(<span class="number">100</span>);
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">ROLL_PRICE</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::from_str</span>(<span class="string">&quot;100.0&quot;</span>).<span class="ident">unwrap</span>();
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -460,14 +458,14 @@
     <span class="doccomment">/// Private_key to sign genesis blocks.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_KEY</span>: <span class="ident">PrivateKey</span> <span class="op">=</span> <span class="ident">generate_random_private_key</span>();
 
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">BLOCK_REWARD</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::from_raw</span>(<span class="number">1</span>);
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">BLOCK_REWARD</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::from_str</span>(<span class="string">&quot;1.0&quot;</span>).<span class="ident">unwrap</span>();
 
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">INITIAL_DRAW_SEED</span>: <span class="ident">String</span> <span class="op">=</span> <span class="string">&quot;massa_genesis_seed&quot;</span>.<span class="ident">to_string</span>();
 
     <span class="doccomment">/// number of cycle misses (strictly) above which stakers are deactivated</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">POS_MISS_RATE_DEACTIVATION_THRESHOLD</span>: <span class="ident">Ratio</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Ratio::new</span>(<span class="number">1</span>, <span class="number">1</span>);
 
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">ROLL_PRICE</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::default</span>();
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">ROLL_PRICE</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::from_str</span>(<span class="string">&quot;100.0&quot;</span>).<span class="ident">unwrap</span>();
 }
 
 <span class="doccomment">/// Number of threads</span>
