@@ -62,7 +62,7 @@
 <span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
 
 <span class="macro">lazy_static::lazy_static!</span> {
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">VERSION</span>: <span class="ident">Version</span> <span class="op">=</span> <span class="string">&quot;TEST.5.0&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">VERSION</span>: <span class="ident">Version</span> <span class="op">=</span> <span class="string">&quot;TEST.6.0&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
     <span class="comment">// TODO: this code is duplicated from /massa-client/settings.rs and should be part of a custom crate</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">SETTINGS</span>: <span class="ident">Settings</span> <span class="op">=</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">settings</span> <span class="op">=</span> <span class="ident">config::Config::default</span>();
