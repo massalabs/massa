@@ -508,6 +508,10 @@
 <span id="506">506</span>
 <span id="507">507</span>
 <span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::sce_ledger::FinalLedger</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types</span>::{<span class="ident">ExecutionQueue</span>, <span class="ident">ExecutionRequest</span>};
@@ -817,29 +821,31 @@
     <span class="doccomment">/// fills the remaining slots until now() with miss executions</span>
     <span class="doccomment">/// see step 4 in spec https://github.com/massalabs/massa/wiki/vm-block-feed</span>
     <span class="kw">fn</span> <span class="ident">fill_misses_until_now</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">end_step</span> <span class="op">=</span> <span class="ident">get_current_latest_block_slot</span>(
-            <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span>,
-            <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">t0</span>,
-            <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">genesis_timestamp</span>,
-            <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">clock_compensation</span>,
-        )<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">end_step</span>) <span class="op">=</span> <span class="ident">end_step</span> {
-            <span class="comment">// slot S</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">last_active_slot</span>.<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span>)<span class="question-mark">?</span>;
+        <span class="comment">/* TODO DISABLED TEMPORARILY https://github.com/massalabs/massa/issues/2101
+        let end_step = get_current_latest_block_slot(
+            self.cfg.thread_count,
+            self.cfg.t0,
+            self.cfg.genesis_timestamp,
+            self.cfg.clock_compensation,
+        )?;
+        if let Some(end_step) = end_step {
+            // slot S
+            let mut s = self.last_active_slot.get_next_slot(self.cfg.thread_count)?;
 
-            <span class="kw">while</span> <span class="ident">s</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">end_step</span> {
-                <span class="comment">// call the VM to execute an SCE-active miss at slot S</span>
-                <span class="self">self</span>.<span class="ident">push_request</span>(<span class="ident">ExecutionRequest::RunActiveStep</span>(<span class="ident">ExecutionStep</span> {
-                    <span class="ident">slot</span>: <span class="self">self</span>.<span class="ident">last_active_slot</span>,
-                    <span class="ident">block</span>: <span class="prelude-val">None</span>,
+            while s &lt;= end_step {
+                // call the VM to execute an SCE-active miss at slot S
+                self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
+                    slot: self.last_active_slot,
+                    block: None,
                 }));
 
-                <span class="comment">// set last_active_slot = S</span>
-                <span class="self">self</span>.<span class="ident">last_active_slot</span> <span class="op">=</span> <span class="ident">s</span>;
+                // set last_active_slot = S
+                self.last_active_slot = s;
 
-                <span class="ident">s</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span>)<span class="question-mark">?</span>;
+                s = s.get_next_slot(self.cfg.thread_count)?;
             }
         }
+        */</span>
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -978,12 +984,13 @@
                             .<span class="ident">pop_first</span>()
                             .<span class="ident">expect</span>(<span class="string">&quot;sce_active_blocks should not be empty&quot;</span>);
                         <span class="comment">// call the VM to execute the SCE-active block B at slot S</span>
-                        <span class="self">self</span>.<span class="ident">push_request</span>(<span class="ident">ExecutionRequest::RunActiveStep</span>(<span class="ident">ExecutionStep</span> {
-                            <span class="ident">slot</span>: <span class="ident">s</span>,
-                            <span class="ident">block</span>: <span class="prelude-val">Some</span>((<span class="kw-2">*</span><span class="ident">b_id</span>, <span class="ident">block</span>.<span class="ident">clone</span>())),
+                        <span class="comment">/* TODO DISABLED TEMPORARILY https://github.com/massalabs/massa/issues/2101
+                        self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
+                            slot: s,
+                            block: Some((*b_id, block.clone())),
                         }));
-
-                        <span class="self">self</span>.<span class="ident">last_active_slot</span> <span class="op">=</span> <span class="ident">s</span>;
+                        self.last_active_slot = s;
+                        */</span>
                     }
 
                     <span class="comment">// otherwise, if there is no CSS-active block at S</span>
@@ -994,12 +1001,13 @@
                         }
 
                         <span class="comment">// call the VM to execute an SCE-active miss at slot S</span>
-                        <span class="self">self</span>.<span class="ident">push_request</span>(<span class="ident">ExecutionRequest::RunActiveStep</span>(<span class="ident">ExecutionStep</span> {
-                            <span class="ident">slot</span>: <span class="ident">s</span>,
-                            <span class="ident">block</span>: <span class="prelude-val">None</span>,
+                        <span class="comment">/*  TODO DISABLED TEMPORARILY https://github.com/massalabs/massa/issues/2101
+                        self.push_request(ExecutionRequest::RunActiveStep(ExecutionStep {
+                            slot: s,
+                            block: None,
                         }));
-
-                        <span class="self">self</span>.<span class="ident">last_active_slot</span> <span class="op">=</span> <span class="ident">s</span>;
+                        self.last_active_slot = s;
+                        */</span>
                     }
 
                     <span class="comment">// there are no more CSS-active blocks</span>

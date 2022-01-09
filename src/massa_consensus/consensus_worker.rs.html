@@ -1485,6 +1485,9 @@
 <span id="1483">1483</span>
 <span id="1484">1484</span>
 <span id="1485">1485</span>
+<span id="1486">1486</span>
+<span id="1487">1487</span>
+<span id="1488">1488</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">block_graph</span>::<span class="kw-2">*</span>, <span class="ident">pos::ProofOfStake</span>, <span class="ident">settings::ConsensusConfig</span>};
@@ -1738,15 +1741,18 @@
         <span class="ident">execution_command_sender</span>
             .<span class="ident">update_blockclique</span>(
                 <span class="ident">block_db</span>.<span class="ident">clone_all_final_blocks</span>(),
-                <span class="ident">block_db</span>
-                    .<span class="ident">get_blockclique</span>()
-                    .<span class="ident">into_iter</span>()
-                    .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">block_id</span><span class="op">|</span> {
-                        <span class="ident">block_db</span>
-                            .<span class="ident">get_active_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_id</span>)
-                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">a_block</span><span class="op">|</span> (<span class="ident">block_id</span>, <span class="ident">a_block</span>.<span class="ident">block</span>.<span class="ident">clone</span>()))
+                <span class="comment">/* TODO DISABLED TEMPORARILY https://github.com/massalabs/massa/issues/2101
+                block_db
+                    .get_blockclique()
+                    .into_iter()
+                    .filter_map(|block_id| {
+                        block_db
+                            .get_active_block(&amp;block_id)
+                            .map(|a_block| (block_id, a_block.block.clone()))
                     })
-                    .<span class="ident">collect</span>(),
+                    .collect(),
+                */</span>
+                <span class="ident">BlockHashMap::default</span>(),
             )
             .<span class="kw">await</span><span class="question-mark">?</span>;
 
