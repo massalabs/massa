@@ -35,7 +35,7 @@ fn _call(shared_env: &SharedExecutionContext, addr: Address, func_name: String, 
 
         // update context
         (*exec_context_guard).max_gas = max_gas;
-        (*exec_context_guard).coins = Amount::from_raw(0); // TODO maybe allow sending coins in the call
+        (*exec_context_guard).coins = AMOUNT_ZERO; // TODO maybe allow sending coins in the call
         (*exec_context_guard).call_stack.push_back(addr);
     }
 
