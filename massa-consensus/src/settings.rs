@@ -24,11 +24,11 @@ lazy_static::lazy_static! {
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "test") {
         MassaTime::now().unwrap().saturating_add(MassaTime::from(1000 * 60 * 3))
     } else {
-        1638460800000.into()
+        1641744000000.into()
     };
 
     /// TESTNET: time when the blockclique is ended.
-    pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "test") {None} else {Some(1640883600000.into())};
+    pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "test") {None} else {Some(1643644800000.into())};
 
     /// Time between the periods in the same thread.
     pub static ref T0: MassaTime = 16000.into();

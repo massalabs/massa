@@ -12,7 +12,7 @@ use massa_protocol_exports::ProtocolSettings;
 use serde::Deserialize;
 
 lazy_static::lazy_static! {
-    pub static ref VERSION: Version = "TEST.5.0".parse().unwrap();
+    pub static ref VERSION: Version = "TEST.6.0".parse().unwrap();
     // TODO: this code is duplicated from /massa-client/settings.rs and should be part of a custom crate
     pub static ref SETTINGS: Settings = {
         let mut settings = config::Config::default();
