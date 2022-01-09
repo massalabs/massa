@@ -420,7 +420,7 @@
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_TIMESTAMP</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test&quot;</span>) {
         <span class="ident">MassaTime::now</span>().<span class="ident">unwrap</span>().<span class="ident">saturating_add</span>(<span class="ident">MassaTime::from</span>(<span class="number">1000</span> <span class="op">*</span> <span class="number">60</span> <span class="op">*</span> <span class="number">3</span>))
     } <span class="kw">else</span> {
-        <span class="number">1641744000000</span>.<span class="ident">into</span>()
+        <span class="number">1641754800000</span>.<span class="ident">into</span>()
     };
 
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
