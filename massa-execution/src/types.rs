@@ -92,6 +92,7 @@ pub(crate) enum ExecutionRequest {
     /// Runs a final step
     RunFinalStep(ExecutionStep),
     /// Runs an active step
+    #[allow(dead_code)] // TODO DISABLED TEMPORARILY #2101
     RunActiveStep(ExecutionStep),
     /// Resets the VM to its final state
     /// Run code in read-only mode

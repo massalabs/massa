@@ -26,7 +26,7 @@ impl SerializeCompact for EventExecutionContext {
 }
 
 impl DeserializeCompact for EventExecutionContext {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), crate::ModelsError> {
+    fn from_bytes_compact(_buffer: &[u8]) -> Result<(Self, usize), crate::ModelsError> {
         todo!()
     }
 }
@@ -38,7 +38,7 @@ impl SerializeCompact for SCOutputEvent {
 }
 
 impl DeserializeCompact for SCOutputEvent {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), crate::ModelsError> {
+    fn from_bytes_compact(_buffer: &[u8]) -> Result<(Self, usize), crate::ModelsError> {
         todo!()
     }
 }

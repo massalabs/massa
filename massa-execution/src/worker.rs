@@ -287,19 +287,9 @@ impl ExecutionWorker {
                     address,
                 });
             }
-            ExecutionCommand::GetSCOutputEventBySlotRange {
-                start,
-                end,
-                response_tx,
-            } => todo!(),
-            ExecutionCommand::GetSCOutputEventByCaller {
-                caller_address,
-                response_tx,
-            } => todo!(),
-            ExecutionCommand::GetSCOutputEventBySCAddress {
-                sc_address,
-                response_tx,
-            } => todo!(),
+            ExecutionCommand::GetSCOutputEventBySlotRange { .. } => todo!(),
+            ExecutionCommand::GetSCOutputEventByCaller { .. } => todo!(),
+            ExecutionCommand::GetSCOutputEventBySCAddress { .. } => todo!(),
         }
         Ok(())
     }
@@ -466,7 +456,7 @@ impl ExecutionWorker {
                     // there is a block B at slot S in `sce_active_blocks`:
                     Some(b_slot) if b_slot == s => {
                         // remove the entry from sce_active_blocks (cannot panic, checked above)
-                        let (_b_slot, (b_id, block)) = sce_active_blocks
+                        let (_b_slot, (_b_id, _block)) = sce_active_blocks
                             .pop_first()
                             .expect("sce_active_blocks should not be empty");
                         // call the VM to execute the SCE-active block B at slot S
