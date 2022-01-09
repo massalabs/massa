@@ -23,7 +23,7 @@ lazy_static::lazy_static! {
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "test") {
         MassaTime::now().unwrap().saturating_add(MassaTime::from(1000 * 60 * 3))
     } else {
-        1641744000000.into()
+        1641754800000.into()
     };
 
     /// TESTNET: time when the blockclique is ended.
