@@ -77,7 +77,7 @@ dependencies = [
 [[package]]
 name = "assembly_simulator"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.2.7#a77ec03fe2b5da08df91b70baffa2b752a2200f4"
+source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.2.8#4f678f7191c79a17c6f4926d5f94d8927780ab20"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -88,7 +88,7 @@ dependencies = [
  "serde_json",
  "serial_test",
  "wasmer",
- "wasmer-compiler-cranelift",
+ "wasmer-compiler-singlepass",
  "wasmer-engine-universal",
  "wasmer-middlewares",
 ]
@@ -634,6 +634,32 @@ name = "doc-comment"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
+
+[[package]]
+name = "dynasm"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47b1801e630bd336d0bbbdbf814de6cc749c9a400c7e3d995e6adfd455d0c83c"
+dependencies = [
+ "bitflags",
+ "byteorder",
+ "lazy_static",
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "dynasmrt"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d428afc93ad288f6dffc1fa5f4a78201ad2eec33c5a522e51c181009eb09061"
+dependencies = [
+ "byteorder",
+ "dynasm",
+ "memmap2",
+]
 
 [[package]]
 name = "either"
@@ -3483,6 +3509,25 @@ dependencies = [
  "smallvec",
  "target-lexicon",
  "tracing",
+ "wasmer-compiler",
+ "wasmer-types",
+ "wasmer-vm",
+]
+
+[[package]]
+name = "wasmer-compiler-singlepass"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "271d3da24c5d1a8bb3f9fc3944ba96d2588b6fa16a0bcef91765db853aeccac4"
+dependencies = [
+ "byteorder",
+ "dynasm",
+ "dynasmrt",
+ "lazy_static",
+ "loupe",
+ "more-asserts",
+ "rayon",
+ "smallvec",
  "wasmer-compiler",
  "wasmer-types",
  "wasmer-vm",
