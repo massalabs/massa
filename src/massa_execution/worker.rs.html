@@ -502,16 +502,6 @@
 <span id="500">500</span>
 <span id="501">501</span>
 <span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
-<span id="512">512</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::sce_ledger::FinalLedger</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types</span>::{<span class="ident">ExecutionQueue</span>, <span class="ident">ExecutionRequest</span>};
@@ -801,19 +791,9 @@
                     <span class="ident">address</span>,
                 });
             }
-            <span class="ident">ExecutionCommand::GetSCOutputEventBySlotRange</span> {
-                <span class="ident">start</span>,
-                <span class="ident">end</span>,
-                <span class="ident">response_tx</span>,
-            } =&gt; <span class="macro">todo!</span>(),
-            <span class="ident">ExecutionCommand::GetSCOutputEventByCaller</span> {
-                <span class="ident">caller_address</span>,
-                <span class="ident">response_tx</span>,
-            } =&gt; <span class="macro">todo!</span>(),
-            <span class="ident">ExecutionCommand::GetSCOutputEventBySCAddress</span> {
-                <span class="ident">sc_address</span>,
-                <span class="ident">response_tx</span>,
-            } =&gt; <span class="macro">todo!</span>(),
+            <span class="ident">ExecutionCommand::GetSCOutputEventBySlotRange</span> { .. } =&gt; <span class="macro">todo!</span>(),
+            <span class="ident">ExecutionCommand::GetSCOutputEventByCaller</span> { .. } =&gt; <span class="macro">todo!</span>(),
+            <span class="ident">ExecutionCommand::GetSCOutputEventBySCAddress</span> { .. } =&gt; <span class="macro">todo!</span>(),
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -980,7 +960,7 @@
                     <span class="comment">// there is a block B at slot S in `sce_active_blocks`:</span>
                     <span class="prelude-val">Some</span>(<span class="ident">b_slot</span>) <span class="kw">if</span> <span class="ident">b_slot</span> <span class="op">==</span> <span class="ident">s</span> =&gt; {
                         <span class="comment">// remove the entry from sce_active_blocks (cannot panic, checked above)</span>
-                        <span class="kw">let</span> (<span class="ident">_b_slot</span>, (<span class="ident">b_id</span>, <span class="ident">block</span>)) <span class="op">=</span> <span class="ident">sce_active_blocks</span>
+                        <span class="kw">let</span> (<span class="ident">_b_slot</span>, (<span class="ident">_b_id</span>, <span class="ident">_block</span>)) <span class="op">=</span> <span class="ident">sce_active_blocks</span>
                             .<span class="ident">pop_first</span>()
                             .<span class="ident">expect</span>(<span class="string">&quot;sce_active_blocks should not be empty&quot;</span>);
                         <span class="comment">// call the VM to execute the SCE-active block B at slot S</span>

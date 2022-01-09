@@ -159,6 +159,7 @@
 <span id="157">157</span>
 <span id="158">158</span>
 <span id="159">159</span>
+<span id="160">160</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::sce_ledger</span>::{<span class="ident">FinalLedger</span>, <span class="ident">SCELedger</span>, <span class="ident">SCELedgerChanges</span>, <span class="ident">SCELedgerStep</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::BootstrapExecutionState</span>;
 <span class="kw">use</span> <span class="ident">massa_models::address::AddressHashSet</span>;
@@ -253,6 +254,7 @@
     <span class="doccomment">/// Runs a final step</span>
     <span class="ident">RunFinalStep</span>(<span class="ident">ExecutionStep</span>),
     <span class="doccomment">/// Runs an active step</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span> <span class="comment">// TODO DISABLED TEMPORARILY #2101</span>
     <span class="ident">RunActiveStep</span>(<span class="ident">ExecutionStep</span>),
     <span class="doccomment">/// Resets the VM to its final state</span>
     <span class="doccomment">/// Run code in read-only mode</span>
