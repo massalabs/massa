@@ -52,17 +52,18 @@ jobs:
         with:
           profile: minimal
           toolchain: nightly
-          target: "x86_64-pc-windows-gnu"
+          target: x86_64-pc-windows-gnu
           override: true
       - uses: Swatinem/rust-cache@v1
       - uses: actions-rs/cargo@v1
         with:
+          use-cross: true
           command: build
-          args: --release
+          args: --target x86_64-pc-windows-gnu --release
       - run: |
           mkdir massa && cd massa && mkdir massa-node && mkdir massa-client
-          cp -v ../target/release/massa-node massa-node/massa-node.exe
-          cp -v ../target/release/massa-client massa-client/massa-client.exe
+          cp -v ../target/x86_64-pc-windows-gnu/release/massa-node.exe massa-node/massa-node.exe
+          cp -v ../target/x86_64-pc-windows-gnu/release/massa-client.exe massa-client/massa-client.exe
           cp -rv ../massa-node/config massa-node/config
           cp -rv ../massa-node/base_config massa-node/base_config
           cp -rv ../massa-node/storage massa-node/storage
