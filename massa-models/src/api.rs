@@ -40,6 +40,7 @@ impl std::fmt::Display for NodeStatus {
         writeln!(f)?;
 
         writeln!(f, "Version: {}", self.version)?;
+        writeln!(f, "Config:\n{}", self.config)?;
         writeln!(f)?;
 
         writeln!(f, "Current time: {}", self.current_time.to_utc_string())?;

@@ -1,5 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use std::fmt::Display;
+
 use crate::Amount;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_time::MassaTime;
@@ -40,4 +42,43 @@ pub struct CompactConfig {
     pub pos_lock_cycles: u64,
     pub block_reward: Amount,
     pub roll_price: Amount,
+}
+
+impl Display for CompactConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "    Genesis timestamp: {}",
+            self.genesis_timestamp.to_utc_string()
+        )?;
+        if let Some(end) = self.end_timestamp {
+            writeln!(f, "    End timestamp: {}", end.to_utc_string())?;
+        }
+        writeln!(f, "    Thread count: {}", self.thread_count)?;
+        writeln!(f, "    t0: {}", self.t0)?;
+        writeln!(f, "    delta_f0: {}", self.delta_f0)?;
+        writeln!(
+            f,
+            "    Operation validity periods: {}",
+            self.operation_validity_periods
+        )?;
+        writeln!(f, "    Periods per cycle: {}", self.periods_per_cycle)?;
+
+        writeln!(
+            f,
+            "    Proof of stake lookback cycles: {}",
+            self.pos_lookback_cycles
+        )?;
+
+        writeln!(
+            f,
+            "    Proof of stake lock cycles: {}",
+            self.pos_lock_cycles
+        )?;
+
+        writeln!(f, "    Block reward: {}", self.block_reward)?;
+
+        writeln!(f, "    Periods per cycle: {}", self.periods_per_cycle)?;
+        Ok(())
+    }
 }
