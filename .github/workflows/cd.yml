@@ -127,3 +127,15 @@ jobs:
           release_linux.tar.gz
           release_darwin.tar.gz
           release_windows.tar.gz
+
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: "recursive"
+    - run: |
+       apt install python3 poetry
+       cd massa-deploy
+       poetry install
+       python3 deploy.py
