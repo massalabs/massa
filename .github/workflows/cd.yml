@@ -120,12 +120,12 @@ jobs:
         path: release_linux
     - run: |
         echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-        tar -czvf massa_${RELEASE_VERSION}_linux.tar.gz release_linux
-        tar -czvf massa_${RELEASE_VERSION}_windows.tar.gz release_windows
-        tar -czvf massa_${RELEASE_VERSION}_macos.tar.gz release_macos
+        tar -czvf massa_linux.tar.gz release_linux
+        tar -czvf massa_windows.tar.gz release_windows
+        tar -czvf massa_macos.tar.gz release_macos
     - uses: softprops/action-gh-release@v1
       with:
         files: |
-          release_linux.zip
-          release_darwin.zip
-          release_windows.zip
+          massa_linux.tar.gz
+          massa_macos.tar.gz
+          massa_windows.tar.gz
