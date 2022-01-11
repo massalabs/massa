@@ -612,7 +612,7 @@ impl Command {
             }
             Command::when_episode_ends => {
                 let end = match client.public.get_status().await {
-                    Ok(node_status) => node_status.consensus_stats.end_timespan,
+                    Ok(node_status) => node_status.config.end_timestamp,
                     Err(e) => bail!("RpcError: {}", e),
                 };
                 let (days, hours, mins, secs) = end
