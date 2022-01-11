@@ -126,6 +126,6 @@ jobs:
     - uses: softprops/action-gh-release@v1
       with:
         files: |
-          release_linux.tar.gz
-          release_darwin.tar.gz
-          release_windows.tar.gz
+          release_linux.zip
+          release_darwin.zip
+          release_windows.zip
