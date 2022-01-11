@@ -63,21 +63,17 @@ impl Display for CompactConfig {
             self.operation_validity_periods
         )?;
         writeln!(f, "    Periods per cycle: {}", self.periods_per_cycle)?;
-
         writeln!(
             f,
             "    Proof of stake lookback cycles: {}",
             self.pos_lookback_cycles
         )?;
-
         writeln!(
             f,
             "    Proof of stake lock cycles: {}",
             self.pos_lock_cycles
         )?;
-
         writeln!(f, "    Block reward: {}", self.block_reward)?;
-
         writeln!(f, "    Periods per cycle: {}", self.periods_per_cycle)?;
         Ok(())
     }
