@@ -230,7 +230,7 @@ impl PeerInfoDatabase {
 
         // load from file
         let mut peers = serde_json::from_str::<Vec<PeerInfo>>(
-            &tokio::fs::read_to_string(&cfg.peers_file).await?,
+            &tokio::fs::read_to_string(&cfg.initial_peers_file).await?,
         )?
         .into_iter()
         .map(|p| (p.ip, p))

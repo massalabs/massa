@@ -49,6 +49,7 @@
     connect_timeout = 3000
     wakeup_interval = 5000
     peers_file = "storage/peers.json"
+    initial_peers_file = "base_config/initial_peers.json"
     target_bootstrap_connections = 1
     max_out_bootstrap_connection_attempts = 1
     target_out_nonbootstrap_connections = 10
