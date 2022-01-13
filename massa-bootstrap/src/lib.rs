@@ -10,6 +10,7 @@ pub use establisher::Establisher;
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_consensus::{BootstrapableGraph, ConsensusCommandSender, ExportProofOfStake};
 use massa_execution::{BootstrapExecutionState, ExecutionCommandSender};
+use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::Version;
 use massa_network::{BootstrapPeers, NetworkCommandSender};
@@ -59,6 +60,7 @@ async fn get_state_internal(
     bootstrap_public_key: &PublicKey,
     establisher: &mut Establisher,
     our_version: Version,
+    our_config_hash: Hash,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state_internal", {});
     info!("Start bootstrapping from {}", bootstrap_addr);
@@ -105,12 +107,16 @@ async fn get_state_internal(
         Ok(Ok(BootstrapMessage::BootstrapTime {
             server_time,
             version,
+            config_hash,
         })) => {
             if !our_version.is_compatible(&version) {
                 return Err(BootstrapError::IncompatibleVersionError(format!(
                     "remote is running incompatible version: {} (local node version: {})",
                     version, our_version
                 )));
+            }
+            if our_config_hash != config_hash {
+                return Err(BootstrapError::IncompatibleConfigHash);
             }
             server_time
         }
@@ -211,6 +217,7 @@ pub async fn get_state(
     bootstrap_settings: &'static BootstrapSettings,
     mut establisher: Establisher,
     version: Version,
+    config_hash: Hash,
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
@@ -237,7 +244,7 @@ pub async fn get_state(
                     panic!("This episode has come to an end, please get the latest testnet node version to continue");
                 }
             }
-            match get_state_internal(bootstrap_settings, addr, pub_key, &mut establisher, version)
+            match get_state_internal(bootstrap_settings, addr, pub_key, &mut establisher, version, config_hash)
                 .await  // cancellable
             {
                 Err(e) => {
@@ -471,11 +478,13 @@ async fn manage_bootstrap(
 
     // First, sync clocks.
     let server_time = MassaTime::compensated_now(compensation_millis)?;
+    let config_hash = Hash::compute_from(&"static config".as_bytes()); // TODO get real config
     match tokio::time::timeout(
         bootstrap_settings.write_timeout.into(),
         server.send(messages::BootstrapMessage::BootstrapTime {
             server_time,
             version,
+            config_hash,
         }),
     )
     .await

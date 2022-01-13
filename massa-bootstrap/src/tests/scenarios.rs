@@ -17,6 +17,7 @@ use crate::{
 };
 use massa_consensus::{ConsensusCommand, ConsensusCommandSender};
 use massa_execution::{ExecutionCommand, ExecutionCommandSender};
+use massa_hash::hash::Hash;
 use massa_models::Version;
 use massa_network::{NetworkCommand, NetworkCommandSender};
 use massa_signature::PrivateKey;
@@ -64,6 +65,7 @@ async fn test_bootstrap_server() {
             bootstrap_settings,
             remote_establisher,
             Version::from_str("TEST.1.2").unwrap(),
+            Hash::compute_from(&"static config".as_bytes()), // TODO get real config
             MassaTime::now().unwrap().saturating_sub(1000.into()),
             None,
         )

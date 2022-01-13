@@ -1397,6 +1397,7 @@ dependencies = [
  "massa_bootstrap",
  "massa_consensus",
  "massa_execution",
+ "massa_hash",
  "massa_logging",
  "massa_models",
  "massa_network",

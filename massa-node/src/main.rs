@@ -11,6 +11,7 @@ use massa_consensus::{
     start_consensus_controller, ConsensusCommandSender, ConsensusEvent, ConsensusEventReceiver,
     ConsensusManager,
 };
+use massa_hash::hash::Hash;
 
 use massa_execution::{ExecutionConfigs, ExecutionManager};
 
@@ -86,6 +87,7 @@ async fn launch() -> (
             &SETTINGS.bootstrap,
             massa_bootstrap::establisher::Establisher::new(),
             *settings::VERSION,
+            Hash::compute_from(&"static config".as_bytes()), // TODO get real config
             *massa_consensus::settings::GENESIS_TIMESTAMP,
             *massa_consensus::settings::END_TIMESTAMP,
         ) => match res {

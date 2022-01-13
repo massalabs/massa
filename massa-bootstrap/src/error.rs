@@ -38,4 +38,6 @@ pub enum BootstrapError {
     MissingKeyError,
     /// incompatible version: {0}
     IncompatibleVersionError(String),
+    /// incompatible config hash
+    IncompatibleConfigHash,
 }

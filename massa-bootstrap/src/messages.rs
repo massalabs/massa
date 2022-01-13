@@ -2,6 +2,9 @@
 
 use massa_consensus::{BootstrapableGraph, ExportProofOfStake};
 use massa_execution::BootstrapExecutionState;
+use massa_hash::hash::Hash;
+use massa_hash::HASH_SIZE_BYTES;
+use massa_models::array_from_slice;
 use massa_models::{
     DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Version,
 };
@@ -19,6 +22,7 @@ pub enum BootstrapMessage {
         /// The current time on the bootstrap server.
         server_time: MassaTime,
         version: Version,
+        config_hash: Hash,
     },
     /// Bootstrap peers
     BootstrapPeers {
@@ -55,10 +59,12 @@ impl SerializeCompact for BootstrapMessage {
             BootstrapMessage::BootstrapTime {
                 server_time,
                 version,
+                config_hash,
             } => {
                 res.extend(u32::from(MessageTypeId::BootstrapTime).to_varint_bytes());
                 res.extend(server_time.to_bytes_compact()?);
-                res.extend(&version.to_bytes_compact()?)
+                res.extend(&version.to_bytes_compact()?);
+                res.extend(&config_hash.to_bytes())
             }
             BootstrapMessage::BootstrapPeers { peers } => {
                 res.extend(u32::from(MessageTypeId::Peers).to_varint_bytes());
@@ -96,9 +102,13 @@ impl DeserializeCompact for BootstrapMessage {
 
                 let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
+
+                let config_hash = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += HASH_SIZE_BYTES;
                 BootstrapMessage::BootstrapTime {
                     server_time,
                     version,
+                    config_hash,
                 }
             }
             MessageTypeId::Peers => {
