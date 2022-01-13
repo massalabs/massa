@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use crate::types::ExecutionContext;
 use anyhow::{bail, Result};
-use assembly_simulator::{Bytecode, Interface, InterfaceClone};
+use assembly_simulator::{Bytecode, Interface, InterfaceClone, MassaHash, PublicKey, Signature};
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
     Address, Amount,
@@ -107,13 +107,16 @@ impl Interface for InterfaceImpl {
     }
 
     /// Requires the data at the address
-    fn get_data_for(&self, address: &assembly_simulator::Address, key: &str) -> Result<Bytecode> {
+    fn get_data_for(
+        &self,
+        address: &assembly_simulator::Address,
+        key: &String,
+    ) -> Result<Bytecode> {
         let addr = &Address::from_bs58_check(address)?;
-        // @damip is it ok to get a hash like that?
-        let key = massa_hash::hash::Hash::from_bs58_check(key)?;
+        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         match context.ledger_step.get_data_entry(addr, &key) {
-            Some(bytecode) => Ok(bytecode),
+            Some(value) => Ok(value),
             _ => bail!("Data entry not found"),
         }
     }
@@ -125,11 +128,11 @@ impl Interface for InterfaceImpl {
     fn set_data_for(
         &self,
         address: &assembly_simulator::Address,
-        key: &str,
+        key: &String,
         value: &Bytecode,
     ) -> Result<()> {
         let addr = Address::from_str(address)?;
-        let key = massa_hash::hash::Hash::from_bs58_check(key)?;
+        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
         let is_curr = match context.call_stack.back() {
             Some(curr_address) => addr == *curr_address,
@@ -143,28 +146,69 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    fn get_data(&self, key: &str) -> Result<Bytecode> {
+    fn has_data_for(&self, address: &assembly_simulator::Address, key: &String) -> Result<bool> {
+        let context = context_guard!(self);
+        let addr = Address::from_str(address)?;
+        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        Ok(context.ledger_step.has_data_entry(&addr, &key))
+    }
+
+    fn get_data(&self, key: &String) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let addr = match context.call_stack.back() {
             Some(addr) => addr,
             _ => bail!("Failed to read call stack current address"),
         };
-        let key = massa_hash::hash::Hash::from_bs58_check(key)?;
+        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         match context.ledger_step.get_data_entry(addr, &key) {
             Some(bytecode) => Ok(bytecode),
             _ => bail!("Data entry not found"),
         }
     }
 
-    fn set_data(&self, key: &str, value: &Bytecode) -> Result<()> {
+    fn set_data(&self, key: &String, value: &Bytecode) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = match context.call_stack.back() {
             Some(addr) => *addr,
             _ => bail!("Failed to read call stack current address"),
         };
-        let key = massa_hash::hash::Hash::from_bs58_check(key)?;
+        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         context.ledger_step.set_data_entry(addr, key, value.clone());
         Ok(())
+    }
+
+    fn has_data(&self, key: &String) -> Result<bool> {
+        let context = context_guard!(self);
+        let addr = match context.call_stack.back() {
+            Some(addr) => addr,
+            _ => bail!("Failed to read call stack current address"),
+        };
+        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        Ok(context.ledger_step.has_data_entry(addr, &key))
+    }
+
+    /// hash data
+    fn hash(&self, data: &Vec<u8>) -> Result<MassaHash> {
+        Ok(massa_hash::hash::Hash::compute_from(data).to_bs58_check())
+    }
+
+    /// Verify signature
+    fn signature_verify(
+        &self,
+        data: &Vec<u8>,
+        signature: &Signature,
+        public_key: &PublicKey,
+    ) -> Result<bool> {
+        let signature = match massa_signature::Signature::from_bs58_check(signature) {
+            Ok(sig) => sig,
+            Err(_) => return Ok(false),
+        };
+        let public_key = match massa_signature::PublicKey::from_bs58_check(public_key) {
+            Ok(pubk) => pubk,
+            Err(_) => return Ok(false),
+        };
+        let h = massa_hash::hash::Hash::compute_from(data);
+        Ok(massa_signature::verify_signature(&h, &signature, &public_key).is_ok())
     }
 
     /// Transfer coins from the current address to a target address

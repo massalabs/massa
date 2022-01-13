@@ -540,6 +540,28 @@ impl SCELedgerStep {
         }
     }
 
+    /// checks if a data entry exists
+    pub fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
+        // check if caused_changes or cumulative_history_changes have an update on this
+        for changes in [&self.caused_changes, &self.cumulative_history_changes] {
+            match changes.0.get(addr) {
+                Some(SCELedgerChange::Delete) => return false,
+                Some(SCELedgerChange::Set(_)) => return true,
+                Some(SCELedgerChange::Update(update)) => {
+                    match update.update_data.get(key) {
+                        None => {}                  // no updates
+                        Some(None) => return false, // data entry deleted,
+                        Some(Some(_)) => return true,
+                    }
+                }
+                None => {}
+            }
+        }
+
+        // check if the final ledger has the info
+        self.final_ledger_slot.ledger.0.contains_key(addr)
+    }
+
     /// sets data entry
     pub fn set_data_entry(&mut self, addr: Address, key: Hash, value: Vec<u8>) {
         let update = SCELedgerEntryUpdate {
