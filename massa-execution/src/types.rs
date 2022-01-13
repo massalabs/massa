@@ -46,8 +46,6 @@ pub(crate) struct ExecutionContext {
 #[derive(Clone)]
 pub(crate) struct ExecutionStep {
     pub slot: Slot,
-    // TODO add pos_seed for RNG seeding
-    // TODO add pos_draws to list the draws (block and endorsement creators) for that slot
     pub block: Option<(BlockId, Block)>, // None if miss
 }
 
