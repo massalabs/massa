@@ -14,6 +14,8 @@ use massa_models::{
     Address, Amount, BlockId, Slot,
 };
 use massa_signature::{derive_public_key, generate_random_private_key};
+use rand::SeedableRng;
+use rand_xoshiro::Xoshiro256PlusPlus;
 use tokio::sync::oneshot;
 use tracing::debug;
 
@@ -52,7 +54,12 @@ impl VM {
         )));
 
         // Instantiate the interface used by the assembly simulator.
-        let execution_interface = Box::new(InterfaceImpl::new(Arc::clone(&execution_context)));
+        let execution_interface = Box::new(InterfaceImpl::new(
+            Arc::clone(&execution_context),
+            cfg.thread_count,
+            cfg.t0,
+            cfg.genesis_timestamp,
+        ));
 
         Ok(VM {
             thread_count: cfg.thread_count,
@@ -161,7 +168,7 @@ impl VM {
         block_creator_addr: Address,
         block_id: BlockId,
         slot: Slot,
-    ) -> (SCELedgerChanges, u64) {
+    ) -> (SCELedgerChanges, u64, Xoshiro256PlusPlus) {
         let mut context = self.execution_context.lock().unwrap();
         // make context.ledger_step credit Op's sender with Op.coins in the SCE ledger
         let _result = context
@@ -189,6 +196,7 @@ impl VM {
         (
             context.ledger_step.caused_changes.clone(),
             context.created_addr_index,
+            context.unsafe_rng.clone(),
         )
     }
 
@@ -224,6 +232,12 @@ impl VM {
 
             // Set the simulated gas price.
             context.gas_price = simulated_gas_price;
+
+            // Seed the RNG
+            let mut seed: Vec<u8> = slot.to_bytes_key().to_vec();
+            seed.push(0u8); // read-only
+            let seed = massa_hash::hash::Hash::compute_from(&seed).to_bytes();
+            context.unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
         }
 
         // run in the intepreter
@@ -261,6 +275,19 @@ impl VM {
         // reset active ledger changes history
         self.clear_and_update_context();
 
+        {
+            let mut context = self.execution_context.lock().unwrap();
+
+            // seed the RNG
+            let mut seed: Vec<u8> = step.slot.to_bytes_key().to_vec();
+            seed.push(1u8); // not read-only
+            if let Some((block_id, _block)) = &step.block {
+                seed.extend(block_id.to_bytes()); // append block ID
+            }
+            let seed = massa_hash::hash::Hash::compute_from(&seed).to_bytes();
+            context.unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
+        }
+
         // run implicit and async calls
         // TODO
 
@@ -283,7 +310,7 @@ impl VM {
                 // Prepare context and save the initial ledger changes before execution.
                 // The returned snapshot takes into account the initial coin credits.
                 // This snapshot will be popped back if bytecode execution fails.
-                let (ledger_changes_backup, created_addr_index_backup) =
+                let (ledger_changes_backup, created_addr_index_backup, rng_backup) =
                     self.prepare_context(&execution_data, block_creator_addr, *block_id, step.slot);
 
                 // run in the intepreter
@@ -301,6 +328,7 @@ impl VM {
                     let mut context = self.execution_context.lock().unwrap();
                     context.ledger_step.caused_changes = ledger_changes_backup;
                     context.created_addr_index = created_addr_index_backup;
+                    context.unsafe_rng = rng_backup;
                 }
             }
         } else {

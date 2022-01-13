@@ -5,7 +5,12 @@ use std::str::FromStr;
 use crate::types::ExecutionContext;
 use anyhow::{bail, Result};
 use assembly_simulator::{Interface, InterfaceClone};
-use massa_models::output_event::{EventExecutionContext, SCOutputEvent};
+use massa_models::{
+    output_event::{EventExecutionContext, SCOutputEvent},
+    timeslots::get_block_slot_timestamp,
+};
+use massa_time::MassaTime;
+use rand::Rng;
 use std::sync::{Arc, Mutex};
 use tracing::debug;
 
@@ -21,11 +26,24 @@ macro_rules! context_guard {
 #[derive(Clone)]
 pub(crate) struct InterfaceImpl {
     context: Arc<Mutex<ExecutionContext>>,
+    thread_count: u8,
+    t0: MassaTime,
+    genesis_timestamp: MassaTime,
 }
 
 impl InterfaceImpl {
-    pub fn new(context: Arc<Mutex<ExecutionContext>>) -> InterfaceImpl {
-        InterfaceImpl { context }
+    pub fn new(
+        context: Arc<Mutex<ExecutionContext>>,
+        thread_count: u8,
+        t0: MassaTime,
+        genesis_timestamp: MassaTime,
+    ) -> InterfaceImpl {
+        InterfaceImpl {
+            context,
+            thread_count,
+            t0,
+            genesis_timestamp,
+        }
     }
 }
 
@@ -322,5 +340,24 @@ impl Interface for InterfaceImpl {
         debug!("SC event: {:?}", event);
         // TODO store the event somewhere
         Ok(())
+    }
+
+    /// Returns the current time (millisecond unix timestamp)
+    fn get_time(&self) -> Result<u64> {
+        let context = context_guard!(self);
+        let ts = get_block_slot_timestamp(
+            self.thread_count,
+            self.t0,
+            self.genesis_timestamp,
+            context.slot,
+        )?;
+        Ok(ts.to_millis())
+    }
+
+    /// Returns a random number (unsafe: can be predicted and manipulated)
+    fn unsafe_random(&self) -> Result<i64> {
+        let mut context = context_guard!(self);
+        let distr = rand::distributions::Uniform::new_inclusive(i64::MIN, i64::MAX);
+        Ok(context.unsafe_rng.sample(distr))
     }
 }

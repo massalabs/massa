@@ -19,6 +19,8 @@ tokio = { version = "1.11", features = ["full"] }
 tracing = {version = "0.1", features = ["max_level_debug", "release_max_level_debug"] }
 assembly_simulator = { git = "https://github.com/massalabs/massa-sc-runtime", branch = "extend_abis" }  # TODO tag = "v0.2.9"
 anyhow = "1"
+rand = "0.8"
+rand_xoshiro = "0.6"
 lazy_static = "1.4.0"
 massa_time = { path = "../massa-time" }
 
