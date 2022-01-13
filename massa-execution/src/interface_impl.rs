@@ -4,11 +4,8 @@ use std::str::FromStr;
 
 use crate::types::ExecutionContext;
 use anyhow::{bail, Result};
-use assembly_simulator::{Bytecode, Interface, InterfaceClone, MassaHash, PublicKey, Signature};
-use massa_models::{
-    output_event::{EventExecutionContext, SCOutputEvent},
-    Address, Amount,
-};
+use assembly_simulator::{Interface, InterfaceClone};
+use massa_models::output_event::{EventExecutionContext, SCOutputEvent};
 use std::sync::{Arc, Mutex};
 use tracing::debug;
 
@@ -45,7 +42,7 @@ impl Interface for InterfaceImpl {
     }
 
     fn get_module(&self, address: &String) -> Result<Vec<u8>> {
-        let address = Address::from_str(address)?;
+        let address = massa_models::Address::from_str(address)?;
         let bytecode = { context_guard!(self).ledger_step.get_module(&address) };
         match bytecode {
             Some(bytecode) => {
@@ -68,7 +65,7 @@ impl Interface for InterfaceImpl {
 
     /// Returns zero as a default if address not found.
     fn get_balance_for(&self, address: &String) -> Result<u64> {
-        let address = Address::from_str(address)?;
+        let address = massa_models::Address::from_str(address)?;
         Ok(context_guard!(self)
             .ledger_step
             .get_balance(&address)
@@ -88,7 +85,10 @@ impl Interface for InterfaceImpl {
     /// operation index in the block and the index of address owned in context.
     ///
     /// Insert in the ledger the given bytecode in the generated address
-    fn create_module(&self, module: &Bytecode) -> Result<assembly_simulator::Address> {
+    fn create_module(
+        &self,
+        module: &assembly_simulator::Bytecode,
+    ) -> Result<assembly_simulator::Address> {
         let mut context = context_guard!(self);
         let (slot, created_addr_index) = (context.slot, context.created_addr_index);
         let mut data: Vec<u8> = slot.to_bytes_key().to_vec();
@@ -98,7 +98,7 @@ impl Interface for InterfaceImpl {
         } else {
             data.push(1u8);
         }
-        let address = Address(massa_hash::hash::Hash::compute_from(&data));
+        let address = massa_models::Address(massa_hash::hash::Hash::compute_from(&data));
         let res = address.to_bs58_check();
         context.ledger_step.set_module(address, module.clone());
         context.owned_addresses.insert(address);
@@ -111,8 +111,8 @@ impl Interface for InterfaceImpl {
         &self,
         address: &assembly_simulator::Address,
         key: &String,
-    ) -> Result<Bytecode> {
-        let addr = &Address::from_bs58_check(address)?;
+    ) -> Result<assembly_simulator::Bytecode> {
+        let addr = &massa_models::Address::from_bs58_check(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         match context.ledger_step.get_data_entry(addr, &key) {
@@ -129,9 +129,9 @@ impl Interface for InterfaceImpl {
         &self,
         address: &assembly_simulator::Address,
         key: &String,
-        value: &Bytecode,
+        value: &assembly_simulator::Bytecode,
     ) -> Result<()> {
-        let addr = Address::from_str(address)?;
+        let addr = massa_models::Address::from_str(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
         let is_curr = match context.call_stack.back() {
@@ -148,7 +148,7 @@ impl Interface for InterfaceImpl {
 
     fn has_data_for(&self, address: &assembly_simulator::Address, key: &String) -> Result<bool> {
         let context = context_guard!(self);
-        let addr = Address::from_str(address)?;
+        let addr = massa_models::Address::from_str(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         Ok(context.ledger_step.has_data_entry(&addr, &key))
     }
@@ -166,7 +166,7 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    fn set_data(&self, key: &String, value: &Bytecode) -> Result<()> {
+    fn set_data(&self, key: &String, value: &Vec<u8>) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = match context.call_stack.back() {
             Some(addr) => *addr,
@@ -188,16 +188,26 @@ impl Interface for InterfaceImpl {
     }
 
     /// hash data
-    fn hash(&self, data: &Vec<u8>) -> Result<MassaHash> {
+    fn hash(&self, data: &Vec<u8>) -> Result<assembly_simulator::MassaHash> {
         Ok(massa_hash::hash::Hash::compute_from(data).to_bs58_check())
+    }
+
+    /// convert a pubkey to an address
+    fn address_from_public_key(
+        &self,
+        public_key: &assembly_simulator::PublicKey,
+    ) -> Result<assembly_simulator::Address> {
+        let public_key = massa_signature::PublicKey::from_bs58_check(public_key)?;
+        let addr = massa_models::Address::from_public_key(&public_key);
+        Ok(addr.to_bs58_check())
     }
 
     /// Verify signature
     fn signature_verify(
         &self,
         data: &Vec<u8>,
-        signature: &Signature,
-        public_key: &PublicKey,
+        signature: &assembly_simulator::Signature,
+        public_key: &assembly_simulator::PublicKey,
     ) -> Result<bool> {
         let signature = match massa_signature::Signature::from_bs58_check(signature) {
             Ok(sig) => sig,
@@ -215,13 +225,13 @@ impl Interface for InterfaceImpl {
     /// to_address: target address
     /// raw_amount: amount to transfer (in raw u64)
     fn transfer_coins(&self, to_address: &String, raw_amount: u64) -> Result<()> {
-        let to_address = Address::from_str(to_address)?;
+        let to_address = massa_models::Address::from_str(to_address)?;
         let mut context = context_guard!(self);
         let from_address = match context.call_stack.back() {
             Some(addr) => *addr,
             _ => bail!("Failed to read call stack current address"),
         };
-        let amount = Amount::from_raw(raw_amount);
+        let amount = massa_models::Amount::from_raw(raw_amount);
         // debit
         context
             .ledger_step
@@ -251,8 +261,8 @@ impl Interface for InterfaceImpl {
         to_address: &String,
         raw_amount: u64,
     ) -> Result<()> {
-        let from_address = Address::from_str(from_address)?;
-        let to_address = Address::from_str(to_address)?;
+        let from_address = massa_models::Address::from_str(from_address)?;
+        let to_address = massa_models::Address::from_str(to_address)?;
         let mut context = context_guard!(self);
         let is_curr = match context.call_stack.back() {
             Some(curr_address) => from_address == *curr_address,
@@ -261,7 +271,7 @@ impl Interface for InterfaceImpl {
         if !context.owned_addresses.contains(&from_address) && !is_curr {
             bail!("You don't have the spending access to this entry")
         }
-        let amount = Amount::from_raw(raw_amount);
+        let amount = massa_models::Amount::from_raw(raw_amount);
         // debit
         context
             .ledger_step
