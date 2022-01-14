@@ -31,7 +31,7 @@ impl FromStr for Address {
 impl PreHashed for Address {}
 
 impl Address {
-    /// Gets the associated tread. Depends on the thread_count
+    /// Gets the associated thread. Depends on the thread_count
     pub fn get_thread(&self, thread_count: u8) -> u8 {
         (self.to_bytes()[0])
             .checked_shr(8 - thread_count.trailing_zeros())
