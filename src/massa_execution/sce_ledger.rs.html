@@ -560,6 +560,12 @@
 <span id="559">559</span>
 <span id="560">560</span>
 <span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types::Bytecode</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
@@ -594,7 +600,9 @@
         }
 
         <span class="comment">// module</span>
-        <span class="self">self</span>.<span class="ident">opt_module</span> <span class="op">=</span> <span class="ident">update</span>.<span class="ident">update_opt_module</span>.<span class="ident">clone</span>();
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">opt_module</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">update</span>.<span class="ident">update_opt_module</span> {
+            <span class="self">self</span>.<span class="ident">opt_module</span> <span class="op">=</span> <span class="ident">opt_module</span>.<span class="ident">clone</span>();
+        }
 
         <span class="comment">// data</span>
         <span class="kw">for</span> (<span class="ident">data_key</span>, <span class="ident">data_update</span>) <span class="kw">in</span> <span class="ident">update</span>.<span class="ident">update_data</span>.<span class="ident">iter</span>() {
@@ -760,7 +768,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SCELedgerEntryUpdate</span> {
     <span class="kw">pub</span> <span class="ident">update_balance</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">update_opt_module</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Bytecode</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">update_opt_module</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Bytecode</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">update_data</span>: <span class="ident">HHashMap</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="comment">// None for row deletion</span>
 }
 
@@ -1065,7 +1073,11 @@
             <span class="kw">match</span> <span class="ident">changes</span>.<span class="number">0</span>.<span class="ident">get</span>(<span class="ident">addr</span>) {
                 <span class="prelude-val">Some</span>(<span class="ident">SCELedgerChange::Delete</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">None</span>,
                 <span class="prelude-val">Some</span>(<span class="ident">SCELedgerChange::Set</span>(<span class="ident">new_entry</span>)) =&gt; <span class="kw">return</span> <span class="ident">new_entry</span>.<span class="ident">opt_module</span>.<span class="ident">clone</span>(),
-                <span class="prelude-val">Some</span>(<span class="ident">SCELedgerChange::Update</span>(<span class="ident">update</span>)) =&gt; <span class="kw">return</span> <span class="ident">update</span>.<span class="ident">update_opt_module</span>.<span class="ident">clone</span>(),
+                <span class="prelude-val">Some</span>(<span class="ident">SCELedgerChange::Update</span>(<span class="ident">update</span>)) =&gt; {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">updates_opt_module</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">update</span>.<span class="ident">update_opt_module</span> {
+                        <span class="kw">return</span> <span class="ident">updates_opt_module</span>.<span class="ident">clone</span>();
+                    }
+                }
                 <span class="prelude-val">None</span> =&gt; {}
             }
         }
@@ -1112,9 +1124,9 @@
             .<span class="ident">apply_change</span>(<span class="ident">addr</span>, <span class="kw-2">&amp;</span><span class="ident">SCELedgerChange::Update</span>(<span class="ident">update</span>));
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_module</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">Address</span>, <span class="ident">module</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_module</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">Address</span>, <span class="ident">opt_module</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="ident">update</span> <span class="op">=</span> <span class="ident">SCELedgerEntryUpdate</span> {
-            <span class="ident">update_opt_module</span>: <span class="prelude-val">Some</span>(<span class="ident">module</span>),
+            <span class="ident">update_opt_module</span>: <span class="prelude-val">Some</span>(<span class="ident">opt_module</span>),
             ..<span class="ident">Default::default</span>()
         };
         <span class="self">self</span>.<span class="ident">caused_changes</span>
