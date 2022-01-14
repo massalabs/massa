@@ -476,7 +476,6 @@ async fn test_roll() {
     .await;
 }
 
-#[ignore]
 #[tokio::test]
 #[serial]
 async fn test_roll_block_creation() {
