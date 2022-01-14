@@ -1,5 +1,5 @@
-use crate::types::Bytecode;
 use crate::ExecutionError;
+use assembly_simulator::Bytecode;
 use massa_hash::hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::hhasher::BuildHHasher;
