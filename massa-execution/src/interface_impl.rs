@@ -346,20 +346,15 @@ impl Interface for InterfaceImpl {
 
     /// Returns the current time (millisecond unix timestamp)
     fn get_time(&self) -> Result<u64> {
-        let context = context_guard!(self);
-        let ts = get_block_slot_timestamp(
-            self.thread_count,
-            self.t0,
-            self.genesis_timestamp,
-            context.slot,
-        )?;
+        let slot = context_guard!(self).slot;
+        let ts =
+            get_block_slot_timestamp(self.thread_count, self.t0, self.genesis_timestamp, slot)?;
         Ok(ts.to_millis())
     }
 
     /// Returns a random number (unsafe: can be predicted and manipulated)
     fn unsafe_random(&self) -> Result<i64> {
-        let mut context = context_guard!(self);
         let distr = rand::distributions::Uniform::new_inclusive(i64::MIN, i64::MAX);
-        Ok(context.unsafe_rng.sample(distr))
+        Ok(context_guard!(self).unsafe_rng.sample(distr))
     }
 }
