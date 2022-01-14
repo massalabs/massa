@@ -63,7 +63,7 @@ impl Interface for InterfaceImpl {
             Some(addr) => addr,
             _ => bail!("Failed to read call stack current address"),
         };
-        Ok(context.ledger_step.get_balance(&address).to_raw())
+        Ok(context.ledger_step.get_balance(address).to_raw())
     }
 
     /// Returns zero as a default if address not found.
