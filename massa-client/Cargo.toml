@@ -29,6 +29,8 @@ massa_models = { path = "../massa-models" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_wallet = { path = "../massa-wallet" }
+rev_lines = "0.2.1"
+
 [dev-dependencies]
 assert_cmd = "2.0"
 serial_test = "0.5"
