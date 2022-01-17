@@ -228,13 +228,21 @@ impl PeerInfoDatabase {
         // wakeup interval
         let wakeup_interval = cfg.wakeup_interval;
 
-        // load from file
+        // load from initial file
         let mut peers = serde_json::from_str::<Vec<PeerInfo>>(
             &tokio::fs::read_to_string(&cfg.initial_peers_file).await?,
         )?
         .into_iter()
         .map(|p| (p.ip, p))
         .collect::<HashMap<IpAddr, PeerInfo>>();
+        peers.extend(
+            // previously known peers
+            serde_json::from_str::<Vec<PeerInfo>>(
+                &tokio::fs::read_to_string(&cfg.peers_file).await?,
+            )?
+            .into_iter()
+            .map(|p| (p.ip, p)),
+        );
 
         // cleanup
         cleanup_peers(cfg, &mut peers, None, clock_compensation, cfg.ban_timeout)?;
