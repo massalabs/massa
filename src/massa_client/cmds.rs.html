@@ -737,6 +737,10 @@
 <span id="736">736</span>
 <span id="737">737</span>
 <span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
@@ -1351,14 +1355,18 @@
             }
             <span class="ident">Command::when_episode_ends</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">end</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">public</span>.<span class="ident">get_status</span>().<span class="kw">await</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">node_status</span>) =&gt; <span class="ident">node_status</span>.<span class="ident">consensus_stats</span>.<span class="ident">end_timespan</span>,
+                    <span class="prelude-val">Ok</span>(<span class="ident">node_status</span>) =&gt; <span class="ident">node_status</span>.<span class="ident">config</span>.<span class="ident">end_timestamp</span>,
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">bail!</span>(<span class="string">&quot;RpcError: {}&quot;</span>, <span class="ident">e</span>),
                 };
-                <span class="kw">let</span> (<span class="ident">days</span>, <span class="ident">hours</span>, <span class="ident">mins</span>, <span class="ident">secs</span>) <span class="op">=</span> <span class="ident">end</span>
-                    .<span class="ident">saturating_sub</span>(<span class="ident">MassaTime::now</span>()<span class="question-mark">?</span>)
-                    .<span class="ident">days_hours_mins_secs</span>()<span class="question-mark">?</span>; <span class="comment">// compensation millis is zero</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>();
-                <span class="ident">res</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode&quot;</span>, <span class="ident">days</span>, <span class="ident">hours</span>, <span class="ident">mins</span>, <span class="ident">secs</span>));
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">end</span> {
+                    <span class="kw">let</span> (<span class="ident">days</span>, <span class="ident">hours</span>, <span class="ident">mins</span>, <span class="ident">secs</span>) <span class="op">=</span>
+                        <span class="ident">e</span>.<span class="ident">saturating_sub</span>(<span class="ident">MassaTime::now</span>()<span class="question-mark">?</span>).<span class="ident">days_hours_mins_secs</span>()<span class="question-mark">?</span>; <span class="comment">// compensation millis is zero</span>
+
+                    <span class="ident">res</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode&quot;</span>, <span class="ident">days</span>, <span class="ident">hours</span>, <span class="ident">mins</span>, <span class="ident">secs</span>));
+                } <span class="kw">else</span> {
+                    <span class="ident">res</span>.<span class="ident">push_str</span>(<span class="string">&quot;There is no end !&quot;</span>)
+                }
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">json</span> {
                     <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">res</span>);
                 }
