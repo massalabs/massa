@@ -1,5 +1,6 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
 use crate::BootstrapExecutionState;
+use assembly_simulator::Bytecode;
 use massa_models::address::AddressHashSet;
 use massa_models::execution::ExecuteReadOnlyResponse;
 /// Define types used while executing block bytecodes
@@ -9,7 +10,6 @@ use std::{collections::VecDeque, sync::Arc};
 use tokio::sync::oneshot;
 
 pub(crate) type StepHistory = VecDeque<StepHistoryItem>;
-pub type Bytecode = Vec<u8>;
 
 /// A StepHistory item representing the consequences of a given execution step
 #[derive(Debug, Clone)]

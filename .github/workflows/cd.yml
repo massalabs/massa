@@ -10,8 +10,6 @@ env:
   RUST_BACKTRACE: full
 
 jobs:
-  # The 3 following build jobs are 90% copy-pasted and should be refactored using
-  # https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
   release:
     strategy:
       matrix:

@@ -309,7 +309,7 @@ impl BlockHeader {
     }
 
     /// Generate the block id without verifying the integrity of the it,
-    /// used only in tests.
+    /// used only in tests and logging.
     pub fn compute_block_id(&self) -> Result<BlockId, ModelsError> {
         Ok(BlockId(Hash::compute_from(&self.to_bytes_compact()?)))
     }

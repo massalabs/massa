@@ -1,5 +1,5 @@
-use crate::types::Bytecode;
 use crate::ExecutionError;
+use assembly_simulator::Bytecode;
 use massa_hash::hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::hhasher::BuildHHasher;
@@ -32,7 +32,9 @@ impl SCELedgerEntry {
         }
 
         // module
-        self.opt_module = update.update_opt_module.clone();
+        if let Some(opt_module) = &update.update_opt_module {
+            self.opt_module = opt_module.clone();
+        }
 
         // data
         for (data_key, data_update) in update.update_data.iter() {
@@ -198,7 +200,7 @@ impl DeserializeCompact for SCELedgerEntry {
 #[derive(Debug, Clone, Default)]
 pub struct SCELedgerEntryUpdate {
     pub update_balance: Option<Amount>,
-    pub update_opt_module: Option<Bytecode>,
+    pub update_opt_module: Option<Option<Bytecode>>,
     pub update_data: HHashMap<Hash, Option<Vec<u8>>>, // None for row deletion
 }
 
@@ -503,7 +505,11 @@ impl SCELedgerStep {
             match changes.0.get(addr) {
                 Some(SCELedgerChange::Delete) => return None,
                 Some(SCELedgerChange::Set(new_entry)) => return new_entry.opt_module.clone(),
-                Some(SCELedgerChange::Update(update)) => return update.update_opt_module.clone(),
+                Some(SCELedgerChange::Update(update)) => {
+                    if let Some(updates_opt_module) = &update.update_opt_module {
+                        return updates_opt_module.clone();
+                    }
+                }
                 None => {}
             }
         }
@@ -550,9 +556,9 @@ impl SCELedgerStep {
             .apply_change(addr, &SCELedgerChange::Update(update));
     }
 
-    pub fn set_module(&mut self, addr: Address, module: Vec<u8>) {
+    pub fn set_module(&mut self, addr: Address, opt_module: Option<Vec<u8>>) {
         let update = SCELedgerEntryUpdate {
-            update_opt_module: Some(module),
+            update_opt_module: Some(opt_module),
             ..Default::default()
         };
         self.caused_changes
