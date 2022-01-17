@@ -915,7 +915,7 @@
     }
 
     <span class="doccomment">/// Generate the block id without verifying the integrity of the it,</span>
-    <span class="doccomment">/// used only in tests.</span>
+    <span class="doccomment">/// used only in tests and logging.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compute_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>)))
     }
