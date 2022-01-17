@@ -17,8 +17,9 @@ use crate::{
 };
 use massa_hash::hash::Hash;
 use massa_models::ledger::LedgerData;
+use massa_models::prehash::Set;
 use massa_models::{
-    Address, Amount, Block, BlockHashSet, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
     EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,
 };
 use massa_pool::PoolCommand;
@@ -120,8 +121,8 @@ pub async fn validate_ask_for_block(
 
 pub async fn validate_wishlist(
     protocol_controller: &mut MockProtocolController,
-    new: BlockHashSet,
-    remove: BlockHashSet,
+    new: Set<BlockId>,
+    remove: Set<BlockId>,
     timeout_ms: u64,
 ) {
     let param = protocol_controller

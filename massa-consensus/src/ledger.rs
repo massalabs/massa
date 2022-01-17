@@ -2,9 +2,8 @@
 
 use crate::error::InternalError;
 use crate::{ConsensusConfig, ConsensusError};
-use massa_models::address::{AddressHashMap, AddressHashSet};
-use massa_models::hhasher::BuildHHasher;
 use massa_models::ledger::{LedgerChange, LedgerData};
+use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::{
     array_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, Operation,
     SerializeCompact, SerializeVarInt, ADDRESS_SIZE_BYTES,
@@ -30,10 +29,10 @@ pub struct Ledger {
 
 /// Map an address to a LedgerChange
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct LedgerChanges(pub AddressHashMap<LedgerChange>);
+pub struct LedgerChanges(pub Map<Address, LedgerChange>);
 
 impl LedgerChanges {
-    pub fn get_involved_addresses(&self) -> AddressHashSet {
+    pub fn get_involved_addresses(&self) -> Set<Address> {
         self.0.keys().copied().collect()
     }
 
@@ -67,7 +66,7 @@ impl LedgerChanges {
 
     /// merge another ledger changes into self, overwriting existing data
     /// addrs that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &AddressHashSet, mut other: LedgerChanges) {
+    pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: LedgerChanges) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -78,7 +77,7 @@ impl LedgerChanges {
     }
 
     /// clone subset
-    pub fn clone_subset(&self, addrs: &AddressHashSet) -> Self {
+    pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
         LedgerChanges(
             self.0
                 .iter()
@@ -309,10 +308,7 @@ impl Ledger {
     }
 
     /// Returns the final ledger data of a list of unique addresses belonging to any thread.
-    pub fn get_final_data(
-        &self,
-        addresses: AddressHashSet,
-    ) -> Result<LedgerSubset, ConsensusError> {
+    pub fn get_final_data(&self, addresses: Set<Address>) -> Result<LedgerSubset, ConsensusError> {
         self.ledger_per_thread
             .transaction(|ledger_per_thread| {
                 let mut result = LedgerSubset::default();
@@ -538,7 +534,7 @@ impl Ledger {
     /// Gets ledger at latest final blocks for query_addrs
     pub fn get_final_ledger_subset(
         &self,
-        query_addrs: &AddressHashSet,
+        query_addrs: &Set<Address>,
     ) -> Result<LedgerSubset, ConsensusError> {
         let res = self.ledger_per_thread.transaction(|ledger_per_thread| {
             let mut data = LedgerSubset::default();
@@ -566,7 +562,7 @@ impl Ledger {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct LedgerSubset(pub AddressHashMap<LedgerData>);
+pub struct LedgerSubset(pub Map<Address, LedgerData>);
 
 impl LedgerSubset {
     /// If subset contains given address
@@ -582,7 +578,7 @@ impl LedgerSubset {
     }
 
     /// List involved addresses
-    pub fn get_involved_addresses(&self) -> AddressHashSet {
+    pub fn get_involved_addresses(&self) -> Set<Address> {
         self.0.keys().copied().collect()
     }
 
@@ -631,7 +627,7 @@ impl LedgerSubset {
 
     /// merge another ledger subset into self, overwriting existing data
     /// addrs that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &AddressHashSet, mut other: LedgerSubset) {
+    pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: LedgerSubset) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -642,7 +638,7 @@ impl LedgerSubset {
     }
 
     /// clone subset
-    pub fn clone_subset(&self, addrs: &AddressHashSet) -> Self {
+    pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
         LedgerSubset(
             self.0
                 .iter()
@@ -736,9 +732,9 @@ impl DeserializeCompact for LedgerSubset {
         // TODO: add entry_count checks ... see #1200
         cursor += delta;
 
-        let mut ledger_subset = LedgerSubset(AddressHashMap::with_capacity_and_hasher(
+        let mut ledger_subset = LedgerSubset(Map::with_capacity_and_hasher(
             entry_count as usize,
-            BuildHHasher::default(),
+            BuildMap::default(),
         ));
         for _ in 0..entry_count {
             let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;

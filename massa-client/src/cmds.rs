@@ -4,8 +4,8 @@ use crate::repl::Output;
 use crate::rpc::Client;
 use anyhow::{anyhow, bail, Result};
 use console::style;
-use massa_models::address::AddressHashMap;
 use massa_models::api::{AddressInfo, CompactAddressInfo};
+use massa_models::prehash::Map;
 use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
@@ -199,7 +199,7 @@ impl Display for ExtendedWalletEntry {
 }
 
 #[derive(Serialize)]
-pub struct ExtendedWallet(AddressHashMap<ExtendedWalletEntry>);
+pub struct ExtendedWallet(Map<Address, ExtendedWalletEntry>);
 
 impl ExtendedWallet {
     fn new(wallet: &Wallet, addresses_info: &[AddressInfo]) -> Result<Self> {

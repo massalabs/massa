@@ -2,12 +2,12 @@
 
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
-use massa_models::address::{AddressHashMap, AddressHashSet};
 use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, TimeInterval,
 };
 use massa_models::clique::Clique;
-use massa_models::massa_hash::PubkeySig;
+use massa_models::composite::PubkeySig;
+use massa_models::prehash::{Map, Set};
 use massa_models::{Address, BlockId, EndorsementId, Operation, OperationId};
 use massa_signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
@@ -95,9 +95,9 @@ impl RpcClient {
     }
 
     /// Return hashset of staking addresses.
-    pub(crate) async fn get_staking_addresses(&self) -> RpcResult<AddressHashSet> {
+    pub(crate) async fn get_staking_addresses(&self) -> RpcResult<Set<Address>> {
         self.0
-            .call_method("get_staking_addresses", "AddressHashSet", ())
+            .call_method("get_staking_addresses", "Set<Address>", ())
             .await
     }
 
@@ -131,9 +131,9 @@ impl RpcClient {
     // Debug (specific information)
 
     /// Returns the active stakers and their roll counts for the current cycle.
-    pub(crate) async fn _get_stakers(&self) -> RpcResult<AddressHashMap<u64>> {
+    pub(crate) async fn _get_stakers(&self) -> RpcResult<Map<Address, u64>> {
         self.0
-            .call_method("get_stakers", "AddressHashMap<u64>", ())
+            .call_method("get_stakers", "Map<Address, u64>", ())
             .await
     }
 

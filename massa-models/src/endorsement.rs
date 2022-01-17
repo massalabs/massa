@@ -1,8 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::prehash::PreHashed;
 use crate::settings::{BLOCK_ID_SIZE_BYTES, ENDORSEMENT_ID_SIZE_BYTES};
 use crate::{
-    hhasher::{HHashMap, HHashSet, PreHashed},
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
@@ -20,9 +20,6 @@ use std::{fmt::Display, str::FromStr};
 pub struct EndorsementId(Hash);
 
 impl PreHashed for EndorsementId {}
-
-pub type EndorsementHashMap<T> = HHashMap<EndorsementId, T>;
-pub type EndorsementHashSet = HHashSet<EndorsementId>;
 
 impl std::fmt::Display for EndorsementId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

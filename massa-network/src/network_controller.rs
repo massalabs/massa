@@ -11,8 +11,9 @@ use super::{
 use crate::error::NetworkError;
 use crate::settings::{NetworkSettings, CHANNEL_SIZE};
 use massa_logging::massa_trace;
+use massa_models::composite::PubkeySig;
+use massa_models::node::NodeId;
 use massa_models::stats::NetworkStats;
-use massa_models::{massa_hash::PubkeySig, node::NodeId};
 use massa_models::{Block, BlockHeader, BlockId, Endorsement, Operation, Version};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use std::{

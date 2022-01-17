@@ -12,10 +12,7 @@ use crate::pos::ExportProofOfStake;
 use massa_execution::{ExecutionCommandSender, ExecutionEventReceiver};
 
 use massa_models::{
-    address::{AddressHashMap, AddressHashSet, AddressState},
-    api::EndorsementInfo,
-    BlockHashMap, Endorsement, EndorsementHashMap, EndorsementHashSet, OperationHashMap,
-    OperationHashSet,
+    address::AddressState, api::EndorsementInfo, Endorsement, EndorsementId, OperationId,
 };
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_models::{
@@ -27,6 +24,7 @@ use massa_signature::{derive_public_key, PrivateKey, PublicKey};
 
 use std::{collections::VecDeque, path::Path};
 
+use massa_models::prehash::{Map, Set};
 use tokio::{
     sync::{mpsc, oneshot},
     task::JoinHandle,
@@ -133,9 +131,9 @@ pub async fn start_consensus_controller(
 
 async fn load_initial_staking_keys(
     path: &Path,
-) -> Result<AddressHashMap<(PublicKey, PrivateKey)>, ConsensusError> {
+) -> Result<Map<Address, (PublicKey, PrivateKey)>, ConsensusError> {
     if !std::path::Path::is_file(path) {
-        return Ok(AddressHashMap::default());
+        return Ok(Map::default());
     }
     serde_json::from_str::<Vec<PrivateKey>>(&tokio::fs::read_to_string(path).await?)?
         .iter()
@@ -315,7 +313,7 @@ impl ConsensusCommandSender {
     pub async fn get_block_ids_by_creator(
         &self,
         address: Address,
-    ) -> Result<BlockHashMap<Status>, ConsensusError> {
+    ) -> Result<Map<BlockId, Status>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_block_ids_by_creator", {
         });
@@ -339,8 +337,8 @@ impl ConsensusCommandSender {
 
     pub async fn get_operations(
         &self,
-        operation_ids: OperationHashSet,
-    ) -> Result<OperationHashMap<OperationSearchResult>, ConsensusError> {
+        operation_ids: Set<OperationId>,
+    ) -> Result<Map<OperationId, OperationSearchResult>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_operatiosn", {
             "operation_ids": operation_ids
@@ -366,9 +364,9 @@ impl ConsensusCommandSender {
     /// Gets the candidate and final ledger data of a list of addresses
     pub async fn get_addresses_info(
         &self,
-        addresses: AddressHashSet,
-    ) -> Result<AddressHashMap<AddressState>, ConsensusError> {
-        let (response_tx, response_rx) = oneshot::channel::<AddressHashMap<AddressState>>();
+        addresses: Set<Address>,
+    ) -> Result<Map<Address, AddressState>, ConsensusError> {
+        let (response_tx, response_rx) = oneshot::channel::<Map<Address, AddressState>>();
         massa_trace!("consensus.consensus_controller.get_addresses_info", {
             "addresses": addresses
         });
@@ -394,7 +392,7 @@ impl ConsensusCommandSender {
     pub async fn get_operations_involving_address(
         &self,
         address: Address,
-    ) -> Result<OperationHashMap<OperationSearchResult>, ConsensusError> {
+    ) -> Result<Map<OperationId, OperationSearchResult>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!(
             "consensus.consensus_controller.get_operations_involving_address",
@@ -437,7 +435,7 @@ impl ConsensusCommandSender {
         })
     }
 
-    pub async fn get_active_stakers(&self) -> Result<AddressHashMap<u64>, ConsensusError> {
+    pub async fn get_active_stakers(&self) -> Result<Map<Address, u64>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_active_stakers", {});
         self.0
@@ -473,7 +471,7 @@ impl ConsensusCommandSender {
 
     pub async fn remove_staking_addresses(
         &self,
-        addresses: AddressHashSet,
+        addresses: Set<Address>,
     ) -> Result<(), ConsensusError> {
         massa_trace!("consensus.consensus_controller.remove_staking_addresses", {
         });
@@ -485,7 +483,7 @@ impl ConsensusCommandSender {
             })
     }
 
-    pub async fn get_staking_addresses(&self) -> Result<AddressHashSet, ConsensusError> {
+    pub async fn get_staking_addresses(&self) -> Result<Set<Address>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_staking_addresses", {});
         self.0
@@ -505,7 +503,7 @@ impl ConsensusCommandSender {
 
     pub async fn get_stakers_production_stats(
         &self,
-        addrs: AddressHashSet,
+        addrs: Set<Address>,
     ) -> Result<Vec<StakersCycleProductionStats>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!(
@@ -530,7 +528,7 @@ impl ConsensusCommandSender {
     pub async fn get_endorsements_by_address(
         &self,
         address: Address,
-    ) -> Result<EndorsementHashMap<Endorsement>, ConsensusError> {
+    ) -> Result<Map<EndorsementId, Endorsement>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!(
             "consensus.consensus_controller.get_endorsements_by_address",
@@ -556,8 +554,8 @@ impl ConsensusCommandSender {
 
     pub async fn get_endorsements_by_id(
         &self,
-        endorsements: EndorsementHashSet,
-    ) -> Result<EndorsementHashMap<EndorsementInfo>, ConsensusError> {
+        endorsements: Set<EndorsementId>,
+    ) -> Result<Map<EndorsementId, EndorsementInfo>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_endorsements_by_id", {});
         self.0
