@@ -471,11 +471,11 @@ impl Command {
                 let mut res = "".to_string();
                 for key in parse_vec::<Address>(parameters)?.into_iter() {
                     match wallet.remove_address(key) {
-                        Some(_) => {
+                        Ok(_) => {
                             res.push_str(&format!("Removed address {} from the wallet\n", key));
                         }
-                        None => {
-                            res.push_str(&format!("Address {} wasn't in the wallet\n", key));
+                        Err(err) => {
+                            res.push_str(&err.to_string());
                         }
                     }
                 }
