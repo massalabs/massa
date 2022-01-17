@@ -37,4 +37,6 @@ pretty_assertions = "1.0"
 serial_test = "0.5"
 
 [features]
+# nightly = ["beta"]
+beta = []
 test = ["massa_consensus/test"]

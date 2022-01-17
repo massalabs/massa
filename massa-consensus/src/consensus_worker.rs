@@ -1202,7 +1202,7 @@ impl ConsensusWorker {
         self.block_db.get_operations(operation_ids)
     }
 
-    /// Manages received protocolevents.
+    /// Manages received protocol events.
     ///
     /// # Arguments
     /// * event: event type to process.

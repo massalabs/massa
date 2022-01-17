@@ -51,14 +51,14 @@ impl HeaderOrBlock {
     }
 }
 
-/// Agregated changes made during a block's execution
+/// Aggregated changes made during a block's execution
 #[derive(Debug, Clone)]
 pub struct BlockStateAccumulator {
     /// Addresses impacted by ledger updates
     pub loaded_ledger_addrs: AddressHashSet,
     /// Subset of the ledger. Contains only data in the thread of the given block
     pub ledger_thread_subset: LedgerSubset,
-    /// Cummulative changes made during that block execution
+    /// Cumulative changes made during that block execution
     pub ledger_changes: LedgerChanges,
     /// Addresses impacted by roll updates
     pub loaded_roll_addrs: AddressHashSet,
@@ -66,20 +66,20 @@ pub struct BlockStateAccumulator {
     pub roll_counts: RollCounts,
     /// Roll updates that happened during that block execution
     pub roll_updates: RollUpdates,
-    /// Roll updates that happend during current cycle
+    /// Roll updates that happened during current cycle
     pub cycle_roll_updates: RollUpdates,
     /// Cycle of the parent in the same thread
     pub same_thread_parent_cycle: u64,
     /// Address of the parent in the same thread
     pub same_thread_parent_creator: Address,
-    /// Adresses of that block endorsers
+    /// Addresses of that block endorsers
     pub endorsers_addresses: Vec<Address>,
 }
 
 /// Block that was checked as final, with some useful precomputed data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActiveBlock {
-    /// The cretor's address
+    /// The creator's address
     pub creator_address: Address,
     /// The block itself, as it was created
     pub block: Block,
@@ -92,7 +92,7 @@ pub struct ActiveBlock {
     pub dependencies: BlockHashSet,
     /// Blocks id that have this block as an ancestor
     pub descendants: BlockHashSet,
-    /// ie has its fitness reached the given thresold
+    /// ie has its fitness reached the given threshold
     pub is_final: bool,
     /// Changes caused by this block
     pub block_ledger_changes: LedgerChanges,
@@ -118,7 +118,7 @@ impl ActiveBlock {
 }
 
 /// Exportable version of ActiveBlock
-/// Fields that can be easily recomuted were left out
+/// Fields that can be easily recomputed were left out
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportActiveBlock {
     /// The block itself, as it was created
@@ -130,7 +130,7 @@ pub struct ExportActiveBlock {
     pub children: Vec<BlockHashMap<u64>>,
     /// dependencies required for validity check
     pub dependencies: BlockHashSet,
-    /// ie has its fitness reached the given thresold
+    /// ie has its fitness reached the given threshold
     pub is_final: bool,
     /// Changes caused by this block
     pub block_ledger_changes: LedgerChanges,
@@ -1195,7 +1195,7 @@ impl BlockGraph {
         })
     }
 
-    /// Try to apply an operation in the contexxt of the block
+    /// Try to apply an operation in the context of the block
     ///
     /// # Arguments
     /// * state_accu: where the changes are accumulated while we go through the block
@@ -1566,7 +1566,7 @@ impl BlockGraph {
         Ok(accu)
     }
 
-    /// Gets lastest final blocks (hash, period) for each thread.
+    /// Gets latest final blocks (hash, period) for each thread.
     pub fn get_latest_final_blocks_periods(&self) -> &Vec<(BlockId, u64)> {
         &self.latest_final_blocks_periods
     }
@@ -1736,7 +1736,7 @@ impl BlockGraph {
         Ok((cur_rolls, cur_cycle_roll_updates))
     }
 
-    /// gets Ledger data export for given Addressses
+    /// gets Ledger data export for given Addressees
     pub fn get_ledger_data_export(
         &self,
         addresses: &AddressHashSet,
