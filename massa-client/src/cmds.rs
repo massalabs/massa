@@ -168,6 +168,12 @@ pub enum Command {
         message = "show time remaining to end of current episode"
     )]
     when_episode_ends,
+
+    #[strum(
+        ascii_case_insensitive,
+        message = "tells you when moon"
+    )]
+    when_moon,
 }
 
 pub(crate) fn help() {
@@ -624,6 +630,13 @@ impl Command {
                 } else {
                     res.push_str("There is no end !")
                 }
+                if !json {
+                    println!("{}", res);
+                }
+                Ok(Box::new(()))
+            }
+            Command::when_moon => {
+                let res = "At night.";
                 if !json {
                     println!("{}", res);
                 }
