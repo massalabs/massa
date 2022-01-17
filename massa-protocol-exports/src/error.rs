@@ -22,7 +22,7 @@ pub enum ProtocolError {
     /// error receiving oneshot response : {0}
     TokieRecvError(#[from] tokio::sync::oneshot::error::RecvError),
     /// error sending protocol event: {0}
-    TokioSendError(#[from] tokio::sync::mpsc::error::SendError<ProtocolEvent>),
+    TokioSendError(#[from] Box<tokio::sync::mpsc::error::SendError<ProtocolEvent>>),
     /// Error during network connection:`{0:?}`
     PeerConnectionError(NetworkConnectionErrorType),
     /// The ip:`{0}` address is not valid

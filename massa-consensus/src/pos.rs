@@ -14,7 +14,6 @@ use massa_models::{
 };
 use massa_signature::derive_public_key;
 use num::rational::Ratio;
-use num::Integer;
 use rand::distributions::Uniform;
 use rand::Rng;
 use rand_xoshiro::rand_core::SeedableRng;
@@ -161,6 +160,7 @@ impl RollUpdates {
     }
 
     /// get the roll update for a subset of addresses
+    #[must_use]
     pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
         Self(
             addrs
@@ -245,6 +245,7 @@ impl RollCounts {
     }
 
     /// get roll counts for a subset of addresses.
+    #[must_use]
     pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
         Self(
             addrs
@@ -325,13 +326,15 @@ impl ThreadCycleState {
     }
 }
 
+type DrawCache = HashMap<u64, (usize, HashMap<Slot, (Address, Vec<Address>)>)>;
+
 pub struct ProofOfStake {
     /// Config
     cfg: ConsensusConfig,
     /// Index by thread and cycle number
     cycle_states: Vec<VecDeque<ThreadCycleState>>,
     /// Cycle draw cache: cycle_number => (counter, map(slot => (block_creator_addr, vec<endorsement_creator_addr>)))
-    draw_cache: HashMap<u64, (usize, HashMap<Slot, (Address, Vec<Address>)>)>,
+    draw_cache: DrawCache,
     draw_cache_counter: usize,
     /// Initial rolls: we keep them as long as negative cycle draws are needed
     initial_rolls: Option<Vec<RollCounts>>,
@@ -519,7 +522,7 @@ impl DeserializeCompact for ThreadCycleState {
                 "invalid number entries when deserializing ExportThreadCycleStat rng_seed".into(),
             ));
         }
-        let bits_u8_len = n_entries.div_ceil(&u8::BITS) as usize;
+        let bits_u8_len = n_entries.div_ceil(u8::BITS) as usize;
         if buffer[cursor..].len() < bits_u8_len {
             return Err(ModelsError::SerializeError(
                 "too few remaining bytes when deserializing ExportThreadCycleStat rng_seed".into(),

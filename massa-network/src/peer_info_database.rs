@@ -515,14 +515,14 @@ impl PeerInfoDatabase {
     ///
     /// # Argument
     /// new_peers: peers we are trying to merge
-    pub fn merge_candidate_peers(&mut self, new_peers: &Vec<IpAddr>) -> Result<(), NetworkError> {
+    pub fn merge_candidate_peers(&mut self, new_peers: &[IpAddr]) -> Result<(), NetworkError> {
         if new_peers.is_empty() {
             return Ok(());
         }
         cleanup_peers(
             &self.network_settings,
             &mut self.peers,
-            Some(new_peers),
+            Some(&new_peers.to_vec()),
             self.clock_compensation,
             self.network_settings.ban_timeout,
         )?;

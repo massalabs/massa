@@ -21,10 +21,12 @@ impl Amount {
         Self(raw)
     }
 
+    #[must_use]
     pub fn saturating_add(self, amount: Amount) -> Self {
         Amount(self.0.saturating_add(amount.0))
     }
 
+    #[must_use]
     pub fn saturating_sub(self, amount: Amount) -> Self {
         Amount(self.0.saturating_sub(amount.0))
     }
@@ -75,6 +77,7 @@ impl Amount {
     /// let res : Amount = amount_1.saturating_mul_u64(7);
     /// assert_eq!(res, Amount::from_str("294").unwrap());
     /// ```
+    #[must_use]
     pub fn saturating_mul_u64(self, factor: u64) -> Self {
         Amount(self.0.saturating_mul(factor))
     }
