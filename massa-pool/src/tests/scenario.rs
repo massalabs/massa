@@ -39,7 +39,7 @@ async fn test_pool() {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
                 _ => None,
             };
-            // generate transactions
+            // generate (id, transactions, range of validity) by threads
             let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
             for i in 0..18 {
                 let fee = 40 + i;
@@ -90,7 +90,7 @@ async fn test_pool() {
                 lst.truncate(*max_pool_size_per_thread as usize);
             }
 
-            // checks ops for thread 0 and 1 and various periods
+            // checks ops are the expected ones for thread 0 and 1 and various periods
             for thread in 0u8..=1 {
                 for period in 0u64..70 {
                     let target_slot = Slot::new(period, thread);
@@ -114,7 +114,8 @@ async fn test_pool() {
                             .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
                 }
             }
-            // op ending before or at period 45 should be discarded
+            // op ending before or at period 45 won't appear in the block due to incompatible validity range
+            // we don't keep them as expected ops
             let final_period = 45u64;
             pool_command_sender
                 .update_latest_final_periods(vec![final_period; *thread_count as usize])
@@ -123,7 +124,7 @@ async fn test_pool() {
             for lst in thread_tx_lists.iter_mut() {
                 lst.retain(|(_, op, _)| op.content.expire_period > final_period);
             }
-            // checks ops for thread 0 and 1 and various periods
+            // checks ops are the expected ones for thread 0 and 1 and various periods
             for thread in 0u8..=1 {
                 for period in 0u64..70 {
                     let target_slot = Slot::new(period, thread);
@@ -147,7 +148,7 @@ async fn test_pool() {
                             .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
                 }
             }
-            // add transactions from protocol with a high fee but too much in the future: should be ignored
+            // Add transactions that should be ignored despite their high fees, due to them being too far in the future
             {
                 pool_command_sender
                     .update_current_slot(Slot::new(10, 0))
@@ -204,7 +205,7 @@ async fn test_pool_with_execute_sc() {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
                 _ => None,
             };
-            // generate transactions
+            // generate (id, transactions, range of validity) by threads
             let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
             for i in 0..18 {
                 let fee = 40 + i;
@@ -255,7 +256,7 @@ async fn test_pool_with_execute_sc() {
                 lst.truncate(*max_pool_size_per_thread as usize);
             }
 
-            // checks ops for thread 0 and 1 and various periods
+            // checks ops are the expected ones for thread 0 and 1 and various periods
             for thread in 0u8..=1 {
                 for period in 0u64..70 {
                     let target_slot = Slot::new(period, thread);
@@ -279,7 +280,8 @@ async fn test_pool_with_execute_sc() {
                             .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
                 }
             }
-            // op ending before or at period 45 should be discarded
+            // op ending before or at period 45 won't appear in the block due to incompatible validity range
+            // we don't keep them as expected ops
             let final_period = 45u64;
             pool_command_sender
                 .update_latest_final_periods(vec![final_period; *thread_count as usize])
@@ -288,7 +290,7 @@ async fn test_pool_with_execute_sc() {
             for lst in thread_tx_lists.iter_mut() {
                 lst.retain(|(_, op, _)| op.content.expire_period > final_period);
             }
-            // checks ops for thread 0 and 1 and various periods
+            // checks ops are the expected ones for thread 0 and 1 and various periods
             for thread in 0u8..=1 {
                 for period in 0u64..70 {
                     let target_slot = Slot::new(period, thread);
@@ -312,7 +314,7 @@ async fn test_pool_with_execute_sc() {
                             .map(|(id, op, _)| (id, op.to_bytes_compact().unwrap()))));
                 }
             }
-            // add transactions from protocol with a high fee but too much in the future: should be ignored
+            // Add transactions that should be ignored despite their high fees, due to them being too far in the future
             {
                 pool_command_sender
                     .update_current_slot(Slot::new(10, 0))
@@ -366,7 +368,7 @@ async fn test_pool_with_protocol_events() {
                 _ => None,
             };
 
-            // generate transactions
+            // generate (id, transactions, range of validity) by threads
             let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
             for i in 0..18 {
                 let fee = 40 + i;

@@ -466,7 +466,7 @@ pub mod tests {
         let mut pool =
             OperationPool::new(pool_settings, *thread_count, *operation_validity_periods);
 
-        // generate transactions
+        // generate (id, transactions, range of validity) by threads
         let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
         for i in 0..18 {
             let fee = 40 + i;
@@ -494,7 +494,7 @@ pub mod tests {
             lst.truncate(*max_pool_size_per_thread as usize);
         }
 
-        // checks ops for thread 0 and 1 and various periods
+        // checks ops are the expected ones for thread 0 and 1 and various periods
         for thread in 0u8..=1 {
             for period in 0u64..70 {
                 let target_slot = Slot::new(period, thread);
@@ -513,7 +513,8 @@ pub mod tests {
             }
         }
 
-        // op ending before or at period 45 should be discarded
+        // op ending before or at period 45 won't appear in the block due to incompatible validity range
+        // we don't keep them as expected ops
         let final_period = 45u64;
         pool.update_latest_final_periods(vec![final_period; *thread_count as usize])
             .unwrap();
@@ -521,7 +522,7 @@ pub mod tests {
             lst.retain(|(_, op, _)| op.content.expire_period > final_period);
         }
 
-        // checks ops for thread 0 and 1 and various periods
+        // checks ops are the expected ones for thread 0 and 1 and various periods
         for thread in 0u8..=1 {
             for period in 0u64..70 {
                 let target_slot = Slot::new(period, thread);
