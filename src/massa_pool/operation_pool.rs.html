@@ -564,6 +564,7 @@
 <span id="563">563</span>
 <span id="564">564</span>
 <span id="565">565</span>
+<span id="566">566</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">PoolError</span>, <span class="ident">PoolSettings</span>};
@@ -1032,7 +1033,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pool</span> <span class="op">=</span>
             <span class="ident">OperationPool::new</span>(<span class="ident">pool_settings</span>, <span class="kw-2">*</span><span class="ident">thread_count</span>, <span class="kw-2">*</span><span class="ident">operation_validity_periods</span>);
 
-        <span class="comment">// generate transactions</span>
+        <span class="comment">// generate (id, transactions, range of validity) by threads</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">thread_tx_lists</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">Vec::new</span>(); <span class="kw-2">*</span><span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>];
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">18</span> {
             <span class="kw">let</span> <span class="ident">fee</span> <span class="op">=</span> <span class="number">40</span> <span class="op">+</span> <span class="ident">i</span>;
@@ -1060,7 +1061,7 @@
             <span class="ident">lst</span>.<span class="ident">truncate</span>(<span class="kw-2">*</span><span class="ident">max_pool_size_per_thread</span> <span class="kw">as</span> <span class="ident">usize</span>);
         }
 
-        <span class="comment">// checks ops for thread 0 and 1 and various periods</span>
+        <span class="comment">// checks ops are the expected ones for thread 0 and 1 and various periods</span>
         <span class="kw">for</span> <span class="ident">thread</span> <span class="kw">in</span> <span class="number">0u8</span>..<span class="op">=</span><span class="number">1</span> {
             <span class="kw">for</span> <span class="ident">period</span> <span class="kw">in</span> <span class="number">0u64</span>..<span class="number">70</span> {
                 <span class="kw">let</span> <span class="ident">target_slot</span> <span class="op">=</span> <span class="ident">Slot::new</span>(<span class="ident">period</span>, <span class="ident">thread</span>);
@@ -1079,7 +1080,8 @@
             }
         }
 
-        <span class="comment">// op ending before or at period 45 should be discarded</span>
+        <span class="comment">// op ending before or at period 45 won&#39;t appear in the block due to incompatible validity range</span>
+        <span class="comment">// we don&#39;t keep them as expected ops</span>
         <span class="kw">let</span> <span class="ident">final_period</span> <span class="op">=</span> <span class="number">45u64</span>;
         <span class="ident">pool</span>.<span class="ident">update_latest_final_periods</span>(<span class="macro">vec!</span>[<span class="ident">final_period</span>; <span class="kw-2">*</span><span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>])
             .<span class="ident">unwrap</span>();
@@ -1087,7 +1089,7 @@
             <span class="ident">lst</span>.<span class="ident">retain</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">op</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">op</span>.<span class="ident">content</span>.<span class="ident">expire_period</span> <span class="op">&gt;</span> <span class="ident">final_period</span>);
         }
 
-        <span class="comment">// checks ops for thread 0 and 1 and various periods</span>
+        <span class="comment">// checks ops are the expected ones for thread 0 and 1 and various periods</span>
         <span class="kw">for</span> <span class="ident">thread</span> <span class="kw">in</span> <span class="number">0u8</span>..<span class="op">=</span><span class="number">1</span> {
             <span class="kw">for</span> <span class="ident">period</span> <span class="kw">in</span> <span class="number">0u64</span>..<span class="number">70</span> {
                 <span class="kw">let</span> <span class="ident">target_slot</span> <span class="op">=</span> <span class="ident">Slot::new</span>(<span class="ident">period</span>, <span class="ident">thread</span>);
