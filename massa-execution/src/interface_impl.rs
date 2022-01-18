@@ -103,7 +103,7 @@ impl Interface for InterfaceImpl {
         context
             .ledger_step
             .set_module(address, Some(module.clone()));
-        context.owned_addresses.insert(address);
+        context.owned_addresses.push(address);
         context.created_addr_index += 1;
         Ok(res)
     }
