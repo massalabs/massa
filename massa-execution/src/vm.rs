@@ -6,7 +6,7 @@ use crate::interface_impl::InterfaceImpl;
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges};
 use crate::types::{ExecutionContext, ExecutionData, ExecutionStep, StepHistory, StepHistoryItem};
 use crate::{config::ExecutionConfigs, ExecutionError};
-use assembly_simulator::Interface;
+use massa_sc_runtime::Interface;
 use massa_models::address::AddressHashMap;
 use massa_models::timeslots::slot_count_in_range;
 use massa_models::{
@@ -241,7 +241,7 @@ impl VM {
         }
 
         // run in the intepreter
-        let run_result = assembly_simulator::run(&bytecode, max_gas, &*self.execution_interface);
+        let run_result = massa_sc_runtime::run(&bytecode, max_gas, &*self.execution_interface);
 
         // Send result back.
         let execution_response = ExecuteReadOnlyResponse {
@@ -314,7 +314,7 @@ impl VM {
                     self.prepare_context(&execution_data, block_creator_addr, *block_id, step.slot);
 
                 // run in the intepreter
-                let run_result = assembly_simulator::run(
+                let run_result = massa_sc_runtime::run(
                     &execution_data.bytecode,
                     execution_data.max_gas,
                     &*self.execution_interface,

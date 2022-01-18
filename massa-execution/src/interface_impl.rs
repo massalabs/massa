@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use crate::types::ExecutionContext;
 use anyhow::{bail, Result};
-use assembly_simulator::{Interface, InterfaceClone};
+use massa_sc_runtime::{Interface, InterfaceClone};
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
     timeslots::get_block_slot_timestamp,
@@ -105,8 +105,8 @@ impl Interface for InterfaceImpl {
     /// Insert in the ledger the given bytecode in the generated address
     fn create_module(
         &self,
-        module: &assembly_simulator::Bytecode,
-    ) -> Result<assembly_simulator::Address> {
+        module: &massa_sc_runtime::Bytecode,
+    ) -> Result<massa_sc_runtime::Address> {
         let mut context = context_guard!(self);
         let (slot, created_addr_index) = (context.slot, context.created_addr_index);
         let mut data: Vec<u8> = slot.to_bytes_key().to_vec();
@@ -129,9 +129,9 @@ impl Interface for InterfaceImpl {
     /// Requires the data at the address
     fn get_data_for(
         &self,
-        address: &assembly_simulator::Address,
+        address: &massa_sc_runtime::Address,
         key: &String,
-    ) -> Result<assembly_simulator::Bytecode> {
+    ) -> Result<massa_sc_runtime::Bytecode> {
         let addr = &massa_models::Address::from_bs58_check(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
@@ -147,9 +147,9 @@ impl Interface for InterfaceImpl {
     /// The execution lib will allways use the current context address for the update
     fn set_data_for(
         &self,
-        address: &assembly_simulator::Address,
+        address: &massa_sc_runtime::Address,
         key: &String,
-        value: &assembly_simulator::Bytecode,
+        value: &massa_sc_runtime::Bytecode,
     ) -> Result<()> {
         let addr = massa_models::Address::from_str(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
@@ -166,7 +166,7 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    fn has_data_for(&self, address: &assembly_simulator::Address, key: &String) -> Result<bool> {
+    fn has_data_for(&self, address: &massa_sc_runtime::Address, key: &String) -> Result<bool> {
         let context = context_guard!(self);
         let addr = massa_models::Address::from_str(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
@@ -208,15 +208,15 @@ impl Interface for InterfaceImpl {
     }
 
     /// hash data
-    fn hash(&self, data: &Vec<u8>) -> Result<assembly_simulator::MassaHash> {
+    fn hash(&self, data: &Vec<u8>) -> Result<massa_sc_runtime::MassaHash> {
         Ok(massa_hash::hash::Hash::compute_from(data).to_bs58_check())
     }
 
     /// convert a pubkey to an address
     fn address_from_public_key(
         &self,
-        public_key: &assembly_simulator::PublicKey,
-    ) -> Result<assembly_simulator::Address> {
+        public_key: &massa_sc_runtime::PublicKey,
+    ) -> Result<massa_sc_runtime::Address> {
         let public_key = massa_signature::PublicKey::from_bs58_check(public_key)?;
         let addr = massa_models::Address::from_public_key(&public_key);
         Ok(addr.to_bs58_check())
@@ -226,8 +226,8 @@ impl Interface for InterfaceImpl {
     fn signature_verify(
         &self,
         data: &Vec<u8>,
-        signature: &assembly_simulator::Signature,
-        public_key: &assembly_simulator::PublicKey,
+        signature: &massa_sc_runtime::Signature,
+        public_key: &massa_sc_runtime::PublicKey,
     ) -> Result<bool> {
         let signature = match massa_signature::Signature::from_bs58_check(signature) {
             Ok(sig) => sig,
@@ -312,7 +312,7 @@ impl Interface for InterfaceImpl {
     }
 
     /// Return the list of owned adresses of a given SC user
-    fn get_owned_addresses(&self) -> Result<Vec<assembly_simulator::Address>> {
+    fn get_owned_addresses(&self) -> Result<Vec<massa_sc_runtime::Address>> {
         Ok(context_guard!(self)
             .owned_addresses
             .iter()
@@ -320,7 +320,7 @@ impl Interface for InterfaceImpl {
             .collect())
     }
 
-    fn get_call_stack(&self) -> Result<Vec<assembly_simulator::Address>> {
+    fn get_call_stack(&self) -> Result<Vec<massa_sc_runtime::Address>> {
         Ok(context_guard!(self)
             .call_stack
             .iter()
