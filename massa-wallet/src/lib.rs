@@ -77,8 +77,11 @@ impl Wallet {
         }
     }
 
-    pub fn remove_address(&mut self, address: Address) -> Option<(PublicKey, PrivateKey)> {
-        self.keys.remove(&address)
+    pub fn remove_address(&mut self, address: Address) -> Result<(), WalletError> {
+        self.keys
+            .remove(&address)
+            .ok_or(WalletError::MissingKeyError(address))?;
+        self.save()
     }
 
     /// Finds the private key associated with given address

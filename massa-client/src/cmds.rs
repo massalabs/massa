@@ -12,7 +12,7 @@ use massa_models::{
 };
 use massa_signature::{generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
-use massa_wallet::Wallet;
+use massa_wallet::{Wallet, WalletError};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
@@ -471,11 +471,17 @@ impl Command {
                 let mut res = "".to_string();
                 for key in parse_vec::<Address>(parameters)?.into_iter() {
                     match wallet.remove_address(key) {
-                        Some(_) => {
+                        Ok(_) => {
                             res.push_str(&format!("Removed address {} from the wallet\n", key));
                         }
-                        None => {
+                        Err(WalletError::MissingKeyError(_)) => {
                             res.push_str(&format!("Address {} wasn't in the wallet\n", key));
+                        }
+                        Err(_) => {
+                            res.push_str(&format!(
+                                "Failed to remove address {} from the wallet\n",
+                                key
+                            ));
                         }
                     }
                 }
