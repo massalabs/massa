@@ -457,100 +457,68 @@ async fn manage_bootstrap(
     let mut server = BootstrapServerBinder::new(duplex, private_key);
 
     // Handshake
-    match tokio::time::timeout(bootstrap_settings.read_timeout.into(), server.handshake()).await {
-        Err(_) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap handshake timed out",
-            )
-            .into())
-        }
-        Ok(Err(e)) => return Err(e),
-        _ => {}
-    };
+    send_state_timeout(
+        bootstrap_settings.read_timeout.into(),
+        server.handshake(),
+        "bootstrap handshake send timed out",
+    )
+    .await?;
+
+    let write_timeout: std::time::Duration = bootstrap_settings.write_timeout.into();
 
     // First, sync clocks.
     let server_time = MassaTime::compensated_now(compensation_millis)?;
-    match tokio::time::timeout(
-        bootstrap_settings.write_timeout.into(),
+    send_state_timeout(
+        write_timeout,
         server.send(messages::BootstrapMessage::BootstrapTime {
             server_time,
             version,
         }),
+        "bootstrap clock send timed out",
     )
-    .await
-    {
-        Err(_) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap clock send timed out",
-            )
-            .into())
-        }
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(_)) => {}
-    }
+    .await?;
 
     // Second, send peers
-    match tokio::time::timeout(
-        bootstrap_settings.write_timeout.into(),
+    send_state_timeout(
+        write_timeout,
         server.send(messages::BootstrapMessage::BootstrapPeers { peers: data_peers }),
+        "bootstrap clock send timed out",
     )
-    .await
-    {
-        Err(_) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap clock send timed out",
-            )
-            .into())
-        }
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(_)) => {}
-    }
+    .await?;
 
     // Third, send consensus state
-    match tokio::time::timeout(
-        bootstrap_settings.write_timeout.into(),
+    send_state_timeout(
+        write_timeout,
         server.send(messages::BootstrapMessage::ConsensusState {
             pos: data_pos,
             graph: data_graph,
         }),
+        "bootstrap graph send timed out",
     )
-    .await
-    {
-        Err(_) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap graph send timed out",
-            )
-            .into())
-        }
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(_)) => {}
-    }
+    .await?;
 
     // Fourth, send execution state
-    match tokio::time::timeout(
-        bootstrap_settings.write_timeout.into(),
+    send_state_timeout(
+        write_timeout,
         server.send(messages::BootstrapMessage::ExecutionState {
             execution_state: data_execution,
         }),
+        "bootstrap execution state send timed out",
     )
     .await
-    {
-        Err(_) => {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::TimedOut,
-                "bootstrap execution state send timed out",
-            )
-            .into())
-        }
-        Ok(Err(e)) => return Err(e),
-        Ok(Ok(_)) => {}
-    }
+}
 
-    Ok(())
+/// Tooling, Send a future with a timeout, print error if timeout reached
+async fn send_state_timeout(
+    duration: std::time::Duration,
+    future: impl futures::Future<Output = Result<(), BootstrapError>>,
+    error: &str,
+) -> Result<(), BootstrapError> {
+    match tokio::time::timeout(duration, future).await {
+        Err(_) => Err(std::io::Error::new(std::io::ErrorKind::TimedOut, error).into()),
+        Ok(Err(e)) => Err(e),
+        Ok(Ok(_)) => Ok(()),
+    }
 }
 
 #[cfg(test)]
