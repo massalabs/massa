@@ -13,9 +13,9 @@ jobs:
   release:
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
+        os: [ubuntu-18.04, macOS-latest, windows-latest]
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-18.04
             target: x86_64-unknown-linux-musl
             name: release_linux.tar.gz
           - os: windows-latest
