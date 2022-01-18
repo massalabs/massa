@@ -749,6 +749,16 @@
 <span id="746">746</span>
 <span id="747">747</span>
 <span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
@@ -919,6 +929,9 @@
         <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;show time remaining to end of current episode&quot;</span>
     )]</span>
     <span class="ident">when_episode_ends</span>,
+
+    <span class="attribute">#[<span class="ident">strum</span>(<span class="ident">ascii_case_insensitive</span>, <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;tells you when moon&quot;</span>)]</span>
+    <span class="ident">when_moon</span>,
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">help</span>() {
@@ -1381,6 +1394,13 @@
                 } <span class="kw">else</span> {
                     <span class="ident">res</span>.<span class="ident">push_str</span>(<span class="string">&quot;There is no end !&quot;</span>)
                 }
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">json</span> {
+                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">res</span>);
+                }
+                <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(()))
+            }
+            <span class="ident">Command::when_moon</span> =&gt; {
+                <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="string">&quot;At night 🌔.&quot;</span>;
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">json</span> {
                     <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">res</span>);
                 }
