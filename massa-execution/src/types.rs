@@ -33,6 +33,7 @@ pub(crate) struct ExecutionContext {
     pub gas_price: Amount,
     pub slot: Slot,
     pub created_addr_index: u64,
+    pub created_event_index: u64,
     pub opt_block_id: Option<BlockId>,
     pub opt_block_creator_addr: Option<Address>,
     pub call_stack: VecDeque<Address>,
@@ -70,6 +71,7 @@ impl ExecutionContext {
             owned_addresses: Default::default(),
             created_addr_index: Default::default(),
             read_only: Default::default(),
+            created_event_index: Default::default(),
         }
     }
 }

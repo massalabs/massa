@@ -1,14 +1,14 @@
 /// Implementation of the interface used in the execution external library
 ///
-use std::str::FromStr;
-
 use crate::types::ExecutionContext;
 use anyhow::{bail, Result};
 use assembly_simulator::{Bytecode, Interface, InterfaceClone};
+use massa_hash::hash::Hash;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
     Address, Amount,
 };
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 macro_rules! context_guard {
@@ -230,16 +230,35 @@ impl Interface for InterfaceImpl {
     }
 
     fn generate_event(&self, data: String) -> Result<()> {
-        let context = context_guard!(self);
+        let mut context = context_guard!(self);
         let slot = context.slot;
         let block = context.opt_block_id;
         let call_stack = context.call_stack.clone();
+        let read_only = context.read_only;
+        if !read_only {
+            context.created_event_index += 1;
+        }
+
+        let mut to_hash: Vec<u8> = slot.to_bytes_key().to_vec();
+        to_hash.append(&mut context.created_event_index.to_be_bytes().to_vec());
+        if read_only {
+            to_hash.push(0u8);
+        } else {
+            to_hash.push(1u8);
+        }
+
         let context = EventExecutionContext {
             slot,
             block,
             call_stack,
         };
-        let event = SCOutputEvent { context, data };
+        let id = Hash::compute_from(&to_hash); // FIXME two read only smart contracts at the same slot will have the same id if no not read only event was produced in between
+        let event = SCOutputEvent {
+            id,
+            context,
+            data,
+            read_only,
+        };
         // store the event somewhere
         Ok(())
     }
