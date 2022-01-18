@@ -268,6 +268,7 @@ impl BootstrapManager {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn start_bootstrap_server(
     consensus_command_sender: ConsensusCommandSender,
     network_command_sender: NetworkCommandSender,
@@ -468,6 +469,7 @@ async fn manage_bootstrap(
 
     // First, sync clocks.
     let server_time = MassaTime::compensated_now(compensation_millis)?;
+
     send_state_timeout(
         write_timeout,
         server.send(messages::BootstrapMessage::BootstrapTime {
