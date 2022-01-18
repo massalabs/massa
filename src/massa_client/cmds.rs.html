@@ -741,6 +741,12 @@
 <span id="740">740</span>
 <span id="741">741</span>
 <span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
@@ -755,7 +761,7 @@
 };
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">generate_random_private_key</span>, <span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>};
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">massa_wallet::Wallet</span>;
+<span class="kw">use</span> <span class="ident">massa_wallet</span>::{<span class="ident">Wallet</span>, <span class="ident">WalletError</span>};
 <span class="kw">use</span> <span class="ident">serde::Serialize</span>;
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 <span class="kw">use</span> <span class="ident">std::fmt</span>::{<span class="ident">Debug</span>, <span class="ident">Display</span>};
@@ -1214,11 +1220,17 @@
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>();
                 <span class="kw">for</span> <span class="ident">key</span> <span class="kw">in</span> <span class="ident">parse_vec</span>::<span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>(<span class="ident">parameters</span>)<span class="question-mark">?</span>.<span class="ident">into_iter</span>() {
                     <span class="kw">match</span> <span class="ident">wallet</span>.<span class="ident">remove_address</span>(<span class="ident">key</span>) {
-                        <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; {
+                        <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
                             <span class="ident">res</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;Removed address {} from the wallet\n&quot;</span>, <span class="ident">key</span>));
                         }
-                        <span class="prelude-val">None</span> =&gt; {
+                        <span class="prelude-val">Err</span>(<span class="ident">WalletError::MissingKeyError</span>(<span class="kw">_</span>)) =&gt; {
                             <span class="ident">res</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;Address {} wasn&#39;t in the wallet\n&quot;</span>, <span class="ident">key</span>));
+                        }
+                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                            <span class="ident">res</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
+                                <span class="string">&quot;Failed to remove address {} from the wallet\n&quot;</span>,
+                                <span class="ident">key</span>
+                            ));
                         }
                     }
                 }
