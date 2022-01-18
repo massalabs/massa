@@ -1481,40 +1481,26 @@
 <span id="1478">1478</span>
 <span id="1479">1479</span>
 <span id="1480">1480</span>
-<span id="1481">1481</span>
-<span id="1482">1482</span>
-<span id="1483">1483</span>
-<span id="1484">1484</span>
-<span id="1485">1485</span>
-<span id="1486">1486</span>
-<span id="1487">1487</span>
-<span id="1488">1488</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">block_graph</span>::<span class="kw-2">*</span>, <span class="ident">pos::ProofOfStake</span>, <span class="ident">settings::ConsensusConfig</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ConsensusError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::pos::ExportProofOfStake</span>;
-
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>;
-<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
-
 <span class="kw">use</span> <span class="ident">massa_execution</span>::{<span class="ident">ExecutionCommandSender</span>, <span class="ident">ExecutionEventReceiver</span>};
-
+<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
+<span class="kw">use</span> <span class="ident">massa_models::address::AddressState</span>;
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{<span class="ident">EndorsementInfo</span>, <span class="ident">LedgerInfo</span>, <span class="ident">RollsInfo</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">address::AddressCycleProductionStats</span>, <span class="ident">stats::ConsensusStats</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">address</span>::{<span class="ident">AddressHashMap</span>, <span class="ident">AddressHashSet</span>, <span class="ident">AddressState</span>},
-    <span class="ident">BlockHashSet</span>, <span class="ident">EndorsementHashSet</span>,
-};
+<span class="kw">use</span> <span class="ident">massa_models::ledger::LedgerData</span>;
+<span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">Map</span>, <span class="ident">Set</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">address::AddressCycleProductionStats</span>, <span class="ident">stats::ConsensusStats</span>, <span class="ident">OperationId</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">clique::Clique</span>,
     <span class="ident">timeslots</span>::{<span class="ident">get_block_slot_timestamp</span>, <span class="ident">get_latest_block_slot_at_timestamp</span>},
 };
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">hhasher::BuildHHasher</span>, <span class="ident">ledger::LedgerData</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">Block</span>, <span class="ident">BlockHashMap</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockHeaderContent</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>,
-    <span class="ident">EndorsementContent</span>, <span class="ident">EndorsementHashMap</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationHashMap</span>,
-    <span class="ident">OperationHashSet</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">OperationType</span>, <span class="ident">SerializeCompact</span>, <span class="ident">Slot</span>,
+    <span class="ident">Address</span>, <span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockHeaderContent</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementContent</span>,
+    <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">OperationType</span>, <span class="ident">SerializeCompact</span>, <span class="ident">Slot</span>,
     <span class="ident">StakersCycleProductionStats</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_pool::PoolCommandSender</span>;
@@ -1557,37 +1543,37 @@
     <span class="ident">GetBootstrapState</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span>(<span class="ident">ExportProofOfStake</span>, <span class="ident">BootstrapableGraph</span>)<span class="op">&gt;</span>),
     <span class="doccomment">/// Returns info for a set of addresses (rolls and balance)</span>
     <span class="ident">GetAddressesInfo</span> {
-        <span class="ident">addresses</span>: <span class="ident">AddressHashSet</span>,
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">AddressState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">addresses</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">AddressState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="ident">GetRecentOperations</span> {
         <span class="ident">address</span>: <span class="ident">Address</span>,
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">OperationHashMap</span><span class="op">&lt;</span><span class="ident">OperationSearchResult</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="ident">GetOperations</span> {
-        <span class="ident">operation_ids</span>: <span class="ident">OperationHashSet</span>,
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">OperationHashMap</span><span class="op">&lt;</span><span class="ident">OperationSearchResult</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">operation_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="ident">GetStats</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">ConsensusStats</span><span class="op">&gt;</span>),
-    <span class="ident">GetActiveStakers</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span>),
+    <span class="ident">GetActiveStakers</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span>),
     <span class="ident">RegisterStakingPrivateKeys</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span>),
-    <span class="ident">RemoveStakingAddresses</span>(<span class="ident">AddressHashSet</span>),
-    <span class="ident">GetStakingAddressses</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">AddressHashSet</span><span class="op">&gt;</span>),
+    <span class="ident">RemoveStakingAddresses</span>(<span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>),
+    <span class="ident">GetStakingAddressses</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="op">&gt;</span>),
     <span class="ident">GetStakersProductionStats</span> {
-        <span class="ident">addrs</span>: <span class="ident">AddressHashSet</span>,
+        <span class="ident">addrs</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
         <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">StakersCycleProductionStats</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="ident">GetBlockIdsByCreator</span> {
         <span class="ident">address</span>: <span class="ident">Address</span>,
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">Status</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Status</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="ident">GetEndorsementsByAddress</span> {
         <span class="ident">address</span>: <span class="ident">Address</span>,
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="ident">GetEndorsementsById</span> {
-        <span class="ident">endorsements</span>: <span class="ident">EndorsementHashSet</span>,
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">EndorsementInfo</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">EndorsementInfo</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
 
     <span class="ident">GetCliques</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Clique</span><span class="op">&gt;</span><span class="op">&gt;</span>),
@@ -1634,13 +1620,13 @@
     <span class="doccomment">/// Next slot</span>
     <span class="ident">next_slot</span>: <span class="ident">Slot</span>,
     <span class="doccomment">/// blocks we want</span>
-    <span class="ident">wishlist</span>: <span class="ident">BlockHashSet</span>,
+    <span class="ident">wishlist</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="comment">// latest final periods</span>
     <span class="ident">latest_final_periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
     <span class="doccomment">/// clock compensation</span>
     <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
     <span class="comment">// staking keys</span>
-    <span class="ident">staking_keys</span>: <span class="ident">AddressHashMap</span><span class="op">&lt;</span>(<span class="ident">PublicKey</span>, <span class="ident">PrivateKey</span>)<span class="op">&gt;</span>,
+    <span class="ident">staking_keys</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">PublicKey</span>, <span class="ident">PrivateKey</span>)<span class="op">&gt;</span>,
     <span class="comment">// stats (block -&gt; tx_count, creator)</span>
     <span class="ident">final_block_stats</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span>(<span class="ident">MassaTime</span>, <span class="ident">u64</span>, <span class="ident">Address</span>)<span class="op">&gt;</span>,
     <span class="ident">stale_block_stats</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
@@ -1675,7 +1661,7 @@
         <span class="ident">controller_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ConsensusEvent</span><span class="op">&gt;</span>,
         <span class="ident">controller_manager_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ConsensusManagementCommand</span><span class="op">&gt;</span>,
         <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
-        <span class="ident">staking_keys</span>: <span class="ident">AddressHashMap</span><span class="op">&lt;</span>(<span class="ident">PublicKey</span>, <span class="ident">PrivateKey</span>)<span class="op">&gt;</span>,
+        <span class="ident">staking_keys</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">PublicKey</span>, <span class="ident">PrivateKey</span>)<span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsensusWorker</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">MassaTime::compensated_now</span>(<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">previous_slot</span> <span class="op">=</span> <span class="ident">get_latest_block_slot_at_timestamp</span>(
@@ -1753,7 +1739,7 @@
                     })
                     .collect(),
                 */</span>
-                <span class="ident">BlockHashMap::default</span>(),
+                <span class="ident">Map::default</span>(),
             )
             .<span class="kw">await</span><span class="question-mark">?</span>;
 
@@ -1769,7 +1755,7 @@
             <span class="ident">pos</span>,
             <span class="ident">previous_slot</span>,
             <span class="ident">next_slot</span>,
-            <span class="ident">wishlist</span>: <span class="ident">BlockHashSet::default</span>(),
+            <span class="ident">wishlist</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>(),
             <span class="ident">latest_final_periods</span>,
             <span class="ident">clock_compensation</span>,
             <span class="ident">pool_command_sender</span>,
@@ -2043,7 +2029,7 @@
                 .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="ident">e</span>)<span class="op">|</span> ((<span class="ident">id</span>, <span class="ident">e</span>.<span class="ident">content</span>.<span class="ident">index</span>), <span class="ident">e</span>))
                 .<span class="ident">unzip</span>()
         } <span class="kw">else</span> {
-            (<span class="ident">EndorsementHashMap::default</span>(), <span class="ident">Vec::new</span>())
+            (<span class="ident">Map::default</span>(), <span class="ident">Vec::new</span>())
         };
 
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.create_block.get_endorsements.result&quot;</span>, {
@@ -2081,7 +2067,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">remaining_operation_count</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_operations_per_block</span> <span class="kw">as</span> <span class="ident">usize</span>;
 
         <span class="comment">// exclude operations that were used in block ancestry</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">exclude_operations</span> <span class="op">=</span> <span class="ident">OperationHashSet::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">exclude_operations</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="ident">::default</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ancestor_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">parents</span>[<span class="ident">cur_slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>];
         <span class="kw">let</span> <span class="ident">stop_period</span> <span class="op">=</span> <span class="ident">cur_slot</span>
             .<span class="ident">period</span>
@@ -2114,7 +2100,7 @@
         <span class="comment">// gather operations</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Operation</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">operation_set</span>: <span class="ident">OperationHashMap</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OperationHashMap::default</span>(); <span class="comment">// (index, validity end period)</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">operation_set</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::default</span>(); <span class="comment">// (index, validity end period)</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">finished</span> <span class="op">=</span> <span class="ident">remaining_block_space</span> <span class="op">==</span> <span class="number">0</span>
             <span class="op">|</span><span class="op">|</span> <span class="ident">remaining_operation_count</span> <span class="op">==</span> <span class="number">0</span>
             <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_operations_fill_attempts</span> <span class="op">==</span> <span class="number">0</span>;
@@ -2587,9 +2573,9 @@
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">get_active_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_active_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cur_cycle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">next_slot</span>.<span class="ident">get_cycle</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">periods_per_cycle</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">AddressHashMap::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::default</span>();
         <span class="kw">for</span> <span class="ident">thread</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span> {
             <span class="kw">match</span> <span class="self">self</span>.<span class="ident">pos</span>.<span class="ident">get_lookback_roll_count</span>(<span class="ident">cur_cycle</span>, <span class="ident">thread</span>) {
                 <span class="prelude-val">Ok</span>(<span class="ident">rolls</span>) =&gt; {
@@ -2603,14 +2589,14 @@
 
     <span class="kw">fn</span> <span class="ident">get_addresses_info</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">addresses</span>: <span class="kw-2">&amp;</span><span class="ident">AddressHashSet</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">AddressState</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
+        <span class="ident">addresses</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">AddressState</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">addresses_by_thread</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">AddressHashSet::default</span>(); <span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>];
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">addresses_by_thread</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="ident">::default</span>(); <span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>];
         <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="ident">addresses</span>.<span class="ident">iter</span>() {
             <span class="ident">addresses_by_thread</span>[<span class="ident">addr</span>.<span class="ident">get_thread</span>(<span class="ident">thread_count</span>) <span class="kw">as</span> <span class="ident">usize</span>].<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">addr</span>);
         }
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">states</span> <span class="op">=</span> <span class="ident">AddressHashMap::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">states</span> <span class="op">=</span> <span class="ident">Map::default</span>();
         <span class="kw">let</span> <span class="ident">cur_cycle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">next_slot</span>.<span class="ident">get_cycle</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">periods_per_cycle</span>);
         <span class="kw">let</span> <span class="ident">ledger_data</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_ledger_data_export</span>(<span class="ident">addresses</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">prod_stats</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">pos</span>.<span class="ident">get_stakers_production_stats</span>(<span class="ident">addresses</span>);
@@ -2688,8 +2674,8 @@
 
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_operations</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">operation_ids</span>: <span class="kw-2">&amp;</span><span class="ident">OperationHashSet</span>,
-    ) -&gt; <span class="ident">OperationHashMap</span><span class="op">&lt;</span><span class="ident">OperationSearchResult</span><span class="op">&gt;</span> {
+        <span class="ident">operation_ids</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_operations</span>(<span class="ident">operation_ids</span>)
     }
 
@@ -2731,7 +2717,7 @@
                     <span class="string">&quot;consensus.consensus_worker.process_protocol_event.get_blocks&quot;</span>,
                     { <span class="string">&quot;list&quot;</span>: <span class="ident">list</span> }
                 );
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">results</span> <span class="op">=</span> <span class="ident">BlockHashMap::default</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">results</span> <span class="op">=</span> <span class="ident">Map::default</span>();
                 <span class="kw">for</span> <span class="ident">block_hash</span> <span class="kw">in</span> <span class="ident">list</span> {
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">a_block</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_active_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>) {
                         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.process_protocol_event.get_block.consensus_found&quot;</span>, { <span class="string">&quot;hash&quot;</span>: <span class="ident">block_hash</span>});
@@ -2817,11 +2803,9 @@
         }
 
         <span class="comment">// Process new final blocks</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_final_ops</span>: <span class="ident">OperationHashMap</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">u8</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">OperationHashMap::default</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_final_blocks</span> <span class="op">=</span> <span class="ident">BlockHashMap::with_capacity_and_hasher</span>(
-            <span class="ident">new_final_block_ids</span>.<span class="ident">len</span>(),
-            <span class="ident">BuildHHasher::default</span>(),
-        );
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_final_ops</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">u64</span>, <span class="ident">u8</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_final_blocks</span> <span class="op">=</span>
+            <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">new_final_block_ids</span>.<span class="ident">len</span>(), <span class="ident">BuildMap::default</span>());
         <span class="kw">let</span> <span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">MassaTime::compensated_now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>;
         <span class="kw">for</span> <span class="ident">b_id</span> <span class="kw">in</span> <span class="ident">new_final_block_ids</span>.<span class="ident">into_iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">a_block</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_active_block</span>(<span class="kw-2">&amp;</span><span class="ident">b_id</span>) {
@@ -2917,7 +2901,7 @@
                 };
 
                 <span class="comment">// actually create endorsements</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">endorsements</span> <span class="op">=</span> <span class="ident">EndorsementHashMap::default</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">endorsements</span> <span class="op">=</span> <span class="ident">Map::default</span>();
                 <span class="kw">for</span> (<span class="ident">endorsement_index</span>, <span class="ident">addr</span>) <span class="kw">in</span> <span class="ident">endorsement_draws</span>.<span class="ident">into_iter</span>().<span class="ident">enumerate</span>() {
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">pub_k</span>, <span class="ident">priv_k</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">staking_keys</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>) {
                         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.slot_tick.endorsement_creator_addr&quot;</span>,

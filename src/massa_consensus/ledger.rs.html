@@ -785,17 +785,12 @@
 <span id="782">782</span>
 <span id="783">783</span>
 <span id="784">784</span>
-<span id="785">785</span>
-<span id="786">786</span>
-<span id="787">787</span>
-<span id="788">788</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::InternalError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ConsensusConfig</span>, <span class="ident">ConsensusError</span>};
-<span class="kw">use</span> <span class="ident">massa_models::address</span>::{<span class="ident">AddressHashMap</span>, <span class="ident">AddressHashSet</span>};
-<span class="kw">use</span> <span class="ident">massa_models::hhasher::BuildHHasher</span>;
 <span class="kw">use</span> <span class="ident">massa_models::ledger</span>::{<span class="ident">LedgerChange</span>, <span class="ident">LedgerData</span>};
+<span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">array_from_slice</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">Operation</span>,
     <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">ADDRESS_SIZE_BYTES</span>,
@@ -821,10 +816,10 @@
 
 <span class="doccomment">/// Map an address to a LedgerChange</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerChanges</span>(<span class="kw">pub</span> <span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">LedgerChange</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerChanges</span>(<span class="kw">pub</span> <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">LedgerChange</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">LedgerChanges</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">AddressHashSet</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>()
     }
 
@@ -858,7 +853,7 @@
 
     <span class="doccomment">/// merge another ledger changes into self, overwriting existing data</span>
     <span class="doccomment">/// addrs that are in not other are removed from self</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sync_from</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">AddressHashSet</span>, <span class="kw-2">mut</span> <span class="ident">other</span>: <span class="ident">LedgerChanges</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sync_from</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="kw-2">mut</span> <span class="ident">other</span>: <span class="ident">LedgerChanges</span>) {
         <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="ident">addrs</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">new_val</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="number">0</span>.<span class="ident">remove</span>(<span class="ident">addr</span>) {
                 <span class="self">self</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">addr</span>, <span class="ident">new_val</span>);
@@ -869,7 +864,7 @@
     }
 
     <span class="doccomment">/// clone subset</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clone_subset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">AddressHashSet</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clone_subset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">LedgerChanges</span>(
             <span class="self">self</span>.<span class="number">0</span>
                 .<span class="ident">iter</span>()
@@ -1100,10 +1095,7 @@
     }
 
     <span class="doccomment">/// Returns the final ledger data of a list of unique addresses belonging to any thread.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_final_data</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">addresses</span>: <span class="ident">AddressHashSet</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LedgerSubset</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_final_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addresses</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LedgerSubset</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">ledger_per_thread</span>
             .<span class="ident">transaction</span>(<span class="op">|</span><span class="ident">ledger_per_thread</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">LedgerSubset::default</span>();
@@ -1329,7 +1321,7 @@
     <span class="doccomment">/// Gets ledger at latest final blocks for query_addrs</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_final_ledger_subset</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">query_addrs</span>: <span class="kw-2">&amp;</span><span class="ident">AddressHashSet</span>,
+        <span class="ident">query_addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LedgerSubset</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ledger_per_thread</span>.<span class="ident">transaction</span>(<span class="op">|</span><span class="ident">ledger_per_thread</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">LedgerSubset::default</span>();
@@ -1357,7 +1349,7 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerSubset</span>(<span class="kw">pub</span> <span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">LedgerData</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerSubset</span>(<span class="kw">pub</span> <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">LedgerData</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">LedgerSubset</span> {
     <span class="doccomment">/// If subset contains given address</span>
@@ -1373,7 +1365,7 @@
     }
 
     <span class="doccomment">/// List involved addresses</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">AddressHashSet</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>()
     }
 
@@ -1422,7 +1414,7 @@
 
     <span class="doccomment">/// merge another ledger subset into self, overwriting existing data</span>
     <span class="doccomment">/// addrs that are in not other are removed from self</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sync_from</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">AddressHashSet</span>, <span class="kw-2">mut</span> <span class="ident">other</span>: <span class="ident">LedgerSubset</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sync_from</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="kw-2">mut</span> <span class="ident">other</span>: <span class="ident">LedgerSubset</span>) {
         <span class="kw">for</span> <span class="ident">addr</span> <span class="kw">in</span> <span class="ident">addrs</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">new_val</span>) <span class="op">=</span> <span class="ident">other</span>.<span class="number">0</span>.<span class="ident">remove</span>(<span class="ident">addr</span>) {
                 <span class="self">self</span>.<span class="number">0</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">addr</span>, <span class="ident">new_val</span>);
@@ -1433,7 +1425,7 @@
     }
 
     <span class="doccomment">/// clone subset</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clone_subset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">AddressHashSet</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clone_subset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">LedgerSubset</span>(
             <span class="self">self</span>.<span class="number">0</span>
                 .<span class="ident">iter</span>()
@@ -1527,9 +1519,9 @@
         <span class="comment">// TODO: add entry_count checks ... see #1200</span>
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ledger_subset</span> <span class="op">=</span> <span class="ident">LedgerSubset</span>(<span class="ident">AddressHashMap::with_capacity_and_hasher</span>(
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ledger_subset</span> <span class="op">=</span> <span class="ident">LedgerSubset</span>(<span class="ident">Map::with_capacity_and_hasher</span>(
             <span class="ident">entry_count</span> <span class="kw">as</span> <span class="ident">usize</span>,
-            <span class="ident">BuildHHasher::default</span>(),
+            <span class="ident">BuildMap::default</span>(),
         ));
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">entry_count</span> {
             <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;

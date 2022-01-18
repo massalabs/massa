@@ -569,16 +569,11 @@
 <span id="566">566</span>
 <span id="567">567</span>
 <span id="568">568</span>
-<span id="569">569</span>
-<span id="570">570</span>
-<span id="571">571</span>
-<span id="572">572</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash</span>::{<span class="ident">PreHashed</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>::{<span class="ident">ADDRESS_SIZE_BYTES</span>, <span class="ident">OPERATION_ID_SIZE_BYTES</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">address::AddressHashSet</span>,
-    <span class="ident">hhasher</span>::{<span class="ident">HHashMap</span>, <span class="ident">HHashSet</span>, <span class="ident">PreHashed</span>},
     <span class="ident">serialization</span>::{
         <span class="ident">array_from_slice</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
     },
@@ -596,9 +591,6 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OperationId</span>(<span class="ident">Hash</span>);
-
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">OperationHashMap</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HHashMap</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">T</span><span class="op">&gt;</span>;
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">OperationHashSet</span> <span class="op">=</span> <span class="ident">HHashSet</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>;
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">OperationId</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
@@ -990,8 +982,8 @@
         <span class="ident">start</span>..<span class="op">=</span><span class="self">self</span>.<span class="ident">content</span>.<span class="ident">expire_period</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ledger_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AddressHashSet</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">AddressHashSet::default</span>();
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ledger_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="ident">::default</span>();
         <span class="kw">let</span> <span class="ident">emitter_address</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content</span>.<span class="ident">sender_public_key</span>);
         <span class="ident">res</span>.<span class="ident">insert</span>(<span class="ident">emitter_address</span>);
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">content</span>.<span class="ident">op</span> {
@@ -1007,8 +999,8 @@
         <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_roll_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AddressHashSet</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">AddressHashSet::default</span>();
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_roll_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="ident">::default</span>();
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">content</span>.<span class="ident">op</span> {
             <span class="ident">OperationType::Transaction</span> { .. } =&gt; {}
             <span class="ident">OperationType::RollBuy</span> { .. } =&gt; {

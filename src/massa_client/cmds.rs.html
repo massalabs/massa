@@ -755,8 +755,8 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::rpc::Client</span>;
 <span class="kw">use</span> <span class="ident">anyhow</span>::{<span class="ident">anyhow</span>, <span class="ident">bail</span>, <span class="prelude-ty">Result</span>};
 <span class="kw">use</span> <span class="ident">console::style</span>;
-<span class="kw">use</span> <span class="ident">massa_models::address::AddressHashMap</span>;
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{<span class="ident">AddressInfo</span>, <span class="ident">CompactAddressInfo</span>};
+<span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
 <span class="kw">use</span> <span class="ident">massa_models::timeslots::get_current_latest_block_slot</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationContent</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>, <span class="ident">Slot</span>,
@@ -950,7 +950,7 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExtendedWallet</span>(<span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">ExtendedWalletEntry</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExtendedWallet</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">ExtendedWalletEntry</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">ExtendedWallet</span> {
     <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">wallet</span>: <span class="kw-2">&amp;</span><span class="ident">Wallet</span>, <span class="ident">addresses_info</span>: <span class="kw-2">&amp;</span>[<span class="ident">AddressInfo</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {

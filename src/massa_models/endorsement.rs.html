@@ -292,14 +292,11 @@
 <span id="289">289</span>
 <span id="290">290</span>
 <span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash::PreHashed</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>::{<span class="ident">BLOCK_ID_SIZE_BYTES</span>, <span class="ident">ENDORSEMENT_ID_SIZE_BYTES</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">hhasher</span>::{<span class="ident">HHashMap</span>, <span class="ident">HHashSet</span>, <span class="ident">PreHashed</span>},
     <span class="ident">serialization</span>::{
         <span class="ident">array_from_slice</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
     },
@@ -317,9 +314,6 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EndorsementId</span>(<span class="ident">Hash</span>);
 
 <span class="kw">impl</span> <span class="ident">PreHashed</span> <span class="kw">for</span> <span class="ident">EndorsementId</span> {}
-
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HHashMap</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">T</span><span class="op">&gt;</span>;
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">EndorsementHashSet</span> <span class="op">=</span> <span class="ident">HHashSet</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>;
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">EndorsementId</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {

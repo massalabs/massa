@@ -370,15 +370,17 @@
 <span id="367">367</span>
 <span id="368">368</span>
 <span id="369">369</span>
+<span id="370">370</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::address::AddressCycleProductionStats</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ledger::LedgerData</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::node::NodeId</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash::Set</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::stats</span>::{<span class="ident">ConsensusStats</span>, <span class="ident">NetworkStats</span>, <span class="ident">PoolStats</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockHashSet</span>, <span class="ident">BlockId</span>, <span class="ident">CompactConfig</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementHashSet</span>,
-    <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationHashSet</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>,
+    <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">CompactConfig</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>,
+    <span class="ident">OperationId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -516,9 +518,9 @@
     <span class="kw">pub</span> <span class="ident">rolls</span>: <span class="ident">RollsInfo</span>,
     <span class="kw">pub</span> <span class="ident">block_draws</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">endorsement_draws</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">IndexedSlot</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">blocks_created</span>: <span class="ident">BlockHashSet</span>,
-    <span class="kw">pub</span> <span class="ident">involved_in_endorsements</span>: <span class="ident">EndorsementHashSet</span>,
-    <span class="kw">pub</span> <span class="ident">involved_in_operations</span>: <span class="ident">OperationHashSet</span>,
+    <span class="kw">pub</span> <span class="ident">blocks_created</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">involved_in_endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">involved_in_operations</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">production_stats</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AddressCycleProductionStats</span><span class="op">&gt;</span>,
 }
 

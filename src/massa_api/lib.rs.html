@@ -218,6 +218,7 @@
 <span id="215">215</span>
 <span id="216">216</span>
 <span id="217">217</span>
+<span id="218">218</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
@@ -229,17 +230,17 @@
 <span class="kw">use</span> <span class="ident">jsonrpc_http_server</span>::{<span class="ident">CloseHandle</span>, <span class="ident">ServerBuilder</span>};
 <span class="kw">use</span> <span class="ident">massa_consensus</span>::{<span class="ident">ConsensusCommandSender</span>, <span class="ident">ConsensusConfig</span>};
 <span class="kw">use</span> <span class="ident">massa_execution::ExecutionCommandSender</span>;
-<span class="kw">use</span> <span class="ident">massa_models::address</span>::{<span class="ident">AddressHashMap</span>, <span class="ident">AddressHashSet</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
     <span class="ident">APISettings</span>, <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>,
     <span class="ident">TimeInterval</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_models::clique::Clique</span>;
+<span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
 <span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
-<span class="kw">use</span> <span class="ident">massa_models::massa_hash::PubkeySig</span>;
 <span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident">massa_models::operation</span>::{<span class="ident">Operation</span>, <span class="ident">OperationId</span>};
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
+<span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>};
 <span class="kw">use</span> <span class="ident">massa_network</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkSettings</span>};
 <span class="kw">use</span> <span class="ident">massa_pool::PoolCommandSender</span>;
@@ -249,6 +250,7 @@
 <span class="kw">use</span> <span class="ident">std::thread::JoinHandle</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>;
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">info</span>, <span class="ident">warn</span>};
+
 <span class="kw">mod</span> <span class="ident">error</span>;
 <span class="kw">mod</span> <span class="ident">private</span>;
 <span class="kw">mod</span> <span class="ident">public</span>;
@@ -348,7 +350,7 @@
 
     <span class="doccomment">/// Return hashset of staking addresses.</span>
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_staking_addresses&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AddressHashSet</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">get_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// Bans given IP address.</span>
     <span class="doccomment">/// No confirmation to expect.</span>
@@ -370,7 +372,7 @@
 
     <span class="doccomment">/// Returns the active stakers and their active roll counts for the current cycle.</span>
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_stakers&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">get_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">get_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// Returns operations information associated to a given list of operations&#39; IDs.</span>
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_operations&quot;</span>)]</span>

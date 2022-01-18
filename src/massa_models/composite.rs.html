@@ -45,10 +45,20 @@
 <span id="42">42</span>
 <span id="43">43</span>
 <span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::operation::Operation</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">address::AddressHashMap</span>, <span class="ident">BlockHashMap</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash::Map</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>};
+<span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">PublicKey</span>, <span class="ident">Signature</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
@@ -72,7 +82,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OperationSearchResult</span> {
     <span class="kw">pub</span> <span class="ident">op</span>: <span class="ident">Operation</span>,
     <span class="kw">pub</span> <span class="ident">in_pool</span>: <span class="ident">bool</span>,
-    <span class="kw">pub</span> <span class="ident">in_blocks</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>, <span class="comment">// index, is_final</span>
+    <span class="kw">pub</span> <span class="ident">in_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, (<span class="ident">usize</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>, <span class="comment">// index, is_final</span>
     <span class="kw">pub</span> <span class="ident">status</span>: <span class="ident">OperationSearchResultStatus</span>,
 }
 
@@ -87,7 +97,13 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StakersCycleProductionStats</span> {
     <span class="kw">pub</span> <span class="ident">cycle</span>: <span class="ident">u64</span>,
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
-    <span class="kw">pub</span> <span class="ident">ok_nok_counts</span>: <span class="ident">AddressHashMap</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">ok_nok_counts</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">u64</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PubkeySig</span> {
+    <span class="kw">pub</span> <span class="ident">public_key</span>: <span class="ident">PublicKey</span>,
+    <span class="kw">pub</span> <span class="ident">signature</span>: <span class="ident">Signature</span>,
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (ee5d8d37b 2022-01-17)" ></div>

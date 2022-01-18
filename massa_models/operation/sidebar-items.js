@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["OperationType",""]],"struct":[["Operation",""],["OperationContent",""],["OperationId",""]],"type":[["OperationHashMap",""],["OperationHashSet",""]]});
+initSidebarItems({"enum":[["OperationType",""]],"struct":[["Operation",""],["OperationContent",""],["OperationId",""]]});

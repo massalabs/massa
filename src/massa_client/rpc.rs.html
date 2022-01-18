@@ -206,12 +206,12 @@
 
 <span class="kw">use</span> <span class="ident">jsonrpc_core_client::transports::http</span>;
 <span class="kw">use</span> <span class="ident">jsonrpc_core_client</span>::{<span class="ident">RpcChannel</span>, <span class="ident">RpcResult</span>, <span class="ident">TypedClient</span>};
-<span class="kw">use</span> <span class="ident">massa_models::address</span>::{<span class="ident">AddressHashMap</span>, <span class="ident">AddressHashSet</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
     <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>, <span class="ident">TimeInterval</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_models::clique::Clique</span>;
-<span class="kw">use</span> <span class="ident">massa_models::massa_hash::PubkeySig</span>;
+<span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
+<span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationId</span>};
 <span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
@@ -299,9 +299,9 @@
     }
 
     <span class="doccomment">/// Return hashset of staking addresses.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">AddressHashSet</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">call_method</span>(<span class="string">&quot;get_staking_addresses&quot;</span>, <span class="string">&quot;AddressHashSet&quot;</span>, ())
+            .<span class="ident">call_method</span>(<span class="string">&quot;get_staking_addresses&quot;</span>, <span class="string">&quot;Set&lt;Address&gt;&quot;</span>, ())
             .<span class="kw">await</span>
     }
 
@@ -335,9 +335,9 @@
     <span class="comment">// Debug (specific information)</span>
 
     <span class="doccomment">/// Returns the active stakers and their roll counts for the current cycle.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">_get_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">_get_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">call_method</span>(<span class="string">&quot;get_stakers&quot;</span>, <span class="string">&quot;AddressHashMap&lt;u64&gt;&quot;</span>, ())
+            .<span class="ident">call_method</span>(<span class="string">&quot;get_stakers&quot;</span>, <span class="string">&quot;Map&lt;Address, u64&gt;&quot;</span>, ())
             .<span class="kw">await</span>
     }
 

@@ -503,6 +503,7 @@
 <span id="500">500</span>
 <span id="501">501</span>
 <span id="502">502</span>
+<span id="503">503</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::sce_ledger::FinalLedger</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types</span>::{<span class="ident">ExecutionQueue</span>, <span class="ident">ExecutionRequest</span>};
@@ -511,8 +512,9 @@
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">config::ExecutionConfigs</span>, <span class="ident">types::ExecutionStep</span>};
 <span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
+<span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
 <span class="kw">use</span> <span class="ident">massa_models::timeslots</span>::{<span class="ident">get_block_slot_timestamp</span>, <span class="ident">get_current_latest_block_slot</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockHashMap</span>, <span class="ident">BlockId</span>, <span class="ident">Slot</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">Slot</span>};
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 <span class="kw">use</span> <span class="ident">std::thread</span>::{<span class="self">self</span>, <span class="ident">JoinHandle</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">mpsc</span>, <span class="ident">oneshot</span>};
@@ -526,8 +528,8 @@
     <span class="doccomment">/// contains the blocks of the new blockclique</span>
     <span class="doccomment">/// and a list of blocks that became final</span>
     <span class="ident">BlockCliqueChanged</span> {
-        <span class="ident">blockclique</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span>,
-        <span class="ident">finalized_blocks</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span>,
+        <span class="ident">blockclique</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
+        <span class="ident">finalized_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
     },
 
     <span class="doccomment">/// Get a snapshot of the current state for bootstrap</span>
@@ -851,8 +853,8 @@
     <span class="doccomment">/// see spec at https://github.com/massalabs/massa/wiki/vm-block-feed</span>
     <span class="kw">fn</span> <span class="ident">blockclique_changed</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">blockclique</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span>,
-        <span class="ident">finalized_blocks</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span>,
+        <span class="ident">blockclique</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
+        <span class="ident">finalized_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
         <span class="comment">// 1 - reset the SCE state back to its latest final state</span>
 

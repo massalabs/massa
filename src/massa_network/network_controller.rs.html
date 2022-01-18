@@ -352,6 +352,7 @@
 <span id="349">349</span>
 <span id="350">350</span>
 <span id="351">351</span>
+<span id="352">352</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
@@ -365,8 +366,9 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::NetworkError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>::{<span class="ident">NetworkSettings</span>, <span class="ident">CHANNEL_SIZE</span>};
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
+<span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
+<span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident">massa_models::stats::NetworkStats</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">massa_hash::PubkeySig</span>, <span class="ident">node::NodeId</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">Operation</span>, <span class="ident">Version</span>};
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>, <span class="ident">PrivateKey</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{

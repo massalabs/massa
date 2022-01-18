@@ -540,9 +540,6 @@
 <span id="537">537</span>
 <span id="538">538</span>
 <span id="539">539</span>
-<span id="540">540</span>
-<span id="541">541</span>
-<span id="542">542</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError</span>;
@@ -551,21 +548,19 @@
 <span class="kw">use</span> <span class="ident">jsonrpc_core::BoxFuture</span>;
 <span class="kw">use</span> <span class="ident">massa_consensus</span>::{<span class="ident">ConsensusCommandSender</span>, <span class="ident">ConsensusConfig</span>, <span class="ident">DiscardReason</span>, <span class="ident">ExportBlockStatus</span>};
 <span class="kw">use</span> <span class="ident">massa_execution::ExecutionCommandSender</span>;
-<span class="kw">use</span> <span class="ident">massa_models::address</span>::{<span class="ident">AddressHashMap</span>, <span class="ident">AddressHashSet</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
     <span class="ident">APISettings</span>, <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockInfoContent</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>,
     <span class="ident">IndexedSlot</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>, <span class="ident">TimeInterval</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_models::clique::Clique</span>;
+<span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
 <span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
-<span class="kw">use</span> <span class="ident">massa_models::hhasher::BuildHHasher</span>;
-<span class="kw">use</span> <span class="ident">massa_models::massa_hash::PubkeySig</span>;
 <span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
+<span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models::timeslots</span>::{<span class="ident">get_latest_block_slot_at_timestamp</span>, <span class="ident">time_range_to_slot_range</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">BlockHashSet</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementHashSet</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>,
-    <span class="ident">OperationHashMap</span>, <span class="ident">OperationHashSet</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>,
+    <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_network</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkSettings</span>};
 <span class="kw">use</span> <span class="ident">massa_pool::PoolCommandSender</span>;
@@ -635,8 +630,8 @@
         <span class="ident"><span class="kw">crate</span>::wrong_api</span>::<span class="op">&lt;</span>()<span class="op">&gt;</span>()
     }
 
-    <span class="kw">fn</span> <span class="ident">get_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AddressHashSet</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="ident"><span class="kw">crate</span>::wrong_api</span>::<span class="op">&lt;</span><span class="ident">AddressHashSet</span><span class="op">&gt;</span>()
+    <span class="kw">fn</span> <span class="ident">get_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="ident"><span class="kw">crate</span>::wrong_api</span>::<span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="op">&gt;</span>()
     }
 
     <span class="kw">fn</span> <span class="ident">ban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
@@ -705,7 +700,7 @@
         <span class="ident">Box::pin</span>(<span class="ident">closure</span>())
     }
 
-    <span class="kw">fn</span> <span class="ident">get_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">consensus_command_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">consensus_command_sender</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">closure</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="ident">consensus_command_sender</span>.<span class="ident">get_active_stakers</span>().<span class="kw">await</span><span class="question-mark">?</span>);
         <span class="ident">Box::pin</span>(<span class="ident">closure</span>())
@@ -723,7 +718,7 @@
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApiError::TooManyArguments</span>(<span class="string">&quot;too many arguments&quot;</span>.<span class="ident">into</span>()));
             }
 
-            <span class="kw">let</span> <span class="ident">operation_ids</span>: <span class="ident">OperationHashSet</span> <span class="op">=</span> <span class="ident">ops</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>();
+            <span class="kw">let</span> <span class="ident">operation_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">ops</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>();
 
             <span class="comment">// simultaneously ask pool and consensus</span>
             <span class="kw">let</span> (<span class="ident">pool_res</span>, <span class="ident">consensus_res</span>) <span class="op">=</span> <span class="macro">tokio::join!</span>(
@@ -731,11 +726,10 @@
                 <span class="ident">consensus_command_sender</span>.<span class="ident">get_operations</span>(<span class="ident">operation_ids</span>)
             );
             <span class="kw">let</span> (<span class="ident">pool_res</span>, <span class="ident">consensus_res</span>) <span class="op">=</span> (<span class="ident">pool_res</span><span class="question-mark">?</span>, <span class="ident">consensus_res</span><span class="question-mark">?</span>);
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">OperationHashMap</span><span class="op">&lt;</span><span class="ident">OperationInfo</span><span class="op">&gt;</span> <span class="op">=</span>
-                <span class="ident">OperationHashMap::with_capacity_and_hasher</span>(
-                    <span class="ident">pool_res</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="ident">consensus_res</span>.<span class="ident">len</span>(),
-                    <span class="ident">BuildHHasher::default</span>(),
-                );
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::with_capacity_and_hasher</span>(
+                <span class="ident">pool_res</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="ident">consensus_res</span>.<span class="ident">len</span>(),
+                <span class="ident">BuildMap::default</span>(),
+            );
 
             <span class="comment">// add pool info</span>
             <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">pool_res</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="ident">operation</span>)<span class="op">|</span> {
@@ -784,7 +778,7 @@
         <span class="kw">let</span> <span class="ident">consensus_command_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">consensus_command_sender</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">pool_command_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">pool_command_sender</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">closure</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">mapped</span>: <span class="ident">EndorsementHashSet</span> <span class="op">=</span> <span class="ident">eds</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
+            <span class="kw">let</span> <span class="ident">mapped</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">eds</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">consensus_command_sender</span>
                 .<span class="ident">get_endorsements_by_id</span>(<span class="ident">mapped</span>.<span class="ident">clone</span>())
                 .<span class="kw">await</span><span class="question-mark">?</span>;
@@ -938,12 +932,12 @@
             <span class="kw">let</span> (<span class="ident">next_draws</span>, <span class="kw-2">mut</span> <span class="ident">states</span>) <span class="op">=</span> (<span class="ident">next_draws</span><span class="question-mark">?</span>, <span class="ident">states</span><span class="question-mark">?</span>);
 
             <span class="comment">// operations block and endorsement info</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">operations</span>: <span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">OperationHashSet</span><span class="op">&gt;</span> <span class="op">=</span>
-                <span class="ident">AddressHashMap::with_capacity_and_hasher</span>(<span class="ident">addresses</span>.<span class="ident">len</span>(), <span class="ident">BuildHHasher::default</span>());
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blocks</span>: <span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">BlockHashSet</span><span class="op">&gt;</span> <span class="op">=</span>
-                <span class="ident">AddressHashMap::with_capacity_and_hasher</span>(<span class="ident">addresses</span>.<span class="ident">len</span>(), <span class="ident">BuildHHasher::default</span>());
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">endorsements</span>: <span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">EndorsementHashSet</span><span class="op">&gt;</span> <span class="op">=</span>
-                <span class="ident">AddressHashMap::with_capacity_and_hasher</span>(<span class="ident">addresses</span>.<span class="ident">len</span>(), <span class="ident">BuildHHasher::default</span>());
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span>
+                <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">addresses</span>.<span class="ident">len</span>(), <span class="ident">BuildMap::default</span>());
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span>
+                <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">addresses</span>.<span class="ident">len</span>(), <span class="ident">BuildMap::default</span>());
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span>
+                <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">addresses</span>.<span class="ident">len</span>(), <span class="ident">BuildMap::default</span>());
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">concurrent_getters</span> <span class="op">=</span> <span class="ident">FuturesUnordered::new</span>();
             <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">address</span> <span class="kw">in</span> <span class="ident">addresses</span>.<span class="ident">iter</span>() {
@@ -954,12 +948,12 @@
                         .<span class="ident">get_block_ids_by_creator</span>(<span class="ident">address</span>)
                         .<span class="kw">await</span><span class="question-mark">?</span>
                         .<span class="ident">into_keys</span>()
-                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">BlockHashSet</span><span class="op">&gt;</span>();
+                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>();
                     <span class="kw">let</span> <span class="ident">get_pool_ops</span> <span class="op">=</span> <span class="ident">pool_cmd_snd</span>.<span class="ident">get_operations_involving_address</span>(<span class="ident">address</span>);
                     <span class="kw">let</span> <span class="ident">get_consensus_ops</span> <span class="op">=</span> <span class="ident">cmd_snd</span>.<span class="ident">get_operations_involving_address</span>(<span class="ident">address</span>);
                     <span class="kw">let</span> (<span class="ident">get_pool_ops</span>, <span class="ident">get_consensus_ops</span>) <span class="op">=</span>
                         <span class="macro">tokio::join!</span>(<span class="ident">get_pool_ops</span>, <span class="ident">get_consensus_ops</span>);
-                    <span class="kw">let</span> <span class="ident">gathered</span>: <span class="ident">OperationHashSet</span> <span class="op">=</span> <span class="ident">get_pool_ops</span><span class="question-mark">?</span>
+                    <span class="kw">let</span> <span class="ident">gathered</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">get_pool_ops</span><span class="question-mark">?</span>
                         .<span class="ident">into_keys</span>()
                         .<span class="ident">chain</span>(<span class="ident">get_consensus_ops</span><span class="question-mark">?</span>.<span class="ident">into_keys</span>())
                         .<span class="ident">collect</span>();
@@ -968,11 +962,11 @@
                         <span class="kw">let</span> <span class="ident">get_consensus_eds</span> <span class="op">=</span> <span class="ident">cmd_snd</span>.<span class="ident">get_endorsements_by_address</span>(<span class="ident">address</span>);
                         <span class="kw">let</span> (<span class="ident">get_pool_eds</span>, <span class="ident">get_consensus_eds</span>) <span class="op">=</span>
                             <span class="macro">tokio::join!</span>(<span class="ident">get_pool_eds</span>, <span class="ident">get_consensus_eds</span>);
-                        <span class="kw">let</span> <span class="ident">gathered_ed</span>: <span class="ident">EndorsementHashSet</span> <span class="op">=</span> <span class="ident">get_pool_eds</span><span class="question-mark">?</span>
+                        <span class="kw">let</span> <span class="ident">gathered_ed</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">get_pool_eds</span><span class="question-mark">?</span>
                             .<span class="ident">into_keys</span>()
                             .<span class="ident">chain</span>(<span class="ident">get_consensus_eds</span><span class="question-mark">?</span>.<span class="ident">into_keys</span>())
                             .<span class="ident">collect</span>();
-                    <span class="prelude-ty">Result</span>::<span class="op">&lt;</span>(<span class="ident">Address</span>, <span class="ident">BlockHashSet</span>, <span class="ident">OperationHashSet</span>, <span class="ident">EndorsementHashSet</span>), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="ident">::Ok</span>((
+                    <span class="prelude-ty">Result</span>::<span class="op">&lt;</span>(<span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="ident">::Ok</span>((
                         <span class="ident">address</span>, <span class="ident">blocks</span>, <span class="ident">gathered</span>, <span class="ident">gathered_ed</span>
                     ))
                 });
@@ -1037,7 +1031,7 @@
             <span class="kw">let</span> <span class="ident">to_send</span> <span class="op">=</span> <span class="ident">ops</span>
                 .<span class="ident">into_iter</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">op</span><span class="op">|</span> <span class="prelude-val">Ok</span>((<span class="ident">op</span>.<span class="ident">verify_integrity</span>()<span class="question-mark">?</span>, <span class="ident">op</span>)))
-                .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OperationHashMap</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
+                .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="kw">_</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">ids</span> <span class="op">=</span> <span class="ident">to_send</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>();
             <span class="ident">cmd_sender</span>.<span class="ident">add_operations</span>(<span class="ident">to_send</span>).<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(<span class="ident">ids</span>)

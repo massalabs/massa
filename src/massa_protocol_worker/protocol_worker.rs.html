@@ -1547,29 +1547,15 @@
 <span id="1544">1544</span>
 <span id="1545">1545</span>
 <span id="1546">1546</span>
-<span id="1547">1547</span>
-<span id="1548">1548</span>
-<span id="1549">1549</span>
-<span id="1550">1550</span>
-<span id="1551">1551</span>
-<span id="1552">1552</span>
-<span id="1553">1553</span>
-<span id="1554">1554</span>
-<span id="1555">1555</span>
-<span id="1556">1556</span>
-<span id="1557">1557</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
-<span class="kw">use</span> <span class="ident">massa_models::hhasher::BuildHHasher</span>;
 <span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
-<span class="kw">use</span> <span class="ident">massa_models::Endorsement</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">Block</span>, <span class="ident">BlockHashMap</span>, <span class="ident">BlockHashSet</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementHashMap</span>,
-    <span class="ident">EndorsementHashSet</span>, <span class="ident">Operation</span>, <span class="ident">OperationHashMap</span>, <span class="ident">OperationHashSet</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>,
-};
+<span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">Map</span>, <span class="ident">Set</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>};
 <span class="kw">use</span> <span class="ident">massa_network</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkEvent</span>, <span class="ident">NetworkEventReceiver</span>};
 <span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{
     <span class="ident">ProtocolCommand</span>, <span class="ident">ProtocolCommandSender</span>, <span class="ident">ProtocolError</span>, <span class="ident">ProtocolEvent</span>, <span class="ident">ProtocolEventReceiver</span>,
@@ -1654,15 +1640,11 @@
 
 <span class="comment">//put in a module to block private access from Protocol_worker.</span>
 <span class="kw">mod</span> <span class="ident">nodeinfo</span> {
-    <span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
-
-    <span class="kw">use</span> <span class="ident">massa_models</span>::{
-        <span class="ident">hhasher::BuildHHasher</span>, <span class="ident">BlockHashMap</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementHashSet</span>, <span class="ident">EndorsementId</span>,
-        <span class="ident">OperationHashSet</span>, <span class="ident">OperationId</span>,
-    };
-    <span class="kw">use</span> <span class="ident">tokio::time::Instant</span>;
-
+    <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">Map</span>, <span class="ident">Set</span>};
+    <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>};
     <span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolSettings</span>;
+    <span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
+    <span class="kw">use</span> <span class="ident">tokio::time::Instant</span>;
 
     <span class="doccomment">/// Information about a node we are connected to,</span>
     <span class="doccomment">/// essentially our view of its state.</span>
@@ -1673,18 +1655,18 @@
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeInfo</span> {
         <span class="doccomment">/// The blocks the node &quot;knows about&quot;,</span>
         <span class="doccomment">/// defined as the one the node propagated headers to us for.</span>
-        <span class="ident">known_blocks</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span>(<span class="ident">bool</span>, <span class="ident">Instant</span>)<span class="op">&gt;</span>,
+        <span class="ident">known_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, (<span class="ident">bool</span>, <span class="ident">Instant</span>)<span class="op">&gt;</span>,
         <span class="doccomment">/// The blocks the node asked for.</span>
-        <span class="ident">wanted_blocks</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">Instant</span><span class="op">&gt;</span>,
+        <span class="ident">wanted_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Instant</span><span class="op">&gt;</span>,
         <span class="doccomment">/// Blocks we asked that node for</span>
-        <span class="kw">pub</span> <span class="ident">asked_blocks</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">Instant</span><span class="op">&gt;</span>,
+        <span class="kw">pub</span> <span class="ident">asked_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Instant</span><span class="op">&gt;</span>,
         <span class="doccomment">/// Instant when the node was added</span>
         <span class="kw">pub</span> <span class="ident">connection_instant</span>: <span class="ident">Instant</span>,
         <span class="doccomment">/// all known operations</span>
-        <span class="kw">pub</span> <span class="ident">known_operations</span>: <span class="ident">OperationHashSet</span>,
+        <span class="kw">pub</span> <span class="ident">known_operations</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">known_operations_queue</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
         <span class="doccomment">/// all known endorsements</span>
-        <span class="kw">pub</span> <span class="ident">known_endorsements</span>: <span class="ident">EndorsementHashSet</span>,
+        <span class="kw">pub</span> <span class="ident">known_endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">known_endorsements_queue</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
     }
 
@@ -1692,24 +1674,24 @@
         <span class="doccomment">/// Creates empty node info</span>
         <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">pool_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ProtocolSettings</span>) -&gt; <span class="ident">NodeInfo</span> {
             <span class="ident">NodeInfo</span> {
-                <span class="ident">known_blocks</span>: <span class="ident">BlockHashMap::with_capacity_and_hasher</span>(
+                <span class="ident">known_blocks</span>: <span class="ident">Map::with_capacity_and_hasher</span>(
                     <span class="ident">pool_settings</span>.<span class="ident">max_node_known_blocks_size</span>,
-                    <span class="ident">BuildHHasher::default</span>(),
+                    <span class="ident">BuildMap::default</span>(),
                 ),
-                <span class="ident">wanted_blocks</span>: <span class="ident">BlockHashMap::with_capacity_and_hasher</span>(
+                <span class="ident">wanted_blocks</span>: <span class="ident">Map::with_capacity_and_hasher</span>(
                     <span class="ident">pool_settings</span>.<span class="ident">max_node_wanted_blocks_size</span>,
-                    <span class="ident">BuildHHasher::default</span>(),
+                    <span class="ident">BuildMap::default</span>(),
                 ),
                 <span class="ident">asked_blocks</span>: <span class="ident">Default::default</span>(),
                 <span class="ident">connection_instant</span>: <span class="ident">Instant::now</span>(),
-                <span class="ident">known_operations</span>: <span class="ident">OperationHashSet::with_capacity_and_hasher</span>(
+                <span class="ident">known_operations</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="ident">::with_capacity_and_hasher</span>(
                     <span class="ident">pool_settings</span>.<span class="ident">max_known_ops_size</span>,
-                    <span class="ident">BuildHHasher::default</span>(),
+                    <span class="ident">BuildMap::default</span>(),
                 ),
                 <span class="ident">known_operations_queue</span>: <span class="ident">VecDeque::with_capacity</span>(<span class="ident">pool_settings</span>.<span class="ident">max_known_ops_size</span>),
-                <span class="ident">known_endorsements</span>: <span class="ident">EndorsementHashSet::with_capacity_and_hasher</span>(
+                <span class="ident">known_endorsements</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="ident">::with_capacity_and_hasher</span>(
                     <span class="ident">pool_settings</span>.<span class="ident">max_known_endorsements_size</span>,
-                    <span class="ident">BuildHHasher::default</span>(),
+                    <span class="ident">BuildMap::default</span>(),
                 ),
                 <span class="ident">known_endorsements_queue</span>: <span class="ident">VecDeque::with_capacity</span>(
                     <span class="ident">pool_settings</span>.<span class="ident">max_known_endorsements_size</span>,
@@ -1773,7 +1755,7 @@
             <span class="self">self</span>.<span class="ident">known_endorsements</span>.<span class="ident">contains</span>(<span class="ident">endorsement_id</span>)
         }
 
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert_known_ops</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ops</span>: <span class="ident">OperationHashSet</span>, <span class="ident">max_ops_nb</span>: <span class="ident">usize</span>) {
+        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert_known_ops</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ops</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">max_ops_nb</span>: <span class="ident">usize</span>) {
             <span class="kw">for</span> <span class="ident">operation_id</span> <span class="kw">in</span> <span class="ident">ops</span>.<span class="ident">into_iter</span>() {
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">known_operations</span>.<span class="ident">insert</span>(<span class="ident">operation_id</span>) {
                     <span class="self">self</span>.<span class="ident">known_operations_queue</span>.<span class="ident">push_front</span>(<span class="ident">operation_id</span>);
@@ -1827,14 +1809,14 @@
 <span class="doccomment">/// Info about a block we&#39;ve seen</span>
 <span class="kw">struct</span> <span class="ident">BlockInfo</span> {
     <span class="doccomment">/// Endorsements contained in the block header.</span>
-    <span class="ident">endorsements</span>: <span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
+    <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Operations contained in the block,</span>
     <span class="doccomment">/// if we&#39;ve received them already, and none otherwise.</span>
     <span class="ident">operations</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">BlockInfo</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">endorsements</span>: <span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>, <span class="ident">operations</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">u32</span><span class="op">&gt;</span>, <span class="ident">operations</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">BlockInfo</span> {
             <span class="ident">endorsements</span>,
             <span class="ident">operations</span>,
@@ -1864,13 +1846,13 @@
     <span class="doccomment">/// Ids of active nodes mapped to node info.</span>
     <span class="ident">active_nodes</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">nodeinfo::NodeInfo</span><span class="op">&gt;</span>,
     <span class="doccomment">/// List of wanted blocks.</span>
-    <span class="ident">block_wishlist</span>: <span class="ident">BlockHashSet</span>,
+    <span class="ident">block_wishlist</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// List of processed endorsements</span>
-    <span class="ident">checked_endorsements</span>: <span class="ident">EndorsementHashSet</span>,
+    <span class="ident">checked_endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// List of processed operations</span>
-    <span class="ident">checked_operations</span>: <span class="ident">OperationHashSet</span>,
+    <span class="ident">checked_operations</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// List of processed headers</span>
-    <span class="ident">checked_headers</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">BlockInfo</span><span class="op">&gt;</span>,
+    <span class="ident">checked_headers</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">BlockInfo</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">ProtocolWorker</span> {
@@ -2187,7 +2169,7 @@
                     { <span class="string">&quot;operations&quot;</span>: <span class="ident">ops</span> }
                 );
                 <span class="kw">for</span> (<span class="ident">node</span>, <span class="ident">node_info</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">active_nodes</span>.<span class="ident">iter_mut</span>() {
-                    <span class="kw">let</span> <span class="ident">new_ops</span>: <span class="ident">OperationHashMap</span><span class="op">&lt;</span><span class="ident">Operation</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">ops</span>
+                    <span class="kw">let</span> <span class="ident">new_ops</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">Operation</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">ops</span>
                         .<span class="ident">iter</span>()
                         .<span class="ident">filter</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="op">!</span><span class="ident">node_info</span>.<span class="ident">knows_op</span>(<span class="kw-2">*</span><span class="ident">id</span>))
                         .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> (<span class="kw-2">*</span><span class="ident">k</span>, <span class="ident">v</span>.<span class="ident">clone</span>()))
@@ -2210,7 +2192,7 @@
                     { <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span> }
                 );
                 <span class="kw">for</span> (<span class="ident">node</span>, <span class="ident">node_info</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">active_nodes</span>.<span class="ident">iter_mut</span>() {
-                    <span class="kw">let</span> <span class="ident">new_endorsements</span>: <span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">endorsements</span>
+                    <span class="kw">let</span> <span class="ident">new_endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">endorsements</span>
                         .<span class="ident">iter</span>()
                         .<span class="ident">filter</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="op">!</span><span class="ident">node_info</span>.<span class="ident">knows_endorsement</span>(<span class="kw-2">*</span><span class="ident">id</span>))
                         .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> (<span class="kw-2">*</span><span class="ident">k</span>, <span class="ident">v</span>.<span class="ident">clone</span>()))
@@ -2235,7 +2217,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn</span> <span class="ident">stop_asking_blocks</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">remove_hashes</span>: <span class="ident">BlockHashSet</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">stop_asking_blocks</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">remove_hashes</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.stop_asking_blocks&quot;</span>, {
             <span class="string">&quot;remove&quot;</span>: <span class="ident">remove_hashes</span>
         });
@@ -2262,7 +2244,7 @@
             .<span class="ident">ok_or</span>(<span class="ident">TimeError::TimeOverflowError</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// list blocks to re-ask and gather candidate nodes to ask from</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidate_nodes</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidate_nodes</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default::default</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ask_block_list</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default::default</span>();
 
         <span class="comment">// list blocks to re-ask and from whom</span>
@@ -2467,7 +2449,7 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">header</span>: <span class="kw-2">&amp;</span><span class="ident">BlockHeader</span>,
         <span class="ident">source_node_id</span>: <span class="kw-2">&amp;</span><span class="ident">NodeId</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>, <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">u32</span><span class="op">&gt;</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>, <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_header_from_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: <span class="ident">source_node_id</span>, <span class="string">&quot;header&quot;</span>: <span class="ident">header</span> });
 
         <span class="comment">// check header integrity</span>
@@ -2648,8 +2630,8 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>
         <span class="prelude-ty">Option</span><span class="op">&lt;</span>(
             <span class="ident">BlockId</span>,
-            <span class="ident">OperationHashMap</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
-            <span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
+            <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
+            <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
         )<span class="op">&gt;</span>,
         <span class="ident">ProtocolError</span>,
     <span class="op">&gt;</span> {
@@ -2750,16 +2732,14 @@
         <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Operation</span><span class="op">&gt;</span>,
         <span class="ident">source_node_id</span>: <span class="kw-2">&amp;</span><span class="ident">NodeId</span>,
         <span class="ident">propagate</span>: <span class="ident">bool</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">OperationHashMap</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>, <span class="ident">bool</span>, <span class="ident">u64</span>), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>, <span class="ident">bool</span>, <span class="ident">u64</span>), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_operations_from_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: <span class="ident">source_node_id</span>, <span class="string">&quot;operations&quot;</span>: <span class="ident">operations</span> });
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total_gas</span> <span class="op">=</span> <span class="number">0u64</span>;
         <span class="kw">let</span> <span class="ident">length</span> <span class="op">=</span> <span class="ident">operations</span>.<span class="ident">len</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">has_duplicate_operations</span> <span class="op">=</span> <span class="bool-val">false</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">seen_ops</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_operations</span> <span class="op">=</span>
-            <span class="ident">OperationHashMap::with_capacity_and_hasher</span>(<span class="ident">length</span>, <span class="ident">BuildHHasher::default</span>());
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">received_ids</span> <span class="op">=</span>
-            <span class="ident">OperationHashMap::with_capacity_and_hasher</span>(<span class="ident">length</span>, <span class="ident">BuildHHasher::default</span>());
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_operations</span> <span class="op">=</span> <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">length</span>, <span class="ident">BuildMap::default</span>());
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">received_ids</span> <span class="op">=</span> <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">length</span>, <span class="ident">BuildMap::default</span>());
         <span class="kw">for</span> (<span class="ident">idx</span>, <span class="ident">operation</span>) <span class="kw">in</span> <span class="ident">operations</span>.<span class="ident">into_iter</span>().<span class="ident">enumerate</span>() {
             <span class="kw">let</span> <span class="ident">operation_id</span> <span class="op">=</span> <span class="ident">operation</span>.<span class="ident">get_operation_id</span>()<span class="question-mark">?</span>;
             <span class="ident">seen_ops</span>.<span class="ident">push</span>(<span class="ident">operation_id</span>);
@@ -2824,14 +2804,13 @@
         <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span>,
         <span class="ident">source_node_id</span>: <span class="kw-2">&amp;</span><span class="ident">NodeId</span>,
         <span class="ident">propagate</span>: <span class="ident">bool</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>, <span class="ident">bool</span>), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">u32</span><span class="op">&gt;</span>, <span class="ident">bool</span>), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_endorsements_from_node&quot;</span>, { <span class="string">&quot;node&quot;</span>: <span class="ident">source_node_id</span>, <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>});
         <span class="kw">let</span> <span class="ident">length</span> <span class="op">=</span> <span class="ident">endorsements</span>.<span class="ident">len</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">contains_duplicates</span> <span class="op">=</span> <span class="bool-val">false</span>;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_endorsements</span> <span class="op">=</span>
-            <span class="ident">EndorsementHashMap::with_capacity_and_hasher</span>(<span class="ident">length</span>, <span class="ident">BuildHHasher::default</span>());
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">endorsement_ids</span> <span class="op">=</span> <span class="ident">EndorsementHashMap::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_endorsements</span> <span class="op">=</span> <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">length</span>, <span class="ident">BuildMap::default</span>());
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">endorsement_ids</span> <span class="op">=</span> <span class="ident">Map::default</span>();
         <span class="kw">for</span> <span class="ident">endorsement</span> <span class="kw">in</span> <span class="ident">endorsements</span>.<span class="ident">into_iter</span>() {
             <span class="kw">let</span> <span class="ident">endorsement_id</span> <span class="op">=</span> <span class="ident">endorsement</span>.<span class="ident">compute_endorsement_id</span>()<span class="question-mark">?</span>;
             <span class="kw">if</span> <span class="ident">endorsement_ids</span>
@@ -2909,8 +2888,7 @@
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">block_id</span>, <span class="ident">operation_set</span>, <span class="ident">endorsement_ids</span>)) <span class="op">=</span>
                     <span class="self">self</span>.<span class="ident">note_block_from_node</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>, <span class="kw-2">&amp;</span><span class="ident">from_node_id</span>).<span class="kw">await</span><span class="question-mark">?</span>
                 {
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">set</span> <span class="op">=</span>
-                        <span class="ident">BlockHashSet::with_capacity_and_hasher</span>(<span class="number">1</span>, <span class="ident">BuildHHasher::default</span>());
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">set</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::with_capacity_and_hasher</span>(<span class="number">1</span>, <span class="ident">BuildMap::default</span>());
                     <span class="ident">set</span>.<span class="ident">insert</span>(<span class="ident">block_id</span>);
                     <span class="self">self</span>.<span class="ident">stop_asking_blocks</span>(<span class="ident">set</span>)<span class="question-mark">?</span>;
                     <span class="self">self</span>.<span class="ident">send_protocol_event</span>(<span class="ident">ProtocolEvent::ReceivedBlock</span> {

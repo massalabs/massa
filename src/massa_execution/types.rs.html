@@ -164,8 +164,8 @@
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::sce_ledger</span>::{<span class="ident">FinalLedger</span>, <span class="ident">SCELedger</span>, <span class="ident">SCELedgerChanges</span>, <span class="ident">SCELedgerStep</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::BootstrapExecutionState</span>;
 <span class="kw">use</span> <span class="ident">assembly_simulator::Bytecode</span>;
-<span class="kw">use</span> <span class="ident">massa_models::address::AddressHashSet</span>;
 <span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
+<span class="kw">use</span> <span class="ident">massa_models::prehash::Set</span>;
 <span class="doccomment">/// Define types used while executing block bytecodes</span>
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">Slot</span>};
 <span class="kw">use</span> <span class="ident">std::sync</span>::{<span class="ident">Condvar</span>, <span class="ident">Mutex</span>};
@@ -199,7 +199,7 @@
     <span class="kw">pub</span> <span class="ident">opt_block_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">opt_block_creator_addr</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">call_stack</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">owned_addresses</span>: <span class="ident">AddressHashSet</span>,
+    <span class="kw">pub</span> <span class="ident">owned_addresses</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">read_only</span>: <span class="ident">bool</span>,
 }
 

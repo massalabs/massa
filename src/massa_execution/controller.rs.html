@@ -230,7 +230,6 @@
 <span id="227">227</span>
 <span id="228">228</span>
 <span id="229">229</span>
-<span id="230">230</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">ExecutionConfigs</span>, <span class="ident">CHANNEL_SIZE</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::worker</span>::{
@@ -238,9 +237,8 @@
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::BootstrapExecutionState</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">execution::ExecuteReadOnlyResponse</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockHashMap</span>, <span class="ident">Slot</span>,
-};
+<span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">execution::ExecuteReadOnlyResponse</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">Slot</span>};
 <span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">mpsc</span>, <span class="ident">oneshot</span>};
 <span class="kw">use</span> <span class="ident">tokio::task::JoinHandle</span>;
@@ -334,8 +332,8 @@
     <span class="doccomment">/// notify of a blockclique change</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">update_blockclique</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">finalized_blocks</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span>,
-        <span class="ident">blockclique</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span>,
+        <span class="ident">finalized_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
+        <span class="ident">blockclique</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">ExecutionCommand::BlockCliqueChanged</span> {

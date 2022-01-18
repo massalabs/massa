@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Address",""],["AddressCycleProductionStats",""],["AddressState",""],["Addresses",""]],"type":[["AddressHashMap",""],["AddressHashSet",""]]});
+initSidebarItems({"struct":[["Address",""],["AddressCycleProductionStats",""],["AddressState",""],["Addresses",""]]});

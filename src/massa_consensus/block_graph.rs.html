@@ -4929,18 +4929,6 @@
 <span id="4926">4926</span>
 <span id="4927">4927</span>
 <span id="4928">4928</span>
-<span id="4929">4929</span>
-<span id="4930">4930</span>
-<span id="4931">4931</span>
-<span id="4932">4932</span>
-<span id="4933">4933</span>
-<span id="4934">4934</span>
-<span id="4935">4935</span>
-<span id="4936">4936</span>
-<span id="4937">4937</span>
-<span id="4938">4938</span>
-<span id="4939">4939</span>
-<span id="4940">4940</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! All information concerning blocks, the block graph and cliques is managed here.</span>
@@ -4951,16 +4939,14 @@
     <span class="ident">pos</span>::{<span class="ident">OperationRollInterface</span>, <span class="ident">ProofOfStake</span>, <span class="ident">RollCounts</span>, <span class="ident">RollUpdate</span>, <span class="ident">RollUpdates</span>},
 };
 <span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
-<span class="kw">use</span> <span class="ident">massa_models::address</span>::{<span class="ident">AddressHashMap</span>, <span class="ident">AddressHashSet</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api::EndorsementInfo</span>;
 <span class="kw">use</span> <span class="ident">massa_models::clique::Clique</span>;
-<span class="kw">use</span> <span class="ident">massa_models::hhasher::BuildHHasher</span>;
 <span class="kw">use</span> <span class="ident">massa_models::ledger::LedgerChange</span>;
+<span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">array_from_slice</span>, <span class="ident">u8_from_slice</span>, <span class="ident">with_serialization_context</span>, <span class="ident">Address</span>, <span class="ident">Block</span>, <span class="ident">BlockHashMap</span>,
-    <span class="ident">BlockHashSet</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockHeaderContent</span>, <span class="ident">BlockId</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>,
-    <span class="ident">Endorsement</span>, <span class="ident">EndorsementHashMap</span>, <span class="ident">EndorsementHashSet</span>, <span class="ident">EndorsementId</span>, <span class="ident">ModelsError</span>, <span class="ident">Operation</span>,
-    <span class="ident">OperationHashMap</span>, <span class="ident">OperationHashSet</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">OperationSearchResultBlockStatus</span>,
+    <span class="ident">array_from_slice</span>, <span class="ident">u8_from_slice</span>, <span class="ident">with_serialization_context</span>, <span class="ident">Address</span>, <span class="ident">Block</span>, <span class="ident">BlockHeader</span>,
+    <span class="ident">BlockHeaderContent</span>, <span class="ident">BlockId</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>,
+    <span class="ident">ModelsError</span>, <span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">OperationSearchResultBlockStatus</span>,
     <span class="ident">OperationSearchResultStatus</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">Slot</span>, <span class="ident">ADDRESS_SIZE_BYTES</span>,
     <span class="ident">BLOCK_ID_SIZE_BYTES</span>,
 };
@@ -4979,8 +4965,8 @@
     <span class="ident">Header</span>(<span class="ident">BlockHeader</span>),
     <span class="ident">Block</span>(
         <span class="ident">Block</span>,
-        <span class="ident">OperationHashMap</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
-        <span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
+        <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
+        <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
     ),
 }
 
@@ -4998,13 +4984,13 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockStateAccumulator</span> {
     <span class="doccomment">/// Addresses impacted by ledger updates</span>
-    <span class="kw">pub</span> <span class="ident">loaded_ledger_addrs</span>: <span class="ident">AddressHashSet</span>,
+    <span class="kw">pub</span> <span class="ident">loaded_ledger_addrs</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Subset of the ledger. Contains only data in the thread of the given block</span>
     <span class="kw">pub</span> <span class="ident">ledger_thread_subset</span>: <span class="ident">LedgerSubset</span>,
     <span class="doccomment">/// Cumulative changes made during that block execution</span>
     <span class="kw">pub</span> <span class="ident">ledger_changes</span>: <span class="ident">LedgerChanges</span>,
     <span class="doccomment">/// Addresses impacted by roll updates</span>
-    <span class="kw">pub</span> <span class="ident">loaded_roll_addrs</span>: <span class="ident">AddressHashSet</span>,
+    <span class="kw">pub</span> <span class="ident">loaded_roll_addrs</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Current roll counts for these addresses</span>
     <span class="kw">pub</span> <span class="ident">roll_counts</span>: <span class="ident">RollCounts</span>,
     <span class="doccomment">/// Roll updates that happened during that block execution</span>
@@ -5030,23 +5016,23 @@
     <span class="kw">pub</span> <span class="ident">parents</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// one HashMap&lt;Block id, period&gt; per thread (blocks that need to be kept)</span>
     <span class="doccomment">/// Children reference that block as a parent</span>
-    <span class="kw">pub</span> <span class="ident">children</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">children</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// dependencies required for validity check</span>
-    <span class="kw">pub</span> <span class="ident">dependencies</span>: <span class="ident">BlockHashSet</span>,
+    <span class="kw">pub</span> <span class="ident">dependencies</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Blocks id that have this block as an ancestor</span>
-    <span class="kw">pub</span> <span class="ident">descendants</span>: <span class="ident">BlockHashSet</span>,
+    <span class="kw">pub</span> <span class="ident">descendants</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// ie has its fitness reached the given threshold</span>
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// Changes caused by this block</span>
     <span class="kw">pub</span> <span class="ident">block_ledger_changes</span>: <span class="ident">LedgerChanges</span>,
     <span class="doccomment">/// index in the block, end of validity period</span>
-    <span class="kw">pub</span> <span class="ident">operation_set</span>: <span class="ident">OperationHashMap</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">operation_set</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// IDs of the endorsements to index in block</span>
-    <span class="kw">pub</span> <span class="ident">endorsement_ids</span>: <span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">endorsement_ids</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Maps addresses to operations id they are involved in</span>
-    <span class="kw">pub</span> <span class="ident">addresses_to_operations</span>: <span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">OperationHashSet</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">addresses_to_operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Maps addresses to endorsements id they are involved in</span>
-    <span class="kw">pub</span> <span class="ident">addresses_to_endorsements</span>: <span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">EndorsementHashSet</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">addresses_to_endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Address -&gt; RollUpdate</span>
     <span class="kw">pub</span> <span class="ident">roll_updates</span>: <span class="ident">RollUpdates</span>,
     <span class="doccomment">/// list of (period, address, did_create) for all block/endorsement creation events</span>
@@ -5070,9 +5056,9 @@
     <span class="kw">pub</span> <span class="ident">parents</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// one HashMap&lt;Block id, period&gt; per thread (blocks that need to be kept)</span>
     <span class="doccomment">/// Children reference that block as a parent</span>
-    <span class="kw">pub</span> <span class="ident">children</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">children</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// dependencies required for validity check</span>
-    <span class="kw">pub</span> <span class="ident">dependencies</span>: <span class="ident">BlockHashSet</span>,
+    <span class="kw">pub</span> <span class="ident">dependencies</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// ie has its fitness reached the given threshold</span>
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// Changes caused by this block</span>
@@ -5297,7 +5283,7 @@
             ));
         }
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">children</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">children_count</span> <span class="kw">as</span> <span class="ident">usize</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">children</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">children_count</span> <span class="kw">as</span> <span class="ident">usize</span>);
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">children_count</span> <span class="kw">as</span> <span class="ident">usize</span>) {
             <span class="kw">let</span> (<span class="ident">map_count</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
             <span class="kw">if</span> <span class="ident">map_count</span> <span class="op">&gt;</span> <span class="ident">max_bootstrap_children</span> {
@@ -5306,8 +5292,8 @@
                 ));
             }
             <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">map</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span>
-                <span class="ident">BlockHashMap::with_capacity_and_hasher</span>(<span class="ident">map_count</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BuildHHasher::default</span>());
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">map</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span>
+                <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">map_count</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BuildMap::default</span>());
             <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">map_count</span> <span class="kw">as</span> <span class="ident">usize</span>) {
                 <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
                 <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
@@ -5326,9 +5312,9 @@
             ));
         }
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dependencies</span> <span class="op">=</span> <span class="ident">BlockHashSet::with_capacity_and_hasher</span>(
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dependencies</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::with_capacity_and_hasher</span>(
             <span class="ident">dependencies_count</span> <span class="kw">as</span> <span class="ident">usize</span>,
-            <span class="ident">BuildHHasher::default</span>(),
+            <span class="ident">BuildMap::default</span>(),
         );
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">dependencies_count</span> <span class="kw">as</span> <span class="ident">usize</span>) {
             <span class="kw">let</span> <span class="ident">dep</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
@@ -5340,9 +5326,9 @@
         <span class="kw">let</span> (<span class="ident">block_ledger_change_count</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
         <span class="comment">// TODO: count check ... see #1200</span>
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_ledger_changes</span> <span class="op">=</span> <span class="ident">LedgerChanges</span>(<span class="ident">AddressHashMap::with_capacity_and_hasher</span>(
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_ledger_changes</span> <span class="op">=</span> <span class="ident">LedgerChanges</span>(<span class="ident">Map::with_capacity_and_hasher</span>(
             <span class="ident">block_ledger_change_count</span> <span class="kw">as</span> <span class="ident">usize</span>,
-            <span class="ident">BuildHHasher::default</span>(),
+            <span class="ident">BuildMap::default</span>(),
         ));
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">block_ledger_change_count</span> {
             <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
@@ -5360,9 +5346,9 @@
             ));
         }
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">roll_updates</span> <span class="op">=</span> <span class="ident">RollUpdates</span>(<span class="ident">AddressHashMap::with_capacity_and_hasher</span>(
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">roll_updates</span> <span class="op">=</span> <span class="ident">RollUpdates</span>(<span class="ident">Map::with_capacity_and_hasher</span>(
             <span class="ident">roll_updates_count</span> <span class="kw">as</span> <span class="ident">usize</span>,
-            <span class="ident">BuildHHasher::default</span>(),
+            <span class="ident">BuildMap::default</span>(),
         ));
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">roll_updates_count</span> {
             <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
@@ -5436,7 +5422,7 @@
         <span class="doccomment">/// Given header/block</span>
         <span class="ident">header_or_block</span>: <span class="ident">HeaderOrBlock</span>,
         <span class="doccomment">/// includes self if it&#39;s only a header</span>
-        <span class="ident">unsatisfied_dependencies</span>: <span class="ident">BlockHashSet</span>,
+        <span class="ident">unsatisfied_dependencies</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
         <span class="doccomment">/// Used to limit and sort the number of blocks/headers wainting for dependencies</span>
         <span class="ident">sequence_number</span>: <span class="ident">u64</span>,
     },
@@ -5492,7 +5478,7 @@
     <span class="doccomment">/// set contains the headers&#39; hashes</span>
     <span class="doccomment">/// of blocks referencing exported block as a parent,</span>
     <span class="doccomment">/// in thread i.</span>
-    <span class="kw">pub</span> <span class="ident">children</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockHashSet</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">children</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Active or final</span>
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
 }
@@ -5512,13 +5498,13 @@
     ) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">export</span> <span class="op">=</span> <span class="ident">BlockGraphExport</span> {
             <span class="ident">genesis_blocks</span>: <span class="ident">block_graph</span>.<span class="ident">genesis_hashes</span>.<span class="ident">clone</span>(),
-            <span class="ident">active_blocks</span>: <span class="ident">BlockHashMap::with_capacity_and_hasher</span>(
+            <span class="ident">active_blocks</span>: <span class="ident">Map::with_capacity_and_hasher</span>(
                 <span class="ident">block_graph</span>.<span class="ident">block_statuses</span>.<span class="ident">len</span>(),
-                <span class="ident">BuildHHasher::default</span>(),
+                <span class="ident">BuildMap::default</span>(),
             ),
-            <span class="ident">discarded_blocks</span>: <span class="ident">BlockHashMap::with_capacity_and_hasher</span>(
+            <span class="ident">discarded_blocks</span>: <span class="ident">Map::with_capacity_and_hasher</span>(
                 <span class="ident">block_graph</span>.<span class="ident">block_statuses</span>.<span class="ident">len</span>(),
-                <span class="ident">BuildHHasher::default</span>(),
+                <span class="ident">BuildMap::default</span>(),
             ),
             <span class="ident">best_parents</span>: <span class="ident">block_graph</span>.<span class="ident">best_parents</span>.<span class="ident">clone</span>(),
             <span class="ident">latest_final_blocks_periods</span>: <span class="ident">block_graph</span>.<span class="ident">latest_final_blocks_periods</span>.<span class="ident">clone</span>(),
@@ -5558,7 +5544,7 @@
                                 <span class="ident">children</span>: <span class="ident">a_block</span>
                                     .<span class="ident">children</span>
                                     .<span class="ident">iter</span>()
-                                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">thread</span><span class="op">|</span> <span class="ident">thread</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">BlockHashSet</span><span class="op">&gt;</span>())
+                                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">thread</span><span class="op">|</span> <span class="ident">thread</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>())
                                     .<span class="ident">collect</span>(),
                                 <span class="ident">is_final</span>: <span class="ident">a_block</span>.<span class="ident">is_final</span>,
                             },
@@ -5578,15 +5564,15 @@
     <span class="doccomment">/// Genesis blocks.</span>
     <span class="kw">pub</span> <span class="ident">genesis_blocks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Map of active blocks, were blocks are in their exported version.</span>
-    <span class="kw">pub</span> <span class="ident">active_blocks</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">ExportCompiledBlock</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">active_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">ExportCompiledBlock</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Finite cache of discarded blocks, in exported version.</span>
-    <span class="kw">pub</span> <span class="ident">discarded_blocks</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span>(<span class="ident">DiscardReason</span>, <span class="ident">BlockHeader</span>)<span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">discarded_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, (<span class="ident">DiscardReason</span>, <span class="ident">BlockHeader</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Best parents hashe in each thread.</span>
     <span class="kw">pub</span> <span class="ident">best_parents</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Latest final period and block hash in each thread.</span>
     <span class="kw">pub</span> <span class="ident">latest_final_blocks_periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Head of the incompatibility graph.</span>
-    <span class="kw">pub</span> <span class="ident">gi_head</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">BlockHashSet</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">gi_head</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// List of maximal cliques of compatible blocks.</span>
     <span class="kw">pub</span> <span class="ident">max_cliques</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Clique</span><span class="op">&gt;</span>,
 }
@@ -5602,13 +5588,13 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BootstrapableGraph</span> {
     <span class="doccomment">/// Map of active blocks, were blocks are in their exported version.</span>
-    <span class="kw">pub</span> <span class="ident">active_blocks</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">ExportActiveBlock</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">active_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">ExportActiveBlock</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Best parents hashe in each thread.</span>
     <span class="kw">pub</span> <span class="ident">best_parents</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Latest final period and block hash in each thread.</span>
     <span class="kw">pub</span> <span class="ident">latest_final_blocks_periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Head of the incompatibility graph.</span>
-    <span class="kw">pub</span> <span class="ident">gi_head</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">BlockHashSet</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">gi_head</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// List of maximal cliques of compatible blocks.</span>
     <span class="kw">pub</span> <span class="ident">max_cliques</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Clique</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Ledger at last final blocks</span>
@@ -5712,10 +5698,8 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::DeserializeError</span>(<span class="macro">format!</span>(<span class="string">&quot;too many blocks in active_blocks for deserialization context in BootstrapableGraph: {}&quot;</span>, <span class="ident">active_blocks_count</span>)));
         }
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">active_blocks</span> <span class="op">=</span> <span class="ident">BlockHashMap::with_capacity_and_hasher</span>(
-            <span class="ident">active_blocks_count</span> <span class="kw">as</span> <span class="ident">usize</span>,
-            <span class="ident">BuildHHasher::default</span>(),
-        );
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">active_blocks</span> <span class="op">=</span>
+            <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">active_blocks_count</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BuildMap::default</span>());
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">active_blocks_count</span> <span class="kw">as</span> <span class="ident">usize</span>) {
             <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
             <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
@@ -5755,7 +5739,7 @@
         }
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gi_head</span> <span class="op">=</span>
-            <span class="ident">BlockHashMap::with_capacity_and_hasher</span>(<span class="ident">gi_head_count</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BuildHHasher::default</span>());
+            <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">gi_head_count</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BuildMap::default</span>());
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">gi_head_count</span> <span class="kw">as</span> <span class="ident">usize</span>) {
             <span class="kw">let</span> <span class="ident">gihash</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
             <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
@@ -5765,7 +5749,7 @@
             }
             <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">set</span> <span class="op">=</span>
-                <span class="ident">BlockHashSet::with_capacity_and_hasher</span>(<span class="ident">set_count</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BuildHHasher::default</span>());
+                <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::with_capacity_and_hasher</span>(<span class="ident">set_count</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BuildMap::default</span>());
             <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">set_count</span> <span class="kw">as</span> <span class="ident">usize</span>) {
                 <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">BlockId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
                 <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_SIZE_BYTES</span>;
@@ -5816,34 +5800,34 @@
     <span class="doccomment">/// Used to limit the number of waiting and discarded blocks</span>
     <span class="ident">sequence_counter</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// Every block we know about</span>
-    <span class="ident">block_statuses</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">BlockStatus</span><span class="op">&gt;</span>,
+    <span class="ident">block_statuses</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">BlockStatus</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Ids of incomming blocks/headers</span>
-    <span class="ident">incoming_index</span>: <span class="ident">BlockHashSet</span>,
+    <span class="ident">incoming_index</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// ids of waiting for slot blocks/headers</span>
-    <span class="ident">waiting_for_slot_index</span>: <span class="ident">BlockHashSet</span>,
+    <span class="ident">waiting_for_slot_index</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// ids of waiting for dependencies blocks/headers</span>
-    <span class="ident">waiting_for_dependencies_index</span>: <span class="ident">BlockHashSet</span>,
+    <span class="ident">waiting_for_dependencies_index</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// ids of active blocks</span>
-    <span class="ident">active_index</span>: <span class="ident">BlockHashSet</span>,
+    <span class="ident">active_index</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// ids of discarded blocks</span>
-    <span class="ident">discarded_index</span>: <span class="ident">BlockHashSet</span>,
+    <span class="ident">discarded_index</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// One (block id, period) per thread</span>
     <span class="ident">latest_final_blocks_periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// One (block id, period) per thread TODO not sure I understand the difference with latest_final_blocks_periods</span>
     <span class="ident">best_parents</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Incompatibility graph: maps a block id to the block ids it is incompatible with</span>
     <span class="doccomment">/// One entry per Active Block</span>
-    <span class="ident">gi_head</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">BlockHashSet</span><span class="op">&gt;</span>,
+    <span class="ident">gi_head</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// All the cliques</span>
     <span class="ident">max_cliques</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Clique</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Blocks that need to be propagated</span>
-    <span class="ident">to_propagate</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span>(<span class="ident">Block</span>, <span class="ident">OperationHashSet</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+    <span class="ident">to_propagate</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, (<span class="ident">Block</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// List of block ids we think are attack attempts</span>
     <span class="ident">attack_attempts</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Newly final blocks</span>
-    <span class="ident">new_final_blocks</span>: <span class="ident">BlockHashSet</span>,
+    <span class="ident">new_final_blocks</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Newly stale block mapped to creator and slot</span>
-    <span class="ident">new_stale_blocks</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span>(<span class="ident">PublicKey</span>, <span class="ident">Slot</span>)<span class="op">&gt;</span>,
+    <span class="ident">new_stale_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, (<span class="ident">PublicKey</span>, <span class="ident">Slot</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// ledger</span>
     <span class="ident">ledger</span>: <span class="ident">Ledger</span>,
 }
@@ -5856,9 +5840,9 @@
         <span class="doccomment">/// one (parent block id, parent&#39;s period) per thread</span>
         <span class="ident">parents_hash_period</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
         <span class="doccomment">/// blocks that header depends on</span>
-        <span class="ident">dependencies</span>: <span class="ident">BlockHashSet</span>,
+        <span class="ident">dependencies</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
         <span class="doccomment">/// blocks that header is incompatible with</span>
-        <span class="ident">incompatibilities</span>: <span class="ident">BlockHashSet</span>,
+        <span class="ident">incompatibilities</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
         <span class="doccomment">/// number of incompatibilities that are inherited from the parents</span>
         <span class="ident">inherited_incompatibilities_count</span>: <span class="ident">usize</span>,
         <span class="doccomment">/// list of (period, address, did_create) for all block/endorsement creation events</span>
@@ -5869,7 +5853,7 @@
     <span class="doccomment">/// it must wait for its slot to be fully processed</span>
     <span class="ident">WaitForSlot</span>,
     <span class="doccomment">/// it must wait for these block ids to be fully processed</span>
-    <span class="ident">WaitForDependencies</span>(<span class="ident">BlockHashSet</span>),
+    <span class="ident">WaitForDependencies</span>(<span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
 }
 
 <span class="doccomment">/// Possible outcomes of endorsements check</span>
@@ -5891,9 +5875,9 @@
         <span class="doccomment">/// one (parent block id, parent&#39;s period) per thread</span>
         <span class="ident">parents_hash_period</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
         <span class="doccomment">/// blocks that block depends on</span>
-        <span class="ident">dependencies</span>: <span class="ident">BlockHashSet</span>,
+        <span class="ident">dependencies</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
         <span class="doccomment">/// blocks that block is incompatible with</span>
-        <span class="ident">incompatibilities</span>: <span class="ident">BlockHashSet</span>,
+        <span class="ident">incompatibilities</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
         <span class="doccomment">/// number of incompatibilities that are inherited from the parents</span>
         <span class="ident">inherited_incompatibilities_count</span>: <span class="ident">usize</span>,
         <span class="doccomment">/// changes caused by that block on the ledger</span>
@@ -5908,7 +5892,7 @@
     <span class="doccomment">/// It must wait for its slot to be fully processed</span>
     <span class="ident">WaitForSlot</span>,
     <span class="doccomment">/// it must wait for these block ids to be fully processed</span>
-    <span class="ident">WaitForDependencies</span>(<span class="ident">BlockHashSet</span>),
+    <span class="ident">WaitForDependencies</span>(<span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
 }
 
 <span class="doccomment">/// Possible outcome of a block&#39;s operations check.</span>
@@ -5917,7 +5901,7 @@
     <span class="doccomment">/// Everything is ok</span>
     <span class="ident">Proceed</span> {
         <span class="doccomment">/// blocks that block depends on</span>
-        <span class="ident">dependencies</span>: <span class="ident">BlockHashSet</span>,
+        <span class="ident">dependencies</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
         <span class="doccomment">/// changes caused by that block on the ledger</span>
         <span class="ident">block_ledger_changes</span>: <span class="ident">LedgerChanges</span>,
         <span class="doccomment">/// changes caused by that block on rolls</span>
@@ -5926,7 +5910,7 @@
     <span class="doccomment">/// There is something wrong with that batch of operation</span>
     <span class="ident">Discard</span>(<span class="ident">DiscardReason</span>),
     <span class="doccomment">/// it must wait for these block ids to be fully processed</span>
-    <span class="ident">WaitForDependencies</span>(<span class="ident">BlockHashSet</span>),
+    <span class="ident">WaitForDependencies</span>(<span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
 }
 
 <span class="doccomment">/// Read the initial ledger.</span>
@@ -5982,7 +5966,7 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="comment">// load genesis blocks</span>
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_statuses</span> <span class="op">=</span> <span class="ident">BlockHashMap::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_statuses</span> <span class="op">=</span> <span class="ident">Map::default</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">genesis_block_ids</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">cfg</span>.<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>);
         <span class="kw">for</span> <span class="ident">thread</span> <span class="kw">in</span> <span class="number">0u8</span>..<span class="ident">cfg</span>.<span class="ident">thread_count</span> {
             <span class="kw">let</span> (<span class="ident">block_id</span>, <span class="ident">block</span>) <span class="op">=</span> <span class="ident">create_genesis_block</span>(<span class="kw-2">&amp;</span><span class="ident">cfg</span>, <span class="ident">thread</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> {
@@ -5994,17 +5978,14 @@
                 <span class="ident">BlockStatus::Active</span>(<span class="ident">Box::new</span>(<span class="ident">ActiveBlock</span> {
                     <span class="ident">creator_address</span>: <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">creator</span>),
                     <span class="ident">parents</span>: <span class="ident">Vec::new</span>(),
-                    <span class="ident">children</span>: <span class="macro">vec!</span>[<span class="ident">BlockHashMap::default</span>(); <span class="ident">cfg</span>.<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>],
-                    <span class="ident">dependencies</span>: <span class="ident">BlockHashSet::default</span>(),
-                    <span class="ident">descendants</span>: <span class="ident">BlockHashSet::default</span>(),
+                    <span class="ident">children</span>: <span class="macro">vec!</span>[<span class="ident">Map::default</span>(); <span class="ident">cfg</span>.<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>],
+                    <span class="ident">dependencies</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>(),
+                    <span class="ident">descendants</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>(),
                     <span class="ident">is_final</span>: <span class="bool-val">true</span>,
                     <span class="ident">block_ledger_changes</span>: <span class="ident">LedgerChanges::default</span>(), <span class="comment">// no changes in genesis blocks</span>
                     <span class="ident">operation_set</span>: <span class="ident">Default::default</span>(),
                     <span class="ident">endorsement_ids</span>: <span class="ident">Default::default</span>(),
-                    <span class="ident">addresses_to_operations</span>: <span class="ident">AddressHashMap::with_capacity_and_hasher</span>(
-                        <span class="number">0</span>,
-                        <span class="ident">BuildHHasher::default</span>(),
-                    ),
+                    <span class="ident">addresses_to_operations</span>: <span class="ident">Map::with_capacity_and_hasher</span>(<span class="number">0</span>, <span class="ident">BuildMap::default</span>()),
                     <span class="ident">roll_updates</span>: <span class="ident">RollUpdates::default</span>(), <span class="comment">// no roll updates in genesis blocks</span>
                     <span class="ident">production_events</span>: <span class="macro">vec!</span>[],
                     <span class="ident">block</span>,
@@ -6052,7 +6033,7 @@
                 <span class="ident">new_stale_blocks</span>: <span class="ident">Default::default</span>(),
             };
             <span class="comment">// compute block descendants</span>
-            <span class="kw">let</span> <span class="ident">active_blocks_map</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">res_graph</span>
+            <span class="kw">let</span> <span class="ident">active_blocks_map</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">res_graph</span>
                 .<span class="ident">block_statuses</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">h</span>, <span class="ident">s</span>)<span class="op">|</span> {
@@ -6065,7 +6046,7 @@
                 .<span class="ident">collect</span>();
             <span class="kw">for</span> (<span class="ident">b_hash</span>, <span class="ident">b_parents</span>) <span class="kw">in</span> <span class="ident">active_blocks_map</span>.<span class="ident">into_iter</span>() {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ancestors</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">b_parents</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">visited</span>: <span class="ident">BlockHashSet</span> <span class="op">=</span> <span class="ident">Default::default</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">visited</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default::default</span>();
                 <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ancestor_h</span>) <span class="op">=</span> <span class="ident">ancestors</span>.<span class="ident">pop_back</span>() {
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">visited</span>.<span class="ident">insert</span>(<span class="ident">ancestor_h</span>) {
                         <span class="kw">continue</span>;
@@ -6095,9 +6076,9 @@
                 <span class="ident">latest_final_blocks_periods</span>: <span class="ident">genesis_block_ids</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">h</span>, <span class="number">0</span>)).<span class="ident">collect</span>(),
                 <span class="ident">best_parents</span>: <span class="ident">genesis_block_ids</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">v</span>, <span class="number">0</span>)).<span class="ident">collect</span>(),
                 <span class="ident">genesis_hashes</span>: <span class="ident">genesis_block_ids</span>,
-                <span class="ident">gi_head</span>: <span class="ident">BlockHashMap::default</span>(),
+                <span class="ident">gi_head</span>: <span class="ident">Map::default</span>(),
                 <span class="ident">max_cliques</span>: <span class="macro">vec!</span>[<span class="ident">Clique</span> {
-                    <span class="ident">block_ids</span>: <span class="ident">BlockHashSet::default</span>(),
+                    <span class="ident">block_ids</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>(),
                     <span class="ident">fitness</span>: <span class="number">0</span>,
                     <span class="ident">is_blockclique</span>: <span class="bool-val">true</span>,
                 }],
@@ -6112,11 +6093,8 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_bootstrap_graph</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BootstrapableGraph</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">required_active_blocks</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">list_required_active_blocks</span>()<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">active_blocks</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">ExportActiveBlock</span><span class="op">&gt;</span> <span class="op">=</span>
-            <span class="ident">BlockHashMap::with_capacity_and_hasher</span>(
-                <span class="ident">required_active_blocks</span>.<span class="ident">len</span>(),
-                <span class="ident">BuildHHasher::default</span>(),
-            );
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">active_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">ExportActiveBlock</span><span class="op">&gt;</span> <span class="op">=</span>
+            <span class="ident">Map::with_capacity_and_hasher</span>(<span class="ident">required_active_blocks</span>.<span class="ident">len</span>(), <span class="ident">BuildMap::default</span>());
         <span class="kw">for</span> <span class="ident">b_id</span> <span class="kw">in</span> <span class="ident">required_active_blocks</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">BlockStatus::Active</span>(<span class="ident">a_block</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_statuses</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">b_id</span>) {
                 <span class="ident">active_blocks</span>.<span class="ident">insert</span>(<span class="ident">b_id</span>, (<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="kw-2">*</span><span class="ident">a_block</span>).<span class="ident">into</span>());
@@ -6188,9 +6166,9 @@
         <span class="ident">accu</span>: <span class="kw-2">&amp;mut</span> <span class="ident">BlockStateAccumulator</span>,
         <span class="ident">header</span>: <span class="kw-2">&amp;</span><span class="ident">BlockHeader</span>,
         <span class="ident">pos</span>: <span class="kw-2">&amp;</span><span class="ident">ProofOfStake</span>,
-        <span class="ident">involved_addrs</span>: <span class="kw-2">&amp;</span><span class="ident">AddressHashSet</span>,
+        <span class="ident">involved_addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">missing_entries</span>: <span class="ident">AddressHashSet</span> <span class="op">=</span> <span class="ident">involved_addrs</span>
+        <span class="kw">let</span> <span class="ident">missing_entries</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">involved_addrs</span>
             .<span class="ident">difference</span>(<span class="kw-2">&amp;</span><span class="ident">accu</span>.<span class="ident">loaded_roll_addrs</span>)
             .<span class="ident">copied</span>()
             .<span class="ident">collect</span>();
@@ -6230,7 +6208,7 @@
             <span class="ident">sync_cycle_roll_updates</span>,
         ) <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">roll_updates</span>) <span class="op">=</span> <span class="ident">opt_roll_updates</span> {
             <span class="comment">// list roll-involved addresses</span>
-            <span class="kw">let</span> <span class="ident">involved_addrs</span>: <span class="ident">AddressHashSet</span> <span class="op">=</span> <span class="ident">roll_updates</span>.<span class="ident">get_involved_addresses</span>();
+            <span class="kw">let</span> <span class="ident">involved_addrs</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">roll_updates</span>.<span class="ident">get_involved_addresses</span>();
 
             <span class="comment">// get a local copy of the roll_counts and cycle_roll_updates restricted to the involved addresses</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">local_roll_counts</span> <span class="op">=</span> <span class="ident">accu</span>.<span class="ident">roll_counts</span>.<span class="ident">clone_subset</span>(<span class="kw-2">&amp;</span><span class="ident">involved_addrs</span>);
@@ -6238,7 +6216,7 @@
                 <span class="ident">accu</span>.<span class="ident">cycle_roll_updates</span>.<span class="ident">clone_subset</span>(<span class="kw-2">&amp;</span><span class="ident">involved_addrs</span>);
 
             <span class="comment">// load missing entries</span>
-            <span class="kw">let</span> <span class="ident">missing_entries</span>: <span class="ident">AddressHashSet</span> <span class="op">=</span> <span class="ident">involved_addrs</span>
+            <span class="kw">let</span> <span class="ident">missing_entries</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">involved_addrs</span>
                 .<span class="ident">difference</span>(<span class="kw-2">&amp;</span><span class="ident">accu</span>.<span class="ident">loaded_roll_addrs</span>)
                 .<span class="ident">copied</span>()
                 .<span class="ident">collect</span>();
@@ -6323,7 +6301,7 @@
         ) <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">ledger_changes</span>) <span class="op">=</span> <span class="ident">opt_ledger_changes</span> {
             <span class="comment">// list involved addresses</span>
             <span class="kw">let</span> <span class="ident">involved_addrs</span> <span class="op">=</span> <span class="ident">ledger_changes</span>.<span class="ident">get_involved_addresses</span>();
-            <span class="kw">let</span> <span class="ident">thread_addrs</span>: <span class="ident">AddressHashSet</span> <span class="op">=</span> <span class="ident">involved_addrs</span>
+            <span class="kw">let</span> <span class="ident">thread_addrs</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">involved_addrs</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">addr</span><span class="op">|</span> <span class="ident">addr</span>.<span class="ident">get_thread</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span>) <span class="op">==</span> <span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">thread</span>)
                 .<span class="ident">copied</span>()
@@ -6337,7 +6315,7 @@
                 <span class="ident">accu</span>.<span class="ident">ledger_thread_subset</span>.<span class="ident">clone_subset</span>(<span class="kw-2">&amp;</span><span class="ident">thread_addrs</span>);
 
             <span class="comment">// load missing addresses into the local thread ledger subset</span>
-            <span class="kw">let</span> <span class="ident">missing_entries</span>: <span class="ident">AddressHashSet</span> <span class="op">=</span> <span class="ident">thread_addrs</span>
+            <span class="kw">let</span> <span class="ident">missing_entries</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">thread_addrs</span>
                 .<span class="ident">difference</span>(<span class="kw-2">&amp;</span><span class="ident">accu</span>.<span class="ident">loaded_ledger_addrs</span>)
                 .<span class="ident">copied</span>()
                 .<span class="ident">collect</span>();
@@ -6429,10 +6407,10 @@
 
         <span class="comment">// init block state accumulator</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accu</span> <span class="op">=</span> <span class="ident">BlockStateAccumulator</span> {
-            <span class="ident">loaded_ledger_addrs</span>: <span class="ident">AddressHashSet::default</span>(),
+            <span class="ident">loaded_ledger_addrs</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="ident">::default</span>(),
             <span class="ident">ledger_thread_subset</span>: <span class="ident">Default::default</span>(),
             <span class="ident">ledger_changes</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">loaded_roll_addrs</span>: <span class="ident">AddressHashSet::default</span>(),
+            <span class="ident">loaded_roll_addrs</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="ident">::default</span>(),
             <span class="ident">roll_counts</span>: <span class="ident">Default::default</span>(),
             <span class="ident">roll_updates</span>: <span class="ident">Default::default</span>(),
             <span class="ident">cycle_roll_updates</span>: <span class="ident">Default::default</span>(),
@@ -6525,7 +6503,7 @@
     }
 
     <span class="doccomment">/// Returns the list of block IDs created by a given address, and their finality statuses</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_ids_by_creator</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">Status</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_ids_by_creator</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Status</span><span class="op">&gt;</span> {
         <span class="comment">// iterate on active (final and non-final) blocks</span>
         <span class="self">self</span>.<span class="ident">active_index</span>
             .<span class="ident">iter</span>()
@@ -6555,7 +6533,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_roll_data_at_parent</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-        <span class="ident">addrs_opt</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">AddressHashSet</span><span class="op">&gt;</span>,
+        <span class="ident">addrs_opt</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">pos</span>: <span class="kw-2">&amp;</span><span class="ident">ProofOfStake</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">RollCounts</span>, <span class="ident">RollUpdates</span>), <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="comment">// get target block and its cycle/thread</span>
@@ -6682,7 +6660,7 @@
     <span class="doccomment">/// gets Ledger data export for given Addressees</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ledger_data_export</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">addresses</span>: <span class="kw-2">&amp;</span><span class="ident">AddressHashSet</span>,
+        <span class="ident">addresses</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LedgerDataExport</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">best_parents</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_best_parents</span>();
         <span class="prelude-val">Ok</span>(<span class="ident">LedgerDataExport</span> {
@@ -6700,8 +6678,8 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_operations_involving_address</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OperationHashMap</span><span class="op">&lt;</span><span class="ident">OperationSearchResult</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">OperationHashMap</span><span class="op">&lt;</span><span class="ident">OperationSearchResult</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default::default</span>();
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default::default</span>();
         <span class="lifetime">&#39;outer</span>: <span class="kw">for</span> <span class="ident">b_id</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">active_index</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">BlockStatus::Active</span>(<span class="ident">active_block</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_statuses</span>.<span class="ident">get</span>(<span class="ident">b_id</span>) {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ops</span>) <span class="op">=</span> <span class="ident">active_block</span>.<span class="ident">addresses_to_operations</span>.<span class="ident">get</span>(<span class="ident">address</span>) {
@@ -6757,9 +6735,9 @@
     <span class="doccomment">/// Retrieves operations from operation Ids</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_operations</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">operation_ids</span>: <span class="kw-2">&amp;</span><span class="ident">OperationHashSet</span>,
-    ) -&gt; <span class="ident">OperationHashMap</span><span class="op">&lt;</span><span class="ident">OperationSearchResult</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">OperationHashMap</span><span class="op">&lt;</span><span class="ident">OperationSearchResult</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default::default</span>();
+        <span class="ident">operation_ids</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default::default</span>();
         <span class="comment">// for each active block</span>
         <span class="kw">for</span> <span class="ident">block_id</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">active_index</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">BlockStatus::Active</span>(<span class="ident">active_block</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_statuses</span>.<span class="ident">get</span>(<span class="ident">block_id</span>) {
@@ -6882,8 +6860,8 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
         <span class="ident">block</span>: <span class="ident">Block</span>,
-        <span class="ident">operation_set</span>: <span class="ident">OperationHashMap</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
-        <span class="ident">endorsement_ids</span>: <span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
+        <span class="ident">operation_set</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
+        <span class="ident">endorsement_ids</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
         <span class="ident">pos</span>: <span class="kw-2">&amp;mut</span> <span class="ident">ProofOfStake</span>,
         <span class="ident">current_slot</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
@@ -7029,7 +7007,7 @@
                 <span class="kw">match</span> <span class="self">self</span>.<span class="ident">check_header</span>(<span class="kw-2">&amp;</span><span class="ident">block_id</span>, <span class="kw-2">&amp;</span><span class="ident">header</span>, <span class="ident">pos</span>, <span class="ident">current_slot</span>)<span class="question-mark">?</span> {
                     <span class="ident">HeaderCheckOutcome::Proceed</span> { .. } =&gt; {
                         <span class="comment">// set as waiting dependencies</span>
-                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dependencies</span> <span class="op">=</span> <span class="ident">BlockHashSet::default</span>();
+                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dependencies</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>();
                         <span class="ident">dependencies</span>.<span class="ident">insert</span>(<span class="ident">block_id</span>); <span class="comment">// add self as unsatisfied</span>
                         <span class="self">self</span>.<span class="ident">block_statuses</span>.<span class="ident">insert</span>(
                             <span class="ident">block_id</span>,
@@ -7360,7 +7338,7 @@
     <span class="doccomment">/// # Argument</span>
     <span class="doccomment">/// * block_id : block ID</span>
     <span class="kw">fn</span> <span class="ident">get_full_active_block</span>(
-        <span class="ident">block_statuses</span>: <span class="kw-2">&amp;</span><span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">BlockStatus</span><span class="op">&gt;</span>,
+        <span class="ident">block_statuses</span>: <span class="kw-2">&amp;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">BlockStatus</span><span class="op">&gt;</span>,
         <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
     ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ActiveBlock</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">block_statuses</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">block_id</span>) {
@@ -7376,9 +7354,9 @@
     <span class="kw">fn</span> <span class="ident">get_active_block_and_descendants</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">block_id</span>: <span class="kw-2">&amp;</span><span class="ident">BlockId</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BlockHashSet</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">to_visit</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="kw-2">*</span><span class="ident">block_id</span>];
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">BlockHashSet::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>();
         <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">visit_h</span>) <span class="op">=</span> <span class="ident">to_visit</span>.<span class="ident">pop</span>() {
             <span class="kw">if</span> <span class="op">!</span><span class="ident">result</span>.<span class="ident">insert</span>(<span class="ident">visit_h</span>) {
                 <span class="kw">continue</span>; <span class="comment">// already visited</span>
@@ -7421,9 +7399,9 @@
             <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>
         });
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">parents</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">deps</span> <span class="op">=</span> <span class="ident">BlockHashSet::default</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">incomp</span> <span class="op">=</span> <span class="ident">BlockHashSet::default</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">missing_deps</span> <span class="op">=</span> <span class="ident">BlockHashSet::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">deps</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">incomp</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">missing_deps</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>();
         <span class="kw">let</span> <span class="ident">creator_addr</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">creator</span>);
 
         <span class="comment">// basic structural checks</span>
@@ -7485,7 +7463,7 @@
         <span class="comment">// and if someone double staked, they will be denounced</span>
 
         <span class="comment">// list parents and ensure they are present</span>
-        <span class="kw">let</span> <span class="ident">parent_set</span>: <span class="ident">BlockHashSet</span> <span class="op">=</span> <span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">parents</span>.<span class="ident">iter</span>().<span class="ident">copied</span>().<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">parent_set</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">parents</span>.<span class="ident">iter</span>().<span class="ident">copied</span>().<span class="ident">collect</span>();
         <span class="ident">deps</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">parent_set</span>);
         <span class="kw">for</span> <span class="ident">parent_thread</span> <span class="kw">in</span> <span class="number">0u8</span>..<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span> {
             <span class="kw">let</span> <span class="ident">parent_hash</span> <span class="op">=</span> <span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">parents</span>[<span class="ident">parent_thread</span> <span class="kw">as</span> <span class="ident">usize</span>];
@@ -7797,7 +7775,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">block_id</span>: <span class="kw-2">&amp;</span><span class="ident">BlockId</span>,
         <span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>,
-        <span class="ident">operation_set</span>: <span class="kw-2">&amp;</span><span class="ident">OperationHashMap</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
+        <span class="ident">operation_set</span>: <span class="kw-2">&amp;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
         <span class="ident">pos</span>: <span class="kw-2">&amp;mut</span> <span class="ident">ProofOfStake</span>,
         <span class="ident">current_slot</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BlockCheckOutcome</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
@@ -7876,11 +7854,11 @@
     <span class="kw">fn</span> <span class="ident">check_operations</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">block_to_check</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>,
-        <span class="ident">operation_set</span>: <span class="kw-2">&amp;</span><span class="ident">OperationHashMap</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
+        <span class="ident">operation_set</span>: <span class="kw-2">&amp;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
         <span class="ident">pos</span>: <span class="kw-2">&amp;mut</span> <span class="ident">ProofOfStake</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BlockOperationsCheckOutcome</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="comment">// check that ops are not reused in previous blocks. Note that in-block reuse was checked in protocol.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dependencies</span>: <span class="ident">BlockHashSet</span> <span class="op">=</span> <span class="ident">BlockHashSet::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dependencies</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>();
         <span class="kw">for</span> <span class="ident">operation</span> <span class="kw">in</span> <span class="ident">block_to_check</span>.<span class="ident">operations</span>.<span class="ident">iter</span>() {
             <span class="comment">// get thread</span>
             <span class="kw">let</span> <span class="ident">op_thread</span> <span class="op">=</span> <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">sender_public_key</span>)
@@ -7899,7 +7877,7 @@
                         <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConsensusError::ContainerInconsistency</span>(<span class="macro">format!</span>(<span class="string">&quot;block {} is not active but is an ancestor of a potentially active block&quot;</span>, <span class="ident">current_block_id</span>))),
                     },
                     <span class="prelude-val">None</span> =&gt; {
-                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">missing_deps</span> <span class="op">=</span> <span class="ident">BlockHashSet::with_capacity_and_hasher</span>(<span class="number">1</span>, <span class="ident">BuildHHasher::default</span>());
+                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">missing_deps</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::with_capacity_and_hasher</span>(<span class="number">1</span>, <span class="ident">BuildMap::default</span>());
                         <span class="ident">missing_deps</span>.<span class="ident">insert</span>(<span class="ident">current_block_id</span>);
                         <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">BlockOperationsCheckOutcome::WaitForDependencies</span>(<span class="ident">missing_deps</span>));
                     }
@@ -7988,7 +7966,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ledger_at_parents</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">parents</span>: <span class="kw-2">&amp;</span>[<span class="ident">BlockId</span>],
-        <span class="ident">query_addrs</span>: <span class="kw-2">&amp;</span><span class="ident">AddressHashSet</span>,
+        <span class="ident">query_addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LedgerSubset</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="comment">// check that all addresses belong to threads with parents later or equal to the latest_final_block of that thread</span>
         <span class="kw">let</span> <span class="ident">involved_threads</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">query_addrs</span>
@@ -8041,7 +8019,7 @@
         }
 
         <span class="comment">// backtrack blocks starting from parents</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ancestry</span> <span class="op">=</span> <span class="ident">BlockHashSet::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ancestry</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">to_scan</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">parents</span>.<span class="ident">to_vec</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accumulated_changes</span> <span class="op">=</span> <span class="ident">LedgerChanges::default</span>();
         <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">scan_b_id</span>) <span class="op">=</span> <span class="ident">to_scan</span>.<span class="ident">pop</span>() {
@@ -8097,8 +8075,8 @@
     }
 
     <span class="doccomment">/// Computes max cliques of compatible blocks</span>
-    <span class="kw">fn</span> <span class="ident">compute_max_cliques</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockHashSet</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">max_cliques</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockHashSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+    <span class="kw">fn</span> <span class="ident">compute_max_cliques</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">max_cliques</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
 
         <span class="comment">// algorithm adapted from IK_GPX as summarized in:</span>
         <span class="comment">//   Cazals et al., &quot;A note on the problem of reporting maximal cliques&quot;</span>
@@ -8106,10 +8084,10 @@
         <span class="comment">//   https://doi.org/10.1016/j.tcs.2008.05.010</span>
 
         <span class="comment">// stack: r, p, x</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stack</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockHashSet</span>, <span class="ident">BlockHashSet</span>, <span class="ident">BlockHashSet</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[(
-            <span class="ident">BlockHashSet::default</span>(),
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stack</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[(
+            <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>(),
             <span class="self">self</span>.<span class="ident">gi_head</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>(),
-            <span class="ident">BlockHashSet::default</span>(),
+            <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>(),
         )];
         <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">r</span>, <span class="kw-2">mut</span> <span class="ident">p</span>, <span class="kw-2">mut</span> <span class="ident">x</span>)) <span class="op">=</span> <span class="ident">stack</span>.<span class="ident">pop</span>() {
             <span class="kw">if</span> <span class="ident">p</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="ident">x</span>.<span class="ident">is_empty</span>() {
@@ -8127,19 +8105,19 @@
                 .<span class="ident">unwrap</span>(); <span class="comment">// p was checked to be non-empty before</span>
 
             <span class="comment">// iterate over u_set = (p /\ Neighbors(u_p, GI))</span>
-            <span class="kw">let</span> <span class="ident">u_set</span>: <span class="ident">BlockHashSet</span> <span class="op">=</span>
+            <span class="kw">let</span> <span class="ident">u_set</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span>
                 <span class="kw-2">&amp;</span><span class="ident">p</span> <span class="op">&amp;</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">gi_head</span>[<span class="kw-2">&amp;</span><span class="ident">u_p</span>] <span class="op">|</span> <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="ident">u_p</span>].<span class="ident">into_iter</span>().<span class="ident">collect</span>());
             <span class="kw">for</span> <span class="ident">u_i</span> <span class="kw">in</span> <span class="ident">u_set</span>.<span class="ident">into_iter</span>() {
                 <span class="ident">p</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">u_i</span>);
-                <span class="kw">let</span> <span class="ident">u_i_set</span>: <span class="ident">BlockHashSet</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">u_i</span>].<span class="ident">into_iter</span>().<span class="ident">collect</span>();
-                <span class="kw">let</span> <span class="ident">comp_n_u_i</span>: <span class="ident">BlockHashSet</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">gi_head</span>[<span class="kw-2">&amp;</span><span class="ident">u_i</span>] <span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">u_i_set</span>;
+                <span class="kw">let</span> <span class="ident">u_i_set</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">u_i</span>].<span class="ident">into_iter</span>().<span class="ident">collect</span>();
+                <span class="kw">let</span> <span class="ident">comp_n_u_i</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">gi_head</span>[<span class="kw-2">&amp;</span><span class="ident">u_i</span>] <span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">u_i_set</span>;
                 <span class="ident">stack</span>.<span class="ident">push</span>((<span class="kw-2">&amp;</span><span class="ident">r</span> <span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">u_i_set</span>, <span class="kw-2">&amp;</span><span class="ident">p</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">comp_n_u_i</span>, <span class="kw-2">&amp;</span><span class="ident">x</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">comp_n_u_i</span>));
                 <span class="ident">x</span>.<span class="ident">insert</span>(<span class="ident">u_i</span>);
             }
         }
         <span class="kw">if</span> <span class="ident">max_cliques</span>.<span class="ident">is_empty</span>() {
             <span class="comment">// make sure at least one clique remains</span>
-            <span class="ident">max_cliques</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">BlockHashSet::default</span>()];
+            <span class="ident">max_cliques</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>()];
         }
         <span class="ident">max_cliques</span>
     }
@@ -8150,14 +8128,14 @@
         <span class="ident">add_block_id</span>: <span class="ident">BlockId</span>,
         <span class="ident">parents_hash_period</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
         <span class="ident">add_block</span>: <span class="ident">Block</span>,
-        <span class="ident">deps</span>: <span class="ident">BlockHashSet</span>,
-        <span class="ident">incomp</span>: <span class="ident">BlockHashSet</span>,
+        <span class="ident">deps</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
+        <span class="ident">incomp</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
         <span class="ident">inherited_incomp_count</span>: <span class="ident">usize</span>,
         <span class="ident">block_ledger_changes</span>: <span class="ident">LedgerChanges</span>,
-        <span class="ident">operation_set</span>: <span class="ident">OperationHashMap</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
-        <span class="ident">endorsement_ids</span>: <span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
-        <span class="ident">addresses_to_operations</span>: <span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">OperationHashSet</span><span class="op">&gt;</span>,
-        <span class="ident">addresses_to_endorsements</span>: <span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">EndorsementHashSet</span><span class="op">&gt;</span>,
+        <span class="ident">operation_set</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
+        <span class="ident">endorsement_ids</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
+        <span class="ident">addresses_to_operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">addresses_to_endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">roll_updates</span>: <span class="ident">RollUpdates</span>,
         <span class="ident">production_events</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">Address</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
@@ -8171,7 +8149,7 @@
                 <span class="ident">creator_address</span>: <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">add_block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">creator</span>),
                 <span class="ident">parents</span>: <span class="ident">parents_hash_period</span>.<span class="ident">clone</span>(),
                 <span class="ident">dependencies</span>: <span class="ident">deps</span>,
-                <span class="ident">descendants</span>: <span class="ident">BlockHashSet::default</span>(),
+                <span class="ident">descendants</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>(),
                 <span class="ident">block</span>: <span class="ident">add_block</span>.<span class="ident">clone</span>(),
                 <span class="ident">children</span>: <span class="macro">vec!</span>[<span class="ident">Default::default</span>(); <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>],
                 <span class="ident">is_final</span>: <span class="bool-val">false</span>,
@@ -8203,7 +8181,7 @@
         {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ancestors</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span>
                 <span class="ident">parents_hash_period</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">h</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">h</span>).<span class="ident">collect</span>();
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">visited</span> <span class="op">=</span> <span class="ident">BlockHashSet::default</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">visited</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>();
             <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">ancestor_h</span>) <span class="op">=</span> <span class="ident">ancestors</span>.<span class="ident">pop_back</span>() {
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">visited</span>.<span class="ident">insert</span>(<span class="ident">ancestor_h</span>) {
                     <span class="kw">continue</span>;
@@ -8355,8 +8333,8 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">indices</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="self">self</span>.<span class="ident">max_cliques</span>.<span class="ident">len</span>()).<span class="ident">collect</span>();
             <span class="ident">indices</span>
                 .<span class="ident">sort_unstable_by_key</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">i</span><span class="op">|</span> <span class="ident">std::cmp::Reverse</span>(<span class="self">self</span>.<span class="ident">max_cliques</span>[<span class="ident">i</span>].<span class="ident">block_ids</span>.<span class="ident">len</span>()));
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">high_set</span> <span class="op">=</span> <span class="ident">BlockHashSet::default</span>();
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">low_set</span> <span class="op">=</span> <span class="ident">BlockHashSet::default</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">high_set</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">low_set</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>();
             <span class="kw">for</span> <span class="ident">clique_i</span> <span class="kw">in</span> <span class="ident">indices</span>.<span class="ident">into_iter</span>() {
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">max_cliques</span>[<span class="ident">clique_i</span>].<span class="ident">fitness</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">fitness_threshold</span> {
                     <span class="ident">high_set</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">max_cliques</span>[<span class="ident">clique_i</span>].<span class="ident">block_ids</span>);
@@ -8401,7 +8379,7 @@
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">max_cliques</span>.<span class="ident">is_empty</span>() {
                     <span class="comment">// make sure at least one clique remains</span>
                     <span class="self">self</span>.<span class="ident">max_cliques</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">Clique</span> {
-                        <span class="ident">block_ids</span>: <span class="ident">BlockHashSet::default</span>(),
+                        <span class="ident">block_ids</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>(),
                         <span class="ident">fitness</span>: <span class="number">0</span>,
                         <span class="ident">is_blockclique</span>: <span class="bool-val">true</span>,
                     }];
@@ -8470,7 +8448,7 @@
             <span class="ident">indices</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">i</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">max_cliques</span>[<span class="ident">i</span>].<span class="ident">fitness</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">delta_f0</span>);
             <span class="ident">indices</span>.<span class="ident">sort_unstable_by_key</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">i</span><span class="op">|</span> <span class="ident">std::cmp::Reverse</span>(<span class="self">self</span>.<span class="ident">max_cliques</span>[<span class="ident">i</span>].<span class="ident">fitness</span>));
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">final_blocks</span> <span class="op">=</span> <span class="ident">BlockHashSet::default</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">final_blocks</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>();
             <span class="kw">for</span> <span class="ident">clique_i</span> <span class="kw">in</span> <span class="ident">indices</span>.<span class="ident">into_iter</span>() {
                 <span class="macro">massa_trace!</span>(
                     <span class="string">&quot;consensus.block_graph.add_block_to_graph.list_final_blocks.loop&quot;</span>,
@@ -8545,7 +8523,7 @@
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">max_cliques</span>.<span class="ident">is_empty</span>() {
                     <span class="comment">// make sure at least one clique remains</span>
                     <span class="self">self</span>.<span class="ident">max_cliques</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">Clique</span> {
-                        <span class="ident">block_ids</span>: <span class="ident">BlockHashSet::default</span>(),
+                        <span class="ident">block_ids</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>(),
                         <span class="ident">fitness</span>: <span class="number">0</span>,
                         <span class="ident">is_blockclique</span>: <span class="bool-val">true</span>,
                     }];
@@ -8609,7 +8587,7 @@
             }
 
             <span class="comment">// Backtrack blocks starting from B2.</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ancestry</span>: <span class="ident">BlockHashSet</span> <span class="op">=</span> <span class="ident">BlockHashSet::default</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ancestry</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>();
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">to_scan</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">latest_final_in_thread_id</span>]; <span class="comment">// B2</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accumulated_changes</span> <span class="op">=</span> <span class="ident">LedgerChanges::default</span>();
             <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">scan_b_id</span>) <span class="op">=</span> <span class="ident">to_scan</span>.<span class="ident">pop</span>() {
@@ -8660,12 +8638,10 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn</span> <span class="ident">list_required_active_blocks</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BlockHashSet</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">list_required_active_blocks</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="comment">// list all active blocks</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">retain_active</span>: <span class="ident">BlockHashSet</span> <span class="op">=</span> <span class="ident">BlockHashSet::with_capacity_and_hasher</span>(
-            <span class="self">self</span>.<span class="ident">active_index</span>.<span class="ident">len</span>(),
-            <span class="ident">BuildHHasher::default</span>(),
-        );
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">retain_active</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span>
+            <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::with_capacity_and_hasher</span>(<span class="self">self</span>.<span class="ident">active_index</span>.<span class="ident">len</span>(), <span class="ident">BuildMap::default</span>());
 
         <span class="kw">let</span> <span class="ident">latest_final_blocks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">latest_final_blocks_periods</span>
@@ -8777,7 +8753,7 @@
     }
 
     <span class="doccomment">/// prune active blocks and return final blocks, return discarded final blocks</span>
-    <span class="kw">fn</span> <span class="ident">prune_active</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">ActiveBlock</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">prune_active</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">ActiveBlock</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="comment">// list required active blocks</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">retain_active</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">list_required_active_blocks</span>()<span class="question-mark">?</span>;
 
@@ -8796,7 +8772,7 @@
         }
 
         <span class="comment">// remove unused final active blocks</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">discarded_finals</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">ActiveBlock</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BlockHashMap::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">discarded_finals</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">ActiveBlock</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::default</span>();
         <span class="kw">let</span> <span class="ident">to_remove</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">active_index</span>
             .<span class="ident">difference</span>(<span class="kw-2">&amp;</span><span class="ident">retain_active</span>)
@@ -8843,7 +8819,7 @@
 
     <span class="kw">fn</span> <span class="ident">promote_dep_tree</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">hash</span>: <span class="ident">BlockId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">to_explore</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">hash</span>];
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">to_promote</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span>(<span class="ident">Slot</span>, <span class="ident">u64</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BlockHashMap::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">to_promote</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, (<span class="ident">Slot</span>, <span class="ident">u64</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::default</span>();
         <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">h</span>) <span class="op">=</span> <span class="ident">to_explore</span>.<span class="ident">pop</span>() {
             <span class="kw">if</span> <span class="ident">to_promote</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">h</span>) {
                 <span class="kw">continue</span>;
@@ -8879,8 +8855,8 @@
     }
 
     <span class="kw">fn</span> <span class="ident">prune_waiting_for_dependencies</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">to_discard</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DiscardReason</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BlockHashMap::default</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">to_keep</span>: <span class="ident">BlockHashMap</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">Slot</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BlockHashMap::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">to_discard</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DiscardReason</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">to_keep</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, (<span class="ident">u64</span>, <span class="ident">Slot</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::default</span>();
 
         <span class="comment">// list items that are older than the latest final blocks in their threads or have deps that are discarded</span>
         {
@@ -9081,7 +9057,7 @@
     }
 
     <span class="doccomment">/// prune and return final blocks, return discarded final blocks</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prune</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">ActiveBlock</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prune</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">ActiveBlock</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">before</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">max_cliques</span>.<span class="ident">len</span>();
         <span class="comment">// Step 1: discard final blocks that are not useful to the graph anymore and return them</span>
         <span class="kw">let</span> <span class="ident">discarded_finals</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">prune_active</span>()<span class="question-mark">?</span>;
@@ -9107,8 +9083,8 @@
     }
 
     <span class="doccomment">/// get the current block wishlist</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_wishlist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BlockHashSet</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wishlist</span> <span class="op">=</span> <span class="ident">BlockHashSet::default</span>();
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_wishlist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wishlist</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>();
         <span class="kw">for</span> <span class="ident">block_id</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">waiting_for_dependencies_index</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">BlockStatus::WaitingForDependencies</span> {
                 <span class="ident">unsatisfied_dependencies</span>,
@@ -9136,19 +9112,19 @@
         <span class="self">self</span>.<span class="ident">max_cliques</span>.<span class="ident">len</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_blockclique</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BlockHashSet</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_blockclique</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">max_cliques</span>
             .<span class="ident">iter</span>()
             .<span class="ident">enumerate</span>()
             .<span class="ident">find</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">c</span>)<span class="op">|</span> <span class="ident">c</span>.<span class="ident">is_blockclique</span>)
-            .<span class="ident">map_or_else</span>(<span class="ident">BlockHashSet::default</span>, <span class="op">|</span>(<span class="kw">_</span>, <span class="ident">v</span>)<span class="op">|</span> <span class="ident">v</span>.<span class="ident">block_ids</span>.<span class="ident">clone</span>())
+            .<span class="ident">map_or_else</span>(<span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>, <span class="op">|</span>(<span class="kw">_</span>, <span class="ident">v</span>)<span class="op">|</span> <span class="ident">v</span>.<span class="ident">block_ids</span>.<span class="ident">clone</span>())
     }
 
     <span class="doccomment">/// Clones all stored final blocks, not only the still-useful ones</span>
     <span class="doccomment">/// This is used when initializing Execution from Consensus.</span>
     <span class="doccomment">/// Since the Execution bootstrap snapshot is older than the Consensus snapshot,</span>
     <span class="doccomment">/// we might need to signal older final blocks for Execution to catch up.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clone_all_final_blocks</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BlockHashMap</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clone_all_final_blocks</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Block</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">active_index</span>
             .<span class="ident">iter</span>()
             .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">b_id</span><span class="op">|</span> {
@@ -9166,7 +9142,7 @@
     <span class="doccomment">/// Must be called by the consensus worker within `block_db_changed`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_blocks_to_propagate</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-    ) -&gt; <span class="ident">BlockHashMap</span><span class="op">&lt;</span>(<span class="ident">Block</span>, <span class="ident">OperationHashSet</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
+    ) -&gt; <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, (<span class="ident">Block</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
         <span class="ident">mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">to_propagate</span>)
     }
 
@@ -9178,21 +9154,21 @@
 
     <span class="doccomment">/// Get the ids of blocks that became final.</span>
     <span class="doccomment">/// Must be called by the consensus worker within `block_db_changed`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_new_final_blocks</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">BlockHashSet</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_new_final_blocks</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> {
         <span class="ident">mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">new_final_blocks</span>)
     }
 
     <span class="doccomment">/// Get the ids of blocks that became stale.</span>
     <span class="doccomment">/// Must be called by the consensus worker within `block_db_changed`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_new_stale_blocks</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">BlockHashMap</span><span class="op">&lt;</span>(<span class="ident">PublicKey</span>, <span class="ident">Slot</span>)<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_new_stale_blocks</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, (<span class="ident">PublicKey</span>, <span class="ident">Slot</span>)<span class="op">&gt;</span> {
         <span class="ident">mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">new_stale_blocks</span>)
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_endorsement_by_address</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">address</span>: <span class="ident">Address</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default::default</span>();
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Default::default</span>();
         <span class="kw">for</span> <span class="ident">b_id</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">active_index</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">BlockStatus::Active</span>(<span class="ident">ab</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_statuses</span>.<span class="ident">get</span>(<span class="ident">b_id</span>) {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">eds</span>) <span class="op">=</span> <span class="ident">ab</span>.<span class="ident">addresses_to_endorsements</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>) {
@@ -9210,11 +9186,11 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_endorsement_by_id</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">endorsements</span>: <span class="ident">EndorsementHashSet</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">EndorsementHashMap</span><span class="op">&lt;</span><span class="ident">EndorsementInfo</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
+        <span class="ident">endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">EndorsementInfo</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="comment">// iterate on active (final and non-final) blocks</span>
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">EndorsementHashMap::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Map::default</span>();
         <span class="kw">for</span> <span class="ident">block_id</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">active_index</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">BlockStatus::Active</span>(<span class="ident">ab</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_statuses</span>.<span class="ident">get</span>(<span class="ident">block_id</span>) {
                 <span class="comment">// list blocks with wanted endorsements</span>
@@ -9349,7 +9325,7 @@
         <span class="comment">// .unwrap();</span>
         <span class="kw">let</span> <span class="ident">thread_count</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">2</span>;
         <span class="kw">let</span> <span class="ident">active_block</span>: <span class="ident">ActiveBlock</span> <span class="op">=</span> <span class="ident">get_export_active_test_block</span>().<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">ledger_file</span> <span class="op">=</span> <span class="ident">generate_ledger_file</span>(<span class="kw-2">&amp;</span><span class="ident">AddressHashMap::default</span>());
+        <span class="kw">let</span> <span class="ident">ledger_file</span> <span class="op">=</span> <span class="ident">generate_ledger_file</span>(<span class="kw-2">&amp;</span><span class="ident">Map::default</span>());
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="ident">ConsensusConfig::from</span>(<span class="ident">ledger_file</span>.<span class="ident">path</span>());
 
         <span class="ident">cfg</span>.<span class="ident">block_reward</span> <span class="op">=</span> <span class="ident">Amount::from_str</span>(<span class="string">&quot;1&quot;</span>).<span class="ident">unwrap</span>();
@@ -9823,7 +9799,7 @@
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_clique_calculation</span>() {
-        <span class="kw">let</span> <span class="ident">ledger_file</span> <span class="op">=</span> <span class="ident">generate_ledger_file</span>(<span class="kw-2">&amp;</span><span class="ident">AddressHashMap::default</span>());
+        <span class="kw">let</span> <span class="ident">ledger_file</span> <span class="op">=</span> <span class="ident">generate_ledger_file</span>(<span class="kw-2">&amp;</span><span class="ident">Map::default</span>());
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="ident">ConsensusConfig::from</span>(<span class="ident">ledger_file</span>.<span class="ident">path</span>());
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_graph</span> <span class="op">=</span> <span class="ident">BlockGraph::new</span>(<span class="ident">cfg</span>, <span class="prelude-val">None</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">hashes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[
@@ -9852,7 +9828,7 @@
         .<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="ident">computed_sets</span> <span class="op">=</span> <span class="ident">block_graph</span>.<span class="ident">compute_max_cliques</span>();
 
-        <span class="kw">let</span> <span class="ident">expected_sets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockHashSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[
+        <span class="kw">let</span> <span class="ident">expected_sets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[
             <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>],
             <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">6</span>],
             <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">5</span>],
@@ -9869,7 +9845,7 @@
     }
 
     <span class="doccomment">/// generate a named temporary JSON ledger file</span>
-    <span class="kw">fn</span> <span class="ident">generate_ledger_file</span>(<span class="ident">ledger_vec</span>: <span class="kw-2">&amp;</span><span class="ident">AddressHashMap</span><span class="op">&lt;</span><span class="ident">LedgerData</span><span class="op">&gt;</span>) -&gt; <span class="ident">NamedTempFile</span> {
+    <span class="kw">fn</span> <span class="ident">generate_ledger_file</span>(<span class="ident">ledger_vec</span>: <span class="kw-2">&amp;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">LedgerData</span><span class="op">&gt;</span>) -&gt; <span class="ident">NamedTempFile</span> {
         <span class="kw">use</span> <span class="ident">std::io::prelude</span>::<span class="kw-2">*</span>;
         <span class="kw">let</span> <span class="ident">ledger_file_named</span> <span class="op">=</span> <span class="ident">NamedTempFile::new</span>().<span class="ident">expect</span>(<span class="string">&quot;cannot create temp file&quot;</span>);
         <span class="ident">serde_json::to_writer_pretty</span>(<span class="ident">ledger_file_named</span>.<span class="ident">as_file</span>(), <span class="kw-2">&amp;</span><span class="ident">ledger_vec</span>)
