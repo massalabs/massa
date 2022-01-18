@@ -1,8 +1,8 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
 use crate::BootstrapExecutionState;
 use assembly_simulator::Bytecode;
-use massa_models::address::AddressHashSet;
 use massa_models::execution::ExecuteReadOnlyResponse;
+use massa_models::prehash::Set;
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, Block, BlockId, Slot};
 use std::sync::{Condvar, Mutex};
@@ -36,7 +36,7 @@ pub(crate) struct ExecutionContext {
     pub opt_block_id: Option<BlockId>,
     pub opt_block_creator_addr: Option<Address>,
     pub call_stack: VecDeque<Address>,
-    pub owned_addresses: AddressHashSet,
+    pub owned_addresses: Set<Address>,
     pub read_only: bool,
 }
 

@@ -6,21 +6,19 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
 use massa_consensus::{ConsensusCommandSender, ConsensusConfig, DiscardReason, ExportBlockStatus};
 use massa_execution::ExecutionCommandSender;
-use massa_models::address::{AddressHashMap, AddressHashSet};
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
     IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
 };
 use massa_models::clique::Clique;
+use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
-use massa_models::hhasher::BuildHHasher;
-use massa_models::massa_hash::PubkeySig;
 use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range};
 use massa_models::{
-    Address, Amount, BlockHashSet, BlockId, EndorsementHashSet, EndorsementId, Operation,
-    OperationHashMap, OperationHashSet, OperationId, Slot, Version,
+    Address, Amount, BlockId, EndorsementId, Operation, OperationId, Slot, Version,
 };
 use massa_network::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
@@ -90,8 +88,8 @@ impl Endpoints for API<Public> {
         crate::wrong_api::<()>()
     }
 
-    fn get_staking_addresses(&self) -> BoxFuture<Result<AddressHashSet, ApiError>> {
-        crate::wrong_api::<AddressHashSet>()
+    fn get_staking_addresses(&self) -> BoxFuture<Result<Set<Address>, ApiError>> {
+        crate::wrong_api::<Set<Address>>()
     }
 
     fn ban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
@@ -160,7 +158,7 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<u64>, ApiError>> {
+    fn get_stakers(&self) -> BoxFuture<Result<Map<Address, u64>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let closure = async move || Ok(consensus_command_sender.get_active_stakers().await?);
         Box::pin(closure())
@@ -178,7 +176,7 @@ impl Endpoints for API<Public> {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
             }
 
-            let operation_ids: OperationHashSet = ops.iter().cloned().collect();
+            let operation_ids: Set<OperationId> = ops.iter().cloned().collect();
 
             // simultaneously ask pool and consensus
             let (pool_res, consensus_res) = tokio::join!(
@@ -186,11 +184,10 @@ impl Endpoints for API<Public> {
                 consensus_command_sender.get_operations(operation_ids)
             );
             let (pool_res, consensus_res) = (pool_res?, consensus_res?);
-            let mut res: OperationHashMap<OperationInfo> =
-                OperationHashMap::with_capacity_and_hasher(
-                    pool_res.len() + consensus_res.len(),
-                    BuildHHasher::default(),
-                );
+            let mut res: Map<OperationId, OperationInfo> = Map::with_capacity_and_hasher(
+                pool_res.len() + consensus_res.len(),
+                BuildMap::default(),
+            );
 
             // add pool info
             res.extend(pool_res.into_iter().map(|(id, operation)| {
@@ -239,7 +236,7 @@ impl Endpoints for API<Public> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let pool_command_sender = self.0.pool_command_sender.clone();
         let closure = async move || {
-            let mapped: EndorsementHashSet = eds.into_iter().collect();
+            let mapped: Set<EndorsementId> = eds.into_iter().collect();
             let mut res = consensus_command_sender
                 .get_endorsements_by_id(mapped.clone())
                 .await?;
@@ -393,12 +390,12 @@ impl Endpoints for API<Public> {
             let (next_draws, mut states) = (next_draws?, states?);
 
             // operations block and endorsement info
-            let mut operations: AddressHashMap<OperationHashSet> =
-                AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
-            let mut blocks: AddressHashMap<BlockHashSet> =
-                AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
-            let mut endorsements: AddressHashMap<EndorsementHashSet> =
-                AddressHashMap::with_capacity_and_hasher(addresses.len(), BuildHHasher::default());
+            let mut operations: Map<Address, Set<OperationId>> =
+                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
+            let mut blocks: Map<Address, Set<BlockId>> =
+                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
+            let mut endorsements: Map<Address, Set<EndorsementId>> =
+                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
 
             let mut concurrent_getters = FuturesUnordered::new();
             for &address in addresses.iter() {
@@ -409,12 +406,12 @@ impl Endpoints for API<Public> {
                         .get_block_ids_by_creator(address)
                         .await?
                         .into_keys()
-                        .collect::<BlockHashSet>();
+                        .collect::<Set<BlockId>>();
                     let get_pool_ops = pool_cmd_snd.get_operations_involving_address(address);
                     let get_consensus_ops = cmd_snd.get_operations_involving_address(address);
                     let (get_pool_ops, get_consensus_ops) =
                         tokio::join!(get_pool_ops, get_consensus_ops);
-                    let gathered: OperationHashSet = get_pool_ops?
+                    let gathered: Set<OperationId> = get_pool_ops?
                         .into_keys()
                         .chain(get_consensus_ops?.into_keys())
                         .collect();
@@ -423,11 +420,11 @@ impl Endpoints for API<Public> {
                         let get_consensus_eds = cmd_snd.get_endorsements_by_address(address);
                         let (get_pool_eds, get_consensus_eds) =
                             tokio::join!(get_pool_eds, get_consensus_eds);
-                        let gathered_ed: EndorsementHashSet = get_pool_eds?
+                        let gathered_ed: Set<EndorsementId> = get_pool_eds?
                             .into_keys()
                             .chain(get_consensus_eds?.into_keys())
                             .collect();
-                    Result::<(Address, BlockHashSet, OperationHashSet, EndorsementHashSet), ApiError>::Ok((
+                    Result::<(Address, Set<BlockId>, Set<OperationId>, Set<EndorsementId>), ApiError>::Ok((
                         address, blocks, gathered, gathered_ed
                     ))
                 });
@@ -492,7 +489,7 @@ impl Endpoints for API<Public> {
             let to_send = ops
                 .into_iter()
                 .map(|op| Ok((op.verify_integrity()?, op)))
-                .collect::<Result<OperationHashMap<_>, ApiError>>()?;
+                .collect::<Result<Map<OperationId, _>, ApiError>>()?;
             let ids = to_send.keys().copied().collect();
             cmd_sender.add_operations(to_send).await?;
             Ok(ids)

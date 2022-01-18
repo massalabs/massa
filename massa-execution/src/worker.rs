@@ -6,8 +6,9 @@ use crate::BootstrapExecutionState;
 use crate::{config::ExecutionConfigs, types::ExecutionStep};
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::Map;
 use massa_models::timeslots::{get_block_slot_timestamp, get_current_latest_block_slot};
-use massa_models::{Address, Amount, Block, BlockHashMap, BlockId, Slot};
+use massa_models::{Address, Amount, Block, BlockId, Slot};
 use std::collections::BTreeMap;
 use std::thread::{self, JoinHandle};
 use tokio::sync::{mpsc, oneshot};
@@ -21,8 +22,8 @@ pub enum ExecutionCommand {
     /// contains the blocks of the new blockclique
     /// and a list of blocks that became final
     BlockCliqueChanged {
-        blockclique: BlockHashMap<Block>,
-        finalized_blocks: BlockHashMap<Block>,
+        blockclique: Map<BlockId, Block>,
+        finalized_blocks: Map<BlockId, Block>,
     },
 
     /// Get a snapshot of the current state for bootstrap
@@ -346,8 +347,8 @@ impl ExecutionWorker {
     /// see spec at https://github.com/massalabs/massa/wiki/vm-block-feed
     fn blockclique_changed(
         &mut self,
-        blockclique: BlockHashMap<Block>,
-        finalized_blocks: BlockHashMap<Block>,
+        blockclique: Map<BlockId, Block>,
+        finalized_blocks: Map<BlockId, Block>,
     ) -> Result<(), ExecutionError> {
         // 1 - reset the SCE state back to its latest final state
 

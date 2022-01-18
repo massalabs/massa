@@ -1,9 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::prehash::{PreHashed, Set};
 use crate::settings::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
 use crate::{
-    address::AddressHashSet,
-    hhasher::{HHashMap, HHashSet, PreHashed},
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
@@ -21,9 +20,6 @@ use std::{ops::RangeInclusive, str::FromStr};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationId(Hash);
-
-pub type OperationHashMap<T> = HHashMap<OperationId, T>;
-pub type OperationHashSet = HHashSet<OperationId>;
 
 impl std::fmt::Display for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -415,8 +411,8 @@ impl Operation {
         start..=self.content.expire_period
     }
 
-    pub fn get_ledger_involved_addresses(&self) -> Result<AddressHashSet, ModelsError> {
-        let mut res = AddressHashSet::default();
+    pub fn get_ledger_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
+        let mut res = Set::<Address>::default();
         let emitter_address = Address::from_public_key(&self.content.sender_public_key);
         res.insert(emitter_address);
         match self.content.op {
@@ -432,8 +428,8 @@ impl Operation {
         Ok(res)
     }
 
-    pub fn get_roll_involved_addresses(&self) -> Result<AddressHashSet, ModelsError> {
-        let mut res = AddressHashSet::default();
+    pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
+        let mut res = Set::<Address>::default();
         match self.content.op {
             OperationType::Transaction { .. } => {}
             OperationType::RollBuy { .. } => {

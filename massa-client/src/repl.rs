@@ -7,8 +7,8 @@ use crate::utils::longest_common_prefix;
 use console::style;
 use dialoguer::{theme::ColorfulTheme, Completion, History, Input};
 use erased_serde::{Serialize, Serializer};
-use massa_models::address::AddressHashSet;
 use massa_models::api::{AddressInfo, BlockInfo, EndorsementInfo, NodeStatus, OperationInfo};
+use massa_models::prehash::Set;
 use massa_models::{Address, OperationId};
 use massa_wallet::Wallet;
 use std::collections::VecDeque;
@@ -174,7 +174,7 @@ impl Output for BlockInfo {
     }
 }
 
-impl Output for AddressHashSet {
+impl Output for Set<Address> {
     fn pretty_print(&self) {
         println!(
             "{}",
