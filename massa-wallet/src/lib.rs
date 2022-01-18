@@ -78,7 +78,9 @@ impl Wallet {
     }
 
     pub fn remove_address(&mut self, address: Address) -> Result<(), WalletError> {
-        self.keys.remove(&address).ok_or(WalletError::MissingKeyError(address))?;
+        self.keys
+            .remove(&address)
+            .ok_or(WalletError::MissingKeyError(address))?;
         self.save()
     }
 
