@@ -1749,6 +1749,16 @@
 <span id="1746">1746</span>
 <span id="1747">1747</span>
 <span id="1748">1748</span>
+<span id="1749">1749</span>
+<span id="1750">1750</span>
+<span id="1751">1751</span>
+<span id="1752">1752</span>
+<span id="1753">1753</span>
+<span id="1754">1754</span>
+<span id="1755">1755</span>
+<span id="1756">1756</span>
+<span id="1757">1757</span>
+<span id="1758">1758</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::{<span class="ident">NetworkConnectionErrorType</span>, <span class="ident">NetworkError</span>};
@@ -1979,13 +1989,23 @@
         <span class="comment">// wakeup interval</span>
         <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">wakeup_interval</span>;
 
-        <span class="comment">// load from file</span>
+        <span class="comment">// load from initial file</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span> <span class="op">=</span> <span class="ident">serde_json::from_str</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PeerInfo</span><span class="op">&gt;</span><span class="op">&gt;</span>(
-            <span class="kw-2">&amp;</span><span class="ident">tokio::fs::read_to_string</span>(<span class="kw-2">&amp;</span><span class="ident">cfg</span>.<span class="ident">peers_file</span>).<span class="kw">await</span><span class="question-mark">?</span>,
+            <span class="kw-2">&amp;</span><span class="ident">tokio::fs::read_to_string</span>(<span class="kw-2">&amp;</span><span class="ident">cfg</span>.<span class="ident">initial_peers_file</span>).<span class="kw">await</span><span class="question-mark">?</span>,
         )<span class="question-mark">?</span>
         .<span class="ident">into_iter</span>()
         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> (<span class="ident">p</span>.<span class="ident">ip</span>, <span class="ident">p</span>))
         .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+        <span class="kw">if</span> <span class="ident">cfg</span>.<span class="ident">peers_file</span>.<span class="ident">is_file</span>() {
+            <span class="ident">peers</span>.<span class="ident">extend</span>(
+                <span class="comment">// previously known peers</span>
+                <span class="ident">serde_json::from_str</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PeerInfo</span><span class="op">&gt;</span><span class="op">&gt;</span>(
+                    <span class="kw-2">&amp;</span><span class="ident">tokio::fs::read_to_string</span>(<span class="kw-2">&amp;</span><span class="ident">cfg</span>.<span class="ident">peers_file</span>).<span class="kw">await</span><span class="question-mark">?</span>,
+                )<span class="question-mark">?</span>
+                .<span class="ident">into_iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> (<span class="ident">p</span>.<span class="ident">ip</span>, <span class="ident">p</span>)),
+            );
+        }
 
         <span class="comment">// cleanup</span>
         <span class="ident">cleanup_peers</span>(<span class="ident">cfg</span>, <span class="kw-2">&amp;mut</span> <span class="ident">peers</span>, <span class="prelude-val">None</span>, <span class="ident">clock_compensation</span>, <span class="ident">cfg</span>.<span class="ident">ban_timeout</span>)<span class="question-mark">?</span>;
