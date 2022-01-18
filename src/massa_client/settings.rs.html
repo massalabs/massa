@@ -44,11 +44,12 @@
 <span id="41">41</span>
 <span id="42">42</span>
 <span id="43">43</span>
+<span id="44">44</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">directories::ProjectDirs</span>;
 <span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">net::IpAddr</span>, <span class="ident">path::Path</span>};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">net::IpAddr</span>, <span class="ident">path::Path</span>, <span class="ident">path::PathBuf</span>};
 
 <span class="macro">lazy_static::lazy_static!</span> {
     <span class="comment">// TODO: this code is duplicated from /massa-node/settings.rs and should be part of a custom crate</span>
@@ -79,6 +80,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Settings</span> {
     <span class="kw">pub</span> <span class="ident">default_node</span>: <span class="ident">DefaultNode</span>,
     <span class="kw">pub</span> <span class="ident">history</span>: <span class="ident">usize</span>,
+    <span class="kw">pub</span> <span class="ident">history_file_path</span>: <span class="ident">PathBuf</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
