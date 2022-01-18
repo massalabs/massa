@@ -759,6 +759,25 @@
 <span id="756">756</span>
 <span id="757">757</span>
 <span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
@@ -1189,7 +1208,10 @@
 
             <span class="ident">Command::wallet_info</span> =&gt; {
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">json</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;WARNING: do not share your private key&quot;</span>);
+                    <span class="macro">println!</span>(
+                        <span class="string">&quot;{}: do not share your private key&quot;</span>,
+                        <span class="ident">style</span>(<span class="string">&quot;WARNING&quot;</span>).<span class="ident">yellow</span>()
+                    );
                 }
                 <span class="kw">match</span> <span class="ident">client</span>
                     .<span class="ident">public</span>
@@ -1279,15 +1301,19 @@
                                 <span class="kw">match</span> <span class="ident">addresses_info</span>.<span class="ident">get</span>(<span class="number">0</span>) {
                                     <span class="prelude-val">Some</span>(<span class="ident">info</span>) =&gt; {
                                         <span class="kw">if</span> <span class="ident">info</span>.<span class="ident">ledger_info</span>.<span class="ident">candidate_ledger_info</span>.<span class="ident">balance</span> <span class="op">&lt;</span> <span class="ident">total</span> {
-                                            <span class="macro">println!</span>(<span class="string">&quot;WARNING: this operation may be rejected due to insuffisant balance&quot;</span>);
+                                            <span class="macro">println!</span>(<span class="string">&quot;{}: this operation may be rejected due to insuffisant balance&quot;</span>, <span class="ident">style</span>(<span class="string">&quot;WARNING&quot;</span>).<span class="ident">yellow</span>());
                                         }
                                     }
-                                    <span class="prelude-val">None</span> =&gt; <span class="macro">println!</span>(<span class="string">&quot;WARNING: address {} not found&quot;</span>, <span class="ident">addr</span>),
+                                    <span class="prelude-val">None</span> =&gt; <span class="macro">println!</span>(
+                                        <span class="string">&quot;{}: address {} not found&quot;</span>,
+                                        <span class="ident">style</span>(<span class="string">&quot;WARNING&quot;</span>).<span class="ident">yellow</span>(),
+                                        <span class="ident">addr</span>
+                                    ),
                                 }
                             }
                         }
                         <span class="prelude-val">None</span> =&gt; {
-                            <span class="macro">println!</span>(<span class="string">&quot;WARNING: the total amount hit the limit overflow, operation will certainly be rejected&quot;</span>);
+                            <span class="macro">println!</span>(<span class="string">&quot;{}: the total amount hit the limit overflow, operation will certainly be rejected&quot;</span>, <span class="ident">style</span>(<span class="string">&quot;WARNING&quot;</span>).<span class="ident">yellow</span>());
                         }
                     }
                 }
@@ -1317,10 +1343,14 @@
                                 <span class="kw">if</span> <span class="ident">info</span>.<span class="ident">ledger_info</span>.<span class="ident">candidate_ledger_info</span>.<span class="ident">balance</span> <span class="op">&lt;</span> <span class="ident">fee</span>
                                     <span class="op">|</span><span class="op">|</span> <span class="ident">roll_count</span> <span class="op">&gt;</span> <span class="ident">info</span>.<span class="ident">rolls</span>.<span class="ident">candidate_rolls</span>
                                 {
-                                    <span class="macro">println!</span>(<span class="string">&quot;WARNING: this operation may be rejected due to insuffisant balance or roll count&quot;</span>);
+                                    <span class="macro">println!</span>(<span class="string">&quot;{}: this operation may be rejected due to insuffisant balance or roll count&quot;</span>, <span class="ident">style</span>(<span class="string">&quot;WARNING&quot;</span>).<span class="ident">yellow</span>());
                                 }
                             }
-                            <span class="prelude-val">None</span> =&gt; <span class="macro">println!</span>(<span class="string">&quot;WARNING: address {} not found&quot;</span>, <span class="ident">addr</span>),
+                            <span class="prelude-val">None</span> =&gt; <span class="macro">println!</span>(
+                                <span class="string">&quot;{}: address {} not found&quot;</span>,
+                                <span class="ident">style</span>(<span class="string">&quot;WARNING&quot;</span>).<span class="ident">yellow</span>(),
+                                <span class="ident">addr</span>
+                            ),
                         }
                     }
                 }
@@ -1354,15 +1384,19 @@
                                 <span class="kw">match</span> <span class="ident">addresses_info</span>.<span class="ident">get</span>(<span class="number">0</span>) {
                                     <span class="prelude-val">Some</span>(<span class="ident">info</span>) =&gt; {
                                         <span class="kw">if</span> <span class="ident">info</span>.<span class="ident">ledger_info</span>.<span class="ident">candidate_ledger_info</span>.<span class="ident">balance</span> <span class="op">&lt;</span> <span class="ident">total</span> {
-                                            <span class="macro">println!</span>(<span class="string">&quot;WARNING: this operation may be rejected due to insuffisant balance&quot;</span>);
+                                            <span class="macro">println!</span>(<span class="string">&quot;{}: this operation may be rejected due to insuffisant balance&quot;</span>, <span class="ident">style</span>(<span class="string">&quot;WARNING&quot;</span>).<span class="ident">yellow</span>());
                                         }
                                     }
-                                    <span class="prelude-val">None</span> =&gt; <span class="macro">println!</span>(<span class="string">&quot;WARNING: address {} not found&quot;</span>, <span class="ident">addr</span>),
+                                    <span class="prelude-val">None</span> =&gt; <span class="macro">println!</span>(
+                                        <span class="string">&quot;{}: address {} not found&quot;</span>,
+                                        <span class="ident">style</span>(<span class="string">&quot;WARNING&quot;</span>).<span class="ident">yellow</span>(),
+                                        <span class="ident">addr</span>
+                                    ),
                                 }
                             }
                         }
                         <span class="prelude-val">None</span> =&gt; {
-                            <span class="macro">println!</span>(<span class="string">&quot;WARNING: the total amount hit the limit overflow, operation will certainly be rejected&quot;</span>);
+                            <span class="macro">println!</span>(<span class="string">&quot;{}: the total amount hit the limit overflow, operation will certainly be rejected&quot;</span>, <span class="ident">style</span>(<span class="string">&quot;WARNING&quot;</span>).<span class="ident">yellow</span>());
                         }
                     }
                 }
@@ -1430,15 +1464,19 @@
                                 <span class="kw">match</span> <span class="ident">addresses_info</span>.<span class="ident">get</span>(<span class="number">0</span>) {
                                     <span class="prelude-val">Some</span>(<span class="ident">info</span>) =&gt; {
                                         <span class="kw">if</span> <span class="ident">info</span>.<span class="ident">ledger_info</span>.<span class="ident">candidate_ledger_info</span>.<span class="ident">balance</span> <span class="op">&lt;</span> <span class="ident">total</span> {
-                                            <span class="macro">println!</span>(<span class="string">&quot;WARNING: this operation may be rejected due to insuffisant balance&quot;</span>);
+                                            <span class="macro">println!</span>(<span class="string">&quot;{}: this operation may be rejected due to insuffisant balance&quot;</span>, <span class="ident">style</span>(<span class="string">&quot;WARNING&quot;</span>).<span class="ident">yellow</span>());
                                         }
                                     }
-                                    <span class="prelude-val">None</span> =&gt; <span class="macro">println!</span>(<span class="string">&quot;WARNING: address {} not found&quot;</span>, <span class="ident">addr</span>),
+                                    <span class="prelude-val">None</span> =&gt; <span class="macro">println!</span>(
+                                        <span class="string">&quot;{}: address {} not found&quot;</span>,
+                                        <span class="ident">style</span>(<span class="string">&quot;WARNING&quot;</span>).<span class="ident">yellow</span>(),
+                                        <span class="ident">addr</span>
+                                    ),
                                 }
                             }
                         }
                         <span class="prelude-val">None</span> =&gt; {
-                            <span class="macro">println!</span>(<span class="string">&quot;WARNING: the total amount hit the limit overflow, operation will certainly be rejected&quot;</span>);
+                            <span class="macro">println!</span>(<span class="string">&quot;{}: the total amount hit the limit overflow, operation will certainly be rejected&quot;</span>, <span class="ident">style</span>(<span class="string">&quot;WARNING&quot;</span>).<span class="ident">yellow</span>());
                         }
                     }
                 };
