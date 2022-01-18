@@ -49,6 +49,8 @@ pub struct NetworkSettings {
     /// Network_worker will try to connect to available peers every wakeup_interval.
     /// In millis
     pub wakeup_interval: MassaTime,
+    /// Path to the file containing initial peers.
+    pub initial_peers_file: std::path::PathBuf,
     /// Path to the file containing known peers.
     pub peers_file: std::path::PathBuf,
     /// Path to the file containing our private_key
@@ -110,6 +112,7 @@ mod tests {
                 private_key_file: std::path::PathBuf::new(),
                 max_send_wait: MassaTime::from(100),
                 ban_timeout: MassaTime::from(100_000_000),
+                initial_peers_file: std::path::PathBuf::new(),
             }
         }
     }
