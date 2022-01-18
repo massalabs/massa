@@ -737,6 +737,6 @@ pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>
     args.iter().map(|x| x.parse::<T>()).collect()
 }
 
-async fn get_file_as_byte_vec(filename: &PathBuf) -> Result<Vec<u8>> {
+async fn get_file_as_byte_vec(filename: &std::path::Path) -> Result<Vec<u8>> {
     Ok(tokio::fs::read(filename).await?)
 }
