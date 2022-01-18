@@ -2,7 +2,7 @@
 
 ## Goal
 
-Endorsements are included in a block's header. They are created by randomly selected endorsers chosen amon the stakers (including the block creator) to endorse the block's parent in the same thread. The block's total fee and reward are split between the block creator, the endorsers, and the creator of the endorsed block.
+Endorsements are included in a block's header. They are created by randomly selected endorsers chosen among the stakers (including the block creator) to endorse the block's parent in the same thread. The block's total fee and reward are split between the block creator, the endorsers, and the creator of the endorsed block.
 
 With that mechanism it becomes harder to gain control of the network (you now have to control `endorsement_count + 1` draw to gain control over one block) and to reward stakers more frequently.
 

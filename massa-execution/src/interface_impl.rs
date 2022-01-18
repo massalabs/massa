@@ -4,11 +4,11 @@ use std::str::FromStr;
 
 use crate::types::ExecutionContext;
 use anyhow::{bail, Result};
-use massa_sc_runtime::{Interface, InterfaceClone};
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
     timeslots::get_block_slot_timestamp,
 };
+use massa_sc_runtime::{Interface, InterfaceClone};
 use massa_time::MassaTime;
 use rand::Rng;
 use std::sync::{Arc, Mutex};
@@ -78,7 +78,7 @@ impl Interface for InterfaceImpl {
             Some(addr) => addr,
             _ => bail!("Failed to read call stack current address"),
         };
-        Ok(context.ledger_step.get_balance(&address).to_raw())
+        Ok(context.ledger_step.get_balance(address).to_raw())
     }
 
     /// Returns zero as a default if address not found.

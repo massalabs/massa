@@ -6,13 +6,13 @@ use crate::interface_impl::InterfaceImpl;
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges};
 use crate::types::{ExecutionContext, ExecutionData, ExecutionStep, StepHistory, StepHistoryItem};
 use crate::{config::ExecutionConfigs, ExecutionError};
-use massa_sc_runtime::Interface;
 use massa_models::address::AddressHashMap;
 use massa_models::timeslots::slot_count_in_range;
 use massa_models::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyResult},
     Address, Amount, BlockId, Slot,
 };
+use massa_sc_runtime::Interface;
 use massa_signature::{derive_public_key, generate_random_private_key};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;

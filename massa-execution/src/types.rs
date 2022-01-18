@@ -4,6 +4,7 @@ use massa_models::address::AddressHashSet;
 use massa_models::execution::ExecuteReadOnlyResponse;
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, Block, BlockId, Slot};
+use massa_sc_runtime::Bytecode;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::sync::{Condvar, Mutex};
@@ -11,7 +12,6 @@ use std::{collections::VecDeque, sync::Arc};
 use tokio::sync::oneshot;
 
 pub(crate) type StepHistory = VecDeque<StepHistoryItem>;
-pub type Bytecode = Vec<u8>;
 
 /// A StepHistory item representing the consequences of a given execution step
 #[derive(Debug, Clone)]

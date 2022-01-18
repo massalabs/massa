@@ -1,4 +1,3 @@
-use crate::types::Bytecode;
 use crate::ExecutionError;
 use massa_hash::hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
@@ -8,6 +7,7 @@ use massa_models::{
     array_from_slice, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact,
     SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
 };
+use massa_sc_runtime::Bytecode;
 use serde::{Deserialize, Serialize};
 
 /// an entry in the SCE ledger
