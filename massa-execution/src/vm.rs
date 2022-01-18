@@ -1,21 +1,21 @@
-use std::mem;
-use std::sync::{Arc, Mutex};
-
 use crate::error::bootstrap_file_error;
 use crate::interface_impl::InterfaceImpl;
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges};
 use crate::types::{ExecutionContext, ExecutionData, ExecutionStep, StepHistory, StepHistoryItem};
 use crate::{config::ExecutionConfigs, ExecutionError};
-use massa_models::address::AddressHashMap;
+use massa_models::prehash::Map;
+use massa_sc_runtime::Interface;
+
 use massa_models::timeslots::slot_count_in_range;
 use massa_models::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyResult},
     Address, Amount, BlockId, Slot,
 };
-use massa_sc_runtime::Interface;
 use massa_signature::{derive_public_key, generate_random_private_key};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
+use std::mem;
+use std::sync::{Arc, Mutex};
 use tokio::sync::oneshot;
 use tracing::debug;
 
@@ -38,7 +38,7 @@ impl VM {
             } else {
                 // not bootstrapping: load initial SCE ledger from file
                 let ledger_slot = Slot::new(0, cfg.thread_count.saturating_sub(1)); // last genesis block
-                let ledgger_balances = serde_json::from_str::<AddressHashMap<Amount>>(
+                let ledgger_balances = serde_json::from_str::<Map<Address, Amount>>(
                     &std::fs::read_to_string(&cfg.settings.initial_sce_ledger_path)
                         .map_err(bootstrap_file_error!("loading", cfg))?,
                 )

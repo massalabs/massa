@@ -3,7 +3,8 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::protocol_test;
-use massa_models::{BlockHashMap, BlockHashSet};
+use massa_models::prehash::{Map, Set};
+use massa_models::BlockId;
 use massa_network::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{
@@ -67,7 +68,7 @@ async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
             protocol_command_sender
                 .send_wishlist_delta(
                     vec![expected_hash].into_iter().collect(),
-                    BlockHashSet::default(),
+                    Set::<BlockId>::default(),
                 )
                 .await
                 .expect("Failed to ask for block.");
@@ -161,7 +162,7 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             }
 
             // 4. Simulate consensus sending block.
-            let mut results = BlockHashMap::default();
+            let mut results = Map::default();
             results.insert(expected_hash, Some((block, None, None)));
             protocol_command_sender
                 .send_get_blocks_results(results)
@@ -447,7 +448,7 @@ async fn test_protocol_block_not_found() {
             assert_eq!(expected_hash, hash);
 
             // consensus didn't found block
-            let mut results = BlockHashMap::default();
+            let mut results = Map::default();
             results.insert(expected_hash, None);
             protocol_command_sender
                 .send_get_blocks_results(results)

@@ -4,15 +4,15 @@ use crate::repl::Output;
 use crate::rpc::Client;
 use anyhow::{anyhow, bail, Result};
 use console::style;
-use massa_models::address::AddressHashMap;
 use massa_models::api::{AddressInfo, CompactAddressInfo};
+use massa_models::prehash::Map;
 use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
 };
 use massa_signature::{generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
-use massa_wallet::Wallet;
+use massa_wallet::{Wallet, WalletError};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
@@ -199,7 +199,7 @@ impl Display for ExtendedWalletEntry {
 }
 
 #[derive(Serialize)]
-pub struct ExtendedWallet(AddressHashMap<ExtendedWalletEntry>);
+pub struct ExtendedWallet(Map<Address, ExtendedWalletEntry>);
 
 impl ExtendedWallet {
     fn new(wallet: &Wallet, addresses_info: &[AddressInfo]) -> Result<Self> {
@@ -471,11 +471,17 @@ impl Command {
                 let mut res = "".to_string();
                 for key in parse_vec::<Address>(parameters)?.into_iter() {
                     match wallet.remove_address(key) {
-                        Some(_) => {
+                        Ok(_) => {
                             res.push_str(&format!("Removed address {} from the wallet\n", key));
                         }
-                        None => {
+                        Err(WalletError::MissingKeyError(_)) => {
                             res.push_str(&format!("Address {} wasn't in the wallet\n", key));
+                        }
+                        Err(_) => {
+                            res.push_str(&format!(
+                                "Failed to remove address {} from the wallet\n",
+                                key
+                            ));
                         }
                     }
                 }
@@ -737,6 +743,6 @@ pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>
     args.iter().map(|x| x.parse::<T>()).collect()
 }
 
-async fn get_file_as_byte_vec(filename: &PathBuf) -> Result<Vec<u8>> {
+async fn get_file_as_byte_vec(filename: &std::path::Path) -> Result<Vec<u8>> {
     Ok(tokio::fs::read(filename).await?)
 }

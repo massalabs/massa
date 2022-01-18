@@ -1,9 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use std::collections::{HashMap, HashSet};
-use std::convert::TryInto;
 use std::hash::{BuildHasherDefault, Hasher};
 use std::marker::PhantomData;
+
+impl PreHashed for massa_hash::hash::Hash {}
 
 /// A trait indicating that its carrier is already a hash with at least 64 bits
 /// and doesn't need to be re-hashed for hash-table purposes
@@ -12,30 +13,30 @@ pub trait PreHashed {}
 /// A Hasher for PreHashed keys that is faster because it avoids re-hashing hashes but simply truncates them.
 /// Note: when truncating, it takes the last 8 bytes of the key instead of the first 8 bytes.
 /// This is done to circumvent biases induced by first-byte manipulations in addresses related to the thread assignment process
-pub struct HHasher<T: PreHashed> {
+pub struct PreHashedMap<T: PreHashed> {
     source: PhantomData<T>,
     hash: u64,
 }
 
-/// Default implementation for HHasher (zero hash)
-impl<T: PreHashed> Default for HHasher<T> {
+/// Default implementation for PreHashedMap (zero hash)
+impl<T: PreHashed> Default for PreHashedMap<T> {
     fn default() -> Self {
-        HHasher {
+        PreHashedMap {
             source: Default::default(),
             hash: Default::default(),
         }
     }
 }
 
-/// Hasher implementation for HHasher
-impl<T: PreHashed> Hasher for HHasher<T> {
+/// Hasher implementation for PreHashedMap
+impl<T: PreHashed> Hasher for PreHashedMap<T> {
     /// finish the hashing process and return the truncated u64 hash
     #[inline]
     fn finish(&self) -> u64 {
         self.hash
     }
 
-    /// write the bytes of a PreHashed key into the HHasher
+    /// write the bytes of a PreHashed key into the PreHashedMap
     /// Panics if bytes.len() is strictly lower than 8
     /// Note: the truncated u64 is completely overwritten by the last 8 items of "bytes" at every call
     #[inline]
@@ -49,13 +50,13 @@ impl<T: PreHashed> Hasher for HHasher<T> {
     }
 }
 
-/// BuildHasherDefault specialization for HHasher
-pub type BuildHHasher<T> = BuildHasherDefault<HHasher<T>>;
+/// BuildHasherDefault specialization for PreHashedMap
+pub type BuildMap<T> = BuildHasherDefault<PreHashedMap<T>>;
 
 /// HashMap specialization for PreHashed keys
 /// This hashmap is about 2x faster than the default HashMap
-pub type HHashMap<K, V> = HashMap<K, V, BuildHHasher<K>>;
+pub type Map<K, V> = HashMap<K, V, BuildMap<K>>;
 
 /// HashSet specialization for PreHashed keys
 /// This hashset is about 2x faster than the default HashSet
-pub type HHashSet<T> = HashSet<T, BuildHHasher<T>>;
+pub type Set<T> = HashSet<T, BuildMap<T>>;
