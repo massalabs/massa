@@ -169,10 +169,7 @@ pub enum Command {
     )]
     when_episode_ends,
 
-    #[strum(
-        ascii_case_insensitive,
-        message = "tells you when moon"
-    )]
+    #[strum(ascii_case_insensitive, message = "tells you when moon")]
     when_moon,
 }
 
@@ -636,7 +633,7 @@ impl Command {
                 Ok(Box::new(()))
             }
             Command::when_moon => {
-                let res = "At night.";
+                let res = "At night 🌔.";
                 if !json {
                     println!("{}", res);
                 }
