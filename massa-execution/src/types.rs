@@ -34,7 +34,7 @@ pub(crate) struct ExecutionContext {
     /// max gas for this execution
     pub max_gas: u64,
 
-    /// coins transferred at the launch of the execution
+    /// coins transferred to the target address during a call
     pub coins: Amount,
 
     /// gas price of the execution
@@ -62,14 +62,14 @@ pub(crate) struct ExecutionContext {
     pub read_only: bool,
 }
 
-/// an active execution step request
+/// an active execution step target slot and block
 #[derive(Clone)]
 pub(crate) struct ExecutionStep {
     /// slot at which the execution step will happen
     pub slot: Slot,
 
     /// Some(BlockID, block), if a block is present at this slot, otherwise None
-    pub block: Option<(BlockId, Block)>, // None if miss
+    pub block: Option<(BlockId, Block)>,
 }
 
 impl ExecutionContext {
