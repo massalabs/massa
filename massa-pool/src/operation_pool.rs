@@ -1,28 +1,28 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{PoolError, PoolSettings};
+use massa_models::prehash::{Map, Set};
 use massa_models::{
-    address::AddressHashMap, Address, BlockHashMap, Operation, OperationHashMap, OperationHashSet,
-    OperationId, OperationSearchResult, OperationSearchResultStatus, OperationType,
-    SerializeCompact, Slot,
+    Address, Operation, OperationId, OperationSearchResult, OperationSearchResultStatus,
+    OperationType, SerializeCompact, Slot,
 };
 use num::rational::Ratio;
 use std::{collections::BTreeSet, usize};
 
-struct OperationIndex(AddressHashMap<OperationHashSet>);
+struct OperationIndex(Map<Address, Set<OperationId>>);
 
 impl OperationIndex {
     fn new() -> OperationIndex {
-        OperationIndex(AddressHashMap::default())
+        OperationIndex(Map::default())
     }
     fn insert_op(&mut self, addr: Address, op_id: OperationId) {
         self.0
             .entry(addr)
-            .or_insert_with(OperationHashSet::default)
+            .or_insert_with(Set::<OperationId>::default)
             .insert(op_id);
     }
 
-    fn get_ops_for_address(&self, address: &Address) -> Option<&OperationHashSet> {
+    fn get_ops_for_address(&self, address: &Address) -> Option<&Set<OperationId>> {
         self.0.get(address)
     }
 
@@ -72,7 +72,7 @@ impl WrappedOperation {
 }
 
 pub struct OperationPool {
-    ops: OperationHashMap<WrappedOperation>,
+    ops: Map<OperationId, WrappedOperation>,
     /// one vec per thread
     ops_by_thread_and_interest:
         Vec<BTreeSet<(std::cmp::Reverse<num::rational::Ratio<u64>>, OperationId)>>, // [thread][order by: (rev rentability, OperationId)]
@@ -89,7 +89,7 @@ pub struct OperationPool {
     /// operation validity periods
     operation_validity_periods: u64,
     /// ids of operations that are final with expire period and thread
-    final_operations: OperationHashMap<(u64, u8)>,
+    final_operations: Map<OperationId, (u64, u8)>,
 }
 
 impl OperationPool {
@@ -115,9 +115,9 @@ impl OperationPool {
     ///
     pub fn add_operations(
         &mut self,
-        operations: OperationHashMap<Operation>,
-    ) -> Result<OperationHashSet, PoolError> {
-        let mut newly_added = OperationHashSet::default();
+        operations: Map<OperationId, Operation>,
+    ) -> Result<Set<OperationId>, PoolError> {
+        let mut newly_added = Set::<OperationId>::default();
 
         for (op_id, operation) in operations.into_iter() {
             massa_trace!("pool add_operations op", { "op": operation });
@@ -214,7 +214,7 @@ impl OperationPool {
 
     pub fn new_final_operations(
         &mut self,
-        ops: OperationHashMap<(u64, u8)>,
+        ops: Map<OperationId, (u64, u8)>,
     ) -> Result<(), PoolError> {
         for (id, _) in ops.iter() {
             if let Some(wrapped) = self.ops.remove(id) {
@@ -291,7 +291,7 @@ impl OperationPool {
     pub fn get_operation_batch(
         &mut self,
         block_slot: Slot,
-        exclude: OperationHashSet,
+        exclude: Set<OperationId>,
         batch_size: usize,
         max_size: u64,
     ) -> Result<Vec<(OperationId, Operation, u64)>, PoolError> {
@@ -321,7 +321,7 @@ impl OperationPool {
             .collect()
     }
 
-    pub fn get_operations(&self, operation_ids: &OperationHashSet) -> OperationHashMap<Operation> {
+    pub fn get_operations(&self, operation_ids: &Set<OperationId>) -> Map<OperationId, Operation> {
         operation_ids
             .iter()
             .filter_map(|op_id| self.ops.get(op_id).map(|w_op| (*op_id, w_op.op.clone())))
@@ -331,7 +331,7 @@ impl OperationPool {
     pub fn get_operations_involving_address(
         &self,
         address: &Address,
-    ) -> Result<OperationHashMap<OperationSearchResult>, PoolError> {
+    ) -> Result<Map<OperationId, OperationSearchResult>, PoolError> {
         if let Some(ids) = self.ops_by_address.get_ops_for_address(address) {
             ids.iter()
                 .take(self.pool_settings.max_item_return_count)
@@ -349,7 +349,7 @@ impl OperationPool {
                                 OperationSearchResult {
                                     op: op.op.clone(),
                                     in_pool: true,
-                                    in_blocks: BlockHashMap::default(),
+                                    in_blocks: Map::default(),
                                     status: OperationSearchResultStatus::Pending,
                                 },
                             )
@@ -357,7 +357,7 @@ impl OperationPool {
                 })
                 .collect()
         } else {
-            Ok(OperationHashMap::default())
+            Ok(Map::default())
         }
     }
 }
@@ -466,7 +466,7 @@ pub mod tests {
         let mut pool =
             OperationPool::new(pool_settings, *thread_count, *operation_validity_periods);
 
-        // generate transactions
+        // generate (id, transactions, range of validity) by threads
         let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
         for i in 0..18 {
             let fee = 40 + i;
@@ -475,7 +475,7 @@ pub mod tests {
             let (op, thread) = get_transaction(expire_period, fee);
             let id = op.verify_integrity().unwrap();
 
-            let mut ops = OperationHashMap::default();
+            let mut ops = Map::default();
             ops.insert(id, op.clone());
 
             let newly_added = pool.add_operations(ops.clone()).unwrap();
@@ -483,7 +483,7 @@ pub mod tests {
 
             // duplicate
             let newly_added = pool.add_operations(ops).unwrap();
-            assert_eq!(newly_added, OperationHashSet::default());
+            assert_eq!(newly_added, Set::<OperationId>::default());
 
             thread_tx_lists[thread as usize].push((id, op, start_period..=expire_period));
         }
@@ -494,13 +494,18 @@ pub mod tests {
             lst.truncate(*max_pool_size_per_thread as usize);
         }
 
-        // checks ops for thread 0 and 1 and various periods
+        // checks ops are the expected ones for thread 0 and 1 and various periods
         for thread in 0u8..=1 {
             for period in 0u64..70 {
                 let target_slot = Slot::new(period, thread);
                 let max_count = 3;
                 let res = pool
-                    .get_operation_batch(target_slot, OperationHashSet::default(), max_count, 10000)
+                    .get_operation_batch(
+                        target_slot,
+                        Set::<OperationId>::default(),
+                        max_count,
+                        10000,
+                    )
                     .unwrap();
                 assert!(res
                     .iter()
@@ -513,7 +518,8 @@ pub mod tests {
             }
         }
 
-        // op ending before or at period 45 should be discarded
+        // op ending before or at period 45 won't appear in the block due to incompatible validity range
+        // we don't keep them as expected ops
         let final_period = 45u64;
         pool.update_latest_final_periods(vec![final_period; *thread_count as usize])
             .unwrap();
@@ -521,13 +527,18 @@ pub mod tests {
             lst.retain(|(_, op, _)| op.content.expire_period > final_period);
         }
 
-        // checks ops for thread 0 and 1 and various periods
+        // checks ops are the expected ones for thread 0 and 1 and various periods
         for thread in 0u8..=1 {
             for period in 0u64..70 {
                 let target_slot = Slot::new(period, thread);
                 let max_count = 4;
                 let res = pool
-                    .get_operation_batch(target_slot, OperationHashSet::default(), max_count, 10000)
+                    .get_operation_batch(
+                        target_slot,
+                        Set::<OperationId>::default(),
+                        max_count,
+                        10000,
+                    )
                     .unwrap();
                 assert!(res
                     .iter()
@@ -547,14 +558,14 @@ pub mod tests {
             let expire_period: u64 = 300;
             let (op, thread) = get_transaction(expire_period, fee);
             let id = op.verify_integrity().unwrap();
-            let mut ops = OperationHashMap::default();
+            let mut ops = Map::default();
             ops.insert(id, op);
             let newly_added = pool.add_operations(ops).unwrap();
-            assert_eq!(newly_added, OperationHashSet::default());
+            assert_eq!(newly_added, Set::<OperationId>::default());
             let res = pool
                 .get_operation_batch(
                     Slot::new(expire_period - 1, thread),
-                    OperationHashSet::default(),
+                    Set::<OperationId>::default(),
                     10,
                     10000,
                 )

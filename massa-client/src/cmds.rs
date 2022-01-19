@@ -4,15 +4,15 @@ use crate::repl::Output;
 use crate::rpc::Client;
 use anyhow::{anyhow, bail, Result};
 use console::style;
-use massa_models::address::AddressHashMap;
 use massa_models::api::{AddressInfo, CompactAddressInfo};
+use massa_models::prehash::Map;
 use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
 };
 use massa_signature::{generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
-use massa_wallet::Wallet;
+use massa_wallet::{Wallet, WalletError};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
@@ -168,6 +168,9 @@ pub enum Command {
         message = "show time remaining to end of current episode"
     )]
     when_episode_ends,
+
+    #[strum(ascii_case_insensitive, message = "tells you when moon")]
+    when_moon,
 }
 
 pub(crate) fn help() {
@@ -199,7 +202,7 @@ impl Display for ExtendedWalletEntry {
 }
 
 #[derive(Serialize)]
-pub struct ExtendedWallet(AddressHashMap<ExtendedWalletEntry>);
+pub struct ExtendedWallet(Map<Address, ExtendedWalletEntry>);
 
 impl ExtendedWallet {
     fn new(wallet: &Wallet, addresses_info: &[AddressInfo]) -> Result<Self> {
@@ -425,7 +428,10 @@ impl Command {
 
             Command::wallet_info => {
                 if !json {
-                    println!("WARNING: do not share your private key");
+                    println!(
+                        "{}: do not share your private key",
+                        style("WARNING").yellow()
+                    );
                 }
                 match client
                     .public
@@ -471,11 +477,17 @@ impl Command {
                 let mut res = "".to_string();
                 for key in parse_vec::<Address>(parameters)?.into_iter() {
                     match wallet.remove_address(key) {
-                        Some(_) => {
+                        Ok(_) => {
                             res.push_str(&format!("Removed address {} from the wallet\n", key));
                         }
-                        None => {
+                        Err(WalletError::MissingKeyError(_)) => {
                             res.push_str(&format!("Address {} wasn't in the wallet\n", key));
+                        }
+                        Err(_) => {
+                            res.push_str(&format!(
+                                "Failed to remove address {} from the wallet\n",
+                                key
+                            ));
                         }
                     }
                 }
@@ -509,15 +521,19 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            println!("WARNING: this operation may be rejected due to insuffisant balance");
+                                            println!("{}: this operation may be rejected due to insuffisant balance", style("WARNING").yellow());
                                         }
                                     }
-                                    None => println!("WARNING: address {} not found", addr),
+                                    None => println!(
+                                        "{}: address {} not found",
+                                        style("WARNING").yellow(),
+                                        addr
+                                    ),
                                 }
                             }
                         }
                         None => {
-                            println!("WARNING: the total amount hit the limit overflow, operation will certainly be rejected");
+                            println!("{}: the total amount hit the limit overflow, operation will certainly be rejected", style("WARNING").yellow());
                         }
                     }
                 }
@@ -547,10 +563,14 @@ impl Command {
                                 if info.ledger_info.candidate_ledger_info.balance < fee
                                     || roll_count > info.rolls.candidate_rolls
                                 {
-                                    println!("WARNING: this operation may be rejected due to insuffisant balance or roll count");
+                                    println!("{}: this operation may be rejected due to insuffisant balance or roll count", style("WARNING").yellow());
                                 }
                             }
-                            None => println!("WARNING: address {} not found", addr),
+                            None => println!(
+                                "{}: address {} not found",
+                                style("WARNING").yellow(),
+                                addr
+                            ),
                         }
                     }
                 }
@@ -584,15 +604,19 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            println!("WARNING: this operation may be rejected due to insuffisant balance");
+                                            println!("{}: this operation may be rejected due to insuffisant balance", style("WARNING").yellow());
                                         }
                                     }
-                                    None => println!("WARNING: address {} not found", addr),
+                                    None => println!(
+                                        "{}: address {} not found",
+                                        style("WARNING").yellow(),
+                                        addr
+                                    ),
                                 }
                             }
                         }
                         None => {
-                            println!("WARNING: the total amount hit the limit overflow, operation will certainly be rejected");
+                            println!("{}: the total amount hit the limit overflow, operation will certainly be rejected", style("WARNING").yellow());
                         }
                     }
                 }
@@ -612,14 +636,25 @@ impl Command {
             }
             Command::when_episode_ends => {
                 let end = match client.public.get_status().await {
-                    Ok(node_status) => node_status.consensus_stats.end_timespan,
+                    Ok(node_status) => node_status.config.end_timestamp,
                     Err(e) => bail!("RpcError: {}", e),
                 };
-                let (days, hours, mins, secs) = end
-                    .saturating_sub(MassaTime::now()?)
-                    .days_hours_mins_secs()?; // compensation millis is zero
                 let mut res = "".to_string();
-                res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs));
+                if let Some(e) = end {
+                    let (days, hours, mins, secs) =
+                        e.saturating_sub(MassaTime::now()?).days_hours_mins_secs()?; // compensation millis is zero
+
+                    res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs));
+                } else {
+                    res.push_str("There is no end !")
+                }
+                if !json {
+                    println!("{}", res);
+                }
+                Ok(Box::new(()))
+            }
+            Command::when_moon => {
+                let res = "At night 🌔.";
                 if !json {
                     println!("{}", res);
                 }
@@ -649,15 +684,19 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            println!("WARNING: this operation may be rejected due to insuffisant balance");
+                                            println!("{}: this operation may be rejected due to insuffisant balance", style("WARNING").yellow());
                                         }
                                     }
-                                    None => println!("WARNING: address {} not found", addr),
+                                    None => println!(
+                                        "{}: address {} not found",
+                                        style("WARNING").yellow(),
+                                        addr
+                                    ),
                                 }
                             }
                         }
                         None => {
-                            println!("WARNING: the total amount hit the limit overflow, operation will certainly be rejected");
+                            println!("{}: the total amount hit the limit overflow, operation will certainly be rejected", style("WARNING").yellow());
                         }
                     }
                 };
@@ -733,6 +772,6 @@ pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>
     args.iter().map(|x| x.parse::<T>()).collect()
 }
 
-async fn get_file_as_byte_vec(filename: &PathBuf) -> Result<Vec<u8>> {
+async fn get_file_as_byte_vec(filename: &std::path::Path) -> Result<Vec<u8>> {
     Ok(tokio::fs::read(filename).await?)
 }

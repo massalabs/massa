@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::api::{LedgerInfo, RollsInfo};
-use crate::hhasher::{HHashMap, HHashSet, PreHashed};
+use crate::prehash::{PreHashed, Set};
 use crate::settings::ADDRESS_SIZE_BYTES;
 use crate::ModelsError;
 use massa_hash::hash::Hash;
@@ -11,9 +11,6 @@ use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Address(pub Hash);
-
-pub type AddressHashMap<T> = HHashMap<Address, T>;
-pub type AddressHashSet = HHashSet<Address>;
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -31,7 +28,7 @@ impl FromStr for Address {
 impl PreHashed for Address {}
 
 impl Address {
-    /// Gets the associated tread. Depends on the thread_count
+    /// Gets the associated thread. Depends on the thread_count
     pub fn get_thread(&self, thread_count: u8) -> u8 {
         (self.to_bytes()[0])
             .checked_shr(8 - thread_count.trailing_zeros())
@@ -140,7 +137,7 @@ impl Address {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Addresses {
-    pub addrs: AddressHashSet,
+    pub addrs: Set<Address>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

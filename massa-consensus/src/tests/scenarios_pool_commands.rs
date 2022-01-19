@@ -108,7 +108,7 @@ async fn test_update_latest_final_block_cmd_notification() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = MassaTime::now().unwrap().checked_sub(100.into()).unwrap();
+    cfg.genesis_timestamp = MassaTime::now().unwrap();
     cfg.delta_f0 = 2;
     cfg.disable_block_creation = false;
 
@@ -135,14 +135,14 @@ async fn test_update_latest_final_block_cmd_notification() {
             };
             // wait for initial final periods notification
             let final_periods = pool_controller
-                .wait_command(300.into(), update_final_notification_filter)
+                .wait_command(1000.into(), update_final_notification_filter)
                 .await;
             assert_eq!(final_periods, Some(vec![0, 0]));
 
             // wait for next final periods notification
             let final_periods = pool_controller
                 .wait_command(
-                    (cfg.t0.to_millis() * 2 + 500).into(),
+                    (cfg.t0.to_millis() * 3).into(),
                     update_final_notification_filter,
                 )
                 .await;

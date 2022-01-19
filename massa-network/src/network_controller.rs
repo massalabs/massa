@@ -11,8 +11,9 @@ use super::{
 use crate::error::NetworkError;
 use crate::settings::{NetworkSettings, CHANNEL_SIZE};
 use massa_logging::massa_trace;
+use massa_models::composite::PubkeySig;
+use massa_models::node::NodeId;
 use massa_models::stats::NetworkStats;
-use massa_models::{massa_hash::PubkeySig, node::NodeId};
 use massa_models::{Block, BlockHeader, BlockId, Endorsement, Operation, Version};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use std::{
@@ -97,7 +98,7 @@ pub async fn start_network_controller(
     // load peer info database
     let mut peer_info_db = PeerInfoDatabase::new(&network_settings, clock_compensation).await?;
 
-    // add initial peers
+    // add bootstrap peers
     if let Some(peers) = initial_peers {
         peer_info_db.merge_candidate_peers(&peers.0)?;
     }

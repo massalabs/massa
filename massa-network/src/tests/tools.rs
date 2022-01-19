@@ -98,6 +98,7 @@ pub fn create_network_config(
         private_key_file: get_temp_private_key_file().path().to_path_buf(),
         max_send_wait: MassaTime::from(100),
         ban_timeout: MassaTime::from(100_000_000),
+        initial_peers_file: peers_file_path.to_path_buf(),
     }
 }
 

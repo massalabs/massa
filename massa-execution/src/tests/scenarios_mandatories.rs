@@ -1,18 +1,18 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use std::str::FromStr;
-
 use crate::{
     config::ExecutionConfigs, start_controller, ExecutionSettings, SCELedger, SCELedgerEntry,
 };
-use massa_models::{address::AddressHashMap, Address, Amount, Slot};
+use massa_models::prehash::Map;
+use massa_models::{Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key};
 use massa_time::MassaTime;
 use serial_test::serial;
+use std::str::FromStr;
 use tempfile::NamedTempFile;
 
 /// generate a named temporary initial ledger file
-pub fn generate_ledger_initial_file(values: &AddressHashMap<Amount>) -> NamedTempFile {
+pub fn generate_ledger_initial_file(values: &Map<Address, Amount>) -> NamedTempFile {
     use std::io::prelude::*;
     let file_named = NamedTempFile::new().expect("cannot create temp file");
     serde_json::to_writer_pretty(file_named.as_file(), &values)

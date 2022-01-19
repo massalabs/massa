@@ -4,9 +4,9 @@ use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 use massa_network::NetworkEventReceiver;
 
+use massa_models::prehash::{Map, Set};
 use massa_models::{
-    Block, BlockHashMap, BlockHashSet, BlockHeader, BlockId, Endorsement, EndorsementHashMap,
-    EndorsementId, Operation, OperationHashMap, OperationHashSet,
+    Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
 };
 use serde::Serialize;
 use std::collections::VecDeque;
@@ -20,8 +20,8 @@ pub enum ProtocolEvent {
     ReceivedBlock {
         block_id: BlockId,
         block: Block,
-        operation_set: OperationHashMap<(usize, u64)>, // (index, validity end period)
-        endorsement_ids: EndorsementHashMap<u32>,
+        operation_set: Map<OperationId, (usize, u64)>, // (index, validity end period)
+        endorsement_ids: Map<EndorsementId, u32>,
     },
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader {
@@ -36,12 +36,12 @@ pub enum ProtocolEvent {
 pub enum ProtocolPoolEvent {
     /// Operations were received
     ReceivedOperations {
-        operations: OperationHashMap<Operation>,
+        operations: Map<OperationId, Operation>,
         propagate: bool, // whether or not to propagate operations
     },
     /// Endorsements were received
     ReceivedEndorsements {
-        endorsements: EndorsementHashMap<Endorsement>,
+        endorsements: Map<EndorsementId, Endorsement>,
         propagate: bool, // whether or not to propagate endorsements
     },
 }
@@ -53,24 +53,24 @@ pub enum ProtocolCommand {
     IntegratedBlock {
         block_id: BlockId,
         block: Block,
-        operation_ids: OperationHashSet,
+        operation_ids: Set<OperationId>,
         endorsement_ids: Vec<EndorsementId>,
     },
     /// A block, or it's header, amounted to an attempted attack.
     AttackBlockDetected(BlockId),
     /// Wishlist delta
     WishlistDelta {
-        new: BlockHashSet,
-        remove: BlockHashSet,
+        new: Set<BlockId>,
+        remove: Set<BlockId>,
     },
     /// The response to a ProtocolEvent::GetBlocks.
     GetBlocksResults(
-        BlockHashMap<Option<(Block, Option<OperationHashSet>, Option<Vec<EndorsementId>>)>>,
+        Map<BlockId, Option<(Block, Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>,
     ),
     /// Propagate operations
-    PropagateOperations(OperationHashMap<Operation>),
+    PropagateOperations(Map<OperationId, Operation>),
     /// Propagate endorsements
-    PropagateEndorsements(EndorsementHashMap<Endorsement>),
+    PropagateEndorsements(Map<EndorsementId, Endorsement>),
 }
 
 #[derive(Debug, Serialize)]
@@ -88,7 +88,7 @@ impl ProtocolCommandSender {
         &mut self,
         block_id: BlockId,
         block: Block,
-        operation_ids: OperationHashSet,
+        operation_ids: Set<OperationId>,
         endorsement_ids: Vec<EndorsementId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.integrated_block", { "block_id": block_id, "block": block });
@@ -123,8 +123,9 @@ impl ProtocolCommandSender {
     /// Send the response to a ProtocolEvent::GetBlocks.
     pub async fn send_get_blocks_results(
         &mut self,
-        results: BlockHashMap<
-            Option<(Block, Option<OperationHashSet>, Option<Vec<EndorsementId>>)>,
+        results: Map<
+            BlockId,
+            Option<(Block, Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>,
         >,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_get_blocks_results", {
@@ -142,8 +143,8 @@ impl ProtocolCommandSender {
 
     pub async fn send_wishlist_delta(
         &mut self,
-        new: BlockHashSet,
-        remove: BlockHashSet,
+        new: Set<BlockId>,
+        remove: Set<BlockId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_wishlist_delta", { "new": new, "remove": remove });
         let res = self
@@ -158,7 +159,7 @@ impl ProtocolCommandSender {
 
     pub async fn propagate_operations(
         &mut self,
-        operations: OperationHashMap<Operation>,
+        operations: Map<OperationId, Operation>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
             "operations": operations
@@ -175,7 +176,7 @@ impl ProtocolCommandSender {
 
     pub async fn propagate_endorsements(
         &mut self,
-        endorsements: EndorsementHashMap<Endorsement>,
+        endorsements: Map<EndorsementId, Endorsement>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_endorsements", {
             "endorsements": endorsements

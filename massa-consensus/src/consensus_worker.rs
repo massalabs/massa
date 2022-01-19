@@ -3,27 +3,21 @@
 use super::{block_graph::*, pos::ProofOfStake, settings::ConsensusConfig};
 use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
-
 use crate::settings;
-use massa_hash::hash::Hash;
-
 use massa_execution::{ExecutionCommandSender, ExecutionEventReceiver};
-
+use massa_hash::hash::Hash;
+use massa_models::address::AddressState;
 use massa_models::api::{EndorsementInfo, LedgerInfo, RollsInfo};
-use massa_models::{address::AddressCycleProductionStats, stats::ConsensusStats};
-use massa_models::{
-    address::{AddressHashMap, AddressHashSet, AddressState},
-    BlockHashSet, EndorsementHashSet,
-};
+use massa_models::ledger::LedgerData;
+use massa_models::prehash::{BuildMap, Map, Set};
+use massa_models::{address::AddressCycleProductionStats, stats::ConsensusStats, OperationId};
 use massa_models::{
     clique::Clique,
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
 };
-use massa_models::{hhasher::BuildHHasher, ledger::LedgerData};
 use massa_models::{
-    Address, Block, BlockHashMap, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
-    EndorsementContent, EndorsementHashMap, EndorsementId, Operation, OperationHashMap,
-    OperationHashSet, OperationSearchResult, OperationType, SerializeCompact, Slot,
+    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement, EndorsementContent,
+    EndorsementId, Operation, OperationSearchResult, OperationType, SerializeCompact, Slot,
     StakersCycleProductionStats,
 };
 use massa_pool::PoolCommandSender;
@@ -66,37 +60,37 @@ pub enum ConsensusCommand {
     GetBootstrapState(oneshot::Sender<(ExportProofOfStake, BootstrapableGraph)>),
     /// Returns info for a set of addresses (rolls and balance)
     GetAddressesInfo {
-        addresses: AddressHashSet,
-        response_tx: oneshot::Sender<AddressHashMap<AddressState>>,
+        addresses: Set<Address>,
+        response_tx: oneshot::Sender<Map<Address, AddressState>>,
     },
     GetRecentOperations {
         address: Address,
-        response_tx: oneshot::Sender<OperationHashMap<OperationSearchResult>>,
+        response_tx: oneshot::Sender<Map<OperationId, OperationSearchResult>>,
     },
     GetOperations {
-        operation_ids: OperationHashSet,
-        response_tx: oneshot::Sender<OperationHashMap<OperationSearchResult>>,
+        operation_ids: Set<OperationId>,
+        response_tx: oneshot::Sender<Map<OperationId, OperationSearchResult>>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
-    GetActiveStakers(oneshot::Sender<AddressHashMap<u64>>),
+    GetActiveStakers(oneshot::Sender<Map<Address, u64>>),
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
-    RemoveStakingAddresses(AddressHashSet),
-    GetStakingAddressses(oneshot::Sender<AddressHashSet>),
+    RemoveStakingAddresses(Set<Address>),
+    GetStakingAddressses(oneshot::Sender<Set<Address>>),
     GetStakersProductionStats {
-        addrs: AddressHashSet,
+        addrs: Set<Address>,
         response_tx: oneshot::Sender<Vec<StakersCycleProductionStats>>,
     },
     GetBlockIdsByCreator {
         address: Address,
-        response_tx: oneshot::Sender<BlockHashMap<Status>>,
+        response_tx: oneshot::Sender<Map<BlockId, Status>>,
     },
     GetEndorsementsByAddress {
         address: Address,
-        response_tx: oneshot::Sender<EndorsementHashMap<Endorsement>>,
+        response_tx: oneshot::Sender<Map<EndorsementId, Endorsement>>,
     },
     GetEndorsementsById {
-        endorsements: EndorsementHashSet,
-        response_tx: oneshot::Sender<EndorsementHashMap<EndorsementInfo>>,
+        endorsements: Set<EndorsementId>,
+        response_tx: oneshot::Sender<Map<EndorsementId, EndorsementInfo>>,
     },
 
     GetCliques(oneshot::Sender<Vec<Clique>>),
@@ -143,13 +137,13 @@ pub struct ConsensusWorker {
     /// Next slot
     next_slot: Slot,
     /// blocks we want
-    wishlist: BlockHashSet,
+    wishlist: Set<BlockId>,
     // latest final periods
     latest_final_periods: Vec<u64>,
     /// clock compensation
     clock_compensation: i64,
     // staking keys
-    staking_keys: AddressHashMap<(PublicKey, PrivateKey)>,
+    staking_keys: Map<Address, (PublicKey, PrivateKey)>,
     // stats (block -> tx_count, creator)
     final_block_stats: VecDeque<(MassaTime, u64, Address)>,
     stale_block_stats: VecDeque<MassaTime>,
@@ -184,7 +178,7 @@ impl ConsensusWorker {
         controller_event_tx: mpsc::Sender<ConsensusEvent>,
         controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
         clock_compensation: i64,
-        staking_keys: AddressHashMap<(PublicKey, PrivateKey)>,
+        staking_keys: Map<Address, (PublicKey, PrivateKey)>,
     ) -> Result<ConsensusWorker, ConsensusError> {
         let now = MassaTime::compensated_now(clock_compensation)?;
         let previous_slot = get_latest_block_slot_at_timestamp(
@@ -262,7 +256,7 @@ impl ConsensusWorker {
                     })
                     .collect(),
                 */
-                BlockHashMap::default(),
+                Map::default(),
             )
             .await?;
 
@@ -278,7 +272,7 @@ impl ConsensusWorker {
             pos,
             previous_slot,
             next_slot,
-            wishlist: BlockHashSet::default(),
+            wishlist: Set::<BlockId>::default(),
             latest_final_periods,
             clock_compensation,
             pool_command_sender,
@@ -552,7 +546,7 @@ impl ConsensusWorker {
                 .map(|(id, e)| ((id, e.content.index), e))
                 .unzip()
         } else {
-            (EndorsementHashMap::default(), Vec::new())
+            (Map::default(), Vec::new())
         };
 
         massa_trace!("consensus.create_block.get_endorsements.result", {
@@ -590,7 +584,7 @@ impl ConsensusWorker {
         let mut remaining_operation_count = self.cfg.max_operations_per_block as usize;
 
         // exclude operations that were used in block ancestry
-        let mut exclude_operations = OperationHashSet::default();
+        let mut exclude_operations = Set::<OperationId>::default();
         let mut ancestor_id = block.header.content.parents[cur_slot.thread as usize];
         let stop_period = cur_slot
             .period
@@ -623,7 +617,7 @@ impl ConsensusWorker {
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
         let mut operations: Vec<Operation> = Vec::new();
-        let mut operation_set: OperationHashMap<(usize, u64)> = OperationHashMap::default(); // (index, validity end period)
+        let mut operation_set: Map<OperationId, (usize, u64)> = Map::default(); // (index, validity end period)
         let mut finished = remaining_block_space == 0
             || remaining_operation_count == 0
             || self.cfg.max_operations_fill_attempts == 0;
@@ -1096,9 +1090,9 @@ impl ConsensusWorker {
         })
     }
 
-    fn get_active_stakers(&self) -> Result<AddressHashMap<u64>, ConsensusError> {
+    fn get_active_stakers(&self) -> Result<Map<Address, u64>, ConsensusError> {
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
-        let mut res: AddressHashMap<u64> = AddressHashMap::default();
+        let mut res: Map<Address, u64> = Map::default();
         for thread in 0..self.cfg.thread_count {
             match self.pos.get_lookback_roll_count(cur_cycle, thread) {
                 Ok(rolls) => {
@@ -1112,14 +1106,14 @@ impl ConsensusWorker {
 
     fn get_addresses_info(
         &self,
-        addresses: &AddressHashSet,
-    ) -> Result<AddressHashMap<AddressState>, ConsensusError> {
+        addresses: &Set<Address>,
+    ) -> Result<Map<Address, AddressState>, ConsensusError> {
         let thread_count = self.cfg.thread_count;
-        let mut addresses_by_thread = vec![AddressHashSet::default(); thread_count as usize];
+        let mut addresses_by_thread = vec![Set::<Address>::default(); thread_count as usize];
         for addr in addresses.iter() {
             addresses_by_thread[addr.get_thread(thread_count) as usize].insert(*addr);
         }
-        let mut states = AddressHashMap::default();
+        let mut states = Map::default();
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         let ledger_data = self.block_db.get_ledger_data_export(addresses)?;
         let prod_stats = self.pos.get_stakers_production_stats(addresses);
@@ -1197,12 +1191,12 @@ impl ConsensusWorker {
 
     async fn get_operations(
         &mut self,
-        operation_ids: &OperationHashSet,
-    ) -> OperationHashMap<OperationSearchResult> {
+        operation_ids: &Set<OperationId>,
+    ) -> Map<OperationId, OperationSearchResult> {
         self.block_db.get_operations(operation_ids)
     }
 
-    /// Manages received protocolevents.
+    /// Manages received protocol events.
     ///
     /// # Arguments
     /// * event: event type to process.
@@ -1240,7 +1234,7 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_protocol_event.get_blocks",
                     { "list": list }
                 );
-                let mut results = BlockHashMap::default();
+                let mut results = Map::default();
                 for block_hash in list {
                     if let Some(a_block) = self.block_db.get_active_block(&block_hash) {
                         massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_found", { "hash": block_hash});
@@ -1326,11 +1320,9 @@ impl ConsensusWorker {
         }
 
         // Process new final blocks
-        let mut new_final_ops: OperationHashMap<(u64, u8)> = OperationHashMap::default();
-        let mut new_final_blocks = BlockHashMap::with_capacity_and_hasher(
-            new_final_block_ids.len(),
-            BuildHHasher::default(),
-        );
+        let mut new_final_ops: Map<OperationId, (u64, u8)> = Map::default();
+        let mut new_final_blocks =
+            Map::with_capacity_and_hasher(new_final_block_ids.len(), BuildMap::default());
         let timestamp = MassaTime::compensated_now(self.clock_compensation)?;
         for b_id in new_final_block_ids.into_iter() {
             if let Some(a_block) = self.block_db.get_active_block(&b_id) {
@@ -1426,7 +1418,7 @@ impl ConsensusWorker {
                 };
 
                 // actually create endorsements
-                let mut endorsements = EndorsementHashMap::default();
+                let mut endorsements = Map::default();
                 for (endorsement_index, addr) in endorsement_draws.into_iter().enumerate() {
                     if let Some((pub_k, priv_k)) = self.staking_keys.get(&addr) {
                         massa_trace!("consensus.consensus_worker.slot_tick.endorsement_creator_addr",

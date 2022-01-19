@@ -63,7 +63,7 @@ impl Interface for InterfaceImpl {
             Some(addr) => addr,
             _ => bail!("Failed to read call stack current address"),
         };
-        Ok(context.ledger_step.get_balance(&address).to_raw())
+        Ok(context.ledger_step.get_balance(address).to_raw())
     }
 
     /// Returns zero as a default if address not found.
@@ -100,7 +100,9 @@ impl Interface for InterfaceImpl {
         }
         let address = Address(massa_hash::hash::Hash::compute_from(&data));
         let res = address.to_bs58_check();
-        context.ledger_step.set_module(address, module.clone());
+        context
+            .ledger_step
+            .set_module(address, Some(module.clone()));
         context.owned_addresses.insert(address);
         context.created_addr_index += 1;
         Ok(res)

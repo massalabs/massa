@@ -6,15 +6,15 @@ use jsonrpc_core::BoxFuture;
 use jsonrpc_http_server::tokio::sync::mpsc;
 use massa_consensus::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution::ExecutionCommandSender;
-use massa_models::address::{AddressHashMap, AddressHashSet};
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
     TimeInterval,
 };
 use massa_models::clique::Clique;
+use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
-use massa_models::massa_hash::PubkeySig;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::{Map, Set};
 use massa_models::{Address, Amount, BlockId, EndorsementId, Operation, OperationId, Slot};
 use massa_network::NetworkCommandSender;
 use massa_signature::PrivateKey;
@@ -100,7 +100,7 @@ impl Endpoints for API<Private> {
         Box::pin(closure())
     }
 
-    fn get_staking_addresses(&self) -> BoxFuture<Result<AddressHashSet, ApiError>> {
+    fn get_staking_addresses(&self) -> BoxFuture<Result<Set<Address>, ApiError>> {
         let cmd_sender = self.0.consensus_command_sender.clone();
         let closure = async move || Ok(cmd_sender.get_staking_addresses().await?);
         Box::pin(closure())
@@ -126,8 +126,8 @@ impl Endpoints for API<Private> {
         crate::wrong_api::<Vec<Clique>>()
     }
 
-    fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<u64>, ApiError>> {
-        crate::wrong_api::<AddressHashMap<u64>>()
+    fn get_stakers(&self) -> BoxFuture<Result<Map<Address, u64>, ApiError>> {
+        crate::wrong_api::<Map<Address, u64>>()
     }
 
     fn get_operations(
