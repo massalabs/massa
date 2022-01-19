@@ -98,7 +98,7 @@ pub async fn start_network_controller(
     // load peer info database
     let mut peer_info_db = PeerInfoDatabase::new(&network_settings, clock_compensation).await?;
 
-    // add initial peers
+    // add bootstrap peers
     if let Some(peers) = initial_peers {
         peer_info_db.merge_candidate_peers(&peers.0)?;
     }

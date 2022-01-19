@@ -11,7 +11,14 @@ use massa_models::api::{AddressInfo, BlockInfo, EndorsementInfo, NodeStatus, Ope
 use massa_models::prehash::Set;
 use massa_models::{Address, OperationId};
 use massa_wallet::Wallet;
+use rev_lines::RevLines;
 use std::collections::VecDeque;
+use std::io::Error;
+use std::{
+    fs::File,
+    fs::OpenOptions,
+    io::{BufReader, Write},
+};
 use strum::IntoEnumIterator;
 use strum::ParseError;
 
@@ -65,11 +72,33 @@ struct CommandHistory {
     history: VecDeque<String>,
 }
 
+impl CommandHistory {
+    fn get_saved_history() -> Result<VecDeque<String>, Error> {
+        if let Ok(file) = File::open(&SETTINGS.history_file_path) {
+            let lines = RevLines::new(BufReader::new(file))?;
+            Ok(lines.collect())
+        } else {
+            File::create(&SETTINGS.history_file_path)?;
+            Ok(VecDeque::new())
+        }
+    }
+
+    fn write_to_saved_history(command: &String) {
+        if let Ok(mut file) = OpenOptions::new()
+            .write(true)
+            .append(true)
+            .open(&SETTINGS.history_file_path)
+        {
+            writeln!(file, "{}", command).ok();
+        }
+    }
+}
+
 impl Default for CommandHistory {
     fn default() -> Self {
         CommandHistory {
             max: SETTINGS.history,
-            history: VecDeque::new(),
+            history: CommandHistory::get_saved_history().unwrap_or_default(),
         }
     }
 }
@@ -83,7 +112,9 @@ impl<T: ToString> History<T> for CommandHistory {
         if self.history.len() == self.max {
             self.history.pop_back();
         }
-        self.history.push_front(val.to_string());
+        let string_value = val.to_string();
+        CommandHistory::write_to_saved_history(&string_value);
+        self.history.push_front(string_value);
     }
 }
 

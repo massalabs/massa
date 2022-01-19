@@ -168,6 +168,9 @@ pub enum Command {
         message = "show time remaining to end of current episode"
     )]
     when_episode_ends,
+
+    #[strum(ascii_case_insensitive, message = "tells you when moon")]
+    when_moon,
 }
 
 pub(crate) fn help() {
@@ -425,7 +428,10 @@ impl Command {
 
             Command::wallet_info => {
                 if !json {
-                    println!("WARNING: do not share your private key");
+                    println!(
+                        "{}: do not share your private key",
+                        style("WARNING").yellow()
+                    );
                 }
                 match client
                     .public
@@ -515,15 +521,19 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            println!("WARNING: this operation may be rejected due to insuffisant balance");
+                                            println!("{}: this operation may be rejected due to insuffisant balance", style("WARNING").yellow());
                                         }
                                     }
-                                    None => println!("WARNING: address {} not found", addr),
+                                    None => println!(
+                                        "{}: address {} not found",
+                                        style("WARNING").yellow(),
+                                        addr
+                                    ),
                                 }
                             }
                         }
                         None => {
-                            println!("WARNING: the total amount hit the limit overflow, operation will certainly be rejected");
+                            println!("{}: the total amount hit the limit overflow, operation will certainly be rejected", style("WARNING").yellow());
                         }
                     }
                 }
@@ -553,10 +563,14 @@ impl Command {
                                 if info.ledger_info.candidate_ledger_info.balance < fee
                                     || roll_count > info.rolls.candidate_rolls
                                 {
-                                    println!("WARNING: this operation may be rejected due to insuffisant balance or roll count");
+                                    println!("{}: this operation may be rejected due to insuffisant balance or roll count", style("WARNING").yellow());
                                 }
                             }
-                            None => println!("WARNING: address {} not found", addr),
+                            None => println!(
+                                "{}: address {} not found",
+                                style("WARNING").yellow(),
+                                addr
+                            ),
                         }
                     }
                 }
@@ -590,15 +604,19 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            println!("WARNING: this operation may be rejected due to insuffisant balance");
+                                            println!("{}: this operation may be rejected due to insuffisant balance", style("WARNING").yellow());
                                         }
                                     }
-                                    None => println!("WARNING: address {} not found", addr),
+                                    None => println!(
+                                        "{}: address {} not found",
+                                        style("WARNING").yellow(),
+                                        addr
+                                    ),
                                 }
                             }
                         }
                         None => {
-                            println!("WARNING: the total amount hit the limit overflow, operation will certainly be rejected");
+                            println!("{}: the total amount hit the limit overflow, operation will certainly be rejected", style("WARNING").yellow());
                         }
                     }
                 }
@@ -635,6 +653,13 @@ impl Command {
                 }
                 Ok(Box::new(()))
             }
+            Command::when_moon => {
+                let res = "At night 🌔.";
+                if !json {
+                    println!("{}", res);
+                }
+                Ok(Box::new(()))
+            }
             Command::send_smart_contract => {
                 if parameters.len() != 6 {
                     bail!("wrong number of parameters");
@@ -659,15 +684,19 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            println!("WARNING: this operation may be rejected due to insuffisant balance");
+                                            println!("{}: this operation may be rejected due to insuffisant balance", style("WARNING").yellow());
                                         }
                                     }
-                                    None => println!("WARNING: address {} not found", addr),
+                                    None => println!(
+                                        "{}: address {} not found",
+                                        style("WARNING").yellow(),
+                                        addr
+                                    ),
                                 }
                             }
                         }
                         None => {
-                            println!("WARNING: the total amount hit the limit overflow, operation will certainly be rejected");
+                            println!("{}: the total amount hit the limit overflow, operation will certainly be rejected", style("WARNING").yellow());
                         }
                     }
                 };

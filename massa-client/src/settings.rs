@@ -2,7 +2,7 @@
 
 use directories::ProjectDirs;
 use serde::Deserialize;
-use std::{net::IpAddr, path::Path};
+use std::{net::IpAddr, path::Path, path::PathBuf};
 
 lazy_static::lazy_static! {
     // TODO: this code is duplicated from /massa-node/settings.rs and should be part of a custom crate
@@ -33,6 +33,7 @@ lazy_static::lazy_static! {
 pub struct Settings {
     pub default_node: DefaultNode,
     pub history: usize,
+    pub history_file_path: PathBuf,
 }
 
 #[derive(Debug, Deserialize, Clone)]
