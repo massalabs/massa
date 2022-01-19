@@ -1,13 +1,16 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
 use crate::BootstrapExecutionState;
+use massa_hash::hash::Hash;
 use massa_models::address::AddressHashSet;
 use massa_models::execution::ExecuteReadOnlyResponse;
+use massa_models::output_event::SCOutputEvent;
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, Block, BlockId, Slot};
+use std::collections::HashMap;
 use std::sync::{Condvar, Mutex};
 use std::{collections::VecDeque, sync::Arc};
 use tokio::sync::oneshot;
-
+/// Most recent item at the end
 pub(crate) type StepHistory = VecDeque<StepHistoryItem>;
 pub type Bytecode = Vec<u8>;
 
@@ -22,6 +25,8 @@ pub(crate) struct StepHistoryItem {
 
     // list of SCE ledger changes caused by this execution step
     pub ledger_changes: SCELedgerChanges,
+
+    pub events: HashMap<Hash, SCOutputEvent>,
 }
 
 #[derive(Clone)]
@@ -39,6 +44,7 @@ pub(crate) struct ExecutionContext {
     pub call_stack: VecDeque<Address>,
     pub owned_addresses: AddressHashSet,
     pub read_only: bool,
+    pub events: HashMap<Hash, SCOutputEvent>,
 }
 
 #[derive(Clone)]
@@ -72,6 +78,7 @@ impl ExecutionContext {
             created_addr_index: Default::default(),
             read_only: Default::default(),
             created_event_index: Default::default(),
+            events: Default::default(),
         }
     }
 }

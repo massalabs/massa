@@ -225,7 +225,7 @@ impl VM {
 
         // run in the intepreter
         let run_result = assembly_simulator::run(&bytecode, max_gas, &*self.execution_interface);
-
+        let context = self.execution_context.lock().unwrap();
         // Send result back.
         let execution_response = ExecuteReadOnlyResponse {
             executed_at: slot,
@@ -234,8 +234,8 @@ impl VM {
                 |_| ReadOnlyResult::Error("Failed to run in read-only mode".to_string()),
                 |_| ReadOnlyResult::Ok,
             ),
-            // TODO: integrate with output events.
-            output_events: None,
+            // integrate with output events.
+            output_events: context.events.clone(),
         };
         if result_sender.send(execution_response).is_err() {
             debug!("Execution: could not send ExecuteReadOnlyResponse.");
@@ -311,6 +311,7 @@ impl VM {
             slot: step.slot,
             opt_block_id,
             ledger_changes: mem::take(&mut context.ledger_step.caused_changes),
+            events: context.events.clone(),
         }
     }
 
