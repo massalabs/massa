@@ -154,6 +154,7 @@ impl VM {
         context.owned_addresses.clear();
         context.call_stack.clear();
         context.read_only = false;
+        context.call_coins = Default::default();
     }
 
     /// Prepares (updates) the shared context before the new operation.
@@ -192,6 +193,7 @@ impl VM {
         context.opt_block_creator_addr = Some(block_creator_addr);
         context.call_stack = vec![data.sender_address].into();
         context.owned_addresses.clear();
+        context.call_coins = Default::default();
 
         (
             context.ledger_step.caused_changes.clone(),

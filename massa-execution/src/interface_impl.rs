@@ -7,6 +7,7 @@ use anyhow::{bail, Result};
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
     timeslots::get_block_slot_timestamp,
+    Amount,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
 use massa_time::MassaTime;
@@ -326,6 +327,27 @@ impl Interface for InterfaceImpl {
             .iter()
             .map(|addr| addr.to_bs58_check())
             .collect())
+    }
+
+    /// Spend an amount of coins from the current address to a target address,
+    /// making those available for use by a contract called with the target address.
+    fn set_call_coins(
+        &self,
+        target_address: &massa_sc_runtime::Address,
+        raw_amount: u64,
+    ) -> Result<()> {
+        // 1. transfer coins.
+        self.transfer_coins(target_address, raw_amount)?;
+
+        // 2. Set call coins.
+        let mut context = context_guard!(self);
+        context.call_coins = Amount::from_raw(raw_amount);
+        Ok(())
+    }
+
+    /// Get the amount of coins that have been made available for use by the caller of the currently executing code.
+    fn get_call_coins(&self) -> Result<u64> {
+        Ok(context_guard!(self).call_coins.to_raw())
     }
 
     fn generate_event(&self, data: String) -> Result<()> {

@@ -41,6 +41,8 @@ pub(crate) struct ExecutionContext {
     pub owned_addresses: Set<Address>,
     pub read_only: bool,
     pub unsafe_rng: Xoshiro256PlusPlus,
+    /// Amount made available by the caller of the current execution for a specific purpose.
+    pub call_coins: Amount,
 }
 
 #[derive(Clone)]
@@ -72,6 +74,7 @@ impl ExecutionContext {
             created_addr_index: Default::default(),
             read_only: Default::default(),
             unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
+            call_coins: Default::default(),
         }
     }
 }
