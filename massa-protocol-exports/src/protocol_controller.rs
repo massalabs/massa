@@ -46,13 +46,16 @@ pub enum ProtocolPoolEvent {
     },
 }
 
+type BlocksResults =
+    Map<BlockId, Option<(Block, Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
+
 /// Commands that protocol worker can process
 #[derive(Debug, Serialize)]
 pub enum ProtocolCommand {
     /// Notify block integration of a given block.
     IntegratedBlock {
         block_id: BlockId,
-        block: Block,
+        block: Box<Block>,
         operation_ids: Set<OperationId>,
         endorsement_ids: Vec<EndorsementId>,
     },
@@ -64,9 +67,7 @@ pub enum ProtocolCommand {
         remove: Set<BlockId>,
     },
     /// The response to a ProtocolEvent::GetBlocks.
-    GetBlocksResults(
-        Map<BlockId, Option<(Block, Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>,
-    ),
+    GetBlocksResults(BlocksResults),
     /// Propagate operations
     PropagateOperations(Map<OperationId, Operation>),
     /// Propagate endorsements
@@ -78,6 +79,9 @@ pub enum ProtocolManagementCommand {}
 
 #[derive(Clone)]
 pub struct ProtocolCommandSender(pub mpsc::Sender<ProtocolCommand>);
+
+type BlockResults =
+    Map<BlockId, Option<(Block, Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
 
 impl ProtocolCommandSender {
     /// Sends the order to propagate the header of a block
@@ -96,7 +100,7 @@ impl ProtocolCommandSender {
             .0
             .send(ProtocolCommand::IntegratedBlock {
                 block_id,
-                block,
+                block: Box::new(block),
                 operation_ids,
                 endorsement_ids,
             })
@@ -123,10 +127,7 @@ impl ProtocolCommandSender {
     /// Send the response to a ProtocolEvent::GetBlocks.
     pub async fn send_get_blocks_results(
         &mut self,
-        results: Map<
-            BlockId,
-            Option<(Block, Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>,
-        >,
+        results: BlockResults,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_get_blocks_results", {
             "results": results

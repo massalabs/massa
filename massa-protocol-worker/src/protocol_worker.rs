@@ -482,7 +482,7 @@ impl ProtocolWorker {
                         );
                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_block", { "node": node_id, "block_id": block_id, "block": block });
                         self.network_command_sender
-                            .send_block(*node_id, block.clone())
+                            .send_block(*node_id, *block.clone())
                             .await
                             .map_err(|_| {
                                 ProtocolError::ChannelError(
