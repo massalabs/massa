@@ -53,12 +53,12 @@ jobs:
           cd ..
           if [[ "${{ matrix.os }}" == "windows-latest" ]]
           then
-            7z a ${{ matrix.name }} massa
+            7z a massa_${GITHUB_REF/refs\/tags\//}_${{ matrix.name }} massa
           else
-            tar czvf ${{ matrix.name }} massa
+            tar czvf massa_${GITHUB_REF/refs\/tags\//}_${{ matrix.name }} massa
           fi
           cd -
       - name: Publish
         uses: softprops/action-gh-release@v1
         with:
-            files: 'release_*'
+            files: 'massa_*'
