@@ -1,6 +1,9 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution/src/interface_impl.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>interface_impl.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a class="sidebar-logo" href="../../massa_execution/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><div>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_execution/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><div>
                                 <input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
@@ -275,17 +278,105 @@
 <span id="272">272</span>
 <span id="273">273</span>
 <span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
 </pre><pre class="rust"><code><span class="doccomment">/// Implementation of the interface used in the execution external library</span>
 <span class="doccomment">///</span>
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types::ExecutionContext</span>;
 <span class="kw">use</span> <span class="ident">anyhow</span>::{<span class="ident">bail</span>, <span class="prelude-ty">Result</span>};
-<span class="kw">use</span> <span class="ident">assembly_simulator</span>::{<span class="ident">Bytecode</span>, <span class="ident">Interface</span>, <span class="ident">InterfaceClone</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">output_event</span>::{<span class="ident">EventExecutionContext</span>, <span class="ident">SCOutputEvent</span>},
-    <span class="ident">Address</span>, <span class="ident">Amount</span>,
+    <span class="ident">timeslots::get_block_slot_timestamp</span>,
 };
+<span class="kw">use</span> <span class="ident">massa_sc_runtime</span>::{<span class="ident">Interface</span>, <span class="ident">InterfaceClone</span>};
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
+<span class="kw">use</span> <span class="ident">rand::Rng</span>;
 <span class="kw">use</span> <span class="ident">std::sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
 <span class="kw">use</span> <span class="ident">tracing::debug</span>;
 
@@ -301,11 +392,24 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">InterfaceImpl</span> {
     <span class="ident">context</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionContext</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">thread_count</span>: <span class="ident">u8</span>,
+    <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
+    <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">InterfaceImpl</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">context</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionContext</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="ident">InterfaceImpl</span> {
-        <span class="ident">InterfaceImpl</span> { <span class="ident">context</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">context</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionContext</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">thread_count</span>: <span class="ident">u8</span>,
+        <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
+        <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
+    ) -&gt; <span class="ident">InterfaceImpl</span> {
+        <span class="ident">InterfaceImpl</span> {
+            <span class="ident">context</span>,
+            <span class="ident">thread_count</span>,
+            <span class="ident">t0</span>,
+            <span class="ident">genesis_timestamp</span>,
+        }
     }
 }
 
@@ -322,7 +426,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">get_module</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_str</span>(<span class="ident">address</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_str</span>(<span class="ident">address</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">bytecode</span> <span class="op">=</span> { <span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">ledger_step</span>.<span class="ident">get_module</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>) };
         <span class="kw">match</span> <span class="ident">bytecode</span> {
             <span class="prelude-val">Some</span>(<span class="ident">bytecode</span>) =&gt; {
@@ -345,7 +449,7 @@
 
     <span class="doccomment">/// Returns zero as a default if address not found.</span>
     <span class="kw">fn</span> <span class="ident">get_balance_for</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address::from_str</span>(<span class="ident">address</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_str</span>(<span class="ident">address</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>)
             .<span class="ident">ledger_step</span>
             .<span class="ident">get_balance</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>)
@@ -365,7 +469,10 @@
     <span class="doccomment">/// operation index in the block and the index of address owned in context.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Insert in the ledger the given bytecode in the generated address</span>
-    <span class="kw">fn</span> <span class="ident">create_module</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">module</span>: <span class="kw-2">&amp;</span><span class="ident">Bytecode</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">assembly_simulator::Address</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">create_module</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">module</span>: <span class="kw-2">&amp;</span><span class="ident">massa_sc_runtime::Bytecode</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">massa_sc_runtime::Address</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let</span> (<span class="ident">slot</span>, <span class="ident">created_addr_index</span>) <span class="op">=</span> (<span class="ident">context</span>.<span class="ident">slot</span>, <span class="ident">context</span>.<span class="ident">created_addr_index</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">slot</span>.<span class="ident">to_bytes_key</span>().<span class="ident">to_vec</span>();
@@ -375,7 +482,7 @@
         } <span class="kw">else</span> {
             <span class="ident">data</span>.<span class="ident">push</span>(<span class="number">1u8</span>);
         }
-        <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">Address</span>(<span class="ident">massa_hash::hash::Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>));
+        <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">massa_models::Address</span>(<span class="ident">massa_hash::hash::Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>));
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">address</span>.<span class="ident">to_bs58_check</span>();
         <span class="ident">context</span>
             .<span class="ident">ledger_step</span>
@@ -386,13 +493,16 @@
     }
 
     <span class="doccomment">/// Requires the data at the address</span>
-    <span class="kw">fn</span> <span class="ident">get_data_for</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">assembly_simulator::Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Bytecode</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Address::from_bs58_check</span>(<span class="ident">address</span>)<span class="question-mark">?</span>;
-        <span class="comment">// @damip is it ok to get a hash like that?</span>
-        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">massa_hash::hash::Hash::from_bs58_check</span>(<span class="ident">key</span>)<span class="question-mark">?</span>;
+    <span class="kw">fn</span> <span class="ident">get_data_for</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">massa_sc_runtime::Address</span>,
+        <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">massa_sc_runtime::Bytecode</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">massa_models::Address::from_bs58_check</span>(<span class="ident">address</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">massa_hash::hash::Hash::compute_from</span>(<span class="ident">key</span>.<span class="ident">as_bytes</span>());
         <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">ledger_step</span>.<span class="ident">get_data_entry</span>(<span class="ident">addr</span>, <span class="kw-2">&amp;</span><span class="ident">key</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">bytecode</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">bytecode</span>),
+            <span class="prelude-val">Some</span>(<span class="ident">value</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">value</span>),
             <span class="kw">_</span> =&gt; <span class="macro">bail!</span>(<span class="string">&quot;Data entry not found&quot;</span>),
         }
     }
@@ -403,12 +513,12 @@
     <span class="doccomment">/// The execution lib will allways use the current context address for the update</span>
     <span class="kw">fn</span> <span class="ident">set_data_for</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">assembly_simulator::Address</span>,
-        <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Bytecode</span>,
+        <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">massa_sc_runtime::Address</span>,
+        <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>,
+        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">massa_sc_runtime::Bytecode</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">Address::from_str</span>(<span class="ident">address</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">massa_hash::hash::Hash::from_bs58_check</span>(<span class="ident">key</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_str</span>(<span class="ident">address</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">massa_hash::hash::Hash::compute_from</span>(<span class="ident">key</span>.<span class="ident">as_bytes</span>());
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let</span> <span class="ident">is_curr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">back</span>() {
             <span class="prelude-val">Some</span>(<span class="ident">curr_address</span>) =&gt; <span class="ident">addr</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">curr_address</span>,
@@ -422,41 +532,92 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">get_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Bytecode</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">has_data_for</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">massa_sc_runtime::Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
+        <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_str</span>(<span class="ident">address</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">massa_hash::hash::Hash::compute_from</span>(<span class="ident">key</span>.<span class="ident">as_bytes</span>());
+        <span class="prelude-val">Ok</span>(<span class="ident">context</span>.<span class="ident">ledger_step</span>.<span class="ident">has_data_entry</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>, <span class="kw-2">&amp;</span><span class="ident">key</span>))
+    }
+
+    <span class="kw">fn</span> <span class="ident">get_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">back</span>() {
             <span class="prelude-val">Some</span>(<span class="ident">addr</span>) =&gt; <span class="ident">addr</span>,
             <span class="kw">_</span> =&gt; <span class="macro">bail!</span>(<span class="string">&quot;Failed to read call stack current address&quot;</span>),
         };
-        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">massa_hash::hash::Hash::from_bs58_check</span>(<span class="ident">key</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">massa_hash::hash::Hash::compute_from</span>(<span class="ident">key</span>.<span class="ident">as_bytes</span>());
         <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">ledger_step</span>.<span class="ident">get_data_entry</span>(<span class="ident">addr</span>, <span class="kw-2">&amp;</span><span class="ident">key</span>) {
             <span class="prelude-val">Some</span>(<span class="ident">bytecode</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">bytecode</span>),
             <span class="kw">_</span> =&gt; <span class="macro">bail!</span>(<span class="string">&quot;Data entry not found&quot;</span>),
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">set_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Bytecode</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">back</span>() {
             <span class="prelude-val">Some</span>(<span class="ident">addr</span>) =&gt; <span class="kw-2">*</span><span class="ident">addr</span>,
             <span class="kw">_</span> =&gt; <span class="macro">bail!</span>(<span class="string">&quot;Failed to read call stack current address&quot;</span>),
         };
-        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">massa_hash::hash::Hash::from_bs58_check</span>(<span class="ident">key</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">massa_hash::hash::Hash::compute_from</span>(<span class="ident">key</span>.<span class="ident">as_bytes</span>());
         <span class="ident">context</span>.<span class="ident">ledger_step</span>.<span class="ident">set_data_entry</span>(<span class="ident">addr</span>, <span class="ident">key</span>, <span class="ident">value</span>.<span class="ident">clone</span>());
         <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn</span> <span class="ident">has_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
+        <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">back</span>() {
+            <span class="prelude-val">Some</span>(<span class="ident">addr</span>) =&gt; <span class="ident">addr</span>,
+            <span class="kw">_</span> =&gt; <span class="macro">bail!</span>(<span class="string">&quot;Failed to read call stack current address&quot;</span>),
+        };
+        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">massa_hash::hash::Hash::compute_from</span>(<span class="ident">key</span>.<span class="ident">as_bytes</span>());
+        <span class="prelude-val">Ok</span>(<span class="ident">context</span>.<span class="ident">ledger_step</span>.<span class="ident">has_data_entry</span>(<span class="ident">addr</span>, <span class="kw-2">&amp;</span><span class="ident">key</span>))
+    }
+
+    <span class="doccomment">/// hash data</span>
+    <span class="kw">fn</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">massa_sc_runtime::MassaHash</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">massa_hash::hash::Hash::compute_from</span>(<span class="ident">data</span>).<span class="ident">to_bs58_check</span>())
+    }
+
+    <span class="doccomment">/// convert a pubkey to an address</span>
+    <span class="kw">fn</span> <span class="ident">address_from_public_key</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">massa_sc_runtime::PublicKey</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">massa_sc_runtime::Address</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">massa_signature::PublicKey::from_bs58_check</span>(<span class="ident">public_key</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">public_key</span>);
+        <span class="prelude-val">Ok</span>(<span class="ident">addr</span>.<span class="ident">to_bs58_check</span>())
+    }
+
+    <span class="doccomment">/// Verify signature</span>
+    <span class="kw">fn</span> <span class="ident">signature_verify</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+        <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">massa_sc_runtime::Signature</span>,
+        <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">massa_sc_runtime::PublicKey</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">massa_signature::Signature::from_bs58_check</span>(<span class="ident">signature</span>) {
+            <span class="prelude-val">Ok</span>(<span class="ident">sig</span>) =&gt; <span class="ident">sig</span>,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
+        };
+        <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">massa_signature::PublicKey::from_bs58_check</span>(<span class="ident">public_key</span>) {
+            <span class="prelude-val">Ok</span>(<span class="ident">pubk</span>) =&gt; <span class="ident">pubk</span>,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
+        };
+        <span class="kw">let</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">massa_hash::hash::Hash::compute_from</span>(<span class="ident">data</span>);
+        <span class="prelude-val">Ok</span>(<span class="ident">massa_signature::verify_signature</span>(<span class="kw-2">&amp;</span><span class="ident">h</span>, <span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="kw-2">&amp;</span><span class="ident">public_key</span>).<span class="ident">is_ok</span>())
     }
 
     <span class="doccomment">/// Transfer coins from the current address to a target address</span>
     <span class="doccomment">/// to_address: target address</span>
     <span class="doccomment">/// raw_amount: amount to transfer (in raw u64)</span>
     <span class="kw">fn</span> <span class="ident">transfer_coins</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">to_address</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>, <span class="ident">raw_amount</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">to_address</span> <span class="op">=</span> <span class="ident">Address::from_str</span>(<span class="ident">to_address</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">to_address</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_str</span>(<span class="ident">to_address</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let</span> <span class="ident">from_address</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">back</span>() {
             <span class="prelude-val">Some</span>(<span class="ident">addr</span>) =&gt; <span class="kw-2">*</span><span class="ident">addr</span>,
             <span class="kw">_</span> =&gt; <span class="macro">bail!</span>(<span class="string">&quot;Failed to read call stack current address&quot;</span>),
         };
-        <span class="kw">let</span> <span class="ident">amount</span> <span class="op">=</span> <span class="ident">Amount::from_raw</span>(<span class="ident">raw_amount</span>);
+        <span class="kw">let</span> <span class="ident">amount</span> <span class="op">=</span> <span class="ident">massa_models::Amount::from_raw</span>(<span class="ident">raw_amount</span>);
         <span class="comment">// debit</span>
         <span class="ident">context</span>
             .<span class="ident">ledger_step</span>
@@ -486,8 +647,8 @@
         <span class="ident">to_address</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>,
         <span class="ident">raw_amount</span>: <span class="ident">u64</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">from_address</span> <span class="op">=</span> <span class="ident">Address::from_str</span>(<span class="ident">from_address</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">to_address</span> <span class="op">=</span> <span class="ident">Address::from_str</span>(<span class="ident">to_address</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">from_address</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_str</span>(<span class="ident">from_address</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">to_address</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_str</span>(<span class="ident">to_address</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let</span> <span class="ident">is_curr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">back</span>() {
             <span class="prelude-val">Some</span>(<span class="ident">curr_address</span>) =&gt; <span class="ident">from_address</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">curr_address</span>,
@@ -496,7 +657,7 @@
         <span class="kw">if</span> <span class="op">!</span><span class="ident">context</span>.<span class="ident">owned_addresses</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">from_address</span>) <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">is_curr</span> {
             <span class="macro">bail!</span>(<span class="string">&quot;You don&#39;t have the spending access to this entry&quot;</span>)
         }
-        <span class="kw">let</span> <span class="ident">amount</span> <span class="op">=</span> <span class="ident">Amount::from_raw</span>(<span class="ident">raw_amount</span>);
+        <span class="kw">let</span> <span class="ident">amount</span> <span class="op">=</span> <span class="ident">massa_models::Amount::from_raw</span>(<span class="ident">raw_amount</span>);
         <span class="comment">// debit</span>
         <span class="ident">context</span>
             .<span class="ident">ledger_step</span>
@@ -517,7 +678,7 @@
     }
 
     <span class="doccomment">/// Return the list of owned adresses of a given SC user</span>
-    <span class="kw">fn</span> <span class="ident">get_owned_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">assembly_simulator::Address</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_owned_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">massa_sc_runtime::Address</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>)
             .<span class="ident">owned_addresses</span>
             .<span class="ident">iter</span>()
@@ -525,7 +686,7 @@
             .<span class="ident">collect</span>())
     }
 
-    <span class="kw">fn</span> <span class="ident">get_call_stack</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">assembly_simulator::Address</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_call_stack</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">massa_sc_runtime::Address</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>)
             .<span class="ident">call_stack</span>
             .<span class="ident">iter</span>()
@@ -548,7 +709,21 @@
         <span class="comment">// TODO store the event somewhere</span>
         <span class="prelude-val">Ok</span>(())
     }
+
+    <span class="doccomment">/// Returns the current time (millisecond unix timestamp)</span>
+    <span class="kw">fn</span> <span class="ident">get_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">slot</span>;
+        <span class="kw">let</span> <span class="ident">ts</span> <span class="op">=</span>
+            <span class="ident">get_block_slot_timestamp</span>(<span class="self">self</span>.<span class="ident">thread_count</span>, <span class="self">self</span>.<span class="ident">t0</span>, <span class="self">self</span>.<span class="ident">genesis_timestamp</span>, <span class="ident">slot</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">ts</span>.<span class="ident">to_millis</span>())
+    }
+
+    <span class="doccomment">/// Returns a random number (unsafe: can be predicted and manipulated)</span>
+    <span class="kw">fn</span> <span class="ident">unsafe_random</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">i64</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">distr</span> <span class="op">=</span> <span class="ident">rand::distributions::Uniform::new_inclusive</span>(<span class="ident">i64::MIN</span>, <span class="ident">i64::MAX</span>);
+        <span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">unsafe_rng</span>.<span class="ident">sample</span>(<span class="ident">distr</span>))
+    }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (ee5d8d37b 2022-01-17)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (5e57faa78 2022-01-19)" ></div>
 </body></html>
