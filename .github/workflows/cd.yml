@@ -71,6 +71,6 @@ jobs:
         submodules: "recursive"
     - run: |
        apt install python3 poetry
-       cd massa-deploy
+       cd massa-deploy/testnet
        poetry install
        python3 deploy.py
