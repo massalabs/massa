@@ -1,10 +1,12 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
 use crate::BootstrapExecutionState;
-use assembly_simulator::Bytecode;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::prehash::Set;
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, Block, BlockId, Slot};
+use massa_sc_runtime::Bytecode;
+use rand::SeedableRng;
+use rand_xoshiro::Xoshiro256PlusPlus;
 use std::sync::{Condvar, Mutex};
 use std::{collections::VecDeque, sync::Arc};
 use tokio::sync::oneshot;
@@ -38,13 +40,12 @@ pub(crate) struct ExecutionContext {
     pub call_stack: VecDeque<Address>,
     pub owned_addresses: Set<Address>,
     pub read_only: bool,
+    pub unsafe_rng: Xoshiro256PlusPlus,
 }
 
 #[derive(Clone)]
 pub(crate) struct ExecutionStep {
     pub slot: Slot,
-    // TODO add pos_seed for RNG seeding
-    // TODO add pos_draws to list the draws (block and endorsement creators) for that slot
     pub block: Option<(BlockId, Block)>, // None if miss
 }
 
@@ -70,6 +71,7 @@ impl ExecutionContext {
             owned_addresses: Default::default(),
             created_addr_index: Default::default(),
             read_only: Default::default(),
+            unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
         }
     }
 }
