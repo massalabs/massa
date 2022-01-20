@@ -173,6 +173,9 @@
 <span id="167">167</span>
 <span id="168">168</span>
 <span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::AMOUNT_DECIMAL_FACTOR</span>;
@@ -196,10 +199,12 @@
         <span class="self">Self</span>(<span class="ident">raw</span>)
     }
 
+    <span class="attribute">#[<span class="ident">must_use</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_add</span>(<span class="self">self</span>, <span class="ident">amount</span>: <span class="ident">Amount</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">Amount</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_add</span>(<span class="ident">amount</span>.<span class="number">0</span>))
     }
 
+    <span class="attribute">#[<span class="ident">must_use</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_sub</span>(<span class="self">self</span>, <span class="ident">amount</span>: <span class="ident">Amount</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">Amount</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_sub</span>(<span class="ident">amount</span>.<span class="number">0</span>))
     }
@@ -250,6 +255,7 @@
     <span class="doccomment">/// let res : Amount = amount_1.saturating_mul_u64(7);</span>
     <span class="doccomment">/// assert_eq!(res, Amount::from_str(&quot;294&quot;).unwrap());</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_mul_u64</span>(<span class="self">self</span>, <span class="ident">factor</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">Amount</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_mul</span>(<span class="ident">factor</span>))
     }

@@ -368,6 +368,9 @@
 <span id="362">362</span>
 <span id="363">363</span>
 <span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">mod</span> <span class="ident">error</span>;
@@ -575,6 +578,7 @@
     <span class="doccomment">/// let res : MassaTime = time_1.saturating_sub(time_2);</span>
     <span class="doccomment">/// assert_eq!(res, MassaTime::from(42-7))</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_sub</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">MassaTime</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">MassaTime</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_sub</span>(<span class="ident">t</span>.<span class="number">0</span>))
     }
@@ -586,6 +590,7 @@
     <span class="doccomment">/// let res : MassaTime = time_1.saturating_add(time_2);</span>
     <span class="doccomment">/// assert_eq!(res, MassaTime::from(42+7))</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_add</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">MassaTime</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">MassaTime</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_add</span>(<span class="ident">t</span>.<span class="number">0</span>))
     }
@@ -650,6 +655,7 @@
     <span class="doccomment">/// let res : MassaTime = time_1.saturating_mul(7);</span>
     <span class="doccomment">/// assert_eq!(res,MassaTime::from(42*7))</span>
     <span class="doccomment">/// ```</span>
+    <span class="attribute">#[<span class="ident">must_use</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_mul</span>(<span class="self">self</span>, <span class="ident">n</span>: <span class="ident">u64</span>) -&gt; <span class="ident">MassaTime</span> {
         <span class="ident">MassaTime</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_mul</span>(<span class="ident">n</span>))
     }

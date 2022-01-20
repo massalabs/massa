@@ -101,7 +101,7 @@
     <span class="doccomment">/// error receiving oneshot response : {0}</span>
     <span class="ident">TokieRecvError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">tokio::sync::oneshot::error::RecvError</span>),
     <span class="doccomment">/// error sending protocol event: {0}</span>
-    <span class="ident">TokioSendError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">tokio::sync::mpsc::error::SendError</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span>),
+    <span class="ident">TokioSendError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">tokio::sync::mpsc::error::SendError</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Error during network connection:`{0:?}`</span>
     <span class="ident">PeerConnectionError</span>(<span class="ident">NetworkConnectionErrorType</span>),
     <span class="doccomment">/// The ip:`{0}` address is not valid</span>

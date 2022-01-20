@@ -2289,14 +2289,14 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Argument</span>
     <span class="doccomment">/// new_peers: peers we are trying to merge</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_candidate_peers</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">new_peers</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_candidate_peers</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">new_peers</span>: <span class="kw-2">&amp;</span>[<span class="ident">IpAddr</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">new_peers</span>.<span class="ident">is_empty</span>() {
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
         }
         <span class="ident">cleanup_peers</span>(
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
             <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
-            <span class="prelude-val">Some</span>(<span class="ident">new_peers</span>),
+            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">new_peers</span>.<span class="ident">to_vec</span>()),
             <span class="self">self</span>.<span class="ident">clock_compensation</span>,
             <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
         )<span class="question-mark">?</span>;

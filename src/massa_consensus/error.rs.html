@@ -106,6 +106,12 @@
 <span id="100">100</span>
 <span id="101">101</span>
 <span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::consensus_worker::ConsensusEvent</span>;
@@ -156,7 +162,7 @@
     <span class="doccomment">/// massa_hash error {0}</span>
     <span class="ident">MassaHashError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_hash::MassaHashError</span>),
     <span class="doccomment">/// Protocol error {0}</span>
-    <span class="ident">ProtocolError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ProtocolError</span>),
+    <span class="ident">ProtocolError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">ProtocolError</span><span class="op">&gt;</span>),
     <span class="doccomment">/// failed retrieving consensus controller event</span>
     <span class="ident">ControllerEventError</span>,
     <span class="doccomment">/// Join error {0}</span>
@@ -207,6 +213,12 @@
     <span class="ident">ChannelError</span>(<span class="ident">String</span>),
     <span class="doccomment">/// amount overflow</span>
     <span class="ident">AmountOverflowError</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">std::convert::From</span><span class="op">&lt;</span><span class="ident">massa_protocol_exports::ProtocolError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ConsensusError</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">err</span>: <span class="ident">massa_protocol_exports::ProtocolError</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">ConsensusError::ProtocolError</span>(<span class="ident">Box::new</span>(<span class="ident">err</span>))
+    }
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (5e57faa78 2022-01-19)" ></div>

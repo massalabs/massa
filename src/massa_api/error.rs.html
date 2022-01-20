@@ -60,6 +60,12 @@
 <span id="54">54</span>
 <span id="55">55</span>
 <span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
@@ -86,7 +92,7 @@
     <span class="doccomment">/// massa_hash error: {0}</span>
     <span class="ident">MassaHashError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MassaHashError</span>),
     <span class="doccomment">/// consensus error: {0}</span>
-    <span class="ident">ConsensusError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ConsensusError</span>),
+    <span class="ident">ConsensusError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">ConsensusError</span><span class="op">&gt;</span>),
     <span class="doccomment">/// execution error: {0}</span>
     <span class="ident">ExecutionError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExecutionError</span>),
     <span class="doccomment">/// network error: {0}</span>
@@ -114,6 +120,12 @@
             <span class="ident">message</span>: <span class="ident">err</span>.<span class="ident">to_string</span>(),
             <span class="ident">data</span>: <span class="prelude-val">None</span>,
         }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">std::convert::From</span><span class="op">&lt;</span><span class="ident">massa_consensus::ConsensusError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ApiError</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">err</span>: <span class="ident">massa_consensus::ConsensusError</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">ApiError::ConsensusError</span>(<span class="ident">Box::new</span>(<span class="ident">err</span>))
     }
 }
 </code></pre></div>

@@ -286,6 +286,7 @@
 <span id="280">280</span>
 <span id="281">281</span>
 <span id="282">282</span>
+<span id="283">283</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ProtocolError</span>;
@@ -334,13 +335,16 @@
     },
 }
 
+<span class="kw">type</span> <span class="ident">BlocksResults</span> <span class="op">=</span>
+    <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Block</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span><span class="op">&gt;</span>;
+
 <span class="doccomment">/// Commands that protocol worker can process</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProtocolCommand</span> {
     <span class="doccomment">/// Notify block integration of a given block.</span>
     <span class="ident">IntegratedBlock</span> {
         <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-        <span class="ident">block</span>: <span class="ident">Block</span>,
+        <span class="ident">block</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span>,
         <span class="ident">operation_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
         <span class="ident">endorsement_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
     },
@@ -352,9 +356,7 @@
         <span class="ident">remove</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// The response to a ProtocolEvent::GetBlocks.</span>
-    <span class="ident">GetBlocksResults</span>(
-        <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Block</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
-    ),
+    <span class="ident">GetBlocksResults</span>(<span class="ident">BlocksResults</span>),
     <span class="doccomment">/// Propagate operations</span>
     <span class="ident">PropagateOperations</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">Operation</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Propagate endorsements</span>
@@ -366,6 +368,9 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolCommandSender</span>(<span class="kw">pub</span> <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ProtocolCommand</span><span class="op">&gt;</span>);
+
+<span class="kw">type</span> <span class="ident">BlockResults</span> <span class="op">=</span>
+    <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Block</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span><span class="op">&gt;</span>;
 
 <span class="kw">impl</span> <span class="ident">ProtocolCommandSender</span> {
     <span class="doccomment">/// Sends the order to propagate the header of a block</span>
@@ -384,7 +389,7 @@
             .<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">ProtocolCommand::IntegratedBlock</span> {
                 <span class="ident">block_id</span>,
-                <span class="ident">block</span>,
+                <span class="ident">block</span>: <span class="ident">Box::new</span>(<span class="ident">block</span>),
                 <span class="ident">operation_ids</span>,
                 <span class="ident">endorsement_ids</span>,
             })
@@ -411,10 +416,7 @@
     <span class="doccomment">/// Send the response to a ProtocolEvent::GetBlocks.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_get_blocks_results</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">results</span>: <span class="ident">Map</span><span class="op">&lt;</span>
-            <span class="ident">BlockId</span>,
-            <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Block</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-        <span class="op">&gt;</span>,
+        <span class="ident">results</span>: <span class="ident">BlockResults</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.send_get_blocks_results&quot;</span>, {
             <span class="string">&quot;results&quot;</span>: <span class="ident">results</span>
