@@ -108,30 +108,39 @@ pub enum ConsensusEvent {
 #[derive(Debug, Clone)]
 pub enum ConsensusManagementCommand {}
 
+/// Communication async channels for the consensus worker
+/// Contains consensus channels associated (protocol & execution)
+/// Contains alse controller async channels (command, manager receivers and event sender)
+/// Contains a sender to the pool worker commands
+pub(crate) struct ConsensusWorkerChannels {
+    /// Associated protocol command sender.
+    pub(crate) protocol_command_sender: ProtocolCommandSender,
+    /// Associated protocol event listener.
+    pub(crate) protocol_event_receiver: ProtocolEventReceiver,
+    /// Associated execution event listener.
+    pub(crate) execution_event_receiver: ExecutionEventReceiver,
+    /// Execution command sender.
+    pub(crate) execution_command_sender: ExecutionCommandSender,
+    /// Associated Pool command sender.
+    pub(crate) pool_command_sender: PoolCommandSender,
+    /// Channel receiving consensus commands.
+    pub(crate) controller_command_rx: mpsc::Receiver<ConsensusCommand>,
+    /// Channel sending out consensus events.
+    pub(crate) controller_event_tx: mpsc::Sender<ConsensusEvent>,
+    /// Channel receiving consensus management commands.
+    pub(crate) controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
+}
+
 /// Manages consensus.
 pub struct ConsensusWorker {
     /// Consensus Configuration
     cfg: ConsensusConfig,
     /// Genesis blocks werecreated with that public key.
     genesis_public_key: PublicKey,
-    /// Associated protocol command sender.
-    protocol_command_sender: ProtocolCommandSender,
-    /// Associated protocol event listener.
-    protocol_event_receiver: ProtocolEventReceiver,
-    /// Associated execution event listener.
-    execution_event_receiver: ExecutionEventReceiver,
-    /// Execution command sender.
-    execution_command_sender: ExecutionCommandSender,
-    /// Associated Pool command sender.
-    pool_command_sender: PoolCommandSender,
+    // Associated channels, sender and receivers
+    channels: ConsensusWorkerChannels,
     /// Database containing all information about blocks, the blockgraph and cliques.
     block_db: BlockGraph,
-    /// Channel receiving consensus commands.
-    controller_command_rx: mpsc::Receiver<ConsensusCommand>,
-    /// Channel sending out consensus events.
-    controller_event_tx: mpsc::Sender<ConsensusEvent>,
-    /// Channel receiving consensus management commands.
-    controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
     /// Proof of stake module.
     pos: ProofOfStake,
     /// Previous slot.
@@ -167,18 +176,11 @@ impl ConsensusWorker {
     /// * controller_command_rx: Channel receiving consensus commands.
     /// * controller_event_tx: Channel sending out consensus events.
     /// * controller_manager_rx: Channel receiving consensus management commands.
-    pub async fn new(
+    pub(crate) async fn new(
         cfg: ConsensusConfig,
-        protocol_command_sender: ProtocolCommandSender,
-        protocol_event_receiver: ProtocolEventReceiver,
-        execution_event_receiver: ExecutionEventReceiver,
-        pool_command_sender: PoolCommandSender,
-        execution_command_sender: ExecutionCommandSender,
+        channels: ConsensusWorkerChannels,
         block_db: BlockGraph,
         pos: ProofOfStake,
-        controller_command_rx: mpsc::Receiver<ConsensusCommand>,
-        controller_event_tx: mpsc::Sender<ConsensusEvent>,
-        controller_manager_rx: mpsc::Receiver<ConsensusManagementCommand>,
         clock_compensation: i64,
         staking_keys: Map<Address, (PublicKey, PrivateKey)>,
     ) -> Result<ConsensusWorker, ConsensusError> {
@@ -244,7 +246,8 @@ impl ConsensusWorker {
         // notify execution module of current blockclique and final blocks
         // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
         // because the two modules run concurrently and out of sync
-        execution_command_sender
+        channels
+            .execution_command_sender
             .update_blockclique(
                 block_db.clone_all_final_blocks(),
                 /* TODO DISABLED TEMPORARILY https://github.com/massalabs/massa/issues/2101
@@ -264,20 +267,14 @@ impl ConsensusWorker {
 
         Ok(ConsensusWorker {
             genesis_public_key,
-            protocol_command_sender,
-            protocol_event_receiver,
-            execution_command_sender,
             block_db,
-            controller_command_rx,
-            controller_event_tx,
-            controller_manager_rx,
             pos,
             previous_slot,
             next_slot,
             wishlist: Set::<BlockId>::default(),
             latest_final_periods,
             clock_compensation,
-            pool_command_sender,
+            channels,
             staking_keys,
             final_block_stats,
             stale_block_stats: VecDeque::new(),
@@ -286,7 +283,6 @@ impl ConsensusWorker {
             cfg,
             launch_time: MassaTime::compensated_now(clock_compensation)?,
             endorsed_slots: HashSet::new(),
-            execution_event_receiver,
         })
     }
 
@@ -297,11 +293,13 @@ impl ConsensusWorker {
     ) -> Result<(ProtocolEventReceiver, ExecutionEventReceiver), ConsensusError> {
         // signal initial state to pool
         if let Some(previous_slot) = self.previous_slot {
-            self.pool_command_sender
+            self.channels
+                .pool_command_sender
                 .update_current_slot(previous_slot)
                 .await?;
         }
-        self.pool_command_sender
+        self.channels
+            .pool_command_sender
             .update_latest_final_periods(self.latest_final_periods.clone())
             .await?;
 
@@ -336,7 +334,7 @@ impl ConsensusWorker {
             */
             tokio::select! {
                 // listen to manager commands
-                cmd = self.controller_manager_rx.recv() => {
+                cmd = self.channels.controller_manager_rx.recv() => {
                     massa_trace!("consensus.consensus_worker.run_loop.select.manager", {});
                     match cmd {
                     None => break,
@@ -344,7 +342,7 @@ impl ConsensusWorker {
                 }}
 
                 // listen consensus commands
-                Some(cmd) = self.controller_command_rx.recv() => {
+                Some(cmd) = self.channels.controller_command_rx.recv() => {
                     massa_trace!("consensus.consensus_worker.run_loop.consensus_command", {});
                     self.process_consensus_command(cmd).await?
                 },
@@ -372,7 +370,7 @@ impl ConsensusWorker {
                 }
 
                 // receive protocol controller events
-                evt = self.protocol_event_receiver.wait_event() =>{
+                evt = self.channels.protocol_event_receiver.wait_event() =>{
                     massa_trace!("consensus.consensus_worker.run_loop.select.protocol_event", {});
                     match evt {
                         Ok(event) => self.process_protocol_event(event).await?,
@@ -382,7 +380,10 @@ impl ConsensusWorker {
             }
         }
         // end loop
-        Ok((self.protocol_event_receiver, self.execution_event_receiver))
+        Ok((
+            self.channels.protocol_event_receiver,
+            self.channels.execution_event_receiver,
+        ))
     }
 
     async fn slot_tick(
@@ -444,7 +445,8 @@ impl ConsensusWorker {
         }
 
         // signal tick to pool
-        self.pool_command_sender
+        self.channels
+            .pool_command_sender
             .update_current_slot(observed_slot)
             .await?;
 
@@ -541,7 +543,8 @@ impl ConsensusWorker {
         let (endorsement_ids, endorsements) = if thread_parent_period > 0 {
             let thread_parent_slot = Slot::new(thread_parent_period, cur_slot.thread);
             let endorsement_draws = self.pos.draw_endorsement_producers(thread_parent_slot)?;
-            self.pool_command_sender
+            self.channels
+                .pool_command_sender
                 .get_endorsements(thread_parent_slot, thread_parent, endorsement_draws)
                 .await?
                 .into_iter()
@@ -628,6 +631,7 @@ impl ConsensusWorker {
         while !finished {
             // get a batch of operations
             let operation_batch = self
+                .channels
                 .pool_command_sender
                 .get_operation_batch(
                     cur_slot,
@@ -728,6 +732,7 @@ impl ConsensusWorker {
 
     async fn send_consensus_event(&self, event: ConsensusEvent) -> Result<(), ConsensusError> {
         let result = self
+            .channels
             .controller_event_tx
             .send_timeout(event, self.cfg.max_send_wait.to_duration())
             .await;
@@ -1254,7 +1259,8 @@ impl ConsensusWorker {
                         results.insert(block_hash, None);
                     }
                 }
-                self.protocol_command_sender
+                self.channels
+                    .protocol_command_sender
                     .send_get_blocks_results(results)
                     .await?;
             }
@@ -1279,14 +1285,16 @@ impl ConsensusWorker {
             self.block_db.get_blocks_to_propagate().into_iter()
         {
             massa_trace!("consensus.consensus_worker.block_db_changed.integrated", { "block_id": block_id, "block": block });
-            self.protocol_command_sender
+            self.channels
+                .protocol_command_sender
                 .integrated_block(block_id, block, op_ids, endo_ids)
                 .await?;
         }
 
         // Notify protocol of attack attempts.
         for hash in self.block_db.get_attack_attempts().into_iter() {
-            self.protocol_command_sender
+            self.channels
+                .protocol_command_sender
                 .notify_block_attack(hash)
                 .await?;
             massa_trace!("consensus.consensus_worker.block_db_changed.attack", {
@@ -1318,7 +1326,8 @@ impl ConsensusWorker {
                         .map(|b| (*b_id, b.block.clone()))
                 })
                 .collect();
-            self.execution_command_sender
+            self.channels
+                .execution_command_sender
                 .update_blockclique(finalized_blocks, blockclique)
                 .await?;
         }
@@ -1348,7 +1357,8 @@ impl ConsensusWorker {
         }
         // Notify pool of new final ops
         if !new_final_ops.is_empty() {
-            self.pool_command_sender
+            self.channels
+                .pool_command_sender
                 .final_operations(new_final_ops)
                 .await?;
         }
@@ -1361,7 +1371,8 @@ impl ConsensusWorker {
         let remove_blocks = &self.wishlist - &new_wishlist;
         if !new_blocks.is_empty() || !remove_blocks.is_empty() {
             massa_trace!("consensus.consensus_worker.block_db_changed.send_wishlist_delta", { "new": new_wishlist, "remove": remove_blocks });
-            self.protocol_command_sender
+            self.channels
+                .protocol_command_sender
                 .send_wishlist_delta(new_blocks, remove_blocks)
                 .await?;
             self.wishlist = new_wishlist;
@@ -1384,7 +1395,8 @@ impl ConsensusWorker {
             self.latest_final_periods = latest_final_periods;
 
             // send latest final periods to pool
-            self.pool_command_sender
+            self.channels
+                .pool_command_sender
                 .update_latest_final_periods(self.latest_final_periods.clone())
                 .await?;
         }
@@ -1443,7 +1455,8 @@ impl ConsensusWorker {
                 }
                 // send endorsement batch to pool
                 if !endorsements.is_empty() {
-                    self.pool_command_sender
+                    self.channels
+                        .pool_command_sender
                         .add_endorsements(endorsements)
                         .await?;
                 }

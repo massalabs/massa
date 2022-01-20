@@ -16,7 +16,8 @@ pub use block_graph::{
     LedgerDataExport, Status,
 };
 pub use consensus_controller::{
-    start_consensus_controller, ConsensusCommandSender, ConsensusEventReceiver, ConsensusManager,
+    start_consensus_controller, ConsensusChannels, ConsensusCommandSender, ConsensusEventReceiver,
+    ConsensusManager,
 };
 pub use consensus_worker::{ConsensusCommand, ConsensusEvent};
 pub use error::ConsensusError;

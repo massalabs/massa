@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use crate::{
+    consensus_controller::ConsensusChannels,
     start_consensus_controller,
     tests::{
         mock_pool_controller::MockPoolController,
@@ -554,11 +555,13 @@ async fn test_roll_block_creation() {
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            execution_command_sender,
-            execution_event_receiver,
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
+            ConsensusChannels {
+                execution_command_sender,
+                execution_event_receiver,
+                protocol_command_sender: protocol_command_sender.clone(),
+                protocol_event_receiver,
+                pool_command_sender,
+            },
             None,
             None,
             0,
@@ -875,11 +878,13 @@ async fn test_roll_deactivation() {
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            execution_command_sender,
-            execution_event_receiver,
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
+            ConsensusChannels {
+                execution_command_sender,
+                execution_event_receiver,
+                protocol_command_sender: protocol_command_sender.clone(),
+                protocol_event_receiver,
+                pool_command_sender,
+            },
             None,
             None,
             0,

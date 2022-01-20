@@ -6,7 +6,10 @@ use super::{
     mock_protocol_controller::MockProtocolController,
     tools,
 };
-use crate::{start_consensus_controller, tests::tools::generate_ledger_file};
+use crate::{
+    consensus_controller::ConsensusChannels, start_consensus_controller,
+    tests::tools::generate_ledger_file,
+};
 use massa_hash::hash::Hash;
 use massa_models::{BlockId, Slot};
 use massa_signature::{generate_random_private_key, PrivateKey};
@@ -41,11 +44,13 @@ async fn test_invalid_block_notified_as_attack_attempt() {
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            execution_command_sender,
-            execution_event_receiver,
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
+            ConsensusChannels {
+                execution_command_sender,
+                execution_event_receiver,
+                protocol_command_sender: protocol_command_sender.clone(),
+                protocol_event_receiver,
+                pool_command_sender,
+            },
             None,
             None,
             0,
@@ -112,11 +117,13 @@ async fn test_invalid_header_notified_as_attack_attempt() {
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            execution_command_sender,
-            execution_event_receiver,
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
+            ConsensusChannels {
+                execution_command_sender,
+                execution_event_receiver,
+                protocol_command_sender: protocol_command_sender.clone(),
+                protocol_event_receiver,
+                pool_command_sender,
+            },
             None,
             None,
             0,

@@ -7,8 +7,8 @@ use super::{
     pos::ProofOfStake,
     settings::{ConsensusConfig, CHANNEL_SIZE},
 };
-use crate::error::ConsensusError;
 use crate::pos::ExportProofOfStake;
+use crate::{consensus_worker::ConsensusWorkerChannels, error::ConsensusError};
 use massa_execution::{ExecutionCommandSender, ExecutionEventReceiver};
 
 use massa_models::{
@@ -31,6 +31,15 @@ use tokio::{
 };
 use tracing::{debug, error, info};
 
+/// Public channels associated to the consensus module.
+/// Execution & Protocol Sender/Receiver
+pub struct ConsensusChannels {
+    pub execution_command_sender: ExecutionCommandSender,
+    pub execution_event_receiver: ExecutionEventReceiver,
+    pub protocol_command_sender: ProtocolCommandSender,
+    pub protocol_event_receiver: ProtocolEventReceiver,
+    pub pool_command_sender: PoolCommandSender,
+}
 /// Creates a new consensus controller.
 ///
 /// # Arguments
@@ -39,11 +48,7 @@ use tracing::{debug, error, info};
 /// * protocol_event_receiver: a ProtocolEventReceiver instance to receive events from Protocol.
 pub async fn start_consensus_controller(
     cfg: ConsensusConfig,
-    execution_command_sender: ExecutionCommandSender,
-    execution_event_receiver: ExecutionEventReceiver,
-    protocol_command_sender: ProtocolCommandSender,
-    protocol_event_receiver: ProtocolEventReceiver,
-    pool_command_sender: PoolCommandSender,
+    channels: ConsensusChannels,
     boot_pos: Option<ExportProofOfStake>,
     boot_graph: Option<BootstrapableGraph>,
     clock_compensation: i64,
@@ -85,23 +90,25 @@ pub async fn start_consensus_controller(
     let mut pos =
         ProofOfStake::new(cfg.clone(), block_db.get_genesis_block_ids(), boot_pos).await?;
     pos.set_watched_addresses(staking_keys.keys().copied().collect());
-    let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
-    let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);
-    let (manager_tx, manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);
+    let (command_tx, controller_command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
+    let (controller_event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);
+    let (manager_tx, controller_manager_rx) = mpsc::channel::<ConsensusManagementCommand>(1);
     let cfg_copy = cfg.clone();
     let join_handle = tokio::spawn(async move {
         let res = ConsensusWorker::new(
             cfg_copy,
-            protocol_command_sender,
-            protocol_event_receiver,
-            execution_event_receiver,
-            pool_command_sender,
-            execution_command_sender,
+            ConsensusWorkerChannels {
+                protocol_command_sender: channels.protocol_command_sender,
+                protocol_event_receiver: channels.protocol_event_receiver,
+                execution_event_receiver: channels.execution_event_receiver,
+                execution_command_sender: channels.execution_command_sender,
+                pool_command_sender: channels.pool_command_sender,
+                controller_command_rx,
+                controller_event_tx,
+                controller_manager_rx,
+            },
             block_db,
             pos,
-            command_rx,
-            event_tx,
-            manager_rx,
             clock_compensation,
             staking_keys,
         )
