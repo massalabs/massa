@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::mem;
 use std::sync::{Arc, Mutex};
 
@@ -7,7 +8,9 @@ use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges};
 use crate::types::{ExecutionContext, ExecutionData, ExecutionStep, StepHistory, StepHistoryItem};
 use crate::{config::ExecutionConfigs, ExecutionError};
 use assembly_simulator::Interface;
+use massa_hash::hash::Hash;
 use massa_models::address::AddressHashMap;
+use massa_models::output_event::SCOutputEvent;
 use massa_models::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyResult},
     Address, Amount, BlockId, Slot,
@@ -141,8 +144,10 @@ impl VM {
         context.ledger_step.cumulative_history_changes =
             SCELedgerChanges::from(self.step_history.clone());
         context.created_addr_index = 0;
+        context.created_event_index = 0;
         context.owned_addresses.clear();
         context.call_stack.clear();
+        context.events.clear();
         context.read_only = false;
     }
 
@@ -158,7 +163,8 @@ impl VM {
         block_creator_addr: Address,
         block_id: BlockId,
         slot: Slot,
-    ) -> (SCELedgerChanges, u64) {
+        // todo define backup type
+    ) -> (SCELedgerChanges, u64, HashMap<Hash, SCOutputEvent>, u64) {
         let mut context = self.execution_context.lock().unwrap();
         // make context.ledger_step credit Op's sender with Op.coins in the SCE ledger
         let _result = context
@@ -186,6 +192,8 @@ impl VM {
         (
             context.ledger_step.caused_changes.clone(),
             context.created_addr_index,
+            context.events.clone(),
+            context.created_event_index,
         )
     }
 
@@ -225,7 +233,7 @@ impl VM {
 
         // run in the intepreter
         let run_result = assembly_simulator::run(&bytecode, max_gas, &*self.execution_interface);
-        let context = self.execution_context.lock().unwrap();
+        let mut context = self.execution_context.lock().unwrap();
         // Send result back.
         let execution_response = ExecuteReadOnlyResponse {
             executed_at: slot,
@@ -235,7 +243,7 @@ impl VM {
                 |_| ReadOnlyResult::Ok,
             ),
             // integrate with output events.
-            output_events: context.events.clone(),
+            output_events: mem::take(&mut context.events),
         };
         if result_sender.send(execution_response).is_err() {
             debug!("Execution: could not send ExecuteReadOnlyResponse.");
@@ -280,8 +288,12 @@ impl VM {
                 // Prepare context and save the initial ledger changes before execution.
                 // The returned snapshot takes into account the initial coin credits.
                 // This snapshot will be popped back if bytecode execution fails.
-                let (ledger_changes_backup, created_addr_index_backup) =
-                    self.prepare_context(&execution_data, block_creator_addr, *block_id, step.slot);
+                let (
+                    ledger_changes_backup,
+                    created_addr_index_backup,
+                    events_backup,
+                    event_index_backup,
+                ) = self.prepare_context(&execution_data, block_creator_addr, *block_id, step.slot);
 
                 // run in the intepreter
                 let run_result = assembly_simulator::run(
@@ -298,6 +310,8 @@ impl VM {
                     let mut context = self.execution_context.lock().unwrap();
                     context.ledger_step.caused_changes = ledger_changes_backup;
                     context.created_addr_index = created_addr_index_backup;
+                    context.events = events_backup;
+                    context.created_event_index = event_index_backup;
                 }
             }
         } else {
@@ -311,7 +325,7 @@ impl VM {
             slot: step.slot,
             opt_block_id,
             ledger_changes: mem::take(&mut context.ledger_step.caused_changes),
-            events: context.events.clone(),
+            events: mem::take(&mut context.events),
         }
     }
 
