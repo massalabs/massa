@@ -200,7 +200,7 @@ impl Interface for InterfaceImpl {
         &self,
         address: &massa_sc_runtime::Address,
         key: &String,
-        value: &massa_sc_runtime::Bytecode,
+        value: &[u8],
     ) -> Result<()> {
         let addr = massa_models::Address::from_str(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
@@ -212,18 +212,20 @@ impl Interface for InterfaceImpl {
         if !is_allowed {
             bail!("You don't have the write access to this entry")
         }
-        context.ledger_step.set_data_entry(addr, key, value.clone());
+        context
+            .ledger_step
+            .set_data_entry(addr, key, value.to_vec());
         Ok(())
     }
 
-    fn has_data_for(&self, address: &massa_sc_runtime::Address, key: &String) -> Result<bool> {
+    fn has_data_for(&self, address: &massa_sc_runtime::Address, key: &str) -> Result<bool> {
         let context = context_guard!(self);
         let addr = massa_models::Address::from_str(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         Ok(context.ledger_step.has_data_entry(&addr, &key))
     }
 
-    fn get_data(&self, key: &String) -> Result<Vec<u8>> {
+    fn get_data(&self, key: &str) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let addr = match context.call_stack.back() {
             Some(addr) => addr,
@@ -236,18 +238,20 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    fn set_data(&self, key: &String, value: &Vec<u8>) -> Result<()> {
+    fn set_data(&self, key: &str, value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = match context.call_stack.back() {
             Some(addr) => *addr,
             _ => bail!("Failed to read call stack current address"),
         };
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
-        context.ledger_step.set_data_entry(addr, key, value.clone());
+        context
+            .ledger_step
+            .set_data_entry(addr, key, value.to_vec());
         Ok(())
     }
 
-    fn has_data(&self, key: &String) -> Result<bool> {
+    fn has_data(&self, key: &str) -> Result<bool> {
         let context = context_guard!(self);
         let addr = match context.call_stack.back() {
             Some(addr) => addr,
@@ -258,7 +262,7 @@ impl Interface for InterfaceImpl {
     }
 
     /// hash data
-    fn hash(&self, data: &Vec<u8>) -> Result<massa_sc_runtime::MassaHash> {
+    fn hash(&self, data: &[u8]) -> Result<massa_sc_runtime::MassaHash> {
         Ok(massa_hash::hash::Hash::compute_from(data).to_bs58_check())
     }
 
@@ -275,7 +279,7 @@ impl Interface for InterfaceImpl {
     /// Verify signature
     fn signature_verify(
         &self,
-        data: &Vec<u8>,
+        data: &[u8],
         signature: &massa_sc_runtime::Signature,
         public_key: &massa_sc_runtime::PublicKey,
     ) -> Result<bool> {
