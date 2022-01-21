@@ -1397,7 +1397,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.3.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=add_call_coins#21f1782250fbae79671534405c243f329a3873e3"
+source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.4.0#32b3beb1f5d36f359908068176b630420fd3b423"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
