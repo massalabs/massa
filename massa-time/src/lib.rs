@@ -205,6 +205,7 @@ impl MassaTime {
     /// let res : MassaTime = time_1.saturating_sub(time_2);
     /// assert_eq!(res, MassaTime::from(42-7))
     /// ```
+    #[must_use]
     pub fn saturating_sub(self, t: MassaTime) -> Self {
         MassaTime(self.0.saturating_sub(t.0))
     }
@@ -216,6 +217,7 @@ impl MassaTime {
     /// let res : MassaTime = time_1.saturating_add(time_2);
     /// assert_eq!(res, MassaTime::from(42+7))
     /// ```
+    #[must_use]
     pub fn saturating_add(self, t: MassaTime) -> Self {
         MassaTime(self.0.saturating_add(t.0))
     }
@@ -280,6 +282,7 @@ impl MassaTime {
     /// let res : MassaTime = time_1.saturating_mul(7);
     /// assert_eq!(res,MassaTime::from(42*7))
     /// ```
+    #[must_use]
     pub fn saturating_mul(self, n: u64) -> MassaTime {
         MassaTime(self.0.saturating_mul(n))
     }
