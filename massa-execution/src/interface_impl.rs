@@ -7,7 +7,7 @@ use anyhow::{bail, Result};
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent},
     timeslots::get_block_slot_timestamp,
-    Amount,
+    AMOUNT_ZERO,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
 use massa_time::MassaTime;
@@ -60,16 +60,68 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    fn get_module(&self, address: &String) -> Result<Vec<u8>> {
-        let address = massa_models::Address::from_str(address)?;
-        let bytecode = { context_guard!(self).ledger_step.get_module(&address) };
-        match bytecode {
-            Some(bytecode) => {
-                context_guard!(self).call_stack.push_back(address);
-                Ok(bytecode)
-            }
-            _ => bail!("Error bytecode not found"),
+    fn init_call(&self, address: &String, raw_coins: u64) -> Result<Vec<u8>> {
+        // get target
+        let to_address = massa_models::Address::from_str(address)?;
+
+        // write-lock context
+        let mut context = context_guard!(self);
+
+        // get bytecode
+        let bytecode = match context.ledger_step.get_module(&to_address) {
+            Some(bytecode) => bytecode,
+            None => bail!("Error bytecode not found"),
+        };
+
+        // get caller
+        let from_address = match context.call_stack.back() {
+            Some(addr) => *addr,
+            _ => bail!("Failed to read call stack current address"),
+        };
+
+        // transfer coins
+        let coins = massa_models::Amount::from_raw(raw_coins);
+        // debit
+        context
+            .ledger_step
+            .set_balance_delta(from_address, coins, false)?;
+        // credit
+        if let Err(err) = context
+            .ledger_step
+            .set_balance_delta(to_address, coins, true)
+        {
+            // cancel debit
+            context
+                .ledger_step
+                .set_balance_delta(from_address, coins, true)
+                .expect("credit failed after same-amount debit succeeded");
+            bail!("Error crediting destination balance: {}", err);
         }
+
+        // prepare context
+        context.call_stack.push_back(to_address);
+        context.coins_stack.push(coins);
+        context.owned_addresses_stack.push(vec![to_address]);
+
+        Ok(bytecode)
+    }
+
+    fn finish_call(&self) -> Result<()> {
+        let mut context = context_guard!(self);
+
+        if context.call_stack.pop_back().is_none() {
+            bail!("call stack out of bounds")
+        }
+
+        if context.coins_stack.pop().is_none() {
+            bail!("coins stack out of bounds")
+        }
+
+        if context.owned_addresses_stack.pop().is_none() {
+            bail!("owned addresses stack out of bounds")
+        }
+
+        Ok(())
     }
 
     /// Returns zero as a default if address not found.
@@ -89,13 +141,6 @@ impl Interface for InterfaceImpl {
             .ledger_step
             .get_balance(&address)
             .to_raw())
-    }
-
-    fn exit_success(&self) -> Result<()> {
-        match context_guard!(self).call_stack.pop_back() {
-            Some(_) => Ok(()),
-            _ => bail!("Call stack Out of bound"),
-        }
     }
 
     /// Requires a new address that contains the sent bytecode.
@@ -122,7 +167,12 @@ impl Interface for InterfaceImpl {
         context
             .ledger_step
             .set_module(address, Some(module.clone()));
-        context.owned_addresses.insert(address);
+        match context.owned_addresses_stack.last_mut() {
+            Some(v) => {
+                v.push(address);
+            }
+            None => bail!("owned addresses not found in stack"),
+        };
         context.created_addr_index += 1;
         Ok(res)
     }
@@ -155,16 +205,15 @@ impl Interface for InterfaceImpl {
         let addr = massa_models::Address::from_str(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
-        let is_curr = match context.call_stack.back() {
-            Some(curr_address) => addr == *curr_address,
-            _ => false,
-        };
-        if context.owned_addresses.contains(&addr) || is_curr {
-            context.ledger_step.set_data_entry(addr, key, value.clone());
-            Ok(())
-        } else {
+        let is_allowed = context
+            .owned_addresses_stack
+            .last()
+            .map_or(false, |v| v.contains(&addr));
+        if !is_allowed {
             bail!("You don't have the write access to this entry")
         }
+        context.ledger_step.set_data_entry(addr, key, value.clone());
+        Ok(())
     }
 
     fn has_data_for(&self, address: &massa_sc_runtime::Address, key: &String) -> Result<bool> {
@@ -285,11 +334,11 @@ impl Interface for InterfaceImpl {
         let from_address = massa_models::Address::from_str(from_address)?;
         let to_address = massa_models::Address::from_str(to_address)?;
         let mut context = context_guard!(self);
-        let is_curr = match context.call_stack.back() {
-            Some(curr_address) => from_address == *curr_address,
-            _ => false,
-        };
-        if !context.owned_addresses.contains(&from_address) && !is_curr {
+        let is_allowed = context
+            .owned_addresses_stack
+            .last()
+            .map_or(false, |v| v.contains(&from_address));
+        if !is_allowed {
             bail!("You don't have the spending access to this entry")
         }
         let amount = massa_models::Amount::from_raw(raw_amount);
@@ -314,11 +363,10 @@ impl Interface for InterfaceImpl {
 
     /// Return the list of owned adresses of a given SC user
     fn get_owned_addresses(&self) -> Result<Vec<massa_sc_runtime::Address>> {
-        Ok(context_guard!(self)
-            .owned_addresses
-            .iter()
-            .map(|addr| addr.to_bs58_check())
-            .collect())
+        match context_guard!(self).owned_addresses_stack.last() {
+            Some(v) => Ok(v.iter().map(|addr| addr.to_bs58_check()).collect()),
+            None => bail!("owned address stack out of bounds"),
+        }
     }
 
     fn get_call_stack(&self) -> Result<Vec<massa_sc_runtime::Address>> {
@@ -329,25 +377,13 @@ impl Interface for InterfaceImpl {
             .collect())
     }
 
-    /// Spend an amount of coins from the current address to a target address,
-    /// making those available for use by a contract called with the target address.
-    fn set_call_coins(
-        &self,
-        target_address: &massa_sc_runtime::Address,
-        raw_amount: u64,
-    ) -> Result<()> {
-        // 1. transfer coins.
-        self.transfer_coins(target_address, raw_amount)?;
-
-        // 2. Set call coins.
-        let mut context = context_guard!(self);
-        context.call_coins = Amount::from_raw(raw_amount);
-        Ok(())
-    }
-
     /// Get the amount of coins that have been made available for use by the caller of the currently executing code.
     fn get_call_coins(&self) -> Result<u64> {
-        Ok(context_guard!(self).call_coins.to_raw())
+        Ok(context_guard!(self)
+            .coins_stack
+            .last()
+            .unwrap_or(&AMOUNT_ZERO)
+            .to_raw())
     }
 
     fn generate_event(&self, data: String) -> Result<()> {

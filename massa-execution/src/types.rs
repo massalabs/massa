@@ -1,7 +1,6 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
 use crate::BootstrapExecutionState;
 use massa_models::execution::ExecuteReadOnlyResponse;
-use massa_models::prehash::Set;
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, Block, BlockId, Slot};
 use massa_sc_runtime::Bytecode;
@@ -31,18 +30,16 @@ pub(crate) struct StepHistoryItem {
 pub(crate) struct ExecutionContext {
     pub ledger_step: SCELedgerStep,
     pub max_gas: u64,
-    pub coins: Amount,
+    pub coins_stack: Vec<Amount>,
     pub gas_price: Amount,
     pub slot: Slot,
     pub created_addr_index: u64,
     pub opt_block_id: Option<BlockId>,
     pub opt_block_creator_addr: Option<Address>,
     pub call_stack: VecDeque<Address>,
-    pub owned_addresses: Set<Address>,
+    pub owned_addresses_stack: Vec<Vec<Address>>,
     pub read_only: bool,
     pub unsafe_rng: Xoshiro256PlusPlus,
-    /// Amount made available by the caller of the current execution for a specific purpose.
-    pub call_coins: Amount,
 }
 
 #[derive(Clone)]
@@ -64,17 +61,16 @@ impl ExecutionContext {
                 caused_changes: Default::default(),
             },
             max_gas: Default::default(),
-            coins: Default::default(),
+            coins_stack: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),
             opt_block_id: Default::default(),
             opt_block_creator_addr: Default::default(),
             call_stack: Default::default(),
-            owned_addresses: Default::default(),
+            owned_addresses_stack: Default::default(),
             created_addr_index: Default::default(),
             read_only: Default::default(),
             unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
-            call_coins: Default::default(),
         }
     }
 }
