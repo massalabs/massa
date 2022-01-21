@@ -4,6 +4,7 @@ use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges};
 use crate::types::{ExecutionContext, ExecutionData, ExecutionStep, StepHistory, StepHistoryItem};
 use crate::{config::ExecutionConfigs, ExecutionError};
 use massa_models::prehash::Map;
+use massa_models::AMOUNT_ZERO;
 use massa_sc_runtime::Interface;
 
 use massa_models::timeslots::slot_count_in_range;
@@ -151,9 +152,10 @@ impl VM {
         context.ledger_step.cumulative_history_changes =
             SCELedgerChanges::from(self.step_history.clone());
         context.created_addr_index = 0;
-        context.owned_addresses.clear();
+        context.owned_addresses_stack.clear();
         context.call_stack.clear();
         context.read_only = false;
+        context.coins_stack.clear();
     }
 
     /// Prepares (updates) the shared context before the new operation.
@@ -186,12 +188,12 @@ impl VM {
         // created_addr_index is not reset here (it is used at the slot scale)
         context.gas_price = data.gas_price;
         context.max_gas = data.max_gas;
-        context.coins = data.coins;
+        context.coins_stack = vec![data.coins];
         context.slot = slot;
         context.opt_block_id = Some(block_id);
         context.opt_block_creator_addr = Some(block_creator_addr);
         context.call_stack = vec![data.sender_address].into();
-        context.owned_addresses.clear();
+        context.owned_addresses_stack = vec![vec![data.sender_address]];
 
         (
             context.ledger_step.caused_changes.clone(),
@@ -232,6 +234,12 @@ impl VM {
 
             // Set the simulated gas price.
             context.gas_price = simulated_gas_price;
+
+            // Set coins to zero
+            context.coins_stack = vec![AMOUNT_ZERO];
+
+            // Set owned addresses
+            context.owned_addresses_stack = vec![vec![address]];
 
             // Seed the RNG
             let mut seed: Vec<u8> = slot.to_bytes_key().to_vec();
