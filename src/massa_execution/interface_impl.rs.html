@@ -364,6 +364,68 @@
 <span id="358">358</span>
 <span id="359">359</span>
 <span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
 </pre><pre class="rust"><code><span class="doccomment">/// Implementation of the interface used in the execution external library</span>
 <span class="doccomment">///</span>
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
@@ -373,6 +435,7 @@
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">output_event</span>::{<span class="ident">EventExecutionContext</span>, <span class="ident">SCOutputEvent</span>},
     <span class="ident">timeslots::get_block_slot_timestamp</span>,
+    <span class="ident">AMOUNT_ZERO</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_sc_runtime</span>::{<span class="ident">Interface</span>, <span class="ident">InterfaceClone</span>};
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
@@ -425,16 +488,68 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn</span> <span class="ident">get_module</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_str</span>(<span class="ident">address</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">bytecode</span> <span class="op">=</span> { <span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">ledger_step</span>.<span class="ident">get_module</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>) };
-        <span class="kw">match</span> <span class="ident">bytecode</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">bytecode</span>) =&gt; {
-                <span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">call_stack</span>.<span class="ident">push_back</span>(<span class="ident">address</span>);
-                <span class="prelude-val">Ok</span>(<span class="ident">bytecode</span>)
-            }
-            <span class="kw">_</span> =&gt; <span class="macro">bail!</span>(<span class="string">&quot;Error bytecode not found&quot;</span>),
+    <span class="kw">fn</span> <span class="ident">init_call</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>, <span class="ident">raw_coins</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="comment">// get target</span>
+        <span class="kw">let</span> <span class="ident">to_address</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_str</span>(<span class="ident">address</span>)<span class="question-mark">?</span>;
+
+        <span class="comment">// write-lock context</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
+
+        <span class="comment">// get bytecode</span>
+        <span class="kw">let</span> <span class="ident">bytecode</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">ledger_step</span>.<span class="ident">get_module</span>(<span class="kw-2">&amp;</span><span class="ident">to_address</span>) {
+            <span class="prelude-val">Some</span>(<span class="ident">bytecode</span>) =&gt; <span class="ident">bytecode</span>,
+            <span class="prelude-val">None</span> =&gt; <span class="macro">bail!</span>(<span class="string">&quot;Error bytecode not found&quot;</span>),
+        };
+
+        <span class="comment">// get caller</span>
+        <span class="kw">let</span> <span class="ident">from_address</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">back</span>() {
+            <span class="prelude-val">Some</span>(<span class="ident">addr</span>) =&gt; <span class="kw-2">*</span><span class="ident">addr</span>,
+            <span class="kw">_</span> =&gt; <span class="macro">bail!</span>(<span class="string">&quot;Failed to read call stack current address&quot;</span>),
+        };
+
+        <span class="comment">// transfer coins</span>
+        <span class="kw">let</span> <span class="ident">coins</span> <span class="op">=</span> <span class="ident">massa_models::Amount::from_raw</span>(<span class="ident">raw_coins</span>);
+        <span class="comment">// debit</span>
+        <span class="ident">context</span>
+            .<span class="ident">ledger_step</span>
+            .<span class="ident">set_balance_delta</span>(<span class="ident">from_address</span>, <span class="ident">coins</span>, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+        <span class="comment">// credit</span>
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">context</span>
+            .<span class="ident">ledger_step</span>
+            .<span class="ident">set_balance_delta</span>(<span class="ident">to_address</span>, <span class="ident">coins</span>, <span class="bool-val">true</span>)
+        {
+            <span class="comment">// cancel debit</span>
+            <span class="ident">context</span>
+                .<span class="ident">ledger_step</span>
+                .<span class="ident">set_balance_delta</span>(<span class="ident">from_address</span>, <span class="ident">coins</span>, <span class="bool-val">true</span>)
+                .<span class="ident">expect</span>(<span class="string">&quot;credit failed after same-amount debit succeeded&quot;</span>);
+            <span class="macro">bail!</span>(<span class="string">&quot;Error crediting destination balance: {}&quot;</span>, <span class="ident">err</span>);
         }
+
+        <span class="comment">// prepare context</span>
+        <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">push_back</span>(<span class="ident">to_address</span>);
+        <span class="ident">context</span>.<span class="ident">coins_stack</span>.<span class="ident">push</span>(<span class="ident">coins</span>);
+        <span class="ident">context</span>.<span class="ident">owned_addresses_stack</span>.<span class="ident">push</span>(<span class="macro">vec!</span>[<span class="ident">to_address</span>]);
+
+        <span class="prelude-val">Ok</span>(<span class="ident">bytecode</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">finish_call</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
+
+        <span class="kw">if</span> <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">pop_back</span>().<span class="ident">is_none</span>() {
+            <span class="macro">bail!</span>(<span class="string">&quot;call stack out of bounds&quot;</span>)
+        }
+
+        <span class="kw">if</span> <span class="ident">context</span>.<span class="ident">coins_stack</span>.<span class="ident">pop</span>().<span class="ident">is_none</span>() {
+            <span class="macro">bail!</span>(<span class="string">&quot;coins stack out of bounds&quot;</span>)
+        }
+
+        <span class="kw">if</span> <span class="ident">context</span>.<span class="ident">owned_addresses_stack</span>.<span class="ident">pop</span>().<span class="ident">is_none</span>() {
+            <span class="macro">bail!</span>(<span class="string">&quot;owned addresses stack out of bounds&quot;</span>)
+        }
+
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Returns zero as a default if address not found.</span>
@@ -454,13 +569,6 @@
             .<span class="ident">ledger_step</span>
             .<span class="ident">get_balance</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>)
             .<span class="ident">to_raw</span>())
-    }
-
-    <span class="kw">fn</span> <span class="ident">exit_success</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">call_stack</span>.<span class="ident">pop_back</span>() {
-            <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
-            <span class="kw">_</span> =&gt; <span class="macro">bail!</span>(<span class="string">&quot;Call stack Out of bound&quot;</span>),
-        }
     }
 
     <span class="doccomment">/// Requires a new address that contains the sent bytecode.</span>
@@ -487,7 +595,12 @@
         <span class="ident">context</span>
             .<span class="ident">ledger_step</span>
             .<span class="ident">set_module</span>(<span class="ident">address</span>, <span class="prelude-val">Some</span>(<span class="ident">module</span>.<span class="ident">clone</span>()));
-        <span class="ident">context</span>.<span class="ident">owned_addresses</span>.<span class="ident">insert</span>(<span class="ident">address</span>);
+        <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">owned_addresses_stack</span>.<span class="ident">last_mut</span>() {
+            <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; {
+                <span class="ident">v</span>.<span class="ident">push</span>(<span class="ident">address</span>);
+            }
+            <span class="prelude-val">None</span> =&gt; <span class="macro">bail!</span>(<span class="string">&quot;owned addresses not found in stack&quot;</span>),
+        };
         <span class="ident">context</span>.<span class="ident">created_addr_index</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
     }
@@ -515,31 +628,32 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">massa_sc_runtime::Address</span>,
         <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>,
-        <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">massa_sc_runtime::Bytecode</span>,
+        <span class="ident">value</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_str</span>(<span class="ident">address</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">massa_hash::hash::Hash::compute_from</span>(<span class="ident">key</span>.<span class="ident">as_bytes</span>());
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let</span> <span class="ident">is_curr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">back</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">curr_address</span>) =&gt; <span class="ident">addr</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">curr_address</span>,
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
-        };
-        <span class="kw">if</span> <span class="ident">context</span>.<span class="ident">owned_addresses</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>) <span class="op">|</span><span class="op">|</span> <span class="ident">is_curr</span> {
-            <span class="ident">context</span>.<span class="ident">ledger_step</span>.<span class="ident">set_data_entry</span>(<span class="ident">addr</span>, <span class="ident">key</span>, <span class="ident">value</span>.<span class="ident">clone</span>());
-            <span class="prelude-val">Ok</span>(())
-        } <span class="kw">else</span> {
+        <span class="kw">let</span> <span class="ident">is_allowed</span> <span class="op">=</span> <span class="ident">context</span>
+            .<span class="ident">owned_addresses_stack</span>
+            .<span class="ident">last</span>()
+            .<span class="ident">map_or</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>));
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">is_allowed</span> {
             <span class="macro">bail!</span>(<span class="string">&quot;You don&#39;t have the write access to this entry&quot;</span>)
         }
+        <span class="ident">context</span>
+            .<span class="ident">ledger_step</span>
+            .<span class="ident">set_data_entry</span>(<span class="ident">addr</span>, <span class="ident">key</span>, <span class="ident">value</span>.<span class="ident">to_vec</span>());
+        <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn</span> <span class="ident">has_data_for</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">massa_sc_runtime::Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">has_data_for</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">massa_sc_runtime::Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_str</span>(<span class="ident">address</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">massa_hash::hash::Hash::compute_from</span>(<span class="ident">key</span>.<span class="ident">as_bytes</span>());
         <span class="prelude-val">Ok</span>(<span class="ident">context</span>.<span class="ident">ledger_step</span>.<span class="ident">has_data_entry</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>, <span class="kw-2">&amp;</span><span class="ident">key</span>))
     }
 
-    <span class="kw">fn</span> <span class="ident">get_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">back</span>() {
             <span class="prelude-val">Some</span>(<span class="ident">addr</span>) =&gt; <span class="ident">addr</span>,
@@ -552,18 +666,20 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">set_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">set_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">back</span>() {
             <span class="prelude-val">Some</span>(<span class="ident">addr</span>) =&gt; <span class="kw-2">*</span><span class="ident">addr</span>,
             <span class="kw">_</span> =&gt; <span class="macro">bail!</span>(<span class="string">&quot;Failed to read call stack current address&quot;</span>),
         };
         <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">massa_hash::hash::Hash::compute_from</span>(<span class="ident">key</span>.<span class="ident">as_bytes</span>());
-        <span class="ident">context</span>.<span class="ident">ledger_step</span>.<span class="ident">set_data_entry</span>(<span class="ident">addr</span>, <span class="ident">key</span>, <span class="ident">value</span>.<span class="ident">clone</span>());
+        <span class="ident">context</span>
+            .<span class="ident">ledger_step</span>
+            .<span class="ident">set_data_entry</span>(<span class="ident">addr</span>, <span class="ident">key</span>, <span class="ident">value</span>.<span class="ident">to_vec</span>());
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn</span> <span class="ident">has_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">has_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">back</span>() {
             <span class="prelude-val">Some</span>(<span class="ident">addr</span>) =&gt; <span class="ident">addr</span>,
@@ -574,7 +690,7 @@
     }
 
     <span class="doccomment">/// hash data</span>
-    <span class="kw">fn</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">massa_sc_runtime::MassaHash</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">massa_sc_runtime::MassaHash</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">massa_hash::hash::Hash::compute_from</span>(<span class="ident">data</span>).<span class="ident">to_bs58_check</span>())
     }
 
@@ -591,7 +707,7 @@
     <span class="doccomment">/// Verify signature</span>
     <span class="kw">fn</span> <span class="ident">signature_verify</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+        <span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">massa_sc_runtime::Signature</span>,
         <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">massa_sc_runtime::PublicKey</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
@@ -650,11 +766,11 @@
         <span class="kw">let</span> <span class="ident">from_address</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_str</span>(<span class="ident">from_address</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">to_address</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_str</span>(<span class="ident">to_address</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let</span> <span class="ident">is_curr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">back</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">curr_address</span>) =&gt; <span class="ident">from_address</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">curr_address</span>,
-            <span class="kw">_</span> =&gt; <span class="bool-val">false</span>,
-        };
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">context</span>.<span class="ident">owned_addresses</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">from_address</span>) <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">is_curr</span> {
+        <span class="kw">let</span> <span class="ident">is_allowed</span> <span class="op">=</span> <span class="ident">context</span>
+            .<span class="ident">owned_addresses_stack</span>
+            .<span class="ident">last</span>()
+            .<span class="ident">map_or</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">from_address</span>));
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">is_allowed</span> {
             <span class="macro">bail!</span>(<span class="string">&quot;You don&#39;t have the spending access to this entry&quot;</span>)
         }
         <span class="kw">let</span> <span class="ident">amount</span> <span class="op">=</span> <span class="ident">massa_models::Amount::from_raw</span>(<span class="ident">raw_amount</span>);
@@ -679,11 +795,10 @@
 
     <span class="doccomment">/// Return the list of owned adresses of a given SC user</span>
     <span class="kw">fn</span> <span class="ident">get_owned_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">massa_sc_runtime::Address</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>)
-            .<span class="ident">owned_addresses</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">addr</span><span class="op">|</span> <span class="ident">addr</span>.<span class="ident">to_bs58_check</span>())
-            .<span class="ident">collect</span>())
+        <span class="kw">match</span> <span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">owned_addresses_stack</span>.<span class="ident">last</span>() {
+            <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">v</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">addr</span><span class="op">|</span> <span class="ident">addr</span>.<span class="ident">to_bs58_check</span>()).<span class="ident">collect</span>()),
+            <span class="prelude-val">None</span> =&gt; <span class="macro">bail!</span>(<span class="string">&quot;owned address stack out of bounds&quot;</span>),
+        }
     }
 
     <span class="kw">fn</span> <span class="ident">get_call_stack</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">massa_sc_runtime::Address</span><span class="op">&gt;</span><span class="op">&gt;</span> {
@@ -692,6 +807,15 @@
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">addr</span><span class="op">|</span> <span class="ident">addr</span>.<span class="ident">to_bs58_check</span>())
             .<span class="ident">collect</span>())
+    }
+
+    <span class="doccomment">/// Get the amount of coins that have been made available for use by the caller of the currently executing code.</span>
+    <span class="kw">fn</span> <span class="ident">get_call_coins</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>)
+            .<span class="ident">coins_stack</span>
+            .<span class="ident">last</span>()
+            .<span class="ident">unwrap_or</span>(<span class="kw-2">&amp;</span><span class="ident">AMOUNT_ZERO</span>)
+            .<span class="ident">to_raw</span>())
     }
 
     <span class="kw">fn</span> <span class="ident">generate_event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">data</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
@@ -725,5 +849,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (5e57faa78 2022-01-19)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (777bb86bc 2022-01-20)" ></div>
 </body></html>
