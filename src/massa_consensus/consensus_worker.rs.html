@@ -3,8 +3,7 @@
         </a><h2 class="location"></h2>
     </nav>
     <nav class="sidebar"><a class="sidebar-logo" href="../../massa_consensus/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
-        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_consensus/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><div>
-                                <input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">   1</span>
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_consensus/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">   1</span>
 <span id="2">   2</span>
 <span id="3">   3</span>
 <span id="4">   4</span>
@@ -1488,6 +1487,19 @@
 <span id="1482">1482</span>
 <span id="1483">1483</span>
 <span id="1484">1484</span>
+<span id="1485">1485</span>
+<span id="1486">1486</span>
+<span id="1487">1487</span>
+<span id="1488">1488</span>
+<span id="1489">1489</span>
+<span id="1490">1490</span>
+<span id="1491">1491</span>
+<span id="1492">1492</span>
+<span id="1493">1493</span>
+<span id="1494">1494</span>
+<span id="1495">1495</span>
+<span id="1496">1496</span>
+<span id="1497">1497</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">block_graph</span>::<span class="kw-2">*</span>, <span class="ident">pos::ProofOfStake</span>, <span class="ident">settings::ConsensusConfig</span>};
@@ -1598,30 +1610,39 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ConsensusManagementCommand</span> {}
 
+<span class="doccomment">/// Communication async channels for the consensus worker</span>
+<span class="doccomment">/// Contains consensus channels associated (protocol &amp; execution)</span>
+<span class="doccomment">/// Contains alse controller async channels (command, manager receivers and event sender)</span>
+<span class="doccomment">/// Contains a sender to the pool worker commands</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ConsensusWorkerChannels</span> {
+    <span class="doccomment">/// Associated protocol command sender.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">protocol_command_sender</span>: <span class="ident">ProtocolCommandSender</span>,
+    <span class="doccomment">/// Associated protocol event listener.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">protocol_event_receiver</span>: <span class="ident">ProtocolEventReceiver</span>,
+    <span class="doccomment">/// Associated execution event listener.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">execution_event_receiver</span>: <span class="ident">ExecutionEventReceiver</span>,
+    <span class="doccomment">/// Execution command sender.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">execution_command_sender</span>: <span class="ident">ExecutionCommandSender</span>,
+    <span class="doccomment">/// Associated Pool command sender.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">pool_command_sender</span>: <span class="ident">PoolCommandSender</span>,
+    <span class="doccomment">/// Channel receiving consensus commands.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">controller_command_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ConsensusCommand</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Channel sending out consensus events.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">controller_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ConsensusEvent</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Channel receiving consensus management commands.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">controller_manager_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ConsensusManagementCommand</span><span class="op">&gt;</span>,
+}
+
 <span class="doccomment">/// Manages consensus.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusWorker</span> {
     <span class="doccomment">/// Consensus Configuration</span>
     <span class="ident">cfg</span>: <span class="ident">ConsensusConfig</span>,
     <span class="doccomment">/// Genesis blocks werecreated with that public key.</span>
     <span class="ident">genesis_public_key</span>: <span class="ident">PublicKey</span>,
-    <span class="doccomment">/// Associated protocol command sender.</span>
-    <span class="ident">protocol_command_sender</span>: <span class="ident">ProtocolCommandSender</span>,
-    <span class="doccomment">/// Associated protocol event listener.</span>
-    <span class="ident">protocol_event_receiver</span>: <span class="ident">ProtocolEventReceiver</span>,
-    <span class="doccomment">/// Associated execution event listener.</span>
-    <span class="ident">execution_event_receiver</span>: <span class="ident">ExecutionEventReceiver</span>,
-    <span class="doccomment">/// Execution command sender.</span>
-    <span class="ident">execution_command_sender</span>: <span class="ident">ExecutionCommandSender</span>,
-    <span class="doccomment">/// Associated Pool command sender.</span>
-    <span class="ident">pool_command_sender</span>: <span class="ident">PoolCommandSender</span>,
+    <span class="comment">// Associated channels, sender and receivers</span>
+    <span class="ident">channels</span>: <span class="ident">ConsensusWorkerChannels</span>,
     <span class="doccomment">/// Database containing all information about blocks, the blockgraph and cliques.</span>
     <span class="ident">block_db</span>: <span class="ident">BlockGraph</span>,
-    <span class="doccomment">/// Channel receiving consensus commands.</span>
-    <span class="ident">controller_command_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ConsensusCommand</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Channel sending out consensus events.</span>
-    <span class="ident">controller_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ConsensusEvent</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Channel receiving consensus management commands.</span>
-    <span class="ident">controller_manager_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ConsensusManagementCommand</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Proof of stake module.</span>
     <span class="ident">pos</span>: <span class="ident">ProofOfStake</span>,
     <span class="doccomment">/// Previous slot.</span>
@@ -1657,18 +1678,11 @@
     <span class="doccomment">/// * controller_command_rx: Channel receiving consensus commands.</span>
     <span class="doccomment">/// * controller_event_tx: Channel sending out consensus events.</span>
     <span class="doccomment">/// * controller_manager_rx: Channel receiving consensus management commands.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">new</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">cfg</span>: <span class="ident">ConsensusConfig</span>,
-        <span class="ident">protocol_command_sender</span>: <span class="ident">ProtocolCommandSender</span>,
-        <span class="ident">protocol_event_receiver</span>: <span class="ident">ProtocolEventReceiver</span>,
-        <span class="ident">execution_event_receiver</span>: <span class="ident">ExecutionEventReceiver</span>,
-        <span class="ident">pool_command_sender</span>: <span class="ident">PoolCommandSender</span>,
-        <span class="ident">execution_command_sender</span>: <span class="ident">ExecutionCommandSender</span>,
+        <span class="ident">channels</span>: <span class="ident">ConsensusWorkerChannels</span>,
         <span class="ident">block_db</span>: <span class="ident">BlockGraph</span>,
         <span class="ident">pos</span>: <span class="ident">ProofOfStake</span>,
-        <span class="ident">controller_command_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ConsensusCommand</span><span class="op">&gt;</span>,
-        <span class="ident">controller_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ConsensusEvent</span><span class="op">&gt;</span>,
-        <span class="ident">controller_manager_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ConsensusManagementCommand</span><span class="op">&gt;</span>,
         <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
         <span class="ident">staking_keys</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">PublicKey</span>, <span class="ident">PrivateKey</span>)<span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsensusWorker</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
@@ -1734,7 +1748,8 @@
         <span class="comment">// notify execution module of current blockclique and final blocks</span>
         <span class="comment">// we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync</span>
         <span class="comment">// because the two modules run concurrently and out of sync</span>
-        <span class="ident">execution_command_sender</span>
+        <span class="ident">channels</span>
+            .<span class="ident">execution_command_sender</span>
             .<span class="ident">update_blockclique</span>(
                 <span class="ident">block_db</span>.<span class="ident">clone_all_final_blocks</span>(),
                 <span class="comment">/* TODO DISABLED TEMPORARILY https://github.com/massalabs/massa/issues/2101
@@ -1754,20 +1769,14 @@
 
         <span class="prelude-val">Ok</span>(<span class="ident">ConsensusWorker</span> {
             <span class="ident">genesis_public_key</span>,
-            <span class="ident">protocol_command_sender</span>,
-            <span class="ident">protocol_event_receiver</span>,
-            <span class="ident">execution_command_sender</span>,
             <span class="ident">block_db</span>,
-            <span class="ident">controller_command_rx</span>,
-            <span class="ident">controller_event_tx</span>,
-            <span class="ident">controller_manager_rx</span>,
             <span class="ident">pos</span>,
             <span class="ident">previous_slot</span>,
             <span class="ident">next_slot</span>,
             <span class="ident">wishlist</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="ident">::default</span>(),
             <span class="ident">latest_final_periods</span>,
             <span class="ident">clock_compensation</span>,
-            <span class="ident">pool_command_sender</span>,
+            <span class="ident">channels</span>,
             <span class="ident">staking_keys</span>,
             <span class="ident">final_block_stats</span>,
             <span class="ident">stale_block_stats</span>: <span class="ident">VecDeque::new</span>(),
@@ -1776,7 +1785,6 @@
             <span class="ident">cfg</span>,
             <span class="ident">launch_time</span>: <span class="ident">MassaTime::compensated_now</span>(<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>,
             <span class="ident">endorsed_slots</span>: <span class="ident">HashSet::new</span>(),
-            <span class="ident">execution_event_receiver</span>,
         })
     }
 
@@ -1787,11 +1795,13 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">ProtocolEventReceiver</span>, <span class="ident">ExecutionEventReceiver</span>), <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="comment">// signal initial state to pool</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">previous_slot</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">previous_slot</span> {
-            <span class="self">self</span>.<span class="ident">pool_command_sender</span>
+            <span class="self">self</span>.<span class="ident">channels</span>
+                .<span class="ident">pool_command_sender</span>
                 .<span class="ident">update_current_slot</span>(<span class="ident">previous_slot</span>)
                 .<span class="kw">await</span><span class="question-mark">?</span>;
         }
-        <span class="self">self</span>.<span class="ident">pool_command_sender</span>
+        <span class="self">self</span>.<span class="ident">channels</span>
+            .<span class="ident">pool_command_sender</span>
             .<span class="ident">update_latest_final_periods</span>(<span class="self">self</span>.<span class="ident">latest_final_periods</span>.<span class="ident">clone</span>())
             .<span class="kw">await</span><span class="question-mark">?</span>;
 
@@ -1826,7 +1836,7 @@
             */</span>
             <span class="macro">tokio::select!</span> {
                 <span class="comment">// listen to manager commands</span>
-                <span class="ident">cmd</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">controller_manager_rx</span>.<span class="ident">recv</span>() =&gt; {
+                <span class="ident">cmd</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">channels</span>.<span class="ident">controller_manager_rx</span>.<span class="ident">recv</span>() =&gt; {
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.run_loop.select.manager&quot;</span>, {});
                     <span class="kw">match</span> <span class="ident">cmd</span> {
                     <span class="prelude-val">None</span> =&gt; <span class="kw">break</span>,
@@ -1834,7 +1844,7 @@
                 }}
 
                 <span class="comment">// listen consensus commands</span>
-                <span class="prelude-val">Some</span>(<span class="ident">cmd</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">controller_command_rx</span>.<span class="ident">recv</span>() =&gt; {
+                <span class="prelude-val">Some</span>(<span class="ident">cmd</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">channels</span>.<span class="ident">controller_command_rx</span>.<span class="ident">recv</span>() =&gt; {
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.run_loop.consensus_command&quot;</span>, {});
                     <span class="self">self</span>.<span class="ident">process_consensus_command</span>(<span class="ident">cmd</span>).<span class="kw">await</span><span class="question-mark">?</span>
                 },
@@ -1862,7 +1872,7 @@
                 }
 
                 <span class="comment">// receive protocol controller events</span>
-                <span class="ident">evt</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">protocol_event_receiver</span>.<span class="ident">wait_event</span>() =&gt;{
+                <span class="ident">evt</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">channels</span>.<span class="ident">protocol_event_receiver</span>.<span class="ident">wait_event</span>() =&gt;{
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.run_loop.select.protocol_event&quot;</span>, {});
                     <span class="kw">match</span> <span class="ident">evt</span> {
                         <span class="prelude-val">Ok</span>(<span class="ident">event</span>) =&gt; <span class="self">self</span>.<span class="ident">process_protocol_event</span>(<span class="ident">event</span>).<span class="kw">await</span><span class="question-mark">?</span>,
@@ -1872,7 +1882,10 @@
             }
         }
         <span class="comment">// end loop</span>
-        <span class="prelude-val">Ok</span>((<span class="self">self</span>.<span class="ident">protocol_event_receiver</span>, <span class="self">self</span>.<span class="ident">execution_event_receiver</span>))
+        <span class="prelude-val">Ok</span>((
+            <span class="self">self</span>.<span class="ident">channels</span>.<span class="ident">protocol_event_receiver</span>,
+            <span class="self">self</span>.<span class="ident">channels</span>.<span class="ident">execution_event_receiver</span>,
+        ))
     }
 
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">slot_tick</span>(
@@ -1934,7 +1947,8 @@
         }
 
         <span class="comment">// signal tick to pool</span>
-        <span class="self">self</span>.<span class="ident">pool_command_sender</span>
+        <span class="self">self</span>.<span class="ident">channels</span>
+            .<span class="ident">pool_command_sender</span>
             .<span class="ident">update_current_slot</span>(<span class="ident">observed_slot</span>)
             .<span class="kw">await</span><span class="question-mark">?</span>;
 
@@ -2031,7 +2045,8 @@
         <span class="kw">let</span> (<span class="ident">endorsement_ids</span>, <span class="ident">endorsements</span>) <span class="op">=</span> <span class="kw">if</span> <span class="ident">thread_parent_period</span> <span class="op">&gt;</span> <span class="number">0</span> {
             <span class="kw">let</span> <span class="ident">thread_parent_slot</span> <span class="op">=</span> <span class="ident">Slot::new</span>(<span class="ident">thread_parent_period</span>, <span class="ident">cur_slot</span>.<span class="ident">thread</span>);
             <span class="kw">let</span> <span class="ident">endorsement_draws</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">pos</span>.<span class="ident">draw_endorsement_producers</span>(<span class="ident">thread_parent_slot</span>)<span class="question-mark">?</span>;
-            <span class="self">self</span>.<span class="ident">pool_command_sender</span>
+            <span class="self">self</span>.<span class="ident">channels</span>
+                .<span class="ident">pool_command_sender</span>
                 .<span class="ident">get_endorsements</span>(<span class="ident">thread_parent_slot</span>, <span class="ident">thread_parent</span>, <span class="ident">endorsement_draws</span>)
                 .<span class="kw">await</span><span class="question-mark">?</span>
                 .<span class="ident">into_iter</span>()
@@ -2118,6 +2133,7 @@
         <span class="kw">while</span> <span class="op">!</span><span class="ident">finished</span> {
             <span class="comment">// get a batch of operations</span>
             <span class="kw">let</span> <span class="ident">operation_batch</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">channels</span>
                 .<span class="ident">pool_command_sender</span>
                 .<span class="ident">get_operation_batch</span>(
                     <span class="ident">cur_slot</span>,
@@ -2218,6 +2234,7 @@
 
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_consensus_event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">event</span>: <span class="ident">ConsensusEvent</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">channels</span>
             .<span class="ident">controller_event_tx</span>
             .<span class="ident">send_timeout</span>(<span class="ident">event</span>, <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_send_wait</span>.<span class="ident">to_duration</span>())
             .<span class="kw">await</span>;
@@ -2744,7 +2761,8 @@
                         <span class="ident">results</span>.<span class="ident">insert</span>(<span class="ident">block_hash</span>, <span class="prelude-val">None</span>);
                     }
                 }
-                <span class="self">self</span>.<span class="ident">protocol_command_sender</span>
+                <span class="self">self</span>.<span class="ident">channels</span>
+                    .<span class="ident">protocol_command_sender</span>
                     .<span class="ident">send_get_blocks_results</span>(<span class="ident">results</span>)
                     .<span class="kw">await</span><span class="question-mark">?</span>;
             }
@@ -2769,14 +2787,16 @@
             <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_blocks_to_propagate</span>().<span class="ident">into_iter</span>()
         {
             <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed.integrated&quot;</span>, { <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">block</span> });
-            <span class="self">self</span>.<span class="ident">protocol_command_sender</span>
+            <span class="self">self</span>.<span class="ident">channels</span>
+                .<span class="ident">protocol_command_sender</span>
                 .<span class="ident">integrated_block</span>(<span class="ident">block_id</span>, <span class="ident">block</span>, <span class="ident">op_ids</span>, <span class="ident">endo_ids</span>)
                 .<span class="kw">await</span><span class="question-mark">?</span>;
         }
 
         <span class="comment">// Notify protocol of attack attempts.</span>
         <span class="kw">for</span> <span class="ident">hash</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_attack_attempts</span>().<span class="ident">into_iter</span>() {
-            <span class="self">self</span>.<span class="ident">protocol_command_sender</span>
+            <span class="self">self</span>.<span class="ident">channels</span>
+                .<span class="ident">protocol_command_sender</span>
                 .<span class="ident">notify_block_attack</span>(<span class="ident">hash</span>)
                 .<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed.attack&quot;</span>, {
@@ -2808,7 +2828,8 @@
                         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">b_id</span>, <span class="ident">b</span>.<span class="ident">block</span>.<span class="ident">clone</span>()))
                 })
                 .<span class="ident">collect</span>();
-            <span class="self">self</span>.<span class="ident">execution_command_sender</span>
+            <span class="self">self</span>.<span class="ident">channels</span>
+                .<span class="ident">execution_command_sender</span>
                 .<span class="ident">update_blockclique</span>(<span class="ident">finalized_blocks</span>, <span class="ident">blockclique</span>)
                 .<span class="kw">await</span><span class="question-mark">?</span>;
         }
@@ -2838,7 +2859,8 @@
         }
         <span class="comment">// Notify pool of new final ops</span>
         <span class="kw">if</span> <span class="op">!</span><span class="ident">new_final_ops</span>.<span class="ident">is_empty</span>() {
-            <span class="self">self</span>.<span class="ident">pool_command_sender</span>
+            <span class="self">self</span>.<span class="ident">channels</span>
+                .<span class="ident">pool_command_sender</span>
                 .<span class="ident">final_operations</span>(<span class="ident">new_final_ops</span>)
                 .<span class="kw">await</span><span class="question-mark">?</span>;
         }
@@ -2851,7 +2873,8 @@
         <span class="kw">let</span> <span class="ident">remove_blocks</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">wishlist</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">new_wishlist</span>;
         <span class="kw">if</span> <span class="op">!</span><span class="ident">new_blocks</span>.<span class="ident">is_empty</span>() <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">remove_blocks</span>.<span class="ident">is_empty</span>() {
             <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed.send_wishlist_delta&quot;</span>, { <span class="string">&quot;new&quot;</span>: <span class="ident">new_wishlist</span>, <span class="string">&quot;remove&quot;</span>: <span class="ident">remove_blocks</span> });
-            <span class="self">self</span>.<span class="ident">protocol_command_sender</span>
+            <span class="self">self</span>.<span class="ident">channels</span>
+                .<span class="ident">protocol_command_sender</span>
                 .<span class="ident">send_wishlist_delta</span>(<span class="ident">new_blocks</span>, <span class="ident">remove_blocks</span>)
                 .<span class="kw">await</span><span class="question-mark">?</span>;
             <span class="self">self</span>.<span class="ident">wishlist</span> <span class="op">=</span> <span class="ident">new_wishlist</span>;
@@ -2874,7 +2897,8 @@
             <span class="self">self</span>.<span class="ident">latest_final_periods</span> <span class="op">=</span> <span class="ident">latest_final_periods</span>;
 
             <span class="comment">// send latest final periods to pool</span>
-            <span class="self">self</span>.<span class="ident">pool_command_sender</span>
+            <span class="self">self</span>.<span class="ident">channels</span>
+                .<span class="ident">pool_command_sender</span>
                 .<span class="ident">update_latest_final_periods</span>(<span class="self">self</span>.<span class="ident">latest_final_periods</span>.<span class="ident">clone</span>())
                 .<span class="kw">await</span><span class="question-mark">?</span>;
         }
@@ -2933,7 +2957,8 @@
                 }
                 <span class="comment">// send endorsement batch to pool</span>
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">endorsements</span>.<span class="ident">is_empty</span>() {
-                    <span class="self">self</span>.<span class="ident">pool_command_sender</span>
+                    <span class="self">self</span>.<span class="ident">channels</span>
+                        .<span class="ident">pool_command_sender</span>
                         .<span class="ident">add_endorsements</span>(<span class="ident">endorsements</span>)
                         .<span class="kw">await</span><span class="question-mark">?</span>;
                 }
@@ -2973,5 +2998,5 @@
     <span class="prelude-val">Ok</span>((<span class="ident">e_id</span>, <span class="ident">endorsement</span>))
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (777bb86bc 2022-01-20)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (84322efad 2022-01-23)" ></div>
 </body></html>
