@@ -1,5 +1,4 @@
 use crate::ExecutionError;
-use assembly_simulator::Bytecode;
 use massa_hash::hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::prehash::{BuildMap, Map};
@@ -8,6 +7,7 @@ use massa_models::{
     SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
 };
 use massa_models::{Address, Amount, AMOUNT_ZERO};
+use massa_sc_runtime::Bytecode;
 use serde::{Deserialize, Serialize};
 
 /// an entry in the SCE ledger
@@ -544,6 +544,28 @@ impl SCELedgerStep {
             Some(entry) => entry.data.get(key).cloned(),
             _ => None,
         }
+    }
+
+    /// checks if a data entry exists
+    pub fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
+        // check if caused_changes or cumulative_history_changes have an update on this
+        for changes in [&self.caused_changes, &self.cumulative_history_changes] {
+            match changes.0.get(addr) {
+                Some(SCELedgerChange::Delete) => return false,
+                Some(SCELedgerChange::Set(_)) => return true,
+                Some(SCELedgerChange::Update(update)) => {
+                    match update.update_data.get(key) {
+                        None => {}                  // no updates
+                        Some(None) => return false, // data entry deleted,
+                        Some(Some(_)) => return true,
+                    }
+                }
+                None => {}
+            }
+        }
+
+        // check if the final ledger has the info
+        self.final_ledger_slot.ledger.0.contains_key(addr)
     }
 
     /// sets data entry

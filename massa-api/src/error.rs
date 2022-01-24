@@ -24,7 +24,7 @@ pub enum ApiError {
     /// massa_hash error: {0}
     MassaHashError(#[from] MassaHashError),
     /// consensus error: {0}
-    ConsensusError(#[from] ConsensusError),
+    ConsensusError(#[from] Box<ConsensusError>),
     /// execution error: {0}
     ExecutionError(#[from] ExecutionError),
     /// network error: {0}
@@ -52,5 +52,11 @@ impl From<ApiError> for jsonrpc_core::Error {
             message: err.to_string(),
             data: None,
         }
+    }
+}
+
+impl std::convert::From<massa_consensus::ConsensusError> for ApiError {
+    fn from(err: massa_consensus::ConsensusError) -> Self {
+        ApiError::ConsensusError(Box::new(err))
     }
 }

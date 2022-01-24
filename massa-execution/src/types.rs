@@ -1,10 +1,11 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
 use crate::BootstrapExecutionState;
-use assembly_simulator::Bytecode;
 use massa_models::execution::ExecuteReadOnlyResponse;
-use massa_models::prehash::Set;
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, Block, BlockId, Slot};
+use massa_sc_runtime::Bytecode;
+use rand::SeedableRng;
+use rand_xoshiro::Xoshiro256PlusPlus;
 use std::sync::{Condvar, Mutex};
 use std::{collections::VecDeque, sync::Arc};
 use tokio::sync::oneshot;
@@ -34,8 +35,8 @@ pub(crate) struct ExecutionContext {
     /// max gas for this execution
     pub max_gas: u64,
 
-    /// coins transferred to the target address during a call
-    pub coins: Amount,
+    /// coins transferred to the target address during a call, stacked
+    pub coins_stack: Vec<Amount>,
 
     /// gas price of the execution
     pub gas_price: Amount,
@@ -52,14 +53,17 @@ pub(crate) struct ExecutionContext {
     /// block creator addr, if there is a block at this slot
     pub opt_block_creator_addr: Option<Address>,
 
-    /// call stack, most recent is at the back
+    /// address call stack, most recent is at the back
     pub call_stack: VecDeque<Address>,
 
-    /// list of addresses created so far during excution
-    pub owned_addresses: Set<Address>,
+    /// list of addresses created so far during excution, stacked
+    pub owned_addresses_stack: Vec<Vec<Address>>,
 
     /// True if it's a read-only context
     pub read_only: bool,
+
+    /// Unsafe RNG state
+    pub unsafe_rng: Xoshiro256PlusPlus,
 }
 
 /// an active execution step target slot and block
@@ -85,15 +89,16 @@ impl ExecutionContext {
                 caused_changes: Default::default(),
             },
             max_gas: Default::default(),
-            coins: Default::default(),
+            coins_stack: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),
             opt_block_id: Default::default(),
             opt_block_creator_addr: Default::default(),
             call_stack: Default::default(),
-            owned_addresses: Default::default(),
+            owned_addresses_stack: Default::default(),
             created_addr_index: Default::default(),
             read_only: Default::default(),
+            unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
         }
     }
 }

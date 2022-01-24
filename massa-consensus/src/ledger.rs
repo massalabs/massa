@@ -77,6 +77,7 @@ impl LedgerChanges {
     }
 
     /// clone subset
+    #[must_use]
     pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
         LedgerChanges(
             self.0
@@ -272,7 +273,7 @@ impl Ledger {
             let current_tree = db.open_tree(format!("ledger_thread_{}", thread))?;
             ledger_per_thread.push(current_tree);
         }
-        db.drop_tree("latest_final_periods".to_string())?;
+        db.drop_tree("latest_final_periods")?;
         let latest_final_periods = db.open_tree("latest_final_periods")?;
         if latest_final_periods.is_empty() {
             for thread in 0..cfg.thread_count {
@@ -638,6 +639,7 @@ impl LedgerSubset {
     }
 
     /// clone subset
+    #[must_use]
     pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
         LedgerSubset(
             self.0

@@ -31,6 +31,8 @@ use tokio::{
 };
 use tracing::{debug, info, warn};
 
+type SelectionDraws = Vec<(Slot, (Address, Vec<Address>))>;
+
 /// Commands that can be proccessed by consensus.
 #[derive(Debug)]
 pub enum ConsensusCommand {
@@ -54,7 +56,7 @@ pub enum ConsensusCommand {
     GetSelectionDraws {
         start: Slot,
         end: Slot,
-        response_tx: oneshot::Sender<Result<Vec<(Slot, (Address, Vec<Address>))>, ConsensusError>>,
+        response_tx: oneshot::Sender<Result<SelectionDraws, ConsensusError>>,
     },
     /// Returns the bootstrap state
     GetBootstrapState(oneshot::Sender<(ExportProofOfStake, BootstrapableGraph)>),
@@ -374,7 +376,7 @@ impl ConsensusWorker {
                     massa_trace!("consensus.consensus_worker.run_loop.select.protocol_event", {});
                     match evt {
                         Ok(event) => self.process_protocol_event(event).await?,
-                        Err(err) => return Err(ConsensusError::ProtocolError(err))
+                        Err(err) => return Err(ConsensusError::ProtocolError(Box::new(err)))
                     }
                 },
             }
@@ -1302,16 +1304,18 @@ impl ConsensusWorker {
         {
             let finalized_blocks = new_final_block_ids
                 .iter()
-                .filter_map(|b_id| match self.block_db.get_active_block(b_id) {
-                    Some(b) => Some((*b_id, b.block.clone())),
-                    None => None,
+                .filter_map(|b_id| {
+                    self.block_db
+                        .get_active_block(b_id)
+                        .map(|b| (*b_id, b.block.clone()))
                 })
                 .collect();
             let blockclique = blockclique_set
                 .iter()
-                .filter_map(|b_id| match self.block_db.get_active_block(b_id) {
-                    Some(b) => Some((*b_id, b.block.clone())),
-                    None => None,
+                .filter_map(|b_id| {
+                    self.block_db
+                        .get_active_block(b_id)
+                        .map(|b| (*b_id, b.block.clone()))
                 })
                 .collect();
             self.execution_command_sender

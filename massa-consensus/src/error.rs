@@ -48,7 +48,7 @@ pub enum ConsensusError {
     /// massa_hash error {0}
     MassaHashError(#[from] massa_hash::MassaHashError),
     /// Protocol error {0}
-    ProtocolError(#[from] ProtocolError),
+    ProtocolError(#[from] Box<ProtocolError>),
     /// failed retrieving consensus controller event
     ControllerEventError,
     /// Join error {0}
@@ -99,4 +99,10 @@ pub enum ConsensusError {
     ChannelError(String),
     /// amount overflow
     AmountOverflowError,
+}
+
+impl std::convert::From<massa_protocol_exports::ProtocolError> for ConsensusError {
+    fn from(err: massa_protocol_exports::ProtocolError) -> Self {
+        ConsensusError::ProtocolError(Box::new(err))
+    }
 }
