@@ -4,8 +4,9 @@ use crate::error::ApiError;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
-use massa_consensus::{ConsensusCommandSender, ConsensusConfig, DiscardReason, ExportBlockStatus};
+use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution::ExecutionCommandSender;
+use massa_graph::{DiscardReason, ExportBlockStatus};
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
     IndexedSlot, NodeStatus, OperationInfo, TimeInterval,

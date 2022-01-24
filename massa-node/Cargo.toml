@@ -22,7 +22,8 @@ tracing-subscriber = "0.3"
 
 massa_api = { path = "../massa-api" }
 massa_bootstrap = { path = "../massa-bootstrap" }
-massa_consensus = { path = "../massa-consensus" }
+massa_consensus_exports = { path = "../massa-consensus-exports" }
+massa_consensus_worker = { path = "../massa-consensus-worker" }
 massa_execution = { path = "../massa-execution" }
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
@@ -39,4 +40,4 @@ serial_test = "0.5"
 [features]
 # nightly = ["beta"]
 beta = []
-test = ["massa_consensus/test"]
+test = ["massa_consensus_exports/test"]

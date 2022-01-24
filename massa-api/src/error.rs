@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use displaydoc::Display;
-use massa_consensus::ConsensusError;
+use massa_consensus_exports::error::ConsensusError;
 use massa_execution::ExecutionError;
 use massa_hash::MassaHashError;
 use massa_models::ModelsError;
@@ -55,8 +55,8 @@ impl From<ApiError> for jsonrpc_core::Error {
     }
 }
 
-impl std::convert::From<massa_consensus::ConsensusError> for ApiError {
-    fn from(err: massa_consensus::ConsensusError) -> Self {
+impl std::convert::From<ConsensusError> for ApiError {
+    fn from(err: ConsensusError) -> Self {
         ApiError::ConsensusError(Box::new(err))
     }
 }

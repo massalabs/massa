@@ -15,7 +15,7 @@ use crate::{
     tests::tools::{assert_eq_exec, get_execution_state, wait_execution_command},
     BootstrapSettings,
 };
-use massa_consensus::{ConsensusCommand, ConsensusCommandSender};
+use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
 use massa_execution::{ExecutionCommand, ExecutionCommandSender};
 use massa_models::Version;
 use massa_network::{NetworkCommand, NetworkCommandSender};

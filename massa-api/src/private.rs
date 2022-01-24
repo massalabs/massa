@@ -4,7 +4,7 @@ use crate::error::ApiError;
 use crate::{Endpoints, Private, RpcServer, StopHandle, API};
 use jsonrpc_core::BoxFuture;
 use jsonrpc_http_server::tokio::sync::mpsc;
-use massa_consensus::{ConsensusCommandSender, ConsensusConfig};
+use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution::ExecutionCommandSender;
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,

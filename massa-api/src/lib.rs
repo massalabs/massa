@@ -7,7 +7,7 @@ use error::ApiError;
 use jsonrpc_core::{BoxFuture, IoHandler, Value};
 use jsonrpc_derive::rpc;
 use jsonrpc_http_server::{CloseHandle, ServerBuilder};
-use massa_consensus::{ConsensusCommandSender, ConsensusConfig};
+use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution::ExecutionCommandSender;
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,

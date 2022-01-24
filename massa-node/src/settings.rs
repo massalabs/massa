@@ -4,7 +4,7 @@ use std::path::Path;
 
 use directories::ProjectDirs;
 use massa_bootstrap::settings::BootstrapSettings;
-use massa_consensus::ConsensusSettings;
+use massa_consensus_exports::ConsensusSettings;
 use massa_execution::ExecutionSettings;
 use massa_models::api::APISettings;
 use massa_models::Version;
