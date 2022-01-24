@@ -76,4 +76,10 @@
 2. Endorsements(writer: Network)
 3. Operations(writer: Network)
 
+## Notifications
+
+1. Production to Consensus, on Blocks.
+2. Network to Consensus, on Blocks.
+3. Consensus to Network, Executor, on Graph.
+
 
