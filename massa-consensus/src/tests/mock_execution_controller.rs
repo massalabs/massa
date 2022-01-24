@@ -13,6 +13,7 @@ use tokio::{
 
 const CHANNEL_SIZE: usize = 256;
 
+#[allow(dead_code)]
 pub struct MockExecutionController {
     execution_command_sender: Sender<ExecutionCommand>,
     execution_command_receiver: Receiver<ExecutionCommand>,
@@ -35,6 +36,7 @@ impl MockExecutionController {
         )
     }
 
+    #[allow(dead_code)]
     pub async fn wait_command<F, T>(&mut self, timeout: MassaTime, filter_map: F) -> Option<T>
     where
         F: Fn(ExecutionCommand) -> Option<T>,
@@ -52,6 +54,7 @@ impl MockExecutionController {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn blockclique_changed(
         &mut self,
         blockclique: Map<BlockId, Block>,
@@ -66,6 +69,7 @@ impl MockExecutionController {
             .expect("could not send execution event");
     }
 
+    #[allow(dead_code)]
     pub async fn ignore_commands_while<FutureT: futures::Future + Unpin>(
         &mut self,
         mut future: FutureT,
