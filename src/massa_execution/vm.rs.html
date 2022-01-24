@@ -382,6 +382,14 @@
 <span id="377">377</span>
 <span id="378">378</span>
 <span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::bootstrap_file_error</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::interface_impl::InterfaceImpl</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::sce_ledger</span>::{<span class="ident">FinalLedger</span>, <span class="ident">SCELedger</span>, <span class="ident">SCELedgerChanges</span>};
@@ -404,10 +412,18 @@
 <span class="kw">use</span> <span class="ident">tokio::sync::oneshot</span>;
 <span class="kw">use</span> <span class="ident">tracing::debug</span>;
 
+<span class="doccomment">/// Virtual Machine and step history system</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">VM</span> {
+    <span class="doccomment">/// thread count</span>
     <span class="ident">thread_count</span>: <span class="ident">u8</span>,
+
+    <span class="doccomment">/// history of SCE-active executed steps</span>
     <span class="ident">step_history</span>: <span class="ident">StepHistory</span>,
+
+    <span class="doccomment">/// execution interface used by the runtime</span>
     <span class="ident">execution_interface</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Interface</span><span class="op">&gt;</span>,
+
+    <span class="doccomment">/// execution context</span>
     <span class="ident">execution_context</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionContext</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
