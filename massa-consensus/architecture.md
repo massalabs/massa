@@ -62,4 +62,18 @@
 2. Update ledger/final blocks
     - Update storage
     - Notify POS.
+    
+## Shared data
+
+### Various
+1. Best parents(writer: Consensus)
+2. Draws(writer: POS)
+3. Ledger(writer: Executor)
+4. Final blocks(writer: Executor)
+
+### Storage
+1. Blocks(writer: Network, Production)
+2. Endorsements(writer: Network)
+3. Operations(writer: Network)
+
 
