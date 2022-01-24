@@ -8,6 +8,7 @@ use super::{
 };
 use crate::{
     block_graph::{BlockGraphExport, ExportActiveBlock},
+    consensus_controller::ConsensusChannels,
     pos::{RollCounts, RollUpdate, RollUpdates},
     ConsensusConfig,
 };
@@ -359,6 +360,7 @@ pub fn create_transaction(
     Operation { content, signature }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn create_executesc(
     priv_key: PrivateKey,
     sender_public_key: PublicKey,
@@ -741,11 +743,13 @@ pub async fn consensus_pool_test<F, V>(
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            execution_command_sender,
-            execution_event_receiver,
-            protocol_command_sender,
-            protocol_event_receiver,
-            pool_command_sender,
+            ConsensusChannels {
+                execution_command_sender,
+                execution_event_receiver,
+                protocol_command_sender: protocol_command_sender.clone(),
+                protocol_event_receiver,
+                pool_command_sender,
+            },
             boot_pos,
             boot_graph,
             0,
@@ -802,11 +806,13 @@ where
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            execution_command_sender,
-            execution_event_receiver,
-            protocol_command_sender,
-            protocol_event_receiver,
-            pool_command_sender,
+            ConsensusChannels {
+                execution_command_sender,
+                execution_event_receiver,
+                protocol_command_sender: protocol_command_sender.clone(),
+                protocol_event_receiver,
+                pool_command_sender,
+            },
             None,
             None,
             0,

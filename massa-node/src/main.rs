@@ -8,8 +8,8 @@ use crate::settings::SETTINGS;
 use massa_api::{Private, Public, RpcServer, StopHandle, API};
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use massa_consensus::{
-    start_consensus_controller, ConsensusCommandSender, ConsensusEvent, ConsensusEventReceiver,
-    ConsensusManager,
+    start_consensus_controller, ConsensusChannels, ConsensusCommandSender, ConsensusEvent,
+    ConsensusEventReceiver, ConsensusManager,
 };
 
 use massa_execution::{ExecutionConfigs, ExecutionManager};
@@ -151,11 +151,13 @@ async fn launch() -> (
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             SETTINGS.consensus.config(),
-            execution_command_sender.clone(),
-            execution_event_receiver,
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender.clone(),
+            ConsensusChannels {
+                execution_command_sender: execution_command_sender.clone(),
+                execution_event_receiver,
+                protocol_command_sender: protocol_command_sender.clone(),
+                protocol_event_receiver,
+                pool_command_sender: pool_command_sender.clone(),
+            },
             bootstrap_state.pos,
             bootstrap_state.graph,
             bootstrap_state.compensation_millis,
