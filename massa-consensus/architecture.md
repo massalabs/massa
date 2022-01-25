@@ -73,8 +73,8 @@
 
 ### Storage
 1. Blocks(writer: Network, Production)
-2. Endorsements(writer: Network)
-3. Operations(writer: Network)
+2. Endorsements(writer: Network, Production)
+3. Operations(writer: Network, Api)
 
 ## Notifications
 
