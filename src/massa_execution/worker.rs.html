@@ -506,12 +506,44 @@
 <span id="501">501</span>
 <span id="502">502</span>
 <span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::sce_ledger::FinalLedger</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types</span>::{<span class="ident">ExecutionQueue</span>, <span class="ident">ExecutionRequest</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::vm::VM</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::BootstrapExecutionState</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">config::ExecutionConfigs</span>, <span class="ident">types::ExecutionStep</span>};
+<span class="kw">use</span> <span class="ident">massa_models::api::SCELedgerInfo</span>;
 <span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
@@ -566,6 +598,10 @@
         <span class="doccomment">/// The address, or a default random one if none is provided,</span>
         <span class="doccomment">/// which will simulate the sender of the operation.</span>
         <span class="ident">address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+    },
+    <span class="ident">GetSCELedgerForAddresses</span> {
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">SCELedgerInfo</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
     },
 }
 
@@ -668,6 +704,15 @@
                         }
                     }
                     <span class="prelude-val">Some</span>(<span class="ident">ExecutionRequest::Shutdown</span>) =&gt; <span class="kw">return</span>,
+                    <span class="prelude-val">Some</span>(<span class="ident">ExecutionRequest::GetSCELedgerForAddresses</span> {
+                        <span class="ident">addresses</span>,
+                        <span class="ident">response_tx</span>,
+                    }) =&gt; {
+                        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">vm</span>.<span class="ident">get_sce_ledger_entry_for_addresses</span>(<span class="ident">addresses</span>);
+                        <span class="kw">if</span> <span class="ident">response_tx</span>.<span class="ident">send</span>(<span class="ident">res</span>).<span class="ident">is_err</span>() {
+                            <span class="macro">debug!</span>(<span class="string">&quot;execution: could not send GetSCELedgerForAddresses response&quot;</span>)
+                        }
+                    }
                     <span class="prelude-val">None</span> =&gt; {
                         <span class="ident">requests</span> <span class="op">=</span> <span class="ident">condvar</span>.<span class="ident">wait</span>(<span class="ident">requests</span>).<span class="ident">unwrap</span>();
                     }
@@ -796,9 +841,26 @@
                     <span class="ident">address</span>,
                 });
             }
-            <span class="ident">ExecutionCommand::GetSCOutputEventBySlotRange</span> { .. } =&gt; <span class="macro">todo!</span>(),
-            <span class="ident">ExecutionCommand::GetSCOutputEventByCaller</span> { .. } =&gt; <span class="macro">todo!</span>(),
-            <span class="ident">ExecutionCommand::GetSCOutputEventBySCAddress</span> { .. } =&gt; <span class="macro">todo!</span>(),
+            <span class="ident">ExecutionCommand::GetSCOutputEventBySlotRange</span> {
+                <span class="ident">start</span>,
+                <span class="ident">end</span>,
+                <span class="ident">response_tx</span>,
+            } =&gt; <span class="macro">todo!</span>(),
+            <span class="ident">ExecutionCommand::GetSCOutputEventByCaller</span> {
+                <span class="ident">caller_address</span>,
+                <span class="ident">response_tx</span>,
+            } =&gt; <span class="macro">todo!</span>(),
+            <span class="ident">ExecutionCommand::GetSCOutputEventBySCAddress</span> {
+                <span class="ident">sc_address</span>,
+                <span class="ident">response_tx</span>,
+            } =&gt; <span class="macro">todo!</span>(),
+            <span class="ident">ExecutionCommand::GetSCELedgerForAddresses</span> {
+                <span class="ident">response_tx</span>,
+                <span class="ident">addresses</span>,
+            } =&gt; <span class="self">self</span>.<span class="ident">push_request</span>(<span class="ident">ExecutionRequest::GetSCELedgerForAddresses</span> {
+                <span class="ident">response_tx</span>,
+                <span class="ident">addresses</span>,
+            }),
         }
         <span class="prelude-val">Ok</span>(())
     }

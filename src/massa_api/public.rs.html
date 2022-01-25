@@ -542,6 +542,9 @@
 <span id="537">537</span>
 <span id="538">538</span>
 <span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError</span>;
@@ -902,6 +905,7 @@
         <span class="kw">let</span> <span class="ident">api_cfg</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">api_settings</span>;
         <span class="kw">let</span> <span class="ident">pool_command_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">pool_command_sender</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">compensation_millis</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">compensation_millis</span>;
+        <span class="kw">let</span> <span class="ident">sce_command_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">execution_command_sender</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">closure</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
             <span class="kw">if</span> <span class="ident">addresses</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span> <span class="op">&gt;</span> <span class="ident">api_cfg</span>.<span class="ident">max_arguments</span> {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApiError::TooManyArguments</span>(<span class="string">&quot;too many arguments&quot;</span>.<span class="ident">into</span>()));
@@ -928,10 +932,11 @@
 
             <span class="comment">// roll and balance info</span>
             <span class="kw">let</span> <span class="ident">states</span> <span class="op">=</span> <span class="ident">cmd_sender</span>.<span class="ident">get_addresses_info</span>(<span class="ident">addresses</span>.<span class="ident">iter</span>().<span class="ident">copied</span>().<span class="ident">collect</span>());
+            <span class="kw">let</span> <span class="ident">sce_info</span> <span class="op">=</span> <span class="ident">sce_command_sender</span>.<span class="ident">get_sce_ledger_for_addresses</span>(<span class="ident">addresses</span>.<span class="ident">clone</span>());
 
             <span class="comment">// wait for both simultaneously</span>
-            <span class="kw">let</span> (<span class="ident">next_draws</span>, <span class="ident">states</span>) <span class="op">=</span> <span class="macro">tokio::join!</span>(<span class="ident">next_draws</span>, <span class="ident">states</span>);
-            <span class="kw">let</span> (<span class="ident">next_draws</span>, <span class="kw-2">mut</span> <span class="ident">states</span>) <span class="op">=</span> (<span class="ident">next_draws</span><span class="question-mark">?</span>, <span class="ident">states</span><span class="question-mark">?</span>);
+            <span class="kw">let</span> (<span class="ident">next_draws</span>, <span class="ident">states</span>, <span class="ident">sce_info</span>) <span class="op">=</span> <span class="macro">tokio::join!</span>(<span class="ident">next_draws</span>, <span class="ident">states</span>, <span class="ident">sce_info</span>);
+            <span class="kw">let</span> (<span class="ident">next_draws</span>, <span class="kw-2">mut</span> <span class="ident">states</span>, <span class="ident">sce_info</span>) <span class="op">=</span> (<span class="ident">next_draws</span><span class="question-mark">?</span>, <span class="ident">states</span><span class="question-mark">?</span>, <span class="ident">sce_info</span><span class="question-mark">?</span>);
 
             <span class="comment">// operations block and endorsement info</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span>
@@ -1013,6 +1018,7 @@
                         .<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>)
                         .<span class="ident">ok_or</span>(<span class="ident">ApiError::NotFound</span>)<span class="question-mark">?</span>,
                     <span class="ident">production_stats</span>: <span class="ident">state</span>.<span class="ident">production_stats</span>,
+                    <span class="ident">sce_ledger_info</span>: <span class="ident">sce_info</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">address</span>).<span class="ident">cloned</span>().<span class="ident">unwrap_or_default</span>(),
                 })
             }
             <span class="prelude-val">Ok</span>(<span class="ident">res</span>)

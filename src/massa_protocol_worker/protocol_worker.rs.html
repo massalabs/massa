@@ -2902,7 +2902,7 @@
                     .<span class="kw">await</span>;
                     <span class="self">self</span>.<span class="ident">update_ask_block</span>(<span class="ident">block_ask_timer</span>).<span class="kw">await</span><span class="question-mark">?</span>;
                 } <span class="kw">else</span> {
-                    <span class="macro">warn!</span>(<span class="string">&quot;node {} sent us critically incorrect block&quot;</span>, <span class="ident">from_node_id</span>);
+                    <span class="macro">warn!</span>(<span class="string">&quot;node {} sent us critically incorrect block, which may be an attack attempt by the remote node or a loss of sync between us and the remote node&quot;</span>, <span class="ident">from_node_id</span>);
                     <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ban_node</span>(<span class="kw-2">&amp;</span><span class="ident">from_node_id</span>).<span class="kw">await</span>;
                 }
             }
@@ -2942,7 +2942,7 @@
                     <span class="self">self</span>.<span class="ident">update_ask_block</span>(<span class="ident">block_ask_timer</span>).<span class="kw">await</span><span class="question-mark">?</span>;
                 } <span class="kw">else</span> {
                     <span class="macro">warn!</span>(
-                        <span class="string">&quot;node {} sent us critically incorrect header&quot;</span>,
+                        <span class="string">&quot;node {} sent us critically incorrect header, which may be an attack attempt by the remote node or a loss of sync between us and the remote node&quot;</span>,
                         <span class="ident">source_node_id</span>,
                     );
                     <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ban_node</span>(<span class="kw-2">&amp;</span><span class="ident">source_node_id</span>).<span class="kw">await</span>;
@@ -2969,7 +2969,7 @@
                     .<span class="kw">await</span>
                     .<span class="ident">is_err</span>()
                 {
-                    <span class="macro">warn!</span>(<span class="string">&quot;node {} sent us critically incorrect operation&quot;</span>, <span class="ident">node</span>,);
+                    <span class="macro">warn!</span>(<span class="string">&quot;node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node&quot;</span>, <span class="ident">node</span>,);
                     <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ban_node</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>).<span class="kw">await</span>;
                 }
             }
@@ -2980,7 +2980,7 @@
                     .<span class="kw">await</span>
                     .<span class="ident">is_err</span>()
                 {
-                    <span class="macro">warn!</span>(<span class="string">&quot;node {} sent us critically incorrect endorsements&quot;</span>, <span class="ident">node</span>,);
+                    <span class="macro">warn!</span>(<span class="string">&quot;node {} sent us critically incorrect endorsements, which may be an attack attempt by the remote node or a loss of sync between us and the remote node&quot;</span>, <span class="ident">node</span>,);
                     <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ban_node</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>).<span class="kw">await</span>;
                 }
             }

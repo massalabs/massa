@@ -373,22 +373,44 @@
 <span id="368">368</span>
 <span id="369">369</span>
 <span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::address::AddressCycleProductionStats</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ledger::LedgerData</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::node::NodeId</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash::Map</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash::Set</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::stats</span>::{<span class="ident">ConsensusStats</span>, <span class="ident">NetworkStats</span>, <span class="ident">PoolStats</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">CompactConfig</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>,
     <span class="ident">OperationId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>,
 };
+<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
-
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeStatus</span> {
     <span class="kw">pub</span> <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
@@ -512,11 +534,27 @@
     }
 }
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SCELedgerInfo</span> {
+    <span class="kw">pub</span> <span class="ident">balance</span>: <span class="ident">Amount</span>,
+    <span class="kw">pub</span> <span class="ident">module</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">datastore</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">SCELedgerInfo</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tBalance: {}&quot;</span>, <span class="self">self</span>.<span class="ident">balance</span>)<span class="question-mark">?</span>;
+        <span class="comment">// I choose not to display neither the module nor the datastore because bytes</span>
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AddressInfo</span> {
     <span class="kw">pub</span> <span class="ident">address</span>: <span class="ident">Address</span>,
     <span class="kw">pub</span> <span class="ident">thread</span>: <span class="ident">u8</span>,
     <span class="kw">pub</span> <span class="ident">ledger_info</span>: <span class="ident">LedgerInfo</span>,
+    <span class="kw">pub</span> <span class="ident">sce_ledger_info</span>: <span class="ident">SCELedgerInfo</span>,
     <span class="kw">pub</span> <span class="ident">rolls</span>: <span class="ident">RollsInfo</span>,
     <span class="kw">pub</span> <span class="ident">block_draws</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">endorsement_draws</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">IndexedSlot</span><span class="op">&gt;</span>,
@@ -530,7 +568,8 @@
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Address: {}&quot;</span>, <span class="self">self</span>.<span class="ident">address</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Thread: {}&quot;</span>, <span class="self">self</span>.<span class="ident">thread</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Balance:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">ledger_info</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Parallel balance:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">ledger_info</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Sequential balance:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">sce_ledger_info</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Rolls:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">rolls</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
             <span class="ident">f</span>,
@@ -596,6 +635,7 @@
             <span class="ident">thread</span>: <span class="self">self</span>.<span class="ident">thread</span>,
             <span class="ident">balance</span>: <span class="self">self</span>.<span class="ident">ledger_info</span>,
             <span class="ident">rolls</span>: <span class="self">self</span>.<span class="ident">rolls</span>,
+            <span class="ident">sce_balance</span>: <span class="self">self</span>.<span class="ident">sce_ledger_info</span>.<span class="ident">clone</span>(),
         }
     }
 }
@@ -619,13 +659,15 @@
     <span class="kw">pub</span> <span class="ident">thread</span>: <span class="ident">u8</span>,
     <span class="kw">pub</span> <span class="ident">balance</span>: <span class="ident">LedgerInfo</span>,
     <span class="kw">pub</span> <span class="ident">rolls</span>: <span class="ident">RollsInfo</span>,
+    <span class="kw">pub</span> <span class="ident">sce_balance</span>: <span class="ident">SCELedgerInfo</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">CompactAddressInfo</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Address: {}&quot;</span>, <span class="self">self</span>.<span class="ident">address</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Thread: {}&quot;</span>, <span class="self">self</span>.<span class="ident">thread</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Balance:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">balance</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Sequential balance:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">sce_balance</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Parallel balance:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">balance</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Rolls:\n{}&quot;</span>, <span class="self">self</span>.<span class="ident">rolls</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }

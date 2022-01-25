@@ -232,12 +232,35 @@
 <span id="227">227</span>
 <span id="228">228</span>
 <span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">ExecutionConfigs</span>, <span class="ident">CHANNEL_SIZE</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::worker</span>::{
     <span class="ident">ExecutionCommand</span>, <span class="ident">ExecutionEvent</span>, <span class="ident">ExecutionManagementCommand</span>, <span class="ident">ExecutionWorker</span>,
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::BootstrapExecutionState</span>;
+<span class="kw">use</span> <span class="ident">massa_models::api::SCELedgerInfo</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">execution::ExecuteReadOnlyResponse</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">Slot</span>};
@@ -458,6 +481,27 @@
             })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
             <span class="ident">ExecutionError::ChannelError</span>(<span class="string">&quot;could not send ExecuteReadOnlyResponse upstream&quot;</span>.<span class="ident">into</span>())
+        })<span class="question-mark">?</span>)
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_sce_ledger_for_addresses</span>(
+        <span class="self">self</span>,
+        <span class="ident">addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">SCELedgerInfo</span><span class="op">&gt;</span>, <span class="ident">ExecutionError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
+        <span class="self">self</span>.<span class="number">0</span>
+            .<span class="ident">send</span>(<span class="ident">ExecutionCommand::GetSCELedgerForAddresses</span> {
+                <span class="ident">response_tx</span>,
+                <span class="ident">addresses</span>,
+            })
+            .<span class="kw">await</span>
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                <span class="ident">ExecutionError::ChannelError</span>(
+                    <span class="string">&quot;could not send GetSCELedgerForAddresses command&quot;</span>.<span class="ident">into</span>(),
+                )
+            })<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+            <span class="ident">ExecutionError::ChannelError</span>(<span class="string">&quot;could not send GetSCELedgerForAddresses upstream&quot;</span>.<span class="ident">into</span>())
         })<span class="question-mark">?</span>)
     }
 }

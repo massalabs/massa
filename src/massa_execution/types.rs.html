@@ -192,9 +192,18 @@
 <span id="187">187</span>
 <span id="188">188</span>
 <span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::sce_ledger</span>::{<span class="ident">FinalLedger</span>, <span class="ident">SCELedger</span>, <span class="ident">SCELedgerChanges</span>, <span class="ident">SCELedgerStep</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::BootstrapExecutionState</span>;
+<span class="kw">use</span> <span class="ident">massa_models::api::SCELedgerInfo</span>;
 <span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
+<span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
 <span class="doccomment">/// Define types used while executing block bytecodes</span>
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">Slot</span>};
 <span class="kw">use</span> <span class="ident">massa_sc_runtime::Bytecode</span>;
@@ -342,6 +351,11 @@
     },
     <span class="doccomment">/// Shutdown state, set by the worker to signal shutdown to the VM thread.</span>
     <span class="ident">Shutdown</span>,
+    <span class="doccomment">/// Get ledger entry for address</span>
+    <span class="ident">GetSCELedgerForAddresses</span> {
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">SCELedgerInfo</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+    },
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">ExecutionQueue</span> <span class="op">=</span> <span class="ident">Arc</span><span class="op">&lt;</span>(<span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ExecutionRequest</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">Condvar</span>)<span class="op">&gt;</span>;
