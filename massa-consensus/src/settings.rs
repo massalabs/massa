@@ -340,7 +340,7 @@ mod tests {
         max_block_endorsements: 8,
     };
 
-    pub fn generate_staking_keys_file(staking_keys: &Vec<PrivateKey>) -> NamedTempFile {
+    pub fn generate_staking_keys_file(staking_keys: &[PrivateKey]) -> NamedTempFile {
         use std::io::prelude::*;
         let f = NamedTempFile::new().expect("cannot create temp file");
         serde_json::to_writer_pretty(f.as_file(), &staking_keys)

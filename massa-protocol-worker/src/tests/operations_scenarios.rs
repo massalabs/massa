@@ -96,20 +96,18 @@ async fn test_protocol_does_not_send_invalid_operations_it_receives_to_consensus
                 .await;
 
             // Check protocol does not send operations to consensus.
-            match tools::wait_protocol_pool_event(
-                &mut protocol_pool_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
-                    _ => None,
-                },
-            )
-            .await
+            if let Some(ProtocolPoolEvent::ReceivedOperations { .. }) =
+                tools::wait_protocol_pool_event(
+                    &mut protocol_pool_event_receiver,
+                    1000.into(),
+                    |evt| match evt {
+                        evt @ ProtocolPoolEvent::ReceivedOperations { .. } => Some(evt),
+                        _ => None,
+                    },
+                )
+                .await
             {
-                Some(ProtocolPoolEvent::ReceivedOperations { .. }) => {
-                    panic!("Protocol send invalid operations.")
-                }
-                _ => {}
+                panic!("Protocol send invalid operations.")
             };
 
             (
@@ -738,7 +736,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
                     operations,
                 }) => {
                     let expected_id = operation.verify_integrity().unwrap();
-                    assert_eq!(propagate, false);
+                    assert!(!propagate);
                     assert_eq!(
                         operations
                             .get(&expected_id)

@@ -31,7 +31,7 @@ use tracing::trace;
 #[serial]
 async fn test_node_worker_shutdown() {
     let bind_port: u16 = 50_000;
-    let temp_peers_file = super::tools::generate_peers_file(&vec![]);
+    let temp_peers_file = super::tools::generate_peers_file(&[]);
     let network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
@@ -94,7 +94,7 @@ async fn test_multiple_connections_to_controller() {
 
     // test config
     let bind_port: u16 = 50_000;
-    let temp_peers_file = super::tools::generate_peers_file(&vec![]);
+    let temp_peers_file = super::tools::generate_peers_file(&[]);
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.max_in_nonbootstrap_connections = 2;
     network_conf.max_in_connections_per_ip = 1;
@@ -196,7 +196,7 @@ async fn test_peer_ban() {
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
     // add advertised peer to controller
-    let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
+    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
         banned: false,
         bootstrap: false,
@@ -335,7 +335,7 @@ async fn test_peer_ban_by_ip() {
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
     // add advertised peer to controller
-    let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
+    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
         banned: false,
         bootstrap: false,
@@ -472,7 +472,7 @@ async fn test_advertised_and_wakeup_interval() {
     let bind_port: u16 = 50_000;
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 12)), bind_port);
     let mock_ignore_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 13)), bind_port);
-    let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
+    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_ignore_addr.ip(),
         banned: false,
         bootstrap: true,
@@ -603,7 +603,7 @@ async fn test_block_not_found() {
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
     // add advertised peer to controller
-    let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
+    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
         banned: false,
         bootstrap: true,
@@ -679,21 +679,22 @@ async fn test_block_not_found() {
                 tokio::select! {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
-                        match evt {
-                        Message::BlockNotFound(hash) => {assert_eq!(hash, wanted_hash); break;}
-                        _ => {}
-                    }},
+                        if let Message::BlockNotFound(hash) = evt {assert_eq!(hash, wanted_hash);
+                            break;
+                        }
+                    },
                     _ = &mut timer => panic!("timeout reached waiting for message")
                 }
             }
 
             // test send AskForBlocks with more max_ask_blocks_per_message using node_worker split in several message function.
             let mut block_list: HashMap<NodeId, Vec<BlockId>> = HashMap::new();
-            let mut hash_list = vec![];
-            hash_list.push(get_dummy_block_id("default_val1"));
-            hash_list.push(get_dummy_block_id("default_val2"));
-            hash_list.push(get_dummy_block_id("default_val3"));
-            hash_list.push(get_dummy_block_id("default_val4"));
+            let hash_list = vec![
+                get_dummy_block_id("default_val1"),
+                get_dummy_block_id("default_val2"),
+                get_dummy_block_id("default_val3"),
+                get_dummy_block_id("default_val4"),
+            ];
             block_list.insert(conn1_id, hash_list);
 
             network_command_sender
@@ -707,15 +708,12 @@ async fn test_block_not_found() {
                 tokio::select! {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
-                        match evt {
-                        Message::AskForBlocks(list1) => {
-                             assert!(list1.contains(&get_dummy_block_id("default_val1")));
-                             assert!(list1.contains(&get_dummy_block_id("default_val2")));
-                             assert!(list1.contains(&get_dummy_block_id("default_val3")));
-                             break;
-                         }
-                        _ => {}
-                    }},
+                        if let Message::AskForBlocks(list1) = evt {
+                            assert!(list1.contains(&get_dummy_block_id("default_val1")));
+                            assert!(list1.contains(&get_dummy_block_id("default_val2")));
+                            assert!(list1.contains(&get_dummy_block_id("default_val3")));
+                            break;
+                        }},
                     _ = &mut timer => panic!("timeout reached waiting for message")
                 }
             }
@@ -725,10 +723,11 @@ async fn test_block_not_found() {
                 tokio::select! {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
-                        match evt {
-                        Message::AskForBlocks(list2) => {assert!(list2.contains(&get_dummy_block_id("default_val4"))); break;}
-                        _ => {}
-                    }},
+                        if let Message::AskForBlocks(list2) = evt {
+                            assert!(list2.contains(&get_dummy_block_id("default_val4")));
+                            break;
+                        }
+                    },
                     _ = &mut timer => panic!("timeout reached waiting for message")
                 }
             }
@@ -749,17 +748,26 @@ async fn test_block_not_found() {
                 .await
                 .unwrap();
             // assert it is sent to protocol
-            if tools::wait_network_event(&mut network_event_receiver, 1000.into(), |msg| match msg
-                {
+            if tools::wait_network_event(
+                &mut network_event_receiver,
+                1000.into(),
+                |msg| match msg {
                     NetworkEvent::AskedForBlocks { list, node } => Some((list, node)),
                     _ => None,
-                })
-                .await.is_some()
+                },
+            )
+            .await
+            .is_some()
             {
                 panic!("AskedForBlocks with more max_ask_blocks_per_message forward blocks");
             }
             let conn1_drain = tools::incoming_message_drain_start(conn1_r).await;
-            (network_event_receiver, network_manager, mock_interface, vec![conn1_drain])
+            (
+                network_event_receiver,
+                network_manager,
+                mock_interface,
+                vec![conn1_drain],
+            )
         },
     )
     .await;
@@ -780,7 +788,7 @@ async fn test_retry_connection_closed() {
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
     // add advertised peer to controller
-    let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
+    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
         banned: false,
         bootstrap: true,
@@ -877,7 +885,7 @@ async fn test_operation_messages() {
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
     // add advertised peer to controller
-    let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
+    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
         banned: false,
         bootstrap: true,
@@ -960,14 +968,13 @@ async fn test_operation_messages() {
                 tokio::select! {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
-                        match evt {
-                        Message::Operations(op) => {
+                        if let Message::Operations(op) = evt {
                             assert_eq!(op.len(), 1);
                             let res_id = op[0].verify_integrity().unwrap();
                             assert_eq!(ref_id2, res_id);
-                            break;}
-                        _ => {}
-                    }},
+                            break;
+                        }
+                    },
                     _ = &mut timer => panic!("timeout reached waiting for message")
                 }
             }
@@ -998,7 +1005,7 @@ async fn test_endorsements_messages() {
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
     // add advertised peer to controller
-    let temp_peers_file = super::tools::generate_peers_file(&vec![PeerInfo {
+    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
         banned: false,
         bootstrap: true,
@@ -1106,14 +1113,13 @@ async fn test_endorsements_messages() {
                 tokio::select! {
                     evt = conn1_r.next() => {
                         let evt = evt.unwrap().unwrap().1;
-                        match evt {
-                        Message::Endorsements(endorsements) => {
+                        if let Message::Endorsements(endorsements) = evt {
                             assert_eq!(endorsements.len(), 1);
                             let res_id = endorsements[0].compute_endorsement_id().unwrap();
                             assert_eq!(ref_id, res_id);
-                            break;}
-                        _ => {}
-                    }},
+                            break;
+                        }
+                    },
                     _ = &mut timer => panic!("timeout reached waiting for message")
                 }
             }
