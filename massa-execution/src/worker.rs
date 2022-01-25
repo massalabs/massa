@@ -159,6 +159,40 @@ impl ExecutionWorker {
                             debug!("execution: could not send get_bootstrap_state answer");
                         }
                     }
+                    Some(ExecutionRequest::GetSCOutputEventByCaller {
+                        caller_address,
+                        response_tx,
+                    }) => {
+                        if response_tx
+                            .send(vm.get_sc_output_event_by_caller_address(caller_address))
+                            .is_err()
+                        {
+                            debug!("execution: could not send get_sc_output_event_by_caller_address answer");
+                        }
+                    }
+                    Some(ExecutionRequest::GetSCOutputEventBySCAddress {
+                        sc_address,
+                        response_tx,
+                    }) => {
+                        if response_tx
+                            .send(vm.get_sc_output_event_by_sc_address(sc_address))
+                            .is_err()
+                        {
+                            debug!("execution: could not send get_sc_output_event_by_sc_address answer");
+                        }
+                    }
+                    Some(ExecutionRequest::GetSCOutputEventBySlotRange {
+                        start,
+                        end,
+                        response_tx,
+                    }) => {
+                        if response_tx
+                            .send(vm.get_sc_output_event_by_slot_range(start, end))
+                            .is_err()
+                        {
+                            debug!("execution: could not send get_sc_output_event_by_slot_range answer");
+                        }
+                    }
                     Some(ExecutionRequest::Shutdown) => return,
                     None => {
                         requests = condvar.wait(requests).unwrap();
@@ -288,9 +322,29 @@ impl ExecutionWorker {
                     address,
                 });
             }
-            ExecutionCommand::GetSCOutputEventBySlotRange { .. } => todo!(),
-            ExecutionCommand::GetSCOutputEventByCaller { .. } => todo!(),
-            ExecutionCommand::GetSCOutputEventBySCAddress { .. } => todo!(),
+            ExecutionCommand::GetSCOutputEventBySlotRange {
+                start,
+                end,
+                response_tx,
+            } => self.push_request(ExecutionRequest::GetSCOutputEventBySlotRange {
+                start,
+                end,
+                response_tx,
+            }),
+            ExecutionCommand::GetSCOutputEventByCaller {
+                caller_address,
+                response_tx,
+            } => self.push_request(ExecutionRequest::GetSCOutputEventByCaller {
+                caller_address,
+                response_tx,
+            }),
+            ExecutionCommand::GetSCOutputEventBySCAddress {
+                sc_address,
+                response_tx,
+            } => self.push_request(ExecutionRequest::GetSCOutputEventBySCAddress {
+                sc_address,
+                response_tx,
+            }),
         }
         Ok(())
     }

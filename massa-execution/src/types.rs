@@ -1,6 +1,5 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
 use crate::BootstrapExecutionState;
-use massa_hash::hash::Hash;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
 use massa_models::prehash::Map;
@@ -190,6 +189,21 @@ pub(crate) enum ExecutionRequest {
     },
     /// Shutdown state, set by the worker to signal shutdown to the VM thread.
     Shutdown,
+    GetSCOutputEventBySlotRange {
+        start: Slot,
+        end: Slot,
+        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
+    },
+
+    GetSCOutputEventByCaller {
+        caller_address: Address,
+        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
+    },
+
+    GetSCOutputEventBySCAddress {
+        sc_address: Address,
+        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
+    },
 }
 
 pub(crate) type ExecutionQueue = Arc<(Mutex<VecDeque<ExecutionRequest>>, Condvar)>;

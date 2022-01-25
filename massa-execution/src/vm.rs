@@ -91,6 +91,22 @@ impl VM {
             .clone()
     }
 
+    /// get sc output event between start and end excluded
+    pub fn get_sc_output_event_by_slot_range(&self, start: Slot, end: Slot) -> Vec<SCOutputEvent> {
+        todo!()
+    }
+
+    /// get sc output event for given sc addresss
+
+    pub fn get_sc_output_event_by_sc_address(&self, sc_address: Address) -> Vec<SCOutputEvent> {
+        todo!()
+    }
+
+    /// get sc output event for given call address
+    pub fn get_sc_output_event_by_caller_address(&self, caller: Address) -> Vec<SCOutputEvent> {
+        todo!()
+    }
+
     /// runs an SCE-final execution step
     /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
     ///
