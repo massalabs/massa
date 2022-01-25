@@ -60,11 +60,14 @@ impl EventStore {
     }
 
     pub fn export(&self) -> Map<SCOutputEventId, SCOutputEvent> {
-        todo!()
+        self.id_to_event.clone()
     }
 
     pub fn clear(&mut self) {
-        todo!()
+        self.id_to_event.clear();
+        self.slot_to_id.clear();
+        self.caller_to_id.clear();
+        self.smart_contract_to_id.clear();
     }
 }
 
