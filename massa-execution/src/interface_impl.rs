@@ -401,14 +401,11 @@ impl Interface for InterfaceImpl {
             slot: execution_context.slot,
             block: execution_context.opt_block_id,
             call_stack: execution_context.call_stack.clone(),
+            read_only: execution_context.read_only,
+            index_in_slot: execution_context.created_event_index,
         };
         let id = SCOutputEventId(Hash::compute_from(&to_hash));
-        let event = SCOutputEvent {
-            id,
-            context,
-            data,
-            read_only: execution_context.read_only,
-        };
+        let event = SCOutputEvent { id, context, data };
         execution_context.created_event_index += 1;
         execution_context.events.insert(id, event);
         Ok(())

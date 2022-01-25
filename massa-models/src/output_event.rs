@@ -10,7 +10,7 @@ use std::{collections::VecDeque, str::FromStr};
 /// By product of a byte code execution
 pub struct SCOutputEvent {
     pub id: SCOutputEventId,
-    pub read_only: bool,
+
     pub context: EventExecutionContext,
     /// json data string
     pub data: String,
@@ -118,6 +118,8 @@ impl SCOutputEventId {
 pub struct EventExecutionContext {
     pub slot: Slot,
     pub block: Option<BlockId>,
+    pub read_only: bool,
+    pub index_in_slot: u64,
     /// most recent at the end
     pub call_stack: VecDeque<Address>,
 }
