@@ -9,6 +9,7 @@ use massa_models::{Address, Amount, Block, BlockId, Slot};
 use massa_sc_runtime::Bytecode;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
+use std::collections::HashMap;
 use std::sync::{Condvar, Mutex};
 use std::{collections::VecDeque, sync::Arc};
 use tokio::sync::oneshot;
@@ -28,7 +29,35 @@ pub(crate) struct StepHistoryItem {
     // list of SCE ledger changes caused by this execution step
     pub ledger_changes: SCELedgerChanges,
 
-    pub events: Map<Hash, SCOutputEvent>, // todo event store
+    pub events: EventStore,
+}
+
+#[derive(Default, Debug, Clone)]
+pub(crate) struct EventStore {
+    id_to_event: Map<SCOutputEventId, SCOutputEvent>,
+    slot_to_id: HashMap<Slot, SCOutputEventId>,
+    caller_to_id: Map<Address, SCOutputEventId>,
+    smart_contract_to_id: Map<Address, SCOutputEventId>,
+}
+
+impl EventStore {
+    // add event to the store and all its indexes
+    pub fn insert(&mut self, id: SCOutputEventId, event: SCOutputEvent) {
+        todo!()
+    }
+
+    /// remove event by id
+    pub fn remove_event(&mut self, id: SCOutputEventId) {
+        todo!()
+    }
+
+    pub fn export(&self) -> Map<SCOutputEventId, SCOutputEvent> {
+        todo!()
+    }
+
+    pub fn clear(&mut self) {
+        todo!()
+    }
 }
 
 #[derive(Clone)]
@@ -71,7 +100,7 @@ pub(crate) struct ExecutionContext {
     pub read_only: bool,
 
     /// geerated events during this execution, with multiple indexes
-    pub events: Map<Hash, SCOutputEvent>, // todo event store
+    pub events: EventStore,
 
     /// Unsafe RNG state
     pub unsafe_rng: Xoshiro256PlusPlus,

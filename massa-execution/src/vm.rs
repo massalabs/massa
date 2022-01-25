@@ -1,26 +1,25 @@
-use std::collections::HashMap;
-use std::mem;
-use std::sync::{Arc, Mutex};
-
 use crate::error::bootstrap_file_error;
 use crate::interface_impl::InterfaceImpl;
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges};
-use crate::types::{ExecutionContext, ExecutionData, ExecutionStep, StepHistory, StepHistoryItem};
+use crate::types::{
+    EventStore, ExecutionContext, ExecutionData, ExecutionStep, StepHistory, StepHistoryItem,
+};
 use crate::{config::ExecutionConfigs, ExecutionError};
 use massa_hash::hash::Hash;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Map;
-use massa_models::AMOUNT_ZERO;
-use massa_sc_runtime::Interface;
-
 use massa_models::timeslots::slot_count_in_range;
+use massa_models::AMOUNT_ZERO;
 use massa_models::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyResult},
     Address, Amount, BlockId, Slot,
 };
+use massa_sc_runtime::Interface;
 use massa_signature::{derive_public_key, generate_random_private_key};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
+use std::mem;
+use std::sync::{Arc, Mutex};
 use tokio::sync::oneshot;
 use tracing::debug;
 
@@ -184,13 +183,7 @@ impl VM {
         block_creator_addr: Address,
         block_id: BlockId,
         slot: Slot,
-    ) -> (
-        SCELedgerChanges,
-        u64,
-        Map<Hash, SCOutputEvent>,
-        u64,
-        Xoshiro256PlusPlus,
-    ) {
+    ) -> (SCELedgerChanges, u64, EventStore, u64, Xoshiro256PlusPlus) {
         let mut context = self.execution_context.lock().unwrap();
         // make context.ledger_step credit Op's sender with Op.coins in the SCE ledger
         let _result = context
@@ -283,7 +276,7 @@ impl VM {
                 |_| ReadOnlyResult::Ok,
             ),
             // integrate with output events.
-            output_events: mem::take(&mut context.events),
+            output_events: mem::take(&mut context.events).export(),
         };
         if result_sender.send(execution_response).is_err() {
             debug!("Execution: could not send ExecuteReadOnlyResponse.");
