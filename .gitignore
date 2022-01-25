@@ -12,6 +12,7 @@ massa-client/wallet.dat
 massa-node/config/*
 massa-node/logs.txt
 massa-node/storage/*
+massa-node/storage/peers.json
 massa-node/src/tests/storage
 shell.nix
 !massa-client/config/info.md

@@ -1,6 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use massa_models::address::AddressHashSet;
 use massa_models::{Address, Amount, BlockId, Slot};
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
@@ -13,6 +12,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use crate::{
+    consensus_controller::ConsensusChannels,
     start_consensus_controller,
     tests::{
         mock_pool_controller::MockPoolController,
@@ -24,6 +24,7 @@ use crate::{
     },
 };
 use massa_models::ledger::LedgerData;
+use massa_models::prehash::Set;
 
 use super::mock_execution_controller::MockExecutionController;
 
@@ -85,7 +86,8 @@ async fn test_roll() {
     cfg.block_reward = Amount::default();
     cfg.roll_price = Amount::from_str("1000").unwrap();
     cfg.operation_validity_periods = 100;
-    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
+    let init_time: MassaTime = 1000.into();
+    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(init_time);
 
     tools::consensus_pool_test(
         cfg.clone(),
@@ -112,7 +114,7 @@ async fn test_roll() {
             let rb_a2_r2 = create_roll_buy(priv_2, 2, 90, 0);
             let rs_a2_r2 = create_roll_sell(priv_2, 2, 90, 0);
 
-            let mut addresses = AddressHashSet::default();
+            let mut addresses = Set::<Address>::default();
             addresses.insert(address_2);
             let addresses = addresses;
 
@@ -124,6 +126,7 @@ async fn test_roll() {
                 priv_1,
                 vec![rb_a1_r1_err],
             );
+            tokio::time::sleep(init_time.to_duration()).await;
             wait_pool_slot(&mut pool_controller, cfg.t0, 1, 0).await;
             // invalid because a1 has not enough coins to buy a roll
             propagate_block(&mut protocol_controller, block1_err1, false, 150).await;
@@ -474,6 +477,7 @@ async fn test_roll() {
     .await;
 }
 
+#[ignore]
 #[tokio::test]
 #[serial]
 async fn test_roll_block_creation() {
@@ -551,11 +555,13 @@ async fn test_roll_block_creation() {
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            execution_command_sender,
-            execution_event_receiver,
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
+            ConsensusChannels {
+                execution_command_sender,
+                execution_event_receiver,
+                protocol_command_sender: protocol_command_sender.clone(),
+                protocol_event_receiver,
+                pool_command_sender,
+            },
             None,
             None,
             0,
@@ -567,7 +573,7 @@ async fn test_roll_block_creation() {
     let rb_a2_r1 = create_roll_buy(priv_2, 1, 90, 0);
     let rs_a2_r1 = create_roll_sell(priv_2, 1, 90, 0);
 
-    let mut addresses = AddressHashSet::default();
+    let mut addresses = Set::<Address>::default();
     addresses.insert(address_2);
     let addresses = addresses;
 
@@ -872,11 +878,13 @@ async fn test_roll_deactivation() {
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            execution_command_sender,
-            execution_event_receiver,
-            protocol_command_sender.clone(),
-            protocol_event_receiver,
-            pool_command_sender,
+            ConsensusChannels {
+                execution_command_sender,
+                execution_event_receiver,
+                protocol_command_sender: protocol_command_sender.clone(),
+                protocol_event_receiver,
+                pool_command_sender,
+            },
             None,
             None,
             0,

@@ -9,7 +9,6 @@ use massa_signature::PrivateKey;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
-#[cfg(not(test))]
 use std::str::FromStr;
 use std::{default::Default, path::PathBuf, usize};
 
@@ -24,11 +23,11 @@ lazy_static::lazy_static! {
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "test") {
         MassaTime::now().unwrap().saturating_add(MassaTime::from(1000 * 60 * 3))
     } else {
-        1638460800000.into()
+        1641754800000.into()
     };
 
     /// TESTNET: time when the blockclique is ended.
-    pub static ref END_TIMESTAMP: Option<MassaTime> = Some(1640883600000.into());
+    pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "test") {None} else {Some(1643644800000.into())};
 
     /// Time between the periods in the same thread.
     pub static ref T0: MassaTime = 16000.into();
@@ -45,7 +44,7 @@ lazy_static::lazy_static! {
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(7, 10);
 
-    pub static ref ROLL_PRICE: Amount = Amount::from_raw(100);
+    pub static ref ROLL_PRICE: Amount = Amount::from_str("100.0").unwrap();
 }
 
 #[cfg(test)]
@@ -62,14 +61,14 @@ lazy_static::lazy_static! {
     /// Private_key to sign genesis blocks.
     pub static ref GENESIS_KEY: PrivateKey = generate_random_private_key();
 
-    pub static ref BLOCK_REWARD: Amount = Amount::from_raw(1);
+    pub static ref BLOCK_REWARD: Amount = Amount::from_str("1.0").unwrap();
 
     pub static ref INITIAL_DRAW_SEED: String = "massa_genesis_seed".to_string();
 
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(1, 1);
 
-    pub static ref ROLL_PRICE: Amount = Amount::default();
+    pub static ref ROLL_PRICE: Amount = Amount::from_str("100.0").unwrap();
 }
 
 /// Number of threads
@@ -125,7 +124,7 @@ pub const POS_LOCK_CYCLES: u64 = 1;
 #[cfg(test)]
 const POS_LOCK_CYCLES: u64 = 1;
 
-pub const MAX_GAS_PER_BLOCK: u64 = 10;
+pub const MAX_GAS_PER_BLOCK: u64 = 100_000_000;
 
 /// Consensus configuration
 /// Assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
@@ -341,7 +340,7 @@ mod tests {
         max_block_endorsements: 8,
     };
 
-    pub fn generate_staking_keys_file(staking_keys: &Vec<PrivateKey>) -> NamedTempFile {
+    pub fn generate_staking_keys_file(staking_keys: &[PrivateKey]) -> NamedTempFile {
         use std::io::prelude::*;
         let f = NamedTempFile::new().expect("cannot create temp file");
         serde_json::to_writer_pretty(f.as_file(), &staking_keys)

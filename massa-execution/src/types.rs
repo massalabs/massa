@@ -1,18 +1,20 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
 use crate::BootstrapExecutionState;
 use massa_hash::hash::Hash;
-use massa_models::address::AddressHashSet;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
+use massa_models::prehash::Map;
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, Block, BlockId, Slot};
-use std::collections::HashMap;
+use massa_sc_runtime::Bytecode;
+use rand::SeedableRng;
+use rand_xoshiro::Xoshiro256PlusPlus;
 use std::sync::{Condvar, Mutex};
 use std::{collections::VecDeque, sync::Arc};
 use tokio::sync::oneshot;
-/// Most recent item at the end
+
+/// history of active executed steps
 pub(crate) type StepHistory = VecDeque<StepHistoryItem>;
-pub type Bytecode = Vec<u8>;
 
 /// A StepHistory item representing the consequences of a given execution step
 #[derive(Debug, Clone)]
@@ -26,33 +28,63 @@ pub(crate) struct StepHistoryItem {
     // list of SCE ledger changes caused by this execution step
     pub ledger_changes: SCELedgerChanges,
 
-    pub events: HashMap<Hash, SCOutputEvent>,
+    pub events: Map<Hash, SCOutputEvent>, // todo event store
 }
 
 #[derive(Clone)]
-/// Stateful context, providing an execution context to massa between module executions
+/// Stateful context, providing a context during the execution of a module
 pub(crate) struct ExecutionContext {
+    /// final and active ledger at the current step
     pub ledger_step: SCELedgerStep,
+
+    /// max gas for this execution
     pub max_gas: u64,
-    pub coins: Amount,
+
+    /// coins transferred to the target address during a call, stacked
+    pub coins_stack: Vec<Amount>,
+
+    /// gas price of the execution
     pub gas_price: Amount,
+
+    /// slot at which the execution happens
     pub slot: Slot,
+
+    /// counter of newly created addresses so far during this execution
     pub created_addr_index: u64,
+
+    /// counter of newly created events so far during this execution
     pub created_event_index: u64,
+
+    /// block ID, if one is present at this slot
     pub opt_block_id: Option<BlockId>,
+
+    /// block creator addr, if there is a block at this slot
     pub opt_block_creator_addr: Option<Address>,
+
+    /// address call stack, most recent is at the back
     pub call_stack: VecDeque<Address>,
-    pub owned_addresses: AddressHashSet,
+
+    /// list of addresses created so far during excution, stacked
+    pub owned_addresses_stack: Vec<Vec<Address>>,
+
+    /// True if it's a read-only context
     pub read_only: bool,
-    pub events: HashMap<Hash, SCOutputEvent>,
+
+    /// geerated events during this execution, with multiple indexes
+    pub events: Map<Hash, SCOutputEvent>, // todo event store
+
+    /// Unsafe RNG state
+    pub unsafe_rng: Xoshiro256PlusPlus,
 }
 
+/// an active execution step target slot and block
 #[derive(Clone)]
 pub(crate) struct ExecutionStep {
+    /// slot at which the execution step will happen
     pub slot: Slot,
-    // TODO add pos_seed for RNG seeding
-    // TODO add pos_draws to list the draws (block and endorsement creators) for that slot
-    pub block: Option<(BlockId, Block)>, // None if miss
+
+    /// Some(BlockID, block), if a block is present at this slot, otherwise None
+    pub block: Option<(BlockId, Block)>,
 }
 
 impl ExecutionContext {
@@ -68,17 +100,18 @@ impl ExecutionContext {
                 caused_changes: Default::default(),
             },
             max_gas: Default::default(),
-            coins: Default::default(),
+            coins_stack: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),
             opt_block_id: Default::default(),
             opt_block_creator_addr: Default::default(),
             call_stack: Default::default(),
-            owned_addresses: Default::default(),
+            owned_addresses_stack: Default::default(),
             created_addr_index: Default::default(),
             read_only: Default::default(),
             created_event_index: Default::default(),
             events: Default::default(),
+            unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
         }
     }
 }
@@ -101,6 +134,7 @@ pub(crate) enum ExecutionRequest {
     /// Runs a final step
     RunFinalStep(ExecutionStep),
     /// Runs an active step
+    #[allow(dead_code)] // TODO DISABLED TEMPORARILY #2101
     RunActiveStep(ExecutionStep),
     /// Resets the VM to its final state
     /// Run code in read-only mode

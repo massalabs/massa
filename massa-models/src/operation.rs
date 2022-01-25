@@ -1,9 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::prehash::{PreHashed, Set};
 use crate::settings::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
 use crate::{
-    address::AddressHashSet,
-    hhasher::{HHashMap, HHashSet, PreHashed},
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
@@ -21,9 +20,6 @@ use std::{ops::RangeInclusive, str::FromStr};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationId(Hash);
-
-pub type OperationHashMap<T> = HHashMap<OperationId, T>;
-pub type OperationHashSet = HHashSet<OperationId>;
 
 impl std::fmt::Display for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -225,7 +221,13 @@ impl SerializeCompact for OperationType {
                 // Gas price.
                 res.extend(&gas_price.to_bytes_compact()?);
 
-                // Contract data.
+                // Contract data length
+                let data_len: u32 = data.len().try_into().map_err(|_| {
+                    ModelsError::SerializeError("ExecuteSC data length does not fit in u32".into())
+                })?;
+                res.extend(&data_len.to_varint_bytes());
+
+                // Contract data
                 res.extend(data);
             }
         }
@@ -292,9 +294,21 @@ impl DeserializeCompact for OperationType {
                 let (gas_price, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
+                // Contract data length
+                let (data_len, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+                // TODO limit size
+                cursor += delta;
+
                 // Contract data.
-                let mut data = Vec::new();
-                data.extend(&buffer[cursor..]);
+                let mut data = Vec::with_capacity(data_len as usize);
+                if buffer[cursor..].len() < data_len as usize {
+                    return Err(ModelsError::DeserializeError(
+                        "ExecuteSC deserialization failed: not enough buffer to get all data"
+                            .into(),
+                    ));
+                }
+                data.extend(&buffer[cursor..(cursor + (data_len as usize))]);
+                cursor += data_len as usize;
 
                 OperationType::ExecuteSC {
                     data,
@@ -397,8 +411,8 @@ impl Operation {
         start..=self.content.expire_period
     }
 
-    pub fn get_ledger_involved_addresses(&self) -> Result<AddressHashSet, ModelsError> {
-        let mut res = AddressHashSet::default();
+    pub fn get_ledger_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
+        let mut res = Set::<Address>::default();
         let emitter_address = Address::from_public_key(&self.content.sender_public_key);
         res.insert(emitter_address);
         match self.content.op {
@@ -414,8 +428,8 @@ impl Operation {
         Ok(res)
     }
 
-    pub fn get_roll_involved_addresses(&self) -> Result<AddressHashSet, ModelsError> {
-        let mut res = AddressHashSet::default();
+    pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
+        let mut res = Set::<Address>::default();
         match self.content.op {
             OperationType::Transaction { .. } => {}
             OperationType::RollBuy { .. } => {
@@ -475,7 +489,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_operation_type() {
+    fn test_transaction() {
         let sender_priv = generate_random_private_key();
         let sender_pub = derive_public_key(&sender_priv);
 
@@ -485,6 +499,45 @@ mod tests {
         let op = OperationType::Transaction {
             recipient_address: Address::from_public_key(&recv_pub),
             amount: Amount::default(),
+        };
+        let ser_type = op.to_bytes_compact().unwrap();
+        let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
+        assert_eq!(format!("{}", res_type), format!("{}", op));
+
+        let content = OperationContent {
+            fee: Amount::from_str("20").unwrap(),
+            sender_public_key: sender_pub,
+            op,
+            expire_period: 50,
+        };
+
+        let ser_content = content.to_bytes_compact().unwrap();
+        let (res_content, _) = OperationContent::from_bytes_compact(&ser_content).unwrap();
+        assert_eq!(format!("{}", res_content), format!("{}", content));
+
+        let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
+        let signature = sign(&hash, &sender_priv).unwrap();
+
+        let op = Operation { content, signature };
+
+        let ser_op = op.to_bytes_compact().unwrap();
+        let (res_op, _) = Operation::from_bytes_compact(&ser_op).unwrap();
+        assert_eq!(format!("{}", res_op), format!("{}", op));
+
+        assert_eq!(op.get_validity_range(10), 40..=50);
+    }
+
+    #[test]
+    #[serial]
+    fn test_executesc() {
+        let sender_priv = generate_random_private_key();
+        let sender_pub = derive_public_key(&sender_priv);
+
+        let op = OperationType::ExecuteSC {
+            max_gas: 123,
+            coins: Amount::from_str("456.789").unwrap(),
+            gas_price: Amount::from_str("772.122").unwrap(),
+            data: vec![23u8, 123u8, 44u8],
         };
         let ser_type = op.to_bytes_compact().unwrap();
         let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();

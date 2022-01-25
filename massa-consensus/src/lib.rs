@@ -5,6 +5,7 @@
 #![feature(bool_to_option)]
 #![feature(hash_drain_filter)]
 #![feature(map_first_last)]
+#![feature(int_roundings)]
 
 #[macro_use]
 extern crate massa_logging;
@@ -15,7 +16,8 @@ pub use block_graph::{
     LedgerDataExport, Status,
 };
 pub use consensus_controller::{
-    start_consensus_controller, ConsensusCommandSender, ConsensusEventReceiver, ConsensusManager,
+    start_consensus_controller, ConsensusChannels, ConsensusCommandSender, ConsensusEventReceiver,
+    ConsensusManager,
 };
 pub use consensus_worker::{ConsensusCommand, ConsensusEvent};
 pub use error::ConsensusError;

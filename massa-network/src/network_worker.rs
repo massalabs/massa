@@ -13,8 +13,9 @@ use crate::settings::{NetworkSettings, CHANNEL_SIZE};
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
+use massa_models::composite::PubkeySig;
+use massa_models::node::NodeId;
 use massa_models::stats::NetworkStats;
-use massa_models::{massa_hash::PubkeySig, node::NodeId};
 use massa_models::{
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializeCompact, SerializeVarInt, Version,

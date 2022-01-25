@@ -1,5 +1,5 @@
 use crate::{
-    hhasher::PreHashed, settings::EVENT_ID_SIZE_Bytes, Address, BlockId, DeserializeCompact,
+    prehash::PreHashed, settings::EVENT_ID_SIZE_BYTES, Address, BlockId, DeserializeCompact,
     ModelsError, SerializeCompact, Slot,
 };
 use massa_hash::hash::Hash;
@@ -41,7 +41,7 @@ impl SCOutputEventId {
     /// # let res_event = SCOutputEventId::from_bytes(&bytes).unwrap();
     /// # assert_eq!(event, res_event);
     /// ```
-    pub fn to_bytes(&self) -> [u8; EVENT_ID_SIZE_Bytes] {
+    pub fn to_bytes(&self) -> [u8; EVENT_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
@@ -57,7 +57,7 @@ impl SCOutputEventId {
     /// # let res_event = SCOutputEventId::from_bytes(&bytes).unwrap();
     /// # assert_eq!(event, res_event);
     /// ```
-    pub fn into_bytes(self) -> [u8; EVENT_ID_SIZE_Bytes] {
+    pub fn into_bytes(self) -> [u8; EVENT_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
@@ -73,7 +73,7 @@ impl SCOutputEventId {
     /// let res_event = SCOutputEventId::from_bytes(&bytes).unwrap();
     /// # assert_eq!(event, res_event);
     /// ```
-    pub fn from_bytes(data: &[u8; EVENT_ID_SIZE_Bytes]) -> Result<SCOutputEventId, ModelsError> {
+    pub fn from_bytes(data: &[u8; EVENT_ID_SIZE_BYTES]) -> Result<SCOutputEventId, ModelsError> {
         Ok(SCOutputEventId(
             Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
         ))
@@ -128,7 +128,7 @@ impl SerializeCompact for EventExecutionContext {
 }
 
 impl DeserializeCompact for EventExecutionContext {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), crate::ModelsError> {
+    fn from_bytes_compact(_buffer: &[u8]) -> Result<(Self, usize), crate::ModelsError> {
         todo!()
     }
 }
@@ -140,7 +140,7 @@ impl SerializeCompact for SCOutputEvent {
 }
 
 impl DeserializeCompact for SCOutputEvent {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), crate::ModelsError> {
+    fn from_bytes_compact(_buffer: &[u8]) -> Result<(Self, usize), crate::ModelsError> {
         todo!()
     }
 }

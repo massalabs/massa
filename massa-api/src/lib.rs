@@ -9,17 +9,17 @@ use jsonrpc_derive::rpc;
 use jsonrpc_http_server::{CloseHandle, ServerBuilder};
 use massa_consensus::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution::ExecutionCommandSender;
-use massa_models::address::{AddressHashMap, AddressHashSet};
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
     TimeInterval,
 };
 use massa_models::clique::Clique;
+use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
-use massa_models::massa_hash::PubkeySig;
 use massa_models::node::NodeId;
 use massa_models::operation::{Operation, OperationId};
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::{Map, Set};
 use massa_models::{Address, Amount, BlockId, EndorsementId, Slot, Version};
 use massa_network::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
@@ -29,6 +29,7 @@ use std::thread;
 use std::thread::JoinHandle;
 use tokio::sync::mpsc;
 use tracing::{info, warn};
+
 mod error;
 mod private;
 mod public;
@@ -128,7 +129,7 @@ pub trait Endpoints {
 
     /// Return hashset of staking addresses.
     #[rpc(name = "get_staking_addresses")]
-    fn get_staking_addresses(&self) -> BoxFuture<Result<AddressHashSet, ApiError>>;
+    fn get_staking_addresses(&self) -> BoxFuture<Result<Set<Address>, ApiError>>;
 
     /// Bans given IP address.
     /// No confirmation to expect.
@@ -150,7 +151,7 @@ pub trait Endpoints {
 
     /// Returns the active stakers and their active roll counts for the current cycle.
     #[rpc(name = "get_stakers")]
-    fn get_stakers(&self) -> BoxFuture<Result<AddressHashMap<u64>, ApiError>>;
+    fn get_stakers(&self) -> BoxFuture<Result<Map<Address, u64>, ApiError>>;
 
     /// Returns operations information associated to a given list of operations' IDs.
     #[rpc(name = "get_operations")]

@@ -3,10 +3,11 @@
 use crate::address::AddressCycleProductionStats;
 use crate::ledger::LedgerData;
 use crate::node::NodeId;
+use crate::prehash::Set;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
 use crate::{
-    Address, Amount, Block, BlockHashSet, BlockId, CompactConfig, Endorsement, EndorsementHashSet,
-    EndorsementId, Operation, OperationHashSet, OperationId, Slot, Version,
+    Address, Amount, Block, BlockId, CompactConfig, Endorsement, EndorsementId, Operation,
+    OperationId, Slot, Version,
 };
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
@@ -40,6 +41,7 @@ impl std::fmt::Display for NodeStatus {
         writeln!(f)?;
 
         writeln!(f, "Version: {}", self.version)?;
+        writeln!(f, "Config:\n{}", self.config)?;
         writeln!(f)?;
 
         writeln!(f, "Current time: {}", self.current_time.to_utc_string())?;
@@ -143,9 +145,9 @@ pub struct AddressInfo {
     pub rolls: RollsInfo,
     pub block_draws: HashSet<Slot>,
     pub endorsement_draws: HashSet<IndexedSlot>,
-    pub blocks_created: BlockHashSet,
-    pub involved_in_endorsements: EndorsementHashSet,
-    pub involved_in_operations: OperationHashSet,
+    pub blocks_created: Set<BlockId>,
+    pub involved_in_endorsements: Set<EndorsementId>,
+    pub involved_in_operations: Set<OperationId>,
     pub production_stats: Vec<AddressCycleProductionStats>,
 }
 

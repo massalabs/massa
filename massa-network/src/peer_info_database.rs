@@ -228,13 +228,23 @@ impl PeerInfoDatabase {
         // wakeup interval
         let wakeup_interval = cfg.wakeup_interval;
 
-        // load from file
+        // load from initial file
         let mut peers = serde_json::from_str::<Vec<PeerInfo>>(
-            &tokio::fs::read_to_string(&cfg.peers_file).await?,
+            &tokio::fs::read_to_string(&cfg.initial_peers_file).await?,
         )?
         .into_iter()
         .map(|p| (p.ip, p))
         .collect::<HashMap<IpAddr, PeerInfo>>();
+        if cfg.peers_file.is_file() {
+            peers.extend(
+                // previously known peers
+                serde_json::from_str::<Vec<PeerInfo>>(
+                    &tokio::fs::read_to_string(&cfg.peers_file).await?,
+                )?
+                .into_iter()
+                .map(|p| (p.ip, p)),
+            );
+        }
 
         // cleanup
         cleanup_peers(cfg, &mut peers, None, clock_compensation, cfg.ban_timeout)?;
@@ -515,14 +525,14 @@ impl PeerInfoDatabase {
     ///
     /// # Argument
     /// new_peers: peers we are trying to merge
-    pub fn merge_candidate_peers(&mut self, new_peers: &Vec<IpAddr>) -> Result<(), NetworkError> {
+    pub fn merge_candidate_peers(&mut self, new_peers: &[IpAddr]) -> Result<(), NetworkError> {
         if new_peers.is_empty() {
             return Ok(());
         }
         cleanup_peers(
             &self.network_settings,
             &mut self.peers,
-            Some(new_peers),
+            Some(&new_peers.to_vec()),
             self.clock_compensation,
             self.network_settings.ban_timeout,
         )?;

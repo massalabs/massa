@@ -108,3 +108,36 @@ pub fn get_transaction_with_addresses(
         Address::from_public_key(&sender_pub).get_thread(2),
     )
 }
+
+pub fn create_executesc(
+    expire_period: u64,
+    fee: u64,
+    max_gas: u64,
+    gas_price: u64,
+) -> (Operation, u8) {
+    let priv_key = generate_random_private_key();
+    let sender_public_key = derive_public_key(&priv_key);
+
+    let data = vec![42; 7];
+    let coins = 0;
+
+    let op = OperationType::ExecuteSC {
+        data,
+        max_gas,
+        coins: Amount::from_str(&coins.to_string()).unwrap(),
+        gas_price: Amount::from_str(&gas_price.to_string()).unwrap(),
+    };
+
+    let content = OperationContent {
+        sender_public_key,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
+        expire_period,
+        op,
+    };
+    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
+    let signature = sign(&hash, &priv_key).unwrap();
+    (
+        Operation { content, signature },
+        Address::from_public_key(&sender_public_key).get_thread(2),
+    )
+}

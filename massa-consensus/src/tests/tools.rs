@@ -8,6 +8,7 @@ use super::{
 };
 use crate::{
     block_graph::{BlockGraphExport, ExportActiveBlock},
+    consensus_controller::ConsensusChannels,
     pos::{RollCounts, RollUpdate, RollUpdates},
     ConsensusConfig,
 };
@@ -17,8 +18,9 @@ use crate::{
 };
 use massa_hash::hash::Hash;
 use massa_models::ledger::LedgerData;
+use massa_models::prehash::Set;
 use massa_models::{
-    Address, Amount, Block, BlockHashSet, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
+    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
     EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,
 };
 use massa_pool::PoolCommand;
@@ -120,8 +122,8 @@ pub async fn validate_ask_for_block(
 
 pub async fn validate_wishlist(
     protocol_controller: &mut MockProtocolController,
-    new: BlockHashSet,
-    remove: BlockHashSet,
+    new: Set<BlockId>,
+    remove: Set<BlockId>,
     timeout_ms: u64,
 ) {
     let param = protocol_controller
@@ -345,6 +347,35 @@ pub fn create_transaction(
     let op = OperationType::Transaction {
         recipient_address,
         amount: Amount::from_str(&amount.to_string()).unwrap(),
+    };
+
+    let content = OperationContent {
+        sender_public_key,
+        fee: Amount::from_str(&fee.to_string()).unwrap(),
+        expire_period,
+        op,
+    };
+    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
+    let signature = sign(&hash, &priv_key).unwrap();
+    Operation { content, signature }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn create_executesc(
+    priv_key: PrivateKey,
+    sender_public_key: PublicKey,
+    expire_period: u64,
+    fee: u64,
+    data: Vec<u8>,
+    max_gas: u64,
+    coins: u64,
+    gas_price: u64,
+) -> Operation {
+    let op = OperationType::ExecuteSC {
+        data,
+        max_gas,
+        coins: Amount::from_str(&coins.to_string()).unwrap(),
+        gas_price: Amount::from_str(&gas_price.to_string()).unwrap(),
     };
 
     let content = OperationContent {
@@ -712,11 +743,13 @@ pub async fn consensus_pool_test<F, V>(
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            execution_command_sender,
-            execution_event_receiver,
-            protocol_command_sender,
-            protocol_event_receiver,
-            pool_command_sender,
+            ConsensusChannels {
+                execution_command_sender,
+                execution_event_receiver,
+                protocol_command_sender: protocol_command_sender.clone(),
+                protocol_event_receiver,
+                pool_command_sender,
+            },
             boot_pos,
             boot_graph,
             0,
@@ -773,11 +806,13 @@ where
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
-            execution_command_sender,
-            execution_event_receiver,
-            protocol_command_sender,
-            protocol_event_receiver,
-            pool_command_sender,
+            ConsensusChannels {
+                execution_command_sender,
+                execution_event_receiver,
+                protocol_command_sender: protocol_command_sender.clone(),
+                protocol_event_receiver,
+                pool_command_sender,
+            },
             None,
             None,
             0,

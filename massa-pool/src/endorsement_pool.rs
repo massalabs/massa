@@ -1,13 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{PoolError, PoolSettings};
-use massa_models::{
-    Address, BlockId, Endorsement, EndorsementContent, EndorsementHashMap, EndorsementHashSet,
-    EndorsementId, Slot,
-};
+use massa_models::prehash::{Map, Set};
+use massa_models::{Address, BlockId, Endorsement, EndorsementContent, EndorsementId, Slot};
 
 pub struct EndorsementPool {
-    endorsements: EndorsementHashMap<Endorsement>,
+    endorsements: Map<EndorsementId, Endorsement>,
     latest_final_periods: Vec<u64>,
     current_slot: Option<Slot>,
     pool_settings: &'static PoolSettings,
@@ -71,9 +69,9 @@ impl EndorsementPool {
     /// Prunes the pool if there are too many endorsements
     pub fn add_endorsements(
         &mut self,
-        endorsements: EndorsementHashMap<Endorsement>,
-    ) -> Result<EndorsementHashSet, PoolError> {
-        let mut newly_added = EndorsementHashSet::default();
+        endorsements: Map<EndorsementId, Endorsement>,
+    ) -> Result<Set<EndorsementId>, PoolError> {
+        let mut newly_added = Set::<EndorsementId>::default();
         for (endorsement_id, endorsement) in endorsements.into_iter() {
             massa_trace!("pool add_endorsements endorsement", {
                 "endorsement": endorsement
@@ -112,8 +110,8 @@ impl EndorsementPool {
 
     /// Prune the pool while there are more endorsements than set max
     /// Kept endorsements are the one that are absolutely closer to the current slot
-    fn prune(&mut self) -> EndorsementHashSet {
-        let mut removed = EndorsementHashSet::default();
+    fn prune(&mut self) -> Set<EndorsementId> {
+        let mut removed = Set::<EndorsementId>::default();
 
         if self.endorsements.len() > self.pool_settings.max_endorsement_count as usize {
             let excess =
@@ -152,8 +150,8 @@ impl EndorsementPool {
     pub fn get_endorsement_by_address(
         &self,
         address: Address,
-    ) -> Result<EndorsementHashMap<Endorsement>, PoolError> {
-        let mut res = EndorsementHashMap::default();
+    ) -> Result<Map<EndorsementId, Endorsement>, PoolError> {
+        let mut res = Map::default();
         for (id, ed) in self.endorsements.iter() {
             if Address::from_public_key(&ed.content.sender_public_key) == address {
                 res.insert(*id, ed.clone());
@@ -164,8 +162,8 @@ impl EndorsementPool {
 
     pub fn get_endorsement_by_id(
         &self,
-        endorsements: EndorsementHashSet,
-    ) -> EndorsementHashMap<Endorsement> {
+        endorsements: Set<EndorsementId>,
+    ) -> Map<EndorsementId, Endorsement> {
         self.endorsements
             .iter()
             .filter_map(|(id, ed)| {
