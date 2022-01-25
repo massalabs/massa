@@ -21,10 +21,18 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::oneshot;
 use tracing::debug;
 
+/// Virtual Machine and step history system
 pub(crate) struct VM {
+    /// thread count
     thread_count: u8,
+
+    /// history of SCE-active executed steps
     step_history: StepHistory,
+
+    /// execution interface used by the runtime
     execution_interface: Box<dyn Interface>,
+
+    /// execution context
     execution_context: Arc<Mutex<ExecutionContext>>,
 }
 

@@ -11,6 +11,8 @@ use rand_xoshiro::Xoshiro256PlusPlus;
 use std::sync::{Condvar, Mutex};
 use std::{collections::VecDeque, sync::Arc};
 use tokio::sync::oneshot;
+
+/// history of active executed steps
 pub(crate) type StepHistory = VecDeque<StepHistoryItem>;
 
 /// A StepHistory item representing the consequences of a given execution step
@@ -27,26 +29,53 @@ pub(crate) struct StepHistoryItem {
 }
 
 #[derive(Clone)]
-/// Stateful context, providing an execution context to massa between module executions
+/// Stateful context, providing a context during the execution of a module
 pub(crate) struct ExecutionContext {
+    /// final and active ledger at the current step
     pub ledger_step: SCELedgerStep,
+
+    /// max gas for this execution
     pub max_gas: u64,
+
+    /// coins transferred to the target address during a call, stacked
     pub coins_stack: Vec<Amount>,
+
+    /// gas price of the execution
     pub gas_price: Amount,
+
+    /// slot at which the execution happens
     pub slot: Slot,
+
+    /// counter of newly created addresses so far during this execution
     pub created_addr_index: u64,
+
+    /// block ID, if one is present at this slot
     pub opt_block_id: Option<BlockId>,
+
+    /// block creator addr, if there is a block at this slot
     pub opt_block_creator_addr: Option<Address>,
+
+    /// address call stack, most recent is at the back
     pub call_stack: VecDeque<Address>,
+
+    /// list of addresses created so far during excution, stacked
     pub owned_addresses_stack: Vec<Vec<Address>>,
+
+    /// True if it's a read-only context
     pub read_only: bool,
+
+    /// Unsafe RNG state
     pub unsafe_rng: Xoshiro256PlusPlus,
 }
 
+/// an active execution step target slot and block
 #[derive(Clone)]
 pub(crate) struct ExecutionStep {
+    /// slot at which the execution step will happen
     pub slot: Slot,
-    pub block: Option<(BlockId, Block)>, // None if miss
+
+    /// Some(BlockID, block), if a block is present at this slot, otherwise None
+    pub block: Option<(BlockId, Block)>,
 }
 
 impl ExecutionContext {
