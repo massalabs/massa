@@ -81,5 +81,67 @@
 1. Production to Consensus, on Blocks.
 2. Network to Consensus, on Blocks.
 3. Consensus to Network, Executor, on Graph.
+3. Executor to POS, on ledger/final blocks.
 
+
+### Shared data structure
+
+## Best parents
+
+```rust
+/// One writer(Consensus), one reader(Production).
+pub struct BestParents(Arc<Mutex<Vec<(BlockId, u64)>>>) 
+```
+
+## Draws
+```rust
+/// One writer(POS), two readers(Production and Network).
+pub struct SharedDraws(Arc<Rwlock<DrawCache>>) 
+```
+
+## Storage
+```rust
+/// Two writers(Production and Network), two readers(Consensus and Executor).
+/// Production and Network both notify Consensus.
+/// Executor accesses when necessary.
+///
+/// Note the nested locks(use small locks like parking_lot), 
+/// allowing for parallelism for operating on different blocks.
+pub struct Storage(Arc<(Condvar, RwLock<Map<BlockId, Arc<RwLock<Block>>>>)>)
+```
+
+## Graph
+```rust
+/// One writer(Consensus), one reader(Executor).
+/// Consensus notifies Executor of changes. 
+/// Executor also access Storage as necessary to obtain relevant blocks.
+pub struct Graph(Arc<(Condvar, Mutex<Graph>)>)
+```
+
+### Structure of component execution(event-loops)
+
+## Production
+Waits on a slot timer(and shutdown?).
+
+1. Wake-up at each slot
+2. Read draws.
+3. If drawn: read best parents and produce.
+4. If produced, write to Storage, notify on condvar.
+
+## Consensus
+Waits on Storage(and shutdown?).
+
+1. Wake-up on the condvar
+2. Read new block.
+3. Process in graph.
+4. Write to graph and notify on condvar.
+
+## Executor
+Waits on Graph(and shutdown?)
+1. Wake-up on the condvar
+2. Read new graph.
+3. Read blocks.
+4. Execute operations.
+5. Update ledger and final blocks.
+6. Notify POS.
 
