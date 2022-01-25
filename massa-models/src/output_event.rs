@@ -118,6 +118,7 @@ impl SCOutputEventId {
 pub struct EventExecutionContext {
     pub slot: Slot,
     pub block: Option<BlockId>,
+    /// most recent at the end
     pub call_stack: VecDeque<Address>,
 }
 

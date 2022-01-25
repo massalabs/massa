@@ -8,10 +8,12 @@ use massa_models::{Address, Amount, Block, BlockId, Slot};
 use massa_sc_runtime::Bytecode;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::{Condvar, Mutex};
 use std::{collections::VecDeque, sync::Arc};
 use tokio::sync::oneshot;
+use tracing::warn;
 
 /// history of active executed steps
 pub(crate) type StepHistory = VecDeque<StepHistoryItem>;
@@ -42,12 +44,19 @@ pub(crate) struct EventStore {
 impl EventStore {
     // add event to the store and all its indexes
     pub fn insert(&mut self, id: SCOutputEventId, event: SCOutputEvent) {
-        todo!()
-    }
-
-    /// remove event by id
-    pub fn remove_event(&mut self, id: SCOutputEventId) {
-        todo!()
+        if let Entry::Vacant(entry) = self.id_to_event.entry(id) {
+            self.slot_to_id.insert(event.context.slot, id);
+            if let Some(caller) = event.context.call_stack.front() {
+                self.caller_to_id.insert(*caller, id);
+            }
+            if let Some(sc) = event.context.call_stack.back() {
+                self.smart_contract_to_id.insert(*sc, id);
+            }
+            entry.insert(event);
+        } else {
+            // just warn or return error ?
+            warn!("execution event already exist {:?}", id)
+        }
     }
 
     pub fn export(&self) -> Map<SCOutputEventId, SCOutputEvent> {

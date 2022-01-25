@@ -5,7 +5,6 @@ use crate::types::{
     EventStore, ExecutionContext, ExecutionData, ExecutionStep, StepHistory, StepHistoryItem,
 };
 use crate::{config::ExecutionConfigs, ExecutionError};
-use massa_hash::hash::Hash;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Map;
 use massa_models::timeslots::slot_count_in_range;
