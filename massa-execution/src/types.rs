@@ -3,7 +3,7 @@ use crate::BootstrapExecutionState;
 use massa_hash::hash::Hash;
 use massa_models::address::AddressHashSet;
 use massa_models::execution::ExecuteReadOnlyResponse;
-use massa_models::output_event::SCOutputEvent;
+use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, Block, BlockId, Slot};
 use std::collections::HashMap;
