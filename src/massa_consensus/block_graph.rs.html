@@ -4291,10 +4291,6 @@
 <span id="4286">4286</span>
 <span id="4287">4287</span>
 <span id="4288">4288</span>
-<span id="4289">4289</span>
-<span id="4290">4290</span>
-<span id="4291">4291</span>
-<span id="4292">4292</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! All information concerning blocks, the block graph and cliques is managed here.</span>
@@ -7655,28 +7651,24 @@
             {}
         );
         {
+            <span class="comment">// find blockclique</span>
             <span class="kw">let</span> <span class="ident">blockclique_i</span> <span class="op">=</span> <span class="self">self</span>
                 .<span class="ident">max_cliques</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">position</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">is_blockclique</span>)
                 .<span class="ident">unwrap_or_default</span>();
             <span class="kw">let</span> <span class="ident">blockclique</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">max_cliques</span>[<span class="ident">blockclique_i</span>];
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">parents_updated</span> <span class="op">=</span> <span class="number">0u8</span>;
+
+            <span class="comment">// init best parents as latest_final_blocks_periods</span>
+            <span class="self">self</span>.<span class="ident">best_parents</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">latest_final_blocks_periods</span>.<span class="ident">clone</span>();
+            <span class="comment">// for each blockclique block, set it as best_parent in its own thread</span>
+            <span class="comment">// if its period is higher than the current best_parent in that thread</span>
             <span class="kw">for</span> <span class="ident">block_h</span> <span class="kw">in</span> <span class="ident">blockclique</span>.<span class="ident">block_ids</span>.<span class="ident">iter</span>() {
-                <span class="kw">let</span> <span class="ident">block_a</span> <span class="op">=</span> <span class="ident">BlockGraph::get_full_active_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">block_statuses</span>, <span class="kw-2">*</span><span class="ident">block_h</span>)
-                    .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">ConsensusError::ContainerInconsistency</span>(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses updating best parents while adding {} - missing {}&quot;</span>, <span class="ident">add_block_id</span>, <span class="ident">block_h</span>)))<span class="question-mark">?</span>;
-                <span class="kw">if</span> <span class="ident">blockclique</span>.<span class="ident">block_ids</span>.<span class="ident">is_disjoint</span>(
-                    <span class="kw-2">&amp;</span><span class="ident">block_a</span>.<span class="ident">children</span>[<span class="ident">block_a</span>.<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>]
-                        .<span class="ident">keys</span>()
-                        .<span class="ident">copied</span>()
-                        .<span class="ident">collect</span>(),
-                ) {
-                    <span class="self">self</span>.<span class="ident">best_parents</span>[<span class="ident">block_a</span>.<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>] <span class="op">=</span>
-                        (<span class="kw-2">*</span><span class="ident">block_h</span>, <span class="ident">block_a</span>.<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">period</span>);
-                    <span class="ident">parents_updated</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-                    <span class="kw">if</span> <span class="ident">parents_updated</span> <span class="op">==</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span> {
-                        <span class="kw">break</span>;
-                    }
+                <span class="kw">let</span> <span class="ident">b_slot</span> <span class="op">=</span> <span class="ident">BlockGraph::get_full_active_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">block_statuses</span>, <span class="kw-2">*</span><span class="ident">block_h</span>)
+                    .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">ConsensusError::ContainerInconsistency</span>(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses updating best parents while adding {} - missing {}&quot;</span>, <span class="ident">add_block_id</span>, <span class="ident">block_h</span>)))<span class="question-mark">?</span>
+                    .<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>;
+                <span class="kw">if</span> <span class="ident">b_slot</span>.<span class="ident">period</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">best_parents</span>[<span class="ident">b_slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="number">1</span> {
+                    <span class="self">self</span>.<span class="ident">best_parents</span>[<span class="ident">b_slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>] <span class="op">=</span> (<span class="kw-2">*</span><span class="ident">block_h</span>, <span class="ident">b_slot</span>.<span class="ident">period</span>);
                 }
             }
         }
