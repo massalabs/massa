@@ -358,6 +358,7 @@ impl Endpoints for API<Public> {
         let api_cfg = self.0.api_settings;
         let pool_command_sender = self.0.pool_command_sender.clone();
         let compensation_millis = self.0.compensation_millis;
+        let sce_command_sender = self.0.execution_command_sender.clone();
         let closure = async move || {
             if addresses.len() as u64 > api_cfg.max_arguments {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
@@ -384,10 +385,11 @@ impl Endpoints for API<Public> {
 
             // roll and balance info
             let states = cmd_sender.get_addresses_info(addresses.iter().copied().collect());
+            let sce_info = sce_command_sender.get_sce_ledger_for_addresses(addresses.clone());
 
             // wait for both simultaneously
-            let (next_draws, states) = tokio::join!(next_draws, states);
-            let (next_draws, mut states) = (next_draws?, states?);
+            let (next_draws, states, sce_info) = tokio::join!(next_draws, states, sce_info);
+            let (next_draws, mut states, sce_info) = (next_draws?, states?, sce_info?);
 
             // operations block and endorsement info
             let mut operations: Map<Address, Set<OperationId>> =
@@ -469,6 +471,7 @@ impl Endpoints for API<Public> {
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
                     production_stats: state.production_stats,
+                    sce_ledger_info: sce_info.get(&address).cloned().unwrap_or_default(),
                 })
             }
             Ok(res)
