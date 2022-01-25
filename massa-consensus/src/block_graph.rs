@@ -3364,22 +3364,13 @@ impl BlockGraph {
                 .position(|c| c.is_blockclique)
                 .unwrap_or_default();
             let blockclique = &self.max_cliques[blockclique_i];
-            let mut parents_updated = 0u8;
+            self.best_parents = self.latest_final_blocks_periods.clone();
             for block_h in blockclique.block_ids.iter() {
-                let block_a = BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
-                    .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating best parents while adding {} - missing {}", add_block_id, block_h)))?;
-                if blockclique.block_ids.is_disjoint(
-                    &block_a.children[block_a.block.header.content.slot.thread as usize]
-                        .keys()
-                        .copied()
-                        .collect(),
-                ) {
-                    self.best_parents[block_a.block.header.content.slot.thread as usize] =
-                        (*block_h, block_a.block.header.content.slot.period);
-                    parents_updated += 1;
-                    if parents_updated == self.cfg.thread_count {
-                        break;
-                    }
+                let b_slot = BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
+                    .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating best parents while adding {} - missing {}", add_block_id, block_h)))?
+                    .block.header.content.slot;
+                if b_slot.period > self.best_parents[b_slot.thread as usize].1 {
+                    self.best_parents[b_slot.thread as usize] = (*block_h, b_slot.period);
                 }
             }
         }
