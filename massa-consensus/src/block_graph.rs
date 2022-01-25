@@ -3358,13 +3358,18 @@ impl BlockGraph {
             {}
         );
         {
+            // find blockclique
             let blockclique_i = self
                 .max_cliques
                 .iter()
                 .position(|c| c.is_blockclique)
                 .unwrap_or_default();
             let blockclique = &self.max_cliques[blockclique_i];
+
+            // init best parents as latest_final_blocks_periods
             self.best_parents = self.latest_final_blocks_periods.clone();
+            // for each blockclique block, set it as best_parent in its own thread
+            // if its period is higher than the current best_parent in that thread
             for block_h in blockclique.block_ids.iter() {
                 let b_slot = BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
                     .ok_or_else(|| ConsensusError::ContainerInconsistency(format!("inconsistency inside block statuses updating best parents while adding {} - missing {}", add_block_id, block_h)))?
