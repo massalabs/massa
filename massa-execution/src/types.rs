@@ -2,7 +2,7 @@ use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep}
 use crate::BootstrapExecutionState;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
-use massa_models::prehash::Map;
+use massa_models::prehash::{Map, Set};
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, Block, BlockId, Slot};
 use massa_sc_runtime::Bytecode;
@@ -36,21 +36,34 @@ pub(crate) struct StepHistoryItem {
 #[derive(Default, Debug, Clone)]
 pub(crate) struct EventStore {
     id_to_event: Map<SCOutputEventId, SCOutputEvent>,
-    slot_to_id: HashMap<Slot, SCOutputEventId>,
-    caller_to_id: Map<Address, SCOutputEventId>,
-    smart_contract_to_id: Map<Address, SCOutputEventId>,
+    slot_to_id: HashMap<Slot, Set<SCOutputEventId>>,
+    caller_to_id: Map<Address, Set<SCOutputEventId>>,
+    smart_contract_to_id: Map<Address, Set<SCOutputEventId>>,
 }
 
 impl EventStore {
     // add event to the store and all its indexes
     pub fn insert(&mut self, id: SCOutputEventId, event: SCOutputEvent) {
         if let Entry::Vacant(entry) = self.id_to_event.entry(id) {
-            self.slot_to_id.insert(event.context.slot, id);
+            match self.slot_to_id.entry(event.context.slot) {
+                Entry::Occupied(mut e) => {
+                    e.get_mut().insert(id);
+                }
+                Entry::Vacant(e) => {
+                    e.insert(vec![id].into_iter().collect());
+                }
+            }
             if let Some(caller) = event.context.call_stack.front() {
-                self.caller_to_id.insert(*caller, id);
+                self.caller_to_id
+                    .get_mut(caller)
+                    .unwrap_or(&mut vec![].into_iter().collect()) // TODO maybe implement default for Set
+                    .insert(id);
             }
             if let Some(sc) = event.context.call_stack.back() {
-                self.smart_contract_to_id.insert(*sc, id);
+                self.smart_contract_to_id
+                    .get_mut(sc)
+                    .unwrap_or(&mut vec![].into_iter().collect()) // TODO maybe implement default for Set
+                    .insert(id);
             }
             entry.insert(event);
         } else {
