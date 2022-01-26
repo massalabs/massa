@@ -18,10 +18,16 @@ use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::{ops::RangeInclusive, str::FromStr};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationId(Hash);
 
 impl std::fmt::Display for OperationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_bs58_check())
+    }
+}
+
+impl std::fmt::Debug for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0.to_bs58_check())
     }
@@ -50,6 +56,7 @@ impl OperationId {
             Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
         ))
     }
+
     pub fn from_bs58_check(data: &str) -> Result<OperationId, ModelsError> {
         Ok(OperationId(
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
