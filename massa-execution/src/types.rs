@@ -82,6 +82,22 @@ impl EventStore {
         self.caller_to_id.clear();
         self.smart_contract_to_id.clear();
     }
+
+    pub fn get_event_for_caller(&self, caller: Address) -> Vec<SCOutputEvent> {
+        let default: Set<SCOutputEventId> = vec![].into_iter().collect(); // TODO maybe implement default for Set
+        let ids = self.caller_to_id.get(&caller).unwrap_or(&default);
+        ids.iter()
+            .filter_map(|id| self.id_to_event.get(id).cloned())
+            .collect()
+    }
+
+    pub fn get_event_for_sc(&self, sc: Address) -> Vec<SCOutputEvent> {
+        let default: Set<SCOutputEventId> = vec![].into_iter().collect(); // TODO maybe implement default for Set
+        let ids = self.smart_contract_to_id.get(&sc).unwrap_or(&default);
+        ids.iter()
+            .filter_map(|id| self.id_to_event.get(id).cloned())
+            .collect()
+    }
 }
 
 #[derive(Clone)]

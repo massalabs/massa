@@ -113,12 +113,18 @@ impl VM {
 
     /// get sc output event for given sc addresss
     pub fn get_sc_output_event_by_sc_address(&self, sc_address: Address) -> Vec<SCOutputEvent> {
-        todo!()
+        self.step_history
+            .iter()
+            .flat_map(|item| item.events.get_event_for_sc(sc_address))
+            .collect()
     }
 
     /// get sc output event for given call address
     pub fn get_sc_output_event_by_caller_address(&self, caller: Address) -> Vec<SCOutputEvent> {
-        todo!()
+        self.step_history
+            .iter()
+            .flat_map(|item| item.events.get_event_for_caller(caller))
+            .collect()
     }
 
     /// runs an SCE-final execution step
