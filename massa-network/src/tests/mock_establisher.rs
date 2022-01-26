@@ -39,14 +39,12 @@ pub struct MockListener {
 
 impl MockListener {
     pub async fn accept(&mut self) -> std::io::Result<(ReadHalf, WriteHalf, SocketAddr)> {
-        let (addr, sender) = self
-            .connection_listener_rx
-            .recv()
-            .await
-            .ok_or(io::Error::new(
+        let (addr, sender) = self.connection_listener_rx.recv().await.ok_or_else(|| {
+            io::Error::new(
                 io::ErrorKind::Other,
                 "MockListener accept channel from Establisher closed".to_string(),
-            ))?;
+            )
+        })?;
         let (duplex_controller, duplex_mock) = tokio::io::duplex(MAX_DUPLEX_BUFFER_SIZE);
         let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
         let (duplex_controller_read, duplex_controller_write) = tokio::io::split(duplex_mock);
@@ -151,10 +149,12 @@ impl MockEstablisherInterface {
         &self,
         addr: &SocketAddr,
     ) -> io::Result<(ReadHalf, WriteHalf)> {
-        let sender = self.connection_listener_tx.as_ref().ok_or(io::Error::new(
-            io::ErrorKind::Other,
-            "mock connect_to_controller_listener channel not initialized".to_string(),
-        ))?;
+        let sender = self.connection_listener_tx.as_ref().ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::Other,
+                "mock connect_to_controller_listener channel not initialized".to_string(),
+            )
+        })?;
         let (response_tx, response_rx) = oneshot::channel::<(ReadHalf, WriteHalf)>();
         sender.send((*addr, response_tx)).await.map_err(|_err| {
             io::Error::new(
@@ -175,13 +175,12 @@ impl MockEstablisherInterface {
     pub async fn wait_connection_attempt_from_controller(
         &mut self,
     ) -> io::Result<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)> {
-        self.connection_connector_rx
-            .recv()
-            .await
-            .ok_or(io::Error::new(
+        self.connection_connector_rx.recv().await.ok_or_else(|| {
+            io::Error::new(
                 io::ErrorKind::Other,
                 "MockListener get_connect_stream channel from connector closed".to_string(),
-            ))
+            )
+        })
     }
 
     /*
