@@ -97,6 +97,7 @@ pub struct SharedData {
     storage: Arc<(Condvar, RwLock<(Storage, Shutdown)>)>,
     graph: Arc<(Condvar, RwLock<(Graph, Shutdown)>)>,
     slot: Arc<(Condvar, RwLock<(Slot, Shutdown)>)>,
+    incoming: Arc<(Condvar, RwLock<(Incoming, Shutdown)>)>
 }
 
 /// Used to signal shutdown.
@@ -133,6 +134,13 @@ pub struct Storage(Map<BlockId, Arc<RwLock<Block>>>)
 /// Consensus notifies Executor of changes. 
 /// Executor also access Storage as necessary to obtain relevant blocks.
 pub struct Graph(Mutex<Graph>)
+```
+
+## Incoming
+```rust
+/// Many writers(network peer workers), one reader(Network Incoming).
+/// New blocks received over the network.
+pub struct Incoming(Mutex<Set<BlockId>>)
 ```
 
 ## Structure of component execution(event-loops)
