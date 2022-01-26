@@ -118,9 +118,9 @@ pub struct Storage(Arc<(Condvar, RwLock<Map<BlockId, Arc<RwLock<Block>>>>)>)
 pub struct Graph(Arc<(Condvar, Mutex<Graph>)>)
 ```
 
-### Structure of component execution(event-loops)
+## Structure of component execution(event-loops)
 
-## Production
+### Factory
 Waits on a slot timer(and shutdown?).
 
 1. Wake-up at each slot
@@ -128,7 +128,7 @@ Waits on a slot timer(and shutdown?).
 3. If drawn: read best parents and produce.
 4. If produced, write to Storage, notify on condvar.
 
-## Consensus
+### Consensus
 Waits on Storage(and shutdown?).
 
 1. Wake-up on the condvar
@@ -136,7 +136,7 @@ Waits on Storage(and shutdown?).
 3. Process in graph.
 4. Write to graph and notify on condvar.
 
-## Executor
+### Executor
 Waits on Graph(and shutdown?)
 1. Wake-up on the condvar
 2. Read new graph.
@@ -145,3 +145,22 @@ Waits on Graph(and shutdown?)
 5. Update ledger and final blocks.
 6. Notify POS.
 
+### Network(outgoing)
+Waits on Graph(and shutdown?)
+1. Wake-up on the condvar
+2. Read new graph.
+3. Read blocks.
+4. Propagate.
+
+### Network(incoming)
+Waits on Incoming(and shutdown?)
+1. Wake-up on the condvar
+2. Read new data.
+3. Deserialize into known objects, validate them.
+4. Propagate.
+
+Note: Should own a tokio runtime, running one task per peer, and those tasks will add incoming data to the shared Incoming data, and notify on the condvar. 
+
+## A note on shutdown
+
+In order to orchestrate shutdown, all shared object should contain something representing a "shutdown" signal, which `massa-node` could use to request shutdown of all components, and then wait for the shutdown to have been completed. 
