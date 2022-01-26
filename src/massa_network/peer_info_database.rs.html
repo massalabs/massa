@@ -1743,24 +1743,6 @@
 <span id="1738">1738</span>
 <span id="1739">1739</span>
 <span id="1740">1740</span>
-<span id="1741">1741</span>
-<span id="1742">1742</span>
-<span id="1743">1743</span>
-<span id="1744">1744</span>
-<span id="1745">1745</span>
-<span id="1746">1746</span>
-<span id="1747">1747</span>
-<span id="1748">1748</span>
-<span id="1749">1749</span>
-<span id="1750">1750</span>
-<span id="1751">1751</span>
-<span id="1752">1752</span>
-<span id="1753">1753</span>
-<span id="1754">1754</span>
-<span id="1755">1755</span>
-<span id="1756">1756</span>
-<span id="1757">1757</span>
-<span id="1758">1758</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::{<span class="ident">NetworkConnectionErrorType</span>, <span class="ident">NetworkError</span>};
@@ -2651,8 +2633,10 @@
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_try_new_in_connection_in_connection_closed</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
-        <span class="ident">network_settings</span>.<span class="ident">target_out_nonbootstrap_connections</span> <span class="op">=</span> <span class="number">5</span>;
+        <span class="kw">let</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings</span> {
+            <span class="ident">target_out_nonbootstrap_connections</span>: <span class="number">5</span>,
+            ..<span class="ident">Default::default</span>()
+        };
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
         <span class="comment">// add peers</span>
@@ -2669,14 +2653,8 @@
         <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">wakeup_interval</span>;
         <span class="kw">let</span> (<span class="ident">saver_watch_tx</span>, <span class="kw-2">mut</span> <span class="ident">saver_watch_rx</span>) <span class="op">=</span> <span class="ident">watch::channel</span>(<span class="ident">peers</span>.<span class="ident">clone</span>());
 
-        <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="kw">loop</span> {
-                <span class="kw">match</span> <span class="ident">saver_watch_rx</span>.<span class="ident">changed</span>().<span class="kw">await</span> {
-                    <span class="prelude-val">Ok</span>(()) =&gt; (),
-                    <span class="kw">_</span> =&gt; <span class="kw">break</span>,
-                }
-            }
-        });
+        <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span>
+            <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(()) <span class="op">=</span> <span class="ident">saver_watch_rx</span>.<span class="ident">changed</span>().<span class="kw">await</span> {} });
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase</span> {
             <span class="ident">network_settings</span>,
@@ -2700,7 +2678,7 @@
         {
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">11</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;ToManyConnectionAttempt error not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;ToManyConnectionAttempt error not return&quot;</span>);
         }
 
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">db</span>
@@ -2729,7 +2707,7 @@
         {
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">12</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;ToManyConnectionAttempt error not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;ToManyConnectionAttempt error not return&quot;</span>);
         }
 
         <span class="comment">// test with a not connected peer</span>
@@ -2740,7 +2718,7 @@
         {
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">13</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;PeerInfoNotFoundError error not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;PeerInfoNotFoundError error not return&quot;</span>);
         }
 
         <span class="ident">db</span>.<span class="ident">in_connection_closed</span>(<span class="kw-2">&amp;</span><span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">11</span>)))
@@ -2752,15 +2730,17 @@
         {
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">11</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;ToManyConnectionAttempt error not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;ToManyConnectionAttempt error not return&quot;</span>);
         }
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_out_connection_attempt_failed</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
-        <span class="ident">network_settings</span>.<span class="ident">target_out_nonbootstrap_connections</span> <span class="op">=</span> <span class="number">5</span>;
+        <span class="kw">let</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings</span> {
+            <span class="ident">target_out_nonbootstrap_connections</span>: <span class="number">5</span>,
+            ..<span class="ident">Default::default</span>()
+        };
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
         <span class="comment">// add peers</span>
@@ -2777,14 +2757,8 @@
         <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">wakeup_interval</span>;
         <span class="kw">let</span> (<span class="ident">saver_watch_tx</span>, <span class="kw-2">mut</span> <span class="ident">saver_watch_rx</span>) <span class="op">=</span> <span class="ident">watch::channel</span>(<span class="ident">peers</span>.<span class="ident">clone</span>());
 
-        <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="kw">loop</span> {
-                <span class="kw">match</span> <span class="ident">saver_watch_rx</span>.<span class="ident">changed</span>().<span class="kw">await</span> {
-                    <span class="prelude-val">Ok</span>(()) =&gt; (),
-                    <span class="kw">_</span> =&gt; <span class="kw">break</span>,
-                }
-            }
-        });
+        <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span>
+            <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(()) <span class="op">=</span> <span class="ident">saver_watch_rx</span>.<span class="ident">changed</span>().<span class="kw">await</span> {} });
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase</span> {
             <span class="ident">network_settings</span>,
@@ -2810,7 +2784,7 @@
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">11</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
             <span class="macro">println!</span>(<span class="string">&quot;res: {:?}&quot;</span>, <span class="ident">res</span>);
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;ToManyConnectionFailure error not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;ToManyConnectionFailure error not return&quot;</span>);
         }
 
         <span class="ident">db</span>.<span class="ident">new_out_connection_attempt</span>(<span class="kw-2">&amp;</span><span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">11</span>)))
@@ -2826,7 +2800,7 @@
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">13</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
             <span class="macro">println!</span>(<span class="string">&quot;res: {:?}&quot;</span>, <span class="ident">res</span>);
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;PeerInfoNotFoundError error not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;PeerInfoNotFoundError error not return&quot;</span>);
         }
         <span class="comment">// peer with no attempt.</span>
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span>
@@ -2838,7 +2812,7 @@
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">12</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
             <span class="macro">println!</span>(<span class="string">&quot;res: {:?}&quot;</span>, <span class="ident">res</span>);
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;ToManyConnectionFailure error not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;ToManyConnectionFailure error not return&quot;</span>);
         }
 
         <span class="comment">// call ok.</span>
@@ -2853,15 +2827,17 @@
         {
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">11</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;ToManyConnectionFailure error not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;ToManyConnectionFailure error not return&quot;</span>);
         }
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_try_out_connection_attempt_success</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
-        <span class="ident">network_settings</span>.<span class="ident">target_out_nonbootstrap_connections</span> <span class="op">=</span> <span class="number">5</span>;
+        <span class="kw">let</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings</span> {
+            <span class="ident">target_out_nonbootstrap_connections</span>: <span class="number">5</span>,
+            ..<span class="ident">Default::default</span>()
+        };
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
         <span class="comment">// add peers</span>
@@ -2878,14 +2854,8 @@
         <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">wakeup_interval</span>;
         <span class="kw">let</span> (<span class="ident">saver_watch_tx</span>, <span class="kw-2">mut</span> <span class="ident">saver_watch_rx</span>) <span class="op">=</span> <span class="ident">watch::channel</span>(<span class="ident">peers</span>.<span class="ident">clone</span>());
 
-        <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="kw">loop</span> {
-                <span class="kw">match</span> <span class="ident">saver_watch_rx</span>.<span class="ident">changed</span>().<span class="kw">await</span> {
-                    <span class="prelude-val">Ok</span>(()) =&gt; (),
-                    <span class="kw">_</span> =&gt; <span class="kw">break</span>,
-                }
-            }
-        });
+        <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span>
+            <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(()) <span class="op">=</span> <span class="ident">saver_watch_rx</span>.<span class="ident">changed</span>().<span class="kw">await</span> {} });
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase</span> {
             <span class="ident">network_settings</span>,
@@ -2911,7 +2881,7 @@
         {
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">11</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;ToManyConnectionAttempt error not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;ToManyConnectionAttempt error not return&quot;</span>);
         }
 
         <span class="ident">db</span>.<span class="ident">new_out_connection_attempt</span>(<span class="kw-2">&amp;</span><span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">11</span>)))
@@ -2928,7 +2898,7 @@
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">13</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
             <span class="macro">println!</span>(<span class="string">&quot;res: {:?}&quot;</span>, <span class="ident">res</span>);
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;PeerInfoNotFoundError error not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;PeerInfoNotFoundError error not return&quot;</span>);
         }
 
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">db</span>
@@ -2947,7 +2917,7 @@
         {
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">12</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;PeerInfoNotFoundError error not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;PeerInfoNotFoundError error not return&quot;</span>);
         }
 
         <span class="ident">db</span>.<span class="ident">new_out_connection_attempt</span>(<span class="kw-2">&amp;</span><span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">12</span>)))
@@ -2963,8 +2933,10 @@
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_new_out_connection_closed</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
-        <span class="ident">network_settings</span>.<span class="ident">max_out_nonbootstrap_connection_attempts</span> <span class="op">=</span> <span class="number">5</span>;
+        <span class="kw">let</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings</span> {
+            <span class="ident">max_out_nonbootstrap_connection_attempts</span>: <span class="number">5</span>,
+            ..<span class="ident">Default::default</span>()
+        };
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
         <span class="comment">// add peers</span>
@@ -2974,14 +2946,8 @@
         <span class="ident">peers</span>.<span class="ident">insert</span>(<span class="ident">connected_peers1</span>.<span class="ident">ip</span>, <span class="ident">connected_peers1</span>);
         <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">wakeup_interval</span>;
         <span class="kw">let</span> (<span class="ident">saver_watch_tx</span>, <span class="kw-2">mut</span> <span class="ident">saver_watch_rx</span>) <span class="op">=</span> <span class="ident">watch::channel</span>(<span class="ident">peers</span>.<span class="ident">clone</span>());
-        <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="kw">loop</span> {
-                <span class="kw">match</span> <span class="ident">saver_watch_rx</span>.<span class="ident">changed</span>().<span class="kw">await</span> {
-                    <span class="prelude-val">Ok</span>(()) =&gt; (),
-                    <span class="kw">_</span> =&gt; <span class="kw">break</span>,
-                }
-            }
-        });
+        <span class="kw">let</span> <span class="ident">saver_join_handle</span> <span class="op">=</span>
+            <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> { <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(()) <span class="op">=</span> <span class="ident">saver_watch_rx</span>.<span class="ident">changed</span>().<span class="kw">await</span> {} });
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase</span> {
             <span class="ident">network_settings</span>,
@@ -3005,10 +2971,7 @@
         {
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">11</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
-            <span class="macro">assert!</span>(
-                <span class="bool-val">false</span>,
-                <span class="string">&quot;CloseConnectionWithNoConnectionToClose error not return&quot;</span>
-            );
+            <span class="macro">panic!</span>(<span class="string">&quot;CloseConnectionWithNoConnectionToClose error not return&quot;</span>);
         }
 
         <span class="comment">// add a new connection attempt</span>
@@ -3028,7 +2991,7 @@
         {
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">12</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;PeerInfoNotFoundError error not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;PeerInfoNotFoundError error not return&quot;</span>);
         }
 
         <span class="ident">db</span>.<span class="ident">out_connection_closed</span>(<span class="kw-2">&amp;</span><span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">11</span>)))
@@ -3040,18 +3003,17 @@
         {
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">11</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
-            <span class="macro">assert!</span>(
-                <span class="bool-val">false</span>,
-                <span class="string">&quot;CloseConnectionWithNoConnectionToClose error not return&quot;</span>
-            );
+            <span class="macro">panic!</span>(<span class="string">&quot;CloseConnectionWithNoConnectionToClose error not return&quot;</span>);
         }
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_new_out_connection_attempt</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
-        <span class="ident">network_settings</span>.<span class="ident">max_out_nonbootstrap_connection_attempts</span> <span class="op">=</span> <span class="number">5</span>;
+        <span class="kw">let</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings</span> {
+            <span class="ident">max_out_nonbootstrap_connection_attempts</span>: <span class="number">5</span>,
+            ..<span class="ident">Default::default</span>()
+        };
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
         <span class="comment">// add peers</span>
@@ -3083,7 +3045,7 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::InvalidIpError</span>(<span class="ident">ip_err</span>)) <span class="op">=</span> <span class="ident">res</span> {
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">192</span>, <span class="number">168</span>, <span class="number">0</span>, <span class="number">11</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;InvalidIpError not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;InvalidIpError not return&quot;</span>);
         }
 
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span>
@@ -3094,7 +3056,7 @@
         {
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">12</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;PeerInfoNotFoundError error not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;PeerInfoNotFoundError error not return&quot;</span>);
         }
 
         (<span class="number">0</span>..<span class="number">5</span>).<span class="ident">for_each</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
@@ -3109,7 +3071,7 @@
         {
             <span class="macro">assert_eq!</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">std::net::Ipv4Addr::new</span>(<span class="number">169</span>, <span class="number">202</span>, <span class="number">0</span>, <span class="number">11</span>)), <span class="ident">ip_err</span>);
         } <span class="kw">else</span> {
-            <span class="macro">assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;ToManyConnectionAttempt error not return&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">&quot;ToManyConnectionAttempt error not return&quot;</span>);
         }
     }
 
@@ -3314,9 +3276,11 @@
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_cleanup_peers</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings::default</span>();
-        <span class="ident">network_settings</span>.<span class="ident">max_banned_peers</span> <span class="op">=</span> <span class="number">1</span>;
-        <span class="ident">network_settings</span>.<span class="ident">max_idle_peers</span> <span class="op">=</span> <span class="number">1</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network_settings</span> <span class="op">=</span> <span class="ident">NetworkSettings</span> {
+            <span class="ident">max_banned_peers</span>: <span class="number">1</span>,
+            <span class="ident">max_idle_peers</span>: <span class="number">1</span>,
+            ..<span class="ident">Default::default</span>()
+        };
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peers</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
 
         <span class="comment">// Call with empty db.</span>
@@ -3442,7 +3406,7 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test</span>() {
         <span class="kw">let</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">PeerInfoDatabase::from</span>(<span class="number">5</span>);
         <span class="kw">let</span> <span class="ident">p</span> <span class="op">=</span> <span class="ident">peer_db</span>.<span class="ident">peers</span>.<span class="ident">values</span>().<span class="ident">next</span>().<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">p</span>.<span class="ident">is_active</span>(), <span class="bool-val">false</span>);
+        <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">p</span>.<span class="ident">is_active</span>());
     }
 
     <span class="kw">fn</span> <span class="ident">default_peer_info_connected</span>(<span class="ident">ip</span>: <span class="ident">IpAddr</span>) -&gt; <span class="ident">PeerInfo</span> {
