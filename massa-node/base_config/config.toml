@@ -130,7 +130,7 @@
     max_endorsements_per_message = 1024
     # max milliseconds to wait while sending an event before dropping it
     max_send_wait = 500
-    # we forget we banned a node after ban_timeout
+    # we forget we banned a node after ban_timeout milliseconds
     ban_timeout = 3600000
 
 [bootstrap]
@@ -147,7 +147,7 @@
     connect_timeout = 15000
     # delay in milliseconds to wait between consecutive bootstrap attempts
     retry_delay = 5000
-    # if ping is too high bootstrap will be inturrupted
+    # if ping is too high bootstrap will be inturrupted after max_ping milliseconds
     max_ping = 10000
     # timeout for incoming message readout
     read_timeout = 10000
