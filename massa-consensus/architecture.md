@@ -86,17 +86,34 @@
 
 ### Shared data structure
 
+
+## Shared data
+
+```rust
+/// Shared by all components, and `masssa-node`(to orchestrate shutdown).
+pub struct SharedData {
+    best_parents: Arc<(Condvar, RwLock<(BestParents, Shutdown)>)>,
+    draws: Arc<(Condvar, RwLock<(Draws, Shutdown)>)>,
+    storage: Arc<(Condvar, RwLock<(Storage, Shutdown)>)>,
+    graph: Arc<(Condvar, RwLock<(Graph, Shutdown)>)>,
+    slot: Arc<(Condvar, RwLock<(Slot, Shutdown)>)>,
+}
+
+/// Used to signal shutdown.
+pub struct Shutdown(bool);
+```
+
 ## Best parents
 
 ```rust
 /// One writer(Consensus), one reader(Production).
-pub struct BestParents(Arc<Mutex<Vec<(BlockId, u64)>>>) 
+pub struct BestParents(Vec<(BlockId, u64)>) 
 ```
 
 ## Draws
 ```rust
 /// One writer(POS), two readers(Production and Network).
-pub struct SharedDraws(Arc<Rwlock<DrawCache>>) 
+pub struct Draws(DrawCache) 
 ```
 
 ## Storage
@@ -107,7 +124,7 @@ pub struct SharedDraws(Arc<Rwlock<DrawCache>>)
 ///
 /// Note the nested locks(use small locks like parking_lot), 
 /// allowing for parallelism for operating on different blocks.
-pub struct Storage(Arc<(Condvar, RwLock<Map<BlockId, Arc<RwLock<Block>>>>)>)
+pub struct Storage(Map<BlockId, Arc<RwLock<Block>>>)
 ```
 
 ## Graph
@@ -115,13 +132,17 @@ pub struct Storage(Arc<(Condvar, RwLock<Map<BlockId, Arc<RwLock<Block>>>>)>)
 /// One writer(Consensus), one reader(Executor).
 /// Consensus notifies Executor of changes. 
 /// Executor also access Storage as necessary to obtain relevant blocks.
-pub struct Graph(Arc<(Condvar, Mutex<Graph>)>)
+pub struct Graph(Mutex<Graph>)
 ```
 
 ## Structure of component execution(event-loops)
 
+### Slot
+
+Dedicated thread running a timer and writint the `Slot`, nofitying Factory on the condvar.
+
 ### Factory
-Waits on a slot timer(and shutdown?).
+Waits on a slot timer(and shutdown).
 
 1. Wake-up at each slot
 2. Read draws.
@@ -129,7 +150,7 @@ Waits on a slot timer(and shutdown?).
 4. If produced, write to Storage, notify on condvar.
 
 ### Consensus
-Waits on Storage(and shutdown?).
+Waits on Storage(and shutdown).
 
 1. Wake-up on the condvar
 2. Read new block.
@@ -137,7 +158,7 @@ Waits on Storage(and shutdown?).
 4. Write to graph and notify on condvar.
 
 ### Executor
-Waits on Graph(and shutdown?)
+Waits on Graph(and shutdown)
 1. Wake-up on the condvar
 2. Read new graph.
 3. Read blocks.
@@ -146,14 +167,14 @@ Waits on Graph(and shutdown?)
 6. Notify POS.
 
 ### Network(outgoing)
-Waits on Graph(and shutdown?)
+Waits on Graph(and shutdown)
 1. Wake-up on the condvar
 2. Read new graph.
 3. Read blocks.
 4. Propagate.
 
 ### Network(incoming)
-Waits on Incoming(and shutdown?)
+Waits on Incoming(and shutdown)
 1. Wake-up on the condvar
 2. Read new data.
 3. Deserialize into known objects, validate them.
@@ -163,4 +184,4 @@ Note: Should own a tokio runtime, running one task per peer, and those tasks wil
 
 ## A note on shutdown
 
-In order to orchestrate shutdown, all shared object should contain something representing a "shutdown" signal, which `massa-node` could use to request shutdown of all components, and then wait for the shutdown to have been completed. 
+In order to orchestrate shutdown, all shared object should include something representing a "shutdown" signal, which `massa-node` could use to request shutdown of all components, and then wait for the shutdown to have been completed. 
