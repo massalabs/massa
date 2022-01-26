@@ -92,11 +92,26 @@ impl VM {
 
     /// get sc output event between start and end excluded
     pub fn get_sc_output_event_by_slot_range(&self, start: Slot, end: Slot) -> Vec<SCOutputEvent> {
-        todo!()
+        self.step_history
+            .iter()
+            .filter_map(|item| {
+                if item.slot >= start && item.slot < end {
+                    Some(
+                        item.events
+                            .export()
+                            .values()
+                            .cloned()
+                            .collect::<Vec<SCOutputEvent>>(),
+                    )
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .collect()
     }
 
     /// get sc output event for given sc addresss
-
     pub fn get_sc_output_event_by_sc_address(&self, sc_address: Address) -> Vec<SCOutputEvent> {
         todo!()
     }
