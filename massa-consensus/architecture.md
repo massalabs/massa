@@ -99,7 +99,9 @@ pub struct SharedData {
     storage: Arc<(Condvar, RwLock<(Storage, Shutdown)>)>,
     graph: Arc<(Condvar, RwLock<(Graph, Shutdown)>)>,
     production_queue: Arc<(Condvar, RwLock<(ProductionQueue, Shutdown)>)>,
-    network_incoming: Arc<(Condvar, RwLock<(NetworkIncoming, Shutdown)>)>
+    execution_queue: Arc<(Condvar, RwLock<(ExecutionQueue, Shutdown)>)>,
+    network_incoming: Arc<(Condvar, RwLock<(NetworkIncoming, Shutdown)>)>,
+    propagation_queue: Arc<(Condvar, RwLock<(ProductionQueue, Shutdown)>)>,
 }
 
 /// Used to signal shutdown.
@@ -151,6 +153,31 @@ pub struct ProductionQueue {
 }
 ```
 
+## Execution Queue
+```rust
+/// Used to notify Executor of new execution requests,
+/// either new block or read-only requests,
+/// or get bootstrap state.
+pub struct ExecutionQueue {
+    request: Vec<ExecutionRequest>,
+}
+
+pub enum ExecutionRequest {
+   CliqueChanged,
+   ReadOnly,
+   GetBoostrapState,
+}
+```
+
+## Propagation Queue
+```rust
+/// Used to notify Network of new things to propagate.
+pub struct ProductionQueue {
+    /// Operations to be used in block production.
+    /// Modified by, and notified on, by Network and Api.
+    to_propagate: Map<BlockEndorsementOperation>,
+```
+
 ## Structure of component execution(event-loops)
 
 ### Slot
@@ -171,10 +198,10 @@ Waits on Storage(and shutdown).
 1. Wake-up on the condvar
 2. Read new block.
 3. Process in graph.
-4. Write to graph and notify on condvar.
+4. Write to propagation and execution queue and notify on condvar.
 
 ### Executor
-Waits on Graph(and shutdown)
+Waits on ExecutionQueue(and shutdown)
 1. Wake-up on the condvar
 2. Read new graph.
 3. Read blocks.
@@ -183,9 +210,9 @@ Waits on Graph(and shutdown)
 6. Notify POS.
 
 ### Network(outgoing)
-Waits on Graph(and shutdown)
+Waits on PropagationQueue(and shutdown)
 1. Wake-up on the condvar
-2. Read new graph.
+2. Read queue.
 3. Read blocks.
 4. Propagate.
 
