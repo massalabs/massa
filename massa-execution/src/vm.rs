@@ -197,7 +197,7 @@ impl VM {
             .apply_changes(&history_item.ledger_changes);
         ledger_step.final_ledger_slot.slot = step.slot;
 
-        self.final_events.extend(context.events.clone());
+        self.final_events.extend(mem::take(&mut context.events));
         self.final_events.prune(max_final_events)
     }
 
