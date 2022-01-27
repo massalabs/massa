@@ -8,6 +8,7 @@ use massa_models::{Address, Amount, Block, BlockId, Slot};
 use massa_sc_runtime::Bytecode;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
+use std::cmp;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::{Condvar, Mutex};
@@ -79,6 +80,76 @@ impl EventStore {
         self.smart_contract_to_id.clear();
     }
 
+    pub fn prune(&mut self, max_final_events: usize) {
+        // todo make setting static
+        if self.id_to_event.len() > max_final_events {
+            let diff = self.id_to_event.len() - max_final_events;
+            let mut to_remove: Vec<SCOutputEventId> = Vec::with_capacity(diff);
+            let mut slots = self.slot_to_id.keys().collect::<Vec<_>>();
+            slots.sort_unstable_by_key(|s| cmp::Reverse(*s));
+            let empty = Set::<SCOutputEventId>::default();
+            while to_remove.len() < diff {
+                let s = match slots.pop() {
+                    Some(s) => s,
+                    None => break,
+                };
+                to_remove = to_remove
+                    .into_iter()
+                    .chain(match self.slot_to_id.get(s) {
+                        Some(it) => it.iter().copied(),
+                        None => empty.iter().copied(),
+                    })
+                    .collect();
+            }
+            for id in to_remove.into_iter() {
+                let event = match self.id_to_event.remove(&id) {
+                    Some(e) => e,
+                    None => continue,
+                };
+
+                match self.slot_to_id.get_mut(&event.context.slot) {
+                    Some(slot_ids) => {
+                        slot_ids.remove(&event.id);
+                        if slot_ids.is_empty() {
+                            self.slot_to_id.remove(&event.context.slot);
+                        }
+                    }
+                    None => {
+                        self.slot_to_id.remove(&event.context.slot);
+                    }
+                }
+
+                if let Some(caller) = event.context.call_stack.front() {
+                    match self.caller_to_id.get_mut(caller) {
+                        Some(ids) => {
+                            ids.remove(&event.id);
+                            if ids.is_empty() {
+                                self.caller_to_id.remove(caller);
+                            }
+                        }
+                        None => {
+                            self.caller_to_id.remove(caller);
+                        }
+                    }
+                }
+
+                if let Some(sc) = event.context.call_stack.back() {
+                    match self.smart_contract_to_id.get_mut(sc) {
+                        Some(ids) => {
+                            ids.remove(&event.id);
+                            if ids.is_empty() {
+                                self.smart_contract_to_id.remove(sc);
+                            }
+                        }
+                        None => {
+                            self.smart_contract_to_id.remove(sc);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     pub fn extend(&mut self, other: EventStore) {
         todo!()
     }
@@ -107,7 +178,7 @@ impl EventStore {
         &self,
         start: Slot,
         end: Slot,
-        thread_count: u8,
+        thread_count: u8, // todo make setting static
     ) -> Result<Vec<SCOutputEvent>, ExecutionError> {
         let mut slot = start;
         let mut res = Vec::new();

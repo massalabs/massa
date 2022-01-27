@@ -147,7 +147,7 @@ impl VM {
     ///
     /// # Parameters
     ///   * step: execution step to run
-    pub(crate) fn run_final_step(&mut self, step: ExecutionStep) {
+    pub(crate) fn run_final_step(&mut self, step: ExecutionStep, max_final_events: usize) {
         // check if that step was already executed as the earliest active step
         let history_item = if let Some(cached) = self.pop_cached_step(&step) {
             // if so, pop it
@@ -168,6 +168,7 @@ impl VM {
         ledger_step.final_ledger_slot.slot = step.slot;
 
         self.final_events.extend(context.events.clone());
+        self.final_events.prune(max_final_events)
     }
 
     /// check if step already at history front, if so, pop it

@@ -126,7 +126,7 @@ impl ExecutionWorker {
             loop {
                 match requests.pop_front() {
                     Some(ExecutionRequest::RunFinalStep(step)) => {
-                        vm.run_final_step(step);
+                        vm.run_final_step(step, cfg.settings.max_final_events); // todo make settings static
                     }
                     Some(ExecutionRequest::RunActiveStep(step)) => {
                         vm.run_active_step(step);
