@@ -3,11 +3,11 @@
 use crate::tests::tools::{self, create_endorsement, create_roll_transaction, create_transaction};
 use massa_consensus_exports::tools::*;
 use massa_hash::hash::Hash;
-use massa_models::{ledger::LedgerData, EndorsementId, OperationType};
+use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
+use massa_models::{ledger_models::LedgerData, EndorsementId, OperationType};
 use massa_models::{Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot};
 use massa_models::{Endorsement, SerializeCompact};
 use massa_pool::PoolCommand;
-use massa_proof_of_stake_exports::{RollCounts, RollUpdate, RollUpdates};
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use massa_time::MassaTime;

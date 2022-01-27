@@ -11,7 +11,7 @@ use massa_graph::{BlockGraph, BlockGraphExport};
 use massa_hash::hash::Hash;
 use massa_models::address::AddressState;
 use massa_models::api::{LedgerInfo, RollsInfo};
-use massa_models::ledger::LedgerData;
+use massa_models::ledger_models::LedgerData;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use massa_models::{address::AddressCycleProductionStats, stats::ConsensusStats, OperationId};
@@ -19,9 +19,7 @@ use massa_models::{
     Address, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement, EndorsementContent,
     EndorsementId, Operation, OperationSearchResult, OperationType, SerializeCompact, Slot,
 };
-use massa_proof_of_stake_exports::{
-    error::ProofOfStakeError, ExportProofOfStake, POSBlock, ProofOfStake,
-};
+use massa_proof_of_stake_exports::{error::ProofOfStakeError, ExportProofOfStake, ProofOfStake};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
 use massa_signature::{derive_public_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
@@ -1239,7 +1237,7 @@ impl ConsensusWorker {
                     }),
                 );
                 // List final block
-                new_final_blocks.insert(b_id, POSBlock::from(a_block));
+                new_final_blocks.insert(b_id, a_block);
                 // add to stats
                 self.final_block_stats.push_back((
                     timestamp,

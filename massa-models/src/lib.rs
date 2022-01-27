@@ -38,7 +38,7 @@ mod context;
 mod endorsement;
 pub mod error;
 pub mod execution;
-pub mod ledger;
+pub mod ledger_models;
 pub mod node;
 pub mod operation;
 pub mod output_event;
@@ -49,3 +49,6 @@ pub mod slot;
 pub mod stats;
 pub mod timeslots;
 mod version;
+
+pub mod active_block;
+pub mod rolls;

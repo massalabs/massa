@@ -10,7 +10,6 @@ extern crate massa_logging;
 
 pub use settings::LedgerConfig;
 
-pub mod active_block;
 pub mod export_active_block;
 
 mod bootstrapable_graph;

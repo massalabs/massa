@@ -2,27 +2,29 @@
 
 //! All information concerning blocks, the block graph and cliques is managed here.
 use crate::{
-    active_block::ActiveBlock,
     bootstrapable_graph::BootstrapableGraph,
     error::{GraphError, GraphResult as Result},
     export_active_block::ExportActiveBlock,
-    ledger::{read_genesis_ledger, Ledger, LedgerChanges, LedgerSubset, OperationLedgerInterface},
+    ledger::{read_genesis_ledger, Ledger, LedgerSubset, OperationLedgerInterface},
     settings::GraphConfig,
 };
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::api::EndorsementInfo;
 use massa_models::clique::Clique;
-use massa_models::ledger::LedgerChange;
+use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement, EndorsementId,
-    Operation, OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
-    OperationSearchResultStatus, Slot,
+    active_block::ActiveBlock,
+    api::EndorsementInfo,
+    rolls::{RollCounts, RollUpdate, RollUpdates},
+};
+use massa_models::{
+    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
+    Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
+    OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
 };
 use massa_proof_of_stake_exports::{
-    error::ProofOfStakeError, OperationRollInterface, ProofOfStake, RollCounts, RollUpdate,
-    RollUpdates,
+    error::ProofOfStakeError, OperationRollInterface, ProofOfStake,
 };
 use massa_signature::{derive_public_key, PublicKey};
 use serde::{Deserialize, Serialize};

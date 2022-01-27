@@ -1,10 +1,9 @@
-use massa_models::{
+use crate::{
+    ledger_models::LedgerChanges,
     prehash::{Map, Set},
+    rolls::RollUpdates,
     Address, Block, BlockId, EndorsementId, OperationId,
 };
-use massa_proof_of_stake_exports::{POSBlock, RollUpdates};
-
-use crate::ledger::LedgerChanges;
 
 /// Block that was checked as final, with some useful precomputed data
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -44,15 +43,5 @@ impl ActiveBlock {
     /// Computes the fitness of the block
     pub fn fitness(&self) -> u64 {
         1 + self.block.header.content.endorsements.len() as u64
-    }
-}
-
-impl From<&ActiveBlock> for POSBlock {
-    fn from(val: &ActiveBlock) -> Self {
-        POSBlock {
-            block: val.block.clone(),
-            production_events: val.production_events.clone(),
-            roll_updates: val.roll_updates.clone(),
-        }
     }
 }

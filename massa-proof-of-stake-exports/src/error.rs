@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 use displaydoc::Display;
+use massa_models::ModelsError;
 use thiserror::Error;
 
 pub type POSResult<T, E = ProofOfStakeError> = core::result::Result<T, E>;
@@ -7,10 +8,6 @@ pub type POSResult<T, E = ProofOfStakeError> = core::result::Result<T, E>;
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum ProofOfStakeError {
-    /// Our key is missing
-    KeyError,
-    /// invalid roll update: {0}
-    InvalidRollUpdate(String),
     /// Proof of stake cycle unavailable {0}
     PosCycleUnavailable(String),
     /// there was an inconsistency between containers {0}
@@ -23,4 +20,6 @@ pub enum ProofOfStakeError {
     IOError(#[from] std::io::Error),
     /// serde error
     SerdeError(#[from] serde_json::Error),
+    /// models error: {0}
+    ModelsError(#[from] ModelsError),
 }

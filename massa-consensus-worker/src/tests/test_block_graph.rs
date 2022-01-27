@@ -1,16 +1,14 @@
 use crate::tests::tools::get_dummy_block_id;
 use massa_consensus_exports::ConsensusConfig;
 use massa_graph::{
-    active_block::ActiveBlock,
-    create_genesis_block,
-    export_active_block::ExportActiveBlock,
-    ledger::{LedgerChanges, LedgerSubset},
-    BlockGraph, BootstrapableGraph,
+    create_genesis_block, export_active_block::ExportActiveBlock, ledger::LedgerSubset, BlockGraph,
+    BootstrapableGraph,
 };
 use massa_hash::hash::Hash;
 use massa_models::{
+    active_block::ActiveBlock,
     clique::Clique,
-    ledger::{LedgerChange, LedgerData},
+    ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     prehash::{Map, Set},
     Address, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact, SerializeCompact,
     Slot,

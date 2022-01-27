@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
-use massa_models::{ledger::LedgerData, Address};
-use massa_proof_of_stake_exports::{RollCounts, RollUpdate, RollUpdates};
+use massa_models::{
+    ledger_models::LedgerData,
+    rolls::{RollCounts, RollUpdate, RollUpdates},
+    Address,
+};
 use massa_signature::{derive_public_key, PrivateKey};
 use tempfile::NamedTempFile;
 

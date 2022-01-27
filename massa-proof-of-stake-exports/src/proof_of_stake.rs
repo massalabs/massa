@@ -3,7 +3,9 @@ use std::collections::{hash_map, BTreeMap, HashMap, VecDeque};
 use bitvec::{order::Lsb0, prelude::BitVec};
 use massa_hash::hash::Hash;
 use massa_models::{
+    active_block::ActiveBlock,
     prehash::{Map, Set},
+    rolls::{RollCounts, RollUpdates},
     Address, Amount, BlockId, Slot, StakersCycleProductionStats,
 };
 use massa_signature::derive_public_key;
@@ -14,8 +16,7 @@ use tracing::log::warn;
 
 use crate::{
     error::POSResult, error::ProofOfStakeError, export_pos::ExportProofOfStake,
-    roll_counts::RollCounts, settings::ProofOfStakeConfig, thread_cycle_state::ThreadCycleState,
-    POSBlock, RollUpdates,
+    settings::ProofOfStakeConfig, thread_cycle_state::ThreadCycleState,
 };
 type DrawCache = HashMap<u64, (usize, HashMap<Slot, (Address, Vec<Address>)>)>;
 
@@ -340,7 +341,7 @@ impl ProofOfStake {
 
     /// Update internal states after a set of blocks become final
     /// see /consensus/pos.md#when-a-block-b-in-thread-tau-and-cycle-n-becomes-final
-    pub fn note_final_blocks(&mut self, blocks: Map<BlockId, POSBlock>) -> POSResult<()> {
+    pub fn note_final_blocks(&mut self, blocks: Map<BlockId, &ActiveBlock>) -> POSResult<()> {
         // Update internal states after a set of blocks become final.
 
         // process blocks by increasing slot number

@@ -11,9 +11,9 @@ use super::tools::*;
 use massa_consensus_exports::tools::*;
 
 use massa_consensus_exports::settings::ConsensusChannels;
-use massa_graph::ledger::{Ledger, LedgerChanges};
-use massa_models::ledger::LedgerChange;
-use massa_models::ledger::LedgerData;
+use massa_graph::ledger::Ledger;
+use massa_models::ledger_models::LedgerData;
+use massa_models::ledger_models::{LedgerChange, LedgerChanges};
 use massa_models::{Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use massa_time::MassaTime;

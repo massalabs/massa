@@ -5,7 +5,7 @@ use massa_consensus_exports::tools::*;
 
 use massa_graph::{ledger::LedgerSubset, BootstrapableGraph};
 use massa_models::clique::Clique;
-use massa_models::ledger::LedgerData;
+use massa_models::ledger_models::LedgerData;
 use massa_models::{Address, Amount, BlockId, Operation, Slot};
 use massa_pool::PoolCommand;
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};

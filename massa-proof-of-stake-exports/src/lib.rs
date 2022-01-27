@@ -3,17 +3,12 @@
 
 pub mod error;
 mod export_pos;
-mod roll_updates;
 mod settings;
-mod types;
 
-use massa_models::{Address, Operation, OperationType};
-use serde::{Deserialize, Serialize};
-
-pub use roll_updates::{RollUpdate, RollUpdates};
-
-mod roll_counts;
-pub use roll_counts::RollCounts;
+use massa_models::{
+    rolls::{RollUpdate, RollUpdates},
+    Address, Operation, OperationType,
+};
 
 mod proof_of_stake;
 pub use proof_of_stake::*;
@@ -21,13 +16,9 @@ pub use proof_of_stake::*;
 use error::ProofOfStakeError;
 pub use export_pos::ExportProofOfStake;
 pub use settings::ProofOfStakeConfig;
-pub use types::POSBlock;
 
 mod thread_cycle_state;
 pub use thread_cycle_state::ThreadCycleState;
-
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub struct RollCompensation(pub u64);
 
 /// Roll specific method on operation
 pub trait OperationRollInterface {

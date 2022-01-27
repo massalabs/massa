@@ -1,5 +1,5 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
-use massa_models::ledger::{LedgerChange, LedgerData};
+use massa_models::ledger_models::{LedgerChange, LedgerChanges, LedgerData};
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::{
     array_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, Operation,
@@ -36,124 +36,6 @@ pub async fn read_genesis_ledger(ledger_config: &LedgerConfig) -> Result<Ledger>
         &tokio::fs::read_to_string(&ledger_config.initial_ledger_path).await?,
     )?;
     Ledger::new(ledger_config.to_owned(), Some(ledger))
-}
-
-/// Map an address to a LedgerChange
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct LedgerChanges(pub Map<Address, LedgerChange>);
-
-impl LedgerChanges {
-    pub fn get_involved_addresses(&self) -> Set<Address> {
-        self.0.keys().copied().collect()
-    }
-
-    /// applies a LedgerChange
-    pub fn apply(&mut self, addr: &Address, change: &LedgerChange) -> Result<()> {
-        match self.0.entry(*addr) {
-            hash_map::Entry::Occupied(mut occ) => {
-                occ.get_mut().chain(change)?;
-                if occ.get().is_nil() {
-                    occ.remove();
-                }
-            }
-            hash_map::Entry::Vacant(vac) => {
-                let mut res = LedgerChange::default();
-                res.chain(change)?;
-                if !res.is_nil() {
-                    vac.insert(res);
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// chain with another LedgerChange
-    pub fn chain(&mut self, other: &LedgerChanges) -> Result<()> {
-        for (addr, change) in other.0.iter() {
-            self.apply(addr, change)?;
-        }
-        Ok(())
-    }
-
-    /// merge another ledger changes into self, overwriting existing data
-    /// addrs that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: LedgerChanges) {
-        for addr in addrs.iter() {
-            if let Some(new_val) = other.0.remove(addr) {
-                self.0.insert(*addr, new_val);
-            } else {
-                self.0.remove(addr);
-            }
-        }
-    }
-
-    /// clone subset
-    #[must_use]
-    pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
-        LedgerChanges(
-            self.0
-                .iter()
-                .filter_map(|(a, dta)| {
-                    if addrs.contains(a) {
-                        Some((*a, dta.clone()))
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        )
-    }
-
-    /// add reward related changes
-    pub fn add_reward(
-        &mut self,
-        creator: Address,
-        endorsers: Vec<Address>,
-        parent_creator: Address,
-        reward: Amount,
-        endorsement_count: u32,
-    ) -> Result<()> {
-        let endorsers_count = endorsers.len() as u64;
-        let third = reward
-            .checked_div_u64(3 * (1 + (endorsement_count as u64)))
-            .ok_or(LedgerError::AmountOverflowError)?;
-        for ed in endorsers {
-            self.apply(
-                &parent_creator,
-                &LedgerChange {
-                    balance_delta: third,
-                    balance_increment: true,
-                },
-            )?;
-            self.apply(
-                &ed,
-                &LedgerChange {
-                    balance_delta: third,
-                    balance_increment: true,
-                },
-            )?;
-        }
-        let total_credited = third
-            .checked_mul_u64(2 * endorsers_count)
-            .ok_or(LedgerError::AmountOverflowError)?;
-        // here we credited only parent_creator and ed for every endorsement
-        // total_credited now contains the total amount already credited
-
-        let expected_credit = reward
-            .checked_mul_u64(1 + endorsers_count)
-            .ok_or(LedgerError::AmountOverflowError)?
-            .checked_div_u64(1 + (endorsement_count as u64))
-            .ok_or(LedgerError::AmountOverflowError)?;
-        // here expected_credit contains the expected amount that should be credited in total
-        // the difference between expected_credit and total_credited is sent to the block creator
-        self.apply(
-            &creator,
-            &LedgerChange {
-                balance_delta: expected_credit.saturating_sub(total_credited),
-                balance_increment: true,
-            },
-        )
-    }
 }
 
 /// Ledger specific method on operations
@@ -677,7 +559,7 @@ impl SerializeCompact for LedgerSubset {
     /// ```rust
     /// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, Address, Amount};
     /// # use std::str::FromStr;
-    /// # use massa_models::ledger::LedgerData;
+    /// # use massa_models::ledger_models::LedgerData;
     /// # use massa_graph::ledger::LedgerSubset;
     /// # let ledger = LedgerSubset(vec![
     /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData::new(Amount::from_str("1022").unwrap())),

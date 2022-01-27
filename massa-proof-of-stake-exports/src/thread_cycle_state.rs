@@ -2,12 +2,11 @@ use bitvec::{order::Lsb0, prelude::BitVec};
 use massa_models::{
     array_from_slice,
     prehash::{BuildMap, Map},
+    rolls::{RollCounts, RollUpdate, RollUpdates},
     with_serialization_context, Address, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
 };
 use serde::{Deserialize, Serialize};
-
-use crate::{roll_counts::RollCounts, RollUpdate, RollUpdates};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ThreadCycleState {

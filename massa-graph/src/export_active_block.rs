@@ -1,14 +1,11 @@
-use crate::{
-    active_block::ActiveBlock,
-    error::{GraphError, GraphResult as Result},
-    ledger::LedgerChanges,
-};
+use crate::error::{GraphError, GraphResult as Result};
 use massa_models::{
-    ledger::LedgerChange,
+    active_block::ActiveBlock,
+    ledger_models::{LedgerChange, LedgerChanges},
     prehash::{BuildMap, Map, Set},
+    rolls::{RollUpdate, RollUpdates},
     *,
 };
-use massa_proof_of_stake_exports::{RollUpdate, RollUpdates};
 use serde::{Deserialize, Serialize};
 
 /// Exportable version of ActiveBlock

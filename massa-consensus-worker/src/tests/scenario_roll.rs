@@ -25,7 +25,7 @@ use crate::{
         },
     },
 };
-use massa_models::ledger::LedgerData;
+use massa_models::ledger_models::LedgerData;
 use massa_models::prehash::Set;
 
 use super::mock_execution_controller::MockExecutionController;

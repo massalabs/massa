@@ -5,7 +5,7 @@ use massa_consensus_exports::tools::*;
 
 use massa_graph::{ledger::LedgerSubset, BootstrapableGraph};
 use massa_models::clique::Clique;
-use massa_models::ledger::LedgerData;
+use massa_models::ledger_models::LedgerData;
 use massa_models::{
     Address, Amount, BlockId, Operation, OperationSearchResult, OperationSearchResultStatus, Slot,
 };

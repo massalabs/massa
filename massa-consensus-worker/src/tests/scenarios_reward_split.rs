@@ -4,7 +4,7 @@ use super::tools::*;
 use massa_consensus_exports::tools::*;
 
 use massa_hash::hash::Hash;
-use massa_models::ledger::LedgerData;
+use massa_models::ledger_models::LedgerData;
 use massa_models::{
     Address, Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot,
 };
