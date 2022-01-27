@@ -29,17 +29,20 @@ pub enum ExecutionCommand {
     /// Get a snapshot of the current state for bootstrap
     GetBootstrapState(tokio::sync::oneshot::Sender<BootstrapExecutionState>),
 
+    /// Get events by slot range
     GetSCOutputEventBySlotRange {
         start: Slot,
         end: Slot,
         response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
     },
 
+    /// Get events by caller
     GetSCOutputEventByCaller {
         caller_address: Address,
         response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
     },
 
+    /// get events by smart contract
     GetSCOutputEventBySCAddress {
         sc_address: Address,
         response_tx: oneshot::Sender<Vec<SCOutputEvent>>,

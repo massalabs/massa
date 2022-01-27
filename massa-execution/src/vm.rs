@@ -147,6 +147,7 @@ impl VM {
     ///
     /// # Parameters
     ///   * step: execution step to run
+    ///   * max_final_events: max number of events kept in cache (todo should be removed when config become static)
     pub(crate) fn run_final_step(&mut self, step: ExecutionStep, max_final_events: usize) {
         // check if that step was already executed as the earliest active step
         let history_item = if let Some(cached) = self.pop_cached_step(&step) {
@@ -230,7 +231,7 @@ impl VM {
     /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
     /// TODO: do not ignore the results
     /// TODO: consider dispatching gas fees with edorsers/endorsees as well
-    /// Returns (backup of local ledger changes, backup of created_addr_index)
+    /// Returns (backup of local ledger changes, backup of created_addr_index, backup of events, backup of created_events_index, backup of unsafe rng)
     fn prepare_context(
         &self,
         data: &ExecutionData,

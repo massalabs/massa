@@ -31,19 +31,28 @@ pub(crate) struct StepHistoryItem {
     // list of SCE ledger changes caused by this execution step
     pub ledger_changes: SCELedgerChanges,
 
+    /// events produced during this step
     pub events: EventStore,
 }
 
+/// Keep all events you need with some useful indexes
 #[derive(Default, Debug, Clone)]
 pub(crate) struct EventStore {
+    /// maps ids to events
     id_to_event: Map<SCOutputEventId, SCOutputEvent>,
+
+    /// maps slot to a set of event ids
     slot_to_id: HashMap<Slot, Set<SCOutputEventId>>,
+
+    /// maps initial caller to a set of event ids
     caller_to_id: Map<Address, Set<SCOutputEventId>>,
+
+    /// maps direct event producer to a set of event ids
     smart_contract_to_id: Map<Address, Set<SCOutputEventId>>,
 }
 
 impl EventStore {
-    // add event to the store and all its indexes
+    /// add event to the store and all its indexes
     pub fn insert(&mut self, id: SCOutputEventId, event: SCOutputEvent) {
         if let Entry::Vacant(entry) = self.id_to_event.entry(id) {
             self.slot_to_id
@@ -69,10 +78,12 @@ impl EventStore {
         }
     }
 
+    /// get just the map if ids to events
     pub fn export(&self) -> Map<SCOutputEventId, SCOutputEvent> {
         self.id_to_event.clone()
     }
 
+    /// Clears the map, removing all key-value pairs. Keeps the allocated memory for reuse.
     pub fn clear(&mut self) {
         self.id_to_event.clear();
         self.slot_to_id.clear();
@@ -80,6 +91,7 @@ impl EventStore {
         self.smart_contract_to_id.clear();
     }
 
+    /// Remove exess events considering a config defined max
     pub fn prune(&mut self, max_final_events: usize) {
         // todo make setting static
         if self.id_to_event.len() > max_final_events {
@@ -150,6 +162,7 @@ impl EventStore {
         }
     }
 
+    /// Extend an event store with another one
     pub fn extend(&mut self, other: EventStore) {
         self.id_to_event.extend(other.id_to_event);
 
@@ -182,6 +195,7 @@ impl EventStore {
         })
     }
 
+    /// get vec of event for a given caller
     pub fn get_event_for_caller(&self, caller: Address) -> Vec<SCOutputEvent> {
         match self.caller_to_id.get(&caller) {
             Some(s) => s
@@ -192,6 +206,7 @@ impl EventStore {
         }
     }
 
+    /// get vec of event for given smart contract
     pub fn get_event_for_sc(&self, sc: Address) -> Vec<SCOutputEvent> {
         match self.smart_contract_to_id.get(&sc) {
             Some(s) => s
@@ -202,6 +217,7 @@ impl EventStore {
         }
     }
 
+    /// get vec of event for given slot range (start included, end excluded)
     pub fn get_event_for_slot_range(
         &self,
         start: Slot,
@@ -357,17 +373,18 @@ pub(crate) enum ExecutionRequest {
     },
     /// Shutdown state, set by the worker to signal shutdown to the VM thread.
     Shutdown,
+    /// Get events by slot range
     GetSCOutputEventBySlotRange {
         start: Slot,
         end: Slot,
         response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
     },
-
+    /// Get events by caller
     GetSCOutputEventByCaller {
         caller_address: Address,
         response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
     },
-
+    /// get events by smart contract
     GetSCOutputEventBySCAddress {
         sc_address: Address,
         response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
