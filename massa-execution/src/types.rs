@@ -1,5 +1,6 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
 use crate::{BootstrapExecutionState, ExecutionError};
+use massa_models::api::SCELedgerInfo;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
 use massa_models::prehash::{Map, Set};
@@ -388,6 +389,11 @@ pub(crate) enum ExecutionRequest {
     GetSCOutputEventBySCAddress {
         sc_address: Address,
         response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
+    },
+    /// Get ledger entry for address
+    GetSCELedgerForAddresses {
+        response_tx: oneshot::Sender<Map<Address, SCELedgerInfo>>,
+        addresses: Vec<Address>,
     },
 }
 

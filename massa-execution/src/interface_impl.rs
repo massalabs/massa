@@ -390,6 +390,7 @@ impl Interface for InterfaceImpl {
             .to_raw())
     }
 
+    /// generate an execution event and stores it
     fn generate_event(&self, data: String) -> Result<()> {
         let mut execution_context = context_guard!(self);
 

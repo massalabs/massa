@@ -83,7 +83,7 @@ impl CommandHistory {
         }
     }
 
-    fn write_to_saved_history(command: &String) {
+    fn write_to_saved_history(command: &str) {
         if let Ok(mut file) = OpenOptions::new()
             .write(true)
             .append(true)

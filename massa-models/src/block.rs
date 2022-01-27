@@ -18,12 +18,18 @@ use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::str::FromStr;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct BlockId(pub Hash);
 
 impl PreHashed for BlockId {}
 
 impl std::fmt::Display for BlockId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_bs58_check())
+    }
+}
+
+impl std::fmt::Debug for BlockId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.0.to_bs58_check())
     }

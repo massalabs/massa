@@ -4,6 +4,7 @@ use crate::types::{ExecutionQueue, ExecutionRequest};
 use crate::vm::VM;
 use crate::BootstrapExecutionState;
 use crate::{config::ExecutionConfigs, types::ExecutionStep};
+use massa_models::api::SCELedgerInfo;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Map;
@@ -61,6 +62,10 @@ pub enum ExecutionCommand {
         /// The address, or a default random one if none is provided,
         /// which will simulate the sender of the operation.
         address: Option<Address>,
+    },
+    GetSCELedgerForAddresses {
+        response_tx: oneshot::Sender<Map<Address, SCELedgerInfo>>,
+        addresses: Vec<Address>,
     },
 }
 
@@ -197,6 +202,15 @@ impl ExecutionWorker {
                         }
                     }
                     Some(ExecutionRequest::Shutdown) => return,
+                    Some(ExecutionRequest::GetSCELedgerForAddresses {
+                        addresses,
+                        response_tx,
+                    }) => {
+                        let res = vm.get_sce_ledger_entry_for_addresses(addresses);
+                        if response_tx.send(res).is_err() {
+                            debug!("execution: could not send GetSCELedgerForAddresses response")
+                        }
+                    }
                     None => {
                         requests = condvar.wait(requests).unwrap();
                     }
@@ -347,6 +361,13 @@ impl ExecutionWorker {
             } => self.push_request(ExecutionRequest::GetSCOutputEventBySCAddress {
                 sc_address,
                 response_tx,
+            }),
+            ExecutionCommand::GetSCELedgerForAddresses {
+                response_tx,
+                addresses,
+            } => self.push_request(ExecutionRequest::GetSCELedgerForAddresses {
+                response_tx,
+                addresses,
             }),
         }
         Ok(())
