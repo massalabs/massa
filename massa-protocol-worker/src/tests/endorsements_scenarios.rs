@@ -93,20 +93,18 @@ async fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() 
                 .await;
 
             // Check protocol does not send endorsements to pool.
-            match tools::wait_protocol_pool_event(
-                &mut protocol_pool_event_receiver,
-                1000.into(),
-                |evt| match evt {
-                    evt @ ProtocolPoolEvent::ReceivedEndorsements { .. } => Some(evt),
-                    _ => None,
-                },
-            )
-            .await
+            if let Some(ProtocolPoolEvent::ReceivedEndorsements { .. }) =
+                tools::wait_protocol_pool_event(
+                    &mut protocol_pool_event_receiver,
+                    1000.into(),
+                    |evt| match evt {
+                        evt @ ProtocolPoolEvent::ReceivedEndorsements { .. } => Some(evt),
+                        _ => None,
+                    },
+                )
+                .await
             {
-                Some(ProtocolPoolEvent::ReceivedEndorsements { .. }) => {
-                    panic!("Protocol send invalid endorsements.")
-                }
-                _ => {}
+                panic!("Protocol send invalid endorsements.")
             };
 
             (

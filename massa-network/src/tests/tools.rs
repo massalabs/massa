@@ -33,7 +33,7 @@ pub fn get_dummy_block_id(s: &str) -> BlockId {
 }
 
 /// generate a named temporary JSON peers file
-pub fn generate_peers_file(peer_vec: &Vec<PeerInfo>) -> NamedTempFile {
+pub fn generate_peers_file(peer_vec: &[PeerInfo]) -> NamedTempFile {
     use std::io::prelude::*;
     let peers_file_named = NamedTempFile::new().expect("cannot create temp file");
     serde_json::to_writer_pretty(peers_file_named.as_file(), &peer_vec)

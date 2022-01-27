@@ -40,7 +40,7 @@ testnet discussions, in the testnet channel.
 For project announcements, we mainly use
 [Telegram](https://t.me/massanetwork), and we also have a [Twitter](https://twitter.com/MassaLabs) account.
 
-## Tutorials to follow to join the testnet
+## Tutorials to join the testnet
 
 -   [Installing a node](https://github.com/massalabs/massa/wiki/install)
 -   [Running a node](https://github.com/massalabs/massa/wiki/run)
@@ -53,6 +53,7 @@ For project announcements, we mainly use
 
 -   [Updating the node](https://github.com/massalabs/massa/wiki/update)
 -   [Sending transactions](https://github.com/massalabs/massa/wiki/transaction)
+-   [Tutorials and resources from the community](https://github.com/massalabs/massa/wiki/Community-Ressources)
 
 ## [FAQ](https://github.com/massalabs/massa/wiki/faq) and Troubleshooting
 
@@ -61,3 +62,10 @@ protocol in the [FAQ](https://github.com/massalabs/massa/wiki/faq).
 
 Don't hesitate to ask questions in the
 [Discord](https://discord.com/invite/massa) testnet channel.
+
+## Technical documentation
+
+-   [API](https://github.com/massalabs/massa/wiki/api)
+-   [Concurrency](https://github.com/massalabs/massa/wiki/concurrency)
+-   [Smart contract VM block feed process](https://github.com/massalabs/massa/wiki/vm-block-feed)
+-   [Dummy network generation](https://github.com/massalabs/massa/wiki/Dummy-network-generation)

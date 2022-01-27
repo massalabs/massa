@@ -4,6 +4,7 @@ use crate::worker::{
     ExecutionCommand, ExecutionEvent, ExecutionManagementCommand, ExecutionWorker,
 };
 use crate::BootstrapExecutionState;
+use massa_models::api::SCELedgerInfo;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Map;
 use massa_models::{execution::ExecuteReadOnlyResponse, Address, Amount, Block, BlockId, Slot};
@@ -224,6 +225,27 @@ impl ExecutionCommandSender {
             })?;
         Ok(response_rx.await.map_err(|_| {
             ExecutionError::ChannelError("could not send ExecuteReadOnlyResponse upstream".into())
+        })?)
+    }
+
+    pub async fn get_sce_ledger_for_addresses(
+        self,
+        addresses: Vec<Address>,
+    ) -> Result<Map<Address, SCELedgerInfo>, ExecutionError> {
+        let (response_tx, response_rx) = oneshot::channel();
+        self.0
+            .send(ExecutionCommand::GetSCELedgerForAddresses {
+                response_tx,
+                addresses,
+            })
+            .await
+            .map_err(|_| {
+                ExecutionError::ChannelError(
+                    "could not send GetSCELedgerForAddresses command".into(),
+                )
+            })?;
+        Ok(response_rx.await.map_err(|_| {
+            ExecutionError::ChannelError("could not send GetSCELedgerForAddresses upstream".into())
         })?)
     }
 }

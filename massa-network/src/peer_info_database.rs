@@ -888,8 +888,10 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_try_new_in_connection_in_connection_closed() {
-        let mut network_settings = NetworkSettings::default();
-        network_settings.target_out_nonbootstrap_connections = 5;
+        let network_settings = NetworkSettings {
+            target_out_nonbootstrap_connections: 5,
+            ..Default::default()
+        };
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         // add peers
@@ -906,14 +908,8 @@ mod tests {
         let wakeup_interval = network_settings.wakeup_interval;
         let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
 
-        let saver_join_handle = tokio::spawn(async move {
-            loop {
-                match saver_watch_rx.changed().await {
-                    Ok(()) => (),
-                    _ => break,
-                }
-            }
-        });
+        let saver_join_handle =
+            tokio::spawn(async move { while let Ok(()) = saver_watch_rx.changed().await {} });
 
         let mut db = PeerInfoDatabase {
             network_settings,
@@ -937,7 +933,7 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
         } else {
-            assert!(false, "ToManyConnectionAttempt error not return");
+            panic!("ToManyConnectionAttempt error not return");
         }
 
         let res = db
@@ -966,7 +962,7 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
         } else {
-            assert!(false, "ToManyConnectionAttempt error not return");
+            panic!("ToManyConnectionAttempt error not return");
         }
 
         // test with a not connected peer
@@ -977,7 +973,7 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)), ip_err);
         } else {
-            assert!(false, "PeerInfoNotFoundError error not return");
+            panic!("PeerInfoNotFoundError error not return");
         }
 
         db.in_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
@@ -989,15 +985,17 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
         } else {
-            assert!(false, "ToManyConnectionAttempt error not return");
+            panic!("ToManyConnectionAttempt error not return");
         }
     }
 
     #[tokio::test]
     #[serial]
     async fn test_out_connection_attempt_failed() {
-        let mut network_settings = NetworkSettings::default();
-        network_settings.target_out_nonbootstrap_connections = 5;
+        let network_settings = NetworkSettings {
+            target_out_nonbootstrap_connections: 5,
+            ..Default::default()
+        };
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         // add peers
@@ -1014,14 +1012,8 @@ mod tests {
         let wakeup_interval = network_settings.wakeup_interval;
         let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
 
-        let saver_join_handle = tokio::spawn(async move {
-            loop {
-                match saver_watch_rx.changed().await {
-                    Ok(()) => (),
-                    _ => break,
-                }
-            }
-        });
+        let saver_join_handle =
+            tokio::spawn(async move { while let Ok(()) = saver_watch_rx.changed().await {} });
 
         let mut db = PeerInfoDatabase {
             network_settings,
@@ -1047,7 +1039,7 @@ mod tests {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
         } else {
             println!("res: {:?}", res);
-            assert!(false, "ToManyConnectionFailure error not return");
+            panic!("ToManyConnectionFailure error not return");
         }
 
         db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
@@ -1063,7 +1055,7 @@ mod tests {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)), ip_err);
         } else {
             println!("res: {:?}", res);
-            assert!(false, "PeerInfoNotFoundError error not return");
+            panic!("PeerInfoNotFoundError error not return");
         }
         // peer with no attempt.
         let res =
@@ -1075,7 +1067,7 @@ mod tests {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
         } else {
             println!("res: {:?}", res);
-            assert!(false, "ToManyConnectionFailure error not return");
+            panic!("ToManyConnectionFailure error not return");
         }
 
         // call ok.
@@ -1090,15 +1082,17 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
         } else {
-            assert!(false, "ToManyConnectionFailure error not return");
+            panic!("ToManyConnectionFailure error not return");
         }
     }
 
     #[tokio::test]
     #[serial]
     async fn test_try_out_connection_attempt_success() {
-        let mut network_settings = NetworkSettings::default();
-        network_settings.target_out_nonbootstrap_connections = 5;
+        let network_settings = NetworkSettings {
+            target_out_nonbootstrap_connections: 5,
+            ..Default::default()
+        };
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         // add peers
@@ -1115,14 +1109,8 @@ mod tests {
         let wakeup_interval = network_settings.wakeup_interval;
         let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
 
-        let saver_join_handle = tokio::spawn(async move {
-            loop {
-                match saver_watch_rx.changed().await {
-                    Ok(()) => (),
-                    _ => break,
-                }
-            }
-        });
+        let saver_join_handle =
+            tokio::spawn(async move { while let Ok(()) = saver_watch_rx.changed().await {} });
 
         let mut db = PeerInfoDatabase {
             network_settings,
@@ -1148,7 +1136,7 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
         } else {
-            assert!(false, "ToManyConnectionAttempt error not return");
+            panic!("ToManyConnectionAttempt error not return");
         }
 
         db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
@@ -1165,7 +1153,7 @@ mod tests {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)), ip_err);
         } else {
             println!("res: {:?}", res);
-            assert!(false, "PeerInfoNotFoundError error not return");
+            panic!("PeerInfoNotFoundError error not return");
         }
 
         let res = db
@@ -1184,7 +1172,7 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
         } else {
-            assert!(false, "PeerInfoNotFoundError error not return");
+            panic!("PeerInfoNotFoundError error not return");
         }
 
         db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)))
@@ -1200,8 +1188,10 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_new_out_connection_closed() {
-        let mut network_settings = NetworkSettings::default();
-        network_settings.max_out_nonbootstrap_connection_attempts = 5;
+        let network_settings = NetworkSettings {
+            max_out_nonbootstrap_connection_attempts: 5,
+            ..Default::default()
+        };
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         // add peers
@@ -1211,14 +1201,8 @@ mod tests {
         peers.insert(connected_peers1.ip, connected_peers1);
         let wakeup_interval = network_settings.wakeup_interval;
         let (saver_watch_tx, mut saver_watch_rx) = watch::channel(peers.clone());
-        let saver_join_handle = tokio::spawn(async move {
-            loop {
-                match saver_watch_rx.changed().await {
-                    Ok(()) => (),
-                    _ => break,
-                }
-            }
-        });
+        let saver_join_handle =
+            tokio::spawn(async move { while let Ok(()) = saver_watch_rx.changed().await {} });
 
         let mut db = PeerInfoDatabase {
             network_settings,
@@ -1242,10 +1226,7 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
         } else {
-            assert!(
-                false,
-                "CloseConnectionWithNoConnectionToClose error not return"
-            );
+            panic!("CloseConnectionWithNoConnectionToClose error not return");
         }
 
         // add a new connection attempt
@@ -1265,7 +1246,7 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
         } else {
-            assert!(false, "PeerInfoNotFoundError error not return");
+            panic!("PeerInfoNotFoundError error not return");
         }
 
         db.out_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
@@ -1277,18 +1258,17 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
         } else {
-            assert!(
-                false,
-                "CloseConnectionWithNoConnectionToClose error not return"
-            );
+            panic!("CloseConnectionWithNoConnectionToClose error not return");
         }
     }
 
     #[tokio::test]
     #[serial]
     async fn test_new_out_connection_attempt() {
-        let mut network_settings = NetworkSettings::default();
-        network_settings.max_out_nonbootstrap_connection_attempts = 5;
+        let network_settings = NetworkSettings {
+            max_out_nonbootstrap_connection_attempts: 5,
+            ..Default::default()
+        };
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
 
         // add peers
@@ -1320,7 +1300,7 @@ mod tests {
         if let Err(NetworkError::InvalidIpError(ip_err)) = res {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 0, 11)), ip_err);
         } else {
-            assert!(false, "InvalidIpError not return");
+            panic!("InvalidIpError not return");
         }
 
         let res =
@@ -1331,7 +1311,7 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
         } else {
-            assert!(false, "PeerInfoNotFoundError error not return");
+            panic!("PeerInfoNotFoundError error not return");
         }
 
         (0..5).for_each(|_| {
@@ -1346,7 +1326,7 @@ mod tests {
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
         } else {
-            assert!(false, "ToManyConnectionAttempt error not return");
+            panic!("ToManyConnectionAttempt error not return");
         }
     }
 
@@ -1551,9 +1531,11 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_cleanup_peers() {
-        let mut network_settings = NetworkSettings::default();
-        network_settings.max_banned_peers = 1;
-        network_settings.max_idle_peers = 1;
+        let mut network_settings = NetworkSettings {
+            max_banned_peers: 1,
+            max_idle_peers: 1,
+            ..Default::default()
+        };
         let mut peers = HashMap::new();
 
         // Call with empty db.
@@ -1679,7 +1661,7 @@ mod tests {
     async fn test() {
         let peer_db = PeerInfoDatabase::from(5);
         let p = peer_db.peers.values().next().unwrap();
-        assert_eq!(p.is_active(), false);
+        assert!(!p.is_active());
     }
 
     fn default_peer_info_connected(ip: IpAddr) -> PeerInfo {
