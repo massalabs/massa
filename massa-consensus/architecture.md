@@ -92,8 +92,10 @@
 ```rust
 /// Shared by all components, and `masssa-node`(to orchestrate shutdown).
 pub struct SharedData {
-    best_parents: Arc<(Condvar, RwLock<(BestParents, Shutdown)>)>,
-    draws: Arc<(Condvar, RwLock<(Draws, Shutdown)>)>,
+    // No need for condvar, as no components requires notification.
+    best_parents: Arc<RwLock<(BestParents, Shutdown)>>,
+    // No need for condvar.
+    draws: Arc<RwLock<(Draws, Shutdown)>>,
     storage: Arc<(Condvar, RwLock<(Storage, Shutdown)>)>,
     graph: Arc<(Condvar, RwLock<(Graph, Shutdown)>)>,
     slot: Arc<(Condvar, RwLock<(Slot, Shutdown)>)>,
@@ -120,19 +122,12 @@ pub struct Draws(DrawCache)
 ## Storage
 ```rust
 /// Two writers(Production and Network), two readers(Consensus and Executor).
-/// Production and Network both notify Consensus.
-/// Executor accesses when necessary.
-///
-/// Note the nested locks(use small locks like parking_lot), 
-/// allowing for parallelism for operating on different blocks.
-pub struct Storage(Map<BlockId, Arc<RwLock<Block>>>)
+pub struct Storage(Map<BlockId, Block>)
 ```
 
 ## Graph
 ```rust
-/// One writer(Consensus), one reader(Executor).
-/// Consensus notifies Executor of changes. 
-/// Executor also access Storage as necessary to obtain relevant blocks.
+/// One writer(Consensus), two readers(Executor and Network).
 pub struct Graph(Mutex<Graph>)
 ```
 
@@ -147,7 +142,7 @@ pub struct Incoming(Mutex<Set<BlockId>>)
 
 ### Slot
 
-Dedicated thread running a timer and writint the `Slot`, nofitying Factory on the condvar.
+Dedicated thread running a timer and writing the `Slot`, nofitying Factory on the condvar.
 
 ### Factory
 Waits on a slot timer(and shutdown).
@@ -186,7 +181,7 @@ Waits on Incoming(and shutdown)
 1. Wake-up on the condvar
 2. Read new data.
 3. Deserialize into known objects, validate them.
-4. Propagate.
+4. write to storage, notify Consensus.
 
 Note: Should own a tokio runtime, running one task per peer, and those tasks will add incoming data to the shared Incoming data, and notify on the condvar. 
 
