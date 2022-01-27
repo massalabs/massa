@@ -151,7 +151,35 @@ impl EventStore {
     }
 
     pub fn extend(&mut self, other: EventStore) {
-        todo!()
+        self.id_to_event.extend(other.id_to_event);
+
+        other
+            .slot_to_id
+            .iter()
+            .for_each(|(slot, ids)| match self.slot_to_id.get_mut(slot) {
+                Some(set) => set.extend(ids),
+                None => {
+                    self.slot_to_id.insert(*slot, ids.clone());
+                }
+            });
+
+        other.caller_to_id.iter().for_each(|(caller, ids)| {
+            match self.caller_to_id.get_mut(caller) {
+                Some(set) => set.extend(ids),
+                None => {
+                    self.caller_to_id.insert(*caller, ids.clone());
+                }
+            }
+        });
+
+        other.smart_contract_to_id.iter().for_each(|(sc, ids)| {
+            match self.smart_contract_to_id.get_mut(sc) {
+                Some(set) => set.extend(ids),
+                None => {
+                    self.smart_contract_to_id.insert(*sc, ids.clone());
+                }
+            }
+        })
     }
 
     pub fn get_event_for_caller(&self, caller: Address) -> Vec<SCOutputEvent> {
