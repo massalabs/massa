@@ -45,24 +45,20 @@ impl EventStore {
     // add event to the store and all its indexes
     pub fn insert(&mut self, id: SCOutputEventId, event: SCOutputEvent) {
         if let Entry::Vacant(entry) = self.id_to_event.entry(id) {
-            match self.slot_to_id.entry(event.context.slot) {
-                Entry::Occupied(mut e) => {
-                    e.get_mut().insert(id);
-                }
-                Entry::Vacant(e) => {
-                    e.insert(vec![id].into_iter().collect());
-                }
-            }
+            self.slot_to_id
+                .get_mut(&event.context.slot)
+                .unwrap_or(&mut Set::<SCOutputEventId>::default())
+                .insert(id);
             if let Some(caller) = event.context.call_stack.front() {
                 self.caller_to_id
                     .get_mut(caller)
-                    .unwrap_or(&mut vec![].into_iter().collect()) // TODO maybe implement default for Set
+                    .unwrap_or(&mut Set::<SCOutputEventId>::default())
                     .insert(id);
             }
             if let Some(sc) = event.context.call_stack.back() {
                 self.smart_contract_to_id
                     .get_mut(sc)
-                    .unwrap_or(&mut vec![].into_iter().collect()) // TODO maybe implement default for Set
+                    .unwrap_or(&mut Set::<SCOutputEventId>::default())
                     .insert(id);
             }
             entry.insert(event);
@@ -84,19 +80,23 @@ impl EventStore {
     }
 
     pub fn get_event_for_caller(&self, caller: Address) -> Vec<SCOutputEvent> {
-        let default: Set<SCOutputEventId> = vec![].into_iter().collect(); // TODO maybe implement default for Set
-        let ids = self.caller_to_id.get(&caller).unwrap_or(&default);
-        ids.iter()
-            .filter_map(|id| self.id_to_event.get(id).cloned())
-            .collect()
+        match self.caller_to_id.get(&caller) {
+            Some(s) => s
+                .iter()
+                .filter_map(|id| self.id_to_event.get(id).cloned())
+                .collect(),
+            None => Default::default(),
+        }
     }
 
     pub fn get_event_for_sc(&self, sc: Address) -> Vec<SCOutputEvent> {
-        let default: Set<SCOutputEventId> = vec![].into_iter().collect(); // TODO maybe implement default for Set
-        let ids = self.smart_contract_to_id.get(&sc).unwrap_or(&default);
-        ids.iter()
-            .filter_map(|id| self.id_to_event.get(id).cloned())
-            .collect()
+        match self.smart_contract_to_id.get(&sc) {
+            Some(s) => s
+                .iter()
+                .filter_map(|id| self.id_to_event.get(id).cloned())
+                .collect(),
+            None => Default::default(),
+        }
     }
 }
 
