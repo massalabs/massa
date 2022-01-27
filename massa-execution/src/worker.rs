@@ -187,7 +187,7 @@ impl ExecutionWorker {
                         response_tx,
                     }) => {
                         if response_tx
-                            .send(vm.get_sc_output_event_by_slot_range(start, end))
+                            .send(vm.get_sc_output_event_by_slot_range(start, end).unwrap()) // only if get_next_slot fails
                             .is_err()
                         {
                             debug!("execution: could not send get_sc_output_event_by_slot_range answer");

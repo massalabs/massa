@@ -35,6 +35,9 @@ pub(crate) struct VM {
 
     /// execution context
     execution_context: Arc<Mutex<ExecutionContext>>,
+
+    /// final events
+    final_events: EventStore,
 }
 
 impl VM {
@@ -77,6 +80,7 @@ impl VM {
             step_history: Default::default(),
             execution_interface,
             execution_context,
+            final_events: Default::default(),
         })
     }
 
@@ -91,8 +95,13 @@ impl VM {
     }
 
     /// get sc output event between start and end excluded
-    pub fn get_sc_output_event_by_slot_range(&self, start: Slot, end: Slot) -> Vec<SCOutputEvent> {
-        self.step_history
+    pub fn get_sc_output_event_by_slot_range(
+        &self,
+        start: Slot,
+        end: Slot,
+    ) -> Result<Vec<SCOutputEvent>, ExecutionError> {
+        Ok(self
+            .step_history
             .iter()
             .filter_map(|item| {
                 if item.slot >= start && item.slot < end {
@@ -108,7 +117,11 @@ impl VM {
                 }
             })
             .flatten()
-            .collect()
+            .chain(
+                self.final_events
+                    .get_event_for_slot_range(start, end, self.thread_count)?,
+            )
+            .collect())
     }
 
     /// get sc output event for given sc addresss
@@ -116,6 +129,7 @@ impl VM {
         self.step_history
             .iter()
             .flat_map(|item| item.events.get_event_for_sc(sc_address))
+            .chain(self.final_events.get_event_for_sc(sc_address))
             .collect()
     }
 
@@ -124,6 +138,7 @@ impl VM {
         self.step_history
             .iter()
             .flat_map(|item| item.events.get_event_for_caller(caller))
+            .chain(self.final_events.get_event_for_caller(caller))
             .collect()
     }
 
@@ -151,6 +166,8 @@ impl VM {
             .ledger
             .apply_changes(&history_item.ledger_changes);
         ledger_step.final_ledger_slot.slot = step.slot;
+
+        self.final_events.extend(context.events.clone());
     }
 
     /// check if step already at history front, if so, pop it

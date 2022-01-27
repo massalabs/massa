@@ -1,5 +1,5 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
-use crate::BootstrapExecutionState;
+use crate::{BootstrapExecutionState, ExecutionError};
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
 use massa_models::prehash::{Map, Set};
@@ -79,6 +79,10 @@ impl EventStore {
         self.smart_contract_to_id.clear();
     }
 
+    pub fn extend(&mut self, other: EventStore) {
+        todo!()
+    }
+
     pub fn get_event_for_caller(&self, caller: Address) -> Vec<SCOutputEvent> {
         match self.caller_to_id.get(&caller) {
             Some(s) => s
@@ -97,6 +101,30 @@ impl EventStore {
                 .collect(),
             None => Default::default(),
         }
+    }
+
+    pub fn get_event_for_slot_range(
+        &self,
+        start: Slot,
+        end: Slot,
+        thread_count: u8,
+    ) -> Result<Vec<SCOutputEvent>, ExecutionError> {
+        let mut slot = start;
+        let mut res = Vec::new();
+        loop {
+            res.extend::<Vec<_>>(match self.slot_to_id.get(&slot) {
+                Some(s) => s
+                    .iter()
+                    .filter_map(|id| self.id_to_event.get(id).cloned())
+                    .collect(),
+                None => Default::default(),
+            });
+            slot = slot.get_next_slot(thread_count)?;
+            if slot == end {
+                break;
+            }
+        }
+        Ok(res)
     }
 }
 
