@@ -24,7 +24,7 @@
 2. Notify new block:
     - Notify Consensus.
     
-## Incoming from network
+## NetworkIncoming from network
 
 ```mermaid
   journey
@@ -99,7 +99,7 @@ pub struct SharedData {
     storage: Arc<(Condvar, RwLock<(Storage, Shutdown)>)>,
     graph: Arc<(Condvar, RwLock<(Graph, Shutdown)>)>,
     production_queue: Arc<(Condvar, RwLock<(ProductionQueue, Shutdown)>)>,
-    incoming: Arc<(Condvar, RwLock<(Incoming, Shutdown)>)>
+    network_incoming: Arc<(Condvar, RwLock<(NetworkIncoming, Shutdown)>)>
 }
 
 /// Used to signal shutdown.
@@ -131,11 +131,11 @@ pub struct Storage(Map<BlockId, Block>)
 pub struct Graph(Mutex<Graph>)
 ```
 
-## Incoming
+## NetworkIncoming
 ```rust
-/// Many writers(network peer workers), one reader(Network Incoming).
+/// Many writers(network peer workers), one reader(Network NetworkIncoming).
 /// New blocks received over the network.
-pub struct Incoming(Mutex<Set<BlockId>>)
+pub struct NetworkIncoming(Mutex<Set<BlockId>>)
 ```
 
 ## Production Queue
@@ -190,13 +190,13 @@ Waits on Graph(and shutdown)
 4. Propagate.
 
 ### Network(incoming)
-Waits on Incoming(and shutdown)
+Waits on NetworkIncoming(and shutdown)
 1. Wake-up on the condvar
 2. Read new data.
 3. Deserialize into known objects, validate them.
 4. write to storage, notify Consensus.
 
-Note: Should own a tokio runtime, running one task per peer, and those tasks will add incoming data to the shared Incoming data, and notify on the condvar. 
+Note: Should own a tokio runtime, running one task per peer, and those tasks will add incoming data to the shared NetworkIncoming data, and notify on the condvar. 
 
 ## A note on shutdown
 
