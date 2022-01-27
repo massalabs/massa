@@ -154,7 +154,7 @@ Waits on a slot timer(and shutdown).
 
 1. Wake-up at each slot
 2. Read draws.
-3. If drawn: read best parents and produce.
+3. If drawn: read best parents and produce block and/or endorsement.
 4. If produced, write to Storage, notify on condvar.
 
 ### Consensus
