@@ -92,13 +92,13 @@
 ```rust
 /// Shared by all components, and `masssa-node`(to orchestrate shutdown).
 pub struct SharedData {
-    // No need for condvar, as no components requires notification.
+    /// No need for condvar, as no components requires notification.
     best_parents: Arc<RwLock<(BestParents, Shutdown)>>,
-    // No need for condvar.
+    /// No need for condvar.
     draws: Arc<RwLock<(Draws, Shutdown)>>,
     storage: Arc<(Condvar, RwLock<(Storage, Shutdown)>)>,
     graph: Arc<(Condvar, RwLock<(Graph, Shutdown)>)>,
-    slot: Arc<(Condvar, RwLock<(Slot, Shutdown)>)>,
+    production_queue: Arc<(Condvar, RwLock<(ProductionQueue, Shutdown)>)>,
     incoming: Arc<(Condvar, RwLock<(Incoming, Shutdown)>)>
 }
 
@@ -136,6 +136,19 @@ pub struct Graph(Mutex<Graph>)
 /// Many writers(network peer workers), one reader(Network Incoming).
 /// New blocks received over the network.
 pub struct Incoming(Mutex<Set<BlockId>>)
+```
+
+## Production Queue
+```rust
+/// Used to notify Production of new slots and new operations.
+pub struct ProductionQueue {
+    /// Current slot.
+    /// Modified, and notified on, by a slot timer thread.
+    slot: Slot
+    /// Operations to be used in block production.
+    /// Modified by, and notified on, by Network and Api.
+    operations: Vec<Operation>,
+}
 ```
 
 ## Structure of component execution(event-loops)
