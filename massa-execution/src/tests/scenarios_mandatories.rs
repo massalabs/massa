@@ -43,7 +43,6 @@ fn get_sample_settings() -> (NamedTempFile, ExecutionConfigs) {
         settings: ExecutionSettings {
             initial_sce_ledger_path: initial_file.path().into(),
         },
-        thread_count: 2,
         genesis_timestamp: MassaTime::now().unwrap(),
         t0: 16000.into(),
         clock_compensation: 0,

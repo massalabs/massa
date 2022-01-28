@@ -24,13 +24,11 @@ async fn test_reward_split() {
     // .init()
     // .unwrap();
 
-    let thread_count = 2;
-
     // A
     let mut priv_a = generate_random_private_key();
     let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a);
-    while 0 != address_a.get_thread(thread_count) {
+    while 0 != address_a.get_thread() {
         priv_a = generate_random_private_key();
         pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a);
@@ -40,7 +38,7 @@ async fn test_reward_split() {
     let mut priv_b = generate_random_private_key();
     let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b);
-    while 0 != address_b.get_thread(thread_count) {
+    while 0 != address_b.get_thread() {
         priv_b = generate_random_private_key();
         pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b);
@@ -60,7 +58,6 @@ async fn test_reward_split() {
     );
     cfg.t0 = 500.into();
     cfg.delta_f0 = 32;
-    cfg.thread_count = thread_count;
     cfg.operation_validity_periods = 10;
     cfg.operation_batch_size = 500;
     cfg.periods_per_cycle = 3;

@@ -9,7 +9,7 @@ use massa_consensus_exports::{
 use massa_execution::ExecutionEventReceiver;
 use massa_graph::{BlockGraph, BlockGraphExport};
 use massa_hash::hash::Hash;
-use massa_models::address::AddressState;
+use massa_models::{address::AddressState, thread_count};
 use massa_models::api::{LedgerInfo, RollsInfo};
 use massa_models::ledger_models::LedgerData;
 use massa_models::prehash::{BuildMap, Map, Set};
@@ -85,13 +85,12 @@ impl ConsensusWorker {
     ) -> Result<ConsensusWorker> {
         let now = MassaTime::compensated_now(clock_compensation)?;
         let previous_slot = get_latest_block_slot_at_timestamp(
-            cfg.thread_count,
             cfg.t0,
             cfg.genesis_timestamp,
             now,
         )?;
         let next_slot = previous_slot.map_or(Ok(Slot::new(0u64, 0u8)), |s| {
-            s.get_next_slot(cfg.thread_count)
+            s.get_next_slot()
         })?;
         let latest_final_periods: Vec<u64> = block_db
             .get_latest_final_blocks_periods()
@@ -124,10 +123,9 @@ impl ConsensusWorker {
         let genesis_public_key = derive_public_key(&cfg.genesis_key);
         let genesis_addr = Address::from_public_key(&genesis_public_key);
         let mut final_block_stats = VecDeque::new();
-        for thread in 0..cfg.thread_count {
+        for thread in 0..thread_count() {
             final_block_stats.push_back((
                 get_block_slot_timestamp(
-                    cfg.thread_count,
                     cfg.t0,
                     cfg.genesis_timestamp,
                     Slot::new(0, thread),
@@ -203,7 +201,6 @@ impl ConsensusWorker {
         // set slot timer
         let next_slot_timer = sleep_until(
             get_block_slot_timestamp(
-                self.cfg.thread_count,
                 self.cfg.t0,
                 self.cfg.genesis_timestamp,
                 self.next_slot,
@@ -286,7 +283,6 @@ impl ConsensusWorker {
     async fn slot_tick(&mut self, next_slot_timer: &mut std::pin::Pin<&mut Sleep>) -> Result<()> {
         let now = MassaTime::compensated_now(self.clock_compensation)?;
         let observed_slot = get_latest_block_slot_at_timestamp(
-            self.cfg.thread_count,
             self.cfg.t0,
             self.cfg.genesis_timestamp,
             now,
@@ -296,7 +292,6 @@ impl ConsensusWorker {
             // reset timer for next slot
             next_slot_timer.set(sleep_until(
                 get_block_slot_timestamp(
-                    self.cfg.thread_count,
                     self.cfg.t0,
                     self.cfg.genesis_timestamp,
                     self.next_slot,
@@ -375,7 +370,6 @@ impl ConsensusWorker {
                             next_addr_slot.period,
                             next_addr_slot.thread,
                             match get_block_slot_timestamp(
-                                self.cfg.thread_count,
                                 self.cfg.t0,
                                 self.cfg.genesis_timestamp,
                                 next_addr_slot
@@ -390,12 +384,12 @@ impl ConsensusWorker {
                         massa_trace!("consensus.consensus_worker.slot_tick.block_creator_addr", { "addr": addr, "unlocked": false });
                     }
                 }
-                cur_slot = cur_slot.get_next_slot(self.cfg.thread_count)?;
+                cur_slot = cur_slot.get_next_slot()?;
             }
         }
 
         self.previous_slot = Some(observed_slot);
-        self.next_slot = observed_slot.get_next_slot(self.cfg.thread_count)?;
+        self.next_slot = observed_slot.get_next_slot()?;
 
         // signal tick to block graph
         self.block_db
@@ -407,7 +401,6 @@ impl ConsensusWorker {
         // reset timer for next slot
         next_slot_timer.set(sleep_until(
             get_block_slot_timestamp(
-                self.cfg.thread_count,
                 self.cfg.t0,
                 self.cfg.genesis_timestamp,
                 self.next_slot,
@@ -756,7 +749,7 @@ impl ConsensusWorker {
                             )
                         },
                     ));
-                    cur_slot = match cur_slot.get_next_slot(self.cfg.thread_count) {
+                    cur_slot = match cur_slot.get_next_slot() {
                         Ok(next_slot) => next_slot,
                         Err(_) => {
                             break Err(ConsensusError::SlotOverflowError);
@@ -994,7 +987,7 @@ impl ConsensusWorker {
     fn get_active_stakers(&self) -> Result<Map<Address, u64>, ConsensusError> {
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         let mut res: Map<Address, u64> = Map::default();
-        for thread in 0..self.cfg.thread_count {
+        for thread in 0..thread_count() {
             match self.pos.get_lookback_roll_count(cur_cycle, thread) {
                 Ok(rolls) => {
                     res.extend(&rolls.0);
@@ -1006,16 +999,15 @@ impl ConsensusWorker {
     }
 
     fn get_addresses_info(&self, addresses: &Set<Address>) -> Result<Map<Address, AddressState>> {
-        let thread_count = self.cfg.thread_count;
-        let mut addresses_by_thread = vec![Set::<Address>::default(); thread_count as usize];
+        let mut addresses_by_thread = vec![Set::<Address>::default(); thread_count() as usize];
         for addr in addresses.iter() {
-            addresses_by_thread[addr.get_thread(thread_count) as usize].insert(*addr);
+            addresses_by_thread[addr.get_thread() as usize].insert(*addr);
         }
         let mut states = Map::default();
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         let ledger_data = self.block_db.get_ledger_data_export(addresses)?;
         let prod_stats = self.pos.get_stakers_production_stats(addresses);
-        for thread in 0..thread_count {
+        for thread in 0..thread_count() {
             if addresses_by_thread[thread as usize].is_empty() {
                 continue;
             }

@@ -13,6 +13,7 @@ use std::collections::HashMap;
 #[tokio::test]
 #[serial]
 async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);
@@ -85,6 +86,7 @@ async fn test_consensus_sends_block_to_peer_who_asked_for_it() {
 #[tokio::test]
 #[serial]
 async fn test_consensus_block_not_found() {
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);

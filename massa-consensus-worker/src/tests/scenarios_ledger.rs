@@ -62,6 +62,7 @@ async fn test_ledger_initializes_get_latest_final_periods() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_final_balance_increment_new_address() {
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);
@@ -76,7 +77,7 @@ async fn test_ledger_final_balance_increment_new_address() {
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key);
-    let thread = address.get_thread(cfg.thread_count);
+    let thread = address.get_thread();
 
     let changes = LedgerChanges(
         vec![(
@@ -109,6 +110,7 @@ async fn test_ledger_final_balance_increment_new_address() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_final_balance_increment_address_above_max() {
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);
@@ -123,7 +125,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key);
-    let thread = address.get_thread(cfg.thread_count);
+    let thread = address.get_thread();
 
     let changes = LedgerChanges(
         vec![(
@@ -169,6 +171,7 @@ async fn test_ledger_final_balance_increment_address_above_max() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);
@@ -183,7 +186,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key);
-    let thread = address.get_thread(cfg.thread_count);
+    let thread = address.get_thread();
 
     // Increment.
     let changes = LedgerChanges(
@@ -242,6 +245,7 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_final_balance_decrement_address_below_zero() {
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);
@@ -256,7 +260,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key);
-    let thread = address.get_thread(cfg.thread_count);
+    let thread = address.get_thread();
 
     // Increment.
     let changes = LedgerChanges(
@@ -329,6 +333,7 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_final_balance_decrement_non_existing_address() {
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);
@@ -343,7 +348,7 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key);
-    let thread = address.get_thread(cfg.thread_count);
+    let thread = address.get_thread();
 
     // Decrement.
     let changes = LedgerChanges(
@@ -460,6 +465,7 @@ async fn test_ledger_final_balance_multiple_addresses() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_clear() {
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);
@@ -474,7 +480,7 @@ async fn test_ledger_clear() {
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key);
-    let thread = address.get_thread(cfg.thread_count);
+    let thread = address.get_thread();
 
     let changes = LedgerChanges(
         vec![(
@@ -532,7 +538,7 @@ async fn test_ledger_read_whole() {
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key);
-    let thread = address.get_thread(cfg.thread_count);
+    let thread = address.get_thread();
 
     let changes = LedgerChanges(
         vec![(
@@ -576,8 +582,7 @@ async fn test_ledger_read_whole() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
-    let thread_count = 2;
-
+    massa_models::set_thread_count(2);
     let mut private_key_1;
     let mut public_key_1;
     let mut address_1;
@@ -595,7 +600,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         private_key_1 = generate_random_private_key();
         public_key_1 = derive_public_key(&private_key_1);
         address_1 = Address::from_public_key(&public_key_1);
-        if address_1.get_thread(thread_count) == 0 {
+        if address_1.get_thread() == 0 {
             break;
         }
     }
@@ -604,7 +609,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         private_key_2 = generate_random_private_key();
         public_key_2 = derive_public_key(&private_key_2);
         address_2 = Address::from_public_key(&public_key_2);
-        if address_2.get_thread(thread_count) == 1 {
+        if address_2.get_thread() == 1 {
             break;
         }
     }
@@ -613,7 +618,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         private_key_3 = generate_random_private_key();
         public_key_3 = derive_public_key(&private_key_3);
         address_3 = Address::from_public_key(&public_key_3);
-        if address_3.get_thread(thread_count) == 0 {
+        if address_3.get_thread() == 0 {
             break;
         }
     }

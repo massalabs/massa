@@ -79,7 +79,6 @@ impl PoolWorker {
     ///
     /// # Arguments
     /// * pool_settings: pool configuration.
-    /// * thread_count: number of threads
     /// * operation_validity_periods : operation validity period
     /// * protocol_command_sender: associated protocol controller
     /// * protocol_command_sender protocol pool event receiver
@@ -87,7 +86,6 @@ impl PoolWorker {
     /// * controller_manager_rx: Channel receiving pool management commands.
     pub fn new(
         pool_settings: &'static PoolSettings,
-        thread_count: u8,
         operation_validity_periods: u64,
         protocol_command_sender: ProtocolCommandSender,
         protocol_pool_event_receiver: ProtocolPoolEventReceiver,
@@ -102,10 +100,9 @@ impl PoolWorker {
             controller_manager_rx,
             operation_pool: OperationPool::new(
                 pool_settings,
-                thread_count,
                 operation_validity_periods,
             ),
-            endorsement_pool: EndorsementPool::new(pool_settings, thread_count),
+            endorsement_pool: EndorsementPool::new(pool_settings),
         })
     }
 

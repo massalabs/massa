@@ -27,7 +27,7 @@ async fn test_update_current_slot_cmd_notification() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.thread_count = 1;
+    massa_models::set_thread_count(1);
     cfg.genesis_timestamp = MassaTime::now().unwrap().checked_add(1000.into()).unwrap();
 
     let timeout = 150;
@@ -93,11 +93,13 @@ async fn test_update_current_slot_cmd_notification() {
         },
     )
     .await;
+    massa_models::reset_config();
 }
 
 #[tokio::test]
 #[serial]
 async fn test_update_latest_final_block_cmd_notification() {
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);
@@ -174,29 +176,28 @@ async fn test_new_final_ops() {
     cfg.genesis_timestamp = MassaTime::now().unwrap().checked_sub(cfg.t0).unwrap();
     cfg.delta_f0 = 2;
     cfg.disable_block_creation = true;
-
-    let thread_count = 2;
+    massa_models::set_thread_count(2);
     // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_a = generate_random_private_key();
     let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a);
-    while 0 != address_a.get_thread(thread_count) {
+    while 0 != address_a.get_thread() {
         priv_a = generate_random_private_key();
         pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a);
     }
-    assert_eq!(0, address_a.get_thread(thread_count));
+    assert_eq!(0, address_a.get_thread());
 
     let mut priv_b = generate_random_private_key();
     let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b);
-    while 0 != address_b.get_thread(thread_count) {
+    while 0 != address_b.get_thread() {
         priv_b = generate_random_private_key();
         pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b);
     }
-    assert_eq!(0, address_b.get_thread(thread_count));
+    assert_eq!(0, address_b.get_thread());
 
     let boot_ledger = LedgerSubset(
         vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
@@ -289,29 +290,28 @@ async fn test_max_attempts_get_operations() {
     cfg.genesis_timestamp = MassaTime::now().unwrap().checked_sub(cfg.t0).unwrap();
     cfg.delta_f0 = 2;
     cfg.disable_block_creation = false;
-
-    let thread_count = 2;
+    massa_models::set_thread_count(2);
     // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_a = generate_random_private_key();
     let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a);
-    while 0 != address_a.get_thread(thread_count) {
+    while 0 != address_a.get_thread() {
         priv_a = generate_random_private_key();
         pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a);
     }
-    assert_eq!(0, address_a.get_thread(thread_count));
+    assert_eq!(0, address_a.get_thread());
 
     let mut priv_b = generate_random_private_key();
     let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b);
-    while 0 != address_b.get_thread(thread_count) {
+    while 0 != address_b.get_thread() {
         priv_b = generate_random_private_key();
         pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b);
     }
-    assert_eq!(0, address_b.get_thread(thread_count));
+    assert_eq!(0, address_b.get_thread());
 
     let boot_ledger = LedgerSubset(
         vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
@@ -412,28 +412,27 @@ async fn test_max_batch_size_get_operations() {
     cfg.delta_f0 = 2;
     cfg.disable_block_creation = false;
 
-    let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_a = generate_random_private_key();
     let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a);
-    while 0 != address_a.get_thread(thread_count) {
+    while 0 != address_a.get_thread() {
         priv_a = generate_random_private_key();
         pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a);
     }
-    assert_eq!(0, address_a.get_thread(thread_count));
+    assert_eq!(0, address_a.get_thread());
 
     let mut priv_b = generate_random_private_key();
     let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b);
-    while 0 != address_b.get_thread(thread_count) {
+    while 0 != address_b.get_thread() {
         priv_b = generate_random_private_key();
         pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b);
     }
-    assert_eq!(0, address_b.get_thread(thread_count));
+    assert_eq!(0, address_b.get_thread());
 
     let boot_ledger = LedgerSubset(
         vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]

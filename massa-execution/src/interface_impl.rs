@@ -27,7 +27,6 @@ macro_rules! context_guard {
 #[derive(Clone)]
 pub(crate) struct InterfaceImpl {
     context: Arc<Mutex<ExecutionContext>>,
-    thread_count: u8,
     t0: MassaTime,
     genesis_timestamp: MassaTime,
 }
@@ -35,13 +34,11 @@ pub(crate) struct InterfaceImpl {
 impl InterfaceImpl {
     pub fn new(
         context: Arc<Mutex<ExecutionContext>>,
-        thread_count: u8,
         t0: MassaTime,
         genesis_timestamp: MassaTime,
     ) -> InterfaceImpl {
         InterfaceImpl {
             context,
-            thread_count,
             t0,
             genesis_timestamp,
         }
@@ -410,7 +407,7 @@ impl Interface for InterfaceImpl {
     fn get_time(&self) -> Result<u64> {
         let slot = context_guard!(self).slot;
         let ts =
-            get_block_slot_timestamp(self.thread_count, self.t0, self.genesis_timestamp, slot)?;
+            get_block_slot_timestamp(self.t0, self.genesis_timestamp, slot)?;
         Ok(ts.to_millis())
     }
 

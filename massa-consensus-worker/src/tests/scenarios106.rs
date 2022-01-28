@@ -22,6 +22,7 @@ async fn test_unsorted_block() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);
@@ -150,6 +151,7 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);
@@ -186,7 +188,6 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
             // this block is slightly in the future: will wait for it
             let slot = timeslots::get_current_latest_block_slot(
-                cfg.thread_count,
                 cfg.t0,
                 cfg.genesis_timestamp,
                 0,
@@ -205,7 +206,6 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
 
             // this block is too much in the future: do not process
             let slot = timeslots::get_current_latest_block_slot(
-                cfg.thread_count,
                 cfg.t0,
                 cfg.genesis_timestamp,
                 0,
@@ -246,6 +246,7 @@ async fn test_too_many_blocks_in_the_future() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);
@@ -275,7 +276,6 @@ async fn test_too_many_blocks_in_the_future() {
             let mut expected_block_hashes: HashSet<BlockId> = HashSet::new();
             let mut max_period = 0;
             let slot = timeslots::get_current_latest_block_slot(
-                cfg.thread_count,
                 cfg.t0,
                 cfg.genesis_timestamp,
                 0,
@@ -312,7 +312,6 @@ async fn test_too_many_blocks_in_the_future() {
             }
             // wait until we reach the slot of the last block
             while timeslots::get_current_latest_block_slot(
-                cfg.thread_count,
                 cfg.t0,
                 cfg.genesis_timestamp,
                 0,
@@ -354,6 +353,7 @@ async fn test_dep_in_back_order() {
     .timestamp(stderrlog::Timestamp::Millisecond)
     .init()
     .unwrap();*/
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);

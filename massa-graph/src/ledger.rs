@@ -3,7 +3,7 @@ use massa_models::ledger_models::{LedgerChange, LedgerChanges, LedgerData};
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::{
     array_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, Operation,
-    SerializeCompact, SerializeVarInt, ADDRESS_SIZE_BYTES,
+    SerializeCompact, SerializeVarInt, ADDRESS_SIZE_BYTES, thread_count
 };
 use serde::{Deserialize, Serialize};
 use sled::{Transactional, Tree};
@@ -25,8 +25,6 @@ pub struct Ledger {
     ledger_per_thread: Vec<Tree>,
     /// containing (thread_number: u8, latest_final_period: u64)
     latest_final_periods: Tree,
-    /// consensus related config
-    cfg: LedgerConfig,
 }
 
 /// Read the initial ledger.
@@ -158,7 +156,7 @@ impl Ledger {
         let db = sled_config.open()?;
 
         let mut ledger_per_thread = Vec::new();
-        for thread in 0..cfg.thread_count {
+        for thread in 0..thread_count() {
             db.drop_tree(format!("ledger_thread_{}", thread))?;
             let current_tree = db.open_tree(format!("ledger_thread_{}", thread))?;
             ledger_per_thread.push(current_tree);
@@ -166,7 +164,7 @@ impl Ledger {
         db.drop_tree("latest_final_periods")?;
         let latest_final_periods = db.open_tree("latest_final_periods")?;
         if latest_final_periods.is_empty() {
-            for thread in 0..cfg.thread_count {
+            for thread in 0..thread_count() {
                 let zero: u64 = 0;
                 latest_final_periods.insert([thread], &zero.to_be_bytes())?;
             }
@@ -175,7 +173,7 @@ impl Ledger {
         if let Some(init_ledger) = opt_init_data {
             ledger_per_thread.transaction(|ledger| {
                 for (address, data) in init_ledger.0.iter() {
-                    let thread = address.get_thread(cfg.thread_count);
+                    let thread = address.get_thread();
                     ledger[thread as usize].insert(
                         &address.to_bytes(),
                         data.to_bytes_compact().map_err(|err| {
@@ -194,7 +192,6 @@ impl Ledger {
         Ok(Ledger {
             ledger_per_thread,
             latest_final_periods,
-            cfg,
         })
     }
 
@@ -204,7 +201,7 @@ impl Ledger {
             .transaction(|ledger_per_thread| {
                 let mut result = LedgerSubset::default();
                 for address in addresses.iter() {
-                    let thread = address.get_thread(self.cfg.thread_count);
+                    let thread = address.get_thread();
                     let ledger = ledger_per_thread.get(thread as usize).ok_or_else(|| {
                         sled::transaction::ConflictableTransactionError::Abort(
                             InternalError::TransactionError(format!(
@@ -247,12 +244,12 @@ impl Ledger {
         latest_final_periods: Vec<u64>,
         cfg: LedgerConfig,
     ) -> Result<Ledger> {
-        let ledger = Ledger::new(cfg.clone(), None)?;
+        let ledger = Ledger::new(cfg, None)?;
         ledger.clear()?;
 
         // fill ledger per thread
         for (address, addr_data) in export.0.iter() {
-            let thread = address.get_thread(cfg.thread_count);
+            let thread = address.get_thread();
             if ledger.ledger_per_thread[thread as usize]
                 .insert(address.into_bytes(), addr_data.to_bytes_compact()?)?
                 .is_some()
@@ -276,7 +273,7 @@ impl Ledger {
 
     /// Returns the final balance of an address. 0 if the address does not exist.
     pub fn get_final_balance(&self, address: &Address) -> Result<Amount> {
-        let thread = address.get_thread(self.cfg.thread_count);
+        let thread = address.get_thread();
         if let Some(res) = self.ledger_per_thread[thread as usize].get(address.to_bytes())? {
             Ok(LedgerData::from_bytes_compact(&res)?.0.balance)
         } else {
@@ -303,7 +300,7 @@ impl Ledger {
 
         (ledger, &self.latest_final_periods).transaction(|(db, latest_final_periods_db)| {
             for (address, change) in changes.0.iter() {
-                if address.get_thread(self.cfg.thread_count) != thread {
+                if address.get_thread() != thread {
                     continue;
                 }
                 let address_bytes = address.to_bytes();
@@ -362,8 +359,8 @@ impl Ledger {
     pub fn get_latest_final_periods(&self) -> Result<Vec<u64>> {
         self.latest_final_periods
             .transaction(|db| {
-                let mut res = Vec::with_capacity(self.cfg.thread_count as usize);
-                for thread in 0..self.cfg.thread_count {
+                let mut res = Vec::with_capacity(thread_count() as usize);
+                for thread in 0..thread_count() {
                     if let Some(val) = db.get([thread])? {
                         let latest = array_from_slice(&val).map_err(|err| {
                             sled::transaction::ConflictableTransactionError::Abort(
@@ -427,7 +424,7 @@ impl Ledger {
         let res = self.ledger_per_thread.transaction(|ledger_per_thread| {
             let mut data = LedgerSubset::default();
             for addr in query_addrs {
-                let thread = addr.get_thread(self.cfg.thread_count);
+                let thread = addr.get_thread();
                 if let Some(data_bytes) = ledger_per_thread[thread as usize].get(addr.to_bytes())? {
                     let (ledger_data, _) =
                         LedgerData::from_bytes_compact(&data_bytes).map_err(|err| {

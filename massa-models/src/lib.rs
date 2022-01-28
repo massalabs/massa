@@ -22,9 +22,7 @@ pub use serialization::{
     SerializeCompact, SerializeMinBEInt, SerializeVarInt,
 };
 pub use settings::CompactConfig;
-pub use settings::{
-    ADDRESS_SIZE_BYTES, BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES, SLOT_KEY_SIZE,
-};
+
 pub use slot::Slot;
 pub use version::Version;
 
@@ -52,3 +50,11 @@ mod version;
 
 pub mod active_block;
 pub mod rolls;
+
+mod constants;
+pub use constants::{
+    ADDRESS_SIZE_BYTES, BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES, SLOT_KEY_SIZE, AMOUNT_DECIMAL_FACTOR, thread_count, ENDORSEMENT_ID_SIZE_BYTES
+};
+
+#[cfg(feature = "test-utils")]
+pub use constants::{set_thread_count, reset_config};

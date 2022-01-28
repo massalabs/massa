@@ -7,8 +7,6 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ProofOfStakeConfig {
-    /// Number of threads
-    pub thread_count: u8,
     /// Private_key to sign genesis blocks.
     pub genesis_key: PrivateKey,
     /// cycle duration in periods

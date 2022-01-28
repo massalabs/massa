@@ -21,9 +21,7 @@ async fn test_operations_check() {
         .init()
         .unwrap();
     */
-
-    let thread_count = 2;
-
+    massa_models::set_thread_count(2);
     let mut private_key_1;
     let mut public_key_1;
     let mut address_1;
@@ -36,7 +34,7 @@ async fn test_operations_check() {
         private_key_1 = generate_random_private_key();
         public_key_1 = derive_public_key(&private_key_1);
         address_1 = Address::from_public_key(&public_key_1);
-        if address_1.get_thread(thread_count) == 0 {
+        if address_1.get_thread() == 0 {
             break;
         }
     }
@@ -44,7 +42,7 @@ async fn test_operations_check() {
         private_key_2 = generate_random_private_key();
         public_key_2 = derive_public_key(&private_key_2);
         address_2 = Address::from_public_key(&public_key_2);
-        if address_2.get_thread(thread_count) == 1 {
+        if address_2.get_thread() == 1 {
             break;
         }
     }
@@ -65,7 +63,6 @@ async fn test_operations_check() {
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
     cfg.block_reward = Amount::from_str("1").unwrap();
-    cfg.thread_count = thread_count;
     cfg.operation_validity_periods = 10;
     cfg.disable_block_creation = true;
     cfg.genesis_timestamp = cfg.genesis_timestamp.saturating_sub(10000.into());
@@ -160,8 +157,7 @@ async fn test_operations_check() {
 #[tokio::test]
 #[serial]
 async fn test_execution_check() {
-    let thread_count = 2;
-
+    massa_models::set_thread_count(2);
     let private_key_1 = generate_random_private_key();
     let public_key_1 = derive_public_key(&private_key_1);
     let address_1 = Address::from_public_key(&public_key_1);
@@ -182,7 +178,6 @@ async fn test_execution_check() {
     cfg.future_block_processing_max_periods = 50;
     cfg.max_future_processing_blocks = 10;
     cfg.block_reward = Amount::from_str("1").unwrap();
-    cfg.thread_count = thread_count;
     cfg.operation_validity_periods = 10;
     cfg.disable_block_creation = true;
     cfg.genesis_timestamp = cfg.genesis_timestamp.saturating_sub(10000.into());

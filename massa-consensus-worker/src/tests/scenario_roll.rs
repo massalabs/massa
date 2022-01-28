@@ -41,28 +41,28 @@ async fn test_roll() {
             .init()
             .unwrap();
     */
-    let thread_count = 2;
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
+    massa_models::set_thread_count(2);
     let mut priv_1 = generate_random_private_key();
     let mut pubkey_1 = derive_public_key(&priv_1);
     let mut address_1 = Address::from_public_key(&pubkey_1);
-    while 0 != address_1.get_thread(thread_count) {
+    while 0 != address_1.get_thread() {
         priv_1 = generate_random_private_key();
         pubkey_1 = derive_public_key(&priv_1);
         address_1 = Address::from_public_key(&pubkey_1);
     }
-    assert_eq!(0, address_1.get_thread(thread_count));
+    assert_eq!(0, address_1.get_thread());
 
     let mut priv_2 = generate_random_private_key();
     let mut pubkey_2 = derive_public_key(&priv_2);
     let mut address_2 = Address::from_public_key(&pubkey_2);
-    while 0 != address_2.get_thread(thread_count) {
+    while 0 != address_2.get_thread() {
         priv_2 = generate_random_private_key();
         pubkey_2 = derive_public_key(&priv_2);
         address_2 = Address::from_public_key(&pubkey_2);
     }
-    assert_eq!(0, address_2.get_thread(thread_count));
+    assert_eq!(0, address_2.get_thread());
 
     let mut ledger = HashMap::new();
     ledger.insert(
@@ -84,7 +84,6 @@ async fn test_roll() {
     cfg.t0 = 500.into();
     cfg.delta_f0 = 3;
     cfg.disable_block_creation = true;
-    cfg.thread_count = thread_count;
     cfg.block_reward = Amount::default();
     cfg.roll_price = Amount::from_str("1000").unwrap();
     cfg.operation_validity_periods = 100;
@@ -491,28 +490,28 @@ async fn test_roll_block_creation() {
         .init()
         .unwrap();
     */
-    let thread_count = 2;
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
+    massa_models::set_thread_count(2);
     let mut priv_1 = generate_random_private_key();
     let mut pubkey_1 = derive_public_key(&priv_1);
     let mut address_1 = Address::from_public_key(&pubkey_1);
-    while 0 != address_1.get_thread(thread_count) {
+    while 0 != address_1.get_thread() {
         priv_1 = generate_random_private_key();
         pubkey_1 = derive_public_key(&priv_1);
         address_1 = Address::from_public_key(&pubkey_1);
     }
-    assert_eq!(0, address_1.get_thread(thread_count));
+    assert_eq!(0, address_1.get_thread());
 
     let mut priv_2 = generate_random_private_key();
     let mut pubkey_2 = derive_public_key(&priv_2);
     let mut address_2 = Address::from_public_key(&pubkey_2);
-    while 0 != address_2.get_thread(thread_count) {
+    while 0 != address_2.get_thread() {
         priv_2 = generate_random_private_key();
         pubkey_2 = derive_public_key(&priv_2);
         address_2 = Address::from_public_key(&pubkey_2);
     }
-    assert_eq!(0, address_2.get_thread(thread_count));
+    assert_eq!(0, address_2.get_thread());
 
     let mut ledger = HashMap::new();
     ledger.insert(
@@ -534,7 +533,6 @@ async fn test_roll_block_creation() {
     cfg.t0 = 500.into();
     cfg.delta_f0 = 3;
     cfg.disable_block_creation = false;
-    cfg.thread_count = thread_count;
     cfg.operation_validity_periods = 10;
     cfg.operation_batch_size = 500;
     cfg.max_operations_per_block = 5000;
@@ -775,7 +773,7 @@ async fn test_roll_deactivation() {
     /*
         Scenario:
             * deactivation threshold at 50%
-            * thread_count = 10
+            * thread_count = 4
             * lookback_cycles = 2
             * periodes_per_cycle = 10
             * delta_f0 = 2
@@ -799,7 +797,7 @@ async fn test_roll_deactivation() {
     */
 
     // setup logging
-    let thread_count = 4;
+    massa_models::set_thread_count(4);
 
     // setup addresses
     let mut privkey_a0;
@@ -809,7 +807,7 @@ async fn test_roll_deactivation() {
         privkey_a0 = generate_random_private_key();
         pubkey_a0 = derive_public_key(&privkey_a0);
         address_a0 = Address::from_public_key(&pubkey_a0);
-        if address_a0.get_thread(thread_count) == 0 {
+        if address_a0.get_thread() == 0 {
             break;
         }
     }
@@ -820,7 +818,7 @@ async fn test_roll_deactivation() {
         privkey_b0 = generate_random_private_key();
         pubkey_b0 = derive_public_key(&privkey_b0);
         address_b0 = Address::from_public_key(&pubkey_b0);
-        if address_b0.get_thread(thread_count) == 0 {
+        if address_b0.get_thread() == 0 {
             break;
         }
     }
@@ -832,7 +830,7 @@ async fn test_roll_deactivation() {
         privkey_a1 = generate_random_private_key();
         pubkey_a1 = derive_public_key(&privkey_a1);
         address_a1 = Address::from_public_key(&pubkey_a1);
-        if address_a1.get_thread(thread_count) == 1 {
+        if address_a1.get_thread() == 1 {
             break;
         }
     }
@@ -843,7 +841,7 @@ async fn test_roll_deactivation() {
         privkey_b1 = generate_random_private_key();
         pubkey_b1 = derive_public_key(&privkey_b1);
         address_b1 = Address::from_public_key(&pubkey_b1);
-        if address_b1.get_thread(thread_count) == 1 {
+        if address_b1.get_thread() == 1 {
             break;
         }
     }
@@ -864,7 +862,6 @@ async fn test_roll_deactivation() {
     cfg.t0 = 400.into();
     cfg.delta_f0 = 2;
     cfg.disable_block_creation = true;
-    cfg.thread_count = thread_count;
     cfg.operation_batch_size = 500;
     cfg.roll_price = Amount::from_str("10").unwrap();
     cfg.pos_miss_rate_deactivation_threshold = Ratio::new(50, 100);
@@ -915,7 +912,7 @@ async fn test_roll_deactivation() {
         while cur_slot <= latest_slot {
             // skip genesis
             if cur_slot.period == 0 {
-                cur_slot = cur_slot.get_next_slot(thread_count).unwrap();
+                cur_slot = cur_slot.get_next_slot().unwrap();
                 continue;
             }
             let cur_cycle = cur_slot.get_cycle(cfg.periods_per_cycle);
@@ -1027,7 +1024,8 @@ async fn test_roll_deactivation() {
                 assert_eq!(addrs_info[&address_b1].rolls.candidate_rolls, 1);
             }
 
-            cur_slot = cur_slot.get_next_slot(thread_count).unwrap();
+            cur_slot = cur_slot.get_next_slot().unwrap();
         }
     }
+    massa_models::reset_config()
 }

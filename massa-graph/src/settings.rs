@@ -10,11 +10,9 @@ use std::{path::PathBuf, usize};
 
 /// Consensus full configuration (static + user defined)
 ///
-/// Assert that `THREAD_COUNT >= 1 || T0.to_millis() >= 1 || T0.to_millis() % THREAD_COUNT == 0`
+/// Assert that `thread_count() >= 1 || T0.to_millis() >= 1 || T0.to_millis() % thread_count() == 0`
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct LedgerConfig {
-    /// Number of threads
-    pub thread_count: u8,
     /// path to ledger db
     pub initial_ledger_path: PathBuf,
     /// path to ledger db
@@ -27,7 +25,6 @@ impl From<&GraphConfig> for LedgerConfig {
     fn from(cfg: &GraphConfig) -> Self {
         LedgerConfig {
             initial_ledger_path: cfg.initial_ledger_path.clone(),
-            thread_count: cfg.thread_count,
             ledger_path: cfg.ledger_path.clone(),
             ledger_cache_capacity: cfg.ledger_cache_capacity,
             ledger_flush_interval: cfg.ledger_flush_interval,
@@ -37,8 +34,6 @@ impl From<&GraphConfig> for LedgerConfig {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GraphConfig {
-    /// Number of threads
-    pub thread_count: u8,
     /// Private_key to sign genesis blocks.
     pub genesis_key: PrivateKey,
     /// Maximum number of blocks allowed in discarded blocks.

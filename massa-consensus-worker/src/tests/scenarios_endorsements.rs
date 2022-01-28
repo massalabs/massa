@@ -24,28 +24,28 @@ async fn test_endorsement_check() {
         .init()
         .unwrap();
     */
-    let thread_count = 2;
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
+    massa_models::set_thread_count(2);
     let mut priv_1 = generate_random_private_key();
     let mut pubkey_1 = derive_public_key(&priv_1);
     let mut address_1 = Address::from_public_key(&pubkey_1);
-    while 0 != address_1.get_thread(thread_count) {
+    while 0 != address_1.get_thread() {
         priv_1 = generate_random_private_key();
         pubkey_1 = derive_public_key(&priv_1);
         address_1 = Address::from_public_key(&pubkey_1);
     }
-    assert_eq!(0, address_1.get_thread(thread_count));
+    assert_eq!(0, address_1.get_thread());
 
     let mut priv_2 = generate_random_private_key();
     let mut pubkey_2 = derive_public_key(&priv_2);
     let mut address_2 = Address::from_public_key(&pubkey_2);
-    while 0 != address_2.get_thread(thread_count) {
+    while 0 != address_2.get_thread() {
         priv_2 = generate_random_private_key();
         pubkey_2 = derive_public_key(&priv_2);
         address_2 = Address::from_public_key(&pubkey_2);
     }
-    assert_eq!(0, address_2.get_thread(thread_count));
+    assert_eq!(0, address_2.get_thread());
 
     let ledger_file = generate_ledger_file(&HashMap::new());
 
@@ -63,7 +63,6 @@ async fn test_endorsement_check() {
     cfg.t0 = 500.into();
     cfg.delta_f0 = 3;
     cfg.disable_block_creation = true;
-    cfg.thread_count = thread_count;
     cfg.block_reward = Amount::default();
     cfg.roll_price = Amount::from_str("1000").unwrap();
     cfg.operation_validity_periods = 100;

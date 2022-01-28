@@ -10,7 +10,7 @@ use crate::{
 };
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::clique::Clique;
+use massa_models::{clique::Clique, thread_count};
 use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::{
@@ -428,8 +428,8 @@ impl BlockGraph {
         // load genesis blocks
 
         let mut block_statuses = Map::default();
-        let mut genesis_block_ids = Vec::with_capacity(cfg.thread_count as usize);
-        for thread in 0u8..cfg.thread_count {
+        let mut genesis_block_ids = Vec::with_capacity(thread_count() as usize);
+        for thread in 0u8..thread_count() {
             let (block_id, block) = create_genesis_block(&cfg, thread).map_err(|err| {
                 GraphError::GenesisCreationError(format!("genesis error {}", err))
             })?;
@@ -439,7 +439,7 @@ impl BlockGraph {
                 BlockStatus::Active(Box::new(ActiveBlock {
                     creator_address: Address::from_public_key(&block.header.content.creator),
                     parents: Vec::new(),
-                    children: vec![Map::default(); cfg.thread_count as usize],
+                    children: vec![Map::default(); thread_count() as usize],
                     dependencies: Set::<BlockId>::default(),
                     descendants: Set::<BlockId>::default(),
                     is_final: true,
@@ -764,7 +764,7 @@ impl BlockGraph {
             let involved_addrs = ledger_changes.get_involved_addresses();
             let thread_addrs: Set<Address> = involved_addrs
                 .iter()
-                .filter(|addr| addr.get_thread(self.cfg.thread_count) == header.content.slot.thread)
+                .filter(|addr| addr.get_thread() == header.content.slot.thread)
                 .copied()
                 .collect();
 
@@ -1846,16 +1846,16 @@ impl BlockGraph {
         massa_trace!("consensus.block_graph.check_header", {
             "block_id": block_id
         });
-        let mut parents: Vec<(BlockId, u64)> = Vec::with_capacity(self.cfg.thread_count as usize);
+        let mut parents: Vec<(BlockId, u64)> = Vec::with_capacity(thread_count() as usize);
         let mut deps = Set::<BlockId>::default();
         let mut incomp = Set::<BlockId>::default();
         let mut missing_deps = Set::<BlockId>::default();
         let creator_addr = Address::from_public_key(&header.content.creator);
 
         // basic structural checks
-        if header.content.parents.len() != (self.cfg.thread_count as usize)
+        if header.content.parents.len() != (thread_count() as usize)
             || header.content.slot.period == 0
-            || header.content.slot.thread >= self.cfg.thread_count
+            || header.content.slot.thread >= thread_count()
         {
             return Ok(HeaderCheckOutcome::Discard(DiscardReason::Invalid(
                 "Basic structural header checks failed".to_string(),
@@ -1913,7 +1913,7 @@ impl BlockGraph {
         // list parents and ensure they are present
         let parent_set: Set<BlockId> = header.content.parents.iter().copied().collect();
         deps.extend(&parent_set);
-        for parent_thread in 0u8..self.cfg.thread_count {
+        for parent_thread in 0u8..thread_count() {
             let parent_hash = header.content.parents[parent_thread as usize];
             match self.block_statuses.get(&parent_hash) {
                 Some(BlockStatus::Discarded { reason, .. }) => {
@@ -1974,8 +1974,8 @@ impl BlockGraph {
 
         // check the topological consistency of the parents
         {
-            let mut gp_max_slots = vec![0u64; self.cfg.thread_count as usize];
-            for parent_i in 0..self.cfg.thread_count {
+            let mut gp_max_slots = vec![0u64; thread_count() as usize];
+            for parent_i in 0..thread_count() {
                 let (parent_h, parent_period) = parents[parent_i as usize];
                 let parent = self.get_active_block(&parent_h).ok_or_else(|| {
                     GraphError::ContainerInconsistency(format!(
@@ -1995,7 +1995,7 @@ impl BlockGraph {
                     // genesis
                     continue;
                 }
-                for gp_i in 0..self.cfg.thread_count {
+                for gp_i in 0..thread_count() {
                     if gp_i == parent_i {
                         continue;
                     }
@@ -2066,7 +2066,7 @@ impl BlockGraph {
             })?;
 
         // grandpa incompatibility test
-        for tau in (0u8..self.cfg.thread_count).filter(|&t| t != header.content.slot.thread) {
+        for tau in (0u8..thread_count()).filter(|&t| t != header.content.slot.thread) {
             // for each parent in a different thread tau
             // traverse parent's descendants in tau
             let mut to_explore = vec![(0usize, header.content.parents[tau as usize])];
@@ -2310,7 +2310,7 @@ impl BlockGraph {
         for operation in block_to_check.operations.iter() {
             // get thread
             let op_thread = Address::from_public_key(&operation.content.sender_public_key)
-                .get_thread(self.cfg.thread_count);
+                .get_thread();
 
             let op_start_validity_period = *operation
                 .get_validity_range(self.cfg.operation_validity_periods)
@@ -2419,7 +2419,7 @@ impl BlockGraph {
         // check that all addresses belong to threads with parents later or equal to the latest_final_block of that thread
         let involved_threads: HashSet<u8> = query_addrs
             .iter()
-            .map(|addr| addr.get_thread(self.cfg.thread_count))
+            .map(|addr| addr.get_thread())
             .collect();
         for thread in involved_threads.into_iter() {
             match self.block_statuses.get(&parents[thread as usize]) {
@@ -2444,8 +2444,8 @@ impl BlockGraph {
 
         // compute backtrack ending slots for each thread
         let mut stop_periods =
-            vec![vec![0u64; self.cfg.thread_count as usize]; self.cfg.thread_count as usize];
-        for target_thread in 0u8..self.cfg.thread_count {
+            vec![vec![0u64; thread_count() as usize]; thread_count() as usize];
+        for target_thread in 0u8..thread_count() {
             let (target_last_final_id, target_last_final_period) =
                 self.latest_final_blocks_periods[target_thread as usize];
             match self.block_statuses.get(&target_last_final_id) {
@@ -2491,7 +2491,7 @@ impl BlockGraph {
             // Warning 1: this uses ledger change commutativity and associativity, may not work with smart contracts
             // Warning 2: we assume that overflows cannot happen here (they won't be deterministic)
             let mut explore_parents = false;
-            for thread in 0u8..self.cfg.thread_count {
+            for thread in 0u8..thread_count() {
                 if scan_b.block.header.content.slot.period
                     < stop_periods[thread as usize]
                         [scan_b.block.header.content.slot.thread as usize]
@@ -2502,7 +2502,7 @@ impl BlockGraph {
 
                 for (addr, change) in scan_b.block_ledger_changes.0.iter() {
                     if query_addrs.contains(addr)
-                        && addr.get_thread(self.cfg.thread_count) == thread
+                        && addr.get_thread() == thread
                     {
                         accumulated_changes.apply(addr, change)?;
                     }
@@ -2599,7 +2599,7 @@ impl BlockGraph {
                 dependencies: deps,
                 descendants: Set::<BlockId>::default(),
                 block: add_block.clone(),
-                children: vec![Default::default(); self.cfg.thread_count as usize],
+                children: vec![Default::default(); thread_count() as usize],
                 is_final: false,
                 block_ledger_changes,
                 operation_set,
@@ -3018,8 +3018,8 @@ impl BlockGraph {
                 self.latest_final_blocks_periods[changed_thread as usize].0;
 
             // Init the stop backtrack stop periods
-            let mut stop_backtrack_periods = vec![0u64; self.cfg.thread_count as usize];
-            for limit_thread in 0u8..self.cfg.thread_count {
+            let mut stop_backtrack_periods = vec![0u64; thread_count() as usize];
+            for limit_thread in 0u8..thread_count() {
                 if limit_thread == changed_thread {
                     // in the same thread, set the stop backtrack period to B1.period + 1
                     stop_backtrack_periods[limit_thread as usize] = old_period + 1;
@@ -3055,7 +3055,7 @@ impl BlockGraph {
                     continue;
                 }
                 for (addr, change) in scan_b.block_ledger_changes.0.iter() {
-                    if addr.get_thread(self.cfg.thread_count) == changed_thread {
+                    if addr.get_thread() == changed_thread {
                         accumulated_changes.apply(addr, change)?;
                     }
                 }
@@ -3175,7 +3175,7 @@ impl BlockGraph {
             }
 
             // fill up from the latest final block back to the earliest for each thread
-            for thread in 0..self.cfg.thread_count {
+            for thread in 0..thread_count() {
                 let mut cursor = self.latest_final_blocks_periods[thread as usize].0; // hash of tha latest final in that thread
                 while let Some(c_block) = self.get_active_block(&cursor) {
                     if c_block.block.header.content.slot.period

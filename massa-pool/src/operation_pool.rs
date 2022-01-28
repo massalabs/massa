@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{PoolError, PoolSettings};
-use massa_models::prehash::{Map, Set};
+use massa_models::{prehash::{Map, Set}, thread_count};
 use massa_models::{
     Address, Operation, OperationId, OperationSearchResult, OperationSearchResultStatus,
     OperationType, SerializeCompact, Slot,
@@ -43,11 +43,11 @@ struct WrappedOperation {
 }
 
 impl WrappedOperation {
-    fn new(op: Operation, thread_count: u8) -> Result<Self, PoolError> {
+    fn new(op: Operation) -> Result<Self, PoolError> {
         Ok(WrappedOperation {
             byte_count: op.to_bytes_compact()?.len() as u64,
             thread: Address::from_public_key(&op.content.sender_public_key)
-                .get_thread(thread_count),
+                .get_thread(),
             op,
         })
     }
@@ -85,7 +85,6 @@ pub struct OperationPool {
     /// config
     pool_settings: &'static PoolSettings,
     /// thread count
-    thread_count: u8,
     /// operation validity periods
     operation_validity_periods: u64,
     /// ids of operations that are final with expire period and thread
@@ -95,16 +94,14 @@ pub struct OperationPool {
 impl OperationPool {
     pub fn new(
         pool_settings: &'static PoolSettings,
-        thread_count: u8,
         operation_validity_periods: u64,
     ) -> OperationPool {
         OperationPool {
             ops: Default::default(),
-            ops_by_thread_and_interest: vec![BTreeSet::new(); thread_count as usize],
+            ops_by_thread_and_interest: vec![BTreeSet::new(); thread_count() as usize],
             current_slot: None,
-            last_final_periods: vec![0; thread_count as usize],
+            last_final_periods: vec![0; thread_count() as usize],
             pool_settings,
-            thread_count,
             operation_validity_periods,
             final_operations: Default::default(),
             ops_by_address: OperationIndex::new(),
@@ -135,7 +132,7 @@ impl OperationPool {
             }
 
             // wrap
-            let wrapped_op = WrappedOperation::new(operation, self.thread_count)?;
+            let wrapped_op = WrappedOperation::new(operation)?;
 
             // check if too much in the future
             if let Some(cur_slot) = self.current_slot {
@@ -189,7 +186,7 @@ impl OperationPool {
         }
 
         // remove excess operations if pool is full
-        for thread in 0..self.thread_count {
+        for thread in 0..thread_count() {
             while self.ops_by_thread_and_interest[thread as usize].len()
                 > self.pool_settings.max_pool_size_per_thread as usize
             {
@@ -366,30 +363,29 @@ impl OperationPool {
 pub mod tests {
     use super::*;
     use massa_hash::hash::Hash;
-    use massa_models::{Amount, Operation, OperationContent, OperationType};
+    use massa_models::{Amount, Operation, OperationContent, OperationType, thread_count};
     use massa_signature::{derive_public_key, generate_random_private_key, sign};
     use serial_test::serial;
     use std::str::FromStr;
 
     lazy_static::lazy_static! {
-        pub static ref POOL_SETTINGS: (PoolSettings, u8, u64, u64) = {
-            let (mut cfg, thread_count, operation_validity_periods) = example_pool_config();
+        pub static ref POOL_SETTINGS: (PoolSettings, u64, u64) = {
+            let (mut cfg, operation_validity_periods) = example_pool_config();
 
             let max_pool_size_per_thread = 10;
             cfg.max_pool_size_per_thread = max_pool_size_per_thread;
 
-            (cfg, thread_count, operation_validity_periods, max_pool_size_per_thread)
+            (cfg,  operation_validity_periods, max_pool_size_per_thread)
         };
     }
 
-    fn example_pool_config() -> (PoolSettings, u8, u64) {
+    fn example_pool_config() -> (PoolSettings, u64) {
         let mut nodes = Vec::new();
         for _ in 0..2 {
             let private_key = generate_random_private_key();
             let public_key = derive_public_key(&private_key);
             nodes.push((public_key, private_key));
         }
-        let thread_count: u8 = 2;
         let operation_validity_periods: u64 = 50;
         let max_block_size = 1024 * 1024;
         let max_operations_per_block = 1024;
@@ -398,7 +394,7 @@ pub mod tests {
         // can be overwritten with a more specific one in the test.
         massa_models::init_serialization_context(massa_models::SerializationContext {
             max_block_operations: max_operations_per_block,
-            parent_count: thread_count,
+            parent_count: thread_count(),
             max_peer_list_length: 128,
             max_message_size: 3 * 1024 * 1024,
             max_block_size,
@@ -422,7 +418,6 @@ pub mod tests {
                 max_endorsement_count: 1000,
                 max_item_return_count: 1000,
             },
-            thread_count,
             operation_validity_periods,
         )
     }
@@ -449,25 +444,24 @@ pub mod tests {
 
         (
             Operation { content, signature },
-            Address::from_public_key(&sender_pub).get_thread(2),
+            Address::from_public_key(&sender_pub).get_thread(),
         )
     }
 
     #[test]
     #[serial]
     fn test_pool() {
-        let (pool_settings, thread_count, operation_validity_periods, max_pool_size_per_thread): &(
+        let (pool_settings, operation_validity_periods, max_pool_size_per_thread): &(
             PoolSettings,
-            u8,
             u64,
             u64,
         ) = &POOL_SETTINGS;
 
         let mut pool =
-            OperationPool::new(pool_settings, *thread_count, *operation_validity_periods);
+            OperationPool::new(pool_settings, *operation_validity_periods);
 
         // generate (id, transactions, range of validity) by threads
-        let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
+        let mut thread_tx_lists = vec![Vec::new(); massa_models::thread_count() as usize];
         for i in 0..18 {
             let fee = 40 + i;
             let expire_period: u64 = 40 + i;
@@ -521,7 +515,7 @@ pub mod tests {
         // op ending before or at period 45 won't appear in the block due to incompatible validity range
         // we don't keep them as expected ops
         let final_period = 45u64;
-        pool.update_latest_final_periods(vec![final_period; *thread_count as usize])
+        pool.update_latest_final_periods(vec![final_period; massa_models::thread_count() as usize])
             .unwrap();
         for lst in thread_tx_lists.iter_mut() {
             lst.retain(|(_, op, _)| op.content.expire_period > final_period);

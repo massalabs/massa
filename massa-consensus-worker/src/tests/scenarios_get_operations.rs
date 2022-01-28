@@ -24,28 +24,28 @@ async fn test_get_operation() {
     //     .timestamp(stderrlog::Timestamp::Millisecond)
     //     .init()
     //     .unwrap();
-    let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
+    massa_models::set_thread_count(2);
     let mut priv_a = generate_random_private_key();
     let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a);
-    while 0 != address_a.get_thread(thread_count) {
+    while 0 != address_a.get_thread() {
         priv_a = generate_random_private_key();
         pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a);
     }
-    assert_eq!(0, address_a.get_thread(thread_count));
+    assert_eq!(0, address_a.get_thread());
 
     let mut priv_b = generate_random_private_key();
     let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b);
-    while 0 != address_b.get_thread(thread_count) {
+    while 0 != address_b.get_thread() {
         priv_b = generate_random_private_key();
         pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b);
     }
-    assert_eq!(0, address_b.get_thread(thread_count));
+    assert_eq!(0, address_b.get_thread());
 
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
@@ -59,7 +59,6 @@ async fn test_get_operation() {
 
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
-    cfg.thread_count = thread_count;
     cfg.operation_validity_periods = 10;
     cfg.operation_batch_size = 3;
     cfg.max_operations_per_block = 50;

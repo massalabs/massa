@@ -374,7 +374,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
 
     (
         Operation { content, signature },
-        Address::from_public_key(&sender_pub).get_thread(2),
+        Address::from_public_key(&sender_pub).get_thread(),
     )
 }
 

@@ -578,7 +578,6 @@ pub fn default_consensus_config(
     staking_keys_path: &Path,
 ) -> ConsensusConfig {
     let genesis_key = generate_random_private_key();
-    let thread_count: u8 = 2;
     let max_block_size: u32 = 3 * 1024 * 1024;
     let max_operations_per_block: u32 = 1024;
     let tempdir = tempfile::tempdir().expect("cannot create temp dir");
@@ -606,7 +605,6 @@ pub fn default_consensus_config(
 
     ConsensusConfig {
         genesis_timestamp: MassaTime::now().unwrap(),
-        thread_count,
         t0: 32000.into(),
         genesis_key,
         max_discarded_blocks: 10,

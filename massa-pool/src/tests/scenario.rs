@@ -17,20 +17,19 @@ use serial_test::serial;
 use std::collections::HashSet;
 use std::time::Duration;
 use tokio::time::sleep;
+use massa_models::thread_count;
 
 #[tokio::test]
 #[serial]
 async fn test_pool() {
-    let (cfg, thread_count, operation_validity_periods, max_pool_size_per_thread): &(
+    let (cfg, operation_validity_periods, max_pool_size_per_thread): &(
         PoolSettings,
-        u8,
         u64,
         u64,
     ) = &POOL_SETTINGS;
 
     pool_test(
         cfg,
-        *thread_count,
         *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
@@ -38,7 +37,7 @@ async fn test_pool() {
                 _ => None,
             };
             // generate (id, transactions, range of validity) by threads
-            let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
+            let mut thread_tx_lists = vec![Vec::new(); thread_count() as usize];
             for i in 0..18 {
                 let fee = 40 + i;
                 let expire_period: u64 = 40 + i;
@@ -116,7 +115,7 @@ async fn test_pool() {
             // we don't keep them as expected ops
             let final_period = 45u64;
             pool_command_sender
-                .update_latest_final_periods(vec![final_period; *thread_count as usize])
+                .update_latest_final_periods(vec![final_period; thread_count() as usize])
                 .await
                 .unwrap();
             for lst in thread_tx_lists.iter_mut() {
@@ -187,16 +186,14 @@ async fn test_pool() {
 #[tokio::test]
 #[serial]
 async fn test_pool_with_execute_sc() {
-    let (cfg, thread_count, operation_validity_periods, max_pool_size_per_thread): &(
+    let (cfg, operation_validity_periods, max_pool_size_per_thread): &(
         PoolSettings,
-        u8,
         u64,
         u64,
     ) = &POOL_SETTINGS;
 
     pool_test(
         cfg,
-        *thread_count,
         *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
@@ -204,7 +201,7 @@ async fn test_pool_with_execute_sc() {
                 _ => None,
             };
             // generate (id, transactions, range of validity) by threads
-            let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
+            let mut thread_tx_lists = vec![Vec::new(); thread_count() as usize];
             for i in 0..18 {
                 let fee = 40 + i;
                 let expire_period: u64 = 40 + i;
@@ -277,7 +274,7 @@ async fn test_pool_with_execute_sc() {
             // we don't keep them as expected ops
             let final_period = 45u64;
             pool_command_sender
-                .update_latest_final_periods(vec![final_period; *thread_count as usize])
+                .update_latest_final_periods(vec![final_period; thread_count() as usize])
                 .await
                 .unwrap();
             for lst in thread_tx_lists.iter_mut() {
@@ -343,12 +340,11 @@ async fn test_pool_with_execute_sc() {
 #[tokio::test]
 #[serial]
 async fn test_pool_with_protocol_events() {
-    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
+    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) =
         &POOL_SETTINGS;
 
     pool_test(
         cfg,
-        *thread_count,
         *operation_validity_periods,
         async move |mut protocol_controller, pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
@@ -357,7 +353,7 @@ async fn test_pool_with_protocol_events() {
             };
 
             // generate (id, transactions, range of validity) by threads
-            let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
+            let mut thread_tx_lists = vec![Vec::new(); thread_count() as usize];
             for i in 0..18 {
                 let fee = 40 + i;
                 let expire_period: u64 = 40 + i;
@@ -405,12 +401,11 @@ async fn test_pool_with_protocol_events() {
 #[tokio::test]
 #[serial]
 async fn test_pool_propagate_newly_added_endorsements() {
-    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
+    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) =
         &POOL_SETTINGS;
 
     pool_test(
         cfg,
-        *thread_count,
         *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
@@ -471,12 +466,11 @@ async fn test_pool_propagate_newly_added_endorsements() {
 #[tokio::test]
 #[serial]
 async fn test_pool_add_old_endorsements() {
-    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
+    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) =
         &POOL_SETTINGS;
 
     pool_test(
         cfg,
-        *thread_count,
         *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
@@ -514,35 +508,33 @@ async fn test_pool_add_old_endorsements() {
 #[tokio::test]
 #[serial]
 async fn test_get_involved_operations() {
-    let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_a = generate_random_private_key();
     let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a);
-    while 1 != address_a.get_thread(thread_count) {
+    while 1 != address_a.get_thread() {
         priv_a = generate_random_private_key();
         pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a);
     }
-    assert_eq!(1, address_a.get_thread(thread_count));
+    assert_eq!(1, address_a.get_thread());
 
     let mut priv_b = generate_random_private_key();
     let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b);
-    while 1 != address_b.get_thread(thread_count) {
+    while 1 != address_b.get_thread() {
         priv_b = generate_random_private_key();
         pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b);
     }
-    assert_eq!(1, address_b.get_thread(thread_count));
+    assert_eq!(1, address_b.get_thread());
 
-    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
+    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) =
         &POOL_SETTINGS;
 
     pool_test(
         cfg,
-        *thread_count,
         *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
@@ -670,35 +662,33 @@ async fn test_get_involved_operations() {
 #[tokio::test]
 #[serial]
 async fn test_new_final_ops() {
-    let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_a = generate_random_private_key();
     let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a);
-    while 0 != address_a.get_thread(thread_count) {
+    while 0 != address_a.get_thread() {
         priv_a = generate_random_private_key();
         pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a);
     }
-    assert_eq!(0, address_a.get_thread(thread_count));
+    assert_eq!(0, address_a.get_thread());
 
     let mut priv_b = generate_random_private_key();
     let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b);
-    while 0 != address_b.get_thread(thread_count) {
+    while 0 != address_b.get_thread() {
         priv_b = generate_random_private_key();
         pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b);
     }
-    assert_eq!(0, address_b.get_thread(thread_count));
+    assert_eq!(0, address_b.get_thread());
 
-    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
+    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) =
         &POOL_SETTINGS;
 
     pool_test(
         cfg,
-        *thread_count,
         *operation_validity_periods,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {

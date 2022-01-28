@@ -114,7 +114,6 @@ impl Endpoints for API<Public> {
         let closure = async move || {
             let now = MassaTime::compensated_now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
-                consensus_settings.thread_count,
                 consensus_settings.t0,
                 consensus_settings.genesis_timestamp,
                 now,
@@ -139,7 +138,7 @@ impl Endpoints for API<Public> {
                 last_slot,
                 next_slot: last_slot
                     .unwrap_or_else(|| Slot::new(0, 0))
-                    .get_next_slot(consensus_settings.thread_count)?,
+                    .get_next_slot()?,
                 consensus_stats: consensus_stats?,
                 network_stats: network_stats?,
                 pool_stats: pool_stats?,
@@ -306,7 +305,6 @@ impl Endpoints for API<Public> {
         let closure = async move || {
             // filter blocks from graph_export
             let (start_slot, end_slot) = time_range_to_slot_range(
-                consensus_settings.thread_count,
                 consensus_settings.t0,
                 consensus_settings.genesis_timestamp,
                 time.start,
@@ -370,7 +368,6 @@ impl Endpoints for API<Public> {
             // next draws info
             let now = MassaTime::compensated_now(compensation_millis)?;
             let current_slot = get_latest_block_slot_at_timestamp(
-                cfg.thread_count,
                 cfg.t0,
                 cfg.genesis_timestamp,
                 now,
@@ -444,7 +441,7 @@ impl Endpoints for API<Public> {
                 let state = states.remove(&address).ok_or(ApiError::NotFound)?;
                 res.push(AddressInfo {
                     address,
-                    thread: address.get_thread(cfg.thread_count),
+                    thread: address.get_thread(),
                     ledger_info: state.ledger_info,
                     rolls: state.rolls,
                     block_draws: next_draws

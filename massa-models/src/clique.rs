@@ -6,7 +6,7 @@ use std::convert::TryInto;
 use serde::{Deserialize, Serialize};
 
 use crate::prehash::{BuildMap, Set};
-use crate::settings::BLOCK_ID_SIZE_BYTES;
+use crate::BLOCK_ID_SIZE_BYTES;
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, BlockId, DeserializeCompact,
     DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,

@@ -13,6 +13,7 @@ use num::rational::Ratio;
 use rand::{distributions::Uniform, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
 use tracing::log::warn;
+use massa_models::thread_count;
 
 use crate::{
     error::POSResult, error::ProofOfStakeError, export_pos::ExportProofOfStake,
@@ -65,7 +66,7 @@ impl ProofOfStake {
             (export.cycle_states, initial_rolls)
         } else {
             // initializing from scratch
-            let mut cycle_states = Vec::with_capacity(cfg.thread_count as usize);
+            let mut cycle_states = Vec::with_capacity(thread_count() as usize);
             let initial_rolls = ProofOfStake::get_initial_rolls(&cfg).await?;
             for (thread, thread_rolls) in initial_rolls.iter().enumerate() {
                 // init thread history with one cycle
@@ -108,19 +109,19 @@ impl ProofOfStake {
     /// active stakers count
     pub fn get_stakers_count(&self, target_cycle: u64) -> POSResult<u64> {
         let mut res: u64 = 0;
-        for thread in 0..self.cfg.thread_count {
+        for thread in 0..thread_count() {
             res += self.get_lookback_roll_count(target_cycle, thread)?.0.len() as u64;
         }
         Ok(res)
     }
 
     async fn get_initial_rolls(cfg: &ProofOfStakeConfig) -> POSResult<Vec<RollCounts>> {
-        let mut res = vec![BTreeMap::<Address, u64>::new(); cfg.thread_count as usize];
+        let mut res = vec![BTreeMap::<Address, u64>::new(); thread_count() as usize];
         let addrs_map = serde_json::from_str::<Map<Address, u64>>(
             &tokio::fs::read_to_string(&cfg.initial_rolls_path).await?,
         )?;
         for (addr, n_rolls) in addrs_map.into_iter() {
-            res[addr.get_thread(cfg.thread_count) as usize].insert(addr, n_rolls);
+            res[addr.get_thread() as usize].insert(addr, n_rolls);
         }
         Ok(res.into_iter().map(RollCounts).collect())
     }
@@ -182,7 +183,7 @@ impl ProofOfStake {
         }
 
         // get rolls and seed
-        let blocks_in_cycle = self.cfg.periods_per_cycle as usize * self.cfg.thread_count as usize;
+        let blocks_in_cycle = self.cfg.periods_per_cycle as usize * thread_count() as usize;
         let (cum_sum, rng_seed) = if cycle > self.cfg.pos_lookback_cycles {
             // nominal case: lookback after or at cycle 0
             let target_cycle = cycle - self.cfg.pos_lookback_cycles - 1;
@@ -192,7 +193,7 @@ impl ProofOfStake {
 
             let mut cum_sum: Vec<(u64, Address)> = Vec::new(); // amount, thread, address
             let mut cum_sum_cursor = 0u64;
-            for scan_thread in 0..self.cfg.thread_count {
+            for scan_thread in 0..thread_count() {
                 let final_data = self
                     .get_final_roll_data(target_cycle, scan_thread)
                     .ok_or_else(|| {
@@ -226,7 +227,7 @@ impl ProofOfStake {
             // get initial rolls
             let mut cum_sum: Vec<(u64, Address)> = Vec::new(); // amount, thread, address
             let mut cum_sum_cursor = 0u64;
-            for scan_thread in 0..self.cfg.thread_count {
+            for scan_thread in 0..thread_count() {
                 let init_rolls = &self.initial_rolls.as_ref().ok_or_else( ||
                     ProofOfStakeError::PosCycleUnavailable(format!(
                     "trying to get PoS initial draw rolls/seed for negative cycle at thread {}, which is unavailable",
@@ -270,7 +271,7 @@ impl ProofOfStake {
         if cycle_first_period == 0 {
             // genesis slots: force block creator and endorsement creator address draw
             let genesis_addr = Address::from_public_key(&derive_public_key(&self.cfg.genesis_key));
-            for draw_thread in 0..self.cfg.thread_count {
+            for draw_thread in 0..thread_count() {
                 draws.insert(
                     Slot::new(0, draw_thread),
                     (
@@ -285,7 +286,7 @@ impl ProofOfStake {
                 // do not draw genesis again
                 continue;
             }
-            for draw_thread in 0..self.cfg.thread_count {
+            for draw_thread in 0..thread_count() {
                 let mut res = Vec::with_capacity(self.cfg.endorsement_count as usize + 1);
                 // draw block creator and endorsers with the same probabilities
                 for _ in 0..(self.cfg.endorsement_count + 1) {
@@ -488,7 +489,7 @@ impl ProofOfStake {
                         .entry(cycle)
                         .and_modify(|n| *n += 1)
                         .or_insert(1)
-                        == self.cfg.thread_count
+                        == thread_count()
                 } else {
                     false
                 };
@@ -568,7 +569,7 @@ impl ProofOfStake {
 
         // get roll data from all threads for addresses belonging to address_thread
         let mut addr_stats: Map<Address, (u64, u64)> = Map::default();
-        for thread in 0..self.cfg.thread_count {
+        for thread in 0..thread_count() {
             // get roll data
             let roll_data = self
                 .get_final_roll_data(target_cycle, thread)
@@ -578,7 +579,7 @@ impl ProofOfStake {
             }
             // accumulate counters
             for (addr, (n_ok, n_nok)) in roll_data.production_stats.iter() {
-                if addr.get_thread(self.cfg.thread_count) != address_thread {
+                if addr.get_thread() != address_thread {
                     continue;
                 }
                 match addr_stats.entry(*addr) {

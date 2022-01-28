@@ -56,7 +56,6 @@ impl ExecutionManager {
 ///
 /// # Arguments
 /// * cfg: execution configuration
-/// * thread_count: number of threads
 /// * genesis_timestamp: genesis timestamp
 /// * t0: period duration
 /// * clock_compensation: clock compensation in milliseconds

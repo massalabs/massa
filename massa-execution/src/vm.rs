@@ -5,7 +5,7 @@ use crate::types::{ExecutionContext, ExecutionData, ExecutionStep, StepHistory, 
 use crate::{config::ExecutionConfigs, ExecutionError};
 use massa_models::api::SCELedgerInfo;
 use massa_models::prehash::Map;
-use massa_models::AMOUNT_ZERO;
+use massa_models::{AMOUNT_ZERO, thread_count};
 use massa_sc_runtime::Interface;
 
 use massa_models::timeslots::slot_count_in_range;
@@ -23,9 +23,6 @@ use tracing::debug;
 
 /// Virtual Machine and step history system
 pub(crate) struct VM {
-    /// thread count
-    thread_count: u8,
-
     /// history of SCE-active executed steps
     step_history: StepHistory,
 
@@ -47,7 +44,7 @@ impl VM {
                 (ledger_bootstrap, ledger_slot)
             } else {
                 // not bootstrapping: load initial SCE ledger from file
-                let ledger_slot = Slot::new(0, cfg.thread_count.saturating_sub(1)); // last genesis block
+                let ledger_slot = Slot::new(0, thread_count().saturating_sub(1)); // last genesis block
                 let ledgger_balances = serde_json::from_str::<Map<Address, Amount>>(
                     &std::fs::read_to_string(&cfg.settings.initial_sce_ledger_path)
                         .map_err(bootstrap_file_error!("loading", cfg))?,
@@ -66,13 +63,11 @@ impl VM {
         // Instantiate the interface used by the assembly simulator.
         let execution_interface = Box::new(InterfaceImpl::new(
             Arc::clone(&execution_context),
-            cfg.thread_count,
             cfg.t0,
             cfg.genesis_timestamp,
         ));
 
         Ok(VM {
-            thread_count: cfg.thread_count,
             step_history: Default::default(),
             execution_interface,
             execution_context,
@@ -398,7 +393,7 @@ impl VM {
     pub(crate) fn run_active_step(&mut self, step: ExecutionStep) {
         // rewind history to optimize execution
         if let Some(front_slot) = self.step_history.front().map(|h| h.slot) {
-            if let Ok(len) = slot_count_in_range(front_slot, step.slot, self.thread_count) {
+            if let Ok(len) = slot_count_in_range(front_slot, step.slot) {
                 self.step_history.truncate(len as usize);
             }
         }

@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::settings::AMOUNT_DECIMAL_FACTOR;
+use crate::AMOUNT_DECIMAL_FACTOR;
 use crate::ModelsError;
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;

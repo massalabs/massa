@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{PoolError, PoolSettings};
-use massa_models::prehash::{Map, Set};
+use massa_models::{prehash::{Map, Set}, thread_count};
 use massa_models::{Address, BlockId, Endorsement, EndorsementContent, EndorsementId, Slot};
 
 pub struct EndorsementPool {
@@ -12,12 +12,12 @@ pub struct EndorsementPool {
 }
 
 impl EndorsementPool {
-    pub fn new(pool_settings: &'static PoolSettings, thread_count: u8) -> EndorsementPool {
+    pub fn new(pool_settings: &'static PoolSettings) -> EndorsementPool {
         EndorsementPool {
             endorsements: Default::default(),
             pool_settings,
             current_slot: None,
-            latest_final_periods: vec![0; thread_count as usize],
+            latest_final_periods: vec![0; thread_count() as usize],
         }
     }
 

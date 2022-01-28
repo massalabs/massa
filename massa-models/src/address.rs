@@ -2,7 +2,7 @@
 
 use crate::api::{LedgerInfo, RollsInfo};
 use crate::prehash::{PreHashed, Set};
-use crate::settings::ADDRESS_SIZE_BYTES;
+use crate::{ADDRESS_SIZE_BYTES, thread_count};
 use crate::ModelsError;
 use massa_hash::hash::Hash;
 use massa_signature::PublicKey;
@@ -29,9 +29,9 @@ impl PreHashed for Address {}
 
 impl Address {
     /// Gets the associated thread. Depends on the thread_count
-    pub fn get_thread(&self, thread_count: u8) -> u8 {
+    pub fn get_thread(&self) -> u8 {
         (self.to_bytes()[0])
-            .checked_shr(8 - thread_count.trailing_zeros())
+            .checked_shr(8 - thread_count().trailing_zeros())
             .unwrap_or(0)
     }
 

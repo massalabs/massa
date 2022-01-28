@@ -11,7 +11,7 @@ use massa_consensus_exports::tools::*;
 
 use massa_consensus_exports::settings::ConsensusChannels;
 use massa_hash::hash::Hash;
-use massa_models::{BlockId, Slot};
+use massa_models::{BlockId, Slot, thread_count};
 use massa_signature::{generate_random_private_key, PrivateKey};
 use serial_test::serial;
 use std::collections::HashMap;
@@ -71,7 +71,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
     let (hash, block, _) = create_block_with_merkle_root(
         &cfg,
         Hash::compute_from("different".as_bytes()),
-        Slot::new(1, cfg.thread_count + 1),
+        Slot::new(1, thread_count() + 1),
         parents.clone(),
         staking_keys[0],
     );
@@ -144,7 +144,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
     let (hash, block, _) = create_block_with_merkle_root(
         &cfg,
         Hash::compute_from("different".as_bytes()),
-        Slot::new(1, cfg.thread_count + 1),
+        Slot::new(1, thread_count() + 1),
         parents.clone(),
         staking_keys[0],
     );

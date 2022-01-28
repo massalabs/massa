@@ -3,6 +3,10 @@ name = "massa_models"
 version = "0.1.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
+resolver = "2"
+
+[features]
+test-utils = []
 
 [dependencies]
 displaydoc = "0.2"

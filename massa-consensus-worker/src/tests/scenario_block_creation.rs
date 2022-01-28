@@ -3,7 +3,7 @@
 use crate::tests::tools::{self, create_endorsement, create_roll_transaction, create_transaction};
 use massa_consensus_exports::tools::*;
 use massa_hash::hash::Hash;
-use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
+use massa_models::{rolls::{RollCounts, RollUpdate, RollUpdates}, thread_count};
 use massa_models::{ledger_models::LedgerData, EndorsementId, OperationType};
 use massa_models::{Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot};
 use massa_models::{Endorsement, SerializeCompact};
@@ -21,7 +21,7 @@ use super::tools::create_executesc;
 #[tokio::test]
 #[serial]
 async fn test_genesis_block_creation() {
-    let thread_count = 2;
+    massa_models::set_thread_count(2);
     // define addresses use for the test
     // addresses a and b both in thread 0
     // addr 1 has 1 roll and 0 coins
@@ -29,22 +29,22 @@ async fn test_genesis_block_creation() {
     let mut priv_1 = generate_random_private_key();
     let mut pubkey_1 = derive_public_key(&priv_1);
     let mut address_1 = Address::from_public_key(&pubkey_1);
-    while 0 != address_1.get_thread(thread_count) {
+    while 0 != address_1.get_thread() {
         priv_1 = generate_random_private_key();
         pubkey_1 = derive_public_key(&priv_1);
         address_1 = Address::from_public_key(&pubkey_1);
     }
-    assert_eq!(0, address_1.get_thread(thread_count));
+    assert_eq!(0, address_1.get_thread());
 
     let mut priv_2 = generate_random_private_key();
     let mut pubkey_2 = derive_public_key(&priv_2);
     let mut address_2 = Address::from_public_key(&pubkey_2);
-    while 0 != address_2.get_thread(thread_count) {
+    while 0 != address_2.get_thread() {
         priv_2 = generate_random_private_key();
         pubkey_2 = derive_public_key(&priv_2);
         address_2 = Address::from_public_key(&pubkey_2);
     }
-    assert_eq!(0, address_2.get_thread(thread_count));
+    assert_eq!(0, address_2.get_thread());
 
     let mut ledger = HashMap::new();
     ledger.insert(
@@ -98,7 +98,7 @@ async fn test_genesis_block_creation() {
 #[tokio::test]
 #[serial]
 async fn test_block_creation_with_draw() {
-    let thread_count = 2;
+    massa_models::set_thread_count(2);
     // define addresses use for the test
     // addresses a and b both in thread 0
     // addr 1 has 1 roll and 0 coins
@@ -106,22 +106,22 @@ async fn test_block_creation_with_draw() {
     let mut priv_1 = generate_random_private_key();
     let mut pubkey_1 = derive_public_key(&priv_1);
     let mut address_1 = Address::from_public_key(&pubkey_1);
-    while 0 != address_1.get_thread(thread_count) {
+    while 0 != address_1.get_thread() {
         priv_1 = generate_random_private_key();
         pubkey_1 = derive_public_key(&priv_1);
         address_1 = Address::from_public_key(&pubkey_1);
     }
-    assert_eq!(0, address_1.get_thread(thread_count));
+    assert_eq!(0, address_1.get_thread());
 
     let mut priv_2 = generate_random_private_key();
     let mut pubkey_2 = derive_public_key(&priv_2);
     let mut address_2 = Address::from_public_key(&pubkey_2);
-    while 0 != address_2.get_thread(thread_count) {
+    while 0 != address_2.get_thread() {
         priv_2 = generate_random_private_key();
         pubkey_2 = derive_public_key(&priv_2);
         address_2 = Address::from_public_key(&pubkey_2);
     }
-    assert_eq!(0, address_2.get_thread(thread_count));
+    assert_eq!(0, address_2.get_thread());
 
     let mut ledger = HashMap::new();
     ledger.insert(
@@ -152,7 +152,6 @@ async fn test_block_creation_with_draw() {
     cfg.periods_per_cycle = 1_000;
     cfg.t0 = 1000.into();
     cfg.pos_lookback_cycles = 2;
-    cfg.thread_count = thread_count;
     cfg.delta_f0 = 3;
     cfg.genesis_timestamp = MassaTime::now()
         .unwrap()
@@ -192,7 +191,7 @@ async fn test_block_creation_with_draw() {
             // note that blocks in cycle 3 may be created during this, so make sure that their clique is overrun by sending a large amount of blocks
             let mut cur_parents = vec![initial_block_id, genesis_ids[1]];
             for delta_period in 0u64..10 {
-                for thread in 0..cfg.thread_count {
+                for thread in 0..thread_count() {
                     let res_block_id = tools::create_and_test_block(
                         &mut protocol_controller,
                         &cfg,
@@ -223,7 +222,7 @@ async fn test_block_creation_with_draw() {
             // note: this is a statistical test. It may fail in rare occasions.
             assert!(
                 (0.5 - ((nb_address1_draws as f32)
-                    / ((cfg.thread_count as u64 * cfg.periods_per_cycle) as f32)))
+                    / ((thread_count() as u64 * cfg.periods_per_cycle) as f32)))
                     .abs()
                     < 0.15
             );
@@ -251,7 +250,7 @@ async fn test_block_creation_with_draw() {
                     Address::from_public_key(&block_creator),
                     "wrong block creator"
                 );
-                cur_slot = cur_slot.get_next_slot(cfg.thread_count).unwrap();
+                cur_slot = cur_slot.get_next_slot().unwrap();
             }
 
             (
@@ -267,28 +266,28 @@ async fn test_block_creation_with_draw() {
 #[tokio::test]
 #[serial]
 async fn test_interleaving_block_creation_with_reception() {
-    let thread_count = 1;
+    massa_models::set_thread_count(1);
     // define addresses use for the test
     // addresses a and b both in thread 0
     let mut priv_1 = generate_random_private_key();
     let mut pubkey_1 = derive_public_key(&priv_1);
     let mut address_1 = Address::from_public_key(&pubkey_1);
-    while 0 != address_1.get_thread(thread_count) {
+    while 0 != address_1.get_thread() {
         priv_1 = generate_random_private_key();
         pubkey_1 = derive_public_key(&priv_1);
         address_1 = Address::from_public_key(&pubkey_1);
     }
-    assert_eq!(0, address_1.get_thread(thread_count));
+    assert_eq!(0, address_1.get_thread());
 
     let mut priv_2 = generate_random_private_key();
     let mut pubkey_2 = derive_public_key(&priv_2);
     let mut address_2 = Address::from_public_key(&pubkey_2);
-    while 0 != address_2.get_thread(thread_count) {
+    while 0 != address_2.get_thread() {
         priv_2 = generate_random_private_key();
         pubkey_2 = derive_public_key(&priv_2);
         address_2 = Address::from_public_key(&pubkey_2);
     }
-    assert_eq!(0, address_2.get_thread(thread_count));
+    assert_eq!(0, address_2.get_thread());
 
     let mut ledger = HashMap::new();
     ledger.insert(
@@ -316,7 +315,6 @@ async fn test_interleaving_block_creation_with_reception() {
         staking_file.path(),
     );
     cfg.t0 = 1000.into();
-    cfg.thread_count = thread_count;
     cfg.genesis_timestamp = MassaTime::now().unwrap().checked_add(1000.into()).unwrap();
     cfg.disable_block_creation = false;
 
@@ -409,6 +407,7 @@ async fn test_interleaving_block_creation_with_reception() {
         },
     )
     .await;
+    massa_models::reset_config();
 }
 
 #[tokio::test]
@@ -420,28 +419,28 @@ async fn test_order_of_inclusion() {
     //     .timestamp(stderrlog::Timestamp::Millisecond)
     //     .init()
     //     .unwrap();
-    let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
+    massa_models::set_thread_count(2);
     let mut priv_a = generate_random_private_key();
     let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a);
-    while 0 != address_a.get_thread(thread_count) {
+    while 0 != address_a.get_thread() {
         priv_a = generate_random_private_key();
         pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a);
     }
-    assert_eq!(0, address_a.get_thread(thread_count));
+    assert_eq!(0, address_a.get_thread());
 
     let mut priv_b = generate_random_private_key();
     let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b);
-    while 0 != address_b.get_thread(thread_count) {
+    while 0 != address_b.get_thread() {
         priv_b = generate_random_private_key();
         pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b);
     }
-    assert_eq!(0, address_b.get_thread(thread_count));
+    assert_eq!(0, address_b.get_thread());
 
     let mut ledger = HashMap::new();
     ledger.insert(address_a, LedgerData::new(Amount::from_str("100").unwrap()));
@@ -458,7 +457,6 @@ async fn test_order_of_inclusion() {
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;
-    cfg.thread_count = thread_count;
     cfg.operation_validity_periods = 10;
     cfg.operation_batch_size = 3;
     cfg.max_operations_per_block = 50;
@@ -588,13 +586,13 @@ async fn test_block_filling() {
     // .init()
     // .unwrap();
 
-    let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
+    massa_models::set_thread_count(2);
     let mut priv_a = generate_random_private_key();
     let mut pubkey_a = derive_public_key(&priv_a);
     let mut address_a = Address::from_public_key(&pubkey_a);
-    while 0 != address_a.get_thread(thread_count) {
+    while 0 != address_a.get_thread() {
         priv_a = generate_random_private_key();
         pubkey_a = derive_public_key(&priv_a);
         address_a = Address::from_public_key(&pubkey_a);
@@ -602,7 +600,7 @@ async fn test_block_filling() {
     let mut priv_b = generate_random_private_key();
     let mut pubkey_b = derive_public_key(&priv_b);
     let mut address_b = Address::from_public_key(&pubkey_b);
-    while 1 != address_b.get_thread(thread_count) {
+    while 1 != address_b.get_thread() {
         priv_b = generate_random_private_key();
         pubkey_b = derive_public_key(&priv_b);
         address_b = Address::from_public_key(&pubkey_b);
@@ -624,7 +622,6 @@ async fn test_block_filling() {
     cfg.t0 = 1000.into();
     cfg.delta_f0 = 32;
     cfg.disable_block_creation = false;
-    cfg.thread_count = thread_count;
     cfg.operation_validity_periods = 10;
     cfg.operation_batch_size = 500;
     cfg.periods_per_cycle = 3;

@@ -15,7 +15,6 @@ use std::str::FromStr;
 
 pub async fn pool_test<F, V>(
     pool_settings: &'static PoolSettings,
-    thread_count: u8,
     operation_validity_periods: u64,
     test: F,
 ) where
@@ -27,7 +26,6 @@ pub async fn pool_test<F, V>(
 
     let (pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
         pool_settings,
-        thread_count,
         operation_validity_periods,
         protocol_command_sender,
         protocol_pool_event_receiver,
@@ -63,7 +61,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
 
     (
         Operation { content, signature },
-        Address::from_public_key(&sender_pub).get_thread(2),
+        Address::from_public_key(&sender_pub).get_thread(),
     )
 }
 
@@ -105,7 +103,7 @@ pub fn get_transaction_with_addresses(
 
     (
         Operation { content, signature },
-        Address::from_public_key(&sender_pub).get_thread(2),
+        Address::from_public_key(&sender_pub).get_thread(),
     )
 }
 
@@ -138,6 +136,6 @@ pub fn create_executesc(
     let signature = sign(&hash, &priv_key).unwrap();
     (
         Operation { content, signature },
-        Address::from_public_key(&sender_public_key).get_thread(2),
+        Address::from_public_key(&sender_public_key).get_thread(),
     )
 }

@@ -2,22 +2,9 @@
 
 use std::fmt::Display;
 
-use crate::Amount;
-use massa_hash::HASH_SIZE_BYTES;
+use crate::{Amount, thread_count};
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
-
-pub const ADDRESS_SIZE_BYTES: usize = HASH_SIZE_BYTES;
-
-pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
-
-pub const BLOCK_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
-
-pub const ENDORSEMENT_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
-
-pub const OPERATION_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
-
-pub const SLOT_KEY_SIZE: usize = 9;
 
 /// Compact representation of key values of consensus algorithm used in API
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
@@ -26,8 +13,6 @@ pub struct CompactConfig {
     pub genesis_timestamp: MassaTime,
     /// TESTNET: time when the blockclique is ended.
     pub end_timestamp: Option<MassaTime>,
-    /// Number of threads
-    pub thread_count: u8,
     /// Time between the periods in the same thread.
     pub t0: MassaTime,
     /// Threshold for fitness.
@@ -54,7 +39,7 @@ impl Display for CompactConfig {
         if let Some(end) = self.end_timestamp {
             writeln!(f, "    End timestamp: {}", end.to_utc_string())?;
         }
-        writeln!(f, "    Thread count: {}", self.thread_count)?;
+        writeln!(f, "    Thread count: {}", thread_count())?;
         writeln!(f, "    t0: {}", self.t0)?;
         writeln!(f, "    delta_f0: {}", self.delta_f0)?;
         writeln!(

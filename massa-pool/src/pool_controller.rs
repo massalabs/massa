@@ -27,7 +27,6 @@ use tracing::{debug, error, info};
 /// * protocol_pool_event_receiver: a ProtocolPoolEventReceiver instance to receive pool events from Protocol.
 pub async fn start_pool_controller(
     pool_settings: &'static PoolSettings,
-    thread_count: u8,
     operation_validity_periods: u64,
     protocol_command_sender: ProtocolCommandSender,
     protocol_pool_event_receiver: ProtocolPoolEventReceiver,
@@ -41,7 +40,6 @@ pub async fn start_pool_controller(
     let join_handle = tokio::spawn(async move {
         let res = PoolWorker::new(
             pool_settings,
-            thread_count,
             operation_validity_periods,
             protocol_command_sender,
             protocol_pool_event_receiver,

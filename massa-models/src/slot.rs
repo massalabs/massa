@@ -7,7 +7,7 @@ use super::{
     with_serialization_context,
 };
 use crate::error::ModelsError;
-use crate::settings::SLOT_KEY_SIZE;
+use crate::{SLOT_KEY_SIZE, thread_count};
 use massa_hash::hash::Hash;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, convert::TryInto};
@@ -89,11 +89,11 @@ impl Slot {
     /// ## Example
     /// ```rust
     /// # use massa_models::Slot;
-    /// let slot = Slot::new(10,5);
-    /// assert_eq!(slot.get_next_slot(5).unwrap(), Slot::new(11, 0))
+    /// let slot = Slot::new(10,32);
+    /// assert_eq!(slot.get_next_slot().unwrap(), Slot::new(11, 0))
     /// ```
-    pub fn get_next_slot(&self, thread_count: u8) -> Result<Slot, ModelsError> {
-        if self.thread.saturating_add(1u8) >= thread_count {
+    pub fn get_next_slot(&self) -> Result<Slot, ModelsError> {
+        if self.thread.saturating_add(1u8) >= thread_count() {
             Ok(Slot::new(
                 self.period
                     .checked_add(1u64)

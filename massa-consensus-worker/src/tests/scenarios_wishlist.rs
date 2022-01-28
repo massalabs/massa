@@ -14,6 +14,7 @@ use std::iter::FromIterator;
 #[tokio::test]
 #[serial]
 async fn test_wishlist_delta_with_empty_remove() {
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);
@@ -76,6 +77,7 @@ async fn test_wishlist_delta_with_empty_remove() {
 #[tokio::test]
 #[serial]
 async fn test_wishlist_delta_remove() {
+    massa_models::set_thread_count(2);
     let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
     let staking_file = generate_staking_keys_file(&staking_keys);

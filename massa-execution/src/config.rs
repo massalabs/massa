@@ -17,8 +17,6 @@ pub struct ExecutionSettings {
 pub struct ExecutionConfigs {
     /// Execution settings
     pub settings: ExecutionSettings,
-    /// Thread count
-    pub thread_count: u8,
     /// Genesis timestmap
     pub genesis_timestamp: MassaTime,
     /// period duration

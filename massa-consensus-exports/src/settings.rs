@@ -82,12 +82,6 @@ lazy_static::lazy_static! {
     pub static ref ROLL_PRICE: Amount = Amount::from_str("100.0").unwrap();
 }
 
-/// Number of threads
-#[cfg(not(test))]
-pub const THREAD_COUNT: u8 = 32;
-#[cfg(test)]
-const THREAD_COUNT: u8 = 2;
-
 #[cfg(not(test))]
 pub const ENDORSEMENT_COUNT: u32 = 9;
 #[cfg(test)]
@@ -183,13 +177,11 @@ impl ConsensusSettings {
     pub fn config(&self) -> ConsensusConfig {
         // TODO: these assertion should be checked at compile time
         // https://github.com/rust-lang/rfcs/issues/2790
-        assert!(THREAD_COUNT >= 1);
         assert!((*T0).to_millis() >= 1);
-        assert!((*T0).to_millis() % (THREAD_COUNT as u64) == 0);
+        assert!((*T0).to_millis() % (massa_models::thread_count() as u64) == 0);
         ConsensusConfig {
             genesis_timestamp: *GENESIS_TIMESTAMP,
             end_timestamp: *END_TIMESTAMP,
-            thread_count: THREAD_COUNT,
             t0: *T0,
             genesis_key: *GENESIS_KEY,
             staking_keys_path: self.staking_keys_path.clone(),
@@ -230,15 +222,13 @@ impl ConsensusSettings {
 
 /// Consensus full configuration (static + user defined)
 ///
-/// Assert that `THREAD_COUNT >= 1 || T0.to_millis() >= 1 || T0.to_millis() % THREAD_COUNT == 0`
+/// Assert that `thread_count() >= 1 || T0.to_millis() >= 1 || T0.to_millis() % thread_count() == 0`
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ConsensusConfig {
     /// Time in millis when the blockclique started.
     pub genesis_timestamp: MassaTime,
     /// TESTNET: time when the blockclique is ended.
     pub end_timestamp: Option<MassaTime>,
-    /// Number of threads
-    pub thread_count: u8,
     /// Time between the periods in the same thread.
     pub t0: MassaTime,
     /// Private_key to sign genesis blocks.
@@ -304,7 +294,6 @@ lazy_static::lazy_static! {
     static ref STATIC_CONFIG: CompactConfig = CompactConfig {
         genesis_timestamp: *GENESIS_TIMESTAMP,
         end_timestamp: *END_TIMESTAMP,
-        thread_count: THREAD_COUNT,
         t0: *T0,
         delta_f0: DELTA_F0,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
@@ -326,7 +315,6 @@ impl ConsensusConfig {
 impl From<&ConsensusConfig> for GraphConfig {
     fn from(cfg: &ConsensusConfig) -> Self {
         GraphConfig {
-            thread_count: cfg.thread_count,
             genesis_key: cfg.genesis_key,
             max_discarded_blocks: cfg.max_discarded_blocks,
             future_block_processing_max_periods: cfg.future_block_processing_max_periods,
@@ -351,7 +339,6 @@ impl From<&ConsensusConfig> for GraphConfig {
 impl From<&ConsensusConfig> for ProofOfStakeConfig {
     fn from(cfg: &ConsensusConfig) -> Self {
         ProofOfStakeConfig {
-            thread_count: cfg.thread_count,
             genesis_key: cfg.genesis_key,
             periods_per_cycle: cfg.periods_per_cycle,
             pos_lookback_cycles: cfg.pos_lookback_cycles,
@@ -369,7 +356,6 @@ impl From<&ConsensusConfig> for ProofOfStakeConfig {
 impl From<&ConsensusConfig> for LedgerConfig {
     fn from(cfg: &ConsensusConfig) -> Self {
         LedgerConfig {
-            thread_count: cfg.thread_count,
             ledger_path: cfg.ledger_path.clone(),
             ledger_cache_capacity: cfg.ledger_cache_capacity,
             ledger_flush_interval: cfg.ledger_flush_interval,

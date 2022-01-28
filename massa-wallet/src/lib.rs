@@ -148,7 +148,6 @@ impl std::fmt::Display for Wallet {
 #[derive(Debug, Deserialize, Clone)]
 pub struct ConsensusConfigData {
     pub t0: MassaTime,
-    pub thread_count: u8,
     pub genesis_timestamp: MassaTime,
     pub delta_f0: u64,
     pub max_block_size: u32,

@@ -109,11 +109,9 @@ pub async fn test_get_ledger_at_parents() {
     // .timestamp(stderrlog::Timestamp::Millisecond)
     // .init()
     // .unwrap();
-    let thread_count: u8 = 2;
     let active_block: ActiveBlock = get_export_active_test_block().try_into().unwrap();
     let ledger_file = generate_ledger_file(&Map::default());
     let mut cfg = ConsensusConfig::from(ledger_file.path());
-    cfg.thread_count = thread_count;
     cfg.block_reward = Amount::from_str("1").unwrap();
     // to generate address and public keys
     /*        let private_key = generate_random_private_key();
@@ -125,26 +123,26 @@ pub async fn test_get_ledger_at_parents() {
         "public key:{}, address:{}, th:{}",
         public_key.to_bs58_check(),
         add.to_bs58_check(),
-        add.get_thread(thread_count)
+        add.get_thread()
     ); */
 
     // define addresses use for the test
     let pubkey_a =
         PublicKey::from_bs58_check("5UvFn66yoQerrEmikCxDVvhkLvCo9R2hJAYFMh2pZfYUQDMuCE").unwrap();
     let address_a = Address::from_public_key(&pubkey_a);
-    assert_eq!(0, address_a.get_thread(thread_count));
+    assert_eq!(0, address_a.get_thread());
 
     let pubkey_b =
         PublicKey::from_bs58_check("4uRbkzUvQwW19dD6cxQ9WiYo8BZTPQsmsCbBrFLxMiUYTSbo2p").unwrap();
     let address_b = Address::from_public_key(&pubkey_b);
-    assert_eq!(1, address_b.get_thread(thread_count));
+    assert_eq!(1, address_b.get_thread());
 
     let address_c =
         Address::from_bs58_check("2cABaQpb4fgYjGE7z2TnbQ2DePsyh9KwwPbodS7fD9Pft9uS1p").unwrap();
-    assert_eq!(1, address_c.get_thread(thread_count));
+    assert_eq!(1, address_c.get_thread());
     let address_d =
         Address::from_bs58_check("21bU2xruH7bFzfcUhJ6SGjnLmC9cMt1kxzqFr11eV58uj7Ui8h").unwrap();
-    assert_eq!(1, address_d.get_thread(thread_count));
+    assert_eq!(1, address_d.get_thread());
 
     let (hash_genesist0, block_genesist0) = create_genesis_block(&(&cfg).into(), 0).unwrap();
     let (hash_genesist1, block_genesist1) = create_genesis_block(&(&cfg).into(), 1).unwrap();

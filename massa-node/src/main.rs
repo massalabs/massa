@@ -57,7 +57,7 @@ async fn launch() -> (
     // Init the global serialization context
     init_serialization_context(SerializationContext {
         max_block_operations: massa_consensus_exports::settings::MAX_OPERATIONS_PER_BLOCK,
-        parent_count: massa_consensus_exports::settings::THREAD_COUNT,
+        parent_count: massa_models::thread_count(),
         max_block_size: massa_consensus_exports::settings::MAX_BLOCK_SIZE,
         max_block_endorsements: massa_consensus_exports::settings::ENDORSEMENT_COUNT,
         max_peer_list_length: massa_network::settings::MAX_ADVERTISE_LENGTH,
@@ -125,7 +125,6 @@ async fn launch() -> (
     // launch pool controller
     let (pool_command_sender, pool_manager) = start_pool_controller(
         &SETTINGS.pool,
-        massa_consensus_exports::settings::THREAD_COUNT,
         massa_consensus_exports::settings::OPERATION_VALIDITY_PERIODS,
         protocol_command_sender.clone(),
         protocol_pool_event_receiver,
@@ -135,7 +134,6 @@ async fn launch() -> (
 
     let execution_config = ExecutionConfigs {
         settings: SETTINGS.execution.clone(),
-        thread_count: massa_consensus_exports::settings::THREAD_COUNT,
         genesis_timestamp: *massa_consensus_exports::settings::GENESIS_TIMESTAMP,
         t0: *massa_consensus_exports::settings::T0,
         clock_compensation: bootstrap_state.compensation_millis,
