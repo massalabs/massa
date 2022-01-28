@@ -1,19 +1,17 @@
 use crate::error::bootstrap_file_error;
 use crate::interface_impl::InterfaceImpl;
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges};
-use crate::types::{
-    EventStore, ExecutionContext, ExecutionData, ExecutionStep, StepHistory, StepHistoryItem,
-};
+use crate::types::{ExecutionContext, ExecutionData, ExecutionStep, StepHistory, StepHistoryItem};
 use crate::{config::ExecutionConfigs, ExecutionError};
 use massa_models::api::SCELedgerInfo;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Map;
 use massa_models::timeslots::slot_count_in_range;
-use massa_models::AMOUNT_ZERO;
 use massa_models::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyResult},
     Address, Amount, BlockId, Slot,
 };
+use massa_models::{OperationId, AMOUNT_ZERO};
 use massa_sc_runtime::Interface;
 use massa_signature::{derive_public_key, generate_random_private_key};
 use rand::SeedableRng;
@@ -38,7 +36,7 @@ pub(crate) struct VM {
     execution_context: Arc<Mutex<ExecutionContext>>,
 
     /// final events
-    final_events: EventStore,
+    final_events: Vec<SCOutputEvent>,
 }
 
 impl VM {
@@ -95,52 +93,84 @@ impl VM {
             .clone()
     }
 
-    /// get sc output event between start and end excluded
-    pub fn get_sc_output_event_by_slot_range(
+    /// get sc output events with optional filters
+    /// start_slot: optional start slot (included)
+    /// end_slot_index: optional end slot (excluded)
+    /// emitter_address: optional address of the event emitter
+    /// original_caller_address: optional address of the original caller
+    /// origin_operation_id: optional operation ID that caused the event emission
+    pub fn get_sc_output_events(
         &self,
-        start: Slot,
-        end: Slot,
-    ) -> Result<Vec<SCOutputEvent>, ExecutionError> {
-        Ok(self
-            .step_history
-            .iter()
-            .filter_map(|item| {
-                if item.slot >= start && item.slot < end {
-                    Some(
-                        item.events
-                            .export()
-                            .values()
-                            .cloned()
-                            .collect::<Vec<SCOutputEvent>>(),
-                    )
-                } else {
-                    None
-                }
-            })
-            .flatten()
-            .chain(
-                self.final_events
-                    .get_event_for_slot_range(start, end, self.thread_count)?,
-            )
-            .collect())
-    }
+        start_slot: Option<Slot>,
+        end_slot: Option<Slot>,
+        emitter_address: Option<Address>,
+        original_caller_address: Option<Address>,
+        origin_operation_id: Option<OperationId>,
+    ) -> Vec<SCOutputEvent> {
+        // get last final slot
+        let last_final_slot = self
+            .execution_context
+            .lock()
+            .unwrap()
+            .ledger_step
+            .final_ledger_slot
+            .slot;
 
-    /// get sc output event for given sc addresss
-    pub fn get_sc_output_event_by_sc_address(&self, sc_address: Address) -> Vec<SCOutputEvent> {
-        self.step_history
-            .iter()
-            .flat_map(|item| item.events.get_event_for_sc(sc_address))
-            .chain(self.final_events.get_event_for_sc(sc_address))
-            .collect()
-    }
+        // utility to find in which history a slot is
+        // 0 = in final_events
+        // n => in step_history[n-1]
+        let find_history_index = |slot: Slot| {
+            if slot <= last_final_slot {
+                0usize // may be in final history
+            } else {
+                // slot is later than the final history
+                slot_count_in_range(last_final_slot, slot, self.thread_count)
+                    .map_or_else(|_| self.step_history.len() as u64, |v| v)
+                    .try_into()
+                    .map_or_else(|_| self.step_history.len(), |v| v)
+            }
+        };
 
-    /// get sc output event for given call address
-    pub fn get_sc_output_event_by_caller_address(&self, caller: Address) -> Vec<SCOutputEvent> {
-        self.step_history
-            .iter()
-            .flat_map(|item| item.events.get_event_for_caller(caller))
-            .chain(self.final_events.get_event_for_caller(caller))
-            .collect()
+        // compute start and end history indices
+        let start_hist_idx = start_slot.map_or(0, |s| find_history_index(s));
+        let end_hist_idx = end_slot.map_or(self.step_history.len(), |s| find_history_index(s));
+
+        // scan and filter
+        let mut result = Vec::new();
+        for hist_idx in start_hist_idx..=end_hist_idx {
+            // choose in which history to look
+            let search_in = match hist_idx {
+                0 => &self.final_events,
+                idx => match self.step_history.get(idx - 1) {
+                    Some(h) => &h.events,
+                    None => break,
+                },
+            };
+            result.extend(
+                search_in
+                    .iter()
+                    .filter(|h| {
+                        if emitter_address.is_some()
+                            && h.context.call_stack.back() != emitter_address.as_ref()
+                        {
+                            return false;
+                        }
+                        if original_caller_address.is_some()
+                            && h.context.call_stack.front() != original_caller_address.as_ref()
+                        {
+                            return false;
+                        }
+                        if origin_operation_id.is_some()
+                            && h.context.origin_operation_id != origin_operation_id
+                        {
+                            return false;
+                        }
+                        true
+                    })
+                    .cloned(),
+            );
+        }
+        result
     }
 
     // clone bootstrap state (final ledger and slot)
@@ -197,8 +227,11 @@ impl VM {
             .apply_changes(&history_item.ledger_changes);
         ledger_step.final_ledger_slot.slot = step.slot;
 
-        self.final_events.extend(mem::take(&mut context.events));
-        self.final_events.prune(max_final_events)
+        self.final_events.extend(history_item.events);
+        let excess_events = max_final_events.saturating_sub(self.final_events.len());
+        if excess_events > 0 {
+            self.final_events.drain(..excess_events);
+        }
     }
 
     /// check if step already at history front, if so, pop it
@@ -253,6 +286,7 @@ impl VM {
         context.events.clear();
         context.read_only = false;
         context.coins_stack.clear();
+        context.origin_operation_id = None;
     }
 
     /// Prepares (updates) the shared context before the new operation.
@@ -267,7 +301,14 @@ impl VM {
         block_creator_addr: Address,
         block_id: BlockId,
         slot: Slot,
-    ) -> (SCELedgerChanges, u64, EventStore, u64, Xoshiro256PlusPlus) {
+        operation_id: OperationId,
+    ) -> (
+        SCELedgerChanges,
+        u64,
+        Vec<SCOutputEvent>,
+        u64,
+        Xoshiro256PlusPlus,
+    ) {
         let mut context = self.execution_context.lock().unwrap();
         // make context.ledger_step credit Op's sender with Op.coins in the SCE ledger
         let _result = context
@@ -291,6 +332,7 @@ impl VM {
         context.opt_block_creator_addr = Some(block_creator_addr);
         context.call_stack = vec![data.sender_address].into();
         context.owned_addresses_stack = vec![vec![data.sender_address]];
+        context.origin_operation_id = Some(operation_id);
 
         (
             context.ledger_step.caused_changes.clone(),
@@ -360,7 +402,7 @@ impl VM {
                 |_| ReadOnlyResult::Ok,
             ),
             // integrate with output events.
-            output_events: mem::take(&mut context.events).export(),
+            output_events: mem::take(&mut context.events),
         };
         if result_sender.send(execution_response).is_err() {
             debug!("Execution: could not send ExecuteReadOnlyResponse.");
@@ -409,6 +451,12 @@ impl VM {
             let block_creator_addr = Address::from_public_key(&block.header.content.creator);
             // run all operations
             for (op_idx, operation) in block.operations.iter().enumerate() {
+                // get operation ID
+                // TODO for the refactoring, have operations include their operationID (without necessarily serializing it)
+                let operation_id = operation
+                    .get_operation_id()
+                    .expect("could not compute operation ID");
+
                 // process ExecuteSC operations only
                 let execution_data = match ExecutionData::try_from(operation) {
                     Ok(data) => data,
@@ -424,7 +472,13 @@ impl VM {
                     events_backup,
                     event_index_backup,
                     rng_backup,
-                ) = self.prepare_context(&execution_data, block_creator_addr, *block_id, step.slot);
+                ) = self.prepare_context(
+                    &execution_data,
+                    block_creator_addr,
+                    *block_id,
+                    step.slot,
+                    operation_id,
+                );
 
                 // run in the intepreter
                 let run_result = massa_sc_runtime::run(

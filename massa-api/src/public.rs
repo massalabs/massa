@@ -500,41 +500,24 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    fn get_sc_output_event_by_slot_range(
+    fn get_sc_output_events(
         &self,
-        start: Slot,
-        end: Slot,
+        start_slot: Option<Slot>,
+        end_slot: Option<Slot>,
+        emitter_address: Option<Address>,
+        original_caller_address: Option<Address>,
+        origin_operation_id: Option<OperationId>,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
         let execution_command_sender = self.0.execution_command_sender.clone();
         let closure = async move || {
             Ok(execution_command_sender
-                .get_sc_output_event_by_slot_range(start, end)
-                .await?)
-        };
-        Box::pin(closure())
-    }
-
-    fn get_sc_output_event_by_sc_address(
-        &self,
-        address: Address,
-    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
-        let execution_command_sender = self.0.execution_command_sender.clone();
-        let closure = async move || {
-            Ok(execution_command_sender
-                .get_sc_output_event_by_sc_address(address)
-                .await?)
-        };
-        Box::pin(closure())
-    }
-
-    fn get_sc_output_event_by_caller_address(
-        &self,
-        address: Address,
-    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
-        let execution_command_sender = self.0.execution_command_sender.clone();
-        let closure = async move || {
-            Ok(execution_command_sender
-                .get_sc_output_event_by_caller_address(address)
+                .get_sc_output_events(
+                    start_slot,
+                    end_slot,
+                    emitter_address,
+                    original_caller_address,
+                    origin_operation_id,
+                )
                 .await?)
         };
         Box::pin(closure())

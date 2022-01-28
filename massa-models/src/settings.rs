@@ -19,8 +19,6 @@ pub const OPERATION_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
 
 pub const SLOT_KEY_SIZE: usize = 9;
 
-pub const EVENT_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
-
 /// Compact representation of key values of consensus algorithm used in API
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct CompactConfig {

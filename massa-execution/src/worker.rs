@@ -9,7 +9,7 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Map;
 use massa_models::timeslots::{get_block_slot_timestamp, get_current_latest_block_slot};
-use massa_models::{Address, Amount, Block, BlockId, Slot};
+use massa_models::{Address, Amount, Block, BlockId, OperationId, Slot};
 use std::collections::BTreeMap;
 use std::thread::{self, JoinHandle};
 use tokio::sync::{mpsc, oneshot};
@@ -30,22 +30,13 @@ pub enum ExecutionCommand {
     /// Get a snapshot of the current state for bootstrap
     GetBootstrapState(tokio::sync::oneshot::Sender<BootstrapExecutionState>),
 
-    /// Get events by slot range
-    GetSCOutputEventBySlotRange {
-        start: Slot,
-        end: Slot,
-        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
-    },
-
-    /// Get events by caller
-    GetSCOutputEventByCaller {
-        caller_address: Address,
-        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
-    },
-
-    /// get events by smart contract
-    GetSCOutputEventBySCAddress {
-        sc_address: Address,
+    /// Get execution events with filters
+    GetSCOutputEvents {
+        start_slot: Option<Slot>,
+        end_slot: Option<Slot>,
+        emitter_address: Option<Address>,
+        original_caller_address: Option<Address>,
+        origin_operation_id: Option<OperationId>,
         response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
     },
 
@@ -63,6 +54,8 @@ pub enum ExecutionCommand {
         /// which will simulate the sender of the operation.
         address: Option<Address>,
     },
+
+    /// Get SCE ledger subset for a list of addresses
     GetSCELedgerForAddresses {
         response_tx: oneshot::Sender<Map<Address, SCELedgerInfo>>,
         addresses: Vec<Address>,
@@ -167,38 +160,25 @@ impl ExecutionWorker {
                             debug!("execution: could not send get_bootstrap_state answer");
                         }
                     }
-                    Some(ExecutionRequest::GetSCOutputEventByCaller {
-                        caller_address,
+                    Some(ExecutionRequest::GetSCOutputEvents {
+                        start_slot,
+                        end_slot,
+                        emitter_address,
+                        original_caller_address,
+                        origin_operation_id,
                         response_tx,
                     }) => {
                         if response_tx
-                            .send(vm.get_sc_output_event_by_caller_address(caller_address))
+                            .send(vm.get_sc_output_events(
+                                start_slot,
+                                end_slot,
+                                emitter_address,
+                                original_caller_address,
+                                origin_operation_id,
+                            ))
                             .is_err()
                         {
                             debug!("execution: could not send get_sc_output_event_by_caller_address answer");
-                        }
-                    }
-                    Some(ExecutionRequest::GetSCOutputEventBySCAddress {
-                        sc_address,
-                        response_tx,
-                    }) => {
-                        if response_tx
-                            .send(vm.get_sc_output_event_by_sc_address(sc_address))
-                            .is_err()
-                        {
-                            debug!("execution: could not send get_sc_output_event_by_sc_address answer");
-                        }
-                    }
-                    Some(ExecutionRequest::GetSCOutputEventBySlotRange {
-                        start,
-                        end,
-                        response_tx,
-                    }) => {
-                        if response_tx
-                            .send(vm.get_sc_output_event_by_slot_range(start, end).unwrap()) // only if get_next_slot fails
-                            .is_err()
-                        {
-                            debug!("execution: could not send get_sc_output_event_by_slot_range answer");
                         }
                     }
                     Some(ExecutionRequest::Shutdown) => return,
@@ -339,29 +319,23 @@ impl ExecutionWorker {
                     address,
                 });
             }
-            ExecutionCommand::GetSCOutputEventBySlotRange {
-                start,
-                end,
+
+            ExecutionCommand::GetSCOutputEvents {
+                start_slot,
+                end_slot,
+                emitter_address,
+                original_caller_address,
+                origin_operation_id,
                 response_tx,
-            } => self.push_request(ExecutionRequest::GetSCOutputEventBySlotRange {
-                start,
-                end,
-                response_tx,
-            }),
-            ExecutionCommand::GetSCOutputEventByCaller {
-                caller_address,
-                response_tx,
-            } => self.push_request(ExecutionRequest::GetSCOutputEventByCaller {
-                caller_address,
-                response_tx,
-            }),
-            ExecutionCommand::GetSCOutputEventBySCAddress {
-                sc_address,
-                response_tx,
-            } => self.push_request(ExecutionRequest::GetSCOutputEventBySCAddress {
-                sc_address,
+            } => self.push_request(ExecutionRequest::GetSCOutputEvents {
+                start_slot,
+                end_slot,
+                emitter_address,
+                original_caller_address,
+                origin_operation_id,
                 response_tx,
             }),
+
             ExecutionCommand::GetSCELedgerForAddresses {
                 response_tx,
                 addresses,

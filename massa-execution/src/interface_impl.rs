@@ -2,9 +2,8 @@
 ///
 use crate::types::ExecutionContext;
 use anyhow::{bail, Result};
-use massa_hash::hash::Hash;
 use massa_models::{
-    output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId},
+    output_event::{EventExecutionContext, SCOutputEvent},
     timeslots::get_block_slot_timestamp,
     AMOUNT_ZERO,
 };
@@ -393,22 +392,17 @@ impl Interface for InterfaceImpl {
     /// generate an execution event and stores it
     fn generate_event(&self, data: String) -> Result<()> {
         let mut execution_context = context_guard!(self);
-
-        let mut to_hash: Vec<u8> = execution_context.slot.to_bytes_key().to_vec();
-        to_hash.append(&mut execution_context.created_event_index.to_be_bytes().to_vec());
-        to_hash.push(!execution_context.read_only as u8);
-
         let context = EventExecutionContext {
             slot: execution_context.slot,
             block: execution_context.opt_block_id,
             call_stack: execution_context.call_stack.clone(),
             read_only: execution_context.read_only,
             index_in_slot: execution_context.created_event_index,
+            origin_operation_id: execution_context.origin_operation_id.clone(),
         };
-        let id = SCOutputEventId(Hash::compute_from(&to_hash));
-        let event = SCOutputEvent { id, context, data };
+        let event = SCOutputEvent { context, data };
+        execution_context.events.push(event);
         execution_context.created_event_index += 1;
-        execution_context.events.insert(id, event);
         Ok(())
     }
 
