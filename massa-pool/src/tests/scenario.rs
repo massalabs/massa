@@ -6,6 +6,7 @@ use crate::tests::tools::create_executesc;
 use crate::tests::tools::{self, get_transaction_with_addresses, pool_test};
 use crate::PoolSettings;
 use massa_models::prehash::{Map, Set};
+use massa_models::thread_count;
 use massa_models::Address;
 use massa_models::Operation;
 use massa_models::OperationId;
@@ -17,16 +18,12 @@ use serial_test::serial;
 use std::collections::HashSet;
 use std::time::Duration;
 use tokio::time::sleep;
-use massa_models::thread_count;
 
 #[tokio::test]
 #[serial]
 async fn test_pool() {
-    let (cfg, operation_validity_periods, max_pool_size_per_thread): &(
-        PoolSettings,
-        u64,
-        u64,
-    ) = &POOL_SETTINGS;
+    let (cfg, operation_validity_periods, max_pool_size_per_thread): &(PoolSettings, u64, u64) =
+        &POOL_SETTINGS;
 
     pool_test(
         cfg,
@@ -186,11 +183,8 @@ async fn test_pool() {
 #[tokio::test]
 #[serial]
 async fn test_pool_with_execute_sc() {
-    let (cfg, operation_validity_periods, max_pool_size_per_thread): &(
-        PoolSettings,
-        u64,
-        u64,
-    ) = &POOL_SETTINGS;
+    let (cfg, operation_validity_periods, max_pool_size_per_thread): &(PoolSettings, u64, u64) =
+        &POOL_SETTINGS;
 
     pool_test(
         cfg,
@@ -340,8 +334,7 @@ async fn test_pool_with_execute_sc() {
 #[tokio::test]
 #[serial]
 async fn test_pool_with_protocol_events() {
-    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) =
-        &POOL_SETTINGS;
+    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) = &POOL_SETTINGS;
 
     pool_test(
         cfg,
@@ -401,8 +394,7 @@ async fn test_pool_with_protocol_events() {
 #[tokio::test]
 #[serial]
 async fn test_pool_propagate_newly_added_endorsements() {
-    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) =
-        &POOL_SETTINGS;
+    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) = &POOL_SETTINGS;
 
     pool_test(
         cfg,
@@ -466,8 +458,7 @@ async fn test_pool_propagate_newly_added_endorsements() {
 #[tokio::test]
 #[serial]
 async fn test_pool_add_old_endorsements() {
-    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) =
-        &POOL_SETTINGS;
+    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) = &POOL_SETTINGS;
 
     pool_test(
         cfg,
@@ -530,8 +521,7 @@ async fn test_get_involved_operations() {
     }
     assert_eq!(1, address_b.get_thread());
 
-    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) =
-        &POOL_SETTINGS;
+    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) = &POOL_SETTINGS;
 
     pool_test(
         cfg,
@@ -684,8 +674,7 @@ async fn test_new_final_ops() {
     }
     assert_eq!(0, address_b.get_thread());
 
-    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) =
-        &POOL_SETTINGS;
+    let (cfg, operation_validity_periods, _): &(PoolSettings, u64, u64) = &POOL_SETTINGS;
 
     pool_test(
         cfg,

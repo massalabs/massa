@@ -10,7 +10,6 @@ use crate::{
 };
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::{clique::Clique, thread_count};
 use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::{
@@ -18,6 +17,7 @@ use massa_models::{
     api::EndorsementInfo,
     rolls::{RollCounts, RollUpdate, RollUpdates},
 };
+use massa_models::{clique::Clique, thread_count};
 use massa_models::{
     ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
     Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
@@ -2309,8 +2309,8 @@ impl BlockGraph {
         let mut dependencies: Set<BlockId> = Set::<BlockId>::default();
         for operation in block_to_check.operations.iter() {
             // get thread
-            let op_thread = Address::from_public_key(&operation.content.sender_public_key)
-                .get_thread();
+            let op_thread =
+                Address::from_public_key(&operation.content.sender_public_key).get_thread();
 
             let op_start_validity_period = *operation
                 .get_validity_range(self.cfg.operation_validity_periods)
@@ -2417,10 +2417,8 @@ impl BlockGraph {
         query_addrs: &Set<Address>,
     ) -> Result<LedgerSubset> {
         // check that all addresses belong to threads with parents later or equal to the latest_final_block of that thread
-        let involved_threads: HashSet<u8> = query_addrs
-            .iter()
-            .map(|addr| addr.get_thread())
-            .collect();
+        let involved_threads: HashSet<u8> =
+            query_addrs.iter().map(|addr| addr.get_thread()).collect();
         for thread in involved_threads.into_iter() {
             match self.block_statuses.get(&parents[thread as usize]) {
                 Some(BlockStatus::Active(b)) => {
@@ -2443,8 +2441,7 @@ impl BlockGraph {
         }
 
         // compute backtrack ending slots for each thread
-        let mut stop_periods =
-            vec![vec![0u64; thread_count() as usize]; thread_count() as usize];
+        let mut stop_periods = vec![vec![0u64; thread_count() as usize]; thread_count() as usize];
         for target_thread in 0u8..thread_count() {
             let (target_last_final_id, target_last_final_period) =
                 self.latest_final_blocks_periods[target_thread as usize];
@@ -2501,9 +2498,7 @@ impl BlockGraph {
                 explore_parents = true;
 
                 for (addr, change) in scan_b.block_ledger_changes.0.iter() {
-                    if query_addrs.contains(addr)
-                        && addr.get_thread() == thread
-                    {
+                    if query_addrs.contains(addr) && addr.get_thread() == thread {
                         accumulated_changes.apply(addr, change)?;
                     }
                 }

@@ -1,4 +1,8 @@
-use std::{sync::{Mutex, Arc, RwLock}, borrow::Cow, rc::Rc};
+use std::{
+    borrow::Cow,
+    rc::Rc,
+    sync::{Arc, Mutex, RwLock},
+};
 
 use massa_hash::HASH_SIZE_BYTES;
 
@@ -16,9 +20,8 @@ pub const SLOT_KEY_SIZE: usize = 9;
 
 const THREAD_COUNT: u8 = 32;
 
-
 // Do not touch this code
-lazy_static!{
+lazy_static! {
     static ref MUT_IN_TESTS: RwLock<u8> = RwLock::new(THREAD_COUNT);
 }
 pub fn thread_count() -> u8 {

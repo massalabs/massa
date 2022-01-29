@@ -1,7 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{PoolError, PoolSettings};
-use massa_models::{prehash::{Map, Set}, thread_count};
+use massa_models::{
+    prehash::{Map, Set},
+    thread_count,
+};
 use massa_models::{
     Address, Operation, OperationId, OperationSearchResult, OperationSearchResultStatus,
     OperationType, SerializeCompact, Slot,
@@ -46,8 +49,7 @@ impl WrappedOperation {
     fn new(op: Operation) -> Result<Self, PoolError> {
         Ok(WrappedOperation {
             byte_count: op.to_bytes_compact()?.len() as u64,
-            thread: Address::from_public_key(&op.content.sender_public_key)
-                .get_thread(),
+            thread: Address::from_public_key(&op.content.sender_public_key).get_thread(),
             op,
         })
     }
@@ -363,7 +365,7 @@ impl OperationPool {
 pub mod tests {
     use super::*;
     use massa_hash::hash::Hash;
-    use massa_models::{Amount, Operation, OperationContent, OperationType, thread_count};
+    use massa_models::{thread_count, Amount, Operation, OperationContent, OperationType};
     use massa_signature::{derive_public_key, generate_random_private_key, sign};
     use serial_test::serial;
     use std::str::FromStr;
@@ -457,8 +459,7 @@ pub mod tests {
             u64,
         ) = &POOL_SETTINGS;
 
-        let mut pool =
-            OperationPool::new(pool_settings, *operation_validity_periods);
+        let mut pool = OperationPool::new(pool_settings, *operation_validity_periods);
 
         // generate (id, transactions, range of validity) by threads
         let mut thread_tx_lists = vec![Vec::new(); massa_models::thread_count() as usize];

@@ -1,7 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{PoolError, PoolSettings};
-use massa_models::{prehash::{Map, Set}, thread_count};
+use massa_models::{
+    prehash::{Map, Set},
+    thread_count,
+};
 use massa_models::{Address, BlockId, Endorsement, EndorsementContent, EndorsementId, Slot};
 
 pub struct EndorsementPool {

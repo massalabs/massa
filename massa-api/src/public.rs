@@ -367,12 +367,9 @@ impl Endpoints for API<Public> {
 
             // next draws info
             let now = MassaTime::compensated_now(compensation_millis)?;
-            let current_slot = get_latest_block_slot_at_timestamp(
-                cfg.t0,
-                cfg.genesis_timestamp,
-                now,
-            )?
-            .unwrap_or_else(|| Slot::new(0, 0));
+            let current_slot =
+                get_latest_block_slot_at_timestamp(cfg.t0, cfg.genesis_timestamp, now)?
+                    .unwrap_or_else(|| Slot::new(0, 0));
             let next_draws = cmd_sender.get_selection_draws(
                 current_slot,
                 Slot::new(

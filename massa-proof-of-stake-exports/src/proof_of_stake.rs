@@ -2,6 +2,7 @@ use std::collections::{hash_map, BTreeMap, HashMap, VecDeque};
 
 use bitvec::{order::Lsb0, prelude::BitVec};
 use massa_hash::hash::Hash;
+use massa_models::thread_count;
 use massa_models::{
     active_block::ActiveBlock,
     prehash::{Map, Set},
@@ -13,7 +14,6 @@ use num::rational::Ratio;
 use rand::{distributions::Uniform, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
 use tracing::log::warn;
-use massa_models::thread_count;
 
 use crate::{
     error::POSResult, error::ProofOfStakeError, export_pos::ExportProofOfStake,

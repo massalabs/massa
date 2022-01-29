@@ -7,7 +7,7 @@ use super::{
     with_serialization_context,
 };
 use crate::error::ModelsError;
-use crate::{SLOT_KEY_SIZE, thread_count};
+use crate::{thread_count, SLOT_KEY_SIZE};
 use massa_hash::hash::Hash;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, convert::TryInto};

@@ -53,8 +53,9 @@ pub mod rolls;
 
 mod constants;
 pub use constants::{
-    ADDRESS_SIZE_BYTES, BLOCK_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES, SLOT_KEY_SIZE, AMOUNT_DECIMAL_FACTOR, thread_count, ENDORSEMENT_ID_SIZE_BYTES
+    thread_count, ADDRESS_SIZE_BYTES, AMOUNT_DECIMAL_FACTOR, BLOCK_ID_SIZE_BYTES,
+    ENDORSEMENT_ID_SIZE_BYTES, OPERATION_ID_SIZE_BYTES, SLOT_KEY_SIZE,
 };
 
 #[cfg(feature = "test-utils")]
-pub use constants::{set_thread_count, reset_config};
+pub use constants::{reset_config, set_thread_count};

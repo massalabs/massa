@@ -5,10 +5,10 @@ use crate::vm::VM;
 use crate::BootstrapExecutionState;
 use crate::{config::ExecutionConfigs, types::ExecutionStep};
 use massa_models::api::SCELedgerInfo;
-use massa_models::{execution::ExecuteReadOnlyResponse, thread_count};
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Map;
 use massa_models::timeslots::{get_block_slot_timestamp, get_current_latest_block_slot};
+use massa_models::{execution::ExecuteReadOnlyResponse, thread_count};
 use massa_models::{Address, Amount, Block, BlockId, Slot};
 use std::collections::BTreeMap;
 use std::thread::{self, JoinHandle};
@@ -233,9 +233,7 @@ impl ExecutionWorker {
                     self.cfg.genesis_timestamp,
                     self.cfg.clock_compensation,
                 )?
-                .map_or(Ok(Slot::new(0, 0)), |v| {
-                    v.get_next_slot()
-                })?,
+                .map_or(Ok(Slot::new(0, 0)), |v| v.get_next_slot())?,
             )?
             .estimate_instant(self.cfg.clock_compensation)?,
         ))

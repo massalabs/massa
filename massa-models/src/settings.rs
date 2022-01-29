@@ -2,7 +2,7 @@
 
 use std::fmt::Display;
 
-use crate::{Amount, thread_count};
+use crate::{thread_count, Amount};
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 

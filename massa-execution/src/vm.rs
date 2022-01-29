@@ -5,7 +5,7 @@ use crate::types::{ExecutionContext, ExecutionData, ExecutionStep, StepHistory, 
 use crate::{config::ExecutionConfigs, ExecutionError};
 use massa_models::api::SCELedgerInfo;
 use massa_models::prehash::Map;
-use massa_models::{AMOUNT_ZERO, thread_count};
+use massa_models::{thread_count, AMOUNT_ZERO};
 use massa_sc_runtime::Interface;
 
 use massa_models::timeslots::slot_count_in_range;

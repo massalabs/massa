@@ -10,7 +10,7 @@ use tracing::{debug, error, info};
 use crate::consensus_worker::ConsensusWorker;
 use massa_consensus_exports::settings::ConsensusConfig;
 use massa_graph::{BlockGraph, BootstrapableGraph};
-use massa_models::{prehash::Map, Address, thread_count};
+use massa_models::{prehash::Map, thread_count, Address};
 use massa_proof_of_stake_exports::{ExportProofOfStake, ProofOfStake};
 use massa_signature::{derive_public_key, PrivateKey, PublicKey};
 use std::path::Path;
@@ -63,9 +63,11 @@ pub async fn start_consensus_controller(
         ));
     }
     if cfg.t0.checked_rem_u64(thread_count() as u64)? != 0.into() {
-        return Err(ConsensusError::ConfigError(
-            format!("thread_count should divide t0 (thread_count {}, t0 {}", thread_count(), cfg.t0),
-        ));
+        return Err(ConsensusError::ConfigError(format!(
+            "thread_count should divide t0 (thread_count {}, t0 {}",
+            thread_count(),
+            cfg.t0
+        )));
     }
     let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path).await?;
 

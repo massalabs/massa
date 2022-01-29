@@ -1,13 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::prehash::PreHashed;
-use crate::{BLOCK_ID_SIZE_BYTES, ENDORSEMENT_ID_SIZE_BYTES};
 use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
     with_serialization_context, BlockId, ModelsError, Slot,
 };
+use crate::{BLOCK_ID_SIZE_BYTES, ENDORSEMENT_ID_SIZE_BYTES};
 use massa_hash::hash::Hash;
 use massa_signature::{
     sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,

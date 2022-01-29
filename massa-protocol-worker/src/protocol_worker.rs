@@ -1132,9 +1132,7 @@ impl ProtocolWorker {
 
             // check address and thread
             let addr = Address::from_public_key(&op.content.sender_public_key);
-            if addr.get_thread()
-                != block.header.content.slot.thread
-            {
+            if addr.get_thread() != block.header.content.slot.thread {
                 massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_thread",
                     { "node": source_node_id,"block_id":block_id, "block": block, "op": op});
                 return Ok(None);

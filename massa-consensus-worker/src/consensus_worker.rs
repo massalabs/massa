@@ -9,12 +9,12 @@ use massa_consensus_exports::{
 use massa_execution::ExecutionEventReceiver;
 use massa_graph::{BlockGraph, BlockGraphExport};
 use massa_hash::hash::Hash;
-use massa_models::{address::AddressState, thread_count};
 use massa_models::api::{LedgerInfo, RollsInfo};
 use massa_models::ledger_models::LedgerData;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use massa_models::{address::AddressCycleProductionStats, stats::ConsensusStats, OperationId};
+use massa_models::{address::AddressState, thread_count};
 use massa_models::{
     Address, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement, EndorsementContent,
     EndorsementId, Operation, OperationSearchResult, OperationType, SerializeCompact, Slot,
@@ -84,14 +84,8 @@ impl ConsensusWorker {
         staking_keys: Map<Address, (PublicKey, PrivateKey)>,
     ) -> Result<ConsensusWorker> {
         let now = MassaTime::compensated_now(clock_compensation)?;
-        let previous_slot = get_latest_block_slot_at_timestamp(
-            cfg.t0,
-            cfg.genesis_timestamp,
-            now,
-        )?;
-        let next_slot = previous_slot.map_or(Ok(Slot::new(0u64, 0u8)), |s| {
-            s.get_next_slot()
-        })?;
+        let previous_slot = get_latest_block_slot_at_timestamp(cfg.t0, cfg.genesis_timestamp, now)?;
+        let next_slot = previous_slot.map_or(Ok(Slot::new(0u64, 0u8)), |s| s.get_next_slot())?;
         let latest_final_periods: Vec<u64> = block_db
             .get_latest_final_blocks_periods()
             .iter()
@@ -125,11 +119,7 @@ impl ConsensusWorker {
         let mut final_block_stats = VecDeque::new();
         for thread in 0..thread_count() {
             final_block_stats.push_back((
-                get_block_slot_timestamp(
-                    cfg.t0,
-                    cfg.genesis_timestamp,
-                    Slot::new(0, thread),
-                )?,
+                get_block_slot_timestamp(cfg.t0, cfg.genesis_timestamp, Slot::new(0, thread))?,
                 0,
                 genesis_addr,
             ))
@@ -200,12 +190,8 @@ impl ConsensusWorker {
 
         // set slot timer
         let next_slot_timer = sleep_until(
-            get_block_slot_timestamp(
-                self.cfg.t0,
-                self.cfg.genesis_timestamp,
-                self.next_slot,
-            )?
-            .estimate_instant(self.clock_compensation)?,
+            get_block_slot_timestamp(self.cfg.t0, self.cfg.genesis_timestamp, self.next_slot)?
+                .estimate_instant(self.clock_compensation)?,
         );
 
         tokio::pin!(next_slot_timer);
@@ -282,21 +268,14 @@ impl ConsensusWorker {
 
     async fn slot_tick(&mut self, next_slot_timer: &mut std::pin::Pin<&mut Sleep>) -> Result<()> {
         let now = MassaTime::compensated_now(self.clock_compensation)?;
-        let observed_slot = get_latest_block_slot_at_timestamp(
-            self.cfg.t0,
-            self.cfg.genesis_timestamp,
-            now,
-        )?;
+        let observed_slot =
+            get_latest_block_slot_at_timestamp(self.cfg.t0, self.cfg.genesis_timestamp, now)?;
 
         if observed_slot < Some(self.next_slot) {
             // reset timer for next slot
             next_slot_timer.set(sleep_until(
-                get_block_slot_timestamp(
-                    self.cfg.t0,
-                    self.cfg.genesis_timestamp,
-                    self.next_slot,
-                )?
-                .estimate_instant(self.clock_compensation)?,
+                get_block_slot_timestamp(self.cfg.t0, self.cfg.genesis_timestamp, self.next_slot)?
+                    .estimate_instant(self.clock_compensation)?,
             ));
             return Ok(());
         }
@@ -400,12 +379,8 @@ impl ConsensusWorker {
 
         // reset timer for next slot
         next_slot_timer.set(sleep_until(
-            get_block_slot_timestamp(
-                self.cfg.t0,
-                self.cfg.genesis_timestamp,
-                self.next_slot,
-            )?
-            .estimate_instant(self.clock_compensation)?,
+            get_block_slot_timestamp(self.cfg.t0, self.cfg.genesis_timestamp, self.next_slot)?
+                .estimate_instant(self.clock_compensation)?,
         ));
 
         // prune stats

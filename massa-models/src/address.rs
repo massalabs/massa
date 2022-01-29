@@ -2,8 +2,8 @@
 
 use crate::api::{LedgerInfo, RollsInfo};
 use crate::prehash::{PreHashed, Set};
-use crate::{ADDRESS_SIZE_BYTES, thread_count};
 use crate::ModelsError;
+use crate::{thread_count, ADDRESS_SIZE_BYTES};
 use massa_hash::hash::Hash;
 use massa_signature::PublicKey;
 use serde::{Deserialize, Serialize};

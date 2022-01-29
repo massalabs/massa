@@ -5,7 +5,7 @@
 use massa_time::MassaTime;
 use std::convert::TryInto;
 
-use crate::{ModelsError, Slot, thread_count};
+use crate::{thread_count, ModelsError, Slot};
 
 /// Counts the number of slots in a slot range [a, b)
 ///
@@ -158,7 +158,7 @@ pub fn time_range_to_slot_range(
 
 #[cfg(test)]
 mod tests {
-    use crate::{set_thread_count, reset_config};
+    use crate::{reset_config, set_thread_count};
 
     use super::*;
     use serial_test::serial;
@@ -196,44 +196,28 @@ mod tests {
         */
 
         // time [111, 115) => empty slot range
-        let (out_start, out_end) = time_range_to_slot_range(
-            t0,
-            genesis_timestamp,
-            Some(111.into()),
-            Some(115.into()),
-        )
-        .unwrap();
+        let (out_start, out_end) =
+            time_range_to_slot_range(t0, genesis_timestamp, Some(111.into()), Some(115.into()))
+                .unwrap();
         assert_eq!(out_start, out_end);
 
         // time [10, 100) => empty slot range
-        let (out_start, out_end) = time_range_to_slot_range(
-            t0,
-            genesis_timestamp,
-            Some(10.into()),
-            Some(100.into()),
-        )
-        .unwrap();
+        let (out_start, out_end) =
+            time_range_to_slot_range(t0, genesis_timestamp, Some(10.into()), Some(100.into()))
+                .unwrap();
         assert_eq!(out_start, out_end);
 
         // time [115, 145) => slots [(0,2), (1,2))
-        let (out_start, out_end) = time_range_to_slot_range(
-            t0,
-            genesis_timestamp,
-            Some(115.into()),
-            Some(145.into()),
-        )
-        .unwrap();
+        let (out_start, out_end) =
+            time_range_to_slot_range(t0, genesis_timestamp, Some(115.into()), Some(145.into()))
+                .unwrap();
         assert_eq!(out_start, Some(Slot::new(0, 2)));
         assert_eq!(out_end, Some(Slot::new(1, 2)));
 
         // time [110, 160) => slots [(0,1), (2,0))
-        let (out_start, out_end) = time_range_to_slot_range(
-            t0,
-            genesis_timestamp,
-            Some(110.into()),
-            Some(160.into()),
-        )
-        .unwrap();
+        let (out_start, out_end) =
+            time_range_to_slot_range(t0, genesis_timestamp, Some(110.into()), Some(160.into()))
+                .unwrap();
         assert_eq!(out_start, Some(Slot::new(0, 1)));
         assert_eq!(out_end, Some(Slot::new(2, 0)));
     }

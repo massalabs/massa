@@ -1,12 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::prehash::{Map, PreHashed, Set};
-use crate::{BLOCK_ID_SIZE_BYTES, SLOT_KEY_SIZE};
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
     DeserializeMinBEInt, DeserializeVarInt, Endorsement, EndorsementId, ModelsError, Operation,
     OperationId, SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot,
 };
+use crate::{BLOCK_ID_SIZE_BYTES, SLOT_KEY_SIZE};
 use massa_hash::hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_signature::{

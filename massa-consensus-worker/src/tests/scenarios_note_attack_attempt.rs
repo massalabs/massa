@@ -11,7 +11,7 @@ use massa_consensus_exports::tools::*;
 
 use massa_consensus_exports::settings::ConsensusChannels;
 use massa_hash::hash::Hash;
-use massa_models::{BlockId, Slot, thread_count};
+use massa_models::{thread_count, BlockId, Slot};
 use massa_signature::{generate_random_private_key, PrivateKey};
 use serial_test::serial;
 use std::collections::HashMap;

@@ -187,13 +187,9 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
             validate_propagate_block(&mut protocol_controller, hash1, 2500).await;
 
             // this block is slightly in the future: will wait for it
-            let slot = timeslots::get_current_latest_block_slot(
-                cfg.t0,
-                cfg.genesis_timestamp,
-                0,
-            )
-            .unwrap()
-            .unwrap();
+            let slot = timeslots::get_current_latest_block_slot(cfg.t0, cfg.genesis_timestamp, 0)
+                .unwrap()
+                .unwrap();
             let (hash2, block2, _) = create_block(
                 &cfg,
                 Slot::new(slot.period + 2, slot.thread),
@@ -205,13 +201,9 @@ async fn test_unsorted_block_with_to_much_in_the_future() {
             validate_propagate_block(&mut protocol_controller, hash2, 2500).await;
 
             // this block is too much in the future: do not process
-            let slot = timeslots::get_current_latest_block_slot(
-                cfg.t0,
-                cfg.genesis_timestamp,
-                0,
-            )
-            .unwrap()
-            .unwrap();
+            let slot = timeslots::get_current_latest_block_slot(cfg.t0, cfg.genesis_timestamp, 0)
+                .unwrap()
+                .unwrap();
             let (hash3, block3, _) = create_block(
                 &cfg,
                 Slot::new(slot.period + 1000, slot.thread),
@@ -275,13 +267,9 @@ async fn test_too_many_blocks_in_the_future() {
             // generate 5 blocks but there is only space for 2 in the waiting line
             let mut expected_block_hashes: HashSet<BlockId> = HashSet::new();
             let mut max_period = 0;
-            let slot = timeslots::get_current_latest_block_slot(
-                cfg.t0,
-                cfg.genesis_timestamp,
-                0,
-            )
-            .unwrap()
-            .unwrap();
+            let slot = timeslots::get_current_latest_block_slot(cfg.t0, cfg.genesis_timestamp, 0)
+                .unwrap()
+                .unwrap();
             for period in 0..5 {
                 max_period = slot.period + 2 + period;
                 let (hash, block, _) = create_block(
@@ -311,13 +299,9 @@ async fn test_too_many_blocks_in_the_future() {
                 );
             }
             // wait until we reach the slot of the last block
-            while timeslots::get_current_latest_block_slot(
-                cfg.t0,
-                cfg.genesis_timestamp,
-                0,
-            )
-            .unwrap()
-            .unwrap()
+            while timeslots::get_current_latest_block_slot(cfg.t0, cfg.genesis_timestamp, 0)
+                .unwrap()
+                .unwrap()
                 < Slot::new(max_period + 1, 0)
             {}
             // ensure that the graph contains only what we expect

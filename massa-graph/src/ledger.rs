@@ -2,8 +2,8 @@
 use massa_models::ledger_models::{LedgerChange, LedgerChanges, LedgerData};
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::{
-    array_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, Operation,
-    SerializeCompact, SerializeVarInt, ADDRESS_SIZE_BYTES, thread_count
+    array_from_slice, thread_count, Address, Amount, DeserializeCompact, DeserializeVarInt,
+    Operation, SerializeCompact, SerializeVarInt, ADDRESS_SIZE_BYTES,
 };
 use serde::{Deserialize, Serialize};
 use sled::{Transactional, Tree};

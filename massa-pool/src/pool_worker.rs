@@ -98,10 +98,7 @@ impl PoolWorker {
             protocol_pool_event_receiver,
             controller_command_rx,
             controller_manager_rx,
-            operation_pool: OperationPool::new(
-                pool_settings,
-                operation_validity_periods,
-            ),
+            operation_pool: OperationPool::new(pool_settings, operation_validity_periods),
             endorsement_pool: EndorsementPool::new(pool_settings),
         })
     }

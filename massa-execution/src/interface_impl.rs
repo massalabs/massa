@@ -406,8 +406,7 @@ impl Interface for InterfaceImpl {
     /// Returns the current time (millisecond unix timestamp)
     fn get_time(&self) -> Result<u64> {
         let slot = context_guard!(self).slot;
-        let ts =
-            get_block_slot_timestamp(self.t0, self.genesis_timestamp, slot)?;
+        let ts = get_block_slot_timestamp(self.t0, self.genesis_timestamp, slot)?;
         Ok(ts.to_millis())
     }
 
