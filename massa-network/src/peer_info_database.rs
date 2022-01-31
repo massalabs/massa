@@ -806,20 +806,24 @@ impl PeerInfoDatabase {
     ///
     /// # Argument
     /// * ip : ip address of the considered peer.
-    pub fn try_new_in_connection(&mut self, ip: &IpAddr) -> Result<bool, NetworkError> {
+    pub fn try_new_in_connection(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         // try to create a new input connection, return false if no slots
         if !ip.is_global() || self.network_settings.max_in_connections_per_ip == 0 {
-            return Ok(false);
+            return Err(NetworkError::PeerConnectionError(
+                NetworkConnectionErrorType::MaxPeersConnectionReached(*ip),
+            ));
         }
         if let Some(our_ip) = self.network_settings.routable_ip {
             // avoid our own IP
             if *ip == our_ip {
                 warn!("incoming connection from our own IP");
-                return Ok(false);
+                return Err(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::SelfConnection,
+                ));
             }
         }
 
-        match self.peers.entry(*ip) {
+        let res = match self.peers.entry(*ip) {
             hash_map::Entry::Occupied(mut occ) => {
                 let peer = occ.get_mut();
                 if (peer.bootstrap
@@ -829,23 +833,25 @@ impl PeerInfoDatabase {
                         && self.active_in_nonbootstrap_connections
                             >= self.network_settings.max_in_nonbootstrap_connections)
                 {
-                    return Ok(false);
-                }
-                if peer.banned {
+                    Err(NetworkConnectionErrorType::MaxPeersConnectionReached(*ip))
+                } else if peer.banned {
                     massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
                     peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
                     self.request_dump()?;
-                    return Ok(false);
-                }
-                if peer.active_in_connections >= self.network_settings.max_in_connections_per_ip {
+                    Err(NetworkConnectionErrorType::BannedPeerTryingToConnect(*ip))
+                } else if peer.active_in_connections
+                    >= self.network_settings.max_in_connections_per_ip
+                {
                     self.request_dump()?;
-                    return Ok(false);
-                }
-                peer.active_in_connections += 1;
-                if peer.bootstrap {
-                    self.active_bootstrap_connections += 1;
+                    Err(NetworkConnectionErrorType::MaxPeersConnectionReached(*ip))
                 } else {
-                    self.active_in_nonbootstrap_connections += 1;
+                    peer.active_in_connections += 1;
+                    if peer.bootstrap {
+                        self.active_bootstrap_connections += 1;
+                    } else {
+                        self.active_in_nonbootstrap_connections += 1;
+                    }
+                    Ok(())
                 }
             }
             hash_map::Entry::Vacant(vac) => {
@@ -863,19 +869,25 @@ impl PeerInfoDatabase {
                 if self.active_in_nonbootstrap_connections
                     >= self.network_settings.max_in_nonbootstrap_connections
                 {
-                    return Ok(false);
-                }
-                if peer.active_in_connections >= self.network_settings.max_in_connections_per_ip {
+                    Err(NetworkConnectionErrorType::MaxPeersConnectionReached(*ip))
+                } else if peer.active_in_connections
+                    >= self.network_settings.max_in_connections_per_ip
+                {
                     self.request_dump()?;
-                    return Ok(false);
+                    Err(NetworkConnectionErrorType::MaxPeersConnectionReached(*ip))
+                } else {
+                    peer.active_in_connections += 1;
+                    vac.insert(peer);
+                    self.active_in_nonbootstrap_connections += 1;
+                    Ok(())
                 }
-                peer.active_in_connections += 1;
-                vac.insert(peer);
-                self.active_in_nonbootstrap_connections += 1;
             }
         };
+        if let Err(res) = res {
+            return Err(NetworkError::PeerConnectionError(res));
+        }
         self.request_dump()?;
-        Ok(true)
+        Ok(())
     }
 }
 
@@ -936,23 +948,15 @@ mod tests {
             panic!("ToManyConnectionAttempt error not return");
         }
 
-        let res = db
-            .try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 0, 11)))
-            .unwrap();
-        assert!(!res, "not global ip not detected.");
-        let res = db
-            .try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)))
-            .unwrap();
-        assert!(!res, "local ip not detected.");
+        db.try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 0, 11)))
+            .expect("not global ip not detected.");
+        db.try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)))
+            .expect("local ip not detected.");
 
-        let res = db
-            .try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
-            .unwrap();
-        assert!(res, "in connection not accepted.");
-        let res = db
-            .try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)))
-            .unwrap();
-        assert!(!res, "banned peer not detected.");
+        db.try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
+            .expect("in connection not accepted.");
+        db.try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)))
+            .expect("banned peer not detected.");
 
         // test with a not connected peer
         let res = db.in_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));

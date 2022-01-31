@@ -221,11 +221,11 @@ impl NetworkCommandSender {
             .send(NetworkCommand::GetPeers(response_tx))
             .await
             .map_err(|_| NetworkError::ChannelError("could not send GetPeers command".into()))?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             NetworkError::ChannelError(
                 "could not send GetAdvertisablePeerListChannelError upstream".into(),
             )
-        })?)
+        })
     }
 
     pub async fn get_network_stats(&self) -> Result<NetworkStats, NetworkError> {
@@ -234,11 +234,11 @@ impl NetworkCommandSender {
             .send(NetworkCommand::GetStats { response_tx })
             .await
             .map_err(|_| NetworkError::ChannelError("could not send GetPeers command".into()))?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             NetworkError::ChannelError(
                 "could not send GetAdvertisablePeerListChannelError upstream".into(),
             )
-        })?)
+        })
     }
 
     /// Send the order to get bootstrap peers.
@@ -250,9 +250,9 @@ impl NetworkCommandSender {
             .map_err(|_| {
                 NetworkError::ChannelError("could not send GetBootstrapPeers command".into())
             })?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             NetworkError::ChannelError("could not send GetBootstrapPeers response upstream".into())
-        })?)
+        })
     }
 
     pub async fn block_not_found(
@@ -306,9 +306,9 @@ impl NetworkCommandSender {
             .map_err(|_| {
                 NetworkError::ChannelError("could not send GetBootstrapPeers command".into())
             })?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             NetworkError::ChannelError("could not send GetBootstrapPeers response upstream".into())
-        })?)
+        })
     }
 }
 

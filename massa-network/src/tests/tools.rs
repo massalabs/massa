@@ -3,8 +3,8 @@
 use super::super::binders::{ReadBinder, WriteBinder};
 use super::mock_establisher::MockEstablisherInterface;
 use super::{mock_establisher, tools};
-use crate::handshake_worker::HandshakeWorker;
 use crate::messages::Message;
+use crate::{handshake_worker::HandshakeWorker, ConnectionId};
 use crate::{start_network_controller, NetworkSettings};
 use crate::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver, NetworkManager, PeerInfo};
 use massa_hash::hash::Hash;
@@ -118,6 +118,7 @@ pub async fn full_connection_to_controller(
     connect_timeout_ms: u64,
     event_timeout_ms: u64,
     rw_timeout_ms: u64,
+    connection_id: ConnectionId,
 ) -> (NodeId, ReadBinder, WriteBinder) {
     // establish connection towards controller
     let (mock_read_half, mock_write_half) = timeout(
@@ -132,16 +133,18 @@ pub async fn full_connection_to_controller(
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
-    let (_, read_binder, write_binder) = HandshakeWorker::new(
+    let res = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
+        connection_id,
     )
-    .run()
     .await
+    .expect("handshake creation failed")
+    .1
     .expect("handshake failed");
 
     // wait for a NetworkEvent::NewConnection event
@@ -161,8 +164,7 @@ pub async fn full_connection_to_controller(
     )
     .await
     .expect("did not receive NewConnection event with expected node id");
-
-    (mock_node_id, read_binder, write_binder)
+    res
 }
 
 /// try to establish a connection to the controller and expect rejection
@@ -173,6 +175,7 @@ pub async fn rejected_connection_to_controller(
     connect_timeout_ms: u64,
     event_timeout_ms: u64,
     rw_timeout_ms: u64,
+    connection_id: ConnectionId,
 ) {
     // establish connection towards controller
     let (mock_read_half, mock_write_half) = timeout(
@@ -187,16 +190,20 @@ pub async fn rejected_connection_to_controller(
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
-    let _handshake_res = HandshakeWorker::new(
+
+    HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
+        connection_id,
     )
-    .run()
-    .await;
+    .await
+    .expect("handshake creation failed")
+    .1
+    .expect("handshake failed");
 
     // wait for NetworkEvent::NewConnection or NetworkEvent::ConnectionClosed events to NOT happen
     if wait_network_event(
@@ -244,6 +251,7 @@ pub async fn full_connection_from_controller(
     connect_timeout_ms: u64,
     event_timeout_ms: u64,
     rw_timeout_ms: u64,
+    connection_id: ConnectionId,
 ) -> (NodeId, ReadBinder, WriteBinder) {
     // wait for the incoming connection attempt, check address and accept
     let (mock_read_half, mock_write_half, ctl_addr, resp_tx) = timeout(
@@ -260,16 +268,18 @@ pub async fn full_connection_from_controller(
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
-    let (_controller_node_id, read_binder, write_binder) = HandshakeWorker::new(
+    let res = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
+        connection_id,
     )
-    .run()
     .await
+    .expect("handshake creation failed")
+    .1
     .expect("handshake failed");
 
     // wait for a NetworkEvent::NewConnection event
@@ -290,7 +300,7 @@ pub async fn full_connection_from_controller(
     .await
     .expect("did not receive expected node connection event");
 
-    (mock_node_id, read_binder, write_binder)
+    res
 }
 
 pub async fn wait_network_event<F, T>(
