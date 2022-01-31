@@ -949,14 +949,14 @@ mod tests {
         }
 
         db.try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(192, 168, 0, 11)))
-            .expect("not global ip not detected.");
+            .expect_err("not global ip not detected.");
         db.try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)))
-            .expect("local ip not detected.");
+            .expect_err("local ip not detected.");
 
         db.try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
             .expect("in connection not accepted.");
         db.try_new_in_connection(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)))
-            .expect("banned peer not detected.");
+            .expect_err("banned peer not detected.");
 
         // test with a not connected peer
         let res = db.in_connection_closed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));

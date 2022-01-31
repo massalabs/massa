@@ -136,7 +136,7 @@ async fn test_multiple_connections_to_controller() {
                 1_000u64,
                 1_000u64,
                 1_000u64,
-                ConnectionId(1),
+                ConnectionId(3),
             )
             .await;
             assert_ne!(

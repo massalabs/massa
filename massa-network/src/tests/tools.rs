@@ -164,7 +164,7 @@ pub async fn full_connection_to_controller(
     )
     .await
     .expect("did not receive NewConnection event with expected node id");
-    res
+    (mock_node_id, res.1, res.2)
 }
 
 /// try to establish a connection to the controller and expect rejection
@@ -191,7 +191,7 @@ pub async fn rejected_connection_to_controller(
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
 
-    HandshakeWorker::spawn(
+    let result = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
         mock_node_id,
@@ -202,8 +202,12 @@ pub async fn rejected_connection_to_controller(
     )
     .await
     .expect("handshake creation failed")
-    .1
-    .expect("handshake failed");
+    .1;
+
+    assert!(
+        result.is_err(),
+        "Handshake Operation was supposed to failed"
+    );
 
     // wait for NetworkEvent::NewConnection or NetworkEvent::ConnectionClosed events to NOT happen
     if wait_network_event(
@@ -300,7 +304,7 @@ pub async fn full_connection_from_controller(
     .await
     .expect("did not receive expected node connection event");
 
-    res
+    (mock_node_id, res.1, res.2)
 }
 
 pub async fn wait_network_event<F, T>(
