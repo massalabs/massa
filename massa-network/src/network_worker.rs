@@ -15,7 +15,7 @@ use crate::{
     handshake_worker::HandshakeWorker,
     messages::Message,
 };
-use futures::{stream::FuturesUnordered, SinkExt, StreamExt};
+use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::composite::PubkeySig;
