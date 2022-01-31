@@ -302,6 +302,7 @@ lazy_static::lazy_static! {
         pos_lock_cycles: POS_LOCK_CYCLES,
         block_reward: *BLOCK_REWARD,
         roll_price: *ROLL_PRICE,
+        max_block_size: MAX_BLOCK_SIZE,
     };
 }
 

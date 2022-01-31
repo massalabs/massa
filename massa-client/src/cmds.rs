@@ -701,6 +701,15 @@ impl Command {
                     }
                 };
                 let data = get_file_as_byte_vec(&path).await?;
+                if !json {
+                    let max_block_size = match client.public.get_status().await {
+                        Ok(node_status) => node_status.config.max_block_size,
+                        Err(e) => bail!("RpcError: {}", e),
+                    };
+                    if data.len() > max_block_size as usize / 2 {
+                        println!("{}: bytecode size exeeded half of the maximum size of a block, operation will certainly be rejected", style("WARNING").yellow());
+                    }
+                }
 
                 send_operation(
                     client,
