@@ -37,4 +37,4 @@ stderrlog = "0.5"
 tempfile = "3.2"
 
 [features]
-test = []
+sandbox = []

@@ -39,4 +39,4 @@ serial_test = "0.5"
 [features]
 # nightly = ["beta"]
 beta = []
-test = ["massa_consensus/test"]
+sandbox = ["massa_consensus/sandbox"]
