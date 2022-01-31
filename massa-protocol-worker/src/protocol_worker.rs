@@ -51,21 +51,24 @@ pub async fn start_protocol_controller(
     debug!("starting protocol controller");
 
     // launch worker
-    let (event_tx, event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
-    let (pool_event_tx, pool_event_rx) = mpsc::channel::<ProtocolPoolEvent>(CHANNEL_SIZE);
-    let (command_tx, command_rx) = mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
-    let (manager_tx, manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
+    let (controller_event_tx, event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
+    let (controller_pool_event_tx, pool_event_rx) =
+        mpsc::channel::<ProtocolPoolEvent>(CHANNEL_SIZE);
+    let (command_tx, controller_command_rx) = mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
+    let (manager_tx, controller_manager_rx) = mpsc::channel::<ProtocolManagementCommand>(1);
     let join_handle = tokio::spawn(async move {
         let res = ProtocolWorker::new(
             protocol_settings,
             operation_validity_periods,
             max_block_gas,
-            network_command_sender,
-            network_event_receiver,
-            event_tx,
-            pool_event_tx,
-            command_rx,
-            manager_rx,
+            ProtocolWorkerChannels {
+                network_command_sender,
+                network_event_receiver,
+                controller_event_tx,
+                controller_pool_event_tx,
+                controller_command_rx,
+                controller_manager_rx,
+            },
         )
         .run_loop()
         .await;
@@ -306,6 +309,15 @@ pub struct ProtocolWorker {
     checked_headers: Map<BlockId, BlockInfo>,
 }
 
+pub struct ProtocolWorkerChannels {
+    pub network_command_sender: NetworkCommandSender,
+    pub network_event_receiver: NetworkEventReceiver,
+    pub controller_event_tx: mpsc::Sender<ProtocolEvent>,
+    pub controller_pool_event_tx: mpsc::Sender<ProtocolPoolEvent>,
+    pub controller_command_rx: mpsc::Receiver<ProtocolCommand>,
+    pub controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
+}
+
 impl ProtocolWorker {
     /// Creates a new protocol worker.
     ///
@@ -322,12 +334,14 @@ impl ProtocolWorker {
         protocol_settings: &'static ProtocolSettings,
         operation_validity_periods: u64,
         max_block_gas: u64,
-        network_command_sender: NetworkCommandSender,
-        network_event_receiver: NetworkEventReceiver,
-        controller_event_tx: mpsc::Sender<ProtocolEvent>,
-        controller_pool_event_tx: mpsc::Sender<ProtocolPoolEvent>,
-        controller_command_rx: mpsc::Receiver<ProtocolCommand>,
-        controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
+        ProtocolWorkerChannels {
+            network_command_sender,
+            network_event_receiver,
+            controller_event_tx,
+            controller_pool_event_tx,
+            controller_command_rx,
+            controller_manager_rx,
+        }: ProtocolWorkerChannels,
     ) -> ProtocolWorker {
         ProtocolWorker {
             protocol_settings,
