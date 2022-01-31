@@ -126,9 +126,9 @@ impl ExecutionCommandSender {
             .map_err(|_| {
                 ExecutionError::ChannelError("could not send GetBootstrapState command".into())
             })?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             ExecutionError::ChannelError("could not send GetBootstrapState upstream".into())
-        })?)
+        })
     }
 
     pub async fn get_sc_output_event_by_slot_range(
@@ -149,11 +149,11 @@ impl ExecutionCommandSender {
                     "could not send GetSCOutputEventBySlotRange command".into(),
                 )
             })?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             ExecutionError::ChannelError(
                 "could not send GetSCOutputEventBySlotRange upstream".into(),
             )
-        })?)
+        })
     }
 
     pub async fn get_sc_output_event_by_sc_address(
@@ -172,11 +172,11 @@ impl ExecutionCommandSender {
                     "could not send GetSCOutputEventBySCAddress command".into(),
                 )
             })?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             ExecutionError::ChannelError(
                 "could not send GetSCOutputEventBySCAddress upstream".into(),
             )
-        })?)
+        })
     }
 
     pub async fn get_sc_output_event_by_caller_address(
@@ -195,11 +195,11 @@ impl ExecutionCommandSender {
                     "could not send GetSCOutputEventBySCAddress command".into(),
                 )
             })?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             ExecutionError::ChannelError(
                 "could not send GetSCOutputEventBySCAddress upstream".into(),
             )
-        })?)
+        })
     }
 
     /// Execute code in read-only mode.
@@ -223,9 +223,9 @@ impl ExecutionCommandSender {
             .map_err(|_| {
                 ExecutionError::ChannelError("could not send ExecuteReadOnlyRequest command".into())
             })?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             ExecutionError::ChannelError("could not send ExecuteReadOnlyResponse upstream".into())
-        })?)
+        })
     }
 
     pub async fn get_sce_ledger_for_addresses(
@@ -244,8 +244,8 @@ impl ExecutionCommandSender {
                     "could not send GetSCELedgerForAddresses command".into(),
                 )
             })?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             ExecutionError::ChannelError("could not send GetSCELedgerForAddresses upstream".into())
-        })?)
+        })
     }
 }
