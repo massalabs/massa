@@ -55,13 +55,13 @@ pub enum ProtocolError {
 
 #[derive(Debug)]
 pub enum HandshakeErrorType {
-    HandshakeIdAlreadyExist(String),
-    HandshakeTimeout,
-    HandshakeInterruption(String),
-    HandshakeWrongMessage,
-    HandshakeKey,
-    HandshakeInvalidSignature,
-    IncompatibleVersion,
+    HandshakeIdAlreadyExistError(String),
+    HandshakeTimeoutError,
+    HandshakeInterruptionError(String),
+    HandshakeWrongMessageError,
+    HandshakeKeyError,
+    HandshakeInvalidSignatureError,
+    IncompatibleVersionError,
 }
 
 #[derive(Debug)]

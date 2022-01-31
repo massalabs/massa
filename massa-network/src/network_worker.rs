@@ -605,7 +605,7 @@ impl NetworkWorker {
         // add its handle to handshake_futures
         if !self.running_handshakes.insert(connection_id) {
             return Err(NetworkError::HandshakeError(
-                HandshakeErrorType::HandshakeIdAlreadyExist(format!("{}", connection_id)),
+                HandshakeErrorType::HandshakeIdAlreadyExistError(format!("{}", connection_id)),
             ));
         }
 

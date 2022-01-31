@@ -92,13 +92,13 @@ impl HandshakeWorker {
         {
             Err(_) => {
                 return Err(NetworkError::HandshakeError(
-                    HandshakeErrorType::HandshakeTimeout,
+                    HandshakeErrorType::HandshakeTimeoutError,
                 ))
             }
             Ok(Err(e)) => return Err(e),
             Ok(Ok((_, None))) => {
                 return Err(NetworkError::HandshakeError(
-                    HandshakeErrorType::HandshakeInterruption("init".into()),
+                    HandshakeErrorType::HandshakeInterruptionError("init".into()),
                 ))
             }
             Ok(Ok((_, Some((_, msg))))) => match msg {
@@ -109,7 +109,7 @@ impl HandshakeWorker {
                 } => (NodeId(pk), rb, version),
                 _ => {
                     return Err(NetworkError::HandshakeError(
-                        HandshakeErrorType::HandshakeWrongMessage,
+                        HandshakeErrorType::HandshakeWrongMessageError,
                     ))
                 }
             },
@@ -118,14 +118,14 @@ impl HandshakeWorker {
         // check if remote node ID is the same as ours
         if other_node_id == self.self_node_id {
             return Err(NetworkError::HandshakeError(
-                HandshakeErrorType::HandshakeKey,
+                HandshakeErrorType::HandshakeKeyError,
             ));
         }
 
         // check if version is compatible with ours
         if !self.version.is_compatible(&other_version) {
             return Err(NetworkError::HandshakeError(
-                HandshakeErrorType::IncompatibleVersion,
+                HandshakeErrorType::IncompatibleVersionError,
             ));
         }
 
@@ -151,20 +151,20 @@ impl HandshakeWorker {
         {
             Err(_) => {
                 return Err(NetworkError::HandshakeError(
-                    HandshakeErrorType::HandshakeTimeout,
+                    HandshakeErrorType::HandshakeTimeoutError,
                 ))
             }
             Ok(Err(e)) => return Err(e),
             Ok(Ok((_, None))) => {
                 return Err(NetworkError::HandshakeError(
-                    HandshakeErrorType::HandshakeInterruption("repl".into()),
+                    HandshakeErrorType::HandshakeInterruptionError("repl".into()),
                 ))
             }
             Ok(Ok((_, Some((_, msg))))) => match msg {
                 Message::HandshakeReply { signature: sig } => sig,
                 _ => {
                     return Err(NetworkError::HandshakeError(
-                        HandshakeErrorType::HandshakeWrongMessage,
+                        HandshakeErrorType::HandshakeWrongMessageError,
                     ))
                 }
             },
@@ -172,7 +172,7 @@ impl HandshakeWorker {
 
         // check their signature
         verify_signature(&self_random_hash, &other_signature, &other_node_id.0).map_err(
-            |_err| NetworkError::HandshakeError(HandshakeErrorType::HandshakeInvalidSignature),
+            |_err| NetworkError::HandshakeError(HandshakeErrorType::HandshakeInvalidSignatureError),
         )?;
 
         Ok((other_node_id, self.reader, self.writer))
