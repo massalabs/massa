@@ -389,3 +389,12 @@ pub struct APISettings {
     pub bind_public: SocketAddr,
     pub max_arguments: u64,
 }
+
+#[derive(Debug, Deserialize, Clone, Serialize)]
+pub struct EventFilter {
+    pub start: Option<Slot>,
+    pub end: Option<Slot>,
+    pub emitter_address: Option<Address>,
+    pub original_caller_address: Option<Address>,
+    pub original_operation_id: Option<OperationId>,
+}

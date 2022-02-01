@@ -10,8 +10,8 @@ use jsonrpc_http_server::{CloseHandle, ServerBuilder};
 use massa_consensus::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution::ExecutionCommandSender;
 use massa_models::api::{
-    APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
-    TimeInterval,
+    APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus,
+    OperationInfo, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -20,7 +20,7 @@ use massa_models::node::NodeId;
 use massa_models::operation::{Operation, OperationId};
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
-use massa_models::{Address, Amount, BlockId, EndorsementId, Slot, Version};
+use massa_models::{Address, Amount, BlockId, EndorsementId, Version};
 use massa_network::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
 use massa_signature::PrivateKey;
@@ -194,11 +194,7 @@ pub trait Endpoints {
     #[rpc(name = "get_filtered_sc_output_event")]
     fn get_filtered_sc_output_event(
         &self,
-        start: Option<Slot>,
-        end: Option<Slot>,
-        emitter_address: Option<Address>,
-        original_caller_address: Option<Address>,
-        original_operation_id: Option<OperationId>,
+        _: EventFilter,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>>;
 }
 

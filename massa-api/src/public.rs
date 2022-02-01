@@ -8,7 +8,7 @@ use massa_consensus::{ConsensusCommandSender, ConsensusConfig, DiscardReason, Ex
 use massa_execution::ExecutionCommandSender;
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
-    IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
+    EventFilter, IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -508,11 +508,13 @@ impl Endpoints for API<Public> {
     /// * operation id
     fn get_filtered_sc_output_event(
         &self,
-        start: Option<Slot>,
-        end: Option<Slot>,
-        emitter_address: Option<Address>,
-        original_caller_address: Option<Address>,
-        original_operation_id: Option<OperationId>,
+        EventFilter {
+            start,
+            end,
+            emitter_address,
+            original_caller_address,
+            original_operation_id,
+        }: EventFilter,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
         let execution_command_sender = self.0.execution_command_sender.clone();
         let closure = async move || {
