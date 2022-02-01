@@ -17,7 +17,7 @@ pub enum NetworkCommand {
     /// Send that block to node.
     SendBlock {
         node: NodeId,
-        block: Block,
+        block: BlockId,
     },
     /// Send a header to a node.
     SendBlockHeader {
@@ -58,7 +58,7 @@ pub enum NetworkEvent {
     /// A block was received
     ReceivedBlock {
         node: NodeId,
-        block: Block,
+        block: BlockId,
     },
     /// A block header was received
     ReceivedBlockHeader {
