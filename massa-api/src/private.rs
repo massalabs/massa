@@ -163,13 +163,24 @@ impl Endpoints for API<Private> {
         crate::wrong_api::<Vec<OperationId>>()
     }
 
-    fn get_sc_output_events(
+    fn get_sc_output_event_by_slot_range(
         &self,
-        _start_slot: Option<Slot>,
-        _end_slot: Option<Slot>,
-        _emitter_address: Option<Address>,
-        _original_caller_address: Option<Address>,
-        _origin_operation_id: Option<OperationId>,
+        _: Slot,
+        _: Slot,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+        crate::wrong_api::<Vec<SCOutputEvent>>()
+    }
+
+    fn get_sc_output_event_by_sc_address(
+        &self,
+        _: Address,
+    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
+        crate::wrong_api::<Vec<SCOutputEvent>>()
+    }
+
+    fn get_sc_output_event_by_caller_address(
+        &self,
+        _: Address,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
         crate::wrong_api::<Vec<SCOutputEvent>>()
     }
