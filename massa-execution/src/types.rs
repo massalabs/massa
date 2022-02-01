@@ -60,25 +60,25 @@ impl EventStore {
     pub fn insert(&mut self, id: SCOutputEventId, event: SCOutputEvent) {
         if let Entry::Vacant(entry) = self.id_to_event.entry(id) {
             self.slot_to_id
-                .get_mut(&event.context.slot)
-                .unwrap_or(&mut Set::<SCOutputEventId>::default())
+                .entry(event.context.slot)
+                .or_insert_with(Set::<SCOutputEventId>::default)
                 .insert(id);
-            if let Some(caller) = event.context.call_stack.front() {
+            if let Some(&caller) = event.context.call_stack.front() {
                 self.caller_to_id
-                    .get_mut(caller)
-                    .unwrap_or(&mut Set::<SCOutputEventId>::default())
+                    .entry(caller)
+                    .or_insert_with(Set::<SCOutputEventId>::default)
                     .insert(id);
             }
-            if let Some(sc) = event.context.call_stack.back() {
+            if let Some(&sc) = event.context.call_stack.back() {
                 self.smart_contract_to_id
-                    .get_mut(sc)
-                    .unwrap_or(&mut Set::<SCOutputEventId>::default())
+                    .entry(sc)
+                    .or_insert_with(Set::<SCOutputEventId>::default)
                     .insert(id);
             }
             if let Some(op) = event.context.origin_operation_id {
                 self.operation_id_to_event_id
-                    .get_mut(&op)
-                    .unwrap_or(&mut Set::<SCOutputEventId>::default())
+                    .entry(op)
+                    .or_insert_with(Set::<SCOutputEventId>::default)
                     .insert(id);
             }
             entry.insert(event);
