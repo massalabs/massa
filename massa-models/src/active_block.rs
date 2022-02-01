@@ -11,7 +11,7 @@ pub struct ActiveBlock {
     /// The creator's address
     pub creator_address: Address,
     /// The id of the block
-    pub block: BlockId,
+    pub block_id: BlockId,
     /// one (block id, period) per thread ( if not genesis )
     pub parents: Vec<(BlockId, u64)>,
     /// one HashMap<Block id, period> per thread (blocks that need to be kept)

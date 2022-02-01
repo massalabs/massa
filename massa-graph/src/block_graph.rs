@@ -14,6 +14,7 @@ use massa_logging::massa_trace;
 use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::storage::Storage;
+use massa_models::SerializeCompact;
 use massa_models::{
     active_block::ActiveBlock,
     api::EndorsementInfo,
@@ -444,11 +445,15 @@ impl BlockGraph {
                     addresses_to_operations: Map::with_capacity_and_hasher(0, BuildMap::default()),
                     roll_updates: RollUpdates::default(), // no roll updates in genesis blocks
                     production_events: vec![],
-                    block: block_id,
+                    block_id,
                     addresses_to_endorsements: Default::default(),
                     slot: block.header.content.slot,
                 })),
             );
+
+            // Store in shared storage.
+            let serialized = block.to_bytes_compact()?;
+            storage.store_block(block_id, block, serialized);
         }
 
         massa_trace!("consensus.block_graph.new", {});
@@ -501,7 +506,7 @@ impl BlockGraph {
                             creator_address: Address::from_public_key(
                                 &block_export.block.header.content.creator,
                             ),
-                            block: b_id,
+                            block_id: b_id,
                             parents: block_export.parents,
                             children: block_export.children,
                             dependencies: block_export.dependencies,
@@ -600,14 +605,12 @@ impl BlockGraph {
             Map::with_capacity_and_hasher(required_active_blocks.len(), BuildMap::default());
         for b_id in required_active_blocks {
             if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(&b_id) {
-                let block = storage
-                    .retrieve_block(&a_block.block)
-                    .ok_or(GraphError::MissingBlock)?;
-                let stored_block = block.read();
+                let block = self.storage.retrieve_block(&b_id).unwrap();
+                let stored_block = block.read().block.clone();
                 active_blocks.insert(
                     b_id,
                     ExportActiveBlock {
-                        block: stored_block.block.clone(),
+                        block: stored_block,
                         parents: a_block.parents.clone(),
                         children: a_block.children.clone(),
                         dependencies: a_block.dependencies.clone(),
@@ -915,7 +918,7 @@ impl BlockGraph {
             let creator = {
                 let block = self
                     .storage
-                    .retrieve_block(&same_thread_parent.block)
+                    .retrieve_block(&same_thread_parent.block_id)
                     .unwrap();
                 let stored_block = block.read();
                 stored_block.block.header.content.creator
@@ -2182,7 +2185,7 @@ impl BlockGraph {
                 }
 
                 let parent_id = {
-                    let block = self.storage.retrieve_block(&cur_b.block).unwrap();
+                    let block = self.storage.retrieve_block(&cur_b.block_id).unwrap();
                     let stored_block = block.read();
                     stored_block.block.header.content.parents[header.content.slot.thread as usize]
                         .clone()
@@ -2694,7 +2697,7 @@ impl BlockGraph {
                 parents: parents_hash_period.clone(),
                 dependencies: deps,
                 descendants: Set::<BlockId>::default(),
-                block: add_block_id,
+                block_id: add_block_id,
                 children: vec![Default::default(); self.cfg.thread_count as usize],
                 is_final: false,
                 block_ledger_changes,
@@ -2941,7 +2944,7 @@ impl BlockGraph {
                 });
 
                 let (creator, header) = {
-                    let block = self.storage.retrieve_block(&active_block.block).unwrap();
+                    let block = self.storage.retrieve_block(&active_block.block_id).unwrap();
                     let stored_block = block.read();
                     (
                         stored_block.block.header.content.creator,
@@ -3727,7 +3730,7 @@ impl BlockGraph {
                     let block = self.storage.retrieve_block(b_id).unwrap();
                     let endorsements = block.read().block.header.content.endorsements.clone();
                     for e in endorsements {
-                        let id = e.compute_id()?;
+                        let id = e.compute_endorsement_id()?;
                         if eds.contains(&id) {
                             res.insert(id, e);
                         }
