@@ -50,6 +50,9 @@ pub(crate) struct EventStore {
 
     /// maps direct event producer to a set of event ids
     smart_contract_to_id: Map<Address, Set<SCOutputEventId>>,
+
+    /// maps operation id to a set of event ids
+    operation_id_to_event_id: Map<OperationId, Set<SCOutputEventId>>,
 }
 
 impl EventStore {
@@ -72,6 +75,12 @@ impl EventStore {
                     .unwrap_or(&mut Set::<SCOutputEventId>::default())
                     .insert(id);
             }
+            if let Some(op) = event.context.origin_operation_id {
+                self.operation_id_to_event_id
+                    .get_mut(&op)
+                    .unwrap_or(&mut Set::<SCOutputEventId>::default())
+                    .insert(id);
+            }
             entry.insert(event);
         } else {
             // just warn or return error ?
@@ -90,6 +99,7 @@ impl EventStore {
         self.slot_to_id.clear();
         self.caller_to_id.clear();
         self.smart_contract_to_id.clear();
+        self.operation_id_to_event_id.clear();
     }
 
     /// Remove exess events considering a config defined max
@@ -159,6 +169,20 @@ impl EventStore {
                         }
                     }
                 }
+
+                if let Some(op) = event.context.origin_operation_id {
+                    match self.operation_id_to_event_id.get_mut(&op) {
+                        Some(ids) => {
+                            ids.remove(&event.id);
+                            if ids.is_empty() {
+                                self.operation_id_to_event_id.remove(&op);
+                            }
+                        }
+                        None => {
+                            self.operation_id_to_event_id.remove(&op);
+                        }
+                    }
+                }
             }
         }
     }
@@ -193,6 +217,15 @@ impl EventStore {
                     self.smart_contract_to_id.insert(*sc, ids.clone());
                 }
             }
+        });
+
+        other.operation_id_to_event_id.iter().for_each(|(op, ids)| {
+            match self.operation_id_to_event_id.get_mut(op) {
+                Some(set) => set.extend(ids),
+                None => {
+                    self.operation_id_to_event_id.insert(*op, ids.clone());
+                }
+            }
         })
     }
 
@@ -210,6 +243,17 @@ impl EventStore {
     /// get vec of event for given smart contract
     pub fn get_event_for_sc(&self, sc: Address) -> Vec<SCOutputEvent> {
         match self.smart_contract_to_id.get(&sc) {
+            Some(s) => s
+                .iter()
+                .filter_map(|id| self.id_to_event.get(id).cloned())
+                .collect(),
+            None => Default::default(),
+        }
+    }
+
+    /// get vec of event for given operation id
+    pub fn get_event_for_operation_id(&self, op: OperationId) -> Vec<SCOutputEvent> {
+        match self.operation_id_to_event_id.get(&op) {
             Some(s) => s
                 .iter()
                 .filter_map(|id| self.id_to_event.get(id).cloned())
@@ -288,6 +332,9 @@ pub(crate) struct ExecutionContext {
 
     /// Unsafe RNG state
     pub unsafe_rng: Xoshiro256PlusPlus,
+
+    /// origin operation id
+    pub origin_operation_id: Option<OperationId>,
 }
 
 /// an active execution step target slot and block
@@ -325,6 +372,7 @@ impl ExecutionContext {
             created_event_index: Default::default(),
             events: Default::default(),
             unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
+            origin_operation_id: Default::default(),
         }
     }
 }

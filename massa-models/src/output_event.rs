@@ -1,5 +1,6 @@
 use crate::{
-    prehash::PreHashed, settings::EVENT_ID_SIZE_BYTES, Address, BlockId, ModelsError, Slot,
+    prehash::PreHashed, settings::EVENT_ID_SIZE_BYTES, Address, BlockId, ModelsError, OperationId,
+    Slot,
 };
 use massa_hash::hash::Hash;
 use serde::{Deserialize, Serialize};
@@ -127,4 +128,6 @@ pub struct EventExecutionContext {
     pub index_in_slot: u64,
     /// most recent at the end
     pub call_stack: VecDeque<Address>,
+    /// origin operation id
+    pub origin_operation_id: Option<OperationId>,
 }

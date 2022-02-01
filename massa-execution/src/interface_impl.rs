@@ -404,6 +404,7 @@ impl Interface for InterfaceImpl {
             call_stack: execution_context.call_stack.clone(),
             read_only: execution_context.read_only,
             index_in_slot: execution_context.created_event_index,
+            origin_operation_id: execution_context.origin_operation_id,
         };
         let id = SCOutputEventId(Hash::compute_from(&to_hash));
         let event = SCOutputEvent { id, context, data };

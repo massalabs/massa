@@ -223,6 +223,7 @@ impl VM {
         context.events.clear();
         context.read_only = false;
         context.coins_stack.clear();
+        context.origin_operation_id = None;
     }
 
     /// Prepares (updates) the shared context before the new operation.
@@ -237,6 +238,7 @@ impl VM {
         block_creator_addr: Address,
         block_id: BlockId,
         slot: Slot,
+        operation: Option<OperationId>,
     ) -> (SCELedgerChanges, u64, EventStore, u64, Xoshiro256PlusPlus) {
         let mut context = self.execution_context.lock().unwrap();
         // make context.ledger_step credit Op's sender with Op.coins in the SCE ledger
@@ -261,6 +263,7 @@ impl VM {
         context.opt_block_creator_addr = Some(block_creator_addr);
         context.call_stack = vec![data.sender_address].into();
         context.owned_addresses_stack = vec![vec![data.sender_address]];
+        context.origin_operation_id = operation;
 
         (
             context.ledger_step.caused_changes.clone(),
@@ -394,7 +397,16 @@ impl VM {
                     events_backup,
                     event_index_backup,
                     rng_backup,
-                ) = self.prepare_context(&execution_data, block_creator_addr, *block_id, step.slot);
+                ) = self.prepare_context(
+                    &execution_data,
+                    block_creator_addr,
+                    *block_id,
+                    step.slot,
+                    Some(match operation.get_operation_id() {
+                        Ok(id) => id,
+                        Err(_) => continue,
+                    }),
+                );
 
                 // run in the intepreter
                 let run_result = massa_sc_runtime::run(
@@ -414,6 +426,7 @@ impl VM {
                     context.events = events_backup;
                     context.created_event_index = event_index_backup;
                     context.unsafe_rng = rng_backup;
+                    context.origin_operation_id = None;
                 }
             }
         } else {
