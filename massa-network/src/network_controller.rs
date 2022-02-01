@@ -8,8 +8,8 @@ use super::{
     peer_info_database::*,
     BootstrapPeers,
 };
-use crate::error::NetworkError;
 use crate::settings::{NetworkSettings, CHANNEL_SIZE};
+use crate::{error::NetworkError, network_worker::NetworkWorkerChannels};
 use massa_logging::massa_trace;
 use massa_models::composite::PubkeySig;
 use massa_models::node::NodeId;
@@ -104,21 +104,22 @@ pub async fn start_network_controller(
     }
 
     // launch controller
-    let (command_tx, command_rx) = mpsc::channel::<NetworkCommand>(CHANNEL_SIZE);
-    let (event_tx, event_rx) = mpsc::channel::<NetworkEvent>(CHANNEL_SIZE);
-    let (manager_tx, manager_rx) = mpsc::channel::<NetworkManagementCommand>(1);
+    let (command_tx, controller_command_rx) = mpsc::channel::<NetworkCommand>(CHANNEL_SIZE);
+    let (controller_event_tx, event_rx) = mpsc::channel::<NetworkEvent>(CHANNEL_SIZE);
+    let (manager_tx, controller_manager_rx) = mpsc::channel::<NetworkManagementCommand>(1);
     let cfg_copy = network_settings.clone();
     let join_handle = tokio::spawn(async move {
         let res = NetworkWorker::new(
             cfg_copy,
             private_key,
-            self_node_id,
             listener,
             establisher,
             peer_info_db,
-            command_rx,
-            event_tx,
-            manager_rx,
+            NetworkWorkerChannels {
+                controller_command_rx,
+                controller_event_tx,
+                controller_manager_rx,
+            },
             version,
         )
         .run_loop()
