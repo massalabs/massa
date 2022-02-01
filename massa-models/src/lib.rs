@@ -45,6 +45,7 @@ mod serialization_context;
 pub mod signed;
 pub mod slot;
 pub mod stats;
+pub mod storage;
 pub mod timeslots;
 mod version;
 pub use node_configuration::CompactConfig;

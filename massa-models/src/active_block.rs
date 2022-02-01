@@ -2,7 +2,7 @@ use crate::{
     ledger_models::LedgerChanges,
     prehash::{Map, Set},
     rolls::RollUpdates,
-    Address, Block, BlockId, EndorsementId, OperationId,
+    Address, BlockId, EndorsementId, OperationId, Slot,
 };
 
 /// Block that was checked as final, with some useful precomputed data
@@ -10,8 +10,8 @@ use crate::{
 pub struct ActiveBlock {
     /// The creator's address
     pub creator_address: Address,
-    /// The block itself, as it was created
-    pub block: Block,
+    /// The id of the block
+    pub block: BlockId,
     /// one (block id, period) per thread ( if not genesis )
     pub parents: Vec<(BlockId, u64)>,
     /// one HashMap<Block id, period> per thread (blocks that need to be kept)
@@ -37,11 +37,13 @@ pub struct ActiveBlock {
     pub roll_updates: RollUpdates,
     /// list of (period, address, did_create) for all block/endorsement creation events
     pub production_events: Vec<(u64, Address, bool)>,
+    /// Slot of the block.
+    pub slot: Slot,
 }
 
 impl ActiveBlock {
     /// Computes the fitness of the block
     pub fn fitness(&self) -> u64 {
-        1 + self.block.header.content.endorsements.len() as u64
+        1 + self.endorsement_ids.len() as u64
     }
 }

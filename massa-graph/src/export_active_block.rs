@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 /// Fields that can be easily recomputed were left out
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportActiveBlock {
-    /// The block itself, as it was created
+    /// The id of the block.
     pub block: Block,
     /// one (block id, period) per thread ( if not genesis )
     pub parents: Vec<(BlockId, u64)>,

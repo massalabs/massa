@@ -1857,6 +1857,7 @@ dependencies = [
  "num",
  "num-traits 0.2.14",
  "num_enum",
+ "parking_lot 0.11.2",
  "pretty_assertions",
  "rand 0.8.5",
  "reqwest",
