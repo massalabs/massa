@@ -1,5 +1,5 @@
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges, SCELedgerStep};
-use crate::{BootstrapExecutionState, ExecutionError};
+use crate::BootstrapExecutionState;
 use massa_models::api::SCELedgerInfo;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
@@ -229,39 +229,6 @@ impl EventStore {
         })
     }
 
-    /// get vec of event for a given caller
-    pub fn get_event_for_caller(&self, caller: Address) -> Vec<SCOutputEvent> {
-        match self.caller_to_id.get(&caller) {
-            Some(s) => s
-                .iter()
-                .filter_map(|id| self.id_to_event.get(id).cloned())
-                .collect(),
-            None => Default::default(),
-        }
-    }
-
-    /// get vec of event for given smart contract
-    pub fn get_event_for_sc(&self, sc: Address) -> Vec<SCOutputEvent> {
-        match self.smart_contract_to_id.get(&sc) {
-            Some(s) => s
-                .iter()
-                .filter_map(|id| self.id_to_event.get(id).cloned())
-                .collect(),
-            None => Default::default(),
-        }
-    }
-
-    /// get vec of event for given operation id
-    pub fn get_event_for_operation_id(&self, op: OperationId) -> Vec<SCOutputEvent> {
-        match self.operation_id_to_event_id.get(&op) {
-            Some(s) => s
-                .iter()
-                .filter_map(|id| self.id_to_event.get(id).cloned())
-                .collect(),
-            None => Default::default(),
-        }
-    }
-
     /// get vec of event for given slot range (start included, end excluded)
     /// Get events optionnally filtered by:
     /// * start slot
@@ -277,7 +244,48 @@ impl EventStore {
         original_caller_address: Option<Address>,
         original_operation_id: Option<OperationId>,
     ) -> Vec<SCOutputEvent> {
-        todo!()
+        let empty = Set::<SCOutputEventId>::default();
+        self.slot_to_id
+            .iter()
+            // filter on slots
+            .filter_map(|(slot, ids)| {
+                if slot >= &start && slot < &end {
+                    Some(ids)
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            // filter on original caller
+            .chain(if let Some(addr) = original_caller_address {
+                match self.caller_to_id.get(&addr) {
+                    Some(it) => it.iter(),
+                    None => empty.iter(),
+                }
+            } else {
+                empty.iter()
+            })
+            // filter on emitter
+            .chain(if let Some(addr) = emitter_address {
+                match self.smart_contract_to_id.get(&addr) {
+                    Some(it) => it.iter(),
+                    None => empty.iter(),
+                }
+            } else {
+                empty.iter()
+            })
+            // filter on operation id
+            .chain(if let Some(op) = original_operation_id {
+                match self.operation_id_to_event_id.get(&op) {
+                    Some(it) => it.iter(),
+                    None => empty.iter(),
+                }
+            } else {
+                empty.iter()
+            })
+            .filter_map(|id| self.id_to_event.get(id))
+            .cloned()
+            .collect()
     }
 }
 
