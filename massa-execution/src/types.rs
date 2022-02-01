@@ -105,8 +105,9 @@ impl EventStore {
     /// Remove exess events considering a config defined max
     pub fn prune(&mut self, max_final_events: usize) {
         // todo make setting static
-        if self.id_to_event.len() > max_final_events {
-            let diff = self.id_to_event.len() - max_final_events;
+        let ids_len = self.id_to_event.len();
+        if ids_len > max_final_events {
+            let diff = ids_len - max_final_events;
             let mut to_remove: Vec<SCOutputEventId> = Vec::with_capacity(diff);
             let mut slots = self.slot_to_id.keys().collect::<Vec<_>>();
             slots.sort_unstable_by_key(|s| cmp::Reverse(*s));
