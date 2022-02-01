@@ -345,10 +345,7 @@ impl ProofOfStake {
         // Update internal states after a set of blocks become final.
 
         // process blocks by increasing slot number
-        let mut indices: Vec<(Slot, BlockId)> = blocks
-            .iter()
-            .map(|(k, v)| (v.block.header.content.slot, *k))
-            .collect();
+        let mut indices: Vec<(Slot, BlockId)> = blocks.iter().map(|(k, v)| (v.slot, *k)).collect();
         indices.sort_unstable();
         for (block_slot, block_id) in indices.into_iter() {
             let a_block = &blocks[&block_id];

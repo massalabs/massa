@@ -16,6 +16,7 @@ use massa_execution_exports::{ExecutionConfig, ExecutionManager};
 use massa_execution_worker::start_execution_worker;
 use massa_ledger::{FinalLedger, LedgerConfig};
 use massa_logging::massa_trace;
+use massa_models::storage::Storage;
 use massa_models::{
     constants::{
         END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, T0,
@@ -59,6 +60,9 @@ async fn launch() -> (
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
     }
+
+    // Storage shared by multiple components.
+    let shared_storage: Storage = Default::default();
 
     // Init the global serialization context
     init_serialization_context(SerializationContext::default());
@@ -157,6 +161,7 @@ async fn launch() -> (
             },
             bootstrap_state.pos,
             bootstrap_state.graph,
+            shared_storage.clone(),
             bootstrap_state.compensation_millis,
         )
         .await
