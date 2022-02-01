@@ -20,14 +20,20 @@ pub const CHANNEL_SIZE: usize = 256;
 #[cfg(not(test))]
 lazy_static::lazy_static! {
     /// Time in millis when the blockclique started.
-    pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "test") {
-        MassaTime::now().unwrap().saturating_add(MassaTime::from(1000 * 60 * 3))
+    pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
+        MassaTime::now()
+            .unwrap()
+            .saturating_add(MassaTime::from(1000 * 60 * 3))
     } else {
         1641754800000.into()
     };
 
     /// TESTNET: time when the blockclique is ended.
-    pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "test") {None} else {Some(1643644800000.into())};
+    pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
+        None
+    } else {
+        Some(1643644800000.into())
+    };
 
     /// Time between the periods in the same thread.
     pub static ref T0: MassaTime = 16000.into();
@@ -302,6 +308,7 @@ lazy_static::lazy_static! {
         pos_lock_cycles: POS_LOCK_CYCLES,
         block_reward: *BLOCK_REWARD,
         roll_price: *ROLL_PRICE,
+        max_block_size: MAX_BLOCK_SIZE,
     };
 }
 

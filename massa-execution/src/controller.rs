@@ -127,9 +127,9 @@ impl ExecutionCommandSender {
             .map_err(|_| {
                 ExecutionError::ChannelError("could not send GetBootstrapState command".into())
             })?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             ExecutionError::ChannelError("could not send GetBootstrapState upstream".into())
-        })?)
+        })
     }
 
     /// Get events optionnally filtered by:
@@ -160,9 +160,9 @@ impl ExecutionCommandSender {
             .map_err(|_| {
                 ExecutionError::ChannelError("could not send GetSCOutputEvents command".into())
             })?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             ExecutionError::ChannelError("could not send GetSCOutputEvents upstream".into())
-        })?)
+        })
     }
 
     /// Execute code in read-only mode.
@@ -186,9 +186,9 @@ impl ExecutionCommandSender {
             .map_err(|_| {
                 ExecutionError::ChannelError("could not send ExecuteReadOnlyRequest command".into())
             })?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             ExecutionError::ChannelError("could not send ExecuteReadOnlyResponse upstream".into())
-        })?)
+        })
     }
 
     pub async fn get_sce_ledger_for_addresses(
@@ -207,8 +207,8 @@ impl ExecutionCommandSender {
                     "could not send GetSCELedgerForAddresses command".into(),
                 )
             })?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             ExecutionError::ChannelError("could not send GetSCELedgerForAddresses upstream".into())
-        })?)
+        })
     }
 }

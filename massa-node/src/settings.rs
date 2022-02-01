@@ -14,7 +14,13 @@ use massa_protocol_exports::ProtocolSettings;
 use serde::Deserialize;
 
 lazy_static::lazy_static! {
-    pub static ref VERSION: Version = "TEST.6.5".parse().unwrap();
+    pub static ref VERSION: Version = if cfg!(feature = "sandbox") {
+        "SAND.0.0"
+    } else {
+        "TEST.6.5"
+    }
+    .parse()
+    .unwrap();
     // TODO: this code is duplicated from /massa-client/settings.rs and should be part of a custom crate
     pub static ref SETTINGS: Settings = {
         let mut settings = config::Config::default();

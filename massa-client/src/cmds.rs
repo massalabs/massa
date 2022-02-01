@@ -134,6 +134,13 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
+        props(args = "Address string"),
+        message = "sign provided string with given address (address must be in the wallet)"
+    )]
+    wallet_sign,
+
+    #[strum(
+        ascii_case_insensitive,
         props(args = "Address RollCount Fee"),
         message = "buy rolls with wallet address"
     )]
@@ -701,6 +708,15 @@ impl Command {
                     }
                 };
                 let data = get_file_as_byte_vec(&path).await?;
+                if !json {
+                    let max_block_size = match client.public.get_status().await {
+                        Ok(node_status) => node_status.config.max_block_size,
+                        Err(e) => bail!("RpcError: {}", e),
+                    };
+                    if data.len() > max_block_size as usize / 2 {
+                        println!("{}: bytecode size exeeded half of the maximum size of a block, operation will certainly be rejected", style("WARNING").yellow());
+                    }
+                }
 
                 send_operation(
                     client,
@@ -716,6 +732,18 @@ impl Command {
                     json,
                 )
                 .await
+            }
+            Command::wallet_sign => {
+                if parameters.len() != 2 {
+                    bail!("wrong number of parameters");
+                }
+                let addr = parameters[0].parse::<Address>()?;
+                let msg = parameters[1].clone();
+                if let Some(signed) = wallet.sign_message(addr, msg.into_bytes()) {
+                    Ok(Box::new(signed))
+                } else {
+                    bail!("Missing public key")
+                }
             }
         }
     }

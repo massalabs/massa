@@ -1,5 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use std::fmt::Display;
+
 use super::operation::Operation;
 use crate::prehash::Map;
 use crate::{Address, BlockId};
@@ -49,4 +51,11 @@ pub struct StakersCycleProductionStats {
 pub struct PubkeySig {
     pub public_key: PublicKey,
     pub signature: Signature,
+}
+
+impl Display for PubkeySig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Public key: {}", self.public_key)?;
+        writeln!(f, "Signature: {}", self.signature)
+    }
 }

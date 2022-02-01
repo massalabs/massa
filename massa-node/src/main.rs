@@ -221,14 +221,25 @@ async fn launch() -> (
     )
 }
 
-async fn stop(
+struct Managers {
     bootstrap_manager: Option<BootstrapManager>,
     consensus_manager: ConsensusManager,
-    consensus_event_receiver: ConsensusEventReceiver,
     execution_manager: ExecutionManager,
     pool_manager: PoolManager,
     protocol_manager: ProtocolManager,
     network_manager: NetworkManager,
+}
+
+async fn stop(
+    consensus_event_receiver: ConsensusEventReceiver,
+    Managers {
+        bootstrap_manager,
+        consensus_manager,
+        execution_manager,
+        pool_manager,
+        protocol_manager,
+        network_manager,
+    }: Managers,
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
 ) {
@@ -342,13 +353,15 @@ async fn main() {
             }
         };
         stop(
-            bootstrap_manager,
-            consensus_manager,
             consensus_event_receiver,
-            execution_manager,
-            pool_manager,
-            protocol_manager,
-            network_manager,
+            Managers {
+                bootstrap_manager,
+                consensus_manager,
+                execution_manager,
+                pool_manager,
+                protocol_manager,
+                network_manager,
+            },
             api_private_handle,
             api_public_handle,
         )

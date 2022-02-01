@@ -44,6 +44,7 @@ pub struct CompactConfig {
     pub pos_lock_cycles: u64,
     pub block_reward: Amount,
     pub roll_price: Amount,
+    pub max_block_size: u32,
 }
 
 impl Display for CompactConfig {
@@ -77,6 +78,7 @@ impl Display for CompactConfig {
         )?;
         writeln!(f, "    Block reward: {}", self.block_reward)?;
         writeln!(f, "    Periods per cycle: {}", self.periods_per_cycle)?;
+        writeln!(f, "    Max block size (in bytes): {}", self.max_block_size)?;
         Ok(())
     }
 }
