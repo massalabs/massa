@@ -35,8 +35,6 @@ pub enum ProtocolError {
     SerdeError(#[from] serde_json::Error),
     /// massa_hash error {0}
     MassaHashError(#[from] massa_hash::MassaHashError),
-    /// handshake error:{0:?}
-    HandshakeError(HandshakeErrorType),
     /// the network controller should not drop a node command sender before shutting down the node.
     UnexpectedNodeCommandChannelClosure,
     /// the writer of a node should not drop its event sender before sending a clean_exit message.
@@ -51,17 +49,6 @@ pub enum ProtocolError {
     NetworkError(#[from] NetworkError),
     /// container inconsistency error: {0}
     ContainerInconsistencyError(String),
-}
-
-#[derive(Debug)]
-pub enum HandshakeErrorType {
-    HandshakeIdAlreadyExist(String),
-    HandshakeTimeout,
-    HandshakeInterruption(String),
-    HandshakeWrongMessage,
-    HandshakeKey,
-    HandshakeInvalidSignature,
-    IncompatibleVersion,
 }
 
 #[derive(Debug)]
