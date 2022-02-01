@@ -496,11 +496,13 @@ impl ProtocolWorker {
         match cmd {
             ProtocolCommand::IntegratedBlock {
                 block_id,
-                block,
                 operation_ids,
                 endorsement_ids,
             } => {
-                massa_trace!("protocol.protocol_worker.process_command.integrated_block.begin", { "block_id": block_id, "block": block });
+                massa_trace!(
+                    "protocol.protocol_worker.process_command.integrated_block.begin",
+                    { "block_id": block_id }
+                );
                 let now = Instant::now();
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // if we know that a node wants a block we send the full block
@@ -519,9 +521,9 @@ impl ProtocolWorker {
                             operation_ids.clone(),
                             self.protocol_settings.max_known_ops_size,
                         );
-                        massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_block", { "node": node_id, "block_id": block_id, "block": block });
+                        massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_block", { "node": node_id, "block_id": block_id });
                         self.network_command_sender
-                            .send_block(*node_id, *block.clone())
+                            .send_block(*node_id, block_id)
                             .await
                             .map_err(|_| {
                                 ProtocolError::ChannelError(
@@ -533,9 +535,9 @@ impl ProtocolWorker {
                         let cond = node_info.get_known_block(&block_id);
                         // if we don't know if that node knows that hash or if we know it doesn't
                         if !cond.map_or_else(|| false, |v| v.0) {
-                            massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "block_id": block_id, "header": block.header });
+                            massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "block_id": block_id});
                             self.network_command_sender
-                                .send_block_header(*node_id, block.header.clone())
+                                .send_block_header(*node_id, block_id)
                                 .await
                                 .map_err(|_| {
                                     ProtocolError::ChannelError(
@@ -608,7 +610,7 @@ impl ProtocolWorker {
                                     }
                                     massa_trace!("protocol.protocol_worker.process_command.found_block.send_block", { "node": node_id, "block_id": block_id, "block": block });
                                     self.network_command_sender
-                                        .send_block(*node_id, block.clone())
+                                        .send_block(*node_id, block_id)
                                         .await
                                         .map_err(|_| {
                                             ProtocolError::ChannelError(

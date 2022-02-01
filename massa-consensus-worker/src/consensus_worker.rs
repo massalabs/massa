@@ -1133,7 +1133,10 @@ impl ConsensusWorker {
             massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {
                 "block_id": block_id
             });
-            // TODO: propagate using protocol.
+            self.channels
+                .protocol_command_sender
+                .integrated_block(block_id, op_ids, endo_ids)
+                .await?;
         }
 
         // Notify protocol of attack attempts.

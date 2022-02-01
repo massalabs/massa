@@ -1094,6 +1094,9 @@ impl BlockGraph {
                 }
             };
             if cur_a_block.is_final {
+                let block = self.storage.retrieve_block(&cur_a_block.block_id).unwrap();
+                let stored_block = block.read();
+
                 // filters out genesis and final blocks
                 // (step 1.1 in pos.md)
                 final_cycle = cur_a_block.slot.get_cycle(self.cfg.periods_per_cycle);
@@ -1147,7 +1150,6 @@ impl BlockGraph {
                     };
                     // (step 4.1 in pos.md)
                     cur_rolls.apply_updates(&applied_updates)?;
-
                     // (step 4.2 in pos.md)
                     if a_block.slot.get_cycle(self.cfg.periods_per_cycle) == target_cycle {
                         // if the block is in the target cycle, accumulate the roll updates
@@ -1198,6 +1200,9 @@ impl BlockGraph {
                         operations.into_iter().map(|op| Some(op)).collect()
                     };
                     for op in ops.iter() {
+                        let block = self.storage.retrieve_block(&b_id).unwrap();
+                        let stored_block = block.read();
+
                         let (idx, _) = active_block.operation_set.get(op).ok_or_else(|| {
                             GraphError::ContainerInconsistency(format!("op {} should be here", op))
                         })?;

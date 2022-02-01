@@ -55,7 +55,6 @@ pub enum ProtocolCommand {
     /// Notify block integration of a given block.
     IntegratedBlock {
         block_id: BlockId,
-        block: Box<Block>,
         operation_ids: Set<OperationId>,
         endorsement_ids: Vec<EndorsementId>,
     },
@@ -88,16 +87,16 @@ impl ProtocolCommandSender {
     pub async fn integrated_block(
         &mut self,
         block_id: BlockId,
-        block: Block,
         operation_ids: Set<OperationId>,
         endorsement_ids: Vec<EndorsementId>,
     ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.command_sender.integrated_block", { "block_id": block_id, "block": block });
+        massa_trace!("protocol.command_sender.integrated_block", {
+            "block_id": block_id
+        });
         let res = self
             .0
             .send(ProtocolCommand::IntegratedBlock {
                 block_id,
-                block: Box::new(block),
                 operation_ids,
                 endorsement_ids,
             })

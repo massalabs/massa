@@ -94,6 +94,7 @@ async fn launch() -> (
             Establisher::new(),
             bootstrap_state.compensation_millis,
             bootstrap_state.peers,
+            shared_storage.clone(),
             *VERSION,
         )
         .await
