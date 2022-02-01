@@ -8,7 +8,7 @@ use crate::{config::ExecutionConfigs, ExecutionError};
 use massa_models::api::SCELedgerInfo;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Map;
-use massa_models::timeslots::slot_count_in_range;
+use massa_models::timeslots::{get_latest_block_slot_at_timestamp, slot_count_in_range};
 use massa_models::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyResult},
     Address, Amount, BlockId, Slot,
@@ -16,6 +16,7 @@ use massa_models::{
 use massa_models::{OperationId, AMOUNT_ZERO};
 use massa_sc_runtime::Interface;
 use massa_signature::{derive_public_key, generate_random_private_key};
+use massa_time::MassaTime;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::mem;
@@ -27,6 +28,9 @@ use tracing::debug;
 pub(crate) struct VM {
     /// thread count
     thread_count: u8,
+
+    genesis_timestamp: MassaTime,
+    t0: MassaTime,
 
     /// history of SCE-active executed steps
     step_history: StepHistory,
@@ -82,6 +86,8 @@ impl VM {
             execution_interface,
             execution_context,
             final_events: Default::default(),
+            genesis_timestamp: cfg.genesis_timestamp,
+            t0: cfg.t0,
         })
     }
 
@@ -110,7 +116,38 @@ impl VM {
         original_operation_id: Option<OperationId>,
     ) -> Vec<SCOutputEvent> {
         // iter on step history chained with final events
-        todo!()
+        let start = start.unwrap_or_else(|| Slot::new(0, 0));
+        let end = end.unwrap_or(match MassaTime::now() {
+            Ok(now) => get_latest_block_slot_at_timestamp(
+                self.thread_count,
+                self.t0,
+                self.genesis_timestamp,
+                now,
+            )
+            .unwrap_or_else(|_| Some(Slot::new(0, 0)))
+            .unwrap_or_else(|| Slot::new(0, 0)),
+            Err(_) => Slot::new(0, 0),
+        });
+        self.step_history
+            .iter()
+            .filter(|item| item.slot >= start && item.slot < end)
+            .flat_map(|item| {
+                item.events.get_filtered_sc_output_event(
+                    start,
+                    end,
+                    emitter_address,
+                    original_caller_address,
+                    original_operation_id,
+                )
+            })
+            .chain(self.final_events.get_filtered_sc_output_event(
+                start,
+                end,
+                emitter_address,
+                original_caller_address,
+                original_operation_id,
+            ))
+            .collect()
     }
 
     // clone bootstrap state (final ledger and slot)

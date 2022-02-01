@@ -263,28 +263,21 @@ impl EventStore {
     }
 
     /// get vec of event for given slot range (start included, end excluded)
-    pub fn get_event_for_slot_range(
+    /// Get events optionnally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    pub fn get_filtered_sc_output_event(
         &self,
         start: Slot,
         end: Slot,
-        thread_count: u8, // todo make setting static
-    ) -> Result<Vec<SCOutputEvent>, ExecutionError> {
-        let mut slot = start;
-        let mut res = Vec::new();
-        loop {
-            res.extend::<Vec<_>>(match self.slot_to_id.get(&slot) {
-                Some(s) => s
-                    .iter()
-                    .filter_map(|id| self.id_to_event.get(id).cloned())
-                    .collect(),
-                None => Default::default(),
-            });
-            slot = slot.get_next_slot(thread_count)?;
-            if slot == end {
-                break;
-            }
-        }
-        Ok(res)
+        emitter_address: Option<Address>,
+        original_caller_address: Option<Address>,
+        original_operation_id: Option<OperationId>,
+    ) -> Vec<SCOutputEvent> {
+        todo!()
     }
 }
 
