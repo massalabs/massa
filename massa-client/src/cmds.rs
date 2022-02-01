@@ -134,6 +134,13 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
+        props(args = "Address string"),
+        message = "sign provided string with given address (address must be in the wallet)"
+    )]
+    wallet_sign,
+
+    #[strum(
+        ascii_case_insensitive,
         props(args = "Address RollCount Fee"),
         message = "buy rolls with wallet address"
     )]
@@ -725,6 +732,18 @@ impl Command {
                     json,
                 )
                 .await
+            }
+            Command::wallet_sign => {
+                if parameters.len() != 2 {
+                    bail!("wrong number of parameters");
+                }
+                let addr = parameters[0].parse::<Address>()?;
+                let msg = parameters[1].clone();
+                if let Some(signed) = wallet.sign_message(addr, msg.into_bytes()) {
+                    Ok(Box::new(signed))
+                } else {
+                    bail!("Missing public key")
+                }
             }
         }
     }

@@ -8,6 +8,7 @@ use console::style;
 use dialoguer::{theme::ColorfulTheme, Completion, History, Input};
 use erased_serde::{Serialize, Serializer};
 use massa_models::api::{AddressInfo, BlockInfo, EndorsementInfo, NodeStatus, OperationInfo};
+use massa_models::composite::PubkeySig;
 use massa_models::prehash::Set;
 use massa_models::{Address, OperationId};
 use massa_wallet::Wallet;
@@ -252,5 +253,11 @@ impl Output for Vec<Address> {
         for addr in self {
             println!("{}", addr);
         }
+    }
+}
+
+impl Output for PubkeySig {
+    fn pretty_print(&self) {
+        println!("{}", self);
     }
 }
