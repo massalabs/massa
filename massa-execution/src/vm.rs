@@ -268,7 +268,8 @@ impl VM {
     /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
     /// TODO: do not ignore the results
     /// TODO: consider dispatching gas fees with edorsers/endorsees as well
-    /// Returns (backup of local ledger changes, backup of created_addr_index, backup of events, backup of created_events_index, backup of unsafe rng)
+    /// Returns (backup of local ledger changes, backup of created_addr_index,
+    /// backup of events, backup of created_events_index, backup of unsafe rng)
     fn prepare_context(
         &self,
         data: &ExecutionData,

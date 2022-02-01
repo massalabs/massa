@@ -394,6 +394,8 @@ impl Interface for InterfaceImpl {
     fn generate_event(&self, data: String) -> Result<()> {
         let mut execution_context = context_guard!(self);
 
+        // prepare id computation
+        // it is the hash of (slot, index_at_slot, readonly)
         let mut to_hash: Vec<u8> = execution_context.slot.to_bytes_key().to_vec();
         to_hash.append(&mut execution_context.created_event_index.to_be_bytes().to_vec());
         to_hash.push(!execution_context.read_only as u8);
