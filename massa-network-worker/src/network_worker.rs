@@ -14,10 +14,11 @@ use crate::{
 };
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_logging::massa_trace;
-use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
-use massa_network_exports::{
-    ConnectionClosureReason, ConnectionId, Establisher, Listener, NetworkCommand, NetworkError,
-    NetworkEvent, NetworkManagementCommand, NetworkSettings, ReadHalf, WriteHalf,
+use massa_models::storage::Storage;
+use massa_models::{
+    composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, stats::NetworkStats,
+    with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
+    SerializeCompact, SerializeVarInt, Version,
 };
 use massa_network_exports::{HandshakeErrorType, NetworkConnectionErrorType};
 use massa_signature::{derive_public_key, PrivateKey};
@@ -62,6 +63,8 @@ pub struct NetworkWorker {
         FuturesUnordered<JoinHandle<(NodeId, Result<ConnectionClosureReason, NetworkError>)>>,
     /// Map of connection to ip, is_outgoing.
     pub(crate) active_connections: HashMap<ConnectionId, (IpAddr, bool)>,
+    /// Shared storage.
+    storage: Storage,
     /// Node version
     version: Version,
     /// Event sender
@@ -96,6 +99,7 @@ impl NetworkWorker {
             controller_event_tx,
             controller_manager_rx,
         }: NetworkWorkerChannels,
+        storage: Storage,
         version: Version,
     ) -> NetworkWorker {
         let public_key = derive_public_key(&private_key);
@@ -120,6 +124,7 @@ impl NetworkWorker {
             active_nodes: HashMap::new(),
             node_worker_handles: FuturesUnordered::new(),
             active_connections: HashMap::new(),
+            storage,
             version,
         }
     }
@@ -386,6 +391,7 @@ impl NetworkWorker {
                             mpsc::channel::<NodeCommand>(CHANNEL_SIZE);
                         let node_event_tx_clone = self.event.clone_node_sender();
                         let cfg_copy = self.cfg.clone();
+                        let storage = self.storage.clone();
                         let node_fn_handle = tokio::spawn(async move {
                             let res = NodeWorker::new(
                                 cfg_copy,
@@ -394,6 +400,7 @@ impl NetworkWorker {
                                 socket_writer,
                                 node_command_rx,
                                 node_event_tx_clone,
+                                storage,
                             )
                             .run_loop()
                             .await;
@@ -683,7 +690,10 @@ impl NetworkWorker {
                     let mut reader = ReadBinder::new(reader);
                     match tokio::time::timeout(
                         timeout,
-                        futures::future::try_join(writer.send(&msg), reader.next()),
+                        futures::future::try_join(
+                            writer.send(&msg.to_bytes_compact().unwrap()),
+                            reader.next(),
+                        ),
                     )
                     .await
                     {
