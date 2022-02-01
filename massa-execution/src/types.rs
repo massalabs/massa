@@ -5,7 +5,7 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
 use massa_models::prehash::{Map, Set};
 /// Define types used while executing block bytecodes
-use massa_models::{Address, Amount, Block, BlockId, Slot};
+use massa_models::{Address, Amount, Block, BlockId, OperationId, Slot};
 use massa_sc_runtime::Bytecode;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
@@ -374,20 +374,18 @@ pub(crate) enum ExecutionRequest {
     },
     /// Shutdown state, set by the worker to signal shutdown to the VM thread.
     Shutdown,
-    /// Get events by slot range
-    GetSCOutputEventBySlotRange {
-        start: Slot,
-        end: Slot,
-        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
-    },
-    /// Get events by caller
-    GetSCOutputEventByCaller {
-        caller_address: Address,
-        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
-    },
-    /// get events by smart contract
-    GetSCOutputEventBySCAddress {
-        sc_address: Address,
+    /// Get events optionnally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    GetSCOutputEvents {
+        start: Option<Slot>,
+        end: Option<Slot>,
+        emitter_address: Option<Address>,
+        original_caller_address: Option<Address>,
+        original_operation_id: Option<OperationId>,
         response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
     },
     /// Get ledger entry for address

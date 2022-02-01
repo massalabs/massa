@@ -185,26 +185,20 @@ pub trait Endpoints {
     #[rpc(name = "send_operations")]
     fn send_operations(&self, _: Vec<Operation>) -> BoxFuture<Result<Vec<OperationId>, ApiError>>;
 
-    /// get sc output event between start and end excluded
-    #[rpc(name = "get_sc_output_event_by_slot_range")]
-    fn get_sc_output_event_by_slot_range(
+    /// Get events optionnally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    #[rpc(name = "get_filtered_sc_output_event")]
+    fn get_filtered_sc_output_event(
         &self,
-        start: Slot,
-        end: Slot,
-    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>>;
-
-    /// get sc output event for given sc addresss
-    #[rpc(name = "get_sc_output_event_by_sc_address")]
-    fn get_sc_output_event_by_sc_address(
-        &self,
-        _: Address,
-    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>>;
-
-    /// get sc output event for given call address
-    #[rpc(name = "get_sc_output_event_by_caller_address")]
-    fn get_sc_output_event_by_caller_address(
-        &self,
-        _: Address,
+        start: Option<Slot>,
+        end: Option<Slot>,
+        emitter_address: Option<Address>,
+        original_caller_address: Option<Address>,
+        original_operation_id: Option<OperationId>,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>>;
 }
 

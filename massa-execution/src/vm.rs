@@ -9,11 +9,11 @@ use massa_models::api::SCELedgerInfo;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Map;
 use massa_models::timeslots::slot_count_in_range;
-use massa_models::AMOUNT_ZERO;
 use massa_models::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyResult},
     Address, Amount, BlockId, Slot,
 };
+use massa_models::{OperationId, AMOUNT_ZERO};
 use massa_sc_runtime::Interface;
 use massa_signature::{derive_public_key, generate_random_private_key};
 use rand::SeedableRng;
@@ -95,52 +95,22 @@ impl VM {
             .clone()
     }
 
-    /// get sc output event between start and end excluded
-    pub fn get_sc_output_event_by_slot_range(
+    /// Get events optionnally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    pub fn get_filtered_sc_output_event(
         &self,
-        start: Slot,
-        end: Slot,
-    ) -> Result<Vec<SCOutputEvent>, ExecutionError> {
-        Ok(self
-            .step_history
-            .iter()
-            .filter_map(|item| {
-                if item.slot >= start && item.slot < end {
-                    Some(
-                        item.events
-                            .export()
-                            .values()
-                            .cloned()
-                            .collect::<Vec<SCOutputEvent>>(),
-                    )
-                } else {
-                    None
-                }
-            })
-            .flatten()
-            .chain(
-                self.final_events
-                    .get_event_for_slot_range(start, end, self.thread_count)?,
-            )
-            .collect())
-    }
-
-    /// get sc output event for given sc addresss
-    pub fn get_sc_output_event_by_sc_address(&self, sc_address: Address) -> Vec<SCOutputEvent> {
-        self.step_history
-            .iter()
-            .flat_map(|item| item.events.get_event_for_sc(sc_address))
-            .chain(self.final_events.get_event_for_sc(sc_address))
-            .collect()
-    }
-
-    /// get sc output event for given call address
-    pub fn get_sc_output_event_by_caller_address(&self, caller: Address) -> Vec<SCOutputEvent> {
-        self.step_history
-            .iter()
-            .flat_map(|item| item.events.get_event_for_caller(caller))
-            .chain(self.final_events.get_event_for_caller(caller))
-            .collect()
+        start: Option<Slot>,
+        end: Option<Slot>,
+        emitter_address: Option<Address>,
+        original_caller_address: Option<Address>,
+        original_operation_id: Option<OperationId>,
+    ) -> Vec<SCOutputEvent> {
+        // iter on step history chained with final events
+        todo!()
     }
 
     // clone bootstrap state (final ledger and slot)
