@@ -3,7 +3,7 @@ use crate::BootstrapExecutionState;
 use massa_models::api::SCELedgerInfo;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::{Map, PreHashed, Set};
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, Block, BlockId, OperationId, Slot};
 use massa_sc_runtime::Bytecode;
@@ -12,6 +12,7 @@ use rand_xoshiro::Xoshiro256PlusPlus;
 use std::cmp;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::sync::{Condvar, Mutex};
 use std::{collections::VecDeque, sync::Arc};
 use tokio::sync::oneshot;
@@ -102,87 +103,45 @@ impl EventStore {
         self.operation_id_to_event_id.clear();
     }
 
-    /// Remove exess events considering a config defined max
+    /// Prune the exess of events from the event store,
+    /// While there is a slot found, pop slots and get the `event_ids`
+    /// inside, remove the event from divers containers.
+    ///
+    /// Return directly if the event_size <= max_final_events
     pub fn prune(&mut self, max_final_events: usize) {
-        // todo make setting static
-        let ids_len = self.id_to_event.len();
-        if ids_len > max_final_events {
-            let diff = ids_len - max_final_events;
-            let mut to_remove: Vec<SCOutputEventId> = Vec::with_capacity(diff);
-            let mut slots = self.slot_to_id.keys().collect::<Vec<_>>();
-            slots.sort_unstable_by_key(|s| cmp::Reverse(*s));
-            let empty = Set::<SCOutputEventId>::default();
-            while to_remove.len() < diff {
-                let s = match slots.pop() {
-                    Some(s) => s,
-                    None => break,
+        let mut events_size = self.id_to_event.len();
+        if events_size <= max_final_events {
+            return;
+        }
+        let mut slots = self.slot_to_id.keys().copied().collect::<Vec<_>>();
+        slots.sort_unstable_by_key(|s| cmp::Reverse(*s));
+        loop {
+            let slot = match slots.pop() {
+                Some(slot) => slot,
+                _ => return,
+            };
+            let event_ids = match self.slot_to_id.get(&slot) {
+                Some(event_ids) => event_ids.clone(),
+                _ => continue,
+            };
+            for event_id in event_ids.iter() {
+                let event = match self.id_to_event.remove(event_id) {
+                    Some(event) => event,
+                    _ => continue, /* This shouldn't happen */
                 };
-                to_remove = to_remove
-                    .into_iter()
-                    .chain(match self.slot_to_id.get(s) {
-                        Some(it) => it.iter().copied(),
-                        None => empty.iter().copied(),
-                    })
-                    .collect();
-            }
-            for id in to_remove.into_iter() {
-                let event = match self.id_to_event.remove(&id) {
-                    Some(e) => e,
-                    None => continue,
-                };
-
-                match self.slot_to_id.get_mut(&event.context.slot) {
-                    Some(slot_ids) => {
-                        slot_ids.remove(&event.id);
-                        if slot_ids.is_empty() {
-                            self.slot_to_id.remove(&event.context.slot);
-                        }
-                    }
-                    None => {
-                        self.slot_to_id.remove(&event.context.slot);
-                    }
-                }
-
+                remove_from_hashmap(&mut self.slot_to_id, &event.context.slot, event_id);
                 if let Some(caller) = event.context.call_stack.front() {
-                    match self.caller_to_id.get_mut(caller) {
-                        Some(ids) => {
-                            ids.remove(&event.id);
-                            if ids.is_empty() {
-                                self.caller_to_id.remove(caller);
-                            }
-                        }
-                        None => {
-                            self.caller_to_id.remove(caller);
-                        }
-                    }
+                    remove_from_map(&mut self.caller_to_id, caller, event_id);
                 }
-
                 if let Some(sc) = event.context.call_stack.back() {
-                    match self.smart_contract_to_id.get_mut(sc) {
-                        Some(ids) => {
-                            ids.remove(&event.id);
-                            if ids.is_empty() {
-                                self.smart_contract_to_id.remove(sc);
-                            }
-                        }
-                        None => {
-                            self.smart_contract_to_id.remove(sc);
-                        }
-                    }
+                    remove_from_map(&mut self.smart_contract_to_id, sc, event_id);
                 }
-
                 if let Some(op) = event.context.origin_operation_id {
-                    match self.operation_id_to_event_id.get_mut(&op) {
-                        Some(ids) => {
-                            ids.remove(&event.id);
-                            if ids.is_empty() {
-                                self.operation_id_to_event_id.remove(&op);
-                            }
-                        }
-                        None => {
-                            self.operation_id_to_event_id.remove(&op);
-                        }
-                    }
+                    remove_from_map(&mut self.operation_id_to_event_id, &op, event_id);
+                }
+                events_size -= 1;
+                if events_size <= max_final_events {
+                    return;
                 }
             }
         }
@@ -479,6 +438,56 @@ impl TryFrom<&massa_models::Operation> for ExecutionData {
                 coins: *coins,
             }),
             _ => anyhow::bail!("Conversion require an `OperationType::ExecuteSC`"),
+        }
+    }
+}
+
+#[inline]
+/// Remove a given event_id from a `Set<SCOutputEventId>`
+/// The Set is stored into a map `ctnr` at a `key` address. If
+/// the Set resulted from the operation is empty, remove the entry
+/// from the `ctnr`
+///
+/// Used in `prune()`
+fn remove_from_map<T: Eq + Hash + PreHashed>(
+    ctnr: &mut Map<T, Set<SCOutputEventId>>,
+    key: &T,
+    evt_id: &SCOutputEventId,
+) {
+    match ctnr.get_mut(key) {
+        Some(ele) => {
+            ele.remove(evt_id);
+            if ele.is_empty() {
+                ctnr.remove(key);
+            }
+        }
+        _ => {
+            ctnr.remove(key);
+        }
+    }
+}
+
+#[inline]
+/// Remove a given event_id from a `Set<SCOutputEventId>`
+/// The Set is stored into a Hashmap `ctnr` at a `key` address. If
+/// the Set resulted from the operation is empty, remove the entry
+/// from the `ctnr`
+///
+/// Used in `prune()`
+fn remove_from_hashmap<T: Eq + Hash>(
+    ctnr: &mut HashMap<T, Set<SCOutputEventId>>,
+    key: &T,
+    evt_id: &SCOutputEventId,
+) {
+    match ctnr.get_mut(key) {
+        Some(ele) => {
+            ele.remove(evt_id);
+            if ele.is_empty() {
+                ctnr.remove(key);
+            }
+        }
+        _ => {
+            ctnr.remove(key);
         }
     }
 }
