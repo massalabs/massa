@@ -74,7 +74,7 @@ impl Interface for InterfaceImpl {
         };
 
         // get caller
-        let from_address = match context.stack.back() {
+        let from_address = match context.stack.last() {
             Some(addr) => addr.address,
             _ => bail!("Failed to read call stack current address"),
         };
@@ -99,10 +99,10 @@ impl Interface for InterfaceImpl {
         }
 
         // prepare context
-        context.stack.push_back(StackElement {
+        context.stack.push(StackElement {
             address: to_address,
             coins,
-            owned_addresses: vec![to_address].into_iter().collect(),
+            owned_addresses: vec![to_address],
         });
 
         Ok(bytecode)
@@ -110,7 +110,7 @@ impl Interface for InterfaceImpl {
 
     fn finish_call(&self) -> Result<()> {
         let mut context = context_guard!(self);
-        if context.stack.pop_back().is_none() {
+        if context.stack.pop().is_none() {
             bail!("call stack out of bounds")
         }
 
@@ -120,7 +120,7 @@ impl Interface for InterfaceImpl {
     /// Returns zero as a default if address not found.
     fn get_balance(&self) -> Result<u64> {
         let context = context_guard!(self);
-        let address = match context.stack.back() {
+        let address = match context.stack.last() {
             Some(addr) => addr.address,
             _ => bail!("Failed to read call stack current address"),
         };
@@ -160,9 +160,9 @@ impl Interface for InterfaceImpl {
         context
             .ledger_step
             .set_module(address, Some(module.clone()));
-        match context.stack.back_mut() {
+        match context.stack.last_mut() {
             Some(v) => {
-                v.owned_addresses.insert(address);
+                v.owned_addresses.push(address);
             }
             None => bail!("owned addresses not found in stack"),
         };
@@ -200,7 +200,7 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
         let is_allowed = context
             .stack
-            .back()
+            .last()
             .map_or(false, |v| v.owned_addresses.contains(&addr));
         if !is_allowed {
             bail!("You don't have the write access to this entry")
@@ -220,7 +220,7 @@ impl Interface for InterfaceImpl {
 
     fn get_data(&self, key: &str) -> Result<Vec<u8>> {
         let context = context_guard!(self);
-        let addr = match context.stack.back() {
+        let addr = match context.stack.last() {
             Some(addr) => addr.address,
             _ => bail!("Failed to read call stack current address"),
         };
@@ -233,7 +233,7 @@ impl Interface for InterfaceImpl {
 
     fn set_data(&self, key: &str, value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
-        let addr = match context.stack.back() {
+        let addr = match context.stack.last() {
             Some(addr) => addr.address,
             _ => bail!("Failed to read call stack current address"),
         };
@@ -246,7 +246,7 @@ impl Interface for InterfaceImpl {
 
     fn has_data(&self, key: &str) -> Result<bool> {
         let context = context_guard!(self);
-        let addr = match context.stack.back() {
+        let addr = match context.stack.last() {
             Some(addr) => addr.address,
             _ => bail!("Failed to read call stack current address"),
         };
@@ -294,7 +294,7 @@ impl Interface for InterfaceImpl {
     fn transfer_coins(&self, to_address: &String, raw_amount: u64) -> Result<()> {
         let to_address = massa_models::Address::from_str(to_address)?;
         let mut context = context_guard!(self);
-        let from_address = match context.stack.back() {
+        let from_address = match context.stack.last() {
             Some(addr) => addr.address,
             _ => bail!("Failed to read call stack current address"),
         };
@@ -333,7 +333,7 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
         let is_allowed = context
             .stack
-            .back()
+            .last()
             .map_or(false, |v| v.owned_addresses.contains(&from_address));
         if !is_allowed {
             bail!("You don't have the spending access to this entry")
@@ -360,7 +360,7 @@ impl Interface for InterfaceImpl {
 
     /// Return the list of owned adresses of a given SC user
     fn get_owned_addresses(&self) -> Result<Vec<massa_sc_runtime::Address>> {
-        match context_guard!(self).stack.back() {
+        match context_guard!(self).stack.last() {
             Some(v) => Ok(v
                 .owned_addresses
                 .iter()
@@ -382,7 +382,7 @@ impl Interface for InterfaceImpl {
     fn get_call_coins(&self) -> Result<u64> {
         Ok(context_guard!(self)
             .stack
-            .back()
+            .last()
             .map(|e| e.coins)
             .unwrap_or(AMOUNT_ZERO)
             .to_raw())

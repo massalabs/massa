@@ -256,7 +256,7 @@ pub struct StackElement {
     /// coins transferred to the target address during a call,
     pub coins: Amount,
     /// list of addresses created so far during excution,
-    pub owned_addresses: Set<Address>,
+    pub owned_addresses: Vec<Address>,
 }
 
 #[derive(Clone)]
@@ -287,7 +287,7 @@ pub(crate) struct ExecutionContext {
     pub opt_block_creator_addr: Option<Address>,
 
     /// address call stack, most recent is at the back
-    pub stack: VecDeque<StackElement>,
+    pub stack: Vec<StackElement>,
 
     /// True if it's a read-only context
     pub read_only: bool,

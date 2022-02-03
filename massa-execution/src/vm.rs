@@ -297,9 +297,8 @@ impl VM {
         context.stack = vec![StackElement {
             address: data.sender_address,
             coins: data.coins,
-            owned_addresses: vec![data.sender_address].into_iter().collect(),
-        }]
-        .into();
+            owned_addresses: vec![data.sender_address],
+        }];
         context.slot = slot;
         context.opt_block_id = Some(block_id);
         context.opt_block_creator_addr = Some(block_creator_addr);
@@ -340,9 +339,8 @@ impl VM {
             context.stack = vec![StackElement {
                 address,
                 coins: AMOUNT_ZERO,
-                owned_addresses: vec![address].into_iter().collect(),
-            }]
-            .into();
+                owned_addresses: vec![address],
+            }];
 
             // Set read-only
             context.read_only = true;
