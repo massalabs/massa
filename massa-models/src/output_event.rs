@@ -17,13 +17,30 @@ pub struct SCOutputEvent {
     pub data: String,
 }
 
+const SC_OUTPUT_EVENT_ID_STRING_PREFIX: &str = "SCE";
+
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct SCOutputEventId(pub Hash);
 
 impl FromStr for SCOutputEventId {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(SCOutputEventId(Hash::from_str(s)?))
+        if cfg!(feature = "hash-prefix") {
+            let v: Vec<_> = s.split('-').collect();
+            if v.len() != 2 {
+                // assume there is no prefix
+                Ok(SCOutputEventId(Hash::from_str(s)?))
+            } else if v[0] != SC_OUTPUT_EVENT_ID_STRING_PREFIX {
+                Err(ModelsError::WrongPrefix(
+                    SC_OUTPUT_EVENT_ID_STRING_PREFIX.to_string(),
+                    v[0].to_string(),
+                ))
+            } else {
+                Ok(SCOutputEventId(Hash::from_str(v[1])?))
+            }
+        } else {
+            Ok(SCOutputEventId(Hash::from_str(s)?))
+        }
     }
 }
 

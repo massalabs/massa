@@ -11,4 +11,7 @@ pub enum MassaHashError {
 
     /// error forwarded by engine: {0}
     EngineError(#[from] secp256k1::Error),
+
+    /// Wrong prefix for hash: expected {0}, got {1}
+    WrongPrefix(String, String),
 }

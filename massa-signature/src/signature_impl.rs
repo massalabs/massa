@@ -8,6 +8,9 @@ use std::{convert::TryInto, str::FromStr};
 pub const PRIVATE_KEY_SIZE_BYTES: usize = 32;
 pub const PUBLIC_KEY_SIZE_BYTES: usize = 33;
 pub const SIGNATURE_SIZE_BYTES: usize = 64;
+const PRIVATE_KEY_STRING_PREFIX: &str = "PRI";
+const PUBLIC_KEY_STRING_PREFIX: &str = "PUB";
+const SIGNATURE_STRING_PREFIX: &str = "SIG";
 
 // Per-thread signature engine, initiated lazily on first per-thread use.
 thread_local!(static SIGNATURE_ENGINE: SignatureEngine = SignatureEngine(Secp256k1::new()));
@@ -19,14 +22,33 @@ pub struct PrivateKey(secp256k1::SecretKey);
 
 impl std::fmt::Display for PrivateKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_bs58_check())
+        if cfg!(feature = "hash-prefix") {
+            write!(f, "{}-{}", PRIVATE_KEY_STRING_PREFIX, self.to_bs58_check())
+        } else {
+            write!(f, "{}", self.to_bs58_check())
+        }
     }
 }
 
 impl FromStr for PrivateKey {
     type Err = MassaHashError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        PrivateKey::from_bs58_check(s)
+        if cfg!(feature = "hash-prefix") {
+            let v: Vec<_> = s.split('-').collect();
+            if v.len() != 2 {
+                // assume there is no prefix
+                PrivateKey::from_bs58_check(s)
+            } else if v[0] != PRIVATE_KEY_STRING_PREFIX {
+                Err(MassaHashError::WrongPrefix(
+                    PRIVATE_KEY_STRING_PREFIX.to_string(),
+                    v[0].to_string(),
+                ))
+            } else {
+                PrivateKey::from_bs58_check(v[1])
+            }
+        } else {
+            PrivateKey::from_bs58_check(s)
+        }
     }
 }
 
@@ -227,14 +249,33 @@ pub struct PublicKey(secp256k1::PublicKey);
 
 impl std::fmt::Display for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_bs58_check())
+        if cfg!(feature = "hash-prefix") {
+            write!(f, "{}-{}", PUBLIC_KEY_STRING_PREFIX, self.to_bs58_check())
+        } else {
+            write!(f, "{}", self.to_bs58_check())
+        }
     }
 }
 
 impl FromStr for PublicKey {
     type Err = MassaHashError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        PublicKey::from_bs58_check(s)
+        if cfg!(feature = "hash-prefix") {
+            let v: Vec<_> = s.split('-').collect();
+            if v.len() != 2 {
+                // assume there is no prefix
+                PublicKey::from_bs58_check(s)
+            } else if v[0] != PUBLIC_KEY_STRING_PREFIX {
+                Err(MassaHashError::WrongPrefix(
+                    PUBLIC_KEY_STRING_PREFIX.to_string(),
+                    v[0].to_string(),
+                ))
+            } else {
+                PublicKey::from_bs58_check(v[1])
+            }
+        } else {
+            PublicKey::from_bs58_check(s)
+        }
     }
 }
 
@@ -442,14 +483,33 @@ pub struct Signature(secp256k1::Signature);
 
 impl std::fmt::Display for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_bs58_check())
+        if cfg!(feature = "hash-prefix") {
+            write!(f, "{}-{}", SIGNATURE_STRING_PREFIX, self.to_bs58_check())
+        } else {
+            write!(f, "{}", self.to_bs58_check())
+        }
     }
 }
 
 impl FromStr for Signature {
     type Err = MassaHashError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Signature::from_bs58_check(s)
+        if cfg!(feature = "hash-prefix") {
+            let v: Vec<_> = s.split('-').collect();
+            if v.len() != 2 {
+                // assume there is no prefix
+                Signature::from_bs58_check(s)
+            } else if v[0] != SIGNATURE_STRING_PREFIX {
+                Err(MassaHashError::WrongPrefix(
+                    SIGNATURE_STRING_PREFIX.to_string(),
+                    v[0].to_string(),
+                ))
+            } else {
+                Signature::from_bs58_check(v[1])
+            }
+        } else {
+            Signature::from_bs58_check(s)
+        }
     }
 }
 
