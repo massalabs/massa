@@ -16,6 +16,7 @@ use massa_signature::{
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 
+const ENDORSEMENT_ID_STRING_PREFIX: &str = "END";
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct EndorsementId(Hash);
 
@@ -23,14 +24,30 @@ impl PreHashed for EndorsementId {}
 
 impl std::fmt::Display for EndorsementId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0.to_bs58_check())
+        write!(
+            f,
+            "{}-{}",
+            ENDORSEMENT_ID_STRING_PREFIX,
+            self.0.to_bs58_check()
+        )
     }
 }
 
 impl FromStr for EndorsementId {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(EndorsementId(Hash::from_str(s)?))
+        let v: Vec<_> = s.split('-').collect();
+        if v.len() != 2 {
+            // assume there is no prefix
+            Ok(EndorsementId(Hash::from_str(s)?))
+        } else if v[0] != ENDORSEMENT_ID_STRING_PREFIX {
+            Err(ModelsError::WrongPrefix(
+                ENDORSEMENT_ID_STRING_PREFIX.to_string(),
+                v[0].to_string(),
+            ))
+        } else {
+            Ok(EndorsementId(Hash::from_str(v[1])?))
+        }
     }
 }
 
