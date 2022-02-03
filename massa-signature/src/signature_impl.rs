@@ -9,6 +9,7 @@ pub const PRIVATE_KEY_SIZE_BYTES: usize = 32;
 pub const PUBLIC_KEY_SIZE_BYTES: usize = 33;
 pub const SIGNATURE_SIZE_BYTES: usize = 64;
 const PRIVATE_KEY_STRING_PREFIX: &str = "PRI";
+const PUBLIC_KEY_STRING_PREFIX: &str = "PUB";
 
 // Per-thread signature engine, initiated lazily on first per-thread use.
 thread_local!(static SIGNATURE_ENGINE: SignatureEngine = SignatureEngine(Secp256k1::new()));
@@ -246,7 +247,18 @@ impl std::fmt::Display for PublicKey {
 impl FromStr for PublicKey {
     type Err = MassaHashError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        PublicKey::from_bs58_check(s)
+        let v: Vec<_> = s.split('-').collect();
+        if v.len() != 2 {
+            // assume there is no prefix
+            PublicKey::from_bs58_check(s)
+        } else if v[0] != PUBLIC_KEY_STRING_PREFIX {
+            Err(MassaHashError::WrongPrefix(
+                PUBLIC_KEY_STRING_PREFIX.to_string(),
+                v[0].to_string(),
+            ))
+        } else {
+            PublicKey::from_bs58_check(v[1])
+        }
     }
 }
 
