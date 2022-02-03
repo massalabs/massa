@@ -18,6 +18,8 @@ use std::convert::TryInto;
 use std::fmt::Formatter;
 use std::str::FromStr;
 
+const BLOCK_ID_STRING_PREFIX: &str = "BLO";
+
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct BlockId(pub Hash);
 
@@ -25,20 +27,31 @@ impl PreHashed for BlockId {}
 
 impl std::fmt::Display for BlockId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0.to_bs58_check())
+        write!(f, "{}-{}", BLOCK_ID_STRING_PREFIX, self.0.to_bs58_check())
     }
 }
 
 impl std::fmt::Debug for BlockId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0.to_bs58_check())
+        write!(f, "{}-{}", BLOCK_ID_STRING_PREFIX, self.0.to_bs58_check())
     }
 }
 
 impl FromStr for BlockId {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(BlockId(Hash::from_str(s)?))
+        let v: Vec<_> = s.split('-').collect();
+        if v.len() != 2 {
+            // assume there is no prefix
+            Ok(BlockId(Hash::from_str(s)?))
+        } else if v[0] != BLOCK_ID_STRING_PREFIX {
+            Err(ModelsError::WrongPrefix(
+                BLOCK_ID_STRING_PREFIX.to_string(),
+                v[0].to_string(),
+            ))
+        } else {
+            Ok(BlockId(Hash::from_str(v[1])?))
+        }
     }
 }
 
