@@ -2,10 +2,13 @@
 
 // To start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::tools;
+use crate::error::HandshakeErrorType;
 use crate::messages::Message;
 use crate::node_worker::{NodeCommand, NodeEvent, NodeWorker};
 use crate::ConnectionClosureReason;
+use crate::NetworkError;
 use crate::NetworkEvent;
+
 use crate::PeerInfo;
 use crate::{
     binders::{ReadBinder, WriteBinder},
@@ -146,7 +149,7 @@ async fn test_multiple_connections_to_controller() {
             let conn2_drain = tools::incoming_message_drain_start(conn2_r).await; // drained l109
 
             // 3) try to establish an extra connection from peer1 to controller with max_in_connections_per_ip = 1
-            tools::rejected_connection_to_controller(
+            let err: NetworkError = tools::rejected_connection_to_controller(
                 &mut network_event_receiver,
                 &mut mock_interface,
                 mock1_addr,
@@ -157,8 +160,18 @@ async fn test_multiple_connections_to_controller() {
             )
             .await;
 
+            if !matches!(
+                err,
+                NetworkError::HandshakeError(HandshakeErrorType::PeerListReceived(_))
+            ) {
+                panic!(
+                    "We were supposed to handle a peer list here\nReceived {}",
+                    err
+                )
+            }
+
             // 4) try to establish an third connection to controller with max_in_connections = 2
-            tools::rejected_connection_to_controller(
+            let _: NetworkError = tools::rejected_connection_to_controller(
                 &mut network_event_receiver,
                 &mut mock_interface,
                 mock3_addr,
@@ -277,7 +290,7 @@ async fn test_peer_ban() {
             .await;
 
             // attempt a new connection from peer to controller: should be rejected
-            tools::rejected_connection_to_controller(
+            let _: NetworkError = tools::rejected_connection_to_controller(
                 &mut network_event_receiver,
                 &mut mock_interface,
                 mock_addr,
@@ -420,7 +433,7 @@ async fn test_peer_ban_by_ip() {
             .await;
 
             // attempt a new connection from peer to controller: should be rejected
-            tools::rejected_connection_to_controller(
+            let _: NetworkError = tools::rejected_connection_to_controller(
                 &mut network_event_receiver,
                 &mut mock_interface,
                 mock_addr,

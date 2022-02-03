@@ -4,6 +4,7 @@ use super::super::binders::{ReadBinder, WriteBinder};
 use super::mock_establisher::MockEstablisherInterface;
 use super::{mock_establisher, tools};
 use crate::messages::Message;
+use crate::NetworkError;
 use crate::{handshake_worker::HandshakeWorker, ConnectionId};
 use crate::{start_network_controller, NetworkSettings};
 use crate::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver, NetworkManager, PeerInfo};
@@ -167,7 +168,8 @@ pub async fn full_connection_to_controller(
     (mock_node_id, res.1, res.2)
 }
 
-/// try to establish a connection to the controller and expect rejection
+/// try to establish a connection to the controller and expect rejection.
+/// Return the `NetworkError` that spawned from the HanshakeWorker.
 pub async fn rejected_connection_to_controller(
     network_event_receiver: &mut NetworkEventReceiver,
     mock_interface: &mut MockEstablisherInterface,
@@ -176,7 +178,7 @@ pub async fn rejected_connection_to_controller(
     event_timeout_ms: u64,
     rw_timeout_ms: u64,
     connection_id: ConnectionId,
-) {
+) -> NetworkError {
     // establish connection towards controller
     let (mock_read_half, mock_write_half) = timeout(
         Duration::from_millis(connect_timeout_ms),
@@ -204,10 +206,11 @@ pub async fn rejected_connection_to_controller(
     .expect("handshake creation failed")
     .1;
 
-    assert!(
-        result.is_err(),
-        "Handshake Operation was supposed to failed"
-    );
+    let ret = if let Err(err) = result {
+        err
+    } else {
+        panic!("Handshake Operation was supposed to failed")
+    };
 
     // wait for NetworkEvent::NewConnection or NetworkEvent::ConnectionClosed events to NOT happen
     if wait_network_event(
@@ -236,6 +239,8 @@ pub async fn rejected_connection_to_controller(
     {
         panic!("unexpected node connection event detected");
     }
+
+    ret
 }
 
 /// establish a full alive connection from the network controller

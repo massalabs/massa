@@ -115,9 +115,6 @@ impl HandshakeWorker {
         .await
         {
             Err(_) => throw!(HandshakeTimeout),
-            Ok(Err(NetworkError::HandshakeError(HandshakeErrorType::PeerListReceived(list)))) => {
-                throw!(PeerListReceived, list)
-            }
             Ok(Err(e)) => return Err(e),
             Ok(Ok((_, None))) => throw!(HandshakeInterruption, "init".into()),
             Ok(Ok((_, Some((_, msg))))) => match msg {
@@ -126,6 +123,7 @@ impl HandshakeWorker {
                     random_bytes: rb,
                     version,
                 } => (NodeId(pk), rb, version),
+                Message::PeerList(list) => throw!(PeerListReceived, list),
                 _ => throw!(HandshakeWrongMessage),
             },
         };
