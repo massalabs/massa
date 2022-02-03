@@ -21,3 +21,6 @@ massa_hash = { path = "../massa-hash" }
 [dev-dependencies]
 pretty_assertions = "1.0"
 serial_test = "0.5"
+
+[features]
+hash-prefix = []

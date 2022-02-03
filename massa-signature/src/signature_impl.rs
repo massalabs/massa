@@ -22,24 +22,32 @@ pub struct PrivateKey(secp256k1::SecretKey);
 
 impl std::fmt::Display for PrivateKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}-{}", PRIVATE_KEY_STRING_PREFIX, self.to_bs58_check())
+        if cfg!(feature = "hash-prefix") {
+            write!(f, "{}-{}", PRIVATE_KEY_STRING_PREFIX, self.to_bs58_check())
+        } else {
+            write!(f, "{}", self.to_bs58_check())
+        }
     }
 }
 
 impl FromStr for PrivateKey {
     type Err = MassaHashError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let v: Vec<_> = s.split('-').collect();
-        if v.len() != 2 {
-            // assume there is no prefix
-            PrivateKey::from_bs58_check(s)
-        } else if v[0] != PRIVATE_KEY_STRING_PREFIX {
-            Err(MassaHashError::WrongPrefix(
-                PRIVATE_KEY_STRING_PREFIX.to_string(),
-                v[0].to_string(),
-            ))
+        if cfg!(feature = "hash-prefix") {
+            let v: Vec<_> = s.split('-').collect();
+            if v.len() != 2 {
+                // assume there is no prefix
+                PrivateKey::from_bs58_check(s)
+            } else if v[0] != PRIVATE_KEY_STRING_PREFIX {
+                Err(MassaHashError::WrongPrefix(
+                    PRIVATE_KEY_STRING_PREFIX.to_string(),
+                    v[0].to_string(),
+                ))
+            } else {
+                PrivateKey::from_bs58_check(v[1])
+            }
         } else {
-            PrivateKey::from_bs58_check(v[1])
+            PrivateKey::from_bs58_check(s)
         }
     }
 }
@@ -241,24 +249,32 @@ pub struct PublicKey(secp256k1::PublicKey);
 
 impl std::fmt::Display for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_bs58_check())
+        if cfg!(feature = "hash-prefix") {
+            write!(f, "{}-{}", PUBLIC_KEY_STRING_PREFIX, self.to_bs58_check())
+        } else {
+            write!(f, "{}", self.to_bs58_check())
+        }
     }
 }
 
 impl FromStr for PublicKey {
     type Err = MassaHashError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let v: Vec<_> = s.split('-').collect();
-        if v.len() != 2 {
-            // assume there is no prefix
-            PublicKey::from_bs58_check(s)
-        } else if v[0] != PUBLIC_KEY_STRING_PREFIX {
-            Err(MassaHashError::WrongPrefix(
-                PUBLIC_KEY_STRING_PREFIX.to_string(),
-                v[0].to_string(),
-            ))
+        if cfg!(feature = "hash-prefix") {
+            let v: Vec<_> = s.split('-').collect();
+            if v.len() != 2 {
+                // assume there is no prefix
+                PublicKey::from_bs58_check(s)
+            } else if v[0] != PUBLIC_KEY_STRING_PREFIX {
+                Err(MassaHashError::WrongPrefix(
+                    PUBLIC_KEY_STRING_PREFIX.to_string(),
+                    v[0].to_string(),
+                ))
+            } else {
+                PublicKey::from_bs58_check(v[1])
+            }
         } else {
-            PublicKey::from_bs58_check(v[1])
+            PublicKey::from_bs58_check(s)
         }
     }
 }
@@ -467,24 +483,32 @@ pub struct Signature(secp256k1::Signature);
 
 impl std::fmt::Display for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_bs58_check())
+        if cfg!(feature = "hash-prefix") {
+            write!(f, "{}-{}", SIGNATURE_STRING_PREFIX, self.to_bs58_check())
+        } else {
+            write!(f, "{}", self.to_bs58_check())
+        }
     }
 }
 
 impl FromStr for Signature {
     type Err = MassaHashError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let v: Vec<_> = s.split('-').collect();
-        if v.len() != 2 {
-            // assume there is no prefix
-            Signature::from_bs58_check(s)
-        } else if v[0] != SIGNATURE_STRING_PREFIX {
-            Err(MassaHashError::WrongPrefix(
-                SIGNATURE_STRING_PREFIX.to_string(),
-                v[0].to_string(),
-            ))
+        if cfg!(feature = "hash-prefix") {
+            let v: Vec<_> = s.split('-').collect();
+            if v.len() != 2 {
+                // assume there is no prefix
+                Signature::from_bs58_check(s)
+            } else if v[0] != SIGNATURE_STRING_PREFIX {
+                Err(MassaHashError::WrongPrefix(
+                    SIGNATURE_STRING_PREFIX.to_string(),
+                    v[0].to_string(),
+                ))
+            } else {
+                Signature::from_bs58_check(v[1])
+            }
         } else {
-            Signature::from_bs58_check(v[1])
+            Signature::from_bs58_check(s)
         }
     }
 }

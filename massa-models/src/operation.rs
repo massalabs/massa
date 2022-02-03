@@ -24,40 +24,52 @@ pub struct OperationId(Hash);
 
 impl std::fmt::Display for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{}-{}",
-            OPERATION_ID_STRING_PREFIX,
-            self.0.to_bs58_check()
-        )
+        if cfg!(feature = "hash-prefix") {
+            write!(
+                f,
+                "{}-{}",
+                OPERATION_ID_STRING_PREFIX,
+                self.0.to_bs58_check()
+            )
+        } else {
+            write!(f, "{}", self.0.to_bs58_check())
+        }
     }
 }
 
 impl std::fmt::Debug for OperationId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{}-{}",
-            OPERATION_ID_STRING_PREFIX,
-            self.0.to_bs58_check()
-        )
+        if cfg!(feature = "hash-prefix") {
+            write!(
+                f,
+                "{}-{}",
+                OPERATION_ID_STRING_PREFIX,
+                self.0.to_bs58_check()
+            )
+        } else {
+            write!(f, "{}", self.0.to_bs58_check())
+        }
     }
 }
 
 impl FromStr for OperationId {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let v: Vec<_> = s.split('-').collect();
-        if v.len() != 2 {
-            // assume there is no prefix
-            Ok(OperationId(Hash::from_str(s)?))
-        } else if v[0] != OPERATION_ID_STRING_PREFIX {
-            Err(ModelsError::WrongPrefix(
-                OPERATION_ID_STRING_PREFIX.to_string(),
-                v[0].to_string(),
-            ))
+        if cfg!(feature = "hash-prefix") {
+            let v: Vec<_> = s.split('-').collect();
+            if v.len() != 2 {
+                // assume there is no prefix
+                Ok(OperationId(Hash::from_str(s)?))
+            } else if v[0] != OPERATION_ID_STRING_PREFIX {
+                Err(ModelsError::WrongPrefix(
+                    OPERATION_ID_STRING_PREFIX.to_string(),
+                    v[0].to_string(),
+                ))
+            } else {
+                Ok(OperationId(Hash::from_str(v[1])?))
+            }
         } else {
-            Ok(OperationId(Hash::from_str(v[1])?))
+            Ok(OperationId(Hash::from_str(s)?))
         }
     }
 }

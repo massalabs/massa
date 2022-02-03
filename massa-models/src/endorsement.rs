@@ -24,29 +24,37 @@ impl PreHashed for EndorsementId {}
 
 impl std::fmt::Display for EndorsementId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(
-            f,
-            "{}-{}",
-            ENDORSEMENT_ID_STRING_PREFIX,
-            self.0.to_bs58_check()
-        )
+        if cfg!(feature = "hash-prefix") {
+            write!(
+                f,
+                "{}-{}",
+                ENDORSEMENT_ID_STRING_PREFIX,
+                self.0.to_bs58_check()
+            )
+        } else {
+            write!(f, "{}", self.0.to_bs58_check())
+        }
     }
 }
 
 impl FromStr for EndorsementId {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let v: Vec<_> = s.split('-').collect();
-        if v.len() != 2 {
-            // assume there is no prefix
-            Ok(EndorsementId(Hash::from_str(s)?))
-        } else if v[0] != ENDORSEMENT_ID_STRING_PREFIX {
-            Err(ModelsError::WrongPrefix(
-                ENDORSEMENT_ID_STRING_PREFIX.to_string(),
-                v[0].to_string(),
-            ))
+        if cfg!(feature = "hash-prefix") {
+            let v: Vec<_> = s.split('-').collect();
+            if v.len() != 2 {
+                // assume there is no prefix
+                Ok(EndorsementId(Hash::from_str(s)?))
+            } else if v[0] != ENDORSEMENT_ID_STRING_PREFIX {
+                Err(ModelsError::WrongPrefix(
+                    ENDORSEMENT_ID_STRING_PREFIX.to_string(),
+                    v[0].to_string(),
+                ))
+            } else {
+                Ok(EndorsementId(Hash::from_str(v[1])?))
+            }
         } else {
-            Ok(EndorsementId(Hash::from_str(v[1])?))
+            Ok(EndorsementId(Hash::from_str(s)?))
         }
     }
 }

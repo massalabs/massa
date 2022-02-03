@@ -35,3 +35,7 @@ rev_lines = "0.2.1"
 assert_cmd = "2.0"
 serial_test = "0.5"
 toml_edit = "0.8"
+
+
+[features]
+hash-prefix = ["massa_models/hash-prefix", "massa_signature/hash-prefix"]
