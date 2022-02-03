@@ -23,7 +23,6 @@ impl FromStr for Address {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let v: Vec<_> = s.split('-').collect();
-        println!("{:?}", v);
         if v.len() != 2 {
             // assume there is no prefix
             Ok(Address(Hash::from_str(s)?))
