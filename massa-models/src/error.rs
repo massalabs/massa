@@ -32,4 +32,6 @@ pub enum ModelsError {
     TimeOverflowError,
     /// Time error {0}
     TimeError(#[from] massa_time::TimeError),
+    /// Wrong prefix for hash: expected {0}, got {1}
+    WrongPrefix(String, String),
 }
