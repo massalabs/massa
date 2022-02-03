@@ -25,14 +25,14 @@ lazy_static::lazy_static! {
             .unwrap()
             .saturating_add(MassaTime::from(1000 * 60 * 3))
     } else {
-        1641754800000.into()
+        1643918400000.into()
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1643644800000.into())
+        Some(1646078400000.into())
     };
 
     /// Time between the periods in the same thread.

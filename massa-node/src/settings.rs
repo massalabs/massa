@@ -17,7 +17,7 @@ lazy_static::lazy_static! {
     pub static ref VERSION: Version = if cfg!(feature = "sandbox") {
         "SAND.0.0"
     } else {
-        "TEST.6.5"
+        "TEST.7.0"
     }
     .parse()
     .unwrap();
