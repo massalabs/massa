@@ -17,6 +17,8 @@
 [execution]
     # path to the initial smart contract balance ledger
     initial_sce_ledger_path = "base_config/initial_sce_ledger.json"
+    # max number of generated events kept in RAM
+    max_final_events = 100
 
 [consensus]
     # max number of previously discarded blocks kept in RAM
