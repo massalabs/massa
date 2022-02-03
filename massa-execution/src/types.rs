@@ -250,6 +250,16 @@ impl EventStore {
 }
 
 #[derive(Clone)]
+pub struct StackElement {
+    /// called address
+    pub address: Address,
+    /// coins transferred to the target address during a call,
+    pub coins: Amount,
+    /// list of addresses created so far during excution,
+    pub owned_addresses: Vec<Address>,
+}
+
+#[derive(Clone)]
 /// Stateful context, providing a context during the execution of a module
 pub(crate) struct ExecutionContext {
     /// final and active ledger at the current step
@@ -257,9 +267,6 @@ pub(crate) struct ExecutionContext {
 
     /// max gas for this execution
     pub max_gas: u64,
-
-    /// coins transferred to the target address during a call, stacked
-    pub coins_stack: Vec<Amount>,
 
     /// gas price of the execution
     pub gas_price: Amount,
@@ -280,10 +287,7 @@ pub(crate) struct ExecutionContext {
     pub opt_block_creator_addr: Option<Address>,
 
     /// address call stack, most recent is at the back
-    pub call_stack: VecDeque<Address>,
-
-    /// list of addresses created so far during excution, stacked
-    pub owned_addresses_stack: Vec<Vec<Address>>,
+    pub stack: Vec<StackElement>,
 
     /// True if it's a read-only context
     pub read_only: bool,
@@ -321,13 +325,11 @@ impl ExecutionContext {
                 caused_changes: Default::default(),
             },
             max_gas: Default::default(),
-            coins_stack: Default::default(),
+            stack: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),
             opt_block_id: Default::default(),
             opt_block_creator_addr: Default::default(),
-            call_stack: Default::default(),
-            owned_addresses_stack: Default::default(),
             created_addr_index: Default::default(),
             read_only: Default::default(),
             created_event_index: Default::default(),
