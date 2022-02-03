@@ -2,7 +2,8 @@ use crate::error::bootstrap_file_error;
 use crate::interface_impl::InterfaceImpl;
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges};
 use crate::types::{
-    EventStore, ExecutionContext, ExecutionData, ExecutionStep, StepHistory, StepHistoryItem,
+    EventStore, ExecutionContext, ExecutionData, ExecutionStep, StackElement, StepHistory,
+    StepHistoryItem,
 };
 use crate::{config::ExecutionConfigs, ExecutionError};
 use massa_models::api::SCELedgerInfo;
@@ -255,11 +256,9 @@ impl VM {
             SCELedgerChanges::from(self.step_history.clone());
         context.created_addr_index = 0;
         context.created_event_index = 0;
-        context.owned_addresses_stack.clear();
-        context.call_stack.clear();
+        context.stack.clear();
         context.events.clear();
         context.read_only = false;
-        context.coins_stack.clear();
         context.origin_operation_id = None;
     }
 
@@ -295,12 +294,15 @@ impl VM {
         // created_addr_index is not reset here (it is used at the slot scale)
         context.gas_price = data.gas_price;
         context.max_gas = data.max_gas;
-        context.coins_stack = vec![data.coins];
+        context.stack = vec![StackElement {
+            address: data.sender_address,
+            coins: data.coins,
+            owned_addresses: vec![data.sender_address].into_iter().collect(),
+        }]
+        .into();
         context.slot = slot;
         context.opt_block_id = Some(block_id);
         context.opt_block_creator_addr = Some(block_creator_addr);
-        context.call_stack = vec![data.sender_address].into();
-        context.owned_addresses_stack = vec![vec![data.sender_address]];
         context.origin_operation_id = operation;
 
         (
@@ -334,7 +336,13 @@ impl VM {
                 let public_key = derive_public_key(&private_key);
                 Address::from_public_key(&public_key)
             });
-            context.call_stack = vec![address].into();
+
+            context.stack = vec![StackElement {
+                address,
+                coins: AMOUNT_ZERO,
+                owned_addresses: vec![address].into_iter().collect(),
+            }]
+            .into();
 
             // Set read-only
             context.read_only = true;
@@ -344,12 +352,6 @@ impl VM {
 
             // Set the simulated gas price.
             context.gas_price = simulated_gas_price;
-
-            // Set coins to zero
-            context.coins_stack = vec![AMOUNT_ZERO];
-
-            // Set owned addresses
-            context.owned_addresses_stack = vec![vec![address]];
 
             // Seed the RNG
             let mut seed: Vec<u8> = slot.to_bytes_key().to_vec();
