@@ -1,19 +1,22 @@
 use crate::error::bootstrap_file_error;
 use crate::interface_impl::InterfaceImpl;
 use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges};
-use crate::types::{ExecutionContext, ExecutionData, ExecutionStep, StepHistory, StepHistoryItem};
+use crate::types::{
+    EventStore, ExecutionContext, ExecutionData, ExecutionStep, StepHistory, StepHistoryItem,
+};
 use crate::{config::ExecutionConfigs, ExecutionError};
 use massa_models::api::SCELedgerInfo;
+use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Map;
-use massa_models::AMOUNT_ZERO;
-use massa_sc_runtime::Interface;
-
-use massa_models::timeslots::slot_count_in_range;
+use massa_models::timeslots::{get_latest_block_slot_at_timestamp, slot_count_in_range};
 use massa_models::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyResult},
     Address, Amount, BlockId, Slot,
 };
+use massa_models::{OperationId, AMOUNT_ZERO};
+use massa_sc_runtime::Interface;
 use massa_signature::{derive_public_key, generate_random_private_key};
+use massa_time::MassaTime;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::mem;
@@ -26,6 +29,9 @@ pub(crate) struct VM {
     /// thread count
     thread_count: u8,
 
+    genesis_timestamp: MassaTime,
+    t0: MassaTime,
+
     /// history of SCE-active executed steps
     step_history: StepHistory,
 
@@ -34,6 +40,9 @@ pub(crate) struct VM {
 
     /// execution context
     execution_context: Arc<Mutex<ExecutionContext>>,
+
+    /// final events
+    final_events: EventStore,
 }
 
 impl VM {
@@ -76,6 +85,9 @@ impl VM {
             step_history: Default::default(),
             execution_interface,
             execution_context,
+            final_events: Default::default(),
+            genesis_timestamp: cfg.genesis_timestamp,
+            t0: cfg.t0,
         })
     }
 
@@ -87,6 +99,55 @@ impl VM {
             .ledger_step
             .final_ledger_slot
             .clone()
+    }
+
+    /// Get events optionnally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    pub fn get_filtered_sc_output_event(
+        &self,
+        start: Option<Slot>,
+        end: Option<Slot>,
+        emitter_address: Option<Address>,
+        original_caller_address: Option<Address>,
+        original_operation_id: Option<OperationId>,
+    ) -> Vec<SCOutputEvent> {
+        // iter on step history chained with final events
+        let start = start.unwrap_or_else(|| Slot::new(0, 0));
+        let end = end.unwrap_or(match MassaTime::now() {
+            Ok(now) => get_latest_block_slot_at_timestamp(
+                self.thread_count,
+                self.t0,
+                self.genesis_timestamp,
+                now,
+            )
+            .unwrap_or_else(|_| Some(Slot::new(0, 0)))
+            .unwrap_or_else(|| Slot::new(0, 0)),
+            Err(_) => Slot::new(0, 0),
+        });
+        self.step_history
+            .iter()
+            .filter(|item| item.slot >= start && item.slot < end)
+            .flat_map(|item| {
+                item.events.get_filtered_sc_output_event(
+                    start,
+                    end,
+                    emitter_address,
+                    original_caller_address,
+                    original_operation_id,
+                )
+            })
+            .chain(self.final_events.get_filtered_sc_output_event(
+                start,
+                end,
+                emitter_address,
+                original_caller_address,
+                original_operation_id,
+            ))
+            .collect()
     }
 
     // clone bootstrap state (final ledger and slot)
@@ -122,7 +183,8 @@ impl VM {
     ///
     /// # Parameters
     ///   * step: execution step to run
-    pub(crate) fn run_final_step(&mut self, step: ExecutionStep) {
+    ///   * max_final_events: max number of events kept in cache (todo should be removed when config become static)
+    pub(crate) fn run_final_step(&mut self, step: ExecutionStep, max_final_events: usize) {
         // check if that step was already executed as the earliest active step
         let history_item = if let Some(cached) = self.pop_cached_step(&step) {
             // if so, pop it
@@ -141,6 +203,9 @@ impl VM {
             .ledger
             .apply_changes(&history_item.ledger_changes);
         ledger_step.final_ledger_slot.slot = step.slot;
+
+        self.final_events.extend(mem::take(&mut context.events));
+        self.final_events.prune(max_final_events)
     }
 
     /// check if step already at history front, if so, pop it
@@ -189,10 +254,13 @@ impl VM {
         context.ledger_step.cumulative_history_changes =
             SCELedgerChanges::from(self.step_history.clone());
         context.created_addr_index = 0;
+        context.created_event_index = 0;
         context.owned_addresses_stack.clear();
         context.call_stack.clear();
+        context.events.clear();
         context.read_only = false;
         context.coins_stack.clear();
+        context.origin_operation_id = None;
     }
 
     /// Prepares (updates) the shared context before the new operation.
@@ -200,14 +268,16 @@ impl VM {
     /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
     /// TODO: do not ignore the results
     /// TODO: consider dispatching gas fees with edorsers/endorsees as well
-    /// Returns (backup of local ledger changes, backup of created_addr_index)
+    /// Returns (backup of local ledger changes, backup of created_addr_index,
+    /// backup of events, backup of created_events_index, backup of unsafe rng)
     fn prepare_context(
         &self,
         data: &ExecutionData,
         block_creator_addr: Address,
         block_id: BlockId,
         slot: Slot,
-    ) -> (SCELedgerChanges, u64, Xoshiro256PlusPlus) {
+        operation: Option<OperationId>,
+    ) -> (SCELedgerChanges, u64, EventStore, u64, Xoshiro256PlusPlus) {
         let mut context = self.execution_context.lock().unwrap();
         // make context.ledger_step credit Op's sender with Op.coins in the SCE ledger
         let _result = context
@@ -231,10 +301,13 @@ impl VM {
         context.opt_block_creator_addr = Some(block_creator_addr);
         context.call_stack = vec![data.sender_address].into();
         context.owned_addresses_stack = vec![vec![data.sender_address]];
+        context.origin_operation_id = operation;
 
         (
             context.ledger_step.caused_changes.clone(),
             context.created_addr_index,
+            context.events.clone(),
+            context.created_event_index,
             context.unsafe_rng.clone(),
         )
     }
@@ -288,6 +361,7 @@ impl VM {
         // run in the intepreter
         let run_result = massa_sc_runtime::run(&bytecode, max_gas, &*self.execution_interface);
 
+        let mut context = self.execution_context.lock().unwrap();
         // Send result back.
         let execution_response = ExecuteReadOnlyResponse {
             executed_at: slot,
@@ -296,8 +370,8 @@ impl VM {
                 |_| ReadOnlyResult::Error("Failed to run in read-only mode".to_string()),
                 |_| ReadOnlyResult::Ok,
             ),
-            // TODO: integrate with output events.
-            output_events: None,
+            // integrate with output events.
+            output_events: mem::take(&mut context.events).export(),
         };
         if result_sender.send(execution_response).is_err() {
             debug!("Execution: could not send ExecuteReadOnlyResponse.");
@@ -355,8 +429,22 @@ impl VM {
                 // Prepare context and save the initial ledger changes before execution.
                 // The returned snapshot takes into account the initial coin credits.
                 // This snapshot will be popped back if bytecode execution fails.
-                let (ledger_changes_backup, created_addr_index_backup, rng_backup) =
-                    self.prepare_context(&execution_data, block_creator_addr, *block_id, step.slot);
+                let (
+                    ledger_changes_backup,
+                    created_addr_index_backup,
+                    events_backup,
+                    event_index_backup,
+                    rng_backup,
+                ) = self.prepare_context(
+                    &execution_data,
+                    block_creator_addr,
+                    *block_id,
+                    step.slot,
+                    Some(match operation.get_operation_id() {
+                        Ok(id) => id,
+                        Err(_) => continue,
+                    }),
+                );
 
                 // run in the intepreter
                 let run_result = massa_sc_runtime::run(
@@ -373,7 +461,10 @@ impl VM {
                     let mut context = self.execution_context.lock().unwrap();
                     context.ledger_step.caused_changes = ledger_changes_backup;
                     context.created_addr_index = created_addr_index_backup;
+                    context.events = events_backup;
+                    context.created_event_index = event_index_backup;
                     context.unsafe_rng = rng_backup;
+                    context.origin_operation_id = None;
                 }
             }
         } else {
@@ -387,6 +478,7 @@ impl VM {
             slot: step.slot,
             opt_block_id,
             ledger_changes: mem::take(&mut context.ledger_step.caused_changes),
+            events: mem::take(&mut context.events),
         }
     }
 

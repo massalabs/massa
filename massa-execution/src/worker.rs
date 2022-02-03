@@ -9,7 +9,7 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::Map;
 use massa_models::timeslots::{get_block_slot_timestamp, get_current_latest_block_slot};
-use massa_models::{Address, Amount, Block, BlockId, Slot};
+use massa_models::{Address, Amount, Block, BlockId, OperationId, Slot};
 use std::collections::BTreeMap;
 use std::thread::{self, JoinHandle};
 use tokio::sync::{mpsc, oneshot};
@@ -30,19 +30,18 @@ pub enum ExecutionCommand {
     /// Get a snapshot of the current state for bootstrap
     GetBootstrapState(tokio::sync::oneshot::Sender<BootstrapExecutionState>),
 
-    GetSCOutputEventBySlotRange {
-        start: Slot,
-        end: Slot,
-        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
-    },
-
-    GetSCOutputEventByCaller {
-        caller_address: Address,
-        response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
-    },
-
-    GetSCOutputEventBySCAddress {
-        sc_address: Address,
+    /// Get events optionnally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    GetSCOutputEvents {
+        start: Option<Slot>,
+        end: Option<Slot>,
+        emitter_address: Option<Address>,
+        original_caller_address: Option<Address>,
+        original_operation_id: Option<OperationId>,
         response_tx: oneshot::Sender<Vec<SCOutputEvent>>,
     },
 
@@ -131,7 +130,7 @@ impl ExecutionWorker {
             loop {
                 match requests.pop_front() {
                     Some(ExecutionRequest::RunFinalStep(step)) => {
-                        vm.run_final_step(step);
+                        vm.run_final_step(step, cfg.settings.max_final_events); // todo make settings static
                     }
                     Some(ExecutionRequest::RunActiveStep(step)) => {
                         vm.run_active_step(step);
@@ -164,6 +163,28 @@ impl ExecutionWorker {
                             debug!("execution: could not send get_bootstrap_state answer");
                         }
                     }
+                    Some(ExecutionRequest::GetSCOutputEvents {
+                        start,
+                        end,
+                        emitter_address,
+                        original_caller_address,
+                        original_operation_id,
+                        response_tx,
+                    }) => {
+                        if response_tx
+                            .send(vm.get_filtered_sc_output_event(
+                                start,
+                                end,
+                                emitter_address,
+                                original_caller_address,
+                                original_operation_id,
+                            ))
+                            .is_err()
+                        {
+                            debug!("execution: could not send get_sc_output_event_by_caller_address answer");
+                        }
+                    }
+
                     Some(ExecutionRequest::Shutdown) => return,
                     Some(ExecutionRequest::GetSCELedgerForAddresses {
                         addresses,
@@ -302,19 +323,21 @@ impl ExecutionWorker {
                     address,
                 });
             }
-            ExecutionCommand::GetSCOutputEventBySlotRange {
+            ExecutionCommand::GetSCOutputEvents {
                 start,
                 end,
+                emitter_address,
+                original_caller_address,
+                original_operation_id,
                 response_tx,
-            } => todo!(),
-            ExecutionCommand::GetSCOutputEventByCaller {
-                caller_address,
+            } => self.push_request(ExecutionRequest::GetSCOutputEvents {
+                start,
+                end,
+                emitter_address,
+                original_caller_address,
+                original_operation_id,
                 response_tx,
-            } => todo!(),
-            ExecutionCommand::GetSCOutputEventBySCAddress {
-                sc_address,
-                response_tx,
-            } => todo!(),
+            }),
             ExecutionCommand::GetSCELedgerForAddresses {
                 response_tx,
                 addresses,

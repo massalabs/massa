@@ -42,6 +42,7 @@ fn get_sample_settings() -> (NamedTempFile, ExecutionConfigs) {
     let res = ExecutionConfigs {
         settings: ExecutionSettings {
             initial_sce_ledger_path: initial_file.path().into(),
+            max_final_events: 200,
         },
         thread_count: 2,
         genesis_timestamp: MassaTime::now().unwrap(),

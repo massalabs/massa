@@ -1,17 +1,17 @@
 /// Implementation of the interface used in the execution external library
 ///
-use std::str::FromStr;
-
 use crate::types::ExecutionContext;
 use anyhow::{bail, Result};
+use massa_hash::hash::Hash;
 use massa_models::{
-    output_event::{EventExecutionContext, SCOutputEvent},
+    output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId},
     timeslots::get_block_slot_timestamp,
     AMOUNT_ZERO,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
 use massa_time::MassaTime;
 use rand::Rng;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use tracing::debug;
 
@@ -390,19 +390,28 @@ impl Interface for InterfaceImpl {
             .to_raw())
     }
 
+    /// generate an execution event and stores it
     fn generate_event(&self, data: String) -> Result<()> {
-        let context = context_guard!(self);
-        let slot = context.slot;
-        let block = context.opt_block_id;
-        let call_stack = context.call_stack.clone();
+        let mut execution_context = context_guard!(self);
+
+        // prepare id computation
+        // it is the hash of (slot, index_at_slot, readonly)
+        let mut to_hash: Vec<u8> = execution_context.slot.to_bytes_key().to_vec();
+        to_hash.append(&mut execution_context.created_event_index.to_be_bytes().to_vec());
+        to_hash.push(!execution_context.read_only as u8);
+
         let context = EventExecutionContext {
-            slot,
-            block,
-            call_stack,
+            slot: execution_context.slot,
+            block: execution_context.opt_block_id,
+            call_stack: execution_context.call_stack.clone(),
+            read_only: execution_context.read_only,
+            index_in_slot: execution_context.created_event_index,
+            origin_operation_id: execution_context.origin_operation_id,
         };
-        let event = SCOutputEvent { context, data };
-        debug!("SC event: {:?}", event);
-        // TODO store the event somewhere
+        let id = SCOutputEventId(Hash::compute_from(&to_hash));
+        let event = SCOutputEvent { id, context, data };
+        execution_context.created_event_index += 1;
+        execution_context.events.insert(id, event);
         Ok(())
     }
 

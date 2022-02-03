@@ -11,6 +11,8 @@ pub const CHANNEL_SIZE: usize = 256;
 pub struct ExecutionSettings {
     /// Initial SCE ledger file
     pub initial_sce_ledger_path: PathBuf,
+    /// maximum number of SC output events kept in cache
+    pub max_final_events: usize,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
