@@ -8,6 +8,7 @@ mod interface_impl;
 mod sce_ledger;
 mod types;
 mod vm;
+mod vm_new;
 mod worker;
 
 pub use config::{ExecutionConfigs, ExecutionSettings};
