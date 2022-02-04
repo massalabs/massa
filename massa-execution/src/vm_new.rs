@@ -348,6 +348,24 @@ impl VMThread {
         return true;
     }
 
+    /// gets the time until the next active slot (saturates down to 0)
+    fn get_time_until_next_active_slot(&self) -> MassaTime {
+        let next_slot = self
+            .last_active_slot
+            .get_next_slot(self.config.thread_count)
+            .expect("active slot overflow in VM");
+        let next_timestmap = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            next_slot,
+        )
+        .expect("could not compute block timestmap in VM");
+        let now = MassaTime::compensated_now(self.config.clock_compensation)
+            .expect("could not get current time in VM");
+        next_timestmap.saturating_sub(now)
+    }
+
     /// main VM loop
     fn main_loop(&mut self) {
         loop {
@@ -397,22 +415,7 @@ impl VMThread {
             // TODO execute readonly requests
 
             // compute when the next slot is
-            let delay_until_next_slot = {
-                let next_slot = self
-                    .last_active_slot
-                    .get_next_slot(self.config.thread_count)
-                    .expect("active slot overflow in VM");
-                let next_timestmap = get_block_slot_timestamp(
-                    self.config.thread_count,
-                    self.config.t0,
-                    self.config.genesis_timestamp,
-                    next_slot,
-                )
-                .expect("could not compute block timestmap in VM");
-                let now = MassaTime::compensated_now(self.config.clock_compensation)
-                    .expect("could not get current time in VM");
-                next_timestmap.saturating_sub(now)
-            };
+            let delay_until_next_slot = self.get_time_until_next_active_slot();
             if delay_until_next_slot == 0.into() {
                 // next slot is right now
                 continue;
