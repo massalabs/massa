@@ -5,8 +5,8 @@ use std::convert::TryInto;
 
 use serde::{Deserialize, Serialize};
 
+use crate::constants::BLOCK_ID_SIZE_BYTES;
 use crate::prehash::{BuildMap, Set};
-use crate::settings::BLOCK_ID_SIZE_BYTES;
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, BlockId, DeserializeCompact,
     DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
@@ -26,24 +26,7 @@ impl SerializeCompact for Clique {
     /// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, BlockId};
     /// # use massa_hash::hash::Hash;
     /// # use std::str::FromStr;
-    /// # massa_models::init_serialization_context(massa_models::SerializationContext {
-    /// #     max_block_operations: 1024,
-    /// #     parent_count: 2,
-    /// #     max_peer_list_length: 128,
-    /// #     max_message_size: 3 * 1024 * 1024,
-    /// #     max_block_size: 3 * 1024 * 1024,
-    /// #     max_bootstrap_blocks: 100,
-    /// #     max_bootstrap_cliques: 100,
-    /// #     max_bootstrap_deps: 100,
-    /// #     max_bootstrap_children: 100,
-    /// #     max_ask_blocks_per_message: 10,
-    /// #     max_operations_per_message: 1024,
-    /// #     max_endorsements_per_message: 1024,
-    /// #     max_bootstrap_message_size: 100000000,
-    /// #     max_bootstrap_pos_cycles: 10000,
-    /// #     max_bootstrap_pos_entries: 10000,
-    /// #     max_block_endorsements: 8,
-    /// # });
+    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
     /// # pub fn get_dummy_block_id(s: &str) -> BlockId {
     /// #     BlockId(Hash::compute_from(s.as_bytes()))
     /// # }

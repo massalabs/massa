@@ -1,13 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::settings::AMOUNT_DECIMAL_FACTOR;
+use crate::constants::AMOUNT_DECIMAL_FACTOR;
 use crate::ModelsError;
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;
 use std::fmt;
 use std::str::FromStr;
-
-pub const AMOUNT_ZERO: Amount = Amount::from_raw(0);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);

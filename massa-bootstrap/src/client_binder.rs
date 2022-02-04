@@ -3,9 +3,11 @@
 use super::messages::BootstrapMessage;
 use crate::error::BootstrapError;
 use crate::establisher::Duplex;
-use crate::settings::BOOTSTRAP_RANDOMNESS_SIZE_BYTES;
 use massa_hash::hash::Hash;
-use massa_models::{with_serialization_context, DeserializeCompact, DeserializeMinBEInt};
+use massa_models::{
+    constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeCompact,
+    DeserializeMinBEInt,
+};
 use massa_signature::{verify_signature, PublicKey, Signature, SIGNATURE_SIZE_BYTES};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use tokio::io::AsyncReadExt;

@@ -5,29 +5,6 @@ use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::SocketAddr;
 
-/// Max message size for bootstrap
-pub const MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = 1048576000;
-
-/// Max number of blocks we provide/ take into account while bootstrapping
-pub const MAX_BOOTSTRAP_BLOCKS: u32 = 1000000;
-
-pub const MAX_BOOTSTRAP_CLIQUES: u32 = 1000;
-
-pub const MAX_BOOTSTRAP_DEPS: u32 = 1000;
-
-pub const MAX_BOOTSTRAP_CHILDREN: u32 = 1000;
-
-/// Max number of cycles in PoS bootstrap
-pub const MAX_BOOTSTRAP_POS_CYCLES: u32 = 5;
-
-/// Max number of address and rng entries for PoS bootstrap
-pub const MAX_BOOTSTRAP_POS_ENTRIES: u32 = 1000000000;
-
-/// Max size of the IP list
-pub const IP_LIST_MAX_SIZE: usize = 10000;
-
-pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
-
 #[derive(Debug, Deserialize, Clone)]
 pub struct BootstrapSettings {
     /// Ip address of our bootstrap nodes and their public key.

@@ -1,12 +1,13 @@
-/// Implementation of the interface used in the execution external library
-///
-use crate::types::{ExecutionContext, StackElement};
+///! Implementation of the interface used in the execution external library
+use crate::{
+    types::{ExecutionContext, StackElement},
+    AMOUNT_ZERO,
+};
 use anyhow::{bail, Result};
 use massa_hash::hash::Hash;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId},
     timeslots::get_block_slot_timestamp,
-    AMOUNT_ZERO,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
 use massa_time::MassaTime;

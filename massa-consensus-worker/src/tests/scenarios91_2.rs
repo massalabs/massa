@@ -1,14 +1,13 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::tools::*;
-use massa_consensus_exports::tools::*;
+use massa_consensus_exports::ConsensusConfig;
 
 use massa_hash::hash::Hash;
 use massa_models::Slot;
 use massa_signature::{generate_random_private_key, PrivateKey};
 use massa_time::MassaTime;
 use serial_test::serial;
-use std::collections::HashMap;
 
 #[tokio::test]
 #[serial]
@@ -19,23 +18,15 @@ async fn test_queueing() {
     //     .timestamp(stderrlog::Timestamp::Millisecond)
     //     .init()
     //     .unwrap();
-
-    let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 32000.into();
-    cfg.delta_f0 = 32;
-
-    // to avoid timing problems for block in the future
-    cfg.genesis_timestamp = MassaTime::now()
-        .unwrap()
-        .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
+    let cfg = ConsensusConfig {
+        future_block_processing_max_periods: 50,
+        // to avoid timing problems for blocks in the future
+        genesis_timestamp: MassaTime::now()
+            .unwrap()
+            .saturating_sub(MassaTime::from(32000).checked_mul(1000).unwrap()),
+        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+    };
 
     consensus_without_pool_test(
         cfg.clone(),
@@ -160,23 +151,15 @@ async fn test_doubles() {
     //     .timestamp(stderrlog::Timestamp::Millisecond)
     //     .init()
     //     .unwrap();
-
-    let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 32000.into();
-    cfg.delta_f0 = 32;
-
-    // to avoid timing pb for block in the future
-    cfg.genesis_timestamp = MassaTime::now()
-        .unwrap()
-        .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
+    let cfg = ConsensusConfig {
+        future_block_processing_max_periods: 50,
+        // to avoid timing problems for blocks in the future
+        genesis_timestamp: MassaTime::now()
+            .unwrap()
+            .saturating_sub(MassaTime::from(32000).checked_mul(1000).unwrap()),
+        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+    };
 
     consensus_without_pool_test(
         cfg.clone(),
@@ -277,22 +260,15 @@ async fn test_double_staking() {
     //     .init()
     //     .unwrap();
 
-    let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 32000.into();
-    cfg.delta_f0 = 32;
-
-    // to avoid timing pb for block in the future
-    cfg.genesis_timestamp = MassaTime::now()
-        .unwrap()
-        .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
+    let cfg = ConsensusConfig {
+        future_block_processing_max_periods: 50,
+        // to avoid timing problems for blocks in the future
+        genesis_timestamp: MassaTime::now()
+            .unwrap()
+            .saturating_sub(MassaTime::from(32000).checked_mul(1000).unwrap()),
+        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+    };
 
     consensus_without_pool_test(
         cfg.clone(),
@@ -403,23 +379,15 @@ async fn test_test_parents() {
     //     .init()
     //     .unwrap();
 
-    let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 32000.into();
-    cfg.delta_f0 = 32;
-
-    // to avoid timing pb for block in the future
-    cfg.genesis_timestamp = MassaTime::now()
-        .unwrap()
-        .saturating_sub(cfg.t0.checked_mul(1000).unwrap());
+    let cfg = ConsensusConfig {
+        future_block_processing_max_periods: 50,
+        // to avoid timing problems for blocks in the future
+        genesis_timestamp: MassaTime::now()
+            .unwrap()
+            .saturating_sub(MassaTime::from(32000).checked_mul(1000).unwrap()),
+        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+    };
 
     consensus_without_pool_test(
         cfg.clone(),

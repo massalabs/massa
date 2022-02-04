@@ -4,36 +4,6 @@ use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::{IpAddr, SocketAddr};
 
-pub const CHANNEL_SIZE: usize = 256;
-
-pub const NODE_SEND_CHANNEL_SIZE: usize = 1024;
-
-/// Limit on the number of peers we advertise to others.
-#[cfg(not(test))]
-pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
-#[cfg(test)]
-pub const MAX_ADVERTISE_LENGTH: u32 = 10;
-
-/// Maximum message length in bytes
-#[cfg(not(test))]
-pub const MAX_MESSAGE_SIZE: u32 = 1048576000;
-#[cfg(test)]
-pub const MAX_MESSAGE_SIZE: u32 = 3145728;
-
-/// Max number of hash in the message AskForBlocks
-#[cfg(not(test))]
-pub const MAX_ASK_BLOCKS_PER_MESSAGE: u32 = 128;
-#[cfg(test)]
-pub const MAX_ASK_BLOCKS_PER_MESSAGE: u32 = 3;
-
-/// Max number of operations per message
-pub const MAX_OPERATIONS_PER_MESSAGE: u32 = 1024;
-
-/// Max number of endorsements per message
-pub const MAX_ENDORSEMENTS_PER_MESSAGE: u32 = 1024;
-
-pub const HANDSHAKE_RANDOMNESS_SIZE_BYTES: usize = 32;
-
 /// Network configuration
 #[derive(Debug, Deserialize, Clone)]
 pub struct NetworkSettings {

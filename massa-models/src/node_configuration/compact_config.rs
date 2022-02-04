@@ -1,25 +1,8 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
-
-use std::fmt::Display;
-
+use super::*;
 use crate::Amount;
-use massa_hash::HASH_SIZE_BYTES;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
-
-pub const ADDRESS_SIZE_BYTES: usize = HASH_SIZE_BYTES;
-
-pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
-
-pub const BLOCK_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
-
-pub const ENDORSEMENT_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
-
-pub const OPERATION_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
-
-pub const SLOT_KEY_SIZE: usize = 9;
-
-pub const EVENT_ID_SIZE_BYTES: usize = HASH_SIZE_BYTES;
+use std::fmt::Display;
 
 /// Compact representation of key values of consensus algorithm used in API
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
@@ -42,9 +25,31 @@ pub struct CompactConfig {
     pub pos_lookback_cycles: u64,
     /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles
     pub pos_lock_cycles: u64,
+    /// Reward amount for a block creation
     pub block_reward: Amount,
+    /// Price of a roll on the network
     pub roll_price: Amount,
+    /// Max total size of a block
     pub max_block_size: u32,
+}
+
+impl Default for CompactConfig {
+    fn default() -> Self {
+        Self {
+            genesis_timestamp: *GENESIS_TIMESTAMP,
+            end_timestamp: *END_TIMESTAMP,
+            thread_count: THREAD_COUNT,
+            t0: *T0,
+            delta_f0: DELTA_F0,
+            operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+            periods_per_cycle: PERIODS_PER_CYCLE,
+            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
+            pos_lock_cycles: POS_LOCK_CYCLES,
+            block_reward: *BLOCK_REWARD,
+            roll_price: *ROLL_PRICE,
+            max_block_size: EVENT_ID_SIZE_BYTES as u32,
+        }
+    }
 }
 
 impl Display for CompactConfig {

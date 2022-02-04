@@ -1,20 +1,59 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
-
 #![allow(clippy::assertions_on_constants)]
-
+///! Definition & Implementation of the consensus settings
+/// -----------------------------------------------------
+///
+/// # Configurations
+///
+/// * setting: read from user settings file
+/// * config: merge of settings and hardcoded configuration that shouldn't be
+///           modifyed by user.
+///
+/// This file is allowed to use a lot of constants from `massa-models` as all
+/// other files named `settings.rs` or `config.rs`.
+///
+/// The `ConsensusSettings` is the most basic and complete configuration in the
+/// node. You can get almost every configuration from that one.
+///
+/// `From<ConsensusSettings> impl *`:
+/// - `ConsensusConfig`: Create a config merging user settings andhardcoded values
+///                      (see `/massa-models/node_configuration/*)
+///
+/// `From<&ConsensusConfig> impl *`:
+/// - GraphConfig
+/// - LedgerConfig
+/// - ProofOfStakeConfig
+///
+/// > Development note: We clone the values on getting a configuration from another.
+///
+/// # Usage of constants
+///
+/// The default configuration is loaded from the `massa-models` crate. You shouldn't
+/// write an hardcoded value in the following file but create a new value in
+/// `default.rs` and the testing default equivalent value in `default_testing.rs`. See
+/// `/node_configuration/mod.rs` documentation in `massa-models` sources for more
+/// information.
+///
+/// # Channels
+///
+/// The following file contains the definition of the Channels structures used in
+/// the current module.
+///
+/// # Testing feature
+///
+/// In unit test your allowed to use the `testing` feature flag that will
+/// use the default values from `/node_configuration/default_testing.rs` in the
+/// `massa-models` crate sources.
 use massa_execution::{ExecutionCommandSender, ExecutionEventReceiver};
 use massa_graph::{settings::GraphConfig, LedgerConfig};
-use massa_models::SerializationContext;
-use massa_models::{Amount, CompactConfig};
+use massa_models::Amount;
 use massa_pool::PoolCommandSender;
 use massa_proof_of_stake_exports::ProofOfStakeConfig;
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolEventReceiver};
-use massa_signature::generate_random_private_key;
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 use std::{default::Default, path::PathBuf, usize};
 use tokio::sync::mpsc;
 
@@ -22,126 +61,6 @@ use crate::{
     commands::{ConsensusCommand, ConsensusManagementCommand},
     events::ConsensusEvent,
 };
-
-// Consensus static parameters (defined by protocol used)
-// Changing one of the following values is considered as a breaking change
-// Values differ in `test` flavor building for faster CI and simpler scenarios
-pub const CHANNEL_SIZE: usize = 256;
-
-#[cfg(not(test))]
-lazy_static::lazy_static! {
-    /// Time in millis when the blockclique started.
-    pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
-        MassaTime::now()
-            .unwrap()
-            .saturating_add(MassaTime::from(1000 * 60 * 3))
-    } else {
-        1643918400000.into()
-    };
-
-    /// TESTNET: time when the blockclique is ended.
-    pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
-        None
-    } else {
-        Some(1646078400000.into())
-    };
-
-    /// Time between the periods in the same thread.
-    pub static ref T0: MassaTime = 16000.into();
-
-    /// Private_key to sign genesis blocks.
-    pub static ref GENESIS_KEY: PrivateKey = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
-        .parse()
-        .unwrap();
-
-    pub static ref BLOCK_REWARD: Amount = Amount::from_str("0.3").unwrap();
-
-    pub static ref INITIAL_DRAW_SEED: String = "massa_genesis_seed".to_string();
-
-    /// number of cycle misses (strictly) above which stakers are deactivated
-    pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(7, 10);
-
-    pub static ref ROLL_PRICE: Amount = Amount::from_str("100.0").unwrap();
-}
-
-#[cfg(test)]
-lazy_static::lazy_static! {
-    /// Time in millis when the blockclique started.
-    pub static ref GENESIS_TIMESTAMP: MassaTime = MassaTime::now().unwrap();
-
-    /// TESTNET: time when the blockclique is ended.
-    pub static ref END_TIMESTAMP: Option<MassaTime> = None;
-
-    /// Time between the periods in the same thread.
-    pub static ref T0: MassaTime = 32000.into();
-
-    /// Private_key to sign genesis blocks.
-    pub static ref GENESIS_KEY: PrivateKey = generate_random_private_key();
-
-    pub static ref BLOCK_REWARD: Amount = Amount::from_str("1.0").unwrap();
-
-    pub static ref INITIAL_DRAW_SEED: String = "massa_genesis_seed".to_string();
-
-    /// number of cycle misses (strictly) above which stakers are deactivated
-    pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(1, 1);
-
-    pub static ref ROLL_PRICE: Amount = Amount::from_str("100.0").unwrap();
-}
-
-/// Number of threads
-#[cfg(not(test))]
-pub const THREAD_COUNT: u8 = 32;
-#[cfg(test)]
-const THREAD_COUNT: u8 = 2;
-
-#[cfg(not(test))]
-pub const ENDORSEMENT_COUNT: u32 = 9;
-#[cfg(test)]
-const ENDORSEMENT_COUNT: u32 = 0;
-
-/// Threshold for fitness.
-#[cfg(not(test))]
-pub const DELTA_F0: u64 = 640;
-#[cfg(test)]
-const DELTA_F0: u64 = 32;
-
-/// Maximum number of operations per block
-#[cfg(not(test))]
-pub const MAX_OPERATIONS_PER_BLOCK: u32 = 102400;
-#[cfg(test)]
-const MAX_OPERATIONS_PER_BLOCK: u32 = 1024;
-
-/// Maximum block size in bytes
-#[cfg(not(test))]
-pub const MAX_BLOCK_SIZE: u32 = 102400;
-#[cfg(test)]
-const MAX_BLOCK_SIZE: u32 = 3145728;
-
-/// Maximum operation validity period count
-#[cfg(not(test))]
-pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
-#[cfg(test)]
-const OPERATION_VALIDITY_PERIODS: u64 = 1;
-
-/// cycle duration in periods
-#[cfg(not(test))]
-pub const PERIODS_PER_CYCLE: u64 = 128;
-#[cfg(test)]
-const PERIODS_PER_CYCLE: u64 = 100;
-
-/// PoS lookback cycles: when drawing for cycle N, we use the rolls from cycle N - pos_lookback_cycles - 1
-#[cfg(not(test))]
-pub const POS_LOOKBACK_CYCLES: u64 = 2;
-#[cfg(test)]
-const POS_LOOKBACK_CYCLES: u64 = 2;
-
-/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles
-#[cfg(not(test))]
-pub const POS_LOCK_CYCLES: u64 = 1;
-#[cfg(test)]
-const POS_LOCK_CYCLES: u64 = 1;
-
-pub const MAX_GAS_PER_BLOCK: u64 = 100_000_000;
 
 /// Consensus configuration
 /// Assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
@@ -183,62 +102,11 @@ pub struct ConsensusSettings {
     pub disable_block_creation: bool,
 }
 
-impl ConsensusSettings {
-    /// Utility method to derivate a full configuration (static + user defined) from an user defined one
-    /// This is really handy in tests where we want to mutate static defined values
-    pub fn config(&self) -> ConsensusConfig {
-        // TODO: these assertion should be checked at compile time
-        // https://github.com/rust-lang/rfcs/issues/2790
-        assert!(THREAD_COUNT >= 1);
-        assert!((*T0).to_millis() >= 1);
-        assert!((*T0).to_millis() % (THREAD_COUNT as u64) == 0);
-        ConsensusConfig {
-            genesis_timestamp: *GENESIS_TIMESTAMP,
-            end_timestamp: *END_TIMESTAMP,
-            thread_count: THREAD_COUNT,
-            t0: *T0,
-            genesis_key: *GENESIS_KEY,
-            staking_keys_path: self.staking_keys_path.clone(),
-            max_discarded_blocks: self.max_discarded_blocks,
-            future_block_processing_max_periods: self.future_block_processing_max_periods,
-            max_future_processing_blocks: self.max_future_processing_blocks,
-            max_dependency_blocks: self.max_dependency_blocks,
-            delta_f0: DELTA_F0,
-            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-            max_operations_fill_attempts: self.max_operations_fill_attempts,
-            max_block_size: MAX_BLOCK_SIZE,
-            operation_validity_periods: OPERATION_VALIDITY_PERIODS,
-            periods_per_cycle: PERIODS_PER_CYCLE,
-            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
-            pos_lock_cycles: POS_LOCK_CYCLES,
-            pos_draw_cached_cycles: self.pos_draw_cached_cycles,
-            pos_miss_rate_deactivation_threshold: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
-            ledger_path: self.ledger_path.clone(),
-            ledger_cache_capacity: self.ledger_cache_capacity,
-            ledger_flush_interval: self.ledger_flush_interval,
-            ledger_reset_at_startup: self.ledger_reset_at_startup,
-            initial_ledger_path: self.initial_ledger_path.clone(),
-            block_reward: *BLOCK_REWARD,
-            operation_batch_size: self.operation_batch_size,
-            initial_rolls_path: self.initial_rolls_path.clone(),
-            initial_draw_seed: INITIAL_DRAW_SEED.clone(),
-            roll_price: *ROLL_PRICE,
-            stats_timespan: self.stats_timespan,
-            max_send_wait: self.max_send_wait,
-            force_keep_final_periods: self.force_keep_final_periods,
-            endorsement_count: ENDORSEMENT_COUNT,
-            block_db_prune_interval: self.block_db_prune_interval,
-            max_item_return_count: self.max_item_return_count,
-            disable_block_creation: self.disable_block_creation,
-        }
-    }
-}
-
 /// Consensus full configuration (static + user defined)
-///
-/// Assert that `THREAD_COUNT >= 1 || T0.to_millis() >= 1 || T0.to_millis() % THREAD_COUNT == 0`
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug)]
 pub struct ConsensusConfig {
+    #[cfg(feature = "testing")]
+    pub temp_files: TempFiles,
     /// Time in millis when the blockclique started.
     pub genesis_timestamp: MassaTime,
     /// TESTNET: time when the blockclique is ended.
@@ -279,16 +147,20 @@ pub struct ConsensusConfig {
     pub pos_draw_cached_cycles: usize,
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub pos_miss_rate_deactivation_threshold: Ratio<u64>,
-    /// path to ledger db
+    /// path to ledger db after initialization (merge with `initial_ledger_path` on node start)
     pub ledger_path: PathBuf,
+    /// Cache capacity allowed to the ledger
     pub ledger_cache_capacity: u64,
     pub ledger_flush_interval: Option<MassaTime>,
     pub ledger_reset_at_startup: bool,
+    /// Inital file path that describe the ledger to merge in `ledger_path` after starting
     pub initial_ledger_path: PathBuf,
+    /// Reward for the creation of a block
     pub block_reward: Amount,
     pub operation_batch_size: usize,
     pub initial_rolls_path: PathBuf,
     pub initial_draw_seed: String,
+    /// Price of a roll inside the network
     pub roll_price: Amount,
     /// stats timespan
     pub stats_timespan: MassaTime,
@@ -301,32 +173,69 @@ pub struct ConsensusConfig {
     pub max_item_return_count: usize,
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.
-    #[serde(skip, default = "Default::default")]
     pub disable_block_creation: bool,
+    // Max gas per block for the execution config
+    pub max_gas_per_block: u64,
 }
 
-lazy_static::lazy_static! {
-    /// Compact representation of key values of consensus algorithm used in API
-    static ref STATIC_CONFIG: CompactConfig = CompactConfig {
-        genesis_timestamp: *GENESIS_TIMESTAMP,
-        end_timestamp: *END_TIMESTAMP,
-        thread_count: THREAD_COUNT,
-        t0: *T0,
-        delta_f0: DELTA_F0,
-        operation_validity_periods: OPERATION_VALIDITY_PERIODS,
-        periods_per_cycle: PERIODS_PER_CYCLE,
-        pos_lookback_cycles: POS_LOOKBACK_CYCLES,
-        pos_lock_cycles: POS_LOCK_CYCLES,
-        block_reward: *BLOCK_REWARD,
-        roll_price: *ROLL_PRICE,
-        max_block_size: MAX_BLOCK_SIZE,
-    };
+#[cfg(feature = "testing")]
+#[derive(Default, Debug)]
+/// In testing mode if you create a conguration with tempfiles
+/// we need to keep inside this structure the `TempDir` and
+/// `NamedTempFile` here since the end of the test.
+/// We don't need to move or clone, only the main cfg need that and
+/// the var is never used.
+pub struct TempFiles {
+    /// Doesn't drop tempfile on testing
+    pub temp_files: Vec<tempfile::NamedTempFile>,
+    /// Doesn't drop tempdir on testing
+    pub temp_dir: Vec<tempfile::TempDir>,
 }
 
-impl ConsensusConfig {
-    /// Utility method to derivate a compact configuration (for API use) from a full one
-    pub fn compact_config(&self) -> CompactConfig {
-        *STATIC_CONFIG
+impl Clone for ConsensusConfig {
+    fn clone(&self) -> Self {
+        Self {
+            #[cfg(feature = "testing")]
+            temp_files: TempFiles::default(),
+            genesis_timestamp: self.genesis_timestamp,
+            end_timestamp: self.end_timestamp,
+            thread_count: self.thread_count,
+            t0: self.t0,
+            genesis_key: self.genesis_key,
+            staking_keys_path: self.staking_keys_path.clone(),
+            max_discarded_blocks: self.max_discarded_blocks,
+            future_block_processing_max_periods: self.future_block_processing_max_periods,
+            max_future_processing_blocks: self.max_future_processing_blocks,
+            max_dependency_blocks: self.max_dependency_blocks,
+            delta_f0: self.delta_f0,
+            max_operations_per_block: self.max_operations_per_block,
+            max_operations_fill_attempts: self.max_operations_fill_attempts,
+            max_block_size: self.max_block_size,
+            operation_validity_periods: self.operation_validity_periods,
+            periods_per_cycle: self.periods_per_cycle,
+            pos_lookback_cycles: self.pos_lookback_cycles,
+            pos_lock_cycles: self.pos_lock_cycles,
+            pos_draw_cached_cycles: self.pos_draw_cached_cycles,
+            pos_miss_rate_deactivation_threshold: self.pos_miss_rate_deactivation_threshold,
+            ledger_path: self.ledger_path.clone(),
+            ledger_cache_capacity: self.ledger_cache_capacity,
+            ledger_flush_interval: self.ledger_flush_interval,
+            ledger_reset_at_startup: self.ledger_reset_at_startup,
+            initial_ledger_path: self.initial_ledger_path.clone(),
+            block_reward: self.block_reward,
+            operation_batch_size: self.operation_batch_size,
+            initial_rolls_path: self.initial_rolls_path.clone(),
+            initial_draw_seed: self.initial_draw_seed.clone(),
+            roll_price: self.roll_price,
+            stats_timespan: self.stats_timespan,
+            max_send_wait: self.max_send_wait,
+            force_keep_final_periods: self.force_keep_final_periods,
+            endorsement_count: self.endorsement_count,
+            block_db_prune_interval: self.block_db_prune_interval,
+            max_item_return_count: self.max_item_return_count,
+            disable_block_creation: self.disable_block_creation,
+            max_gas_per_block: self.max_gas_per_block,
+        }
     }
 }
 
@@ -418,64 +327,323 @@ pub struct ConsensusChannels {
     pub pool_command_sender: PoolCommandSender,
 }
 
-const SERIALIZATION_CONTEXT: SerializationContext = SerializationContext {
-    max_block_operations: 1024,
-    parent_count: 2,
-    max_peer_list_length: 128,
-    max_message_size: 3 * 1024 * 1024,
-    max_block_size: 3 * 1024 * 1024,
-    max_bootstrap_blocks: 100,
-    max_bootstrap_cliques: 100,
-    max_bootstrap_deps: 100,
-    max_bootstrap_children: 100,
-    max_ask_blocks_per_message: 10,
-    max_operations_per_message: 1024,
-    max_endorsements_per_message: 1024,
-    max_bootstrap_message_size: 100000000,
-    max_bootstrap_pos_entries: 1000,
-    max_bootstrap_pos_cycles: 5,
-    max_block_endorsements: 8,
-};
+impl From<&ConsensusSettings> for ConsensusConfig {
+    fn from(settings: &ConsensusSettings) -> Self {
+        #[cfg(feature = "testing")]
+        /// If the feature `testing` is activated we force the unit
+        /// test values to be used for a default initialisation.
+        use massa_models::constants::default_testing::*;
+        #[cfg(not(feature = "testing"))]
+        use massa_models::constants::*;
+        ConsensusConfig {
+            #[cfg(feature = "testing")]
+            temp_files: TempFiles::default(), // No need to clone
+            genesis_timestamp: *GENESIS_TIMESTAMP,
+            end_timestamp: *END_TIMESTAMP,
+            thread_count: THREAD_COUNT,
+            t0: *T0,
+            genesis_key: *GENESIS_KEY,
+            staking_keys_path: settings.staking_keys_path.clone(),
+            max_discarded_blocks: settings.max_discarded_blocks,
+            future_block_processing_max_periods: settings.future_block_processing_max_periods,
+            max_future_processing_blocks: settings.max_future_processing_blocks,
+            max_dependency_blocks: settings.max_dependency_blocks,
+            delta_f0: DELTA_F0,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            max_operations_fill_attempts: settings.max_operations_fill_attempts,
+            max_block_size: MAX_BLOCK_SIZE,
+            operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+            periods_per_cycle: PERIODS_PER_CYCLE,
+            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
+            pos_lock_cycles: POS_LOCK_CYCLES,
+            pos_draw_cached_cycles: settings.pos_draw_cached_cycles,
+            pos_miss_rate_deactivation_threshold: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+            ledger_path: settings.ledger_path.clone(),
+            ledger_cache_capacity: settings.ledger_cache_capacity,
+            ledger_flush_interval: settings.ledger_flush_interval,
+            ledger_reset_at_startup: settings.ledger_reset_at_startup,
+            initial_ledger_path: settings.initial_ledger_path.clone(),
+            block_reward: *BLOCK_REWARD,
+            operation_batch_size: settings.operation_batch_size,
+            initial_rolls_path: settings.initial_rolls_path.clone(),
+            initial_draw_seed: INITIAL_DRAW_SEED.to_string(),
+            roll_price: *ROLL_PRICE,
+            stats_timespan: settings.stats_timespan,
+            max_send_wait: settings.max_send_wait,
+            force_keep_final_periods: settings.force_keep_final_periods,
+            endorsement_count: ENDORSEMENT_COUNT,
+            block_db_prune_interval: settings.block_db_prune_interval,
+            max_item_return_count: settings.max_item_return_count,
+            disable_block_creation: settings.disable_block_creation,
+            max_gas_per_block: MAX_GAS_PER_BLOCK,
+        }
+    }
+}
 
-use std::path::Path;
-impl From<&Path> for ConsensusConfig {
+impl From<ConsensusSettings> for ConsensusConfig {
+    fn from(settings: ConsensusSettings) -> Self {
+        #[cfg(feature = "testing")]
+        /// If the feature `testing` is activated we force the unit
+        /// test values to be used for a default initialisation.
+        use massa_models::constants::default_testing::*;
+        #[cfg(not(feature = "testing"))]
+        use massa_models::constants::*;
+        ConsensusConfig {
+            #[cfg(feature = "testing")]
+            temp_files: Default::default(),
+            genesis_timestamp: *GENESIS_TIMESTAMP,
+            end_timestamp: *END_TIMESTAMP,
+            thread_count: THREAD_COUNT,
+            t0: *T0,
+            genesis_key: *GENESIS_KEY,
+            staking_keys_path: settings.staking_keys_path,
+            max_discarded_blocks: settings.max_discarded_blocks,
+            future_block_processing_max_periods: settings.future_block_processing_max_periods,
+            max_future_processing_blocks: settings.max_future_processing_blocks,
+            max_dependency_blocks: settings.max_dependency_blocks,
+            delta_f0: DELTA_F0,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            max_operations_fill_attempts: settings.max_operations_fill_attempts,
+            max_block_size: MAX_BLOCK_SIZE,
+            operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+            periods_per_cycle: PERIODS_PER_CYCLE,
+            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
+            pos_lock_cycles: POS_LOCK_CYCLES,
+            pos_draw_cached_cycles: settings.pos_draw_cached_cycles,
+            pos_miss_rate_deactivation_threshold: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+            ledger_path: settings.ledger_path,
+            ledger_cache_capacity: settings.ledger_cache_capacity,
+            ledger_flush_interval: settings.ledger_flush_interval,
+            ledger_reset_at_startup: settings.ledger_reset_at_startup,
+            initial_ledger_path: settings.initial_ledger_path,
+            block_reward: *BLOCK_REWARD,
+            operation_batch_size: settings.operation_batch_size,
+            initial_rolls_path: settings.initial_rolls_path,
+            initial_draw_seed: INITIAL_DRAW_SEED.to_string(),
+            roll_price: *ROLL_PRICE,
+            stats_timespan: settings.stats_timespan,
+            max_send_wait: settings.max_send_wait,
+            force_keep_final_periods: settings.force_keep_final_periods,
+            endorsement_count: ENDORSEMENT_COUNT,
+            block_db_prune_interval: settings.block_db_prune_interval,
+            max_item_return_count: settings.max_item_return_count,
+            disable_block_creation: settings.disable_block_creation,
+            max_gas_per_block: MAX_GAS_PER_BLOCK,
+        }
+    }
+}
+
+/// Defining the default consensus configuration for both
+/// testing and not testing.
+///
+/// Use the feature testing to load mocked default variable
+/// This is default variable but the configuration is a dynamic
+/// configuration passed as dependences with no particular lifetime
+#[cfg(feature = "testing")]
+impl Default for ConsensusSettings {
+    fn default() -> Self {
+        /// If the feature `testing` is activated we force the unit
+        /// test values to be used for a default initialisation.
+        use massa_models::constants::default_testing::*;
+        Self {
+            staking_keys_path: Default::default(),
+            max_discarded_blocks: MAX_DISCARED_BLOCKS,
+            future_block_processing_max_periods: FUTURE_BLOCK_PROCESSING_MAX_PERIODS,
+            max_future_processing_blocks: MAX_FUTURE_PROCESSING_BLOCK,
+            max_dependency_blocks: MAX_DEPENDENCY_BLOCK,
+            max_operations_fill_attempts: MAX_OPERATION_FILL_ATTEMPTS,
+            pos_draw_cached_cycles: POS_DRAW_CACHED_CYCLE,
+            ledger_path: Default::default(),
+            ledger_cache_capacity: LEDGER_CACHE_CAPACITY,
+            ledger_flush_interval: *LEDGER_FLUSH_INTERVAL,
+            ledger_reset_at_startup: LEDGER_RESET_AT_STARTUP,
+            initial_ledger_path: Default::default(),
+            operation_batch_size: OPERATION_BATCH_SIZE,
+            initial_rolls_path: Default::default(),
+            stats_timespan: *STATS_TIMESPAN,
+            max_send_wait: *MAX_SEND_WAIT,
+            force_keep_final_periods: FORCE_KEEP_FINAL_PERIOD,
+            block_db_prune_interval: *BLOCK_DB_PRUNE_INTERVAL,
+            max_item_return_count: MAX_ITEM_RETURN_COUNT,
+            disable_block_creation: DISABLE_BLOCK_CREATION,
+        }
+    }
+}
+
+#[cfg(feature = "testing")]
+impl From<&std::path::Path> for ConsensusConfig {
     /// Utility trait used in tests to get a full consensus configuration from an initial ledger path
-    fn from(initial_ledger_path: &Path) -> Self {
+    fn from(initial_ledger_path: &std::path::Path) -> Self {
         let mut staking_keys = Vec::new();
         for _ in 0..2 {
-            staking_keys.push(generate_random_private_key());
+            staking_keys.push(massa_signature::generate_random_private_key());
         }
-        massa_models::init_serialization_context(SERIALIZATION_CONTEXT);
+        massa_models::init_serialization_context(massa_models::SerializationContext::default());
         ConsensusSettings {
             staking_keys_path: crate::tools::generate_staking_keys_file(&staking_keys)
                 .path()
                 .to_path_buf(),
-            max_discarded_blocks: 10,
-            future_block_processing_max_periods: 3,
-            max_future_processing_blocks: 10,
-            max_dependency_blocks: 10,
-            max_operations_fill_attempts: 6,
-            pos_draw_cached_cycles: 2,
             ledger_path: tempfile::tempdir()
                 .expect("cannot create temp dir")
                 .path()
                 .to_path_buf(),
-            ledger_cache_capacity: 1000000,
-            ledger_flush_interval: Some(200.into()),
-            ledger_reset_at_startup: true,
             initial_ledger_path: initial_ledger_path.to_path_buf(),
-            operation_batch_size: 100,
             initial_rolls_path: tempfile::tempdir()
                 .expect("cannot create temp dir")
                 .path()
                 .to_path_buf(),
-            stats_timespan: 60000.into(),
-            max_send_wait: 500.into(),
-            force_keep_final_periods: 0,
-            block_db_prune_interval: 1000.into(),
-            max_item_return_count: 1000,
-            disable_block_creation: true,
+            ..Default::default()
         }
-        .config()
+        .into()
+    }
+}
+
+#[cfg(feature = "testing")]
+/**
+ * Create the default value of `ConsensusConfig`.
+ *
+ * Configuration has default values described in crate `massa-models`.
+ * The most of `ConsensusConfig` values have in test mode a default value.
+ *
+ * You can create a ConsensusConfig with classic default values and redefining
+ * dynamically the values of desired parameters:
+ *
+ * ```ignore
+ * let cfg = ConsensusConfig {
+ *     max_discarded_blocks: 25,
+ *     ..Default::default()
+ * };
+ * ```
+ *
+ * You can also look at the divers `default()` implementation bellow. For example that
+ * one is used to initialise the _default paths_ :
+ *
+ * ```ignore
+ * let cfg = ConensusConfig {
+ *     max_discarded_blocks: 21,
+ *     ..ConsensusConfig::default_with_paths(),
+ * };
+ * ```
+ */
+impl Default for ConsensusConfig {
+    fn default() -> Self {
+        use massa_models::constants::default_testing::*;
+        massa_models::init_serialization_context(massa_models::SerializationContext::default());
+        let tempdir = tempfile::tempdir().expect("cannot create temp dir for the ledger path");
+        let path_buf = tempdir.path().to_path_buf();
+        Self {
+            temp_files: TempFiles {
+                temp_dir: vec![tempdir],
+                temp_files: vec![],
+            },
+            // reset genesis timestamp because we are in test mode that can take a while to process
+            genesis_timestamp: MassaTime::now().unwrap(),
+            end_timestamp: *END_TIMESTAMP,
+            thread_count: THREAD_COUNT,
+            t0: *T0,
+            genesis_key: *GENESIS_KEY,
+            staking_keys_path: Default::default(),
+            max_discarded_blocks: MAX_DISCARED_BLOCKS,
+            future_block_processing_max_periods: FUTURE_BLOCK_PROCESSING_MAX_PERIODS,
+            max_future_processing_blocks: MAX_FUTURE_PROCESSING_BLOCK,
+            max_dependency_blocks: MAX_DEPENDENCY_BLOCK,
+            delta_f0: DELTA_F0,
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            max_operations_fill_attempts: MAX_OPERATION_FILL_ATTEMPTS,
+            max_block_size: MAX_BLOCK_SIZE,
+            operation_validity_periods: OPERATION_VALIDITY_PERIODS,
+            periods_per_cycle: PERIODS_PER_CYCLE,
+            pos_lookback_cycles: POS_LOOKBACK_CYCLES,
+            pos_lock_cycles: POS_LOCK_CYCLES,
+            pos_draw_cached_cycles: POS_DRAW_CACHED_CYCLE,
+            pos_miss_rate_deactivation_threshold: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
+            ledger_path: path_buf,
+            ledger_cache_capacity: LEDGER_CACHE_CAPACITY,
+            ledger_flush_interval: *LEDGER_FLUSH_INTERVAL,
+            ledger_reset_at_startup: LEDGER_RESET_AT_STARTUP,
+            initial_ledger_path: Default::default(),
+            block_reward: *BLOCK_REWARD,
+            operation_batch_size: OPERATION_BATCH_SIZE,
+            initial_rolls_path: Default::default(),
+            initial_draw_seed: INITIAL_DRAW_SEED.to_string(),
+            roll_price: *ROLL_PRICE,
+            stats_timespan: *STATS_TIMESPAN,
+            max_send_wait: *MAX_SEND_WAIT,
+            force_keep_final_periods: FORCE_KEEP_FINAL_PERIOD,
+            endorsement_count: ENDORSEMENT_COUNT,
+            block_db_prune_interval: *BLOCK_DB_PRUNE_INTERVAL,
+            max_item_return_count: MAX_ITEM_RETURN_COUNT,
+            disable_block_creation: DISABLE_BLOCK_CREATION,
+            max_gas_per_block: MAX_GAS_PER_BLOCK,
+        }
+    }
+}
+
+#[cfg(feature = "testing")]
+/**
+ * The following implementation correspond to tools used in unit tests
+ * It allow you to get a default `ConsensusConfig` (that isn't possible without
+ * the feature *testing*) with already setted/default `initial_ledger_path`,
+ * `staking_keys_path` and `initial_rolls_path`.
+ *
+ * Used to radically reduce code duplication in unit tests of Consensus.
+ */
+impl ConsensusConfig {
+    pub fn default_with_paths() -> Self {
+        use crate::tools::*;
+        let staking_keys: Vec<PrivateKey> = (0..1)
+            .map(|_| massa_signature::generate_random_private_key())
+            .collect();
+        let ledger_file = generate_ledger_file(&std::collections::HashMap::new());
+        let staking_file = generate_staking_keys_file(&staking_keys);
+        let rolls_file = generate_default_roll_counts_file(staking_keys);
+        ConsensusConfig {
+            initial_ledger_path: ledger_file.path().to_path_buf(),
+            staking_keys_path: staking_file.path().to_path_buf(),
+            initial_rolls_path: rolls_file.path().to_path_buf(),
+            temp_files: TempFiles {
+                temp_files: vec![ledger_file, staking_file, rolls_file],
+                temp_dir: vec![],
+            },
+            ..Default::default()
+        }
+    }
+    pub fn default_with_staking_keys(staking_keys: &[PrivateKey]) -> Self {
+        use crate::tools::*;
+        let ledger_file = generate_ledger_file(&std::collections::HashMap::new());
+        let staking_file = generate_staking_keys_file(staking_keys);
+        let rolls_file = generate_default_roll_counts_file(staking_keys.to_vec());
+        ConsensusConfig {
+            initial_ledger_path: ledger_file.path().to_path_buf(),
+            staking_keys_path: staking_file.path().to_path_buf(),
+            initial_rolls_path: rolls_file.path().to_path_buf(),
+            temp_files: TempFiles {
+                temp_files: vec![ledger_file, staking_file, rolls_file],
+                temp_dir: vec![],
+            },
+            ..Default::default()
+        }
+    }
+    pub fn default_with_staking_keys_and_ledger(
+        staking_keys: &[PrivateKey],
+        ledger: &std::collections::HashMap<
+            massa_models::Address,
+            massa_models::ledger_models::LedgerData,
+        >,
+    ) -> Self {
+        use crate::tools::*;
+        let ledger_file = generate_ledger_file(ledger);
+        let staking_file = generate_staking_keys_file(staking_keys);
+        let rolls_file = generate_default_roll_counts_file(staking_keys.to_vec());
+        ConsensusConfig {
+            initial_ledger_path: ledger_file.path().to_path_buf(),
+            staking_keys_path: staking_file.path().to_path_buf(),
+            initial_rolls_path: rolls_file.path().to_path_buf(),
+            temp_files: TempFiles {
+                temp_files: vec![ledger_file, staking_file, rolls_file],
+                temp_dir: vec![],
+            },
+            ..Default::default()
+        }
     }
 }

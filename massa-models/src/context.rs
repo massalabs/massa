@@ -55,17 +55,16 @@ where
 /// a context for model serialization/deserialization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerializationContext {
-    pub max_block_operations: u32,
-    pub max_block_endorsements: u32,
-    pub parent_count: u8,
+    pub max_operations_per_block: u32,
+    pub endorsement_count: u32,
+    pub thread_count: u8,
     pub max_block_size: u32,
     // TODO: all field bellow should be removed since there are constant defined in bootstrap::settings
-    pub max_peer_list_length: u32,
+    pub max_advertise_length: u32,
     pub max_message_size: u32,
     pub max_ask_blocks_per_message: u32,
     pub max_operations_per_message: u32,
     pub max_endorsements_per_message: u32,
-    // TODO: all field bellow should be removed since there are constant defined in bootstrap::settings
     pub max_bootstrap_blocks: u32,
     pub max_bootstrap_cliques: u32,
     pub max_bootstrap_deps: u32,
@@ -73,4 +72,32 @@ pub struct SerializationContext {
     pub max_bootstrap_pos_cycles: u32,
     pub max_bootstrap_pos_entries: u32,
     pub max_bootstrap_message_size: u32,
+}
+
+impl Default for SerializationContext {
+    fn default() -> Self {
+        #[cfg(feature = "testing")]
+        // Overide normal constants on testing
+        use crate::constants::default_testing::*;
+        #[cfg(not(feature = "testing"))]
+        use crate::constants::*;
+        Self {
+            max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
+            thread_count: THREAD_COUNT,
+            max_block_size: MAX_BLOCK_SIZE,
+            endorsement_count: ENDORSEMENT_COUNT,
+            max_advertise_length: MAX_ADVERTISE_LENGTH,
+            max_message_size: MAX_MESSAGE_SIZE,
+            max_bootstrap_blocks: MAX_BOOTSTRAP_BLOCKS,
+            max_bootstrap_cliques: MAX_BOOTSTRAP_CLIQUES,
+            max_bootstrap_deps: MAX_BOOTSTRAP_DEPS,
+            max_bootstrap_children: MAX_BOOTSTRAP_CHILDREN,
+            max_ask_blocks_per_message: MAX_ASK_BLOCKS_PER_MESSAGE,
+            max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
+            max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE,
+            max_bootstrap_message_size: MAX_BOOTSTRAP_MESSAGE_SIZE,
+            max_bootstrap_pos_cycles: MAX_BOOTSTRAP_POS_CYCLES,
+            max_bootstrap_pos_entries: MAX_BOOTSTRAP_POS_ENTRIES,
+        }
+    }
 }

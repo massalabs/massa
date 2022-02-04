@@ -16,6 +16,7 @@ pub use controller::{
 };
 pub use error::ExecutionError;
 pub use exports::BootstrapExecutionState;
+use massa_models::Amount;
 pub use sce_ledger::{SCELedger, SCELedgerEntry};
 pub use worker::ExecutionCommand;
 pub use worker::ExecutionEvent;
@@ -24,3 +25,6 @@ pub use worker::ExecutionWorker;
 
 #[cfg(test)]
 mod tests;
+
+/// ZERO
+const AMOUNT_ZERO: Amount = Amount::from_raw(0);
