@@ -414,13 +414,6 @@ impl VMThread {
 
             // TODO execute readonly requests
 
-            // compute when the next slot is
-            let delay_until_next_slot = self.get_time_until_next_active_slot();
-            if delay_until_next_slot == 0.into() {
-                // next slot is right now
-                continue;
-            }
-
             // check if data changed during the iteration
             let ctl = self.controller;
             let input_data = ctl.input_data.lock().expect("could not lock VM input data");
@@ -430,6 +423,15 @@ impl VMThread {
             if input_data.blockclique_changed {
                 continue;
             }
+
+            // compute when the next slot is
+            let delay_until_next_slot = self.get_time_until_next_active_slot();
+            if delay_until_next_slot == 0.into() {
+                // next slot is right now
+                continue;
+            }
+
+            // wait for change or for next slot
             let _ = ctl
                 .loop_cv
                 .wait_timeout(input_data, delay_until_next_slot.to_duration())
