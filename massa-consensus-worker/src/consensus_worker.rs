@@ -604,7 +604,6 @@ impl ConsensusWorker {
         // add block to db
         self.block_db.incoming_block(
             block_id,
-            block,
             operation_set,
             endorsement_ids,
             &mut self.pos,
@@ -1084,14 +1083,15 @@ impl ConsensusWorker {
         match event {
             ProtocolEvent::ReceivedBlock {
                 block_id,
-                block,
                 operation_set,
                 endorsement_ids,
             } => {
-                massa_trace!("consensus.consensus_worker.process_protocol_event.received_block", { "block_id": block_id, "block": block });
+                massa_trace!(
+                    "consensus.consensus_worker.process_protocol_event.received_block",
+                    { "block_id": block_id }
+                );
                 self.block_db.incoming_block(
                     block_id,
-                    block,
                     operation_set,
                     endorsement_ids,
                     &mut self.pos,
@@ -1114,7 +1114,27 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_protocol_event.get_blocks",
                     { "list": list }
                 );
-                // TODO: remove, see https://github.com/massalabs/massa/issues/2299
+                let mut results = Map::default();
+                for block_hash in list {
+                    if let Some(a_block) = self.block_db.get_active_block(&block_hash) {
+                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_found", { "hash": block_hash});
+                        results.insert(
+                            block_hash,
+                            Some((
+                                Some(a_block.operation_set.keys().copied().collect()),
+                                Some(a_block.endorsement_ids.keys().copied().collect()),
+                            )),
+                        );
+                    } else {
+                        // not found in consensus
+                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensu_not_found", { "hash": block_hash});
+                        results.insert(block_hash, None);
+                    }
+                }
+                self.channels
+                    .protocol_command_sender
+                    .send_get_blocks_results(results)
+                    .await?;
             }
         }
         Ok(())
