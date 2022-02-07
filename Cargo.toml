@@ -16,4 +16,5 @@ members = [
   "massa-signature",
   "massa-time",
   "massa-wallet",
+  "massa-ledger"
 ]

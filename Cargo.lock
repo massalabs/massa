@@ -1536,6 +1536,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_ledger"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "futures 0.3.19",
+ "lazy_static",
+ "massa_hash",
+ "massa_logging",
+ "massa_models",
+ "massa_protocol_exports",
+ "massa_signature",
+ "massa_time",
+ "num",
+ "pretty_assertions",
+ "serde 1.0.134",
+ "serde_json",
+ "serial_test",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "massa_logging"
 version = "0.1.0"
 dependencies = [
