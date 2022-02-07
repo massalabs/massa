@@ -191,6 +191,12 @@ macro_rules! rpc_error {
     };
 }
 
+macro_rules! client_warning {
+    ($e:expr) => {
+        println!("{}: {}", style("WARNING").yellow(), $e)
+    };
+}
+
 #[derive(Serialize)]
 struct ExtendedWalletEntry {
     pub private_key: PrivateKey,
@@ -435,10 +441,7 @@ impl Command {
 
             Command::wallet_info => {
                 if !json {
-                    println!(
-                        "{}: do not share your private key",
-                        style("WARNING").yellow()
-                    );
+                    client_warning!("do not share your private key");
                 }
                 match client
                     .public
@@ -528,19 +531,17 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            println!("{}: this operation may be rejected due to insuffisant balance", style("WARNING").yellow());
+                                            client_warning!("this operation may be rejected due to insuffisant balance");
                                         }
                                     }
-                                    None => println!(
-                                        "{}: address {} not found",
-                                        style("WARNING").yellow(),
-                                        addr
-                                    ),
+                                    None => {
+                                        client_warning!(format!("address {} not found", addr))
+                                    }
                                 }
                             }
                         }
                         None => {
-                            println!("{}: the total amount hit the limit overflow, operation will certainly be rejected", style("WARNING").yellow());
+                            client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
                         }
                     }
                 }
@@ -570,14 +571,10 @@ impl Command {
                                 if info.ledger_info.candidate_ledger_info.balance < fee
                                     || roll_count > info.rolls.candidate_rolls
                                 {
-                                    println!("{}: this operation may be rejected due to insuffisant balance or roll count", style("WARNING").yellow());
+                                    client_warning!("this operation may be rejected due to insuffisant balance or roll count");
                                 }
                             }
-                            None => println!(
-                                "{}: address {} not found",
-                                style("WARNING").yellow(),
-                                addr
-                            ),
+                            None => client_warning!(format!("address {} not found", addr)),
                         }
                     }
                 }
@@ -611,19 +608,17 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            println!("{}: this operation may be rejected due to insuffisant balance", style("WARNING").yellow());
+                                            client_warning!("this operation may be rejected due to insuffisant balance");
                                         }
                                     }
-                                    None => println!(
-                                        "{}: address {} not found",
-                                        style("WARNING").yellow(),
-                                        addr
-                                    ),
+                                    None => {
+                                        client_warning!(format!("address {} not found", addr))
+                                    }
                                 }
                             }
                         }
                         None => {
-                            println!("{}: the total amount hit the limit overflow, operation will certainly be rejected", style("WARNING").yellow());
+                            client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
                         }
                     }
                 }
@@ -691,19 +686,17 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            println!("{}: this operation may be rejected due to insuffisant balance", style("WARNING").yellow());
+                                            client_warning!("this operation may be rejected due to insuffisant balance");
                                         }
                                     }
-                                    None => println!(
-                                        "{}: address {} not found",
-                                        style("WARNING").yellow(),
-                                        addr
-                                    ),
+                                    None => {
+                                        client_warning!(format!("address {} not found", addr));
+                                    }
                                 }
                             }
                         }
                         None => {
-                            println!("{}: the total amount hit the limit overflow, operation will certainly be rejected", style("WARNING").yellow());
+                            client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
                         }
                     }
                 };
@@ -714,7 +707,7 @@ impl Command {
                         Err(e) => bail!("RpcError: {}", e),
                     };
                     if data.len() > max_block_size as usize / 2 {
-                        println!("{}: bytecode size exeeded half of the maximum size of a block, operation will certainly be rejected", style("WARNING").yellow());
+                        client_warning!("bytecode size exeeded half of the maximum size of a block, operation will certainly be rejected");
                     }
                 }
 
