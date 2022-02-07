@@ -7,6 +7,7 @@ use crate::utils::longest_common_prefix;
 use console::style;
 use dialoguer::{theme::ColorfulTheme, Completion, History, Input};
 use erased_serde::{Serialize, Serializer};
+use glob::{glob, GlobError};
 use massa_models::api::{AddressInfo, BlockInfo, EndorsementInfo, NodeStatus, OperationInfo};
 use massa_models::composite::PubkeySig;
 use massa_models::prehash::Set;
@@ -15,6 +16,7 @@ use massa_wallet::Wallet;
 use rev_lines::RevLines;
 use std::collections::VecDeque;
 use std::io::Error;
+use std::path::PathBuf;
 use std::{
     fs::File,
     fs::OpenOptions,
@@ -135,20 +137,44 @@ impl Completion for CommandCompletion {
     /// Simple completion implementation based on substring
     fn get(&self, input: &str) -> Option<String> {
         let input = input.to_string();
-        let suggestions: Vec<&str> = self
-            .options
-            .iter()
-            .filter(|s| s.len() >= input.len() && input == s[..input.len()])
-            .map(|s| &s[..])
-            .collect();
-        if !suggestions.is_empty() {
+        if input.contains(" ") {
+            let mut args: Vec<String> = input.split(" ").map(|s| String::from(s)).collect();
+            let mut default_path = String::from("./");
+            let last_arg = if let Some(last_arg_vec) = args.last_mut() {
+                if self.options.contains(last_arg_vec)  {
+                    &mut default_path
+                } else {
+                    last_arg_vec
+                }
+            } else {
+                &mut default_path
+            };
             println!();
-            for suggestion in &suggestions {
-                println!("{}", style(suggestion).dim());
+            let suggestions: Vec<String> = glob(&(last_arg.to_owned() + "*"))
+                .unwrap()
+                .map(|x| x.unwrap().display().to_string())
+                .collect();
+            for path in &suggestions {
+                println!("{}", path)
             }
-            Some(String::from(longest_common_prefix(suggestions)))
+            *last_arg = String::from(longest_common_prefix(suggestions.iter().map(|s| &s[..]).collect()));
+            Some(args.join(" "))
         } else {
-            None
+            let suggestions: Vec<&str> = self
+                .options
+                .iter()
+                .filter(|s| s.len() >= input.len() && input == s[..input.len()])
+                .map(|s| &s[..])
+                .collect();
+            if !suggestions.is_empty() {
+                println!();
+                for suggestion in &suggestions {
+                    println!("{}", style(suggestion).dim());
+                }
+                Some(String::from(longest_common_prefix(suggestions)))
+            } else {
+                None
+            }
         }
     }
 }

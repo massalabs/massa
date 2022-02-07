@@ -30,6 +30,7 @@ massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_wallet = { path = "../massa-wallet" }
 rev_lines = "0.2.1"
+glob = "0.3.0"
 
 [dev-dependencies]
 assert_cmd = "2.0"
