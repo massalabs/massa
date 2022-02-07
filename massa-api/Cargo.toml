@@ -12,8 +12,8 @@ jsonrpc-core = "18.0.0"
 jsonrpc-derive = "18.0.0"
 jsonrpc-http-server = "18.0.0"
 thiserror = "1.0"
-tokio = { version = "1.11", features = ["full"] }
-tracing = {version = "0.1", features = ["max_level_debug", "release_max_level_debug"] }
+tokio = { version = "1.15", features = ["full", "tracing"] }
+tracing = "0.1"
 # custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_execution = { path = "../massa-execution" }

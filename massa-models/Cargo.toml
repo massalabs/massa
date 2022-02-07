@@ -15,7 +15,7 @@ reqwest = { version = "0.11", features = ["blocking", "json"] }
 rust_decimal = "1.15"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
-tokio = { version = "1.11", features = ["full"] }
+tokio = { version = "1.15", features = ["full", "tracing"] }
 num = { version = "0.4", features = ["serde"] }
 directories = "4.0"
 config = "0.11"

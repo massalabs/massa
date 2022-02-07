@@ -9,17 +9,15 @@ build = "../build.rs"
 
 [dependencies]
 config = "0.11"
+console-subscriber = "0.1.1"
 directories = "4.0"
 futures = "0.3"
 lazy_static = "1.4.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.11", features = ["full"] }
+tokio = { version = "1.15", features = ["full", "tracing"] }
 tokio-util = { version = "0.6", features = ["codec"] }
-tracing = { version = "0.1", features = [
-    "max_level_debug",
-    "release_max_level_debug",
-] }
+tracing = "0.1"
 tracing-subscriber = "0.3"
 # custom modules
 
@@ -44,4 +42,7 @@ serial_test = "0.5"
 [features]
 # nightly = ["beta"]
 beta = []
-sandbox = ["massa_models/sandbox"]
+sandbox = ["massa_consensus_exports/sandbox", "massa_models/sandbox"]
+
+[build]
+rustflags = ["--cfg", "tokio_unstable"]

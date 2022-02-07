@@ -3,6 +3,6 @@
 #[macro_export]
 macro_rules! massa_trace {
     ($evt:expr, $params:tt) => {
-        tracing::trace!("massa_trace:{}:{}", $evt, serde_json::json!($params));
+        tracing::trace!("massa:{}:{}", $evt, serde_json::json!($params));
     };
 }
