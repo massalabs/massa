@@ -20,7 +20,6 @@ pub enum ProtocolEvent {
     /// A block with a valid signature has been received.
     ReceivedBlock {
         block_id: BlockId,
-        block: Block,
         operation_set: Map<OperationId, (usize, u64)>, // (index, validity end period)
         endorsement_ids: Map<EndorsementId, u32>,
     },
@@ -47,8 +46,7 @@ pub enum ProtocolPoolEvent {
     },
 }
 
-pub type BlocksResults =
-    Map<BlockId, Option<(Block, Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
+type BlocksResults = Map<BlockId, Option<(Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
 
 /// Commands that protocol worker can process
 #[derive(Debug, Serialize)]
