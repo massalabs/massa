@@ -1393,7 +1393,6 @@ impl BlockGraph {
     pub fn incoming_block(
         &mut self,
         block_id: BlockId,
-        block: Block,
         operation_set: Map<OperationId, (usize, u64)>,
         endorsement_ids: Map<EndorsementId, u32>,
         pos: &mut ProofOfStake,
@@ -1403,14 +1402,21 @@ impl BlockGraph {
         if self.genesis_hashes.contains(&block_id) {
             return Ok(());
         }
-        let slot = block.header.content.slot;
-        debug!("received block {} for slot {}", block_id, slot);
-        massa_trace!("consensus.block_graph.incoming_block", {"block_id": block_id, "block": block});
+
+        let slot = {
+            let stored_block = self.storage.retrieve_block(&block_id).unwrap();
+            let stored_block = stored_block.read();
+            let slot = stored_block.block.header.content.slot;
+            debug!("received block {} for slot {}", block_id, slot);
+            massa_trace!("consensus.block_graph.incoming_block", {"block_id": block_id, "block": stored_block.block});
+            slot
+        };
+
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
         match self.block_statuses.entry(block_id) {
             // if absent => add as Incoming, call rec_ack on it
             hash_map::Entry::Vacant(vac) => {
-                to_ack.insert((block.header.content.slot, block_id));
+                to_ack.insert((slot, block_id));
                 vac.insert(BlockStatus::Incoming(HeaderOrBlock::Block(
                     block_id,
                     slot,
@@ -1439,7 +1445,7 @@ impl BlockGraph {
                     // promote to full block and satisfy self-dependency
                     if unsatisfied_dependencies.remove(&block_id) {
                         // a dependency was satisfied: process
-                        to_ack.insert((block.header.content.slot, block_id));
+                        to_ack.insert((slot, block_id));
                     }
                     *header_or_block =
                         HeaderOrBlock::Block(block_id, slot, operation_set, endorsement_ids);
