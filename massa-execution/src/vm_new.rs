@@ -1,3 +1,4 @@
+use crate::types::ExecutionContext;
 use massa_models::{
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
     Slot,
@@ -84,12 +85,16 @@ pub fn start_vm(config: VMConfig, bootstrap: Option<VMBootstrapData>) -> VMManag
 }
 
 struct ExecutionOutput {
+    // slot
     slot: Slot,
+    // optional block ID at that slot (None if miss)
     block_id: Option<BlockId>,
-    //TODO ledger_changes
+    // ledger_changes caused by the execution step
+
     //TODO event_store
 }
 
+/// structure gathering all elements needed by the VM thread
 struct VMThread {
     // VM config
     config: VMConfig,
@@ -113,13 +118,17 @@ struct VMThread {
     active_cursor: Slot,
     // execution output history
     execution_history: VecDeque<ExecutionOutput>,
+    /// execution context
+    execution_context: Arc<Mutex<ExecutionContext>>,
+    /// final events
+    final_events: EventStore,
 }
 
 impl VMThread {
     fn new(
         config: VMConfig,
         controller: Arc<VMController>,
-        _bootstrap: Option<VMBootstrapData>,
+        bootstrap: Option<VMBootstrapData>,
     ) -> Self {
         // TODO bootstrap
         VMThread {
@@ -413,6 +422,7 @@ impl VMThread {
             }
 
             // TODO execute readonly requests
+            // must be done in this loop because of the static shared context
 
             // check if data changed during the iteration
             let ctl = self.controller;
