@@ -1,6 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use directories::ProjectDirs;
+use massa_time::MassaTime;
 use serde::Deserialize;
 use std::{net::IpAddr, path::Path, path::PathBuf};
 
@@ -34,6 +35,7 @@ pub struct Settings {
     pub default_node: DefaultNode,
     pub history: usize,
     pub history_file_path: PathBuf,
+    pub timeout: MassaTime,
 }
 
 #[derive(Debug, Deserialize, Clone)]
