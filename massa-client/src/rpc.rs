@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::SETTINGS;
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::RpcError;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
@@ -13,11 +14,10 @@ use massa_models::{Address, BlockId, EndorsementId, Operation, OperationId};
 use massa_signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
 use tokio::time::timeout;
-use tokio::time::Duration;
 
 macro_rules! timeout {
     ($x:expr, $err_msg:expr) => {
-        timeout(Duration::from_millis(10), $x) // todo set config
+        timeout((SETTINGS.timeout.to_duration()), $x)
             .await
             .map_err(|e| RpcError::Client(format!("timeout during {}: {}", $err_msg, e)))?
     };
