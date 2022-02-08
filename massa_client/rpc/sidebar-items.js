@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Client",""],["RpcClient",""]]});
+initSidebarItems({"macro":[["timeout",""]],"struct":[["Client",""],["RpcClient",""]]});
