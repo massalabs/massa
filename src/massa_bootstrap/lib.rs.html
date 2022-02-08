@@ -904,7 +904,7 @@
                 }
 
                 <span class="comment">// listener</span>
-                <span class="prelude-val">Ok</span>((<span class="ident">dplx</span>, <span class="ident">remote_addr</span>)) <span class="op">=</span> <span class="ident">listener</span>.<span class="ident">accept</span>(), <span class="kw">if</span> <span class="ident">bootstrap_sessions</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">max_simultaneous_bootstraps</span> <span class="kw">as</span> <span class="ident">usize</span> =&gt; {
+                <span class="prelude-val">Ok</span>((<span class="ident">dplx</span>, <span class="ident">remote_addr</span>)) <span class="op">=</span> <span class="ident">listener</span>.<span class="ident">accept</span>() =&gt; <span class="kw">if</span> <span class="ident">bootstrap_sessions</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">max_simultaneous_bootstraps</span> <span class="kw">as</span> <span class="ident">usize</span> {
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept&quot;</span>, {<span class="string">&quot;remote_addr&quot;</span>: <span class="ident">remote_addr</span>});
                     <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
 
