@@ -536,15 +536,6 @@
 <span id="531">531</span>
 <span id="532">532</span>
 <span id="533">533</span>
-<span id="534">534</span>
-<span id="535">535</span>
-<span id="536">536</span>
-<span id="537">537</span>
-<span id="538">538</span>
-<span id="539">539</span>
-<span id="540">540</span>
-<span id="541">541</span>
-<span id="542">542</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError</span>;
@@ -555,7 +546,7 @@
 <span class="kw">use</span> <span class="ident">massa_execution::ExecutionCommandSender</span>;
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
     <span class="ident">APISettings</span>, <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockInfoContent</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>,
-    <span class="ident">IndexedSlot</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>, <span class="ident">TimeInterval</span>,
+    <span class="ident">EventFilter</span>, <span class="ident">IndexedSlot</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>, <span class="ident">TimeInterval</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_models::clique::Clique</span>;
 <span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
@@ -1047,46 +1038,37 @@
         <span class="ident">Box::pin</span>(<span class="ident">closure</span>())
     }
 
-    <span class="kw">fn</span> <span class="ident">get_sc_output_event_by_slot_range</span>(
+    <span class="doccomment">/// Get events optionnally filtered by:</span>
+    <span class="doccomment">/// * start slot</span>
+    <span class="doccomment">/// * end slot</span>
+    <span class="doccomment">/// * emitter address</span>
+    <span class="doccomment">/// * original caller address</span>
+    <span class="doccomment">/// * operation id</span>
+    <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">start</span>: <span class="ident">Slot</span>,
-        <span class="ident">end</span>: <span class="ident">Slot</span>,
+        <span class="ident">EventFilter</span> {
+            <span class="ident">start</span>,
+            <span class="ident">end</span>,
+            <span class="ident">emitter_address</span>,
+            <span class="ident">original_caller_address</span>,
+            <span class="ident">original_operation_id</span>,
+        }: <span class="ident">EventFilter</span>,
     ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">execution_command_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">execution_command_sender</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">closure</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">execution_command_sender</span>
-                .<span class="ident">get_sc_output_event_by_slot_range</span>(<span class="ident">start</span>, <span class="ident">end</span>)
-                .<span class="kw">await</span><span class="question-mark">?</span>)
-        };
-        <span class="ident">Box::pin</span>(<span class="ident">closure</span>())
-    }
-
-    <span class="kw">fn</span> <span class="ident">get_sc_output_event_by_sc_address</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">address</span>: <span class="ident">Address</span>,
-    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">execution_command_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">execution_command_sender</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">closure</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">execution_command_sender</span>
-                .<span class="ident">get_sc_output_event_by_sc_address</span>(<span class="ident">address</span>)
-                .<span class="kw">await</span><span class="question-mark">?</span>)
-        };
-        <span class="ident">Box::pin</span>(<span class="ident">closure</span>())
-    }
-
-    <span class="kw">fn</span> <span class="ident">get_sc_output_event_by_caller_address</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">address</span>: <span class="ident">Address</span>,
-    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">execution_command_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">execution_command_sender</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">closure</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">execution_command_sender</span>
-                .<span class="ident">get_sc_output_event_by_caller_address</span>(<span class="ident">address</span>)
+                .<span class="ident">get_filtered_sc_output_event</span>(
+                    <span class="ident">start</span>,
+                    <span class="ident">end</span>,
+                    <span class="ident">emitter_address</span>,
+                    <span class="ident">original_caller_address</span>,
+                    <span class="ident">original_operation_id</span>,
+                )
                 .<span class="kw">await</span><span class="question-mark">?</span>)
         };
         <span class="ident">Box::pin</span>(<span class="ident">closure</span>())
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (8cdb3cd94 2022-01-25)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (734368a20 2022-02-07)" ></div>
 </body></html>

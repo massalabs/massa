@@ -1147,6 +1147,16 @@
 <span id="1142">1142</span>
 <span id="1143">1143</span>
 <span id="1144">1144</span>
+<span id="1145">1145</span>
+<span id="1146">1146</span>
+<span id="1147">1147</span>
+<span id="1148">1148</span>
+<span id="1149">1149</span>
+<span id="1150">1150</span>
+<span id="1151">1151</span>
+<span id="1152">1152</span>
+<span id="1153">1153</span>
+<span id="1154">1154</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! The network worker actually does the job of managing connections</span>
@@ -1367,6 +1377,12 @@
     <span class="ident">version</span>: <span class="ident">Version</span>,
 }
 
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NetworkWorkerChannels</span> {
+    <span class="kw">pub</span> <span class="ident">controller_command_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">NetworkCommand</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">controller_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">NetworkEvent</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">controller_manager_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">NetworkManagementCommand</span><span class="op">&gt;</span>,
+}
+
 <span class="kw">impl</span> <span class="ident">NetworkWorker</span> {
     <span class="doccomment">/// Creates a new NetworkWorker</span>
     <span class="doccomment">///</span>
@@ -1381,15 +1397,19 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">cfg</span>: <span class="ident">NetworkSettings</span>,
         <span class="ident">private_key</span>: <span class="ident">PrivateKey</span>,
-        <span class="ident">self_node_id</span>: <span class="ident">NodeId</span>,
         <span class="ident">listener</span>: <span class="ident">Listener</span>,
         <span class="ident">establisher</span>: <span class="ident">Establisher</span>,
         <span class="ident">peer_info_db</span>: <span class="ident">PeerInfoDatabase</span>,
-        <span class="ident">controller_command_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">NetworkCommand</span><span class="op">&gt;</span>,
-        <span class="ident">controller_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">NetworkEvent</span><span class="op">&gt;</span>,
-        <span class="ident">controller_manager_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">NetworkManagementCommand</span><span class="op">&gt;</span>,
+        <span class="ident">NetworkWorkerChannels</span> {
+            <span class="ident">controller_command_rx</span>,
+            <span class="ident">controller_event_tx</span>,
+            <span class="ident">controller_manager_rx</span>,
+        }: <span class="ident">NetworkWorkerChannels</span>,
         <span class="ident">version</span>: <span class="ident">Version</span>,
     ) -&gt; <span class="ident">NetworkWorker</span> {
+        <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">private_key</span>);
+        <span class="kw">let</span> <span class="ident">self_node_id</span> <span class="op">=</span> <span class="ident">NodeId</span>(<span class="ident">public_key</span>);
+
         <span class="kw">let</span> (<span class="ident">node_event_tx</span>, <span class="ident">node_event_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NodeEvent</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
         <span class="ident">NetworkWorker</span> {
             <span class="ident">cfg</span>,
@@ -1754,7 +1774,7 @@
         <span class="comment">// add its handle to handshake_futures</span>
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">running_handshakes</span>.<span class="ident">insert</span>(<span class="ident">connection_id</span>) {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::HandshakeError</span>(
-                <span class="ident">HandshakeErrorType::HandshakeIdAlreadyExistError</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">connection_id</span>)),
+                <span class="ident">HandshakeErrorType::HandshakeIdAlreadyExist</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">connection_id</span>)),
             ));
         }
 
@@ -2292,5 +2312,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (8cdb3cd94 2022-01-25)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (734368a20 2022-02-07)" ></div>
 </body></html>

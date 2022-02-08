@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["launch",""],["main",""],["stop",""]],"mod":[["settings",""]]});
+initSidebarItems({"fn":[["launch",""],["main",""],["stop",""]],"mod":[["settings",""]],"struct":[["Managers",""]]});

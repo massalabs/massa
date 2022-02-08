@@ -1549,6 +1549,20 @@
 <span id="1544">1544</span>
 <span id="1545">1545</span>
 <span id="1546">1546</span>
+<span id="1547">1547</span>
+<span id="1548">1548</span>
+<span id="1549">1549</span>
+<span id="1550">1550</span>
+<span id="1551">1551</span>
+<span id="1552">1552</span>
+<span id="1553">1553</span>
+<span id="1554">1554</span>
+<span id="1555">1555</span>
+<span id="1556">1556</span>
+<span id="1557">1557</span>
+<span id="1558">1558</span>
+<span id="1559">1559</span>
+<span id="1560">1560</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
@@ -1602,21 +1616,24 @@
     <span class="macro">debug!</span>(<span class="string">&quot;starting protocol controller&quot;</span>);
 
     <span class="comment">// launch worker</span>
-    <span class="kw">let</span> (<span class="ident">event_tx</span>, <span class="ident">event_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
-    <span class="kw">let</span> (<span class="ident">pool_event_tx</span>, <span class="ident">pool_event_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
-    <span class="kw">let</span> (<span class="ident">command_tx</span>, <span class="ident">command_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">ProtocolCommand</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
-    <span class="kw">let</span> (<span class="ident">manager_tx</span>, <span class="ident">manager_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">ProtocolManagementCommand</span><span class="op">&gt;</span>(<span class="number">1</span>);
+    <span class="kw">let</span> (<span class="ident">controller_event_tx</span>, <span class="ident">event_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
+    <span class="kw">let</span> (<span class="ident">controller_pool_event_tx</span>, <span class="ident">pool_event_rx</span>) <span class="op">=</span>
+        <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
+    <span class="kw">let</span> (<span class="ident">command_tx</span>, <span class="ident">controller_command_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">ProtocolCommand</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
+    <span class="kw">let</span> (<span class="ident">manager_tx</span>, <span class="ident">controller_manager_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">ProtocolManagementCommand</span><span class="op">&gt;</span>(<span class="number">1</span>);
     <span class="kw">let</span> <span class="ident">join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">ProtocolWorker::new</span>(
             <span class="ident">protocol_settings</span>,
             <span class="ident">operation_validity_periods</span>,
             <span class="ident">max_block_gas</span>,
-            <span class="ident">network_command_sender</span>,
-            <span class="ident">network_event_receiver</span>,
-            <span class="ident">event_tx</span>,
-            <span class="ident">pool_event_tx</span>,
-            <span class="ident">command_rx</span>,
-            <span class="ident">manager_rx</span>,
+            <span class="ident">ProtocolWorkerChannels</span> {
+                <span class="ident">network_command_sender</span>,
+                <span class="ident">network_event_receiver</span>,
+                <span class="ident">controller_event_tx</span>,
+                <span class="ident">controller_pool_event_tx</span>,
+                <span class="ident">controller_command_rx</span>,
+                <span class="ident">controller_manager_rx</span>,
+            },
         )
         .<span class="ident">run_loop</span>()
         .<span class="kw">await</span>;
@@ -1857,6 +1874,15 @@
     <span class="ident">checked_headers</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">BlockInfo</span><span class="op">&gt;</span>,
 }
 
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolWorkerChannels</span> {
+    <span class="kw">pub</span> <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
+    <span class="kw">pub</span> <span class="ident">network_event_receiver</span>: <span class="ident">NetworkEventReceiver</span>,
+    <span class="kw">pub</span> <span class="ident">controller_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">controller_pool_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">controller_command_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ProtocolCommand</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">controller_manager_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ProtocolManagementCommand</span><span class="op">&gt;</span>,
+}
+
 <span class="kw">impl</span> <span class="ident">ProtocolWorker</span> {
     <span class="doccomment">/// Creates a new protocol worker.</span>
     <span class="doccomment">///</span>
@@ -1873,12 +1899,14 @@
         <span class="ident">protocol_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ProtocolSettings</span>,
         <span class="ident">operation_validity_periods</span>: <span class="ident">u64</span>,
         <span class="ident">max_block_gas</span>: <span class="ident">u64</span>,
-        <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
-        <span class="ident">network_event_receiver</span>: <span class="ident">NetworkEventReceiver</span>,
-        <span class="ident">controller_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span>,
-        <span class="ident">controller_pool_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span>,
-        <span class="ident">controller_command_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ProtocolCommand</span><span class="op">&gt;</span>,
-        <span class="ident">controller_manager_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ProtocolManagementCommand</span><span class="op">&gt;</span>,
+        <span class="ident">ProtocolWorkerChannels</span> {
+            <span class="ident">network_command_sender</span>,
+            <span class="ident">network_event_receiver</span>,
+            <span class="ident">controller_event_tx</span>,
+            <span class="ident">controller_pool_event_tx</span>,
+            <span class="ident">controller_command_rx</span>,
+            <span class="ident">controller_manager_rx</span>,
+        }: <span class="ident">ProtocolWorkerChannels</span>,
     ) -&gt; <span class="ident">ProtocolWorker</span> {
         <span class="ident">ProtocolWorker</span> {
             <span class="ident">protocol_settings</span>,
@@ -3096,5 +3124,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (8cdb3cd94 2022-01-25)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (734368a20 2022-02-07)" ></div>
 </body></html>

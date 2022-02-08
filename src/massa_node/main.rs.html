@@ -364,6 +364,19 @@
 <span id="359">359</span>
 <span id="360">360</span>
 <span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
@@ -587,14 +600,25 @@
     )
 }
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop</span>(
+<span class="kw">struct</span> <span class="ident">Managers</span> {
     <span class="ident">bootstrap_manager</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BootstrapManager</span><span class="op">&gt;</span>,
     <span class="ident">consensus_manager</span>: <span class="ident">ConsensusManager</span>,
-    <span class="ident">consensus_event_receiver</span>: <span class="ident">ConsensusEventReceiver</span>,
     <span class="ident">execution_manager</span>: <span class="ident">ExecutionManager</span>,
     <span class="ident">pool_manager</span>: <span class="ident">PoolManager</span>,
     <span class="ident">protocol_manager</span>: <span class="ident">ProtocolManager</span>,
     <span class="ident">network_manager</span>: <span class="ident">NetworkManager</span>,
+}
+
+<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop</span>(
+    <span class="ident">consensus_event_receiver</span>: <span class="ident">ConsensusEventReceiver</span>,
+    <span class="ident">Managers</span> {
+        <span class="ident">bootstrap_manager</span>,
+        <span class="ident">consensus_manager</span>,
+        <span class="ident">execution_manager</span>,
+        <span class="ident">pool_manager</span>,
+        <span class="ident">protocol_manager</span>,
+        <span class="ident">network_manager</span>,
+    }: <span class="ident">Managers</span>,
     <span class="ident">api_private_handle</span>: <span class="ident">StopHandle</span>,
     <span class="ident">api_public_handle</span>: <span class="ident">StopHandle</span>,
 ) {
@@ -708,13 +732,15 @@
             }
         };
         <span class="ident">stop</span>(
-            <span class="ident">bootstrap_manager</span>,
-            <span class="ident">consensus_manager</span>,
             <span class="ident">consensus_event_receiver</span>,
-            <span class="ident">execution_manager</span>,
-            <span class="ident">pool_manager</span>,
-            <span class="ident">protocol_manager</span>,
-            <span class="ident">network_manager</span>,
+            <span class="ident">Managers</span> {
+                <span class="ident">bootstrap_manager</span>,
+                <span class="ident">consensus_manager</span>,
+                <span class="ident">execution_manager</span>,
+                <span class="ident">pool_manager</span>,
+                <span class="ident">protocol_manager</span>,
+                <span class="ident">network_manager</span>,
+            },
             <span class="ident">api_private_handle</span>,
             <span class="ident">api_public_handle</span>,
         )
@@ -726,5 +752,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (8cdb3cd94 2022-01-25)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (734368a20 2022-02-07)" ></div>
 </body></html>

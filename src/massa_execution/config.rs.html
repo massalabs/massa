@@ -31,6 +31,8 @@
 <span id="26">26</span>
 <span id="27">27</span>
 <span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
 
@@ -44,6 +46,8 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExecutionSettings</span> {
     <span class="doccomment">/// Initial SCE ledger file</span>
     <span class="kw">pub</span> <span class="ident">initial_sce_ledger_path</span>: <span class="ident">PathBuf</span>,
+    <span class="doccomment">/// maximum number of SC output events kept in cache</span>
+    <span class="kw">pub</span> <span class="ident">max_final_events</span>: <span class="ident">usize</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>)]</span>
@@ -60,5 +64,5 @@
     <span class="kw">pub</span> <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (8cdb3cd94 2022-01-25)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (734368a20 2022-02-07)" ></div>
 </body></html>

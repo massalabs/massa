@@ -63,19 +63,6 @@
 <span id="58">58</span>
 <span id="59">59</span>
 <span id="60">60</span>
-<span id="61">61</span>
-<span id="62">62</span>
-<span id="63">63</span>
-<span id="64">64</span>
-<span id="65">65</span>
-<span id="66">66</span>
-<span id="67">67</span>
-<span id="68">68</span>
-<span id="69">69</span>
-<span id="70">70</span>
-<span id="71">71</span>
-<span id="72">72</span>
-<span id="73">73</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ProtocolEvent</span>;
@@ -113,8 +100,6 @@
     <span class="ident">SerdeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">serde_json::Error</span>),
     <span class="doccomment">/// massa_hash error {0}</span>
     <span class="ident">MassaHashError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_hash::MassaHashError</span>),
-    <span class="doccomment">/// handshake error:{0:?}</span>
-    <span class="ident">HandshakeError</span>(<span class="ident">HandshakeErrorType</span>),
     <span class="doccomment">/// the network controller should not drop a node command sender before shutting down the node.</span>
     <span class="ident">UnexpectedNodeCommandChannelClosure</span>,
     <span class="doccomment">/// the writer of a node should not drop its event sender before sending a clean_exit message.</span>
@@ -132,17 +117,6 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">HandshakeErrorType</span> {
-    <span class="ident">HandshakeIdAlreadyExistError</span>(<span class="ident">String</span>),
-    <span class="ident">HandshakeTimeoutError</span>,
-    <span class="ident">HandshakeInterruptionError</span>(<span class="ident">String</span>),
-    <span class="ident">HandshakeWrongMessageError</span>,
-    <span class="ident">HandshakeKeyError</span>,
-    <span class="ident">HandshakeInvalidSignatureError</span>,
-    <span class="ident">IncompatibleVersionError</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NetworkConnectionErrorType</span> {
     <span class="ident">CloseConnectionWithNoConnectionToClose</span>(<span class="ident">IpAddr</span>),
     <span class="ident">PeerInfoNotFoundError</span>(<span class="ident">IpAddr</span>),
@@ -150,5 +124,5 @@
     <span class="ident">ToManyConnectionFailure</span>(<span class="ident">IpAddr</span>),
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (8cdb3cd94 2022-01-25)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (734368a20 2022-02-07)" ></div>
 </body></html>

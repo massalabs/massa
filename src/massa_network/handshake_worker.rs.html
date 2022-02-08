@@ -277,13 +277,13 @@
         {
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::HandshakeError</span>(
-                    <span class="ident">HandshakeErrorType::HandshakeTimeoutError</span>,
+                    <span class="ident">HandshakeErrorType::HandshakeTimeout</span>,
                 ))
             }
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">None</span>))) =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::HandshakeError</span>(
-                    <span class="ident">HandshakeErrorType::HandshakeInterruptionError</span>(<span class="string">&quot;init&quot;</span>.<span class="ident">into</span>()),
+                    <span class="ident">HandshakeErrorType::HandshakeInterruption</span>(<span class="string">&quot;init&quot;</span>.<span class="ident">into</span>()),
                 ))
             }
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">msg</span>))))) =&gt; <span class="kw">match</span> <span class="ident">msg</span> {
@@ -294,7 +294,7 @@
                 } =&gt; (<span class="ident">NodeId</span>(<span class="ident">pk</span>), <span class="ident">rb</span>, <span class="ident">version</span>),
                 <span class="kw">_</span> =&gt; {
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::HandshakeError</span>(
-                        <span class="ident">HandshakeErrorType::HandshakeWrongMessageError</span>,
+                        <span class="ident">HandshakeErrorType::HandshakeWrongMessage</span>,
                     ))
                 }
             },
@@ -303,14 +303,14 @@
         <span class="comment">// check if remote node ID is the same as ours</span>
         <span class="kw">if</span> <span class="ident">other_node_id</span> <span class="op">==</span> <span class="self">self</span>.<span class="ident">self_node_id</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::HandshakeError</span>(
-                <span class="ident">HandshakeErrorType::HandshakeKeyError</span>,
+                <span class="ident">HandshakeErrorType::HandshakeKey</span>,
             ));
         }
 
         <span class="comment">// check if version is compatible with ours</span>
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">version</span>.<span class="ident">is_compatible</span>(<span class="kw-2">&amp;</span><span class="ident">other_version</span>) {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::HandshakeError</span>(
-                <span class="ident">HandshakeErrorType::IncompatibleVersionError</span>,
+                <span class="ident">HandshakeErrorType::IncompatibleVersion</span>,
             ));
         }
 
@@ -336,20 +336,20 @@
         {
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::HandshakeError</span>(
-                    <span class="ident">HandshakeErrorType::HandshakeTimeoutError</span>,
+                    <span class="ident">HandshakeErrorType::HandshakeTimeout</span>,
                 ))
             }
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">None</span>))) =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::HandshakeError</span>(
-                    <span class="ident">HandshakeErrorType::HandshakeInterruptionError</span>(<span class="string">&quot;repl&quot;</span>.<span class="ident">into</span>()),
+                    <span class="ident">HandshakeErrorType::HandshakeInterruption</span>(<span class="string">&quot;repl&quot;</span>.<span class="ident">into</span>()),
                 ))
             }
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">msg</span>))))) =&gt; <span class="kw">match</span> <span class="ident">msg</span> {
                 <span class="ident">Message::HandshakeReply</span> { <span class="ident">signature</span>: <span class="ident">sig</span> } =&gt; <span class="ident">sig</span>,
                 <span class="kw">_</span> =&gt; {
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::HandshakeError</span>(
-                        <span class="ident">HandshakeErrorType::HandshakeWrongMessageError</span>,
+                        <span class="ident">HandshakeErrorType::HandshakeWrongMessage</span>,
                     ))
                 }
             },
@@ -357,12 +357,12 @@
 
         <span class="comment">// check their signature</span>
         <span class="ident">verify_signature</span>(<span class="kw-2">&amp;</span><span class="ident">self_random_hash</span>, <span class="kw-2">&amp;</span><span class="ident">other_signature</span>, <span class="kw-2">&amp;</span><span class="ident">other_node_id</span>.<span class="number">0</span>).<span class="ident">map_err</span>(
-            <span class="op">|</span><span class="ident">_err</span><span class="op">|</span> <span class="ident">NetworkError::HandshakeError</span>(<span class="ident">HandshakeErrorType::HandshakeInvalidSignatureError</span>),
+            <span class="op">|</span><span class="ident">_err</span><span class="op">|</span> <span class="ident">NetworkError::HandshakeError</span>(<span class="ident">HandshakeErrorType::HandshakeInvalidSignature</span>),
         )<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((<span class="ident">other_node_id</span>, <span class="self">self</span>.<span class="ident">reader</span>, <span class="self">self</span>.<span class="ident">writer</span>))
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (8cdb3cd94 2022-01-25)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (734368a20 2022-02-07)" ></div>
 </body></html>

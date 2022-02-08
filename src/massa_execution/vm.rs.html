@@ -419,22 +419,118 @@
 <span id="414">414</span>
 <span id="415">415</span>
 <span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::bootstrap_file_error</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::interface_impl::InterfaceImpl</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::sce_ledger</span>::{<span class="ident">FinalLedger</span>, <span class="ident">SCELedger</span>, <span class="ident">SCELedgerChanges</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types</span>::{<span class="ident">ExecutionContext</span>, <span class="ident">ExecutionData</span>, <span class="ident">ExecutionStep</span>, <span class="ident">StepHistory</span>, <span class="ident">StepHistoryItem</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types</span>::{
+    <span class="ident">EventStore</span>, <span class="ident">ExecutionContext</span>, <span class="ident">ExecutionData</span>, <span class="ident">ExecutionStep</span>, <span class="ident">StackElement</span>, <span class="ident">StepHistory</span>,
+    <span class="ident">StepHistoryItem</span>,
+};
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">config::ExecutionConfigs</span>, <span class="ident">ExecutionError</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api::SCELedgerInfo</span>;
+<span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
-<span class="kw">use</span> <span class="ident">massa_models::AMOUNT_ZERO</span>;
-<span class="kw">use</span> <span class="ident">massa_sc_runtime::Interface</span>;
-
-<span class="kw">use</span> <span class="ident">massa_models::timeslots::slot_count_in_range</span>;
+<span class="kw">use</span> <span class="ident">massa_models::timeslots</span>::{<span class="ident">get_latest_block_slot_at_timestamp</span>, <span class="ident">slot_count_in_range</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">execution</span>::{<span class="ident">ExecuteReadOnlyResponse</span>, <span class="ident">ReadOnlyResult</span>},
     <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">BlockId</span>, <span class="ident">Slot</span>,
 };
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">OperationId</span>, <span class="ident">AMOUNT_ZERO</span>};
+<span class="kw">use</span> <span class="ident">massa_sc_runtime::Interface</span>;
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>};
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">rand::SeedableRng</span>;
 <span class="kw">use</span> <span class="ident">rand_xoshiro::Xoshiro256PlusPlus</span>;
 <span class="kw">use</span> <span class="ident">std::mem</span>;
@@ -447,6 +543,9 @@
     <span class="doccomment">/// thread count</span>
     <span class="ident">thread_count</span>: <span class="ident">u8</span>,
 
+    <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
+    <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
+
     <span class="doccomment">/// history of SCE-active executed steps</span>
     <span class="ident">step_history</span>: <span class="ident">StepHistory</span>,
 
@@ -455,6 +554,9 @@
 
     <span class="doccomment">/// execution context</span>
     <span class="ident">execution_context</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionContext</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+
+    <span class="doccomment">/// final events</span>
+    <span class="ident">final_events</span>: <span class="ident">EventStore</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">VM</span> {
@@ -497,6 +599,9 @@
             <span class="ident">step_history</span>: <span class="ident">Default::default</span>(),
             <span class="ident">execution_interface</span>,
             <span class="ident">execution_context</span>,
+            <span class="ident">final_events</span>: <span class="ident">Default::default</span>(),
+            <span class="ident">genesis_timestamp</span>: <span class="ident">cfg</span>.<span class="ident">genesis_timestamp</span>,
+            <span class="ident">t0</span>: <span class="ident">cfg</span>.<span class="ident">t0</span>,
         })
     }
 
@@ -508,6 +613,55 @@
             .<span class="ident">ledger_step</span>
             .<span class="ident">final_ledger_slot</span>
             .<span class="ident">clone</span>()
+    }
+
+    <span class="doccomment">/// Get events optionnally filtered by:</span>
+    <span class="doccomment">/// * start slot</span>
+    <span class="doccomment">/// * end slot</span>
+    <span class="doccomment">/// * emitter address</span>
+    <span class="doccomment">/// * original caller address</span>
+    <span class="doccomment">/// * operation id</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">start</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
+        <span class="ident">end</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
+        <span class="ident">emitter_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+        <span class="ident">original_caller_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+        <span class="ident">original_operation_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span> {
+        <span class="comment">// iter on step history chained with final events</span>
+        <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">start</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Slot::new</span>(<span class="number">0</span>, <span class="number">0</span>));
+        <span class="kw">let</span> <span class="ident">end</span> <span class="op">=</span> <span class="ident">end</span>.<span class="ident">unwrap_or</span>(<span class="kw">match</span> <span class="ident">MassaTime::now</span>() {
+            <span class="prelude-val">Ok</span>(<span class="ident">now</span>) =&gt; <span class="ident">get_latest_block_slot_at_timestamp</span>(
+                <span class="self">self</span>.<span class="ident">thread_count</span>,
+                <span class="self">self</span>.<span class="ident">t0</span>,
+                <span class="self">self</span>.<span class="ident">genesis_timestamp</span>,
+                <span class="ident">now</span>,
+            )
+            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Some</span>(<span class="ident">Slot::new</span>(<span class="number">0</span>, <span class="number">0</span>)))
+            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Slot::new</span>(<span class="number">0</span>, <span class="number">0</span>)),
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="ident">Slot::new</span>(<span class="number">0</span>, <span class="number">0</span>),
+        });
+        <span class="self">self</span>.<span class="ident">step_history</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">item</span><span class="op">|</span> <span class="ident">item</span>.<span class="ident">slot</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">start</span> <span class="op">&amp;&amp;</span> <span class="ident">item</span>.<span class="ident">slot</span> <span class="op">&lt;</span> <span class="ident">end</span>)
+            .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">item</span><span class="op">|</span> {
+                <span class="ident">item</span>.<span class="ident">events</span>.<span class="ident">get_filtered_sc_output_event</span>(
+                    <span class="ident">start</span>,
+                    <span class="ident">end</span>,
+                    <span class="ident">emitter_address</span>,
+                    <span class="ident">original_caller_address</span>,
+                    <span class="ident">original_operation_id</span>,
+                )
+            })
+            .<span class="ident">chain</span>(<span class="self">self</span>.<span class="ident">final_events</span>.<span class="ident">get_filtered_sc_output_event</span>(
+                <span class="ident">start</span>,
+                <span class="ident">end</span>,
+                <span class="ident">emitter_address</span>,
+                <span class="ident">original_caller_address</span>,
+                <span class="ident">original_operation_id</span>,
+            ))
+            .<span class="ident">collect</span>()
     }
 
     <span class="comment">// clone bootstrap state (final ledger and slot)</span>
@@ -543,7 +697,8 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Parameters</span>
     <span class="doccomment">///   * step: execution step to run</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">run_final_step</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">step</span>: <span class="ident">ExecutionStep</span>) {
+    <span class="doccomment">///   * max_final_events: max number of events kept in cache (todo should be removed when config become static)</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">run_final_step</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">step</span>: <span class="ident">ExecutionStep</span>, <span class="ident">max_final_events</span>: <span class="ident">usize</span>) {
         <span class="comment">// check if that step was already executed as the earliest active step</span>
         <span class="kw">let</span> <span class="ident">history_item</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cached</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">pop_cached_step</span>(<span class="kw-2">&amp;</span><span class="ident">step</span>) {
             <span class="comment">// if so, pop it</span>
@@ -562,6 +717,9 @@
             .<span class="ident">ledger</span>
             .<span class="ident">apply_changes</span>(<span class="kw-2">&amp;</span><span class="ident">history_item</span>.<span class="ident">ledger_changes</span>);
         <span class="ident">ledger_step</span>.<span class="ident">final_ledger_slot</span>.<span class="ident">slot</span> <span class="op">=</span> <span class="ident">step</span>.<span class="ident">slot</span>;
+
+        <span class="self">self</span>.<span class="ident">final_events</span>.<span class="ident">extend</span>(<span class="ident">mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="ident">context</span>.<span class="ident">events</span>));
+        <span class="self">self</span>.<span class="ident">final_events</span>.<span class="ident">prune</span>(<span class="ident">max_final_events</span>)
     }
 
     <span class="doccomment">/// check if step already at history front, if so, pop it</span>
@@ -610,10 +768,11 @@
         <span class="ident">context</span>.<span class="ident">ledger_step</span>.<span class="ident">cumulative_history_changes</span> <span class="op">=</span>
             <span class="ident">SCELedgerChanges::from</span>(<span class="self">self</span>.<span class="ident">step_history</span>.<span class="ident">clone</span>());
         <span class="ident">context</span>.<span class="ident">created_addr_index</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="ident">context</span>.<span class="ident">owned_addresses_stack</span>.<span class="ident">clear</span>();
-        <span class="ident">context</span>.<span class="ident">call_stack</span>.<span class="ident">clear</span>();
+        <span class="ident">context</span>.<span class="ident">created_event_index</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="ident">context</span>.<span class="ident">stack</span>.<span class="ident">clear</span>();
+        <span class="ident">context</span>.<span class="ident">events</span>.<span class="ident">clear</span>();
         <span class="ident">context</span>.<span class="ident">read_only</span> <span class="op">=</span> <span class="bool-val">false</span>;
-        <span class="ident">context</span>.<span class="ident">coins_stack</span>.<span class="ident">clear</span>();
+        <span class="ident">context</span>.<span class="ident">origin_operation_id</span> <span class="op">=</span> <span class="prelude-val">None</span>;
     }
 
     <span class="doccomment">/// Prepares (updates) the shared context before the new operation.</span>
@@ -621,14 +780,16 @@
     <span class="doccomment">/// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction</span>
     <span class="doccomment">/// TODO: do not ignore the results</span>
     <span class="doccomment">/// TODO: consider dispatching gas fees with edorsers/endorsees as well</span>
-    <span class="doccomment">/// Returns (backup of local ledger changes, backup of created_addr_index)</span>
+    <span class="doccomment">/// Returns (backup of local ledger changes, backup of created_addr_index,</span>
+    <span class="doccomment">/// backup of events, backup of created_events_index, backup of unsafe rng)</span>
     <span class="kw">fn</span> <span class="ident">prepare_context</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">ExecutionData</span>,
         <span class="ident">block_creator_addr</span>: <span class="ident">Address</span>,
         <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
         <span class="ident">slot</span>: <span class="ident">Slot</span>,
-    ) -&gt; (<span class="ident">SCELedgerChanges</span>, <span class="ident">u64</span>, <span class="ident">Xoshiro256PlusPlus</span>) {
+        <span class="ident">operation</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
+    ) -&gt; (<span class="ident">SCELedgerChanges</span>, <span class="ident">u64</span>, <span class="ident">EventStore</span>, <span class="ident">u64</span>, <span class="ident">Xoshiro256PlusPlus</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">execution_context</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
         <span class="comment">// make context.ledger_step credit Op&#39;s sender with Op.coins in the SCE ledger</span>
         <span class="kw">let</span> <span class="ident">_result</span> <span class="op">=</span> <span class="ident">context</span>
@@ -646,16 +807,21 @@
         <span class="comment">// created_addr_index is not reset here (it is used at the slot scale)</span>
         <span class="ident">context</span>.<span class="ident">gas_price</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">gas_price</span>;
         <span class="ident">context</span>.<span class="ident">max_gas</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">max_gas</span>;
-        <span class="ident">context</span>.<span class="ident">coins_stack</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">data</span>.<span class="ident">coins</span>];
+        <span class="ident">context</span>.<span class="ident">stack</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">StackElement</span> {
+            <span class="ident">address</span>: <span class="ident">data</span>.<span class="ident">sender_address</span>,
+            <span class="ident">coins</span>: <span class="ident">data</span>.<span class="ident">coins</span>,
+            <span class="ident">owned_addresses</span>: <span class="macro">vec!</span>[<span class="ident">data</span>.<span class="ident">sender_address</span>],
+        }];
         <span class="ident">context</span>.<span class="ident">slot</span> <span class="op">=</span> <span class="ident">slot</span>;
         <span class="ident">context</span>.<span class="ident">opt_block_id</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">block_id</span>);
         <span class="ident">context</span>.<span class="ident">opt_block_creator_addr</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">block_creator_addr</span>);
-        <span class="ident">context</span>.<span class="ident">call_stack</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">data</span>.<span class="ident">sender_address</span>].<span class="ident">into</span>();
-        <span class="ident">context</span>.<span class="ident">owned_addresses_stack</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="ident">data</span>.<span class="ident">sender_address</span>]];
+        <span class="ident">context</span>.<span class="ident">origin_operation_id</span> <span class="op">=</span> <span class="ident">operation</span>;
 
         (
             <span class="ident">context</span>.<span class="ident">ledger_step</span>.<span class="ident">caused_changes</span>.<span class="ident">clone</span>(),
             <span class="ident">context</span>.<span class="ident">created_addr_index</span>,
+            <span class="ident">context</span>.<span class="ident">events</span>.<span class="ident">clone</span>(),
+            <span class="ident">context</span>.<span class="ident">created_event_index</span>,
             <span class="ident">context</span>.<span class="ident">unsafe_rng</span>.<span class="ident">clone</span>(),
         )
     }
@@ -682,7 +848,12 @@
                 <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">private_key</span>);
                 <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">public_key</span>)
             });
-            <span class="ident">context</span>.<span class="ident">call_stack</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">address</span>].<span class="ident">into</span>();
+
+            <span class="ident">context</span>.<span class="ident">stack</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">StackElement</span> {
+                <span class="ident">address</span>,
+                <span class="ident">coins</span>: <span class="ident">AMOUNT_ZERO</span>,
+                <span class="ident">owned_addresses</span>: <span class="macro">vec!</span>[<span class="ident">address</span>],
+            }];
 
             <span class="comment">// Set read-only</span>
             <span class="ident">context</span>.<span class="ident">read_only</span> <span class="op">=</span> <span class="bool-val">true</span>;
@@ -692,12 +863,6 @@
 
             <span class="comment">// Set the simulated gas price.</span>
             <span class="ident">context</span>.<span class="ident">gas_price</span> <span class="op">=</span> <span class="ident">simulated_gas_price</span>;
-
-            <span class="comment">// Set coins to zero</span>
-            <span class="ident">context</span>.<span class="ident">coins_stack</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">AMOUNT_ZERO</span>];
-
-            <span class="comment">// Set owned addresses</span>
-            <span class="ident">context</span>.<span class="ident">owned_addresses_stack</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="ident">address</span>]];
 
             <span class="comment">// Seed the RNG</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">seed</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">slot</span>.<span class="ident">to_bytes_key</span>().<span class="ident">to_vec</span>();
@@ -709,6 +874,7 @@
         <span class="comment">// run in the intepreter</span>
         <span class="kw">let</span> <span class="ident">run_result</span> <span class="op">=</span> <span class="ident">massa_sc_runtime::run</span>(<span class="kw-2">&amp;</span><span class="ident">bytecode</span>, <span class="ident">max_gas</span>, <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">execution_interface</span>);
 
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">execution_context</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
         <span class="comment">// Send result back.</span>
         <span class="kw">let</span> <span class="ident">execution_response</span> <span class="op">=</span> <span class="ident">ExecuteReadOnlyResponse</span> {
             <span class="ident">executed_at</span>: <span class="ident">slot</span>,
@@ -717,8 +883,8 @@
                 <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ReadOnlyResult::Error</span>(<span class="string">&quot;Failed to run in read-only mode&quot;</span>.<span class="ident">to_string</span>()),
                 <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ReadOnlyResult::Ok</span>,
             ),
-            <span class="comment">// TODO: integrate with output events.</span>
-            <span class="ident">output_events</span>: <span class="prelude-val">None</span>,
+            <span class="comment">// integrate with output events.</span>
+            <span class="ident">output_events</span>: <span class="ident">mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="ident">context</span>.<span class="ident">events</span>).<span class="ident">export</span>(),
         };
         <span class="kw">if</span> <span class="ident">result_sender</span>.<span class="ident">send</span>(<span class="ident">execution_response</span>).<span class="ident">is_err</span>() {
             <span class="macro">debug!</span>(<span class="string">&quot;Execution: could not send ExecuteReadOnlyResponse.&quot;</span>);
@@ -776,8 +942,22 @@
                 <span class="comment">// Prepare context and save the initial ledger changes before execution.</span>
                 <span class="comment">// The returned snapshot takes into account the initial coin credits.</span>
                 <span class="comment">// This snapshot will be popped back if bytecode execution fails.</span>
-                <span class="kw">let</span> (<span class="ident">ledger_changes_backup</span>, <span class="ident">created_addr_index_backup</span>, <span class="ident">rng_backup</span>) <span class="op">=</span>
-                    <span class="self">self</span>.<span class="ident">prepare_context</span>(<span class="kw-2">&amp;</span><span class="ident">execution_data</span>, <span class="ident">block_creator_addr</span>, <span class="kw-2">*</span><span class="ident">block_id</span>, <span class="ident">step</span>.<span class="ident">slot</span>);
+                <span class="kw">let</span> (
+                    <span class="ident">ledger_changes_backup</span>,
+                    <span class="ident">created_addr_index_backup</span>,
+                    <span class="ident">events_backup</span>,
+                    <span class="ident">event_index_backup</span>,
+                    <span class="ident">rng_backup</span>,
+                ) <span class="op">=</span> <span class="self">self</span>.<span class="ident">prepare_context</span>(
+                    <span class="kw-2">&amp;</span><span class="ident">execution_data</span>,
+                    <span class="ident">block_creator_addr</span>,
+                    <span class="kw-2">*</span><span class="ident">block_id</span>,
+                    <span class="ident">step</span>.<span class="ident">slot</span>,
+                    <span class="prelude-val">Some</span>(<span class="kw">match</span> <span class="ident">operation</span>.<span class="ident">get_operation_id</span>() {
+                        <span class="prelude-val">Ok</span>(<span class="ident">id</span>) =&gt; <span class="ident">id</span>,
+                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">continue</span>,
+                    }),
+                );
 
                 <span class="comment">// run in the intepreter</span>
                 <span class="kw">let</span> <span class="ident">run_result</span> <span class="op">=</span> <span class="ident">massa_sc_runtime::run</span>(
@@ -794,7 +974,10 @@
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">execution_context</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
                     <span class="ident">context</span>.<span class="ident">ledger_step</span>.<span class="ident">caused_changes</span> <span class="op">=</span> <span class="ident">ledger_changes_backup</span>;
                     <span class="ident">context</span>.<span class="ident">created_addr_index</span> <span class="op">=</span> <span class="ident">created_addr_index_backup</span>;
+                    <span class="ident">context</span>.<span class="ident">events</span> <span class="op">=</span> <span class="ident">events_backup</span>;
+                    <span class="ident">context</span>.<span class="ident">created_event_index</span> <span class="op">=</span> <span class="ident">event_index_backup</span>;
                     <span class="ident">context</span>.<span class="ident">unsafe_rng</span> <span class="op">=</span> <span class="ident">rng_backup</span>;
+                    <span class="ident">context</span>.<span class="ident">origin_operation_id</span> <span class="op">=</span> <span class="prelude-val">None</span>;
                 }
             }
         } <span class="kw">else</span> {
@@ -808,6 +991,7 @@
             <span class="ident">slot</span>: <span class="ident">step</span>.<span class="ident">slot</span>,
             <span class="ident">opt_block_id</span>,
             <span class="ident">ledger_changes</span>: <span class="ident">mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="ident">context</span>.<span class="ident">ledger_step</span>.<span class="ident">caused_changes</span>),
+            <span class="ident">events</span>: <span class="ident">mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="ident">context</span>.<span class="ident">events</span>),
         }
     }
 
@@ -836,5 +1020,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (8cdb3cd94 2022-01-25)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (734368a20 2022-02-07)" ></div>
 </body></html>

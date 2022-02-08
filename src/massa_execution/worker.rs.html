@@ -537,6 +537,29 @@
 <span id="532">532</span>
 <span id="533">533</span>
 <span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::sce_ledger::FinalLedger</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types</span>::{<span class="ident">ExecutionQueue</span>, <span class="ident">ExecutionRequest</span>};
@@ -548,7 +571,7 @@
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
 <span class="kw">use</span> <span class="ident">massa_models::timeslots</span>::{<span class="ident">get_block_slot_timestamp</span>, <span class="ident">get_current_latest_block_slot</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">Slot</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>};
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 <span class="kw">use</span> <span class="ident">std::thread</span>::{<span class="self">self</span>, <span class="ident">JoinHandle</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">mpsc</span>, <span class="ident">oneshot</span>};
@@ -569,19 +592,18 @@
     <span class="doccomment">/// Get a snapshot of the current state for bootstrap</span>
     <span class="ident">GetBootstrapState</span>(<span class="ident">tokio::sync::oneshot::Sender</span><span class="op">&lt;</span><span class="ident">BootstrapExecutionState</span><span class="op">&gt;</span>),
 
-    <span class="ident">GetSCOutputEventBySlotRange</span> {
-        <span class="ident">start</span>: <span class="ident">Slot</span>,
-        <span class="ident">end</span>: <span class="ident">Slot</span>,
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    },
-
-    <span class="ident">GetSCOutputEventByCaller</span> {
-        <span class="ident">caller_address</span>: <span class="ident">Address</span>,
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    },
-
-    <span class="ident">GetSCOutputEventBySCAddress</span> {
-        <span class="ident">sc_address</span>: <span class="ident">Address</span>,
+    <span class="doccomment">/// Get events optionnally filtered by:</span>
+    <span class="doccomment">/// * start slot</span>
+    <span class="doccomment">/// * end slot</span>
+    <span class="doccomment">/// * emitter address</span>
+    <span class="doccomment">/// * original caller address</span>
+    <span class="doccomment">/// * operation id</span>
+    <span class="ident">GetSCOutputEvents</span> {
+        <span class="ident">start</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
+        <span class="ident">end</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
+        <span class="ident">emitter_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+        <span class="ident">original_caller_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+        <span class="ident">original_operation_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
         <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
 
@@ -670,7 +692,7 @@
             <span class="kw">loop</span> {
                 <span class="kw">match</span> <span class="ident">requests</span>.<span class="ident">pop_front</span>() {
                     <span class="prelude-val">Some</span>(<span class="ident">ExecutionRequest::RunFinalStep</span>(<span class="ident">step</span>)) =&gt; {
-                        <span class="ident">vm</span>.<span class="ident">run_final_step</span>(<span class="ident">step</span>);
+                        <span class="ident">vm</span>.<span class="ident">run_final_step</span>(<span class="ident">step</span>, <span class="ident">cfg</span>.<span class="ident">settings</span>.<span class="ident">max_final_events</span>); <span class="comment">// todo make settings static</span>
                     }
                     <span class="prelude-val">Some</span>(<span class="ident">ExecutionRequest::RunActiveStep</span>(<span class="ident">step</span>)) =&gt; {
                         <span class="ident">vm</span>.<span class="ident">run_active_step</span>(<span class="ident">step</span>);
@@ -703,6 +725,28 @@
                             <span class="macro">debug!</span>(<span class="string">&quot;execution: could not send get_bootstrap_state answer&quot;</span>);
                         }
                     }
+                    <span class="prelude-val">Some</span>(<span class="ident">ExecutionRequest::GetSCOutputEvents</span> {
+                        <span class="ident">start</span>,
+                        <span class="ident">end</span>,
+                        <span class="ident">emitter_address</span>,
+                        <span class="ident">original_caller_address</span>,
+                        <span class="ident">original_operation_id</span>,
+                        <span class="ident">response_tx</span>,
+                    }) =&gt; {
+                        <span class="kw">if</span> <span class="ident">response_tx</span>
+                            .<span class="ident">send</span>(<span class="ident">vm</span>.<span class="ident">get_filtered_sc_output_event</span>(
+                                <span class="ident">start</span>,
+                                <span class="ident">end</span>,
+                                <span class="ident">emitter_address</span>,
+                                <span class="ident">original_caller_address</span>,
+                                <span class="ident">original_operation_id</span>,
+                            ))
+                            .<span class="ident">is_err</span>()
+                        {
+                            <span class="macro">debug!</span>(<span class="string">&quot;execution: could not send get_sc_output_event_by_caller_address answer&quot;</span>);
+                        }
+                    }
+
                     <span class="prelude-val">Some</span>(<span class="ident">ExecutionRequest::Shutdown</span>) =&gt; <span class="kw">return</span>,
                     <span class="prelude-val">Some</span>(<span class="ident">ExecutionRequest::GetSCELedgerForAddresses</span> {
                         <span class="ident">addresses</span>,
@@ -841,19 +885,21 @@
                     <span class="ident">address</span>,
                 });
             }
-            <span class="ident">ExecutionCommand::GetSCOutputEventBySlotRange</span> {
+            <span class="ident">ExecutionCommand::GetSCOutputEvents</span> {
                 <span class="ident">start</span>,
                 <span class="ident">end</span>,
+                <span class="ident">emitter_address</span>,
+                <span class="ident">original_caller_address</span>,
+                <span class="ident">original_operation_id</span>,
                 <span class="ident">response_tx</span>,
-            } =&gt; <span class="macro">todo!</span>(),
-            <span class="ident">ExecutionCommand::GetSCOutputEventByCaller</span> {
-                <span class="ident">caller_address</span>,
+            } =&gt; <span class="self">self</span>.<span class="ident">push_request</span>(<span class="ident">ExecutionRequest::GetSCOutputEvents</span> {
+                <span class="ident">start</span>,
+                <span class="ident">end</span>,
+                <span class="ident">emitter_address</span>,
+                <span class="ident">original_caller_address</span>,
+                <span class="ident">original_operation_id</span>,
                 <span class="ident">response_tx</span>,
-            } =&gt; <span class="macro">todo!</span>(),
-            <span class="ident">ExecutionCommand::GetSCOutputEventBySCAddress</span> {
-                <span class="ident">sc_address</span>,
-                <span class="ident">response_tx</span>,
-            } =&gt; <span class="macro">todo!</span>(),
+            }),
             <span class="ident">ExecutionCommand::GetSCELedgerForAddresses</span> {
                 <span class="ident">response_tx</span>,
                 <span class="ident">addresses</span>,
@@ -1072,5 +1118,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (8cdb3cd94 2022-01-25)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (734368a20 2022-02-07)" ></div>
 </body></html>

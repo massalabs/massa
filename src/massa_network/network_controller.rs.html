@@ -355,6 +355,7 @@
 <span id="350">350</span>
 <span id="351">351</span>
 <span id="352">352</span>
+<span id="353">353</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
@@ -365,8 +366,8 @@
     <span class="ident">peer_info_database</span>::<span class="kw-2">*</span>,
     <span class="ident">BootstrapPeers</span>,
 };
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::NetworkError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>::{<span class="ident">NetworkSettings</span>, <span class="ident">CHANNEL_SIZE</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">error::NetworkError</span>, <span class="ident">network_worker::NetworkWorkerChannels</span>};
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
 <span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
@@ -461,21 +462,22 @@
     }
 
     <span class="comment">// launch controller</span>
-    <span class="kw">let</span> (<span class="ident">command_tx</span>, <span class="ident">command_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NetworkCommand</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
-    <span class="kw">let</span> (<span class="ident">event_tx</span>, <span class="ident">event_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NetworkEvent</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
-    <span class="kw">let</span> (<span class="ident">manager_tx</span>, <span class="ident">manager_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NetworkManagementCommand</span><span class="op">&gt;</span>(<span class="number">1</span>);
+    <span class="kw">let</span> (<span class="ident">command_tx</span>, <span class="ident">controller_command_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NetworkCommand</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
+    <span class="kw">let</span> (<span class="ident">controller_event_tx</span>, <span class="ident">event_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NetworkEvent</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
+    <span class="kw">let</span> (<span class="ident">manager_tx</span>, <span class="ident">controller_manager_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NetworkManagementCommand</span><span class="op">&gt;</span>(<span class="number">1</span>);
     <span class="kw">let</span> <span class="ident">cfg_copy</span> <span class="op">=</span> <span class="ident">network_settings</span>.<span class="ident">clone</span>();
     <span class="kw">let</span> <span class="ident">join_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">NetworkWorker::new</span>(
             <span class="ident">cfg_copy</span>,
             <span class="ident">private_key</span>,
-            <span class="ident">self_node_id</span>,
             <span class="ident">listener</span>,
             <span class="ident">establisher</span>,
             <span class="ident">peer_info_db</span>,
-            <span class="ident">command_rx</span>,
-            <span class="ident">event_tx</span>,
-            <span class="ident">manager_rx</span>,
+            <span class="ident">NetworkWorkerChannels</span> {
+                <span class="ident">controller_command_rx</span>,
+                <span class="ident">controller_event_tx</span>,
+                <span class="ident">controller_manager_rx</span>,
+            },
             <span class="ident">version</span>,
         )
         .<span class="ident">run_loop</span>()
@@ -708,5 +710,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (8cdb3cd94 2022-01-25)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (734368a20 2022-02-07)" ></div>
 </body></html>
