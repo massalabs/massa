@@ -2,7 +2,7 @@
 
 use crate::messages::BootstrapMessage;
 use displaydoc::Display;
-use massa_consensus::error::ConsensusError;
+use massa_consensus_exports::error::ConsensusError;
 use massa_execution::ExecutionError;
 use massa_hash::MassaHashError;
 use massa_network::NetworkError;

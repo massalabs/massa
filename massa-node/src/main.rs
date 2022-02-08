@@ -7,11 +7,11 @@ extern crate massa_logging;
 use crate::settings::SETTINGS;
 use massa_api::{Private, Public, RpcServer, StopHandle, API};
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
-use massa_consensus::{
-    start_consensus_controller, ConsensusChannels, ConsensusCommandSender, ConsensusEvent,
+use massa_consensus_exports::{
+    events::ConsensusEvent, settings::ConsensusChannels, ConsensusCommandSender,
     ConsensusEventReceiver, ConsensusManager,
 };
-
+use massa_consensus_worker::start_consensus_controller;
 use massa_execution::{ExecutionConfigs, ExecutionManager};
 
 use massa_logging::massa_trace;
@@ -48,7 +48,7 @@ async fn launch() -> (
     StopHandle,
 ) {
     info!("Node version : {}", *crate::settings::VERSION);
-    if let Some(end) = *massa_consensus::settings::END_TIMESTAMP {
+    if let Some(end) = *massa_consensus_exports::settings::END_TIMESTAMP {
         if MassaTime::now().expect("could not get now time") > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
@@ -56,10 +56,10 @@ async fn launch() -> (
 
     // Init the global serialization context
     init_serialization_context(SerializationContext {
-        max_block_operations: massa_consensus::settings::MAX_OPERATIONS_PER_BLOCK,
-        parent_count: massa_consensus::settings::THREAD_COUNT,
-        max_block_size: massa_consensus::settings::MAX_BLOCK_SIZE,
-        max_block_endorsements: massa_consensus::settings::ENDORSEMENT_COUNT,
+        max_block_operations: massa_consensus_exports::settings::MAX_OPERATIONS_PER_BLOCK,
+        parent_count: massa_consensus_exports::settings::THREAD_COUNT,
+        max_block_size: massa_consensus_exports::settings::MAX_BLOCK_SIZE,
+        max_block_endorsements: massa_consensus_exports::settings::ENDORSEMENT_COUNT,
         max_peer_list_length: massa_network::settings::MAX_ADVERTISE_LENGTH,
         max_message_size: massa_network::settings::MAX_MESSAGE_SIZE,
         max_bootstrap_blocks: massa_bootstrap::settings::MAX_BOOTSTRAP_BLOCKS,
@@ -86,8 +86,8 @@ async fn launch() -> (
             &SETTINGS.bootstrap,
             massa_bootstrap::establisher::Establisher::new(),
             *settings::VERSION,
-            *massa_consensus::settings::GENESIS_TIMESTAMP,
-            *massa_consensus::settings::END_TIMESTAMP,
+            *massa_consensus_exports::settings::GENESIS_TIMESTAMP,
+            *massa_consensus_exports::settings::END_TIMESTAMP,
         ) => match res {
             Ok(vals) => vals,
             Err(err) => panic!("critical error detected in the bootstrap process: {}", err)
@@ -114,8 +114,8 @@ async fn launch() -> (
         protocol_manager,
     ) = start_protocol_controller(
         &SETTINGS.protocol,
-        massa_consensus::settings::OPERATION_VALIDITY_PERIODS,
-        massa_consensus::settings::MAX_GAS_PER_BLOCK,
+        massa_consensus_exports::settings::OPERATION_VALIDITY_PERIODS,
+        massa_consensus_exports::settings::MAX_GAS_PER_BLOCK,
         network_command_sender.clone(),
         network_event_receiver,
     )
@@ -125,8 +125,8 @@ async fn launch() -> (
     // launch pool controller
     let (pool_command_sender, pool_manager) = start_pool_controller(
         &SETTINGS.pool,
-        massa_consensus::settings::THREAD_COUNT,
-        massa_consensus::settings::OPERATION_VALIDITY_PERIODS,
+        massa_consensus_exports::settings::THREAD_COUNT,
+        massa_consensus_exports::settings::OPERATION_VALIDITY_PERIODS,
         protocol_command_sender.clone(),
         protocol_pool_event_receiver,
     )
@@ -135,9 +135,9 @@ async fn launch() -> (
 
     let execution_config = ExecutionConfigs {
         settings: SETTINGS.execution.clone(),
-        thread_count: massa_consensus::settings::THREAD_COUNT,
-        genesis_timestamp: *massa_consensus::settings::GENESIS_TIMESTAMP,
-        t0: *massa_consensus::settings::T0,
+        thread_count: massa_consensus_exports::settings::THREAD_COUNT,
+        genesis_timestamp: *massa_consensus_exports::settings::GENESIS_TIMESTAMP,
+        t0: *massa_consensus_exports::settings::T0,
         clock_compensation: bootstrap_state.compensation_millis,
     };
 

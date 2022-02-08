@@ -1,11 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use massa_consensus::{BootstrapableGraph, ExportProofOfStake};
 use massa_execution::BootstrapExecutionState;
+use massa_graph::BootstrapableGraph;
 use massa_models::{
     DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Version,
 };
 use massa_network::BootstrapPeers;
+use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_time::MassaTime;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};

@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::address::AddressCycleProductionStats;
-use crate::ledger::LedgerData;
+use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
 use crate::prehash::Map;
 use crate::prehash::Set;
