@@ -593,10 +593,13 @@ impl NetworkWorker {
             }
             // a handshake failed and sent a list of peers
             Err(NetworkError::HandshakeError(HandshakeErrorType::PeerListReceived(peers))) => {
-                self.update_bootstrapable_peers(
-                    self.active_connections.get(&new_connection_id).unwrap().0,
-                    peers,
-                )?;
+                // Manage the final of an handshake that send us a list of new peers
+                // instead of accepting a connection. Notify to the DB that `to_remove`
+                // has failed and merge new `to_add` candidates.
+                self.peer_info_db.merge_candidate_peers(&peers)?;
+                self.running_handshakes.remove(&new_connection_id);
+                self.connection_closed(new_connection_id, ConnectionClosureReason::Failed)
+                    .await?;
             }
             // a handshake finished and failed
             Err(err) => {
@@ -614,20 +617,6 @@ impl NetworkWorker {
             }
         };
         Ok(())
-    }
-
-    /// Manage the final of an handshake that send us a list of new peers
-    /// instead of accepting a connection. Notify to the DB that `to_remove`
-    /// has failed and merge new `to_add` candidates.
-    ///
-    /// Return a network error if it failed to write into the `self.peer_info_db`.
-    fn update_bootstrapable_peers(
-        &mut self,
-        to_remove: IpAddr,
-        to_add: Vec<IpAddr>,
-    ) -> Result<(), NetworkError> {
-        self.peer_info_db.peer_failed(&to_remove)?;
-        self.peer_info_db.merge_candidate_peers(&to_add)
     }
 
     async fn connection_closed(
@@ -1021,8 +1010,10 @@ impl NetworkWorker {
                     Err(NetworkError::PeerConnectionError(
                         NetworkConnectionErrorType::MaxPeersConnectionReached(_),
                     )) => {
-                        debug!("Maximum connection reached");
-                        debug!("inbound connection from addr={} refused", remote_addr);
+                        debug!(
+                            "Maximum connection reached. Inbound connection from addr={} refused",
+                            remote_addr
+                        );
                         let peer_list = self.peer_info_db.get_advertisable_peer_ips();
                         WriteBinder::new(writer)
                             .send(&Message::PeerList(peer_list))
