@@ -1,5 +1,6 @@
 history = 10
 history_file_path = "config/.massa_history"
+timeout = 1000
 
 [default_node]
 ip = "127.0.0.1"
