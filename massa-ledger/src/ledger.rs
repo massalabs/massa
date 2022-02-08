@@ -1,9 +1,16 @@
+// Copyright (c) 2021 MASSA LABS <info@massa.net>
+
+use crate::LedgerConfig;
 use massa_hash::hash::Hash;
 use massa_models::{prehash::Map, Address, Amount, Slot};
 use std::collections::{hash_map, BTreeMap, HashMap, VecDeque};
 
-use crate::LedgerConfig;
+/// represents a structure that supports another one being applied to it
+pub trait Applicable<V> {
+    fn apply(&mut self, _: V);
+}
 
+/// structure defining a ledger entry
 #[derive(Default, Debug, Clone)]
 pub struct LedgerEntry {
     pub roll_count: u64,
@@ -14,21 +21,16 @@ pub struct LedgerEntry {
     pub files: BTreeMap<String, Vec<u8>>,
 }
 
-impl LedgerEntry {
+/// LedgerEntryUpdate can be applied to a LedgerEntry
+impl Applicable<LedgerEntryUpdate> for LedgerEntry {
     /// applies a LedgerEntryUpdate
-    pub fn apply_update(&mut self, update: LedgerEntryUpdate) {
-        if let SetOrKeep::Set(v) = update.roll_count {
-            self.roll_count = v;
-        }
-        if let SetOrKeep::Set(v) = update.sequential_balance {
-            self.sequential_balance = v;
-        }
-        if let SetOrKeep::Set(v) = update.parallel_balance {
-            self.parallel_balance = v;
-        }
-        if let SetOrKeep::Set(v) = update.bytecode {
-            self.bytecode = v;
-        }
+    fn apply(&mut self, update: LedgerEntryUpdate) {
+        update.roll_count.apply_to(&mut self.roll_count);
+        update
+            .sequential_balance
+            .apply_to(&mut self.sequential_balance);
+        update.parallel_balance.apply_to(&mut self.parallel_balance);
+        update.bytecode.apply_to(&mut self.bytecode);
         for (key, value_update) in update.datastore {
             match value_update {
                 SetOrDelete::Set(v) => {
@@ -54,7 +56,7 @@ impl LedgerEntry {
 
 /// represents a set/update/delete change
 #[derive(Debug, Clone)]
-pub enum SetUpdateOrDelete<T, V> {
+pub enum SetUpdateOrDelete<T: Default + Applicable<V>, V: Applicable<V>> {
     /// sets a new absolute value T
     Set(T),
     /// applies an update V to an existing value
@@ -63,30 +65,90 @@ pub enum SetUpdateOrDelete<T, V> {
     Delete,
 }
 
+/// supports applying another SetUpdateOrDelete to self
+impl<T: Default + Applicable<V>, V: Applicable<V>> Applicable<SetUpdateOrDelete<T, V>>
+    for SetUpdateOrDelete<T, V>
+{
+    fn apply(&mut self, other: SetUpdateOrDelete<T, V>) {
+        match other {
+            // the other SetUpdateOrDelete sets a new absolute value => force it on self
+            v @ SetUpdateOrDelete::Set(_) => *self = v,
+
+            // the other SetUpdateOrDelete updates the value
+            SetUpdateOrDelete::Update(u) => match self {
+                // if self currently sets an absolute value, apply other to that value
+                SetUpdateOrDelete::Set(cur) => cur.apply(u),
+
+                // if self currently updates a value, apply the updates of the other to that update
+                SetUpdateOrDelete::Update(cur) => cur.apply(u),
+
+                // if self currently deletes a value,
+                // create a new default value, apply other's updates to it and make self set it as an absolute new value
+                SetUpdateOrDelete::Delete => {
+                    let mut res = T::default();
+                    res.apply(u);
+                    *self = SetUpdateOrDelete::Set(res);
+                }
+            },
+
+            // the other SetUpdateOrDelete deletes a value => force self to delete it as well
+            v @ SetUpdateOrDelete::Delete => *self = v,
+        }
+    }
+}
+
 /// represents a set/delete change
 #[derive(Debug, Clone)]
-pub enum SetOrDelete<T> {
+pub enum SetOrDelete<T: Clone> {
     /// sets a new absolute value T
     Set(T),
     /// deletes a value
     Delete,
 }
 
+/// allows applying another SetOrDelete to the current one
+impl<T: Clone> Applicable<SetOrDelete<T>> for SetOrDelete<T> {
+    fn apply(&mut self, other: Self) {
+        *self = other;
+    }
+}
+
 /// represents a set/keep change
 #[derive(Debug, Clone)]
-pub enum SetOrKeep<T> {
+pub enum SetOrKeep<T: Clone> {
     /// sets a new absolute value T
     Set(T),
     /// keeps the existing value
     Keep,
 }
 
-impl<T> Default for SetOrKeep<T> {
+/// allows applying another SetOrKeep to the current one
+impl<T: Clone> Applicable<SetOrKeep<T>> for SetOrKeep<T> {
+    fn apply(&mut self, other: SetOrKeep<T>) {
+        if let v @ SetOrKeep::Set(..) = other {
+            // update the current value only if the other SetOrKeep sets a new one
+            *self = v;
+        }
+    }
+}
+
+impl<T: Clone> SetOrKeep<T> {
+    /// applies the current SetOrKeep to a target mutable value
+    pub fn apply_to(self, val: &mut T) {
+        if let SetOrKeep::Set(v) = self {
+            // only change the value if self is setting a new one
+            *val = v;
+        }
+    }
+}
+
+impl<T: Clone> Default for SetOrKeep<T> {
     fn default() -> Self {
         SetOrKeep::Keep
     }
 }
 
+/// represents an update to one or more fields of a LedgerEntry
 #[derive(Default, Debug, Clone)]
 pub struct LedgerEntryUpdate {
     roll_count: SetOrKeep<u64>,
@@ -97,21 +159,13 @@ pub struct LedgerEntryUpdate {
     files: HashMap<String, SetOrDelete<Vec<u8>>>,
 }
 
-impl LedgerEntryUpdate {
+impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
     /// extends the LedgerEntryUpdate with another one
-    pub fn apply_update(&mut self, update: LedgerEntryUpdate) {
-        if let v @ SetOrKeep::Set(..) = update.roll_count {
-            self.roll_count = v;
-        }
-        if let v @ SetOrKeep::Set(..) = update.sequential_balance {
-            self.sequential_balance = v;
-        }
-        if let v @ SetOrKeep::Set(..) = update.parallel_balance {
-            self.parallel_balance = v;
-        }
-        if let v @ SetOrKeep::Set(..) = update.bytecode {
-            self.bytecode = v;
-        }
+    fn apply(&mut self, update: LedgerEntryUpdate) {
+        self.roll_count.apply(update.roll_count);
+        self.sequential_balance.apply(update.sequential_balance);
+        self.parallel_balance.apply(update.parallel_balance);
+        self.bytecode.apply(update.bytecode);
         self.datastore.extend(update.datastore);
         self.files.extend(update.files);
     }
@@ -119,50 +173,51 @@ impl LedgerEntryUpdate {
 
 /// represents a list of changes to ledger entries
 #[derive(Default, Debug, Clone)]
-pub struct LedgerChanges(Map<Address, SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>>);
+pub struct LedgerChanges(pub Map<Address, SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>>);
 
-impl LedgerChanges {
-    /// extends teh current LedgerChanges with another one
-    pub fn apply_changes(&mut self, changes: LedgerChanges) {
-        // iterate over all incoming changes
+impl Applicable<LedgerChanges> for LedgerChanges {
+    /// extends the current LedgerChanges with another one
+    fn apply(&mut self, changes: LedgerChanges) {
         for (addr, change) in changes.0 {
-            match change {
-                SetUpdateOrDelete::Set(new_entry) => {
-                    // sets an entry to an absolute value, overriding any previous change
-                    self.0.insert(addr, SetUpdateOrDelete::Set(new_entry));
+            match self.0.entry(addr) {
+                hash_map::Entry::Occupied(mut occ) => {
+                    // apply incoming change if a change on this entry already exists
+                    occ.get_mut().apply(change);
                 }
-                SetUpdateOrDelete::Update(entry_update) => match self.0.entry(addr) {
-                    // applies incoming updates to an entry
-                    hash_map::Entry::Occupied(mut occ) => match occ.get_mut() {
-                        // the entry was already being changed
-                        SetUpdateOrDelete::Set(cur) => {
-                            // the entry was already being set to an absolute value
-                            // apply the incoming updates to that absolute value
-                            cur.apply_update(entry_update);
-                        }
-                        SetUpdateOrDelete::Update(cur) => {
-                            // the entry was already being updated
-                            // extend the existing update with the incoming ones
-                            cur.apply_update(entry_update);
-                        }
-                        cur @ SetUpdateOrDelete::Delete => {
-                            // the entry was being deleted
-                            // set the entry to a default absolute value to which the incoming updates are applied
-                            let mut res_entry = LedgerEntry::default();
-                            res_entry.apply_update(entry_update);
-                            *cur = SetUpdateOrDelete::Set(res_entry);
-                        }
-                    },
-                    hash_map::Entry::Vacant(vac) => {
-                        // the entry was not being changesd: simply add the incoming update
-                        vac.insert(SetUpdateOrDelete::Update(entry_update));
-                    }
-                },
-                SetUpdateOrDelete::Delete => {
-                    // deletes an entry, overriding any previous change
-                    self.0.insert(addr, SetUpdateOrDelete::Delete);
+                hash_map::Entry::Vacant(vac) => {
+                    // otherwise insert the incoming change
+                    vac.insert(change);
                 }
             }
+        }
+    }
+}
+
+impl LedgerChanges {
+    /// tries to return the sequential balance or gets it from a function
+    ///
+    /// # Returns
+    ///     * Some(v) if a value is present
+    ///     * None if the value is absent
+    ///     * f() if the value is unknown
+    ///
+    /// this is used as an optimization:
+    /// if the value can be deduced unambiguously from the LedgerChanges, no need to dig further
+    pub fn get_sequential_balance_or_else<F: FnOnce() -> Option<Amount>>(
+        &self,
+        addr: &Address,
+        f: F,
+    ) -> Option<Amount> {
+        match self.0.get(addr) {
+            Some(SetUpdateOrDelete::Set(v)) => Some(v.sequential_balance),
+            Some(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                sequential_balance, ..
+            })) => match sequential_balance {
+                SetOrKeep::Set(v) => Some(*v),
+                SetOrKeep::Keep => f(),
+            },
+            Some(SetUpdateOrDelete::Delete) => None,
+            None => f(),
         }
     }
 }
@@ -175,29 +230,15 @@ pub struct FinalLedger {
     pub slot: Slot,
     /// sorted ledger tree
     /// TODO put it on the hard drive as it can reach 1TB
-    pub sorted_ledger: BTreeMap<Address, LedgerEntry>,
+    sorted_ledger: BTreeMap<Address, LedgerEntry>,
     /// history of recent final ledger changes
     /// front = oldest, back = newest
     changes_history: VecDeque<(Slot, LedgerChanges)>,
 }
 
-impl FinalLedger {
+impl Applicable<LedgerChanges> for FinalLedger {
     /// applies LedgerChanges to the final ledger
-    pub fn apply_changes(&mut self, slot: Slot, changes: LedgerChanges) {
-        // if the slot is in the past: ignore
-        if slot <= self.slot {
-            return;
-        }
-
-        // update the slot
-        self.slot = slot;
-
-        // update and prune changes history
-        self.changes_history.push_back((slot, changes.clone()));
-        while self.changes_history.len() > self.config.final_history_length {
-            self.changes_history.pop_front();
-        }
-
+    fn apply(&mut self, changes: LedgerChanges) {
         // for all incoming changes
         for (addr, change) in changes.0 {
             match change {
@@ -211,7 +252,7 @@ impl FinalLedger {
                     self.sorted_ledger
                         .entry(addr)
                         .or_insert_with(|| Default::default())
-                        .apply_update(entry_update);
+                        .apply(entry_update);
                 }
                 SetUpdateOrDelete::Delete => {
                     // deletes an entry, if it exists
@@ -222,6 +263,24 @@ impl FinalLedger {
     }
 }
 
-/*
-    TODO how to evaluate the storage costs of a ledger change ?
-*/
+impl FinalLedger {
+    /// settles a slot and saves the corresponding ledger changes to history
+    pub fn settle_slot(&mut self, slot: Slot, changes: LedgerChanges) {
+        // update the slot
+        self.slot = slot;
+
+        // update and prune changes history
+        self.changes_history.push_back((slot, changes.clone()));
+        while self.changes_history.len() > self.config.final_history_length {
+            self.changes_history.pop_front();
+        }
+
+        // apply changes
+        self.apply(changes);
+    }
+
+    /// gets the sequential balance of an entry
+    pub fn get_sequential_balance(&self, addr: &Address) -> Option<Amount> {
+        self.sorted_ledger.get(addr).map(|v| v.sequential_balance)
+    }
+}

@@ -1,4 +1,6 @@
-use crate::types::ExecutionContext;
+use crate::speculative_ledger::SpeculativeLedger;
+use massa_ledger::{FinalLedger, LedgerChanges, LedgerEntry, LedgerEntryUpdate};
+use massa_models::BlockId;
 use massa_models::{
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
     Slot,
@@ -6,11 +8,9 @@ use massa_models::{
 use massa_time::MassaTime;
 use std::{
     collections::{HashMap, VecDeque},
-    sync::{Arc, Condvar, Mutex},
+    sync::{Arc, Condvar, Mutex, RwLock},
 };
 use tracing::info;
-
-use massa_models::BlockId;
 
 pub struct VMConfig {
     thread_count: u8,
@@ -19,9 +19,7 @@ pub struct VMConfig {
     genesis_timestamp: MassaTime,
     t0: MassaTime,
 }
-
-pub struct VMBootstrapData {}
-
+/// structure used to communicate with the VM thread
 #[derive(Default)]
 pub struct VMInputData {
     stop: bool,
@@ -30,11 +28,13 @@ pub struct VMInputData {
     blockclique: HashMap<Slot, BlockId>,
 }
 
+/// VM controller
 pub struct VMController {
     loop_cv: Condvar,
     input_data: Mutex<VMInputData>,
 }
 
+/// VM manager
 pub struct VMManager {
     controller: Arc<VMController>,
     thread_handle: std::thread::JoinHandle<()>,
@@ -90,14 +90,17 @@ struct ExecutionOutput {
     // optional block ID at that slot (None if miss)
     block_id: Option<BlockId>,
     // ledger_changes caused by the execution step
-
-    //TODO event_store
+    ledger_changes: LedgerChanges,
+    // events emitted by the execution step
+    //TODO events: EventStore
 }
 
 /// structure gathering all elements needed by the VM thread
 struct VMThread {
     // VM config
     config: VMConfig,
+    // Final ledger
+    final_ledger: Arc<RwLock<FinalLedger>>,
     // VM data exchange controller
     controller: Arc<VMController>,
     // map of SCE-final blocks not executed yet
@@ -118,24 +121,46 @@ struct VMThread {
     active_cursor: Slot,
     // execution output history
     execution_history: VecDeque<ExecutionOutput>,
-    /// execution context
+    // execution context
     execution_context: Arc<Mutex<ExecutionContext>>,
-    /// final events
-    final_events: EventStore,
+    // final events
+    // final_events: EventStore,
+}
+
+pub(crate) struct ExecutionContext {
+    speculative_ledger: SpeculativeLedger,
 }
 
 impl VMThread {
     fn new(
         config: VMConfig,
         controller: Arc<VMController>,
-        bootstrap: Option<VMBootstrapData>,
+        final_ledger: Arc<RwLock<FinalLedger>>,
     ) -> Self {
-        // TODO bootstrap
+        let final_slot = final_ledger
+            .read()
+            .expect("could not R-lock final ledger in VM thread creation")
+            .slot;
+        let execution_context = Arc::new(Mutex::new(ExecutionContext {
+            speculative_ledger: SpeculativeLedger {
+                final_ledger: final_ledger.clone(),
+                all_changes: Default::default(),
+                added_changes: Default::default(),
+            },
+        }));
         VMThread {
+            final_ledger,
+            last_active_slot: final_slot,
+            final_cursor: final_slot,
+            active_cursor: final_slot,
             controller,
+            last_sce_final: final_slot,
+            execution_context,
             sce_finals: Default::default(),
-            last_sce_final: Slot::new(0, config.thread_count.saturating_sub(1)),
             remaining_css_finals: Default::default(),
+            blockclique: Default::default(),
+            active_slots: Default::default(),
+            execution_history: Default::default(),
             config,
         }
     }

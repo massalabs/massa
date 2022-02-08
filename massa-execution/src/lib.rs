@@ -6,6 +6,7 @@ mod error;
 mod exports;
 mod interface_impl;
 mod sce_ledger;
+mod speculative_ledger;
 mod types;
 mod vm;
 mod vm_new;

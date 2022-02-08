@@ -23,6 +23,7 @@ rand = "0.8"
 rand_xoshiro = "0.6"
 lazy_static = "1.4.0"
 massa_time = { path = "../massa-time" }
+massa_ledger = { path = "../massa-ledger" }
 
 [dev-dependencies]
 serial_test = "0.5"

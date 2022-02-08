@@ -1503,6 +1503,7 @@ dependencies = [
  "lazy_static",
  "massa-sc-runtime",
  "massa_hash",
+ "massa_ledger",
  "massa_models",
  "massa_signature",
  "massa_time",
