@@ -131,14 +131,16 @@
 <span id="126">126</span>
 <span id="127">127</span>
 <span id="128">128</span>
+<span id="129">129</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="ident">massa_consensus</span>::{<span class="ident">BootstrapableGraph</span>, <span class="ident">ExportProofOfStake</span>};
 <span class="kw">use</span> <span class="ident">massa_execution::BootstrapExecutionState</span>;
+<span class="kw">use</span> <span class="ident">massa_graph::BootstrapableGraph</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">Version</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_network::BootstrapPeers</span>;
+<span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports::ExportProofOfStake</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">num_enum</span>::{<span class="ident">IntoPrimitive</span>, <span class="ident">TryFromPrimitive</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};

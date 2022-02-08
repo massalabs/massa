@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["ActiveBlock","Block that was checked as final, with some useful precomputed data"]]});

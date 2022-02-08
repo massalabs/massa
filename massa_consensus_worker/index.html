@@ -1,0 +1,113 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Endorsements"><meta name="keywords" content="rust, rustlang, rust-lang, massa_consensus_worker"><title>massa_consensus_worker - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../dark.css" disabled><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../storage.js"></script><script src="../crates.js"></script><script defer src="../main.js"></script>
+    <noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../massa_consensus_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../massa_consensus_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"><a href="#">Crate massa_consensus_worker</a></h2><div class="sidebar-elems"><div class="block"><ul><li class="version">Version 0.1.0</li><li><a id="all-types" href="all.html">All Items</a></li></div></ul><div class="block items"><ul><li><a href="#functions">Functions</a></li></ul></div><div id="sidebar-vars" data-name="massa_consensus_worker" data-ty="mod" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../massa_consensus_worker/index.html"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+    <h1 class="fqn"><span class="in-band">Crate <a class="mod" href="#">massa_consensus_worker</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../src/massa_consensus_worker/lib.rs.html#3-20">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="endorsements" class="section-header"><a href="#endorsements">Endorsements</a></h2><h3 id="goal" class="section-header"><a href="#goal">Goal</a></h3>
+<p>Endorsements are included in a block’s header. They are created by randomly selected endorsers chosen among the stakers (including the block creator) to endorse the block’s parent in the same thread. The block’s total fee and reward are split between the block creator, the endorsers, and the creator of the endorsed block.</p>
+<p>With that mechanism it becomes harder to gain control of the network (you now have to control <code>endorsement_count + 1</code> draw to gain control over one block) and to reward stakers more frequently.</p>
+
+<div class='information'><div class='tooltip ignore'>ⓘ</div></div><div class="example-wrap"><pre class="rust rust-example-rendered ignore"><code><span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockHeaderContent</span> {
+    <span class="kw">pub</span> <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span>,
+    ..
+}</code></pre></div>
+<h3 id="endorsement-structure" class="section-header"><a href="#endorsement-structure">Endorsement structure</a></h3>
+<p>An endorsement is defined as follows:</p>
+
+<div class='information'><div class='tooltip ignore'>ⓘ</div></div><div class="example-wrap"><pre class="rust rust-example-rendered ignore"><code><span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Endorsement</span> {
+    <span class="kw">pub</span> <span class="ident">content</span>: <span class="ident">EndorsementContent</span>,
+    <span class="kw">pub</span> <span class="ident">signature</span>: <span class="ident">Signature</span>,
+}
+
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EndorsementContent</span> {
+    <span class="doccomment">/// Public key of the endorser.</span>
+    <span class="kw">pub</span> <span class="ident">sender_public_key</span>: <span class="ident">PublicKey</span>,
+    <span class="doccomment">/// slot of endorsed block (= parent in the same thread) (can be different that previous slot in the same thread)</span>
+    <span class="kw">pub</span> <span class="ident">slot</span>: <span class="ident">Slot</span>,
+    <span class="doccomment">/// endorsement index inside the block</span>
+    <span class="kw">pub</span> <span class="ident">index</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// hash of endorsed block (= parent in the same thread)</span>
+    <span class="kw">pub</span> <span class="ident">endorsed_block</span>: <span class="ident">BlockId</span>,
+}</code></pre></div>
+<p>The endorser is selected to create an endorsement at a specific (slot, endorsement_index). To be included in a specif block, endorsed_block has to match that block’s parent in the same thread, and slot has to match that parent’s slot. The signature is produced signing the header_content with the sender_public_key.</p>
+<h3 id="endorsement-production" class="section-header"><a href="#endorsement-production">Endorsement production</a></h3>
+<p>Endorsements are automatically produced every time block db changed, if the slot hasn’t already been endorsed, if it is at most one period before the last slot, and if a staking address of the node has been selected. Created endorsements are sent to the endorsement pool.</p>
+<h3 id="endorsement-propagation" class="section-header"><a href="#endorsement-propagation">Endorsement propagation</a></h3>
+<p>Once an endorsement is created by consensus, it is sent to the endorsement pool, where it is stored waiting for a request from consensus. Then it is sent to protocol and to every node that we don’t know if it already has that endorsement. On the other hand, when receiving an endorsement from the network, protocol notes which node sent it, checks the signature and send it to the endorsement pool.</p>
+<p>The endorsement pool is pruned if it reaches a max size and when new slots are becoming final.</p>
+<h3 id="endorsement-integration" class="section-header"><a href="#endorsement-integration">Endorsement integration</a></h3>
+<p>When creating a block consensus asks pool for endorsements specifying :</p>
+<ul>
+<li>target_slot: the slot of the parent in the same thread of the block been produced</li>
+<li>parent: that parent’s BlockId</li>
+<li>creators: the ordered addresses that were selected to create endorsements in for that slot</li>
+</ul>
+<p>Pool responds with a vec of endorsement that is endorsement_count long or less, as some endorsements may be missing. That vec is ordered by endorsement index and when there are endorsement_count endorsement, that index should match the vec index.</p>
+<h3 id="reward-computation" class="section-header"><a href="#reward-computation">Reward computation</a></h3>
+<p>For each block reward R (constant or fee):</p>
+<ul>
+<li><code>1/(1 + config.endorsement_count)</code> to the block creator</li>
+<li>For each included endorsement:
+<ul>
+<li><code>1/(3*(1 + config.endorsement_count))</code> to the block creator</li>
+<li><code>1/(3*(1 + config.endorsement_count))</code> to the endorsed block’s creator</li>
+<li><code>1/(3*(1 + config.endorsement_count))</code> to the creator of the endorsement</li>
+</ul>
+</li>
+</ul>
+<p>Lossless rounding is done in favor of the block creator</p>
+<h4 id="example" class="section-header"><a href="#example">Example</a></h4>
+<p>Given :</p>
+<ul>
+<li>addresses A, B, C in thread 0</li>
+<li>block 1 at slot(1,0) created by A</li>
+<li>operation O with a fee of 30 coins</li>
+<li>block 2 at slot(2,0)
+<ul>
+<li>created by B</li>
+<li>with operation O</li>
+<li>with following endorsements
+<ul>
+<li>1 endorsement by A</li>
+<li>2 endorsement by B</li>
+<li>3 endorsement by C</li>
+</ul>
+</li>
+<li>constant block reward of 70 coins</li>
+</ul>
+</li>
+</ul>
+<p>Let <code>share = 1 / (3*(1+endorsement_count)) = 1/(3*(1+6)) = 1/21 = 0.0476</code>.
+Here we will use two digits precision.</p>
+<p>The total reward generated by block 2 is 100 = 30 + 70 coins.</p>
+<ul>
+<li>the part that goes to A is :
+<ul>
+<li><code>reward * endorsement_count * share = 100 * 6 * 1/21 = 28.57</code> because A created the endorsed block</li>
+<li><code>+ reward * nb_created_endorsements * share = 100 * 1 * 1/21 = 4.76</code> because A created 1 endorsement</li>
+<li><code>= 33.33</code></li>
+</ul>
+</li>
+<li>the part that goes to C is :
+<ul>
+<li><code>reward * nb_created_endorsements * share = 100 * 3 * 1/21 = 14.28</code> because C created 3 endorsements</li>
+</ul>
+</li>
+<li>the part that goes to B is :
+<ul>
+<li><code>reward * 1/(1 + endorsement_count) = 100 * 1/(1+6) = 14.28</code> because B created the block</li>
+<li><code>+ reward * nb_created_endorsements * share = 100 *2 * 1/21 = 9.52</code> because B created 2 endorsements</li>
+<li><code>+ reward * endorsement_count * share = 100 * 6 * 1/21 = 28.57</code> because B included 6 endorsements</li>
+<li><code>+ rounding</code></li>
+<li><code>= reward - other_stakers_parts</code></li>
+<li><code>= 52.39</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="fitness" class="section-header"><a href="#fitness">Fitness</a></h3>
+<p>The fitness of a block is <code>(1 + number_of_included_endorsements)</code></p>
+</div></details><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.start_consensus_controller.html" title="massa_consensus_worker::start_consensus_controller fn">start_consensus_controller</a></div><div class="item-right docblock-short"><p>Creates a new consensus controller.</p>
+</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (734368a20 2022-02-07)" ></div>
+</body></html>

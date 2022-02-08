@@ -40,10 +40,18 @@
 <span id="35">35</span>
 <span id="36">36</span>
 <span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">ModelsResult</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span> <span class="op">=</span> <span class="ident">ModelsError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">core::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">E</span><span class="op">&gt;</span>;
 
 <span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
@@ -74,6 +82,10 @@
     <span class="ident">TimeOverflowError</span>,
     <span class="doccomment">/// Time error {0}</span>
     <span class="ident">TimeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_time::TimeError</span>),
+    <span class="doccomment">/// invalid roll update: {0}</span>
+    <span class="ident">InvalidRollUpdate</span>(<span class="ident">String</span>),
+    <span class="doccomment">/// Ledger changes, Amount overflow</span>
+    <span class="ident">AmountOverflowError</span>,
     <span class="doccomment">/// Wrong prefix for hash: expected {0}, got {1}</span>
     <span class="ident">WrongPrefix</span>(<span class="ident">String</span>, <span class="ident">String</span>),
 }

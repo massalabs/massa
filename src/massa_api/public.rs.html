@@ -536,14 +536,16 @@
 <span id="531">531</span>
 <span id="532">532</span>
 <span id="533">533</span>
+<span id="534">534</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Endpoints</span>, <span class="ident">Public</span>, <span class="ident">RpcServer</span>, <span class="ident">StopHandle</span>, <span class="ident">API</span>};
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">stream::FuturesUnordered</span>, <span class="ident">StreamExt</span>};
 <span class="kw">use</span> <span class="ident">jsonrpc_core::BoxFuture</span>;
-<span class="kw">use</span> <span class="ident">massa_consensus</span>::{<span class="ident">ConsensusCommandSender</span>, <span class="ident">ConsensusConfig</span>, <span class="ident">DiscardReason</span>, <span class="ident">ExportBlockStatus</span>};
+<span class="kw">use</span> <span class="ident">massa_consensus_exports</span>::{<span class="ident">ConsensusCommandSender</span>, <span class="ident">ConsensusConfig</span>};
 <span class="kw">use</span> <span class="ident">massa_execution::ExecutionCommandSender</span>;
+<span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">DiscardReason</span>, <span class="ident">ExportBlockStatus</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
     <span class="ident">APISettings</span>, <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockInfoContent</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>,
     <span class="ident">EventFilter</span>, <span class="ident">IndexedSlot</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>, <span class="ident">TimeInterval</span>,

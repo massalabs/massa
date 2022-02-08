@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["start_consensus_controller","Creates a new consensus controller."]]});

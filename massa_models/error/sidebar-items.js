@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["ModelsError",""]]});
+initSidebarItems({"enum":[["ModelsError",""]],"type":[["ModelsResult",""]]});

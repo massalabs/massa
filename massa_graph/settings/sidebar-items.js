@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["GraphConfig",""],["LedgerConfig","Consensus full configuration (static + user defined)"]]});

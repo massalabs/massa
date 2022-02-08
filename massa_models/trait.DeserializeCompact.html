@@ -32,12 +32,12 @@
 <li>Validity of fitness.</li>
 <li>Validity of the <code>is_blockclique</code> flag.</li>
 </ul>
-</div><section id="impl-DeserializeCompact-3" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/ledger.rs.html#138-165">source</a></span><a href="#impl-DeserializeCompact-3" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="ledger/struct.LedgerChange.html" title="struct massa_models::ledger::LedgerChange">LedgerChange</a></h3></section><div class="docblock"><p>Checks performed:</p>
+</div><section id="impl-DeserializeCompact-3" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/ledger_models.rs.html#143-170">source</a></span><a href="#impl-DeserializeCompact-3" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="ledger_models/struct.LedgerChange.html" title="struct massa_models::ledger_models::LedgerChange">LedgerChange</a></h3></section><div class="docblock"><p>Checks performed:</p>
 <ul>
 <li>Increment flag.</li>
 <li>Balance delta.</li>
 </ul>
-</div><section id="impl-DeserializeCompact-4" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/ledger.rs.html#24-31">source</a></span><a href="#impl-DeserializeCompact-4" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="ledger/struct.LedgerData.html" title="struct massa_models::ledger::LedgerData">LedgerData</a></h3></section><div class="docblock"><p>Checks performed:</p>
+</div><section id="impl-DeserializeCompact-4" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/ledger_models.rs.html#29-36">source</a></span><a href="#impl-DeserializeCompact-4" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="ledger_models/struct.LedgerData.html" title="struct massa_models::ledger_models::LedgerData">LedgerData</a></h3></section><div class="docblock"><p>Checks performed:</p>
 <ul>
 <li>Balance.</li>
 </ul>
@@ -53,38 +53,38 @@
 <li>Validity of the sender public key.</li>
 <li>Validity of the operation type.</li>
 </ul>
-</div><section id="impl-DeserializeCompact-7" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/slot.rs.html#155-205">source</a></span><a href="#impl-DeserializeCompact-7" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a></h3></section><section id="impl-DeserializeCompact-8" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/block.rs.html#293-327">source</a></span><a href="#impl-DeserializeCompact-8" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="struct.Block.html" title="struct massa_models::Block">Block</a></h3></section><div class="docblock"><p>Checks performed:</p>
+</div><section id="impl-DeserializeCompact-7" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/rolls.rs.html#141-161">source</a></span><a href="#impl-DeserializeCompact-7" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="rolls/struct.RollUpdate.html" title="struct massa_models::rolls::RollUpdate">RollUpdate</a></h3></section><section id="impl-DeserializeCompact-8" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/slot.rs.html#155-205">source</a></span><a href="#impl-DeserializeCompact-8" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a></h3></section><section id="impl-DeserializeCompact-9" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/block.rs.html#293-327">source</a></span><a href="#impl-DeserializeCompact-9" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="struct.Block.html" title="struct massa_models::Block">Block</a></h3></section><div class="docblock"><p>Checks performed:</p>
 <ul>
 <li>Validity of header.</li>
 <li>Size of block.</li>
 <li>Operation count.</li>
 <li>Validity of operation.</li>
 </ul>
-</div><section id="impl-DeserializeCompact-9" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/block.rs.html#410-424">source</a></span><a href="#impl-DeserializeCompact-9" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="struct.BlockHeader.html" title="struct massa_models::BlockHeader">BlockHeader</a></h3></section><div class="docblock"><p>Checks performed:</p>
+</div><section id="impl-DeserializeCompact-10" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/block.rs.html#410-424">source</a></span><a href="#impl-DeserializeCompact-10" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="struct.BlockHeader.html" title="struct massa_models::BlockHeader">BlockHeader</a></h3></section><div class="docblock"><p>Checks performed:</p>
 <ul>
 <li>Content</li>
 <li>Signature.</li>
 </ul>
-</div><section id="impl-DeserializeCompact-10" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/block.rs.html#477-539">source</a></span><a href="#impl-DeserializeCompact-10" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="struct.BlockHeaderContent.html" title="struct massa_models::BlockHeaderContent">BlockHeaderContent</a></h3></section><div class="docblock"><p>Checks performed:</p>
+</div><section id="impl-DeserializeCompact-11" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/block.rs.html#477-539">source</a></span><a href="#impl-DeserializeCompact-11" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="struct.BlockHeaderContent.html" title="struct massa_models::BlockHeaderContent">BlockHeaderContent</a></h3></section><div class="docblock"><p>Checks performed:</p>
 <ul>
 <li>Validity of slot.</li>
 <li>Presence of parent.</li>
 <li>Valid length of included endorsements.</li>
 <li>Validity of included endorsements.</li>
 </ul>
-</div><section id="impl-DeserializeCompact-11" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/endorsement.rs.html#162-178">source</a></span><a href="#impl-DeserializeCompact-11" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="struct.Endorsement.html" title="struct massa_models::Endorsement">Endorsement</a></h3></section><div class="docblock"><p>Checks performed:</p>
+</div><section id="impl-DeserializeCompact-12" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/endorsement.rs.html#162-178">source</a></span><a href="#impl-DeserializeCompact-12" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="struct.Endorsement.html" title="struct massa_models::Endorsement">Endorsement</a></h3></section><div class="docblock"><p>Checks performed:</p>
 <ul>
 <li>Validity of the content.</li>
 <li>Validity of the signature.</li>
 </ul>
-</div><section id="impl-DeserializeCompact-12" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/endorsement.rs.html#219-259">source</a></span><a href="#impl-DeserializeCompact-12" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="struct.EndorsementContent.html" title="struct massa_models::EndorsementContent">EndorsementContent</a></h3></section><div class="docblock"><p>Checks performed:</p>
+</div><section id="impl-DeserializeCompact-13" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/endorsement.rs.html#219-259">source</a></span><a href="#impl-DeserializeCompact-13" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="struct.EndorsementContent.html" title="struct massa_models::EndorsementContent">EndorsementContent</a></h3></section><div class="docblock"><p>Checks performed:</p>
 <ul>
 <li>Validity of the sender public key.</li>
 <li>Validity of the slot.</li>
 <li>Validity of the endorsement index.</li>
 <li>Validity of the endorsed block id.</li>
 </ul>
-</div><section id="impl-DeserializeCompact-13" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/version.rs.html#70-118">source</a></span><a href="#impl-DeserializeCompact-13" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="struct.Version.html" title="struct massa_models::Version">Version</a></h3></section><div class="docblock"><p>Checks performed:</p>
+</div><section id="impl-DeserializeCompact-14" class="impl has-srclink"><span class="rightside"><a class="srclink" href="../src/massa_models/version.rs.html#70-118">source</a></span><a href="#impl-DeserializeCompact-14" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="trait.DeserializeCompact.html" title="trait massa_models::DeserializeCompact">DeserializeCompact</a> for <a class="struct" href="struct.Version.html" title="struct massa_models::Version">Version</a></h3></section><div class="docblock"><p>Checks performed:</p>
 <ul>
 <li>Validity of instance.</li>
 <li>Validity of major version.</li>

@@ -530,6 +530,8 @@
 <span id="525">525</span>
 <span id="526">526</span>
 <span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
@@ -540,11 +542,13 @@
 <span class="kw">use</span> <span class="ident">error::BootstrapError</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">establisher::Establisher</span>;
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">stream::FuturesUnordered</span>, <span class="ident">StreamExt</span>};
-<span class="kw">use</span> <span class="ident">massa_consensus</span>::{<span class="ident">BootstrapableGraph</span>, <span class="ident">ConsensusCommandSender</span>, <span class="ident">ExportProofOfStake</span>};
+<span class="kw">use</span> <span class="ident">massa_consensus_exports::ConsensusCommandSender</span>;
 <span class="kw">use</span> <span class="ident">massa_execution</span>::{<span class="ident">BootstrapExecutionState</span>, <span class="ident">ExecutionCommandSender</span>};
+<span class="kw">use</span> <span class="ident">massa_graph::BootstrapableGraph</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Version</span>;
 <span class="kw">use</span> <span class="ident">massa_network</span>::{<span class="ident">BootstrapPeers</span>, <span class="ident">NetworkCommandSender</span>};
+<span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports::ExportProofOfStake</span>;
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>};
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">messages::BootstrapMessage</span>;
