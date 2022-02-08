@@ -1,17 +1,17 @@
 /// Implementation of the interface used in the execution external library
 ///
-use std::str::FromStr;
-
-use crate::types::ExecutionContext;
+use crate::types::{ExecutionContext, StackElement};
 use anyhow::{bail, Result};
+use massa_hash::hash::Hash;
 use massa_models::{
-    output_event::{EventExecutionContext, SCOutputEvent},
+    output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId},
     timeslots::get_block_slot_timestamp,
     AMOUNT_ZERO,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
 use massa_time::MassaTime;
 use rand::Rng;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use tracing::debug;
 
@@ -74,8 +74,8 @@ impl Interface for InterfaceImpl {
         };
 
         // get caller
-        let from_address = match context.call_stack.back() {
-            Some(addr) => *addr,
+        let from_address = match context.stack.last() {
+            Some(addr) => addr.address,
             _ => bail!("Failed to read call stack current address"),
         };
 
@@ -99,26 +99,19 @@ impl Interface for InterfaceImpl {
         }
 
         // prepare context
-        context.call_stack.push_back(to_address);
-        context.coins_stack.push(coins);
-        context.owned_addresses_stack.push(vec![to_address]);
+        context.stack.push(StackElement {
+            address: to_address,
+            coins,
+            owned_addresses: vec![to_address],
+        });
 
         Ok(bytecode)
     }
 
     fn finish_call(&self) -> Result<()> {
         let mut context = context_guard!(self);
-
-        if context.call_stack.pop_back().is_none() {
+        if context.stack.pop().is_none() {
             bail!("call stack out of bounds")
-        }
-
-        if context.coins_stack.pop().is_none() {
-            bail!("coins stack out of bounds")
-        }
-
-        if context.owned_addresses_stack.pop().is_none() {
-            bail!("owned addresses stack out of bounds")
         }
 
         Ok(())
@@ -127,11 +120,11 @@ impl Interface for InterfaceImpl {
     /// Returns zero as a default if address not found.
     fn get_balance(&self) -> Result<u64> {
         let context = context_guard!(self);
-        let address = match context.call_stack.back() {
-            Some(addr) => addr,
+        let address = match context.stack.last() {
+            Some(addr) => addr.address,
             _ => bail!("Failed to read call stack current address"),
         };
-        Ok(context.ledger_step.get_balance(address).to_raw())
+        Ok(context.ledger_step.get_balance(&address).to_raw())
     }
 
     /// Returns zero as a default if address not found.
@@ -167,9 +160,9 @@ impl Interface for InterfaceImpl {
         context
             .ledger_step
             .set_module(address, Some(module.clone()));
-        match context.owned_addresses_stack.last_mut() {
+        match context.stack.last_mut() {
             Some(v) => {
-                v.push(address);
+                v.owned_addresses.push(address);
             }
             None => bail!("owned addresses not found in stack"),
         };
@@ -206,9 +199,9 @@ impl Interface for InterfaceImpl {
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
         let is_allowed = context
-            .owned_addresses_stack
+            .stack
             .last()
-            .map_or(false, |v| v.contains(&addr));
+            .map_or(false, |v| v.owned_addresses.contains(&addr));
         if !is_allowed {
             bail!("You don't have the write access to this entry")
         }
@@ -227,12 +220,12 @@ impl Interface for InterfaceImpl {
 
     fn get_data(&self, key: &str) -> Result<Vec<u8>> {
         let context = context_guard!(self);
-        let addr = match context.call_stack.back() {
-            Some(addr) => addr,
+        let addr = match context.stack.last() {
+            Some(addr) => addr.address,
             _ => bail!("Failed to read call stack current address"),
         };
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
-        match context.ledger_step.get_data_entry(addr, &key) {
+        match context.ledger_step.get_data_entry(&addr, &key) {
             Some(bytecode) => Ok(bytecode),
             _ => bail!("Data entry not found"),
         }
@@ -240,8 +233,8 @@ impl Interface for InterfaceImpl {
 
     fn set_data(&self, key: &str, value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
-        let addr = match context.call_stack.back() {
-            Some(addr) => *addr,
+        let addr = match context.stack.last() {
+            Some(addr) => addr.address,
             _ => bail!("Failed to read call stack current address"),
         };
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
@@ -253,12 +246,12 @@ impl Interface for InterfaceImpl {
 
     fn has_data(&self, key: &str) -> Result<bool> {
         let context = context_guard!(self);
-        let addr = match context.call_stack.back() {
-            Some(addr) => addr,
+        let addr = match context.stack.last() {
+            Some(addr) => addr.address,
             _ => bail!("Failed to read call stack current address"),
         };
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
-        Ok(context.ledger_step.has_data_entry(addr, &key))
+        Ok(context.ledger_step.has_data_entry(&addr, &key))
     }
 
     /// hash data
@@ -301,8 +294,8 @@ impl Interface for InterfaceImpl {
     fn transfer_coins(&self, to_address: &String, raw_amount: u64) -> Result<()> {
         let to_address = massa_models::Address::from_str(to_address)?;
         let mut context = context_guard!(self);
-        let from_address = match context.call_stack.back() {
-            Some(addr) => *addr,
+        let from_address = match context.stack.last() {
+            Some(addr) => addr.address,
             _ => bail!("Failed to read call stack current address"),
         };
         let amount = massa_models::Amount::from_raw(raw_amount);
@@ -339,9 +332,9 @@ impl Interface for InterfaceImpl {
         let to_address = massa_models::Address::from_str(to_address)?;
         let mut context = context_guard!(self);
         let is_allowed = context
-            .owned_addresses_stack
+            .stack
             .last()
-            .map_or(false, |v| v.contains(&from_address));
+            .map_or(false, |v| v.owned_addresses.contains(&from_address));
         if !is_allowed {
             bail!("You don't have the spending access to this entry")
         }
@@ -367,42 +360,56 @@ impl Interface for InterfaceImpl {
 
     /// Return the list of owned adresses of a given SC user
     fn get_owned_addresses(&self) -> Result<Vec<massa_sc_runtime::Address>> {
-        match context_guard!(self).owned_addresses_stack.last() {
-            Some(v) => Ok(v.iter().map(|addr| addr.to_bs58_check()).collect()),
+        match context_guard!(self).stack.last() {
+            Some(v) => Ok(v
+                .owned_addresses
+                .iter()
+                .map(|addr| addr.to_bs58_check())
+                .collect()),
             None => bail!("owned address stack out of bounds"),
         }
     }
 
     fn get_call_stack(&self) -> Result<Vec<massa_sc_runtime::Address>> {
         Ok(context_guard!(self)
-            .call_stack
+            .stack
             .iter()
-            .map(|addr| addr.to_bs58_check())
+            .map(|addr| addr.address.to_bs58_check())
             .collect())
     }
 
     /// Get the amount of coins that have been made available for use by the caller of the currently executing code.
     fn get_call_coins(&self) -> Result<u64> {
         Ok(context_guard!(self)
-            .coins_stack
+            .stack
             .last()
-            .unwrap_or(&AMOUNT_ZERO)
+            .map(|e| e.coins)
+            .unwrap_or(AMOUNT_ZERO)
             .to_raw())
     }
 
+    /// generate an execution event and stores it
     fn generate_event(&self, data: String) -> Result<()> {
-        let context = context_guard!(self);
-        let slot = context.slot;
-        let block = context.opt_block_id;
-        let call_stack = context.call_stack.clone();
+        let mut execution_context = context_guard!(self);
+
+        // prepare id computation
+        // it is the hash of (slot, index_at_slot, readonly)
+        let mut to_hash: Vec<u8> = execution_context.slot.to_bytes_key().to_vec();
+        to_hash.append(&mut execution_context.created_event_index.to_be_bytes().to_vec());
+        to_hash.push(!execution_context.read_only as u8);
+
         let context = EventExecutionContext {
-            slot,
-            block,
-            call_stack,
+            slot: execution_context.slot,
+            block: execution_context.opt_block_id,
+            call_stack: execution_context.stack.iter().map(|e| e.address).collect(),
+            read_only: execution_context.read_only,
+            index_in_slot: execution_context.created_event_index,
+            origin_operation_id: execution_context.origin_operation_id,
         };
-        let event = SCOutputEvent { context, data };
-        debug!("SC event: {:?}", event);
-        // TODO store the event somewhere
+        let id = SCOutputEventId(Hash::compute_from(&to_hash));
+        let event = SCOutputEvent { id, context, data };
+        execution_context.created_event_index += 1;
+        execution_context.events.insert(id, event);
         Ok(())
     }
 

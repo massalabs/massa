@@ -16,7 +16,10 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.11", features = ["full"] }
 tokio-util = { version = "0.6", features = ["codec"] }
-tracing = {version = "0.1", features = ["max_level_debug", "release_max_level_debug"] }
+tracing = { version = "0.1", features = [
+    "max_level_debug",
+    "release_max_level_debug",
+] }
 tracing-subscriber = "0.3"
 # custom modules
 
@@ -40,4 +43,4 @@ serial_test = "0.5"
 [features]
 # nightly = ["beta"]
 beta = []
-test = ["massa_consensus_exports/test"]
+sandbox = ["massa_consensus_exports/sandbox"]

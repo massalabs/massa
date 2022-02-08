@@ -11,17 +11,37 @@ use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Address(pub Hash);
+const ADDRESS_STRING_PREFIX: &str = "ADR";
 
 impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0.to_bs58_check())
+        if cfg!(feature = "hash-prefix") {
+            write!(f, "{}-{}", ADDRESS_STRING_PREFIX, self.0.to_bs58_check())
+        } else {
+            write!(f, "{}", self.0.to_bs58_check())
+        }
     }
 }
 
 impl FromStr for Address {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Address(Hash::from_str(s)?))
+        if cfg!(feature = "hash-prefix") {
+            let v: Vec<_> = s.split('-').collect();
+            if v.len() != 2 {
+                // assume there is no prefix
+                Ok(Address(Hash::from_str(s)?))
+            } else if v[0] != ADDRESS_STRING_PREFIX {
+                Err(ModelsError::WrongPrefix(
+                    ADDRESS_STRING_PREFIX.to_string(),
+                    v[0].to_string(),
+                ))
+            } else {
+                Ok(Address(Hash::from_str(v[1])?))
+            }
+        } else {
+            Ok(Address(Hash::from_str(s)?))
+        }
     }
 }
 

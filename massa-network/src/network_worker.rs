@@ -218,6 +218,12 @@ pub struct NetworkWorker {
     version: Version,
 }
 
+pub struct NetworkWorkerChannels {
+    pub controller_command_rx: mpsc::Receiver<NetworkCommand>,
+    pub controller_event_tx: mpsc::Sender<NetworkEvent>,
+    pub controller_manager_rx: mpsc::Receiver<NetworkManagementCommand>,
+}
+
 impl NetworkWorker {
     /// Creates a new NetworkWorker
     ///
@@ -232,15 +238,19 @@ impl NetworkWorker {
     pub fn new(
         cfg: NetworkSettings,
         private_key: PrivateKey,
-        self_node_id: NodeId,
         listener: Listener,
         establisher: Establisher,
         peer_info_db: PeerInfoDatabase,
-        controller_command_rx: mpsc::Receiver<NetworkCommand>,
-        controller_event_tx: mpsc::Sender<NetworkEvent>,
-        controller_manager_rx: mpsc::Receiver<NetworkManagementCommand>,
+        NetworkWorkerChannels {
+            controller_command_rx,
+            controller_event_tx,
+            controller_manager_rx,
+        }: NetworkWorkerChannels,
         version: Version,
     ) -> NetworkWorker {
+        let public_key = derive_public_key(&private_key);
+        let self_node_id = NodeId(public_key);
+
         let (node_event_tx, node_event_rx) = mpsc::channel::<NodeEvent>(CHANNEL_SIZE);
         NetworkWorker {
             cfg,
@@ -605,7 +615,7 @@ impl NetworkWorker {
         // add its handle to handshake_futures
         if !self.running_handshakes.insert(connection_id) {
             return Err(NetworkError::HandshakeError(
-                HandshakeErrorType::HandshakeIdAlreadyExistError(format!("{}", connection_id)),
+                HandshakeErrorType::HandshakeIdAlreadyExist(format!("{}", connection_id)),
             ));
         }
 

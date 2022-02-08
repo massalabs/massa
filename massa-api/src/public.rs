@@ -9,7 +9,7 @@ use massa_execution::ExecutionCommandSender;
 use massa_graph::{DiscardReason, ExportBlockStatus};
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
-    IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
+    EventFilter, IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -501,41 +501,32 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    fn get_sc_output_event_by_slot_range(
+    /// Get events optionnally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    fn get_filtered_sc_output_event(
         &self,
-        start: Slot,
-        end: Slot,
+        EventFilter {
+            start,
+            end,
+            emitter_address,
+            original_caller_address,
+            original_operation_id,
+        }: EventFilter,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
         let execution_command_sender = self.0.execution_command_sender.clone();
         let closure = async move || {
             Ok(execution_command_sender
-                .get_sc_output_event_by_slot_range(start, end)
-                .await?)
-        };
-        Box::pin(closure())
-    }
-
-    fn get_sc_output_event_by_sc_address(
-        &self,
-        address: Address,
-    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
-        let execution_command_sender = self.0.execution_command_sender.clone();
-        let closure = async move || {
-            Ok(execution_command_sender
-                .get_sc_output_event_by_sc_address(address)
-                .await?)
-        };
-        Box::pin(closure())
-    }
-
-    fn get_sc_output_event_by_caller_address(
-        &self,
-        address: Address,
-    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
-        let execution_command_sender = self.0.execution_command_sender.clone();
-        let closure = async move || {
-            Ok(execution_command_sender
-                .get_sc_output_event_by_caller_address(address)
+                .get_filtered_sc_output_event(
+                    start,
+                    end,
+                    emitter_address,
+                    original_caller_address,
+                    original_operation_id,
+                )
                 .await?)
         };
         Box::pin(closure())

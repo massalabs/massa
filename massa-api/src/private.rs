@@ -7,15 +7,15 @@ use jsonrpc_http_server::tokio::sync::mpsc;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution::ExecutionCommandSender;
 use massa_models::api::{
-    APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
-    TimeInterval,
+    APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus,
+    OperationInfo, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
-use massa_models::{Address, Amount, BlockId, EndorsementId, Operation, OperationId, Slot};
+use massa_models::{Address, Amount, BlockId, EndorsementId, Operation, OperationId};
 use massa_network::NetworkCommandSender;
 use massa_signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
@@ -163,24 +163,9 @@ impl Endpoints for API<Private> {
         crate::wrong_api::<Vec<OperationId>>()
     }
 
-    fn get_sc_output_event_by_slot_range(
+    fn get_filtered_sc_output_event(
         &self,
-        _: Slot,
-        _: Slot,
-    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
-        crate::wrong_api::<Vec<SCOutputEvent>>()
-    }
-
-    fn get_sc_output_event_by_sc_address(
-        &self,
-        _: Address,
-    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
-        crate::wrong_api::<Vec<SCOutputEvent>>()
-    }
-
-    fn get_sc_output_event_by_caller_address(
-        &self,
-        _: Address,
+        _: EventFilter,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
         crate::wrong_api::<Vec<SCOutputEvent>>()
     }

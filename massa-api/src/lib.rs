@@ -10,8 +10,8 @@ use jsonrpc_http_server::{CloseHandle, ServerBuilder};
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution::ExecutionCommandSender;
 use massa_models::api::{
-    APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
-    TimeInterval,
+    APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus,
+    OperationInfo, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -20,7 +20,7 @@ use massa_models::node::NodeId;
 use massa_models::operation::{Operation, OperationId};
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
-use massa_models::{Address, Amount, BlockId, EndorsementId, Slot, Version};
+use massa_models::{Address, Amount, BlockId, EndorsementId, Version};
 use massa_network::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
 use massa_signature::PrivateKey;
@@ -185,26 +185,16 @@ pub trait Endpoints {
     #[rpc(name = "send_operations")]
     fn send_operations(&self, _: Vec<Operation>) -> BoxFuture<Result<Vec<OperationId>, ApiError>>;
 
-    /// get sc output event between start and end excluded
-    #[rpc(name = "get_sc_output_event_by_slot_range")]
-    fn get_sc_output_event_by_slot_range(
+    /// Get events optionnally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    #[rpc(name = "get_filtered_sc_output_event")]
+    fn get_filtered_sc_output_event(
         &self,
-        start: Slot,
-        end: Slot,
-    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>>;
-
-    /// get sc output event for given sc addresss
-    #[rpc(name = "get_sc_output_event_by_sc_address")]
-    fn get_sc_output_event_by_sc_address(
-        &self,
-        _: Address,
-    ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>>;
-
-    /// get sc output event for given call address
-    #[rpc(name = "get_sc_output_event_by_caller_address")]
-    fn get_sc_output_event_by_caller_address(
-        &self,
-        _: Address,
+        _: EventFilter,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>>;
 }
 

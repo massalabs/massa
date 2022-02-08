@@ -38,4 +38,6 @@ pub enum ModelsError {
     InvalidRollUpdate(String),
     /// Ledger changes, Amount overflow
     AmountOverflowError,
+    /// Wrong prefix for hash: expected {0}, got {1}
+    WrongPrefix(String, String),
 }

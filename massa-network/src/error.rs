@@ -49,13 +49,13 @@ pub enum NetworkError {
 
 #[derive(Debug)]
 pub enum HandshakeErrorType {
-    HandshakeIdAlreadyExistError(String),
-    HandshakeTimeoutError,
-    HandshakeInterruptionError(String),
-    HandshakeWrongMessageError,
-    HandshakeKeyError,
-    HandshakeInvalidSignatureError,
-    IncompatibleVersionError,
+    HandshakeIdAlreadyExist(String),
+    HandshakeTimeout,
+    HandshakeInterruption(String),
+    HandshakeWrongMessage,
+    HandshakeKey,
+    HandshakeInvalidSignature,
+    IncompatibleVersion,
 }
 
 #[derive(Debug)]
