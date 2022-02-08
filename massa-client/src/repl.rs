@@ -144,11 +144,14 @@ impl Completion for CommandCompletion {
                 .unwrap()
                 .map(|x| x.unwrap().display().to_string())
                 .collect();
-            println!();
-            for path in &suggestions {
-                println!("{}", style(path).dim())
+            if !suggestions.is_empty() {
+                println!();
+                for path in &suggestions {
+                    println!("{}", style(path).dim())
+                }
+                *path_to_complete =
+                    longest_common_prefix(suggestions.iter().map(|s| &s[..]).collect());
             }
-            *path_to_complete = longest_common_prefix(suggestions.iter().map(|s| &s[..]).collect());
             Some(args.join(" "))
         } else {
             let suggestions: Vec<&str> = self
