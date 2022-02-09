@@ -190,61 +190,11 @@
 <span id="185">185</span>
 <span id="186">186</span>
 <span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
-<span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
-<span id="195">195</span>
-<span id="196">196</span>
-<span id="197">197</span>
-<span id="198">198</span>
-<span id="199">199</span>
-<span id="200">200</span>
-<span id="201">201</span>
-<span id="202">202</span>
-<span id="203">203</span>
-<span id="204">204</span>
-<span id="205">205</span>
-<span id="206">206</span>
-<span id="207">207</span>
-<span id="208">208</span>
-<span id="209">209</span>
-<span id="210">210</span>
-<span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
-<span id="215">215</span>
-<span id="216">216</span>
-<span id="217">217</span>
-<span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
-<span id="234">234</span>
-<span id="235">235</span>
-<span id="236">236</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::SETTINGS</span>;
 <span class="kw">use</span> <span class="ident">jsonrpc_core_client::transports::http</span>;
-<span class="kw">use</span> <span class="ident">jsonrpc_core_client::RpcError</span>;
-<span class="kw">use</span> <span class="ident">jsonrpc_core_client</span>::{<span class="ident">RpcChannel</span>, <span class="ident">RpcResult</span>, <span class="ident">TypedClient</span>};
+<span class="kw">use</span> <span class="ident">jsonrpc_core_client</span>::{<span class="ident">RpcChannel</span>, <span class="ident">RpcError</span>, <span class="ident">RpcResult</span>, <span class="ident">TypedClient</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
     <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>, <span class="ident">TimeInterval</span>,
 };
@@ -253,16 +203,9 @@
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationId</span>};
 <span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
+<span class="kw">use</span> <span class="ident">serde::de::DeserializeOwned</span>;
+<span class="kw">use</span> <span class="ident">serde::Serialize</span>;
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
-<span class="kw">use</span> <span class="ident">tokio::time::timeout</span>;
-
-<span class="macro">macro_rules!</span> <span class="ident">timeout</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">x</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">err_msg</span>:<span class="ident">expr</span>) =&gt; {
-        <span class="ident">timeout</span>((<span class="ident">SETTINGS</span>.<span class="ident">timeout</span>.<span class="ident">to_duration</span>()), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">x</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">RpcError::Client</span>(<span class="macro">format!</span>(<span class="string">&quot;timeout during {}: {}&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">err_msg</span>, <span class="ident">e</span>)))<span class="question-mark">?</span>
-    };
-}
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Client</span> {
     <span class="kw">pub</span> <span class="ident">public</span>: <span class="ident">RpcClient</span>,
     <span class="kw">pub</span> <span class="ident">private</span>: <span class="ident">RpcClient</span>,
@@ -290,42 +233,38 @@
     }
 }
 
-<span class="doccomment">/// Typed wrapper to API calls based on the method given by `jsonrpc_core_client`:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```rust</span>
-<span class="doccomment">/// fn call_method&lt;T: Serialize, R: DeserializeOwned&gt;(</span>
-<span class="doccomment">///     method: &amp;str,</span>
-<span class="doccomment">///     returns: &amp;str,</span>
-<span class="doccomment">///     args: T,</span>
-<span class="doccomment">/// ) -&gt; impl Future&lt;Output = RpcResult&lt;R&gt;&gt; {</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">/// ```</span>
 <span class="kw">impl</span> <span class="ident">RpcClient</span> {
     <span class="doccomment">/// Default constructor</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">from_url</span>(<span class="ident">url</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">RpcClient</span> {
         <span class="kw">match</span> <span class="ident">http::connect</span>::<span class="op">&lt;</span><span class="ident">RpcClient</span><span class="op">&gt;</span>(<span class="ident">url</span>).<span class="kw">await</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">client</span>) =&gt; <span class="ident">client</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unable to connect to Node.&quot;</span>),
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;unable to connect to Node.&quot;</span>),
         }
     }
 
-    <span class="comment">/////////////////</span>
-    <span class="comment">// private-api //</span>
-    <span class="comment">/////////////////</span>
+    <span class="doccomment">/// Typed wrapper to API calls based on the method given by `jsonrpc_core_client`</span>
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">call_method</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Serialize</span>, <span class="ident">R</span>: <span class="ident">DeserializeOwned</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">method</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">returns</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">args</span>: <span class="ident">T</span>,
+    ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">time</span> <span class="op">=</span> <span class="ident">SETTINGS</span>.<span class="ident">timeout</span>.<span class="ident">to_duration</span>();
+        <span class="ident">tokio::time::timeout</span>(<span class="ident">time</span>, <span class="self">self</span>.<span class="number">0</span>.<span class="ident">call_method</span>(<span class="ident">method</span>, <span class="ident">returns</span>, <span class="ident">args</span>))
+            .<span class="kw">await</span>
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">RpcError::Client</span>(<span class="macro">format!</span>(<span class="string">&quot;timeout during {}: {}&quot;</span>, <span class="ident">method</span>, <span class="ident">e</span>)))<span class="question-mark">?</span>
+    }
 
     <span class="doccomment">/// Gracefully stop the node.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop_node</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">call_method</span>(<span class="string">&quot;stop_node&quot;</span>, <span class="string">&quot;()&quot;</span>, ()), <span class="string">&quot;stop node&quot;</span>)
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;stop_node&quot;</span>, <span class="string">&quot;()&quot;</span>, ()).<span class="kw">await</span>
     }
 
     <span class="doccomment">/// Sign message with node&#39;s key.</span>
     <span class="doccomment">/// Returns the public key that signed the message and the signature.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_sign_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">message</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">PubkeySig</span><span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(
-            <span class="self">self</span>.<span class="number">0</span>
-                .<span class="ident">call_method</span>(<span class="string">&quot;node_sign_message&quot;</span>, <span class="string">&quot;PubkeySig&quot;</span>, <span class="macro">vec!</span>[<span class="ident">message</span>]),
-            <span class="string">&quot;node sign message&quot;</span>
-        )
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_sign_message&quot;</span>, <span class="string">&quot;PubkeySig&quot;</span>, <span class="macro">vec!</span>[<span class="ident">message</span>])
+            .<span class="kw">await</span>
     }
 
     <span class="doccomment">/// Add a vec of new private keys for the node to use to stake.</span>
@@ -334,73 +273,52 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">private_keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(
-            <span class="self">self</span>.<span class="number">0</span>
-                .<span class="ident">call_method</span>(<span class="string">&quot;add_staking_private_keys&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">private_keys</span>]),
-            <span class="string">&quot;add staking private keys&quot;</span>
-        )
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;add_staking_private_keys&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">private_keys</span>])
+            .<span class="kw">await</span>
     }
 
     <span class="doccomment">/// Remove a vec of addresses used to stake.</span>
     <span class="doccomment">/// No confirmation to expect.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">remove_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(
-            <span class="self">self</span>.<span class="number">0</span>
-                .<span class="ident">call_method</span>(<span class="string">&quot;remove_staking_addresses&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">addresses</span>]),
-            <span class="string">&quot;remove staking addresses&quot;</span>
-        )
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;remove_staking_addresses&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">addresses</span>])
+            .<span class="kw">await</span>
     }
 
     <span class="doccomment">/// Return hashset of staking addresses.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(
-            <span class="self">self</span>.<span class="number">0</span>
-                .<span class="ident">call_method</span>(<span class="string">&quot;get_staking_addresses&quot;</span>, <span class="string">&quot;Set&lt;Address&gt;&quot;</span>, ()),
-            <span class="string">&quot;get_staking addresses&quot;</span>
-        )
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_staking_addresses&quot;</span>, <span class="string">&quot;Set&lt;Address&gt;&quot;</span>, ())
+            .<span class="kw">await</span>
     }
 
     <span class="doccomment">/// Bans given node id</span>
     <span class="doccomment">/// No confirmation to expect.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">ban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">call_method</span>(<span class="string">&quot;ban&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]), <span class="string">&quot;ban&quot;</span>)
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;ban&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
     }
 
     <span class="doccomment">/// Unbans given ip addr</span>
     <span class="doccomment">/// No confirmation to expect.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">unban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">call_method</span>(<span class="string">&quot;unban&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]), <span class="string">&quot;unabn&quot;</span>)
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;unban&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
     }
-
-    <span class="comment">////////////////</span>
-    <span class="comment">// public-api //</span>
-    <span class="comment">////////////////</span>
 
     <span class="comment">// Explorer (aggregated stats)</span>
 
     <span class="doccomment">/// summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_status</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">NodeStatus</span><span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(
-            <span class="self">self</span>.<span class="number">0</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_status&quot;</span>, <span class="string">&quot;NodeStatus&quot;</span>, ()),
-            <span class="string">&quot;get status&quot;</span>
-        )
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_status&quot;</span>, <span class="string">&quot;NodeStatus&quot;</span>, ()).<span class="kw">await</span>
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">_get_cliques</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Clique</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(
-            <span class="self">self</span>.<span class="number">0</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_cliques&quot;</span>, <span class="string">&quot;Vec&lt;Clique&gt;&quot;</span>, ()),
-            <span class="string">&quot;get cliques&quot;</span>
-        )
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_cliques&quot;</span>, <span class="string">&quot;Vec&lt;Clique&gt;&quot;</span>, ()).<span class="kw">await</span>
     }
 
     <span class="comment">// Debug (specific information)</span>
 
     <span class="doccomment">/// Returns the active stakers and their roll counts for the current cycle.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">_get_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(
-            <span class="self">self</span>.<span class="number">0</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_stakers&quot;</span>, <span class="string">&quot;Map&lt;Address, u64&gt;&quot;</span>, ()),
-            <span class="string">&quot;get stakers&quot;</span>
-        )
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_stakers&quot;</span>, <span class="string">&quot;Map&lt;Address, u64&gt;&quot;</span>, ())
+            .<span class="kw">await</span>
     }
 
     <span class="doccomment">/// Returns operations information associated to a given list of operations&#39; IDs.</span>
@@ -408,33 +326,26 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">operation_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationInfo</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(
-            <span class="self">self</span>.<span class="number">0</span>
-                .<span class="ident">call_method</span>(<span class="string">&quot;get_operations&quot;</span>, <span class="string">&quot;Vec&lt;OperationInfo&gt;&quot;</span>, <span class="macro">vec!</span>[<span class="ident">operation_ids</span>]),
-            <span class="string">&quot;get operations&quot;</span>
-        )
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_operations&quot;</span>, <span class="string">&quot;Vec&lt;OperationInfo&gt;&quot;</span>, <span class="macro">vec!</span>[<span class="ident">operation_ids</span>])
+            .<span class="kw">await</span>
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_endorsements</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">endorsement_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementInfo</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(
-            <span class="self">self</span>.<span class="number">0</span>.<span class="ident">call_method</span>(
-                <span class="string">&quot;get_endorsements&quot;</span>,
-                <span class="string">&quot;Vec&lt;EndorsementInfo&gt;&quot;</span>,
-                <span class="macro">vec!</span>[<span class="ident">endorsement_ids</span>],
-            ),
-            <span class="string">&quot;get endorsements&quot;</span>
+        <span class="self">self</span>.<span class="ident">call_method</span>(
+            <span class="string">&quot;get_endorsements&quot;</span>,
+            <span class="string">&quot;Vec&lt;EndorsementInfo&gt;&quot;</span>,
+            <span class="macro">vec!</span>[<span class="ident">endorsement_ids</span>],
         )
+        .<span class="kw">await</span>
     }
 
     <span class="doccomment">/// Get information on a block given its BlockId</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">block_id</span>: <span class="ident">BlockId</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">BlockInfo</span><span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(
-            <span class="self">self</span>.<span class="number">0</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_block&quot;</span>, <span class="string">&quot;BlockInfo&quot;</span>, <span class="macro">vec!</span>[<span class="ident">block_id</span>]),
-            <span class="string">&quot;get block&quot;</span>
-        )
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_block&quot;</span>, <span class="string">&quot;BlockInfo&quot;</span>, <span class="macro">vec!</span>[<span class="ident">block_id</span>])
+            .<span class="kw">await</span>
     }
 
     <span class="doccomment">/// Get the block graph within the specified time interval.</span>
@@ -443,22 +354,16 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">time_interval</span>: <span class="ident">TimeInterval</span>,
     ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockSummary</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(
-            <span class="self">self</span>.<span class="number">0</span>
-                .<span class="ident">call_method</span>(<span class="string">&quot;get_graph_interval&quot;</span>, <span class="string">&quot;Vec&lt;BlockSummary&gt;&quot;</span>, <span class="ident">time_interval</span>),
-            <span class="string">&quot;get graph interval&quot;</span>
-        )
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_graph_interval&quot;</span>, <span class="string">&quot;Vec&lt;BlockSummary&gt;&quot;</span>, <span class="ident">time_interval</span>)
+            .<span class="kw">await</span>
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_addresses</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AddressInfo</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(
-            <span class="self">self</span>.<span class="number">0</span>
-                .<span class="ident">call_method</span>(<span class="string">&quot;get_addresses&quot;</span>, <span class="string">&quot;Vec&lt;AddressInfo&gt;&quot;</span>, <span class="macro">vec!</span>[<span class="ident">addresses</span>]),
-            <span class="string">&quot;get addresses&quot;</span>
-        )
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_addresses&quot;</span>, <span class="string">&quot;Vec&lt;AddressInfo&gt;&quot;</span>, <span class="macro">vec!</span>[<span class="ident">addresses</span>])
+            .<span class="kw">await</span>
     }
 
     <span class="comment">// User (interaction with the node)</span>
@@ -468,11 +373,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Operation</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="macro">timeout!</span>(
-            <span class="self">self</span>.<span class="number">0</span>
-                .<span class="ident">call_method</span>(<span class="string">&quot;send_operations&quot;</span>, <span class="string">&quot;Vec&lt;OperationId&gt;&quot;</span>, <span class="macro">vec!</span>[<span class="ident">operations</span>]),
-            <span class="string">&quot;send operations&quot;</span>
-        )
+        <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;send_operations&quot;</span>, <span class="string">&quot;Vec&lt;OperationId&gt;&quot;</span>, <span class="macro">vec!</span>[<span class="ident">operations</span>])
+            .<span class="kw">await</span>
     }
 }
 </code></pre></div>
