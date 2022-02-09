@@ -398,3 +398,11 @@ pub struct EventFilter {
     pub original_caller_address: Option<Address>,
     pub original_operation_id: Option<OperationId>,
 }
+
+#[derive(Debug, Deserialize, Clone, Serialize)]
+pub struct ReadOnlyExecution {
+    pub max_gas: u64,
+    pub simulated_gas_price: Amount,
+    pub bytecode: Vec<u8>,
+    pub address: Option<Address>,
+}
