@@ -497,7 +497,6 @@
 <span id="492">492</span>
 <span id="493">493</span>
 <span id="494">494</span>
-<span id="495">495</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::sce_ledger</span>::{<span class="ident">FinalLedger</span>, <span class="ident">SCELedger</span>, <span class="ident">SCELedgerChanges</span>, <span class="ident">SCELedgerStep</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::BootstrapExecutionState</span>;
 <span class="kw">use</span> <span class="ident">massa_models::api::SCELedgerInfo</span>;
@@ -506,7 +505,6 @@
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">PreHashed</span>, <span class="ident">Set</span>};
 <span class="doccomment">/// Define types used while executing block bytecodes</span>
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>};
-<span class="kw">use</span> <span class="ident">massa_sc_runtime::Bytecode</span>;
 <span class="kw">use</span> <span class="ident">rand::SeedableRng</span>;
 <span class="kw">use</span> <span class="ident">rand_xoshiro::Xoshiro256PlusPlus</span>;
 <span class="kw">use</span> <span class="ident">std::cmp</span>;
@@ -913,7 +911,7 @@
     <span class="doccomment">/// Sender address</span>
     <span class="kw">pub</span> <span class="ident">sender_address</span>: <span class="ident">Address</span>,
     <span class="doccomment">/// Smart contract bytecode.</span>
-    <span class="kw">pub</span> <span class="ident">bytecode</span>: <span class="ident">Bytecode</span>,
+    <span class="kw">pub</span> <span class="ident">bytecode</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="doccomment">/// The maximum amount of gas that the execution of the contract is allowed to cost.</span>
     <span class="kw">pub</span> <span class="ident">max_gas</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// Extra coins that are spent by consensus and are available in the execution context of the contract.</span>

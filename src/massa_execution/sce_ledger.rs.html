@@ -591,7 +591,6 @@
 <span id="586">586</span>
 <span id="587">587</span>
 <span id="588">588</span>
-<span id="589">589</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::HASH_SIZE_BYTES</span>;
@@ -601,7 +600,6 @@
     <span class="ident">SerializeVarInt</span>, <span class="ident">Slot</span>, <span class="ident">ADDRESS_SIZE_BYTES</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">AMOUNT_ZERO</span>};
-<span class="kw">use</span> <span class="ident">massa_sc_runtime::Bytecode</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="doccomment">/// an entry in the SCE ledger</span>
@@ -611,7 +609,7 @@
     <span class="kw">pub</span> <span class="ident">balance</span>: <span class="ident">Amount</span>,
 
     <span class="comment">// optional executable module</span>
-    <span class="kw">pub</span> <span class="ident">opt_module</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Bytecode</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">opt_module</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="comment">// datastore</span>
     <span class="kw">pub</span> <span class="ident">data</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -724,7 +722,7 @@
             }
         };
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">let</span> <span class="ident">opt_module</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Bytecode</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">has_module</span> {
+        <span class="kw">let</span> <span class="ident">opt_module</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">has_module</span> {
             <span class="comment">// read length</span>
             <span class="kw">let</span> (<span class="ident">length</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u32::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
             <span class="comment">// TOOD limit length with from_varint_bytes_bounded</span>
@@ -794,7 +792,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SCELedgerEntryUpdate</span> {
     <span class="kw">pub</span> <span class="ident">update_balance</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">update_opt_module</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Bytecode</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">update_opt_module</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">update_data</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="comment">// None for row deletion</span>
 }
 
@@ -1093,7 +1091,7 @@
 
     <span class="doccomment">/// gets the module of an SCE ledger entry</span>
     <span class="doccomment">///  returns None if the entry was not found or has no module</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_module</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Bytecode</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_module</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// check if caused_changes or cumulative_history_changes have an update on this</span>
         <span class="kw">for</span> <span class="ident">changes</span> <span class="kw">in</span> [<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">caused_changes</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cumulative_history_changes</span>] {
             <span class="kw">match</span> <span class="ident">changes</span>.<span class="number">0</span>.<span class="ident">get</span>(<span class="ident">addr</span>) {
