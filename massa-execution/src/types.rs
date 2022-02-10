@@ -6,7 +6,6 @@ use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
 use massa_models::prehash::{Map, PreHashed, Set};
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, Block, BlockId, OperationId, Slot};
-use massa_sc_runtime::Bytecode;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::cmp;
@@ -413,7 +412,7 @@ pub struct ExecutionData {
     /// Sender address
     pub sender_address: Address,
     /// Smart contract bytecode.
-    pub bytecode: Bytecode,
+    pub bytecode: Vec<u8>,
     /// The maximum amount of gas that the execution of the contract is allowed to cost.
     pub max_gas: u64,
     /// Extra coins that are spent by consensus and are available in the execution context of the contract.
