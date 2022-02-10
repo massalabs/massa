@@ -17,7 +17,6 @@ use crate::{Amount, Version};
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;
 use num::rational::Ratio;
-use std::str::FromStr;
 
 /// Limit on the number of peers we advertise to others.
 pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
@@ -51,18 +50,12 @@ lazy_static::lazy_static! {
     } else {
         Some(1646078400000.into())
     };
-    /// Time between the periods in the same thread.
-    pub static ref T0: MassaTime = 16000.into();
     /// Private_key to sign genesis blocks.
     pub static ref GENESIS_KEY: PrivateKey = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
         .parse()
         .unwrap();
-    /// Block reward is given for each block creation
-    pub static ref BLOCK_REWARD: Amount = Amount::from_str("0.3").unwrap();
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(7, 10);
-    /// Price of a roll in the network
-    pub static ref ROLL_PRICE: Amount = Amount::from_str("100").unwrap();
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
@@ -74,6 +67,12 @@ lazy_static::lazy_static! {
     };
 }
 
+/// Price of a roll in the network
+pub const ROLL_PRICE: Amount = Amount::from_raw(100 * AMOUNT_DECIMAL_FACTOR);
+/// Block reward is given for each block creation
+pub const BLOCK_REWARD: Amount = Amount::from_raw((0.3 * AMOUNT_DECIMAL_FACTOR as f64) as u64);
+/// Time between the periods in the same thread.
+pub const T0: MassaTime = MassaTime::from(16000);
 /// Proof of stake seed for the initial draw
 pub const INITIAL_DRAW_SEED: &str = "massa_genesis_seed";
 /// Number of threads
@@ -137,6 +136,7 @@ pub const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
  */
 
 pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+/// Safe to import
 pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
 pub const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;

@@ -33,7 +33,7 @@ impl Default for ExecutionConfigs {
             settings: Default::default(),
             thread_count: THREAD_COUNT,
             genesis_timestamp: *GENESIS_TIMESTAMP,
-            t0: *T0,
+            t0: T0,
             clock_compensation: Default::default(),
         }
     }

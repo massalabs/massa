@@ -2,12 +2,12 @@ use crate::types::{
     EventStore, ExecutionContext, ExecutionData, ExecutionStep, StackElement, StepHistory,
     StepHistoryItem,
 };
-use crate::{config::ExecutionConfigs, ExecutionError};
 use crate::{error::bootstrap_file_error, AMOUNT_ZERO};
 use crate::{
     interface_impl::InterfaceImpl,
     sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges},
 };
+use crate::{settings::ExecutionConfigs, ExecutionError};
 
 use massa_models::{
     api::SCELedgerInfo,

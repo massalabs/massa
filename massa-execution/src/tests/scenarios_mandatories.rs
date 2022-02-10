@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::{
-    config::ExecutionConfigs, start_controller, ExecutionSettings, SCELedger, SCELedgerEntry,
+    settings::ExecutionConfigs, start_controller, ExecutionSettings, SCELedger, SCELedgerEntry,
 };
 use massa_models::prehash::Map;
 use massa_models::{Address, Amount, Slot};

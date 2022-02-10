@@ -39,14 +39,14 @@ impl Default for CompactConfig {
             genesis_timestamp: *GENESIS_TIMESTAMP,
             end_timestamp: *END_TIMESTAMP,
             thread_count: THREAD_COUNT,
-            t0: *T0,
+            t0: T0,
             delta_f0: DELTA_F0,
             operation_validity_periods: OPERATION_VALIDITY_PERIODS,
             periods_per_cycle: PERIODS_PER_CYCLE,
             pos_lookback_cycles: POS_LOOKBACK_CYCLES,
             pos_lock_cycles: POS_LOCK_CYCLES,
-            block_reward: *BLOCK_REWARD,
-            roll_price: *ROLL_PRICE,
+            block_reward: BLOCK_REWARD,
+            roll_price: ROLL_PRICE,
             max_block_size: MAX_BLOCK_SIZE,
         }
     }

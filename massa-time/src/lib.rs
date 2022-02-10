@@ -24,17 +24,6 @@ impl fmt::Display for MassaTime {
     }
 }
 
-impl From<u64> for MassaTime {
-    /// Conversion from u64, representing timestamp in millis.
-    /// ```
-    /// # use massa_time::*;
-    /// let time : MassaTime = MassaTime::from(42);
-    /// ```
-    fn from(value: u64) -> Self {
-        MassaTime(value)
-    }
-}
-
 impl TryFrom<Duration> for MassaTime {
     type Error = TimeError;
 
@@ -54,6 +43,17 @@ impl TryFrom<Duration> for MassaTime {
                 .try_into()
                 .map_err(|_| TimeError::ConversionError)?,
         ))
+    }
+}
+
+impl From<u64> for MassaTime {
+    /// Conversion from u64, representing timestamp in millis.
+    /// ```
+    /// # use massa_time::*;
+    /// let time : MassaTime = MassaTime::from(42);
+    /// ```
+    fn from(val: u64) -> Self {
+        MassaTime(val)
     }
 }
 
@@ -94,6 +94,15 @@ impl FromStr for MassaTime {
 }
 
 impl MassaTime {
+    /// Conversion from u64, representing timestamp in millis.
+    /// ```
+    /// # use massa_time::*;
+    /// let time : MassaTime = MassaTime::from(42);
+    /// ```
+    pub const fn from(value: u64) -> Self {
+        MassaTime(value)
+    }
+
     /// Smallest time interval
     pub const EPSILON: MassaTime = MassaTime(1);
 

@@ -28,13 +28,9 @@ use crate::{Amount, Version};
 use massa_signature::{generate_random_private_key, PrivateKey};
 use massa_time::MassaTime;
 use num::rational::Ratio;
-use std::{
-    net::{IpAddr, Ipv4Addr},
-    str::FromStr,
-};
+use std::net::{IpAddr, Ipv4Addr};
 
 lazy_static::lazy_static! {
-    pub static ref BLOCK_REWARD: Amount = Amount::from_str("1").unwrap();
     pub static ref GENESIS_KEY: PrivateKey = generate_random_private_key();
     /// Time in millis when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
@@ -56,8 +52,6 @@ lazy_static::lazy_static! {
     // process, the first use is effectivelly `MassaTime::now().unwrap()` but will be outdated for
     // the latest test. That's the reason why we choose to reset it each time we get a ConsensusConfig.
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(1, 1);
-    pub static ref ROLL_PRICE: Amount = Amount::from_str("100").unwrap();
-    pub static ref T0: MassaTime = 32000.into();
     pub static ref VERSION: Version = if cfg!(feature = "sandbox") {
         "SAND.0.0"
     } else {
@@ -69,9 +63,11 @@ lazy_static::lazy_static! {
 
 /// Size of the random bytes array used for the bootstrap, safe to import
 pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+/// Safe to import
 pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
 pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 pub const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+pub const BLOCK_REWARD: Amount = Amount::from_raw(AMOUNT_DECIMAL_FACTOR);
 pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 pub const CHANNEL_SIZE: usize = 256;
 pub const DELTA_F0: u64 = 32;
@@ -103,8 +99,10 @@ pub const OPERATION_VALIDITY_PERIODS: u64 = 1;
 pub const PERIODS_PER_CYCLE: u64 = 100;
 pub const POS_LOCK_CYCLES: u64 = 1;
 pub const POS_LOOKBACK_CYCLES: u64 = 2;
+pub const ROLL_PRICE: Amount = Amount::from_raw(100 * AMOUNT_DECIMAL_FACTOR);
 pub const SLOT_KEY_SIZE: usize = 9;
 pub const THREAD_COUNT: u8 = 2;
+pub const T0: MassaTime = MassaTime::from(32000);
 
 /*************************
 * Mocked constant section
