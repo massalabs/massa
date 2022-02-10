@@ -30,6 +30,21 @@ pub struct ExecuteReadOnlyResponse {
 
 impl Display for ExecuteReadOnlyResponse {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        writeln!(f, "Executed at slot: {}", self.executed_at)?;
+        writeln!(
+            f,
+            "Result: {}",
+            match &self.result {
+                ReadOnlyResult::Error(e) => format!("an error occured during the execution: {}", e),
+                ReadOnlyResult::Ok => "ok".to_string(),
+            }
+        )?;
+        if !self.output_events.is_empty() {
+            writeln!(f, "Generated events:",)?;
+            for (_, event) in self.output_events.iter() {
+                writeln!(f, "{}", event)?; // id already displayed in event
+            }
+        }
+        Ok(())
     }
 }
