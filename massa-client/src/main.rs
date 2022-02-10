@@ -11,8 +11,7 @@ use console::style;
 use massa_sdk::Client;
 use massa_wallet::Wallet;
 use serde::Serialize;
-use std::net::IpAddr;
-use std::path::PathBuf;
+use std::{net::SocketAddr, path::PathBuf};
 use structopt::StructOpt;
 
 mod cmds;
@@ -25,15 +24,12 @@ pub mod tests;
 
 #[derive(StructOpt)]
 struct Args {
-    /// Port to listen on (Massa public API).
+    /// Socket address to listen Massa public API.
     #[structopt(long)]
-    public_port: Option<u16>,
-    /// Port to listen on (Massa private API).
+    public: Option<SocketAddr>,
+    /// Socket address to listen Massa private API.
     #[structopt(long)]
-    private_port: Option<u16>,
-    /// Address to listen on.
-    #[structopt(long)]
-    ip: Option<IpAddr>,
+    private: Option<SocketAddr>,
     /// Command that client would execute (non-interactive mode)
     #[structopt(name = "COMMAND", default_value = "help")]
     command: Command,
@@ -62,22 +58,18 @@ struct JsonError {
 #[tokio::main]
 async fn main(args: Args) -> Result<()> {
     // TODO: move settings loading in another crate ... see #1277
-    let settings = SETTINGS.clone();
-    let address = match args.ip {
-        Some(ip) => ip,
-        None => settings.default_node.ip,
+    let public = match args.public {
+        Some(addr) => addr,
+        None => SETTINGS.default_node.public,
     };
-    let public_port = match args.public_port {
-        Some(public_port) => public_port,
-        None => settings.default_node.public_port,
+    let private = match args.private {
+        Some(addr) => addr,
+        None => SETTINGS.default_node.private,
     };
-    let private_port = match args.private_port {
-        Some(private_port) => private_port,
-        None => settings.default_node.private_port,
-    };
-    // ...
+
+    let client = Client::new(public, private).await;
     let mut wallet = Wallet::new(args.wallet)?;
-    let client = Client::new(address, public_port, private_port).await;
+
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
         repl::run(&client, &mut wallet).await;

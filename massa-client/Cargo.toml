@@ -39,3 +39,4 @@ toml_edit = "0.8"
 [features]
 hash-prefix = ["massa_models/hash-prefix", "massa_signature/hash-prefix"]
 instrument = ["tokio/tracing", "massa_models/instrument", "massa_time/instrument"]
+testing = []

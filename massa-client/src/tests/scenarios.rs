@@ -6,13 +6,10 @@ use serde::de::DeserializeOwned;
 use serial_test::serial;
 use std::{thread::JoinHandle, time::Duration};
 
-const TIMEOUT: u64 = 30;
-const TENTATIVES: u64 = 5;
-
 async fn send_cmd(cmd: &str) -> Result<String> {
-    for _ in 0..TENTATIVES {
+    for _ in 0..10 {
         let output = Command::new("cargo")
-            .args(&["run", "--", cmd, "--json"])
+            .args(&["run", "--features", "testing", "--", cmd, "--json"])
             .assert()
             .get_output()
             .clone();
@@ -21,7 +18,7 @@ async fn send_cmd(cmd: &str) -> Result<String> {
         if !stdout.contains("tcp connect error") {
             return Ok(stdout);
         }
-        tokio::time::sleep(std::time::Duration::from_secs(TIMEOUT)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
     }
     bail!("was not able to send command")
 }
@@ -33,16 +30,17 @@ async fn send_cmd_without_output(cmd: &str) -> Result<()> {
 
 async fn send_cmd_with_output<T: DeserializeOwned>(cmd: &str) -> Result<T> {
     let stdout = send_cmd(cmd).await?;
+    println!("{}", stdout);
     Ok(serde_json::from_str::<T>(&stdout)?)
 }
 
 fn spawn_node(timeout: Duration) -> JoinHandle<String> {
     std::thread::spawn(move || {
         let output = Command::new("cargo")
-            .args(["run", "--features", "test"])
+            .args(["run", "--features", "sandbox"])
             .current_dir("../massa-node")
-            // TODO: .env("MASSA_CONFIG_PATH", "../massa-node/src/tests/config.toml");
-            // use custom wallet / staking addresses / peers to not pollute user files
+            // TODO: use custom wallet, staking addresses, peers to not pollute user files
+            // .env("MASSA_CONFIG_PATH", "../massa-node/src/tests/config.toml");
             .timeout(timeout)
             .assert()
             .get_output()
@@ -55,7 +53,7 @@ fn spawn_node(timeout: Duration) -> JoinHandle<String> {
 #[tokio::test]
 #[serial]
 async fn test_run_node() {
-    let handle = spawn_node(Duration::from_secs(60 * 5));
+    let handle = spawn_node(Duration::from_secs(1000));
 
     let output = send_cmd_with_output::<NodeStatus>("get_status")
         .await

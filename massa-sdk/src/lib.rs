@@ -30,15 +30,11 @@ pub struct Client {
 }
 
 impl Client {
-    /// creates a new client
-    pub async fn new(ip: IpAddr, public_port: u16, private_port: u16) -> Client {
-        let public_socket_addr = SocketAddr::new(ip, public_port);
-        let private_socket_addr = SocketAddr::new(ip, private_port);
-        let public_url = format!("http://{}", public_socket_addr);
-        let private_url = format!("http://{}", private_socket_addr);
+    /// Create a new client
+    pub async fn new(public: SocketAddr, private: SocketAddr) -> Client {
         Client {
-            public: RpcClient::from_url(&public_url).await,
-            private: RpcClient::from_url(&private_url).await,
+            public: RpcClient::from_url(&format!("http://{}", public)).await,
+            private: RpcClient::from_url(&format!("http://{}", private)).await,
         }
     }
 }
