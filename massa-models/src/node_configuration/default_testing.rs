@@ -1,4 +1,7 @@
-use std::str::FromStr;
+use std::{
+    net::{IpAddr, Ipv4Addr},
+    str::FromStr,
+};
 
 ///! DEFAULT VALUES USED TO INITIALISE DIVERS CONFIGURATIONS STRUCTURES
 ///! Same as default constants but in testing mode. You can access to them with
@@ -68,6 +71,7 @@ lazy_static::lazy_static! {
 /// Size of the random bytes array used for the bootstrap, safe to import
 pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
+pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 pub const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 pub const CHANNEL_SIZE: usize = 256;
@@ -132,6 +136,9 @@ pub const MAX_ITEM_RETURN_COUNT: usize = 1000;
 pub const MAX_OPERATION_FILL_ATTEMPTS: u32 = 6;
 pub const OPERATION_BATCH_SIZE: usize = 3;
 pub const POS_DRAW_CACHED_CYCLE: usize = 10;
+
+// Note: In the `massa-network`, the default values are defined in the `settings.rs` of the
+// `massa-network` crate.
 
 lazy_static::lazy_static! {
     pub static ref BLOCK_DB_PRUNE_INTERVAL: MassaTime = 1000.into();
