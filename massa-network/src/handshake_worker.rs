@@ -44,7 +44,6 @@ impl HandshakeWorker {
     /// Manage a new connection and perform a normal handshake
     ///
     /// Used for incomming and outgoing connections.
-    /// Add the node with
     /// It will spawn a new future with an HandshakeWorker from the given `reader`
     /// and `writer` from your current node to the distant `connectionId`
     ///

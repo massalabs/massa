@@ -8,12 +8,12 @@ use super::{
     node_worker::{NodeCommand, NodeEvent, NodeEventType, NodeWorker},
     peer_info_database::*,
 };
-use crate::settings::{NetworkSettings, CHANNEL_SIZE};
 use crate::{
     binders::{ReadBinder, WriteBinder},
     error::{HandshakeErrorType, NetworkConnectionErrorType, NetworkError},
     handshake_worker::HandshakeWorker,
     messages::Message,
+    settings::{NetworkSettings, CHANNEL_SIZE},
 };
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::hash::Hash;
@@ -1010,15 +1010,8 @@ impl NetworkWorker {
                     Err(NetworkError::PeerConnectionError(
                         NetworkConnectionErrorType::MaxPeersConnectionReached(_),
                     )) => {
-                        debug!(
-                            "Maximum connection reached. Inbound connection from addr={} refused",
-                            remote_addr
-                        );
-                        let peer_list = self.peer_info_db.get_advertisable_peer_ips();
-                        WriteBinder::new(writer)
-                            .send(&Message::PeerList(peer_list))
-                            .await?;
-                        ReadBinder::new(reader).next().await?;
+                        self.send_peer_list_in_handshake(reader, writer, remote_addr)
+                            .await?
                     }
                     Err(_) => {
                         debug!("inbound connection from addr={} refused", remote_addr);
@@ -1032,6 +1025,54 @@ impl NetworkWorker {
             }
         }
         Ok(())
+    }
+
+    /// Start to mock a handshake and send a message with a list of peer.
+    /// The function is used while `manage_in_connections()` if the current
+    /// node reach the number of maximum in connection.
+    ///
+    /// Timeout if the connection as not been done really quickly resolved
+    /// but doesn't throw the timeout error.
+    ///
+    /// Return an error ONLY if we get a `NetworkError`.
+    ///
+    /// ```bash
+    /// In connection node            Curr node
+    ///        |                          |
+    ///        |------------------------->|      : Try to connect but the
+    ///        |                          |        curr node reach the max
+    ///        |                          |        number of node.
+    ///        |                          |      : Connection success anyway
+    ///        |                          |        and the in connection enter
+    ///        |<------------------------>|        in `HandshakeWorker::run()`
+    ///        |  symetric read & write   |
+    ///```
+    ///
+    /// In the `symetric read & write` the current node simulate a handshake managed
+    /// by the *connection node* in `HandshakeWorker::run()`, the current node
+    /// send a ListPeer as a message.
+    async fn send_peer_list_in_handshake(
+        &self,
+        reader: ReadHalf,
+        writer: WriteHalf,
+        remote_addr: SocketAddr,
+    ) -> Result<(), NetworkError> {
+        debug!(
+            "Maximum connection reached. Inbound connection from addr={} refused",
+            remote_addr
+        );
+        let msg = Message::PeerList(self.peer_info_db.get_advertisable_peer_ips());
+        let mut writer = WriteBinder::new(writer);
+        let mut reader = ReadBinder::new(reader);
+        match tokio::time::timeout(
+            std::time::Duration::from_millis(100),
+            futures::future::try_join(writer.send(&msg), reader.next()),
+        )
+        .await
+        {
+            Ok(Err(e)) => Err(e),
+            _ => Ok(()),
+        }
     }
 
     /// Manage a successful incomming and outgoing connection,
