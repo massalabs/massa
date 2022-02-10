@@ -17,7 +17,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sled = "0.34"
 thiserror = "1.0"
-tokio = { version = "1.15", features = ["full", "tracing"] }
+tokio = { version = "1.15", features = ["full"] }
 tracing = "0.1"
 # custom modules
 massa_execution = { path = "../massa-execution" }
@@ -34,4 +34,4 @@ serial_test = "0.5"
 tempfile = "3.2"
 
 [features]
-test = []
+instrument = ["tokio/tracing", "massa_execution/instrument", "massa_models/instrument", "massa_proof_of_stake_exports/instrument", "massa_time/instrument"]

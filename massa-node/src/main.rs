@@ -30,6 +30,8 @@ use std::process;
 use tokio::signal;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
+#[cfg(not(feature = "instrument"))]
+use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 mod settings;
 
@@ -266,33 +268,32 @@ async fn stop(
         .expect("network shutdown failed");
 }
 
+/// To instrument `massa-node` with `tokio-console` run
+/// ```shell
+/// RUSTFLAGS="--cfg tokio_unstable" cargo run --bin massa-node --features instrument
+/// ```
 #[tokio::main]
 async fn main() {
     use tracing_subscriber::prelude::*;
-
-    // spawn the console server in the background,
-    // returning a `Layer`:
-    let console_layer = console_subscriber::spawn();
-
-    // let fmt_layer = tracing_subscriber::fmt::layer()
-    //     .with_filter(match SETTINGS.logging.level {
-    //         4 => LevelFilter::TRACE,
-    //         3 => LevelFilter::DEBUG,
-    //         2 => LevelFilter::INFO,
-    //         1 => LevelFilter::WARN,
-    //         _ => LevelFilter::ERROR,
-    //     })
-    //     .with_filter(filter_fn(|metadata| {
-    //         metadata.target().starts_with("massa:") // ignore non-massa logs
-    //     }));
-
-    // build a `Subscriber` by combining layers with a
-    // `tracing_subscriber::Registry`:
+    // spawn the console server in the background, returning a `Layer`:
+    #[cfg(feature = "instrument")]
+    let tracing_layer = console_subscriber::spawn();
+    #[cfg(not(feature = "instrument"))]
+    let tracing_layer = tracing_subscriber::fmt::layer()
+        .with_filter(match SETTINGS.logging.level {
+            4 => LevelFilter::TRACE,
+            3 => LevelFilter::DEBUG,
+            2 => LevelFilter::INFO,
+            1 => LevelFilter::WARN,
+            _ => LevelFilter::ERROR,
+        })
+        .with_filter(filter_fn(|metadata| {
+            metadata.target().starts_with("massa:") // ignore non-massa logs
+        }));
+    // build a `Subscriber` by combining layers with a `tracing_subscriber::Registry`:
     tracing_subscriber::registry()
-        // add the console layer to the subscriber
-        .with(console_layer)
-        // add other layers...
-        // .with(fmt_layer)
+        // add the console layer to the subscriber or default layers...
+        .with(tracing_layer)
         .init();
 
     // run

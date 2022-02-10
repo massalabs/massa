@@ -16,12 +16,12 @@ rand_xoshiro = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-tokio = { version = "1.15", features = ["full", "tracing"] }
+tokio = { version = "1.15", features = ["full"] }
 tracing = "0.1"
 # custom modules
+massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_signature = { path = "../massa-signature" }
-massa_hash = { path = "../massa-hash" }
 
 [dev-dependencies]
 pretty_assertions = "1.0"
@@ -29,4 +29,4 @@ serial_test = "0.5"
 tempfile = "3.2"
 
 [features]
-test = []
+instrument = ["tokio/tracing", "massa_models/instrument"]
