@@ -532,11 +532,6 @@
 <span id="527">527</span>
 <span id="528">528</span>
 <span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
-<span id="532">532</span>
-<span id="533">533</span>
-<span id="534">534</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError</span>;
@@ -548,7 +543,7 @@
 <span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">DiscardReason</span>, <span class="ident">ExportBlockStatus</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
     <span class="ident">APISettings</span>, <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockInfoContent</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>,
-    <span class="ident">EventFilter</span>, <span class="ident">IndexedSlot</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>, <span class="ident">TimeInterval</span>,
+    <span class="ident">EventFilter</span>, <span class="ident">IndexedSlot</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>, <span class="ident">ReadOnlyExecution</span>, <span class="ident">TimeInterval</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_models::clique::Clique</span>;
 <span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
@@ -557,9 +552,7 @@
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models::timeslots</span>::{<span class="ident">get_latest_block_slot_at_timestamp</span>, <span class="ident">time_range_to_slot_range</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>,
-};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>};
 <span class="kw">use</span> <span class="ident">massa_network</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkSettings</span>};
 <span class="kw">use</span> <span class="ident">massa_pool::PoolCommandSender</span>;
 <span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
@@ -616,10 +609,7 @@
 
     <span class="kw">fn</span> <span class="ident">execute_read_only_request</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">_max_gas</span>: <span class="ident">u64</span>,
-        <span class="ident">_simulated_gas_price</span>: <span class="ident">Amount</span>,
-        <span class="ident">_bytecode</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-        <span class="ident">_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+        <span class="kw">_</span>: <span class="ident">ReadOnlyExecution</span>,
     ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="ident"><span class="kw">crate</span>::wrong_api</span>::<span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span><span class="op">&gt;</span>()
     }
@@ -1072,5 +1062,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (0c292c966 2022-02-08)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e7aca8959 2022-02-09)" ></div>
 </body></html>

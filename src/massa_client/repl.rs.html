@@ -266,6 +266,13 @@
 <span id="261">261</span>
 <span id="262">262</span>
 <span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::cmds</span>::{<span class="ident">Command</span>, <span class="ident">ExtendedWallet</span>};
@@ -277,6 +284,7 @@
 <span class="kw">use</span> <span class="ident">erased_serde</span>::{<span class="ident">Serialize</span>, <span class="ident">Serializer</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{<span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>};
 <span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
+<span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
 <span class="kw">use</span> <span class="ident">massa_models::prehash::Set</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">OperationId</span>};
 <span class="kw">use</span> <span class="ident">massa_wallet::Wallet</span>;
@@ -529,6 +537,12 @@
         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>);
     }
 }
+
+<span class="kw">impl</span> <span class="ident">Output</span> <span class="kw">for</span> <span class="ident">ExecuteReadOnlyResponse</span> {
+    <span class="kw">fn</span> <span class="ident">pretty_print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>);
+    }
+}
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (0c292c966 2022-02-08)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e7aca8959 2022-02-09)" ></div>
 </body></html>

@@ -190,16 +190,37 @@
 <span id="185">185</span>
 <span id="186">186</span>
 <span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::SETTINGS</span>;
 <span class="kw">use</span> <span class="ident">jsonrpc_core_client::transports::http</span>;
 <span class="kw">use</span> <span class="ident">jsonrpc_core_client</span>::{<span class="ident">RpcChannel</span>, <span class="ident">RpcError</span>, <span class="ident">RpcResult</span>, <span class="ident">TypedClient</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
-    <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>, <span class="ident">TimeInterval</span>,
+    <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>,
+    <span class="ident">ReadOnlyExecution</span>, <span class="ident">TimeInterval</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_models::clique::Clique</span>;
 <span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
+<span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationId</span>};
 <span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
@@ -302,6 +323,23 @@
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;unban&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
     }
 
+    <span class="doccomment">/// execute read only bytecode</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">execute_read_only_request</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">read_only_execution</span>: <span class="ident">ReadOnlyExecution</span>,
+    ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">call_method</span>(
+            <span class="string">&quot;execute_read_only_request&quot;</span>,
+            <span class="string">&quot;ExecuteReadOnlyResponse&quot;</span>,
+            <span class="ident">read_only_execution</span>,
+        )
+        .<span class="kw">await</span>
+    }
+
+    <span class="comment">////////////////</span>
+    <span class="comment">// public-api //</span>
+    <span class="comment">////////////////</span>
+
     <span class="comment">// Explorer (aggregated stats)</span>
 
     <span class="doccomment">/// summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count</span>
@@ -378,5 +416,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (0c292c966 2022-02-08)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e7aca8959 2022-02-09)" ></div>
 </body></html>
