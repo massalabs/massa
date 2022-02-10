@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-///! Build here the default client settings from the config file toml
+//! Build here the default client settings from the config file toml
 use massa_models::constants::build_massa_settings;
 use massa_time::MassaTime;
 use serde::Deserialize;

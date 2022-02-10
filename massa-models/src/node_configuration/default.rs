@@ -1,24 +1,23 @@
+//! DEFAULT VALUES USED TO INITIALISE DIVERS CONFIGURATIONS STRUCTURES
+//!
+//!
+//! # Default hardcoded
+//!
+//! Each crates may contains a `settings.rs` or a `config.rs` the `Default`
+//! implementation of each object take the default Values from the following
+//! file.
+//!
+//! These values are the hardcoded values that make sens to never be modifyed
+//! by a user. Generally, this values are passed with dependency injection in a `cfg`
+//! parameter for each worker, that is conveniant for unit tests.
+//!
+//! A parralell file with the same const definitions exist for the testing case.
+//! (`default_testing.rs`) But as for the current file you shouldn't modify it.
+use crate::{Amount, Version};
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;
 use num::rational::Ratio;
-///! DEFAULT VALUES USED TO INITIALISE DIVERS CONFIGURATIONS STRUCTURES
-///
-///
-/// # Default hardcoded
-///
-/// Each crates may contains a `settings.rs` or a `config.rs` the `Default`
-/// implementation of each object take the default Values from the following
-/// file.
-///
-/// These values are the hardcoded values that make sens to never be modifyed
-/// by a user. Generally, this values are passed with dependency injection in a `cfg`
-/// parameter for each worker, that is conveniant for unit tests.
-///
-/// A parralell file with the same const definitions exist for the testing case.
-/// (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use std::str::FromStr;
-
-use crate::{Amount, Version};
 
 /// Limit on the number of peers we advertise to others.
 pub const MAX_ADVERTISE_LENGTH: u32 = 10000;

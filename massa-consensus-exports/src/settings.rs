@@ -1,49 +1,49 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 #![allow(clippy::assertions_on_constants)]
-///! Definition & Implementation of the consensus settings
-/// -----------------------------------------------------
-///
-/// # Configurations
-///
-/// * setting: read from user settings file
-/// * config: merge of settings and hardcoded configuration that shouldn't be
-///           modifyed by user.
-///
-/// This file is allowed to use a lot of constants from `massa-models` as all
-/// other files named `settings.rs` or `config.rs`.
-///
-/// The `ConsensusSettings` is the most basic and complete configuration in the
-/// node. You can get almost every configuration from that one.
-///
-/// `From<ConsensusSettings> impl *`:
-/// - `ConsensusConfig`: Create a config merging user settings andhardcoded values
-///                      (see `/massa-models/node_configuration/*)
-///
-/// `From<&ConsensusConfig> impl *`:
-/// - GraphConfig
-/// - LedgerConfig
-/// - ProofOfStakeConfig
-///
-/// > Development note: We clone the values on getting a configuration from another.
-///
-/// # Usage of constants
-///
-/// The default configuration is loaded from the `massa-models` crate. You shouldn't
-/// write an hardcoded value in the following file but create a new value in
-/// `default.rs` and the testing default equivalent value in `default_testing.rs`. See
-/// `/node_configuration/mod.rs` documentation in `massa-models` sources for more
-/// information.
-///
-/// # Channels
-///
-/// The following file contains the definition of the Channels structures used in
-/// the current module.
-///
-/// # Testing feature
-///
-/// In unit test your allowed to use the `testing` feature flag that will
-/// use the default values from `/node_configuration/default_testing.rs` in the
-/// `massa-models` crate sources.
+//! Definition & Implementation of the consensus settings
+//! -----------------------------------------------------
+//!
+//! # Configurations
+//!
+//! * setting: read from user settings file
+//! * config: merge of settings and hardcoded configuration that shouldn't be
+//!           modifyed by user.
+//!
+//! This file is allowed to use a lot of constants from `massa-models` as all
+//! other files named `settings.rs` or `config.rs`.
+//!
+//! The `ConsensusSettings` is the most basic and complete configuration in the
+//! node. You can get almost every configuration from that one.
+//!
+//! `From<ConsensusSettings> impl *`:
+//! - `ConsensusConfig`: Create a config merging user settings andhardcoded values
+//!                      (see `/massa-models/node_configuration/*)
+//!
+//! `From<&ConsensusConfig> impl *`:
+//! - GraphConfig
+//! - LedgerConfig
+//! - ProofOfStakeConfig
+//!
+//! > Development note: We clone the values on getting a configuration from another.
+//!
+//! # Usage of constants
+//!
+//! The default configuration is loaded from the `massa-models` crate. You shouldn't
+//! write an hardcoded value in the following file but create a new value in
+//! `default.rs` and the testing default equivalent value in `default_testing.rs`. See
+//! `/node_configuration/mod.rs` documentation in `massa-models` sources for more
+//! information.
+//!
+//! # Channels
+//!
+//! The following file contains the definition of the Channels structures used in
+//! the current module.
+//!
+//! # Testing feature
+//!
+//! In unit test your allowed to use the `testing` feature flag that will
+//! use the default values from `/node_configuration/default_testing.rs` in the
+//! `massa-models` crate sources.
 use massa_execution::{ExecutionCommandSender, ExecutionEventReceiver};
 use massa_graph::{settings::GraphConfig, LedgerConfig};
 use massa_models::Amount;

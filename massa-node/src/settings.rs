@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-///! Build here the default node settings from the config file toml
+//! Build here the default node settings from the config file toml
 use massa_bootstrap::settings::BootstrapSettings;
 use massa_consensus_exports::ConsensusSettings;
 use massa_execution::ExecutionSettings;

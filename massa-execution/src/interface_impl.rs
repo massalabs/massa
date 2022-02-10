@@ -1,4 +1,4 @@
-///! Implementation of the interface used in the execution external library
+//! Implementation of the interface used in the execution external library
 use crate::{
     types::{ExecutionContext, StackElement},
     AMOUNT_ZERO,

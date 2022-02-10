@@ -1,31 +1,31 @@
-use std::path::Path;
-
+//! Build a settings for an object that implement massa_settings
+//!
+//! ---
+//! The massa node configuration is composed from 2 parts, one part is the
+//! file configuration often named `config.toml` located in the project
+//! directory.
+//!
+//! The First thing that the node will try is to read the configuration located
+//! in the `path` described in the environment variable `MASSA_CONFIG_PATH`.
+//! If no path found in the environment variable, the relativ path
+//! `base_confg/config.toml` is used as default. The default path should exist
+//! because it's a config file pushed in the repository.
+//!
+//! The next step will try to read the file at the given path. It will `panic`
+//! if no file found.
+//!
+//! Whatever configuration you used (the one from de environment variable or the
+//! default one) You always have a next possibility. Using the default path of
+//! configuration for the massa-project. The default configuration directories
+//! is set on Setting creation. All the configuration in this file will be merged
+//! with the previous step (override if duplicated)
+//!
+//! The last step is to merge the enironment variable prefixed with
+//! `MASSA_CLIENT`, override if duplicated
+//!
 use directories::ProjectDirs;
 use serde::Deserialize;
-
-/// Build a settings for an object that implement massa_settings
-
-///! The massa node configuration is composed from 2 parts, one part is the
-/// file configuration often named `config.toml` located in the project
-/// directory.
-///
-/// The First thing that the node will try is to read the configuration located
-/// in the `path` described in the environment variable `MASSA_CONFIG_PATH`.
-/// If no path found in the environment variable, the relativ path
-/// `base_confg/config.toml` is used as default. The default path should exist
-/// because it's a config file pushed in the repository.
-///
-/// The next step will try to read the file at the given path. It will `panic`
-/// if no file found.
-///
-/// Whatever configuration you used (the one from de environment variable or the
-/// default one) You always have a next possibility. Using the default path of
-/// configuration for the massa-project. The default configuration directories
-/// is set on Setting creation. All the configuration in this file will be merged
-/// with the previous step (override if duplicated)
-///
-/// The last step is to merge the enironment variable prefixed with
-/// `MASSA_CLIENT`, override if duplicated
+use std::path::Path;
 
 #[inline]
 pub fn build_massa_settings<T: Deserialize<'static>>(app_name: &str, env_prefix: &str) -> T {

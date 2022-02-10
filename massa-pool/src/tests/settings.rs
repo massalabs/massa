@@ -1,4 +1,4 @@
-///! Default values for testing configuration of pool module
+//! Default values for testing configuration of pool module
 use crate::{settings::PoolConfig, PoolSettings};
 lazy_static::lazy_static! {
     pub static ref POOL_CONFIG: PoolConfig = Default::default();

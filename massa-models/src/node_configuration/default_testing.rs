@@ -1,38 +1,37 @@
-use std::{
-    net::{IpAddr, Ipv4Addr},
-    str::FromStr,
-};
-
-///! DEFAULT VALUES USED TO INITIALISE DIVERS CONFIGURATIONS STRUCTURES
-///! Same as default constants but in testing mode. You can access to them with
-///! the `testing` feature activated.
-///
-/// # Default hardcoded
-///
-/// Each crates may contains a `settings.rs` or a `config.rs` the `Default`
-/// implementation of each object take the default Values from the following
-/// file.
-///
-/// These values are the hardcoded values that make sens to never be modifyed
-/// by a user. Generally, this values are passed with dependency injection in a `cfg`
-/// parameter for each worker, that is conveniant for unit tests.
-///
-/// See `./default.rs` for more documentation about each constants
-///
-/// /!\ The following values are good as it. If you want a specific configuration,
-/// create a mutable configuration and inject it as a dependency in the worker.
-///
-/// Ex:
-/// ```ignore
-/// let cfg = UsedConfig {
-///    value_to_modify: 5,
-///    ..UsedConfig::default()
-/// };
-/// ```
+//! DEFAULT VALUES USED TO INITIALISE DIVERS CONFIGURATIONS STRUCTURES
+//! Same as default constants but in testing mode. You can access to them with
+//! the `testing` feature activated.
+//!
+//! # Default hardcoded
+//!
+//! Each crates may contains a `settings.rs` or a `config.rs` the `Default`
+//! implementation of each object take the default Values from the following
+//! file.
+//!
+//! These values are the hardcoded values that make sens to never be modifyed
+//! by a user. Generally, this values are passed with dependency injection in a `cfg`
+//! parameter for each worker, that is conveniant for unit tests.
+//!
+//! See `./default.rs` for more documentation about each constants
+//!
+//! /!\ The following values are good as it. If you want a specific configuration,
+//! create a mutable configuration and inject it as a dependency in the worker.
+//!
+//! Ex:
+//! ```ignore
+//! let cfg = UsedConfig {
+//!    value_to_modify: 5,
+//!    ..UsedConfig::default()
+//! };
+//! ```
 use crate::{Amount, Version};
 use massa_signature::{generate_random_private_key, PrivateKey};
 use massa_time::MassaTime;
 use num::rational::Ratio;
+use std::{
+    net::{IpAddr, Ipv4Addr},
+    str::FromStr,
+};
 
 lazy_static::lazy_static! {
     pub static ref BLOCK_REWARD: Amount = Amount::from_str("1").unwrap();

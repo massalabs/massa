@@ -76,6 +76,12 @@ pub struct SerializationContext {
 
 impl Default for SerializationContext {
     fn default() -> Self {
+        SerializationContext::const_default()
+    }
+}
+
+impl SerializationContext {
+    pub const fn const_default() -> Self {
         #[cfg(feature = "testing")]
         // Overide normal constants on testing
         use crate::constants::default_testing::*;

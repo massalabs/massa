@@ -47,7 +47,7 @@ impl Default for CompactConfig {
             pos_lock_cycles: POS_LOCK_CYCLES,
             block_reward: *BLOCK_REWARD,
             roll_price: *ROLL_PRICE,
-            max_block_size: EVENT_ID_SIZE_BYTES as u32,
+            max_block_size: MAX_BLOCK_SIZE,
         }
     }
 }

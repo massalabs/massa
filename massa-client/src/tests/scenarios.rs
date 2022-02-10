@@ -1,4 +1,4 @@
-///! Tested only with feature "local"
+//! Tested only with feature "local"
 use anyhow::{bail, Result};
 use assert_cmd::Command;
 use massa_models::api::NodeStatus;
