@@ -5,10 +5,12 @@ use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::RpcError;
 use jsonrpc_core_client::{RpcChannel, RpcResult, TypedClient};
 use massa_models::api::{
-    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo, TimeInterval,
+    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
+    ReadOnlyExecution, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
+use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::prehash::{Map, Set};
 use massa_models::{Address, BlockId, EndorsementId, Operation, OperationId};
 use massa_signature::PrivateKey;
@@ -129,6 +131,21 @@ impl RpcClient {
     /// No confirmation to expect.
     pub(crate) async fn unban(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         timeout!(self.0.call_method("unban", "()", vec![ips]), "unabn")
+    }
+
+    /// execute read only bytecode
+    pub(crate) async fn execute_read_only_request(
+        &self,
+        read_only_execution: ReadOnlyExecution,
+    ) -> RpcResult<ExecuteReadOnlyResponse> {
+        timeout!(
+            self.0.call_method(
+                "execute_read_only_request",
+                "ExecuteReadOnlyResponse",
+                read_only_execution
+            ),
+            "send operations"
+        )
     }
 
     ////////////////

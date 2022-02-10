@@ -4,6 +4,7 @@ use crate::repl::Output;
 use crate::rpc::Client;
 use anyhow::{anyhow, bail, Result};
 use console::style;
+use massa_models::api::ReadOnlyExecution;
 use massa_models::api::{AddressInfo, CompactAddressInfo};
 use massa_models::prehash::Map;
 use massa_models::timeslots::get_current_latest_block_slot;
@@ -169,6 +170,13 @@ pub enum Command {
         message = "create and send an operation containing byte code"
     )]
     send_smart_contract,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "PathToBytecode MaxGas GasPrice Address", todo = "[unstable] "),
+        message = "execute byte code, address is optionnal. Nothing is really executed on chain"
+    )]
+    read_only_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
@@ -736,6 +744,34 @@ impl Command {
                     Ok(Box::new(signed))
                 } else {
                     bail!("Missing public key")
+                }
+            }
+            Command::read_only_smart_contract => {
+                if parameters.len() != 3 && parameters.len() != 4 {
+                    bail!("wrong number of parameters");
+                }
+
+                let path = parameters[0].parse::<PathBuf>()?;
+                let max_gas = parameters[1].parse::<u64>()?;
+                let simulated_gas_price = parameters[2].parse::<Amount>()?;
+                let address = if let Some(adr) = parameters.get(3) {
+                    Some(adr.parse::<Address>()?)
+                } else {
+                    None
+                };
+                let bytecode = get_file_as_byte_vec(&path).await?;
+                match client
+                    .private
+                    .execute_read_only_request(ReadOnlyExecution {
+                        max_gas,
+                        simulated_gas_price,
+                        bytecode,
+                        address,
+                    })
+                    .await
+                {
+                    Ok(res) => Ok(Box::new(res)),
+                    Err(e) => rpc_error!(e),
                 }
             }
         }
