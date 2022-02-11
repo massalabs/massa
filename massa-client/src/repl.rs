@@ -139,20 +139,29 @@ impl Completion for CommandCompletion {
         if input.contains(' ') {
             let mut args: Vec<&str> = input.split(' ').collect();
             let mut default_path = "./";
-            let path_to_complete = args.last_mut().unwrap_or_else(|| &mut default_path);
-            let suggestions: Vec<String> = glob(&(path_to_complete.to_owned() + "*"))
-                .unwrap()
-                .map(|x| x.unwrap().display().to_string())
-                .collect();
-            if !suggestions.is_empty() {
-                println!();
-                for path in &suggestions {
-                    println!("{}", style(path).dim())
+            let path_to_complete = args.last_mut().unwrap_or(&mut default_path);
+            if let Ok(paths) = glob(&(path_to_complete.to_owned() + "*")) {
+                let suggestions: Vec<String> = paths
+                    .filter_map(|x| {
+                        if let Ok(path) = x {
+                            Some(path.display().to_string())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                if !suggestions.is_empty() {
+                    println!();
+                    for path in &suggestions {
+                        println!("{}", style(path).dim())
+                    }
+                    *path_to_complete =
+                        longest_common_prefix(suggestions.iter().map(|s| &s[..]).collect());
                 }
-                *path_to_complete =
-                    longest_common_prefix(suggestions.iter().map(|s| &s[..]).collect());
+                Some(args.join(" "))
+            } else {
+                Some(args.join(" "))
             }
-            Some(args.join(" "))
         } else {
             let suggestions: Vec<&str> = self
                 .options
