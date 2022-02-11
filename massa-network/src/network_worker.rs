@@ -209,6 +209,8 @@ pub struct NetworkWorker {
     running_handshakes: HashSet<ConnectionId>,
     /// Running handshakes futures.
     handshake_futures: FuturesUnordered<JoinHandle<(ConnectionId, HandshakeReturnType)>>,
+    /// Running handshakes that send a list of peers.
+    handshake_peer_list_futures: FuturesUnordered<JoinHandle<()>>,
     /// Channel for sending node events.
     node_event_tx: mpsc::Sender<NodeEvent>,
     /// Receiving channel for node events.
@@ -269,6 +271,7 @@ impl NetworkWorker {
             controller_manager_rx,
             running_handshakes: HashSet::new(),
             handshake_futures: FuturesUnordered::new(),
+            handshake_peer_list_futures: FuturesUnordered::new(),
             node_event_tx,
             node_event_rx,
             active_nodes: HashMap::new(),
@@ -377,6 +380,9 @@ impl NetworkWorker {
                     self.on_handshake_finished(conn_id, outcome).await?;
                     need_connect_retry = true; // retry out connections
                 },
+
+                // Managing handshakes that return a PeerList
+                Some(_) = self.handshake_peer_list_futures.next() => {},
 
                 // node closed
                 Some(evt) = self.node_worker_handles.next() => {
@@ -1032,7 +1038,7 @@ impl NetworkWorker {
     /// Timeout if the connection as not been done really quickly resolved
     /// but don't throw the timeout error.
     ///
-    /// ```bash
+    /// ```txt
     /// In connection node            Curr node
     ///        |                          |
     ///        |------------------------->|      : Try to connect but the
@@ -1044,9 +1050,12 @@ impl NetworkWorker {
     ///        |  symetric read & write   |
     ///```
     ///
-    /// In the `symetric read & write` the current node simulate a handshake managed
-    /// by the *connection node* in `HandshakeWorker::run()`, the current node
-    /// send a ListPeer as a message.
+    /// In the `symetric read & write` the current node simulate a handshake
+    /// managed by the *connection node* in `HandshakeWorker::run()`, the
+    /// current node send a ListPeer as a message.
+    ///
+    /// Spawn a future in `self.handshake_peer_list_futures` managed by the
+    /// main loop.
     fn try_send_peer_list_in_handshake(
         &self,
         reader: ReadHalf,
@@ -1057,22 +1066,25 @@ impl NetworkWorker {
             "Maximum connection reached. Inbound connection from addr={} refused, try to send a list of peers",
             remote_addr
         );
-        let msg = Message::PeerList(self.peer_info_db.get_advertisable_peer_ips());
-        let timeout = self.cfg.peer_list_send_timeout.to_duration();
-        tokio::spawn(async move {
-            let mut writer = WriteBinder::new(writer);
-            let mut reader = ReadBinder::new(reader);
-            match tokio::time::timeout(
-                timeout,
-                futures::future::try_join(writer.send(&msg), reader.next()),
-            )
-            .await
-            {
-                Ok(Err(e)) => debug!("Ignored network error on send peerlist={}", e),
-                Err(_) => debug!("Ignored timeout error on send peerlist"),
-                _ => (),
-            }
-        });
+        if self.cfg.max_in_connection_overflow > self.handshake_peer_list_futures.len() {
+            let msg = Message::PeerList(self.peer_info_db.get_advertisable_peer_ips());
+            let timeout = self.cfg.peer_list_send_timeout.to_duration();
+            self.handshake_peer_list_futures
+                .push(tokio::spawn(async move {
+                    let mut writer = WriteBinder::new(writer);
+                    let mut reader = ReadBinder::new(reader);
+                    match tokio::time::timeout(
+                        timeout,
+                        futures::future::try_join(writer.send(&msg), reader.next()),
+                    )
+                    .await
+                    {
+                        Ok(Err(e)) => debug!("Ignored network error on send peerlist={}", e),
+                        Err(_) => debug!("Ignored timeout error on send peerlist"),
+                        _ => (),
+                    }
+                }));
+        }
     }
 
     /// Manage a successful incomming and outgoing connection,
