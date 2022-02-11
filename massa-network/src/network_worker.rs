@@ -1009,10 +1009,7 @@ impl NetworkWorker {
                     }
                     Err(NetworkError::PeerConnectionError(
                         NetworkConnectionErrorType::MaxPeersConnectionReached(_),
-                    )) => {
-                        self.send_peer_list_in_handshake(reader, writer, remote_addr)
-                            .await?
-                    }
+                    )) => self.try_send_peer_list_in_handshake(reader, writer, remote_addr),
                     Err(_) => {
                         debug!("inbound connection from addr={} refused", remote_addr);
                         massa_trace!("in_connection_refused", {"ip": remote_addr.ip()});
@@ -1027,14 +1024,13 @@ impl NetworkWorker {
         Ok(())
     }
 
-    /// Start to mock a handshake and send a message with a list of peer.
+    /// Start to mock a handshake and try to send a message with a list of
+    /// peers.
     /// The function is used while `manage_in_connections()` if the current
     /// node reach the number of maximum in connection.
     ///
     /// Timeout if the connection as not been done really quickly resolved
-    /// but doesn't throw the timeout error.
-    ///
-    /// Return an error ONLY if we get a `NetworkError`.
+    /// but don't throw the timeout error.
     ///
     /// ```bash
     /// In connection node            Curr node
@@ -1051,28 +1047,32 @@ impl NetworkWorker {
     /// In the `symetric read & write` the current node simulate a handshake managed
     /// by the *connection node* in `HandshakeWorker::run()`, the current node
     /// send a ListPeer as a message.
-    async fn send_peer_list_in_handshake(
+    fn try_send_peer_list_in_handshake(
         &self,
         reader: ReadHalf,
         writer: WriteHalf,
         remote_addr: SocketAddr,
-    ) -> Result<(), NetworkError> {
+    ) {
         debug!(
-            "Maximum connection reached. Inbound connection from addr={} refused",
+            "Maximum connection reached. Inbound connection from addr={} refused, try to send a list of peers",
             remote_addr
         );
         let msg = Message::PeerList(self.peer_info_db.get_advertisable_peer_ips());
-        let mut writer = WriteBinder::new(writer);
-        let mut reader = ReadBinder::new(reader);
-        match tokio::time::timeout(
-            self.cfg.peer_list_send_timeout.to_duration(),
-            futures::future::try_join(writer.send(&msg), reader.next()),
-        )
-        .await
-        {
-            Ok(Err(e)) => Err(e),
-            _ => Ok(()),
-        }
+        let timeout = self.cfg.peer_list_send_timeout.to_duration();
+        tokio::spawn(async move {
+            let mut writer = WriteBinder::new(writer);
+            let mut reader = ReadBinder::new(reader);
+            match tokio::time::timeout(
+                timeout,
+                futures::future::try_join(writer.send(&msg), reader.next()),
+            )
+            .await
+            {
+                Ok(Err(e)) => debug!("Ignored network error on send peerlist={}", e),
+                Err(_) => debug!("Ignored timeout error on send peerlist"),
+                _ => (),
+            }
+        });
     }
 
     /// Manage a successful incomming and outgoing connection,
