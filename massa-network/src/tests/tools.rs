@@ -100,6 +100,7 @@ pub fn create_network_config(
         max_send_wait: MassaTime::from(100),
         ban_timeout: MassaTime::from(100_000_000),
         initial_peers_file: peers_file_path.to_path_buf(),
+        ..Default::default()
     }
 }
 

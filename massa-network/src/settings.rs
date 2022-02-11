@@ -81,6 +81,8 @@ pub struct NetworkSettings {
     pub max_send_wait: MassaTime,
     /// Time after which we forget a node
     pub ban_timeout: MassaTime,
+    /// Timeout Duration when we send a PeerList in handshake
+    pub peer_list_send_timeout: MassaTime,
 }
 
 #[cfg(test)]
@@ -113,6 +115,7 @@ mod tests {
                 max_send_wait: MassaTime::from(100),
                 ban_timeout: MassaTime::from(100_000_000),
                 initial_peers_file: std::path::PathBuf::new(),
+                peer_list_send_timeout: MassaTime::from(50),
             }
         }
     }

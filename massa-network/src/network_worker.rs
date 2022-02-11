@@ -1065,7 +1065,7 @@ impl NetworkWorker {
         let mut writer = WriteBinder::new(writer);
         let mut reader = ReadBinder::new(reader);
         match tokio::time::timeout(
-            std::time::Duration::from_millis(100),
+            self.cfg.peer_list_send_timeout.to_duration(),
             futures::future::try_join(writer.send(&msg), reader.next()),
         )
         .await

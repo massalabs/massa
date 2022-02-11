@@ -134,6 +134,9 @@
     max_send_wait = 500
     # we forget we banned a node after ban_timeout milliseconds
     ban_timeout = 3600000
+    # Timeout duration when in handshake we respond with a PeerList
+    # (on max in connection reached we send a list of peers)
+    peer_list_send_timeout = 100
 
 [bootstrap]
     # list of bootstrap (ip, node id)
