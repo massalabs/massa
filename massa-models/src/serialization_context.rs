@@ -59,7 +59,6 @@ pub struct SerializationContext {
     pub endorsement_count: u32,
     pub thread_count: u8,
     pub max_block_size: u32,
-    // TODO: all field bellow should be removed since there are constant defined in bootstrap::settings
     pub max_advertise_length: u32,
     pub max_message_size: u32,
     pub max_ask_blocks_per_message: u32,
