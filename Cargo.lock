@@ -1398,13 +1398,14 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.3.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.4.1#2dd232195527a6bf71a9d12b2505b9b9e44ea207"
+source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.4.2#96007d25960b6d72eb27d37d5e3e7d49e473d36d"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
  "base64",
  "cornetto",
  "lazy_static",
+ "loupe",
  "serde 1.0.134",
  "serde_json",
  "serial_test",
