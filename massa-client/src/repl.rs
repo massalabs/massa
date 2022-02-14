@@ -142,13 +142,7 @@ impl Completion for CommandCompletion {
             let path_to_complete = args.last_mut().unwrap_or(&mut default_path);
             if let Ok(paths) = glob(&(path_to_complete.to_owned() + "*")) {
                 let suggestions: Vec<String> = paths
-                    .filter_map(|x| {
-                        if let Ok(path) = x {
-                            Some(path.display().to_string())
-                        } else {
-                            None
-                        }
-                    })
+                    .filter_map(|x| x.map(|path| path.display().to_string()).ok())
                     .collect();
                 if !suggestions.is_empty() {
                     println!();
