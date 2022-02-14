@@ -154,8 +154,6 @@ impl Completion for CommandCompletion {
                 }
                 Some(args.join(" "))
             } else {
-                println!();
-                println!("Bad syntax for path completion.");
                 Some(args.join(" "))
             }
         } else {
