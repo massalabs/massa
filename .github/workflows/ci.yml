@@ -131,7 +131,12 @@ jobs:
       - uses: Swatinem/rust-cache@v1
       - uses: actions-rs/cargo@v1
         with:
-          command: test
+          command: install
+          args: nextest
+      - uses: actions-rs/cargo@v1
+        with:
+          command: nextest
+          args: --retries 2
 
   build: # quick hack because bors wrongly detect matrix jobs status
     if: github.ref == 'refs/heads/staging'
