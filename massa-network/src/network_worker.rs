@@ -484,6 +484,7 @@ impl NetworkWorker {
         // wait for all running handshakes
         self.running_handshakes.clear();
         while self.handshake_futures.next().await.is_some() {}
+        while self.handshake_peer_list_futures.next().await.is_some() {}
         Ok(())
     }
 
