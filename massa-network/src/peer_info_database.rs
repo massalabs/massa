@@ -1,13 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::error::{NetworkConnectionErrorType, NetworkError};
-use crate::settings::NetworkSettings;
+use crate::settings::{NetworkSettings, PeerTypeConnectionConfig};
 use itertools::Itertools;
 use massa_logging::massa_trace;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use serde_json::Value;
+
 use std::collections::{hash_map, HashMap};
 use std::net::IpAddr;
 use std::path::Path;
@@ -16,15 +15,33 @@ use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 use tracing::{trace, warn};
 
+/// Peer categories.
+/// There is a defined number af slots for each category.
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum PeerType {
+    /// TODO: I don't like this piece of information been decoupled from the bootstrap list
+    Bootstrap,
+    /// Connection from these nodes are always accepted
+    WhiteListed,
+    /// Peer was banned. We want no connection from it
+    Banned,
+    /// Just a peer :pear:
+    Standard,
+}
+
+impl Default for PeerType {
+    fn default() -> Self {
+        PeerType::Standard
+    }
+}
+
 /// All information concerning a peer is here
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct PeerInfo {
     /// Peer ip address.
     pub ip: IpAddr,
-    /// If peer is banned.
-    pub banned: bool,
-    /// If peer is boostrap, ie peer was in initial peer file
-    pub bootstrap: bool,
+    /// The category the peer is in affects how it's treated.
+    pub peer_type: PeerType,
     /// Time in millis when peer was last alive
     pub last_alive: Option<MassaTime>,
     /// Time in millis of peer's last failure
@@ -57,6 +74,14 @@ impl PeerInfo {
     }
 }
 
+/// Connection count for a category
+#[derive(Default)]
+struct ConnectionCount {
+    active_out_connection_attempts: usize,
+    active_out_connections: usize,
+    active_in_connections: usize,
+}
+
 /// Contains all information about every peers we know about.
 pub struct PeerInfoDatabase {
     /// Network configuration.
@@ -67,23 +92,19 @@ pub struct PeerInfoDatabase {
     saver_join_handle: JoinHandle<()>,
     /// Monitor changed peers.
     saver_watch_tx: watch::Sender<HashMap<IpAddr, PeerInfo>>,
-    /// Total number of active out bootstrap connection attempts.
-    active_out_bootstrap_connection_attempts: usize,
-    /// Total number of active out non-bootstrap connection attempts.
-    active_out_nonbootstrap_connection_attempts: usize,
-    /// Total number of active bootstrap connections.
-    active_bootstrap_connections: usize, // TODO: in or out connections?
-    /// Total number of active out non-bootstrap connections.
-    pub active_out_nonbootstrap_connections: usize,
-    /// Total number of active in non-bootstrap connections
-    pub active_in_nonbootstrap_connections: usize,
+    /// Whitelist peers connection count
+    whitelist_connections: ConnectionCount,
+    /// Bootstrap peers connection count
+    bootstrap_connection_count: ConnectionCount,
+    /// Standard peers connection count
+    standard_connection_count: ConnectionCount,
     /// Every wakeup_interval we try to establish a connection with known inactive peers
     wakeup_interval: MassaTime,
     /// Clock compensation.
     clock_compensation: i64,
 }
 
-/// Saves banned, advertised and bootstrap peers to a file.
+/// Saves advertised and non standard peers to a file.
 ///
 /// # Arguments
 /// * peers: peers to save
@@ -92,20 +113,21 @@ async fn dump_peers(
     peers: &HashMap<IpAddr, PeerInfo>,
     file_path: &Path,
 ) -> Result<(), NetworkError> {
-    let peer_vec: Vec<Value> = peers
+    let peer_vec: Vec<_> = peers
         .values()
-        .filter(|v| v.banned || v.advertised || v.bootstrap)
+        .filter(|v| v.advertised || v.peer_type != PeerType::Standard)
+        // TODO We were really serializing by hand ? :confused:
         //        .cloned()
-        .map(|peer| {
-            json!({
-                "ip": peer.ip,
-                "banned": peer.banned,
-                "bootstrap": peer.bootstrap,
-                "last_alive": peer.last_alive,
-                "last_failure": peer.last_failure,
-                "advertised": peer.advertised,
-            })
-        })
+        // .map(|peer| {
+        //     json!({
+        //         "ip": peer.ip,
+        //         "peer_type": peer.banned,
+        //         "bootstrap": peer.bootstrap,
+        //         "last_alive": peer.last_alive,
+        //         "last_failure": peer.last_failure,
+        //         "advertised": peer.advertised,
+        //     })
+        // })
         .collect();
 
     tokio::fs::write(file_path, serde_json::to_string_pretty(&peer_vec)?).await?;
@@ -155,14 +177,13 @@ fn cleanup_peers(
             .take(crate::settings::MAX_ADVERTISE_LENGTH as usize)
             .map(|&ip| PeerInfo {
                 ip,
-                banned: false,
-                bootstrap: false,
                 last_alive: None,
                 last_failure: None,
                 advertised: true,
                 active_out_connection_attempts: 0,
                 active_out_connections: 0,
                 active_in_connections: 0,
+                peer_type: Default::default(),
             })
             .collect()
     } else {
@@ -187,9 +208,12 @@ fn cleanup_peers(
                 continue;
             }
         }
-        if p.bootstrap || p.is_active() {
+        if p.peer_type == PeerType::Bootstrap
+            || p.peer_type == PeerType::WhiteListed
+            || p.is_active()
+        {
             keep_peers.push(p);
-        } else if p.banned {
+        } else if p.peer_type == PeerType::Banned {
             banned_peers.push(p);
         } else if p.advertised {
             idle_peers.push(p);
@@ -286,14 +310,24 @@ impl PeerInfoDatabase {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_bootstrap_connection_attempts: 0,
-            active_bootstrap_connections: 0,
-            active_out_nonbootstrap_connection_attempts: 0,
-            active_out_nonbootstrap_connections: 0,
-            active_in_nonbootstrap_connections: 0,
             wakeup_interval,
             clock_compensation,
+            whitelist_connections: Default::default(),
+            bootstrap_connection_count: Default::default(),
+            standard_connection_count: Default::default(),
         })
+    }
+
+    pub fn get_in_connection_count(&self) -> u64 {
+        (self.bootstrap_connection_count.active_in_connections
+            + self.whitelist_connections.active_in_connections
+            + self.standard_connection_count.active_in_connections) as u64
+    }
+
+    pub fn get_out_connection_count(&self) -> u64 {
+        (self.bootstrap_connection_count.active_out_connections
+            + self.whitelist_connections.active_out_connections
+            + self.standard_connection_count.active_out_connections) as u64
     }
 
     /// Refreshes the peer list. Should be called at regular intervals.
@@ -323,7 +357,7 @@ impl PeerInfoDatabase {
     pub async fn unban(&mut self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         for ip in ips.into_iter() {
             if let Some(peer) = self.peers.get_mut(&ip) {
-                peer.banned = false;
+                peer.peer_type = Default::default();
             } else {
                 return Ok(());
             }
@@ -349,114 +383,60 @@ impl PeerInfoDatabase {
         Ok(())
     }
 
-    /// Gets available out connection attempts
-    /// according to NetworkConfig and current connections and connection attempts.
-    // returns (count for bootstrap, count for non-bootstrap)
-    pub fn get_available_out_connection_attempts(&self) -> (usize, usize) {
-        let bootstrap_count = std::cmp::min(
-            self.network_settings
-                .target_bootstrap_connections
-                .saturating_sub(self.active_out_bootstrap_connection_attempts)
-                .saturating_sub(self.active_bootstrap_connections),
-            self.network_settings
-                .max_out_bootstrap_connection_attempts
-                .saturating_sub(self.active_out_bootstrap_connection_attempts),
-        );
+    fn get_candidate_ips_for_type(
+        &self,
+        peer_type: PeerType,
+        count: &ConnectionCount,
+        cfg: &PeerTypeConnectionConfig,
+    ) -> Result<impl Iterator<Item = IpAddr>, NetworkError> {
+        let avaible_slots = get_available_out_connection_attempts(count, cfg);
+        let now = MassaTime::compensated_now(self.clock_compensation)?;
+        let ip = |p: PeerInfo| p.ip;
+        if avaible_slots > 0 {
+            let mut sorted_peers: Vec<PeerInfo> = self
+                .peers
+                .values()
+                .filter(|&p| {
+                    if p.peer_type != peer_type || !p.advertised || p.is_active() {
+                        return false;
+                    }
+                    peer_ready(self.wakeup_interval, now, p)
+                })
+                .copied()
+                .collect();
+            sorted_peers
+                .sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
 
-        let nonbootstrap_count = std::cmp::min(
-            self.network_settings
-                .target_out_nonbootstrap_connections
-                .saturating_sub(self.active_out_nonbootstrap_connection_attempts)
-                .saturating_sub(self.active_out_nonbootstrap_connections),
-            self.network_settings
-                .max_out_nonbootstrap_connection_attempts
-                .saturating_sub(self.active_out_nonbootstrap_connection_attempts),
-        );
-
-        (bootstrap_count, nonbootstrap_count)
+            Ok(sorted_peers.into_iter().take(avaible_slots).map(ip))
+        } else {
+            Ok(Vec::new().into_iter().take(avaible_slots).map(ip))
+        }
     }
-
     /// Sorts peers by ( last_failure, rev(last_success) )
     /// and returns as many peers as there are available slots to attempt outgoing connections to.
     pub fn get_out_connection_candidate_ips(&self) -> Result<Vec<IpAddr>, NetworkError> {
-        /*
-            get_connect_candidate_ips must return the full sorted list where:
-                advertised && !banned && out_connection_attempts==0 && out_connections==0 && in_connections=0
-                sorted_by = ( last_failure, rev(last_success) )
-        */
-        let (available_slots_bootstrap, available_slots_nonbootstrap) =
-            self.get_available_out_connection_attempts();
-        let mut res_ips: Vec<IpAddr> = Vec::new();
+        // TODO why is this comment here ??
+        // get_connect_candidate_ips must return the full sorted list where:
+        //     advertised && !banned && out_connection_attempts==0 && out_connections==0 && in_connections=0
+        //     sorted_by = ( last_failure, rev(last_success) )
 
-        if available_slots_bootstrap > 0 {
-            let now = MassaTime::compensated_now(self.clock_compensation)?;
-            let mut sorted_peers: Vec<PeerInfo> = self
-                .peers
-                .values()
-                .filter(|&p| {
-                    if !p.bootstrap || !p.advertised || p.banned || p.is_active() {
-                        return false;
-                    }
-                    if let Some(last_failure) = p.last_failure {
-                        if let Some(last_alive) = p.last_alive {
-                            if last_alive > last_failure {
-                                return true;
-                            }
-                        }
-                        return now
-                            .saturating_sub(last_failure)
-                            .saturating_sub(self.wakeup_interval)
-                            > MassaTime::from(0u64);
-                    }
-                    true
-                })
-                .copied()
-                .collect();
-            sorted_peers
-                .sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
-            res_ips.extend(
-                sorted_peers
-                    .into_iter()
-                    .take(available_slots_bootstrap)
-                    .map(|p| p.ip),
-            )
-        }
-
-        if available_slots_nonbootstrap > 0 {
-            let now = MassaTime::compensated_now(self.clock_compensation)?;
-            let mut sorted_peers: Vec<PeerInfo> = self
-                .peers
-                .values()
-                .filter(|&p| {
-                    if !(!p.bootstrap && p.advertised && !p.banned && !p.is_active()) {
-                        return false;
-                    }
-                    if let Some(last_failure) = p.last_failure {
-                        if let Some(last_alive) = p.last_alive {
-                            if last_alive > last_failure {
-                                return true;
-                            }
-                        }
-                        return now
-                            .saturating_sub(last_failure)
-                            .saturating_sub(self.wakeup_interval)
-                            > MassaTime::from(0u64);
-                    }
-                    true
-                })
-                .copied()
-                .collect();
-            sorted_peers
-                .sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
-            res_ips.extend(
-                sorted_peers
-                    .into_iter()
-                    .take(available_slots_nonbootstrap)
-                    .map(|p| p.ip),
-            )
-        }
-
-        Ok(res_ips)
+        Ok(self
+            .get_candidate_ips_for_type(
+                PeerType::Bootstrap,
+                &self.bootstrap_connection_count,
+                &self.network_settings.bootstrap_peers_config,
+            )?
+            .chain(self.get_candidate_ips_for_type(
+                PeerType::WhiteListed,
+                &self.whitelist_connections,
+                &self.network_settings.whitelist_peers_config,
+            )?)
+            .chain(self.get_candidate_ips_for_type(
+                PeerType::Standard,
+                &self.standard_connection_count,
+                &self.network_settings.standard_peers_config,
+            )?)
+            .collect())
     }
 
     /// returns Hashmap of ipAddrs -> Peerinfo
@@ -469,7 +449,7 @@ impl PeerInfoDatabase {
         let mut sorted_peers: Vec<PeerInfo> = self
             .peers
             .values()
-            .filter(|&p| (p.advertised && !p.banned))
+            .filter(|&p| (p.advertised && p.peer_type != PeerType::Banned))
             .copied()
             .collect();
         sorted_peers.sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_alive), p.last_failure));
@@ -493,30 +473,59 @@ impl PeerInfoDatabase {
         if !ip.is_global() {
             return Err(NetworkError::InvalidIpError(*ip));
         }
-        let (available_bootstrap_conns, available_nonbootstrap_conns) =
-            self.get_available_out_connection_attempts();
+
         let peer = self.peers.get_mut(ip).ok_or({
             NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
                 *ip,
             ))
         })?;
-        if peer.bootstrap {
-            if available_bootstrap_conns == 0 {
-                return Err(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
-                ));
+
+        // TODO here we do the ssame thing 3 times, so let's refactor
+        match peer.peer_type {
+            PeerType::Bootstrap => {
+                if get_available_out_connection_attempts(
+                    &self.bootstrap_connection_count,
+                    &self.network_settings.bootstrap_peers_config,
+                ) == 0
+                {
+                    return Err(NetworkError::PeerConnectionError(
+                        NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
+                    ));
+                } else {
+                    self.bootstrap_connection_count
+                        .active_out_connection_attempts += 1
+                };
             }
-        } else if available_nonbootstrap_conns == 0 {
-            return Err(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
-            ));
+            PeerType::WhiteListed => {
+                if get_available_out_connection_attempts(
+                    &self.whitelist_connections,
+                    &self.network_settings.whitelist_peers_config,
+                ) == 0
+                {
+                    return Err(NetworkError::PeerConnectionError(
+                        NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
+                    ));
+                } else {
+                    self.whitelist_connections.active_out_connection_attempts += 1
+                };
+            }
+            PeerType::Banned => {} // do nothing
+            PeerType::Standard => {
+                if get_available_out_connection_attempts(
+                    &self.standard_connection_count,
+                    &self.network_settings.standard_peers_config,
+                ) == 0
+                {
+                    return Err(NetworkError::PeerConnectionError(
+                        NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
+                    ));
+                } else {
+                    self.standard_connection_count
+                        .active_out_connection_attempts += 1
+                };
+            }
         }
-        peer.active_out_connection_attempts += 1;
-        if peer.bootstrap {
-            self.active_out_bootstrap_connection_attempts += 1;
-        } else {
-            self.active_out_nonbootstrap_connection_attempts += 1;
-        }
+
         Ok(())
     }
 
@@ -582,8 +591,7 @@ impl PeerInfoDatabase {
     pub fn peer_banned(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         let peer = self.peers.entry(*ip).or_insert_with(|| PeerInfo {
             ip: *ip,
-            banned: false,
-            bootstrap: false,
+            peer_type: Default::default(),
             last_alive: None,
             last_failure: None,
             advertised: false,
@@ -592,9 +600,9 @@ impl PeerInfoDatabase {
             active_in_connections: 0,
         });
         peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
-        if !peer.banned {
-            peer.banned = true;
-            if !peer.is_active() && !peer.bootstrap {
+        if peer.peer_type != PeerType::Banned {
+            peer.peer_type = PeerType::Banned;
+            if !peer.is_active() && peer.peer_type == PeerType::Standard {
                 cleanup_peers(
                     &self.network_settings,
                     &mut self.peers,
@@ -620,22 +628,25 @@ impl PeerInfoDatabase {
                 *ip,
             ))
         })?;
-        if (peer.bootstrap && self.active_bootstrap_connections == 0)
-            || (!peer.bootstrap && self.active_out_nonbootstrap_connections == 0)
-            || peer.active_out_connections == 0
-        {
+        if match peer.peer_type {
+            PeerType::Bootstrap => self.bootstrap_connection_count.active_out_connections == 0,
+            PeerType::WhiteListed => self.whitelist_connections.active_out_connections == 0,
+            PeerType::Banned => true, // todo maybe throw another error as we're trying to close a banned peer ?
+            PeerType::Standard => self.standard_connection_count.active_out_connections == 0,
+        } {
             return Err(NetworkError::PeerConnectionError(
                 NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
             ));
         }
-        peer.active_out_connections -= 1;
-        if peer.bootstrap {
-            self.active_bootstrap_connections -= 1;
-        } else {
-            self.active_out_nonbootstrap_connections -= 1;
+
+        match peer.peer_type {
+            PeerType::Bootstrap => self.bootstrap_connection_count.active_out_connections -= 1,
+            PeerType::WhiteListed => self.whitelist_connections.active_out_connections -= 1,
+            PeerType::Banned => {} //todo manage error ?
+            PeerType::Standard => self.standard_connection_count.active_out_connections -= 1,
         }
 
-        if !peer.is_active() && !peer.bootstrap {
+        if !peer.is_active() && peer.peer_type == PeerType::Standard {
             cleanup_peers(
                 &self.network_settings,
                 &mut self.peers,
@@ -663,21 +674,23 @@ impl PeerInfoDatabase {
             ))
         })?;
 
-        if (peer.bootstrap && self.active_bootstrap_connections == 0)
-            || (!peer.bootstrap && self.active_in_nonbootstrap_connections == 0)
-            || peer.active_in_connections == 0
-        {
+        if match peer.peer_type {
+            PeerType::Bootstrap => self.bootstrap_connection_count.active_in_connections == 0,
+            PeerType::WhiteListed => self.whitelist_connections.active_in_connections == 0,
+            PeerType::Banned => true, // todo maybe throw another error as we're trying to close a banned peer ?
+            PeerType::Standard => self.standard_connection_count.active_in_connections == 0,
+        } {
             return Err(NetworkError::PeerConnectionError(
                 NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
             ));
         }
-        peer.active_in_connections -= 1;
-        if peer.bootstrap {
-            self.active_bootstrap_connections -= 1;
-        } else {
-            self.active_in_nonbootstrap_connections -= 1;
+        match peer.peer_type {
+            PeerType::Bootstrap => self.bootstrap_connection_count.active_in_connections -= 1,
+            PeerType::WhiteListed => self.whitelist_connections.active_in_connections -= 1,
+            PeerType::Banned => {} //todo manage error ?
+            PeerType::Standard => self.standard_connection_count.active_in_connections -= 1,
         }
-        if !peer.is_active() && !peer.bootstrap {
+        if !peer.is_active() && peer.peer_type == PeerType::Standard {
             cleanup_peers(
                 &self.network_settings,
                 &mut self.peers,
@@ -711,33 +724,50 @@ impl PeerInfoDatabase {
             ))
         })?;
 
-        if (peer.bootstrap && self.active_out_bootstrap_connection_attempts == 0)
-            || (!peer.bootstrap && self.active_out_nonbootstrap_connection_attempts == 0)
-            || (peer.active_out_connection_attempts == 0)
-        {
+        // is there a attempt slot avaible
+        if match peer.peer_type {
+            PeerType::Bootstrap => {
+                self.bootstrap_connection_count
+                    .active_out_connection_attempts
+                    == 0
+            }
+            PeerType::WhiteListed => self.whitelist_connections.active_out_connection_attempts == 0,
+            PeerType::Banned => true, // todo maybe throw another error as we're trying to close a banned peer ?
+            PeerType::Standard => {
+                self.standard_connection_count
+                    .active_out_connection_attempts
+                    == 0
+            }
+        } {
             return Err(NetworkError::PeerConnectionError(
                 NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
             ));
         }
-        if (peer.bootstrap
-            && self.active_bootstrap_connections
-                >= self.network_settings.target_bootstrap_connections)
-            || (!peer.bootstrap
-                && self.active_out_nonbootstrap_connections
-                    >= self.network_settings.target_out_nonbootstrap_connections)
-        {
+
+        // have we reached target yet ?
+        if match peer.peer_type {
+            PeerType::Bootstrap => {
+                self.bootstrap_connection_count.active_out_connections
+                    >= self.network_settings.bootstrap_peers_config.target_out
+            }
+            PeerType::WhiteListed => {
+                self.whitelist_connections.active_out_connections
+                    >= self.network_settings.whitelist_peers_config.target_out
+            }
+            PeerType::Banned => true, //todo error?
+            PeerType::Standard => {
+                self.standard_connection_count.active_out_connections
+                    >= self.network_settings.standard_peers_config.target_out
+            }
+        } {
             return Ok(false);
         }
-        peer.active_out_connection_attempts -= 1;
-        if peer.bootstrap {
-            self.active_out_bootstrap_connection_attempts -= 1;
-        } else {
-            self.active_out_nonbootstrap_connection_attempts -= 1;
-        }
+
         peer.advertised = true; // we just connected to it. Assume advertised.
-        if peer.banned {
+
+        if peer.peer_type == PeerType::Banned {
             peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
-            if !peer.is_active() && !peer.bootstrap {
+            if !peer.is_active() {
                 cleanup_peers(
                     &self.network_settings,
                     &mut self.peers,
@@ -750,10 +780,11 @@ impl PeerInfoDatabase {
             return Ok(false);
         }
         peer.active_out_connections += 1;
-        if peer.bootstrap {
-            self.active_bootstrap_connections += 1;
-        } else {
-            self.active_out_nonbootstrap_connections += 1;
+        match peer.peer_type {
+            PeerType::Bootstrap => self.bootstrap_connection_count.active_out_connections += 1,
+            PeerType::WhiteListed => self.whitelist_connections.active_out_connections += 1,
+            PeerType::Banned => {} //todo manage error ?
+            PeerType::Standard => self.standard_connection_count.active_out_connections += 1,
         }
         self.request_dump()?;
         Ok(true)
@@ -771,22 +802,41 @@ impl PeerInfoDatabase {
                 *ip,
             ))
         })?;
-        if (peer.bootstrap && self.active_out_bootstrap_connection_attempts == 0)
-            || (!peer.bootstrap && self.active_out_nonbootstrap_connection_attempts == 0)
-            || peer.active_out_connection_attempts == 0
-        {
+
+        // is there a attempt slot avaible
+        if match peer.peer_type {
+            PeerType::Bootstrap => {
+                self.bootstrap_connection_count
+                    .active_out_connection_attempts
+                    == 0
+            }
+            PeerType::WhiteListed => self.whitelist_connections.active_out_connection_attempts == 0,
+            PeerType::Banned => true, // todo maybe throw another error as we're trying to close a banned peer ?
+            PeerType::Standard => {
+                self.standard_connection_count
+                    .active_out_connection_attempts
+                    == 0
+            }
+        } {
             return Err(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::ToManyConnectionFailure(*ip),
+                NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
             ));
         }
         peer.active_out_connection_attempts -= 1;
-        if peer.bootstrap {
-            self.active_out_bootstrap_connection_attempts -= 1;
-        } else {
-            self.active_out_nonbootstrap_connection_attempts -= 1;
+        match peer.peer_type {
+            PeerType::Bootstrap => {
+                self.bootstrap_connection_count
+                    .active_out_connection_attempts -= 1
+            }
+            PeerType::WhiteListed => self.whitelist_connections.active_out_connection_attempts -= 1,
+            PeerType::Banned => {} //todo manage error ?
+            PeerType::Standard => {
+                self.standard_connection_count
+                    .active_out_connection_attempts -= 1
+            }
         }
         peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
-        if !peer.is_active() && !peer.bootstrap {
+        if !peer.is_active() && peer.peer_type == PeerType::Standard {
             cleanup_peers(
                 &self.network_settings,
                 &mut self.peers,
@@ -826,15 +876,24 @@ impl PeerInfoDatabase {
         let res = match self.peers.entry(*ip) {
             hash_map::Entry::Occupied(mut occ) => {
                 let peer = occ.get_mut();
-                if (peer.bootstrap
-                    && self.active_bootstrap_connections
-                        >= self.network_settings.target_bootstrap_connections)
-                    || (!peer.bootstrap
-                        && self.active_in_nonbootstrap_connections
-                            >= self.network_settings.max_in_nonbootstrap_connections)
-                {
+                // is there a attempt slot avaible
+                if match peer.peer_type {
+                    PeerType::Bootstrap => {
+                        self.bootstrap_connection_count.active_in_connections
+                            >= self.network_settings.bootstrap_peers_config.max_in
+                    }
+                    PeerType::WhiteListed => {
+                        self.whitelist_connections.active_in_connections
+                            >= self.network_settings.whitelist_peers_config.max_in
+                    }
+                    PeerType::Banned => true, //todo error?
+                    PeerType::Standard => {
+                        self.standard_connection_count.active_in_connections
+                            >= self.network_settings.standard_peers_config.max_in
+                    }
+                } {
                     Err(NetworkConnectionErrorType::MaxPeersConnectionReached(*ip))
-                } else if peer.banned {
+                } else if peer.peer_type == PeerType::Banned {
                     massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
                     peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
                     self.request_dump()?;
@@ -846,10 +905,17 @@ impl PeerInfoDatabase {
                     Err(NetworkConnectionErrorType::MaxPeersConnectionReached(*ip))
                 } else {
                     peer.active_in_connections += 1;
-                    if peer.bootstrap {
-                        self.active_bootstrap_connections += 1;
-                    } else {
-                        self.active_in_nonbootstrap_connections += 1;
+                    match peer.peer_type {
+                        PeerType::Bootstrap => {
+                            self.bootstrap_connection_count.active_in_connections += 1
+                        }
+                        PeerType::WhiteListed => {
+                            self.whitelist_connections.active_in_connections += 1
+                        }
+                        PeerType::Banned => {} //todo manage error ?
+                        PeerType::Standard => {
+                            self.standard_connection_count.active_in_connections += 1
+                        }
                     }
                     Ok(())
                 }
@@ -857,17 +923,16 @@ impl PeerInfoDatabase {
             hash_map::Entry::Vacant(vac) => {
                 let mut peer = PeerInfo {
                     ip: *ip,
-                    banned: false,
-                    bootstrap: false,
                     last_alive: None,
                     last_failure: None,
                     advertised: false,
                     active_out_connection_attempts: 0,
                     active_out_connections: 0,
                     active_in_connections: 0,
+                    peer_type: Default::default(),
                 };
-                if self.active_in_nonbootstrap_connections
-                    >= self.network_settings.max_in_nonbootstrap_connections
+                if self.standard_connection_count.active_in_connections
+                    >= self.network_settings.standard_peers_config.max_in
                 {
                     Err(NetworkConnectionErrorType::MaxPeersConnectionReached(*ip))
                 } else if peer.active_in_connections
@@ -878,7 +943,7 @@ impl PeerInfoDatabase {
                 } else {
                     peer.active_in_connections += 1;
                     vac.insert(peer);
-                    self.active_in_nonbootstrap_connections += 1;
+                    self.standard_connection_count.active_in_connections += 1;
                     Ok(())
                 }
             }
@@ -889,6 +954,36 @@ impl PeerInfoDatabase {
         self.request_dump()?;
         Ok(())
     }
+}
+
+/// Gets available out connection attempts for given connection count and settings
+fn get_available_out_connection_attempts(
+    count: &ConnectionCount,
+    cfg: &PeerTypeConnectionConfig,
+) -> usize {
+    std::cmp::min(
+        cfg.target_out
+            .saturating_sub(count.active_out_connection_attempts)
+            .saturating_sub(count.active_out_connections),
+        cfg.max_out_attempts
+            .saturating_sub(count.active_out_connection_attempts),
+    )
+}
+
+/// peer is ready to be retried, enough time has elapsed since last failure
+fn peer_ready(wakeup_interval: MassaTime, now: MassaTime, p: &PeerInfo) -> bool {
+    if let Some(last_failure) = p.last_failure {
+        if let Some(last_alive) = p.last_alive {
+            if last_alive > last_failure {
+                return true;
+            }
+        }
+        return now
+            .saturating_sub(last_failure)
+            .saturating_sub(wakeup_interval)
+            > MassaTime::from(0u64);
+    }
+    true
 }
 
 //to start alone RUST_BACKTRACE=1 cargo test peer_info_database -- --nocapture --test-threads=1

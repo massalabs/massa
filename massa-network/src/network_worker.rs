@@ -882,16 +882,14 @@ impl NetworkWorker {
             NetworkCommand::Unban(ip) => self.peer_info_db.unban(ip).await?,
             NetworkCommand::GetStats { response_tx } => {
                 let res = NetworkStats {
-                    in_connection_count: self.peer_info_db.active_in_nonbootstrap_connections
-                        as u64, // TODO: add bootstrap connections ... see #1312
-                    out_connection_count: self.peer_info_db.active_out_nonbootstrap_connections
-                        as u64, // TODO: add bootstrap connections ... see #1312
+                    in_connection_count: self.peer_info_db.get_in_connection_count(),
+                    out_connection_count: self.peer_info_db.get_out_connection_count(),
                     known_peer_count: self.peer_info_db.peers.len() as u64,
                     banned_peer_count: self
                         .peer_info_db
                         .peers
                         .iter()
-                        .filter(|(_, p)| p.banned)
+                        .filter(|(_, p)| p.peer_type == PeerType::Banned)
                         .fold(0, |acc, _| acc + 1),
                     active_node_count: self.active_nodes.len() as u64,
                 };

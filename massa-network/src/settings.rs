@@ -55,18 +55,14 @@ pub struct NetworkSettings {
     pub peers_file: std::path::PathBuf,
     /// Path to the file containing our private_key
     pub private_key_file: std::path::PathBuf,
-    /// Target number of bootstrap connections.
-    pub target_bootstrap_connections: usize,
-    /// Limit on the number of simultaneout outgoing bootstrap connection attempts.
-    pub max_out_bootstrap_connection_attempts: usize,
-    /// Target number of outgoing nonbootstrap connections.
-    pub target_out_nonbootstrap_connections: usize,
-    /// Limit on the number of in connections.
-    pub max_in_nonbootstrap_connections: usize,
+    /// Config for bootstrap connections.
+    pub bootstrap_peers_config: PeerTypeConnectionConfig,
+    /// Config for whitelist peers.
+    pub whitelist_peers_config: PeerTypeConnectionConfig,
+    /// Config for standard peers.
+    pub standard_peers_config: PeerTypeConnectionConfig,
     /// Limit on the number of in connections per ip.
     pub max_in_connections_per_ip: usize,
-    /// Limit on the total current number of outgoing non-bootstrap connection attempts.
-    pub max_out_nonbootstrap_connection_attempts: usize,
     /// Limit on the number of idle peers we remember.
     pub max_idle_peers: usize,
     /// Limit on the number of banned peers we remember.
@@ -87,11 +83,20 @@ pub struct NetworkSettings {
     pub max_in_connection_overflow: usize,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct PeerTypeConnectionConfig {
+    pub max_in: usize,
+    pub target_out: usize,
+    pub max_out_attempts: usize,
+}
+
 #[cfg(test)]
 mod tests {
     use crate::NetworkSettings;
     use massa_time::MassaTime;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+
+    use super::PeerTypeConnectionConfig;
 
     impl Default for NetworkSettings {
         fn default() -> Self {
@@ -102,12 +107,7 @@ mod tests {
                 connect_timeout: MassaTime::from(180_000),
                 wakeup_interval: MassaTime::from(10_000),
                 peers_file: std::path::PathBuf::new(),
-                target_bootstrap_connections: 1,
-                max_out_bootstrap_connection_attempts: 1,
-                target_out_nonbootstrap_connections: 10,
-                max_in_nonbootstrap_connections: 5,
                 max_in_connections_per_ip: 2,
-                max_out_nonbootstrap_connection_attempts: 15,
                 max_idle_peers: 3,
                 max_banned_peers: 3,
                 peers_file_dump_interval: MassaTime::from(10_000),
@@ -119,6 +119,21 @@ mod tests {
                 initial_peers_file: std::path::PathBuf::new(),
                 peer_list_send_timeout: MassaTime::from(500),
                 max_in_connection_overflow: 2,
+                bootstrap_peers_config: PeerTypeConnectionConfig {
+                    target_out: 1,
+                    max_out_attempts: 1,
+                    max_in: 1,
+                },
+                whitelist_peers_config: PeerTypeConnectionConfig {
+                    max_in: 10,
+                    target_out: 10,
+                    max_out_attempts: 10,
+                },
+                standard_peers_config: PeerTypeConnectionConfig {
+                    target_out: 10,
+                    max_in: 5,
+                    max_out_attempts: 15,
+                },
             }
         }
     }
