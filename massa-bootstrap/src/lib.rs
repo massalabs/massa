@@ -8,11 +8,13 @@ use crate::server_binder::BootstrapServerBinder;
 use error::BootstrapError;
 pub use establisher::Establisher;
 use futures::{stream::FuturesUnordered, StreamExt};
-use massa_consensus::{BootstrapableGraph, ConsensusCommandSender, ExportProofOfStake};
+use massa_consensus_exports::ConsensusCommandSender;
 use massa_execution::{BootstrapExecutionState, ExecutionCommandSender};
+use massa_graph::BootstrapableGraph;
 use massa_logging::massa_trace;
 use massa_models::Version;
 use massa_network::{BootstrapPeers, NetworkCommandSender};
+use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_signature::{PrivateKey, PublicKey};
 use massa_time::MassaTime;
 use messages::BootstrapMessage;
@@ -368,7 +370,7 @@ impl BootstrapServer {
                 }
 
                 // listener
-                Ok((dplx, remote_addr)) = listener.accept(), if bootstrap_sessions.len() < self.bootstrap_settings.max_simultaneous_bootstraps as usize => {
+                Ok((dplx, remote_addr)) = listener.accept() => if bootstrap_sessions.len() < self.bootstrap_settings.max_simultaneous_bootstraps as usize {
                     massa_trace!("bootstrap.lib.run.select.accept", {"remote_addr": remote_addr});
                     let now = Instant::now();
 

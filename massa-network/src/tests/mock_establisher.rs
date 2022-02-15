@@ -13,6 +13,9 @@ const CHANNEL_SIZE: usize = 256;
 pub type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
 pub type WriteHalf = tokio::io::WriteHalf<DuplexStream>;
 
+pub type Receiver = mpsc::Receiver<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>;
+pub type Sender = mpsc::Sender<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>;
+
 pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
     let (connection_listener_tx, connection_listener_rx) =
         mpsc::channel::<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>(CHANNEL_SIZE);
@@ -34,7 +37,7 @@ pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
 
 #[derive(Debug)]
 pub struct MockListener {
-    connection_listener_rx: mpsc::Receiver<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>, // (controller, mock)
+    connection_listener_rx: Receiver, // (controller, mock)
 }
 
 impl MockListener {
@@ -109,8 +112,7 @@ impl MockConnector {
 
 #[derive(Debug)]
 pub struct MockEstablisher {
-    connection_listener_rx:
-        Option<mpsc::Receiver<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>>,
+    connection_listener_rx: Option<Receiver>,
     connection_connector_tx: mpsc::Sender<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>,
 }
 
@@ -138,8 +140,7 @@ impl MockEstablisher {
 }
 
 pub struct MockEstablisherInterface {
-    connection_listener_tx:
-        Option<mpsc::Sender<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>>,
+    connection_listener_tx: Option<Sender>,
     connection_connector_rx:
         mpsc::Receiver<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>,
 }

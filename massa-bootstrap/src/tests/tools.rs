@@ -3,21 +3,21 @@
 use super::mock_establisher::Duplex;
 use crate::settings::BootstrapSettings;
 use bitvec::prelude::*;
-use massa_consensus::ledger::LedgerChanges;
-use massa_consensus::{
-    BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportProofOfStake, LedgerSubset,
-    RollCounts, RollUpdate, RollUpdates, ThreadCycleState,
-};
+use massa_consensus_exports::commands::ConsensusCommand;
 use massa_execution::{BootstrapExecutionState, ExecutionCommand, SCELedger, SCELedgerEntry};
+use massa_graph::{
+    export_active_block::ExportActiveBlock, ledger::LedgerSubset, BootstrapableGraph,
+};
 use massa_hash::hash::Hash;
-use massa_models::clique::Clique;
-use massa_models::ledger::LedgerChange;
-use massa_models::ledger::LedgerData;
 use massa_models::{
+    clique::Clique,
+    ledger_models::{LedgerChange, LedgerChanges, LedgerData},
+    rolls::{RollCounts, RollUpdate, RollUpdates},
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact,
     Endorsement, EndorsementContent, Operation, OperationContent, SerializeCompact, Slot,
 };
 use massa_network::{BootstrapPeers, NetworkCommand};
+use massa_proof_of_stake_exports::{ExportProofOfStake, ThreadCycleState};
 use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
 };

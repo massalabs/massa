@@ -6,17 +6,19 @@ use super::{
     messages::Message,
 };
 use crate::{
-    error::{HandshakeErrorType, NetworkError},
-    ReadHalf, WriteHalf,
+    error::{throw_handshake_error as throw, HandshakeErrorType, NetworkError},
+    ConnectionId, ReadHalf, WriteHalf,
 };
 use futures::future::try_join;
 use massa_hash::hash::Hash;
+use massa_logging::massa_trace;
 use massa_models::node::NodeId;
 use massa_models::Version;
 use massa_signature::{sign, verify_signature, PrivateKey};
 use massa_time::MassaTime;
 use rand::{rngs::StdRng, RngCore, SeedableRng};
-use tokio::time::timeout;
+use tokio::{task::JoinHandle, time::timeout};
+use tracing::debug;
 
 /// Type alias for more readability
 pub type HandshakeReturnType = Result<(NodeId, ReadBinder, WriteBinder), NetworkError>;
@@ -39,35 +41,57 @@ pub struct HandshakeWorker {
 impl HandshakeWorker {
     /// Creates a new handshake worker.
     ///
+    /// Manage a new connection and perform a normal handshake
+    ///
+    /// Used for incomming and outgoing connections.
+    /// It will spawn a new future with an HandshakeWorker from the given `reader`
+    /// and `writer` from your current node to the distant `connectionId`
+    ///
     /// # Arguments
     /// * socket_reader: receives data.
     /// * socket_writer: sends data.
     /// * self_node_id: our node id.
     /// * private_key : our private key.
     /// * timeout_duration: after timeout_duration millis, the handshake attempt is dropped.
-    pub fn new(
+    /// * connection_id : Node we are trying to connect for debuging
+    /// * version : Node version used in handshake initialization (check peers compatibility)
+    pub fn spawn(
         socket_reader: ReadHalf,
         socket_writer: WriteHalf,
         self_node_id: NodeId,
         private_key: PrivateKey,
         timeout_duration: MassaTime,
         version: Version,
-    ) -> HandshakeWorker {
-        HandshakeWorker {
-            reader: ReadBinder::new(socket_reader),
-            writer: WriteBinder::new(socket_writer),
-            self_node_id,
-            private_key,
-            timeout_duration,
-            version,
-        }
+        connection_id: ConnectionId,
+    ) -> JoinHandle<(ConnectionId, HandshakeReturnType)> {
+        debug!("starting handshake with connection_id={}", connection_id);
+        massa_trace!("network_worker.new_connection", {
+            "connection_id": connection_id
+        });
+
+        let connection_id_copy = connection_id;
+        tokio::spawn(async move {
+            (
+                connection_id_copy,
+                HandshakeWorker {
+                    reader: ReadBinder::new(socket_reader),
+                    writer: WriteBinder::new(socket_writer),
+                    self_node_id,
+                    private_key,
+                    timeout_duration,
+                    version,
+                }
+                .run()
+                .await,
+            )
+        })
     }
 
     /// Manages one on going handshake.
     /// Consumes self.
     /// Returns a tuple (ConnectionId, Result).
     /// Creates the binders to communicate with that node.
-    pub async fn run(mut self) -> HandshakeReturnType {
+    async fn run(mut self) -> HandshakeReturnType {
         // generate random bytes
         let mut self_random_bytes = [0u8; 32];
         StdRng::from_entropy().fill_bytes(&mut self_random_bytes);
@@ -90,43 +114,28 @@ impl HandshakeWorker {
         )
         .await
         {
-            Err(_) => {
-                return Err(NetworkError::HandshakeError(
-                    HandshakeErrorType::HandshakeTimeout,
-                ))
-            }
+            Err(_) => throw!(HandshakeTimeout),
             Ok(Err(e)) => return Err(e),
-            Ok(Ok((_, None))) => {
-                return Err(NetworkError::HandshakeError(
-                    HandshakeErrorType::HandshakeInterruption("init".into()),
-                ))
-            }
+            Ok(Ok((_, None))) => throw!(HandshakeInterruption, "init".into()),
             Ok(Ok((_, Some((_, msg))))) => match msg {
                 Message::HandshakeInitiation {
                     public_key: pk,
                     random_bytes: rb,
                     version,
                 } => (NodeId(pk), rb, version),
-                _ => {
-                    return Err(NetworkError::HandshakeError(
-                        HandshakeErrorType::HandshakeWrongMessage,
-                    ))
-                }
+                Message::PeerList(list) => throw!(PeerListReceived, list),
+                _ => throw!(HandshakeWrongMessage),
             },
         };
 
         // check if remote node ID is the same as ours
         if other_node_id == self.self_node_id {
-            return Err(NetworkError::HandshakeError(
-                HandshakeErrorType::HandshakeKey,
-            ));
+            throw!(HandshakeKey)
         }
 
         // check if version is compatible with ours
         if !self.version.is_compatible(&other_version) {
-            return Err(NetworkError::HandshakeError(
-                HandshakeErrorType::IncompatibleVersion,
-            ));
+            throw!(IncompatibleVersion)
         }
 
         // sign their random bytes
@@ -149,24 +158,12 @@ impl HandshakeWorker {
         )
         .await
         {
-            Err(_) => {
-                return Err(NetworkError::HandshakeError(
-                    HandshakeErrorType::HandshakeTimeout,
-                ))
-            }
+            Err(_) => throw!(HandshakeTimeout),
             Ok(Err(e)) => return Err(e),
-            Ok(Ok((_, None))) => {
-                return Err(NetworkError::HandshakeError(
-                    HandshakeErrorType::HandshakeInterruption("repl".into()),
-                ))
-            }
+            Ok(Ok((_, None))) => throw!(HandshakeInterruption, "repl".into()),
             Ok(Ok((_, Some((_, msg))))) => match msg {
                 Message::HandshakeReply { signature: sig } => sig,
-                _ => {
-                    return Err(NetworkError::HandshakeError(
-                        HandshakeErrorType::HandshakeWrongMessage,
-                    ))
-                }
+                _ => throw!(HandshakeWrongMessage),
             },
         };
 

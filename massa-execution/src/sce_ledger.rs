@@ -7,7 +7,6 @@ use massa_models::{
     SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
 };
 use massa_models::{Address, Amount, AMOUNT_ZERO};
-use massa_sc_runtime::Bytecode;
 use serde::{Deserialize, Serialize};
 
 /// an entry in the SCE ledger
@@ -17,7 +16,7 @@ pub struct SCELedgerEntry {
     pub balance: Amount,
 
     // optional executable module
-    pub opt_module: Option<Bytecode>,
+    pub opt_module: Option<Vec<u8>>,
 
     // datastore
     pub data: Map<Hash, Vec<u8>>,
@@ -130,7 +129,7 @@ impl DeserializeCompact for SCELedgerEntry {
             }
         };
         cursor += 1;
-        let opt_module: Option<Bytecode> = if has_module {
+        let opt_module: Option<Vec<u8>> = if has_module {
             // read length
             let (length, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
             // TOOD limit length with from_varint_bytes_bounded
@@ -200,7 +199,7 @@ impl DeserializeCompact for SCELedgerEntry {
 #[derive(Debug, Clone, Default)]
 pub struct SCELedgerEntryUpdate {
     pub update_balance: Option<Amount>,
-    pub update_opt_module: Option<Option<Bytecode>>,
+    pub update_opt_module: Option<Option<Vec<u8>>>,
     pub update_data: Map<Hash, Option<Vec<u8>>>, // None for row deletion
 }
 
@@ -499,7 +498,7 @@ impl SCELedgerStep {
 
     /// gets the module of an SCE ledger entry
     ///  returns None if the entry was not found or has no module
-    pub fn get_module(&self, addr: &Address) -> Option<Bytecode> {
+    pub fn get_module(&self, addr: &Address) -> Option<Vec<u8>> {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {

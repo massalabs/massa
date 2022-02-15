@@ -3,6 +3,8 @@
 use displaydoc::Display;
 use thiserror::Error;
 
+pub type ModelsResult<T, E = ModelsError> = core::result::Result<T, E>;
+
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum ModelsError {
@@ -32,6 +34,10 @@ pub enum ModelsError {
     TimeOverflowError,
     /// Time error {0}
     TimeError(#[from] massa_time::TimeError),
+    /// invalid roll update: {0}
+    InvalidRollUpdate(String),
+    /// Ledger changes, Amount overflow
+    AmountOverflowError,
     /// Wrong prefix for hash: expected {0}, got {1}
     WrongPrefix(String, String),
 }
