@@ -499,10 +499,28 @@ impl VM {
     /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
     ///
     /// Truncate the history by the number of slots between last added step in
-    /// `step_history` and the `step` in parameter. (todo: explain why)
+    /// `step_history` and the `step` in parameter. (See Optimization)
     ///
     /// Call the internal `run_step_internal()` and push the `StepHistoryItem`
     /// into `self.step_history`.
+    ///
+    /// # Optimization
+    /// `step_history` contains the execution results of CONSECUTIVE active
+    /// slots that have been executed (front = oldest, back = most recent).
+    /// Therefore, if the VM gets a new active step (slot) to execute, and that
+    /// slot number breaks the slot-sorting of step_history when pushed back,
+    /// it means that there was a history rewrite (eg. clique change) and the
+    /// step_history needs to be truncated just before the incoming slot before
+    /// executing it and appending its result to step_history.
+    ///
+    /// ```ascii
+    /// s1     s4
+    ///  \      \
+    ///   s2     s5
+    ///    \      \ <--- input `step` to run is s6 so we can truncate 's7'
+    ///     \      \
+    ///      s3     s7
+    /// ```
     ///
     /// # Parameters
     ///   * step: execution step to run
