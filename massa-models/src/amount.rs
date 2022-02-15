@@ -19,8 +19,8 @@ pub struct Amount(u64);
 
 impl Amount {
     /// obtains the underlying raw u64 representation
-    /// Warning: do not use this unless you know what you are doing
-    /// because the raw value does not take the AMOUNT_DECIMAL_FACTOR into account
+    /// Warning:do not use this unless you know what you are doing
+    /// because the raw value does not take the AMOUNT_DECIMAL_FACTOR into account.
     pub fn to_raw(&self) -> u64 {
         self.0
     }
@@ -28,6 +28,7 @@ impl Amount {
     /// constructs an Amount from the underlying raw u64 representation
     /// Warning: do not use this unless you know what you are doing
     /// because the raw value does not take the AMOUNT_DECIMAL_FACTOR into account
+    /// In most cases, you should be using Amount::from_str("11.23")
     pub const fn from_raw(raw: u64) -> Self {
         Self(raw)
     }
@@ -114,6 +115,13 @@ impl Amount {
 }
 
 /// display an Amount in decimal string form (like "10.33")
+///
+/// ```
+/// # use massa_models::Amount;
+/// # use std::str::FromStr;
+/// let value = Amount::from_str("11.111").unwrap();
+/// assert_eq!(format!("{}", value), "11.111")
+/// ```
 impl fmt::Display for Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let res_string = Decimal::from_u64(self.0)
@@ -127,7 +135,17 @@ impl fmt::Display for Amount {
 
 /// build an Amount from decimal string form (like "10.33")
 /// note that this will fail if the string format is invalid
-/// or if the conversion would cause an overflow or precision loss
+/// or if the conversion would cause an overflow, underflow or precision loss
+///
+/// ```
+/// # use massa_models::Amount;
+/// # use std::str::FromStr;
+/// assert!(Amount::from_str("11.1").is_ok());
+/// assert!(Amount::from_str("11.1111111111111111111111").is_err());
+/// assert!(Amount::from_str("1111111111111111111111").is_err());
+/// assert!(Amount::from_str("-11.1").is_err());
+/// assert!(Amount::from_str("abc").is_err());
+/// ```
 impl FromStr for Amount {
     type Err = ModelsError;
 
