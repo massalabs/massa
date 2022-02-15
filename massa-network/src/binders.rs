@@ -87,17 +87,16 @@ impl ReadBinder {
     }
 
     /// Awaits the next incoming message and deserializes it. Async cancel-safe.
+    ///
+    /// This function must be async cancel-safe.
+    /// This means that the function can restart from the beginning at any "await" point and we need to avoid losing any data,
+    /// and we can only use the cancel-safe read() function
+    /// https://doc.rust-lang.org/std/io/trait.Read.html#tymethod.read
+    /// that returns an arbitrary number of bytes that were received that is > 0 and <= buffer.len(),
+    /// or =0 if there is no more data.
+    /// We can't use read_exact and similar because they are not cancel-safe:
+    /// https://docs.rs/tokio/latest/tokio/io/trait.AsyncReadExt.html#cancel-safety-2
     pub async fn next(&mut self) -> Result<Option<(u64, Message)>, NetworkError> {
-        /*
-            This function must be cancel-safe.
-            This means that the function can restart from the beginning at any "await" point and we need to avoid losing any data,
-            and we can only use the cancel-safe read() function
-            https://doc.rust-lang.org/std/io/trait.Read.html#tymethod.read
-            that returns an arbitrary number of bytes that were received that is > 0 and <= buffer.len().
-            We can't use read_exact and similar because they are not cancel-safe:
-            https://docs.rs/tokio/latest/tokio/io/trait.AsyncReadExt.html#cancel-safety-2
-        */
-
         let max_message_size = with_serialization_context(|context| context.max_message_size);
 
         // check if we are in the process of reading the message length
