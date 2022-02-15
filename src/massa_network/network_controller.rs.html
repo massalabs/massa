@@ -579,11 +579,11 @@
             .<span class="ident">send</span>(<span class="ident">NetworkCommand::GetPeers</span>(<span class="ident">response_tx</span>))
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send GetPeers command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
             <span class="ident">NetworkError::ChannelError</span>(
                 <span class="string">&quot;could not send GetAdvertisablePeerListChannelError upstream&quot;</span>.<span class="ident">into</span>(),
             )
-        })<span class="question-mark">?</span>)
+        })
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_network_stats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NetworkStats</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
@@ -592,11 +592,11 @@
             .<span class="ident">send</span>(<span class="ident">NetworkCommand::GetStats</span> { <span class="ident">response_tx</span> })
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send GetPeers command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
             <span class="ident">NetworkError::ChannelError</span>(
                 <span class="string">&quot;could not send GetAdvertisablePeerListChannelError upstream&quot;</span>.<span class="ident">into</span>(),
             )
-        })<span class="question-mark">?</span>)
+        })
     }
 
     <span class="doccomment">/// Send the order to get bootstrap peers.</span>
@@ -608,9 +608,9 @@
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send GetBootstrapPeers command&quot;</span>.<span class="ident">into</span>())
             })<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
             <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send GetBootstrapPeers response upstream&quot;</span>.<span class="ident">into</span>())
-        })<span class="question-mark">?</span>)
+        })
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">block_not_found</span>(
@@ -664,9 +664,9 @@
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send GetBootstrapPeers command&quot;</span>.<span class="ident">into</span>())
             })<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+        <span class="ident">response_rx</span>.<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
             <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send GetBootstrapPeers response upstream&quot;</span>.<span class="ident">into</span>())
-        })<span class="question-mark">?</span>)
+        })
     }
 }
 

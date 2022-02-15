@@ -122,6 +122,12 @@
 <span id="117">117</span>
 <span id="118">118</span>
 <span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
@@ -205,6 +211,10 @@
     <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Time after which we forget a node</span>
     <span class="kw">pub</span> <span class="ident">ban_timeout</span>: <span class="ident">MassaTime</span>,
+    <span class="doccomment">/// Timeout Duration when we send a PeerList in handshake</span>
+    <span class="kw">pub</span> <span class="ident">peer_list_send_timeout</span>: <span class="ident">MassaTime</span>,
+    <span class="doccomment">/// Max number of in connection overflowed managed by the handshake that send a list of peers</span>
+    <span class="kw">pub</span> <span class="ident">max_in_connection_overflow</span>: <span class="ident">usize</span>,
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -237,6 +247,8 @@
                 <span class="ident">max_send_wait</span>: <span class="ident">MassaTime::from</span>(<span class="number">100</span>),
                 <span class="ident">ban_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">100_000_000</span>),
                 <span class="ident">initial_peers_file</span>: <span class="ident">std::path::PathBuf::new</span>(),
+                <span class="ident">peer_list_send_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">500</span>),
+                <span class="ident">max_in_connection_overflow</span>: <span class="number">2</span>,
             }
         }
     }

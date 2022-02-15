@@ -1157,18 +1157,95 @@
 <span id="1152">1152</span>
 <span id="1153">1153</span>
 <span id="1154">1154</span>
+<span id="1155">1155</span>
+<span id="1156">1156</span>
+<span id="1157">1157</span>
+<span id="1158">1158</span>
+<span id="1159">1159</span>
+<span id="1160">1160</span>
+<span id="1161">1161</span>
+<span id="1162">1162</span>
+<span id="1163">1163</span>
+<span id="1164">1164</span>
+<span id="1165">1165</span>
+<span id="1166">1166</span>
+<span id="1167">1167</span>
+<span id="1168">1168</span>
+<span id="1169">1169</span>
+<span id="1170">1170</span>
+<span id="1171">1171</span>
+<span id="1172">1172</span>
+<span id="1173">1173</span>
+<span id="1174">1174</span>
+<span id="1175">1175</span>
+<span id="1176">1176</span>
+<span id="1177">1177</span>
+<span id="1178">1178</span>
+<span id="1179">1179</span>
+<span id="1180">1180</span>
+<span id="1181">1181</span>
+<span id="1182">1182</span>
+<span id="1183">1183</span>
+<span id="1184">1184</span>
+<span id="1185">1185</span>
+<span id="1186">1186</span>
+<span id="1187">1187</span>
+<span id="1188">1188</span>
+<span id="1189">1189</span>
+<span id="1190">1190</span>
+<span id="1191">1191</span>
+<span id="1192">1192</span>
+<span id="1193">1193</span>
+<span id="1194">1194</span>
+<span id="1195">1195</span>
+<span id="1196">1196</span>
+<span id="1197">1197</span>
+<span id="1198">1198</span>
+<span id="1199">1199</span>
+<span id="1200">1200</span>
+<span id="1201">1201</span>
+<span id="1202">1202</span>
+<span id="1203">1203</span>
+<span id="1204">1204</span>
+<span id="1205">1205</span>
+<span id="1206">1206</span>
+<span id="1207">1207</span>
+<span id="1208">1208</span>
+<span id="1209">1209</span>
+<span id="1210">1210</span>
+<span id="1211">1211</span>
+<span id="1212">1212</span>
+<span id="1213">1213</span>
+<span id="1214">1214</span>
+<span id="1215">1215</span>
+<span id="1216">1216</span>
+<span id="1217">1217</span>
+<span id="1218">1218</span>
+<span id="1219">1219</span>
+<span id="1220">1220</span>
+<span id="1221">1221</span>
+<span id="1222">1222</span>
+<span id="1223">1223</span>
+<span id="1224">1224</span>
+<span id="1225">1225</span>
+<span id="1226">1226</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! The network worker actually does the job of managing connections</span>
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">common</span>::{<span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>},
     <span class="ident">establisher</span>::{<span class="ident">Establisher</span>, <span class="ident">Listener</span>, <span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>},
-    <span class="ident">handshake_worker</span>::{<span class="ident">HandshakeReturnType</span>, <span class="ident">HandshakeWorker</span>},
+    <span class="ident">handshake_worker::HandshakeReturnType</span>,
     <span class="ident">node_worker</span>::{<span class="ident">NodeCommand</span>, <span class="ident">NodeEvent</span>, <span class="ident">NodeEventType</span>, <span class="ident">NodeWorker</span>},
     <span class="ident">peer_info_database</span>::<span class="kw-2">*</span>,
 };
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::{<span class="ident">HandshakeErrorType</span>, <span class="ident">NetworkError</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>::{<span class="ident">NetworkSettings</span>, <span class="ident">CHANNEL_SIZE</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">binders</span>::{<span class="ident">ReadBinder</span>, <span class="ident">WriteBinder</span>},
+    <span class="ident">error</span>::{<span class="ident">HandshakeErrorType</span>, <span class="ident">NetworkConnectionErrorType</span>, <span class="ident">NetworkError</span>},
+    <span class="ident">handshake_worker::HandshakeWorker</span>,
+    <span class="ident">messages::Message</span>,
+    <span class="ident">settings</span>::{<span class="ident">NetworkSettings</span>, <span class="ident">CHANNEL_SIZE</span>},
+};
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">stream::FuturesUnordered</span>, <span class="ident">StreamExt</span>};
 <span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
@@ -1363,6 +1440,8 @@
     <span class="ident">running_handshakes</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ConnectionId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Running handshakes futures.</span>
     <span class="ident">handshake_futures</span>: <span class="ident">FuturesUnordered</span><span class="op">&lt;</span><span class="ident">JoinHandle</span><span class="op">&lt;</span>(<span class="ident">ConnectionId</span>, <span class="ident">HandshakeReturnType</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Running handshakes that send a list of peers.</span>
+    <span class="ident">handshake_peer_list_futures</span>: <span class="ident">FuturesUnordered</span><span class="op">&lt;</span><span class="ident">JoinHandle</span><span class="op">&lt;</span>()<span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Channel for sending node events.</span>
     <span class="ident">node_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">NodeEvent</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Receiving channel for node events.</span>
@@ -1423,6 +1502,7 @@
             <span class="ident">controller_manager_rx</span>,
             <span class="ident">running_handshakes</span>: <span class="ident">HashSet::new</span>(),
             <span class="ident">handshake_futures</span>: <span class="ident">FuturesUnordered::new</span>(),
+            <span class="ident">handshake_peer_list_futures</span>: <span class="ident">FuturesUnordered::new</span>(),
             <span class="ident">node_event_tx</span>,
             <span class="ident">node_event_rx</span>,
             <span class="ident">active_nodes</span>: <span class="ident">HashMap::new</span>(),
@@ -1532,6 +1612,9 @@
                     <span class="ident">need_connect_retry</span> <span class="op">=</span> <span class="bool-val">true</span>; <span class="comment">// retry out connections</span>
                 },
 
+                <span class="comment">// Managing handshakes that return a PeerList</span>
+                <span class="prelude-val">Some</span>(<span class="kw">_</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">handshake_peer_list_futures</span>.<span class="ident">next</span>() =&gt; {},
+
                 <span class="comment">// node closed</span>
                 <span class="prelude-val">Some</span>(<span class="ident">evt</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">node_worker_handles</span>.<span class="ident">next</span>() =&gt; {
                     <span class="kw">let</span> (<span class="ident">node_id</span>, <span class="ident">res</span>) <span class="op">=</span> <span class="ident">evt</span><span class="question-mark">?</span>;  <span class="comment">// ? =&gt; when a node worker panics</span>
@@ -1632,6 +1715,7 @@
         <span class="comment">// wait for all running handshakes</span>
         <span class="self">self</span>.<span class="ident">running_handshakes</span>.<span class="ident">clear</span>();
         <span class="kw">while</span> <span class="self">self</span>.<span class="ident">handshake_futures</span>.<span class="ident">next</span>().<span class="kw">await</span>.<span class="ident">is_some</span>() {}
+        <span class="kw">while</span> <span class="self">self</span>.<span class="ident">handshake_peer_list_futures</span>.<span class="ident">next</span>().<span class="kw">await</span>.<span class="ident">is_some</span>() {}
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1745,6 +1829,16 @@
                     }
                 }
             }
+            <span class="comment">// a handshake failed and sent a list of peers</span>
+            <span class="prelude-val">Err</span>(<span class="ident">NetworkError::HandshakeError</span>(<span class="ident">HandshakeErrorType::PeerListReceived</span>(<span class="ident">peers</span>))) =&gt; {
+                <span class="comment">// Manage the final of an handshake that send us a list of new peers</span>
+                <span class="comment">// instead of accepting a connection. Notify to the DB that `to_remove`</span>
+                <span class="comment">// has failed and merge new `to_add` candidates.</span>
+                <span class="self">self</span>.<span class="ident">peer_info_db</span>.<span class="ident">merge_candidate_peers</span>(<span class="kw-2">&amp;</span><span class="ident">peers</span>)<span class="question-mark">?</span>;
+                <span class="self">self</span>.<span class="ident">running_handshakes</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">new_connection_id</span>);
+                <span class="self">self</span>.<span class="ident">connection_closed</span>(<span class="ident">new_connection_id</span>, <span class="ident">ConnectionClosureReason::Failed</span>)
+                    .<span class="kw">await</span><span class="question-mark">?</span>;
+            }
             <span class="comment">// a handshake finished and failed</span>
             <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
                 <span class="macro">debug!</span>(
@@ -1760,50 +1854,6 @@
                     .<span class="kw">await</span><span class="question-mark">?</span>;
             }
         };
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="kw">fn</span> <span class="ident">new_connection</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">connection_id</span>: <span class="ident">ConnectionId</span>,
-        <span class="ident">reader</span>: <span class="ident">ReadHalf</span>,
-        <span class="ident">writer</span>: <span class="ident">WriteHalf</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="comment">// add connection ID to running_handshakes</span>
-        <span class="comment">// launch async handshake_fn(connectionId, socket)</span>
-        <span class="comment">// add its handle to handshake_futures</span>
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">running_handshakes</span>.<span class="ident">insert</span>(<span class="ident">connection_id</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::HandshakeError</span>(
-                <span class="ident">HandshakeErrorType::HandshakeIdAlreadyExist</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">connection_id</span>)),
-            ));
-        }
-
-        <span class="macro">debug!</span>(<span class="string">&quot;starting handshake with connection_id={}&quot;</span>, <span class="ident">connection_id</span>);
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;network_worker.new_connection&quot;</span>, {
-            <span class="string">&quot;connection_id&quot;</span>: <span class="ident">connection_id</span>
-        });
-
-        <span class="kw">let</span> <span class="ident">self_node_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">self_node_id</span>;
-        <span class="kw">let</span> <span class="ident">private_key</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">private_key</span>;
-        <span class="kw">let</span> <span class="ident">message_timeout</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">message_timeout</span>;
-        <span class="kw">let</span> <span class="ident">connection_id_copy</span> <span class="op">=</span> <span class="ident">connection_id</span>;
-        <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">version</span>;
-        <span class="kw">let</span> <span class="ident">handshake_fn_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            (
-                <span class="ident">connection_id_copy</span>,
-                <span class="ident">HandshakeWorker::new</span>(
-                    <span class="ident">reader</span>,
-                    <span class="ident">writer</span>,
-                    <span class="ident">self_node_id</span>,
-                    <span class="ident">private_key</span>,
-                    <span class="ident">message_timeout</span>,
-                    <span class="ident">version</span>,
-                )
-                .<span class="ident">run</span>()
-                .<span class="kw">await</span>,
-            )
-        });
-        <span class="self">self</span>.<span class="ident">handshake_futures</span>.<span class="ident">push</span>(<span class="ident">handshake_fn_handle</span>);
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -2111,10 +2161,8 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
     <span class="doccomment">/// * res : (reader, writer) in a result coming out of out_connecting_futures</span>
-    <span class="doccomment">/// * peer_info_db: Database with peer information.</span>
+    <span class="doccomment">/// * ip_addr: distant address we are trying to reach.</span>
     <span class="doccomment">/// * cur_connection_id : connection id of the node we are trying to reach</span>
-    <span class="doccomment">/// * active_connections: hashmap linking connection id to ipAddr to whether connection is outgoing (true)</span>
-    <span class="doccomment">/// * event_tx: channel to send network events out.</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">manage_out_connections</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">res</span>: <span class="ident">tokio::io::Result</span><span class="op">&lt;</span>(<span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>)<span class="op">&gt;</span>,
@@ -2140,7 +2188,7 @@
                     <span class="ident">cur_connection_id</span>.<span class="number">0</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
                     <span class="self">self</span>.<span class="ident">active_connections</span>
                         .<span class="ident">insert</span>(<span class="ident">connection_id</span>, (<span class="ident">ip_addr</span>, <span class="bool-val">true</span>));
-                    <span class="self">self</span>.<span class="ident">new_connection</span>(<span class="ident">connection_id</span>, <span class="ident">reader</span>, <span class="ident">writer</span>)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.<span class="ident">manage_successfull_connection</span>(<span class="ident">connection_id</span>, <span class="ident">reader</span>, <span class="ident">writer</span>)<span class="question-mark">?</span>;
                 } <span class="kw">else</span> {
                     <span class="macro">debug!</span>(<span class="string">&quot;out connection towards ip={} refused&quot;</span>, <span class="ident">ip_addr</span>);
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;out_connection_refused&quot;</span>, { <span class="string">&quot;ip&quot;</span>: <span class="ident">ip_addr</span> });
@@ -2164,12 +2212,16 @@
     <span class="doccomment">/// Manages in connection</span>
     <span class="doccomment">/// Only used inside worker&#39;s run_loop</span>
     <span class="doccomment">///</span>
+    <span class="doccomment">/// Try a connection with an incomming node, if success insert the remote</span>
+    <span class="doccomment">/// address at the index `connection_id` inside `self.active_connections`</span>
+    <span class="doccomment">/// and call `self.manage_successfull_connection`</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// If the connection failed with `MaxPeersConnectionReached`, mock the</span>
+    <span class="doccomment">/// handshake and send a list of advertisable peer ips.</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
     <span class="doccomment">/// * res : (reader, writer, socketAddr) in a result coming out of the listener</span>
-    <span class="doccomment">/// * peer_info_db: Database with peer information.</span>
     <span class="doccomment">/// * cur_connection_id : connection id of the node we are trying to reach</span>
-    <span class="doccomment">/// * active_connections: hashmap linking connection id to ipAddr to whether connection is outgoing (true)</span>
-    <span class="doccomment">/// * event_tx: channel to send network events out.</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">manage_in_connections</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">res</span>: <span class="ident">std::io::Result</span><span class="op">&lt;</span>(<span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>, <span class="ident">SocketAddr</span>)<span class="op">&gt;</span>,
@@ -2177,23 +2229,29 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">res</span> {
             <span class="prelude-val">Ok</span>((<span class="ident">reader</span>, <span class="ident">writer</span>, <span class="ident">remote_addr</span>)) =&gt; {
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">peer_info_db</span>.<span class="ident">try_new_in_connection</span>(<span class="kw-2">&amp;</span><span class="ident">remote_addr</span>.<span class="ident">ip</span>())<span class="question-mark">?</span> {
-                    <span class="kw">let</span> <span class="ident">connection_id</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">cur_connection_id</span>;
-                    <span class="macro">debug!</span>(
-                        <span class="string">&quot;inbound connection from addr={} succeeded =&gt; connection_id={}&quot;</span>,
-                        <span class="ident">remote_addr</span>, <span class="ident">connection_id</span>
-                    );
-                    <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_established&quot;</span>, {
-                        <span class="string">&quot;ip&quot;</span>: <span class="ident">remote_addr</span>.<span class="ident">ip</span>(),
-                        <span class="string">&quot;connection_id&quot;</span>: <span class="ident">connection_id</span>
-                    });
-                    <span class="ident">cur_connection_id</span>.<span class="number">0</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-                    <span class="self">self</span>.<span class="ident">active_connections</span>
-                        .<span class="ident">insert</span>(<span class="ident">connection_id</span>, (<span class="ident">remote_addr</span>.<span class="ident">ip</span>(), <span class="bool-val">false</span>));
-                    <span class="self">self</span>.<span class="ident">new_connection</span>(<span class="ident">connection_id</span>, <span class="ident">reader</span>, <span class="ident">writer</span>)<span class="question-mark">?</span>;
-                } <span class="kw">else</span> {
-                    <span class="macro">debug!</span>(<span class="string">&quot;inbound connection from addr={} refused&quot;</span>, <span class="ident">remote_addr</span>);
-                    <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_refused&quot;</span>, {<span class="string">&quot;ip&quot;</span>: <span class="ident">remote_addr</span>.<span class="ident">ip</span>()});
+                <span class="kw">match</span> <span class="self">self</span>.<span class="ident">peer_info_db</span>.<span class="ident">try_new_in_connection</span>(<span class="kw-2">&amp;</span><span class="ident">remote_addr</span>.<span class="ident">ip</span>()) {
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                        <span class="kw">let</span> <span class="ident">connection_id</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">cur_connection_id</span>;
+                        <span class="macro">debug!</span>(
+                            <span class="string">&quot;inbound connection from addr={} succeeded =&gt; connection_id={}&quot;</span>,
+                            <span class="ident">remote_addr</span>, <span class="ident">connection_id</span>
+                        );
+                        <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_established&quot;</span>, {
+                            <span class="string">&quot;ip&quot;</span>: <span class="ident">remote_addr</span>.<span class="ident">ip</span>(),
+                            <span class="string">&quot;connection_id&quot;</span>: <span class="ident">connection_id</span>
+                        });
+                        <span class="ident">cur_connection_id</span>.<span class="number">0</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+                        <span class="self">self</span>.<span class="ident">active_connections</span>
+                            .<span class="ident">insert</span>(<span class="ident">connection_id</span>, (<span class="ident">remote_addr</span>.<span class="ident">ip</span>(), <span class="bool-val">false</span>));
+                        <span class="self">self</span>.<span class="ident">manage_successfull_connection</span>(<span class="ident">connection_id</span>, <span class="ident">reader</span>, <span class="ident">writer</span>)<span class="question-mark">?</span>;
+                    }
+                    <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                        <span class="ident">NetworkConnectionErrorType::MaxPeersConnectionReached</span>(<span class="kw">_</span>),
+                    )) =&gt; <span class="self">self</span>.<span class="ident">try_send_peer_list_in_handshake</span>(<span class="ident">reader</span>, <span class="ident">writer</span>, <span class="ident">remote_addr</span>),
+                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                        <span class="macro">debug!</span>(<span class="string">&quot;inbound connection from addr={} refused&quot;</span>, <span class="ident">remote_addr</span>);
+                        <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_refused&quot;</span>, {<span class="string">&quot;ip&quot;</span>: <span class="ident">remote_addr</span>.<span class="ident">ip</span>()});
+                    }
                 }
             }
             <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
@@ -2201,6 +2259,92 @@
                 <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_failed&quot;</span>, {<span class="string">&quot;err&quot;</span>: <span class="ident">err</span>.<span class="ident">to_string</span>()});
             }
         }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Start to mock a handshake and try to send a message with a list of</span>
+    <span class="doccomment">/// peers.</span>
+    <span class="doccomment">/// The function is used while `manage_in_connections()` if the current</span>
+    <span class="doccomment">/// node reach the number of maximum in connection.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Timeout if the connection as not been done really quickly resolved</span>
+    <span class="doccomment">/// but don&#39;t throw the timeout error.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// ```txt</span>
+    <span class="doccomment">/// In connection node            Curr node</span>
+    <span class="doccomment">///        |                          |</span>
+    <span class="doccomment">///        |-------------------------&gt;|      : Try to connect but the</span>
+    <span class="doccomment">///        |                          |        curr node reach the max</span>
+    <span class="doccomment">///        |                          |        number of node.</span>
+    <span class="doccomment">///        |                          |      : Connection success anyway</span>
+    <span class="doccomment">///        |                          |        and the in connection enter</span>
+    <span class="doccomment">///        |&lt;------------------------&gt;|        in `HandshakeWorker::run()`</span>
+    <span class="doccomment">///        |  symetric read &amp; write   |</span>
+    <span class="doccomment">///```</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// In the `symetric read &amp; write` the current node simulate a handshake</span>
+    <span class="doccomment">/// managed by the *connection node* in `HandshakeWorker::run()`, the</span>
+    <span class="doccomment">/// current node send a ListPeer as a message.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Spawn a future in `self.handshake_peer_list_futures` managed by the</span>
+    <span class="doccomment">/// main loop.</span>
+    <span class="kw">fn</span> <span class="ident">try_send_peer_list_in_handshake</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">reader</span>: <span class="ident">ReadHalf</span>,
+        <span class="ident">writer</span>: <span class="ident">WriteHalf</span>,
+        <span class="ident">remote_addr</span>: <span class="ident">SocketAddr</span>,
+    ) {
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;Maximum connection reached. Inbound connection from addr={} refused, try to send a list of peers&quot;</span>,
+            <span class="ident">remote_addr</span>
+        );
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_in_connection_overflow</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">handshake_peer_list_futures</span>.<span class="ident">len</span>() {
+            <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="ident">Message::PeerList</span>(<span class="self">self</span>.<span class="ident">peer_info_db</span>.<span class="ident">get_advertisable_peer_ips</span>());
+            <span class="kw">let</span> <span class="ident">timeout</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">peer_list_send_timeout</span>.<span class="ident">to_duration</span>();
+            <span class="self">self</span>.<span class="ident">handshake_peer_list_futures</span>
+                .<span class="ident">push</span>(<span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">writer</span> <span class="op">=</span> <span class="ident">WriteBinder::new</span>(<span class="ident">writer</span>);
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">reader</span> <span class="op">=</span> <span class="ident">ReadBinder::new</span>(<span class="ident">reader</span>);
+                    <span class="kw">match</span> <span class="ident">tokio::time::timeout</span>(
+                        <span class="ident">timeout</span>,
+                        <span class="ident">futures::future::try_join</span>(<span class="ident">writer</span>.<span class="ident">send</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>), <span class="ident">reader</span>.<span class="ident">next</span>()),
+                    )
+                    .<span class="kw">await</span>
+                    {
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="macro">debug!</span>(<span class="string">&quot;Ignored network error on send peerlist={}&quot;</span>, <span class="ident">e</span>),
+                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">debug!</span>(<span class="string">&quot;Ignored timeout error on send peerlist&quot;</span>),
+                        <span class="kw">_</span> =&gt; (),
+                    }
+                }));
+        }
+    }
+
+    <span class="doccomment">/// Manage a successful incomming and outgoing connection,</span>
+    <span class="doccomment">/// Check if we&#39;re not already running an handshake for `connection_id` by inserting the connection id in</span>
+    <span class="doccomment">/// `self.running_handshakes`</span>
+    <span class="doccomment">/// Add a new handshake to perform in `self.handshake_futures` to be handle in the main loop.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Return an hanshake error if connection already running/waiting</span>
+    <span class="kw">fn</span> <span class="ident">manage_successfull_connection</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">connection_id</span>: <span class="ident">ConnectionId</span>,
+        <span class="ident">reader</span>: <span class="ident">ReadHalf</span>,
+        <span class="ident">writer</span>: <span class="ident">WriteHalf</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">running_handshakes</span>.<span class="ident">insert</span>(<span class="ident">connection_id</span>) {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::HandshakeError</span>(
+                <span class="ident">HandshakeErrorType::HandshakeIdAlreadyExist</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">connection_id</span>)),
+            ));
+        }
+        <span class="self">self</span>.<span class="ident">handshake_futures</span>.<span class="ident">push</span>(<span class="ident">HandshakeWorker::spawn</span>(
+            <span class="ident">reader</span>,
+            <span class="ident">writer</span>,
+            <span class="self">self</span>.<span class="ident">self_node_id</span>,
+            <span class="self">self</span>.<span class="ident">private_key</span>,
+            <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">connect_timeout</span>,
+            <span class="self">self</span>.<span class="ident">version</span>,
+            <span class="ident">connection_id</span>,
+        ));
         <span class="prelude-val">Ok</span>(())
     }
 
