@@ -214,10 +214,7 @@ pub(crate) fn cleanup_peers(
                 continue;
             }
         }
-        if p.peer_type == PeerType::Bootstrap
-            || p.peer_type == PeerType::WhiteListed
-            || p.is_active()
-        {
+        if p.peer_type != Default::default() || p.is_active() {
             keep_peers.push(p);
         } else if p.banned {
             banned_peers.push(p);
@@ -368,6 +365,7 @@ impl PeerInfoDatabase {
         for ip in ips.into_iter() {
             if let Some(peer) = self.peers.get_mut(&ip) {
                 peer.peer_type = Default::default();
+                peer.banned = false;
             } else {
                 return Ok(());
             }
@@ -408,7 +406,7 @@ impl PeerInfoDatabase {
                 .peers
                 .values()
                 .filter(|&p| {
-                    if p.peer_type != peer_type || !p.advertised || p.is_active() {
+                    if p.peer_type != peer_type || !p.advertised || p.is_active() || p.banned {
                         return false;
                     }
                     peer_ready(self.wakeup_interval, now, p)
@@ -496,6 +494,7 @@ impl PeerInfoDatabase {
         // here a hashmap would be great
         match peer.peer_type {
             PeerType::Bootstrap => {
+                // if there is no slot left
                 if get_available_out_connection_attempts(
                     &self.bootstrap_connection_count,
                     &self.network_settings.bootstrap_peers_config,
@@ -538,6 +537,7 @@ impl PeerInfoDatabase {
                 };
             }
         }
+        peer.active_out_connection_attempts += 1;
 
         Ok(())
     }
@@ -629,6 +629,7 @@ impl PeerInfoDatabase {
                 *ip,
             ))
         })?;
+        // if that peer type overall connection count is 0
         if match peer.peer_type {
             PeerType::Bootstrap => self.bootstrap_connection_count.active_out_connections == 0,
             PeerType::WhiteListed => self.whitelist_connection_count.active_out_connections == 0,
@@ -638,14 +639,14 @@ impl PeerInfoDatabase {
                 NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
             ));
         }
-
+        peer.active_out_connections -= 1;
         match peer.peer_type {
             PeerType::Bootstrap => self.bootstrap_connection_count.active_out_connections -= 1,
             PeerType::WhiteListed => self.whitelist_connection_count.active_out_connections -= 1,
             PeerType::Standard => self.standard_connection_count.active_out_connections -= 1,
         }
 
-        if !peer.is_active() && peer.peer_type == PeerType::Standard {
+        if !peer.is_active() && peer.peer_type == Default::default() {
             self.update()?;
             self.request_dump()
         } else {
@@ -676,6 +677,9 @@ impl PeerInfoDatabase {
                 NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
             ));
         }
+
+        peer.active_in_connections -= 1;
+
         match peer.peer_type {
             PeerType::Bootstrap => self.bootstrap_connection_count.active_in_connections -= 1,
             PeerType::WhiteListed => self.whitelist_connection_count.active_in_connections -= 1,
@@ -750,11 +754,28 @@ impl PeerInfoDatabase {
             return Ok(false);
         }
 
+        peer.active_out_connection_attempts -= 1;
+
+        match peer.peer_type {
+            PeerType::Bootstrap => {
+                self.bootstrap_connection_count
+                    .active_out_connection_attempts -= 1
+            }
+            PeerType::WhiteListed => {
+                self.whitelist_connection_count
+                    .active_out_connection_attempts -= 1
+            }
+            PeerType::Standard => {
+                self.standard_connection_count
+                    .active_out_connection_attempts -= 1
+            }
+        }
+
         peer.advertised = true; // we just connected to it. Assume advertised.
 
         if peer.banned {
             peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
-            if !peer.is_active() {
+            if !peer.is_active() && peer.peer_type == Default::default() {
                 self.update()?;
             }
             self.request_dump()?;
@@ -802,7 +823,7 @@ impl PeerInfoDatabase {
             }
         } {
             return Err(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
+                NetworkConnectionErrorType::ToManyConnectionFailure(*ip),
             ));
         }
         peer.active_out_connection_attempts -= 1;
