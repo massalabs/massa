@@ -6,7 +6,6 @@ use itertools::Itertools;
 use massa_logging::massa_trace;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
-
 use std::collections::{hash_map, HashMap};
 use std::net::IpAddr;
 use std::path::Path;
@@ -93,7 +92,7 @@ pub struct PeerInfoDatabase {
     /// Monitor changed peers.
     saver_watch_tx: watch::Sender<HashMap<IpAddr, PeerInfo>>,
     /// Whitelist peers connection count
-    whitelist_connections: ConnectionCount,
+    whitelist_connection_count: ConnectionCount,
     /// Bootstrap peers connection count
     bootstrap_connection_count: ConnectionCount,
     /// Standard peers connection count
@@ -312,7 +311,7 @@ impl PeerInfoDatabase {
             saver_watch_tx,
             wakeup_interval,
             clock_compensation,
-            whitelist_connections: Default::default(),
+            whitelist_connection_count: Default::default(),
             bootstrap_connection_count: Default::default(),
             standard_connection_count: Default::default(),
         })
@@ -320,13 +319,13 @@ impl PeerInfoDatabase {
 
     pub fn get_in_connection_count(&self) -> u64 {
         (self.bootstrap_connection_count.active_in_connections
-            + self.whitelist_connections.active_in_connections
+            + self.whitelist_connection_count.active_in_connections
             + self.standard_connection_count.active_in_connections) as u64
     }
 
     pub fn get_out_connection_count(&self) -> u64 {
         (self.bootstrap_connection_count.active_out_connections
-            + self.whitelist_connections.active_out_connections
+            + self.whitelist_connection_count.active_out_connections
             + self.standard_connection_count.active_out_connections) as u64
     }
 
@@ -428,7 +427,7 @@ impl PeerInfoDatabase {
             )?
             .chain(self.get_candidate_ips_for_type(
                 PeerType::WhiteListed,
-                &self.whitelist_connections,
+                &self.whitelist_connection_count,
                 &self.network_settings.whitelist_peers_config,
             )?)
             .chain(self.get_candidate_ips_for_type(
@@ -498,7 +497,7 @@ impl PeerInfoDatabase {
             }
             PeerType::WhiteListed => {
                 if get_available_out_connection_attempts(
-                    &self.whitelist_connections,
+                    &self.whitelist_connection_count,
                     &self.network_settings.whitelist_peers_config,
                 ) == 0
                 {
@@ -506,7 +505,8 @@ impl PeerInfoDatabase {
                         NetworkConnectionErrorType::ToManyConnectionAttempt(*ip),
                     ));
                 } else {
-                    self.whitelist_connections.active_out_connection_attempts += 1
+                    self.whitelist_connection_count
+                        .active_out_connection_attempts += 1
                 };
             }
             PeerType::Banned => {} // do nothing
@@ -630,7 +630,7 @@ impl PeerInfoDatabase {
         })?;
         if match peer.peer_type {
             PeerType::Bootstrap => self.bootstrap_connection_count.active_out_connections == 0,
-            PeerType::WhiteListed => self.whitelist_connections.active_out_connections == 0,
+            PeerType::WhiteListed => self.whitelist_connection_count.active_out_connections == 0,
             PeerType::Banned => true, // todo maybe throw another error as we're trying to close a banned peer ?
             PeerType::Standard => self.standard_connection_count.active_out_connections == 0,
         } {
@@ -641,7 +641,7 @@ impl PeerInfoDatabase {
 
         match peer.peer_type {
             PeerType::Bootstrap => self.bootstrap_connection_count.active_out_connections -= 1,
-            PeerType::WhiteListed => self.whitelist_connections.active_out_connections -= 1,
+            PeerType::WhiteListed => self.whitelist_connection_count.active_out_connections -= 1,
             PeerType::Banned => {} //todo manage error ?
             PeerType::Standard => self.standard_connection_count.active_out_connections -= 1,
         }
@@ -676,7 +676,7 @@ impl PeerInfoDatabase {
 
         if match peer.peer_type {
             PeerType::Bootstrap => self.bootstrap_connection_count.active_in_connections == 0,
-            PeerType::WhiteListed => self.whitelist_connections.active_in_connections == 0,
+            PeerType::WhiteListed => self.whitelist_connection_count.active_in_connections == 0,
             PeerType::Banned => true, // todo maybe throw another error as we're trying to close a banned peer ?
             PeerType::Standard => self.standard_connection_count.active_in_connections == 0,
         } {
@@ -686,7 +686,7 @@ impl PeerInfoDatabase {
         }
         match peer.peer_type {
             PeerType::Bootstrap => self.bootstrap_connection_count.active_in_connections -= 1,
-            PeerType::WhiteListed => self.whitelist_connections.active_in_connections -= 1,
+            PeerType::WhiteListed => self.whitelist_connection_count.active_in_connections -= 1,
             PeerType::Banned => {} //todo manage error ?
             PeerType::Standard => self.standard_connection_count.active_in_connections -= 1,
         }
@@ -731,7 +731,11 @@ impl PeerInfoDatabase {
                     .active_out_connection_attempts
                     == 0
             }
-            PeerType::WhiteListed => self.whitelist_connections.active_out_connection_attempts == 0,
+            PeerType::WhiteListed => {
+                self.whitelist_connection_count
+                    .active_out_connection_attempts
+                    == 0
+            }
             PeerType::Banned => true, // todo maybe throw another error as we're trying to close a banned peer ?
             PeerType::Standard => {
                 self.standard_connection_count
@@ -751,7 +755,7 @@ impl PeerInfoDatabase {
                     >= self.network_settings.bootstrap_peers_config.target_out
             }
             PeerType::WhiteListed => {
-                self.whitelist_connections.active_out_connections
+                self.whitelist_connection_count.active_out_connections
                     >= self.network_settings.whitelist_peers_config.target_out
             }
             PeerType::Banned => true, //todo error?
@@ -782,7 +786,7 @@ impl PeerInfoDatabase {
         peer.active_out_connections += 1;
         match peer.peer_type {
             PeerType::Bootstrap => self.bootstrap_connection_count.active_out_connections += 1,
-            PeerType::WhiteListed => self.whitelist_connections.active_out_connections += 1,
+            PeerType::WhiteListed => self.whitelist_connection_count.active_out_connections += 1,
             PeerType::Banned => {} //todo manage error ?
             PeerType::Standard => self.standard_connection_count.active_out_connections += 1,
         }
@@ -810,7 +814,11 @@ impl PeerInfoDatabase {
                     .active_out_connection_attempts
                     == 0
             }
-            PeerType::WhiteListed => self.whitelist_connections.active_out_connection_attempts == 0,
+            PeerType::WhiteListed => {
+                self.whitelist_connection_count
+                    .active_out_connection_attempts
+                    == 0
+            }
             PeerType::Banned => true, // todo maybe throw another error as we're trying to close a banned peer ?
             PeerType::Standard => {
                 self.standard_connection_count
@@ -828,7 +836,10 @@ impl PeerInfoDatabase {
                 self.bootstrap_connection_count
                     .active_out_connection_attempts -= 1
             }
-            PeerType::WhiteListed => self.whitelist_connections.active_out_connection_attempts -= 1,
+            PeerType::WhiteListed => {
+                self.whitelist_connection_count
+                    .active_out_connection_attempts -= 1
+            }
             PeerType::Banned => {} //todo manage error ?
             PeerType::Standard => {
                 self.standard_connection_count
@@ -883,7 +894,7 @@ impl PeerInfoDatabase {
                             >= self.network_settings.bootstrap_peers_config.max_in
                     }
                     PeerType::WhiteListed => {
-                        self.whitelist_connections.active_in_connections
+                        self.whitelist_connection_count.active_in_connections
                             >= self.network_settings.whitelist_peers_config.max_in
                     }
                     PeerType::Banned => true, //todo error?
@@ -910,7 +921,7 @@ impl PeerInfoDatabase {
                             self.bootstrap_connection_count.active_in_connections += 1
                         }
                         PeerType::WhiteListed => {
-                            self.whitelist_connections.active_in_connections += 1
+                            self.whitelist_connection_count.active_in_connections += 1
                         }
                         PeerType::Banned => {} //todo manage error ?
                         PeerType::Standard => {
@@ -1029,7 +1040,7 @@ mod tests {
             saver_watch_tx,
             wakeup_interval,
             clock_compensation: 0,
-            whitelist_connections: Default::default(),
+            whitelist_connection_count: Default::default(),
             bootstrap_connection_count: Default::default(),
             standard_connection_count: Default::default(),
         };
@@ -1125,7 +1136,7 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            whitelist_connections: Default::default(),
+            whitelist_connection_count: Default::default(),
             bootstrap_connection_count: Default::default(),
             standard_connection_count: Default::default(),
             wakeup_interval,
@@ -1224,7 +1235,7 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            whitelist_connections: Default::default(),
+            whitelist_connection_count: Default::default(),
             bootstrap_connection_count: Default::default(),
             standard_connection_count: Default::default(),
             wakeup_interval,
@@ -1318,7 +1329,7 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            whitelist_connections: Default::default(),
+            whitelist_connection_count: Default::default(),
             bootstrap_connection_count: Default::default(),
             standard_connection_count: Default::default(),
             wakeup_interval,
@@ -1396,7 +1407,7 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            whitelist_connections: Default::default(),
+            whitelist_connection_count: Default::default(),
             bootstrap_connection_count: Default::default(),
             standard_connection_count: Default::default(),
             wakeup_interval,
@@ -1495,7 +1506,7 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            whitelist_connections: Default::default(),
+            whitelist_connection_count: Default::default(),
             bootstrap_connection_count: Default::default(),
             standard_connection_count: Default::default(),
             wakeup_interval,
@@ -1604,7 +1615,7 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            whitelist_connections: Default::default(),
+            whitelist_connection_count: Default::default(),
             bootstrap_connection_count: Default::default(),
             standard_connection_count: Default::default(),
             wakeup_interval,
@@ -1834,7 +1845,7 @@ mod tests {
                 peers,
                 saver_join_handle,
                 saver_watch_tx,
-                whitelist_connections: Default::default(),
+                whitelist_connection_count: Default::default(),
                 bootstrap_connection_count: Default::default(),
                 standard_connection_count: Default::default(),
                 wakeup_interval,
