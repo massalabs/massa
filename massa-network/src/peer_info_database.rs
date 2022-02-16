@@ -397,29 +397,17 @@ impl PeerInfoDatabase {
         peer_type: PeerType,
         count: &ConnectionCount,
         cfg: &PeerTypeConnectionConfig,
-    ) -> Result<impl Iterator<Item = IpAddr>, NetworkError> {
+    ) -> Result<impl Iterator<Item = &PeerInfo>, NetworkError> {
         let avaible_slots = get_available_out_connection_attempts(count, cfg);
         let now = MassaTime::compensated_now(self.clock_compensation)?;
-        let ip = |p: PeerInfo| p.ip;
-        if avaible_slots > 0 {
-            let mut sorted_peers: Vec<PeerInfo> = self
-                .peers
-                .values()
-                .filter(|&p| {
-                    if p.peer_type != peer_type || !p.advertised || p.is_active() || p.banned {
-                        return false;
-                    }
-                    peer_ready(self.wakeup_interval, now, p)
-                })
-                .copied()
-                .collect();
-            sorted_peers
-                .sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
+        let f = move |p: &&PeerInfo| {
+            if p.peer_type != peer_type || !p.advertised || p.is_active() || p.banned {
+                return false;
+            }
+            peer_ready(self.wakeup_interval, now, p)
+        };
 
-            Ok(sorted_peers.into_iter().take(avaible_slots).map(ip))
-        } else {
-            Ok(Vec::new().into_iter().take(avaible_slots).map(ip))
-        }
+        Ok(self.peers.values().filter(f).take(avaible_slots))
     }
 
     /// Sorts peers by ( last_failure, rev(last_success) )
@@ -430,7 +418,7 @@ impl PeerInfoDatabase {
         //     advertised && !banned && out_connection_attempts==0 && out_connections==0 && in_connections=0
         //     sorted_by = ( last_failure, rev(last_success) )
 
-        Ok(self
+        let mut res: Vec<_> = self
             .get_candidate_ips_for_type(
                 PeerType::Bootstrap,
                 &self.bootstrap_connection_count,
@@ -446,7 +434,9 @@ impl PeerInfoDatabase {
                 &self.standard_connection_count,
                 &self.network_settings.standard_peers_config,
             )?)
-            .collect())
+            .collect();
+        res.sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
+        Ok(res.into_iter().map(|p| p.ip).collect())
     }
 
     /// returns Hashmap of ipAddrs -> Peerinfo
