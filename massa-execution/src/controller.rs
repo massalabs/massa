@@ -1,214 +1,97 @@
-use crate::config::{ExecutionConfigs, CHANNEL_SIZE};
-use crate::error::ExecutionError;
-use crate::worker::{
-    ExecutionCommand, ExecutionEvent, ExecutionManagementCommand, ExecutionWorker,
-};
-use crate::BootstrapExecutionState;
-use massa_models::api::SCELedgerInfo;
-use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Map;
-use massa_models::OperationId;
-use massa_models::{execution::ExecuteReadOnlyResponse, Address, Amount, Block, BlockId, Slot};
-use std::collections::VecDeque;
-use tokio::sync::{mpsc, oneshot};
-use tokio::task::JoinHandle;
-use tracing::{error, info};
+use crate::{config::VMConfig, types::ReadOnlyExecutionRequest, vm_thread::VMThread};
+use massa_ledger::FinalLedger;
+use massa_models::{Block, BlockId, Slot};
+use std::collections::{HashMap, VecDeque};
+use std::sync::{Arc, Condvar, Mutex, RwLock};
+use tracing::info;
 
-/// A sender of execution commands.
-#[derive(Clone)]
-pub struct ExecutionCommandSender(pub mpsc::Sender<ExecutionCommand>);
+/// structure used to communicate with the VM thread
+#[derive(Default)]
+pub struct VMInputData {
+    /// set stop to true to stop the thread
+    pub stop: bool,
+    /// signal whether the blockclique changed
+    pub blockclique_changed: bool,
+    /// list of newly finalized blocks
+    pub finalized_blocks: HashMap<Slot, (BlockId, Block)>,
+    /// blockclique
+    pub blockclique: HashMap<Slot, (BlockId, Block)>,
+    /// readonly execution requests
+    pub readonly_requests: VecDeque<ReadOnlyExecutionRequest>,
+}
 
-/// A receiver of execution events.
-pub struct ExecutionEventReceiver(pub mpsc::UnboundedReceiver<ExecutionEvent>);
+/// VM controller
+pub struct VMController {
+    /// condition variable to wake up the VM loop
+    pub loop_cv: Condvar,
+    /// input data to process in the VM loop
+    pub input_data: Mutex<VMInputData>,
+}
 
-impl ExecutionEventReceiver {
-    /// drains remaining events and returns them in a VecDeque
-    /// note: events are sorted from oldest to newest
-    pub async fn drain(mut self) -> VecDeque<ExecutionEvent> {
-        let mut remaining_events: VecDeque<ExecutionEvent> = VecDeque::new();
-
-        while let Some(evt) = self.0.recv().await {
-            remaining_events.push_back(evt);
-        }
-        remaining_events
+impl VMController {
+    /// reads the list of newly finalized blocks and the new blockclique, if there was a change
+    /// if found, remove from input queue
+    pub fn consume_input(&mut self) -> VMInputData {
+        std::mem::take(&mut self.input_data.lock().expect("VM input data lock failed"))
     }
 }
 
-/// A sender of execution management commands.
-pub struct ExecutionManager {
-    join_handle: JoinHandle<Result<(), ExecutionError>>,
-    manager_tx: mpsc::Sender<ExecutionManagementCommand>,
+/// VM manager
+pub struct VMManager {
+    /// shared reference to the VM controller
+    controller: Arc<VMController>,
+    /// handle used to join the VM thread
+    thread_handle: std::thread::JoinHandle<()>,
 }
 
-impl ExecutionManager {
-    pub async fn stop(self) -> Result<(), ExecutionError> {
-        drop(self.manager_tx);
-        if let Err(err) = self.join_handle.await {
-            error!("execution worker crashed: {}", err);
-            return Err(ExecutionError::JoinError);
-        };
+impl VMManager {
+    /// stops the VM
+    pub fn stop(self) {
+        info!("stopping VM controller...");
+        // notify the VM thread to stop
+        {
+            let mut input_wlock = self
+                .controller
+                .input_data
+                .lock()
+                .expect("could not w-lock VM input data");
+            input_wlock.stop = true;
+            self.controller.loop_cv.notify_one();
+        }
+        // join the VM thread
+        self.thread_handle
+            .join()
+            .expect("VM controller thread panicked");
+        info!("VM controller stopped");
+    }
 
-        info!("execution worker finished cleanly");
-        Ok(())
+    /// get a shared reference to the VM controller
+    pub fn get_controller(&self) -> Arc<VMController> {
+        self.controller.clone()
     }
 }
 
-/// Creates a new execution controller.
+/// launches the VM and returns a VMManager
 ///
-/// # Arguments
-/// * cfg: execution configuration
-/// * thread_count: number of threads
-/// * genesis_timestamp: genesis timestamp
-/// * t0: period duration
-/// * clock_compensation: clock compensation in milliseconds
-/// * bootstrap_state: optional bootstrap state
-///
-/// TODO: add a consensus command sender,
-/// to be able to send the `TransferToConsensus` message.
-pub async fn start_controller(
-    cfg: ExecutionConfigs,
-    bootstrap_state: Option<BootstrapExecutionState>,
-) -> Result<
-    (
-        ExecutionCommandSender,
-        ExecutionEventReceiver,
-        ExecutionManager,
-    ),
-    ExecutionError,
-> {
-    let (command_tx, command_rx) = mpsc::channel::<ExecutionCommand>(CHANNEL_SIZE);
-    let (manager_tx, manager_rx) = mpsc::channel::<ExecutionManagementCommand>(1);
-
-    // Unbounded, as execution is limited per metering already.
-    let (event_tx, event_rx) = mpsc::unbounded_channel::<ExecutionEvent>();
-    let worker = ExecutionWorker::new(cfg, event_tx, command_rx, manager_rx, bootstrap_state)?;
-    let join_handle = tokio::spawn(async move {
-        match worker.run_loop().await {
-            Err(err) => Err(err),
-            Ok(v) => Ok(v),
-        }
+/// # parameters
+/// * config: VM configuration
+/// * bootstrap:
+pub fn start_vm(config: VMConfig, final_ledger: Arc<RwLock<FinalLedger>>) -> VMManager {
+    let controller = Arc::new(VMController {
+        loop_cv: Condvar::new(),
+        input_data: Mutex::new(VMInputData {
+            blockclique_changed: true,
+            ..Default::default()
+        }),
     });
-    Ok((
-        ExecutionCommandSender(command_tx),
-        ExecutionEventReceiver(event_rx),
-        ExecutionManager {
-            join_handle,
-            manager_tx,
-        },
-    ))
-}
 
-impl ExecutionCommandSender {
-    /// notify of a blockclique change
-    pub async fn update_blockclique(
-        &self,
-        finalized_blocks: Map<BlockId, Block>,
-        blockclique: Map<BlockId, Block>,
-    ) -> Result<(), ExecutionError> {
-        self.0
-            .send(ExecutionCommand::BlockCliqueChanged {
-                blockclique,
-                finalized_blocks,
-            })
-            .await
-            .map_err(|_err| {
-                ExecutionError::ChannelError(
-                    "could not send BlockCliqueChanged command to execution".into(),
-                )
-            })?;
-        Ok(())
-    }
+    let ctl = controller.clone();
+    let thread_handle = std::thread::spawn(move || {
+        VMThread::new(config, ctl, final_ledger).main_loop();
+    });
 
-    pub async fn get_bootstrap_state(&self) -> Result<BootstrapExecutionState, ExecutionError> {
-        let (response_tx, response_rx) = oneshot::channel();
-        self.0
-            .send(ExecutionCommand::GetBootstrapState(response_tx))
-            .await
-            .map_err(|_| {
-                ExecutionError::ChannelError("could not send GetBootstrapState command".into())
-            })?;
-        response_rx.await.map_err(|_| {
-            ExecutionError::ChannelError("could not send GetBootstrapState upstream".into())
-        })
-    }
-
-    /// Get events optionnally filtered by:
-    /// * start slot
-    /// * end slot
-    /// * emitter address
-    /// * original caller address
-    /// * operation id
-    pub async fn get_filtered_sc_output_event(
-        &self,
-        start: Option<Slot>,
-        end: Option<Slot>,
-        emitter_address: Option<Address>,
-        original_caller_address: Option<Address>,
-        original_operation_id: Option<OperationId>,
-    ) -> Result<Vec<SCOutputEvent>, ExecutionError> {
-        let (response_tx, response_rx) = oneshot::channel();
-        self.0
-            .send(ExecutionCommand::GetSCOutputEvents {
-                start,
-                end,
-                emitter_address,
-                original_caller_address,
-                original_operation_id,
-                response_tx,
-            })
-            .await
-            .map_err(|_| {
-                ExecutionError::ChannelError("could not send GetSCOutputEvents command".into())
-            })?;
-        response_rx.await.map_err(|_| {
-            ExecutionError::ChannelError("could not send GetSCOutputEvents upstream".into())
-        })
-    }
-
-    /// Execute code in read-only mode.
-    pub async fn execute_read_only_request(
-        &self,
-        max_gas: u64,
-        simulated_gas_price: Amount,
-        bytecode: Vec<u8>,
-        address: Option<Address>,
-    ) -> Result<ExecuteReadOnlyResponse, ExecutionError> {
-        let (response_tx, response_rx) = oneshot::channel();
-        self.0
-            .send(ExecutionCommand::ExecuteReadOnlyRequest {
-                max_gas,
-                simulated_gas_price,
-                bytecode,
-                result_sender: response_tx,
-                address,
-            })
-            .await
-            .map_err(|_| {
-                ExecutionError::ChannelError("could not send ExecuteReadOnlyRequest command".into())
-            })?;
-        response_rx.await.map_err(|_| {
-            ExecutionError::ChannelError("could not send ExecuteReadOnlyResponse upstream".into())
-        })
-    }
-
-    pub async fn get_sce_ledger_for_addresses(
-        self,
-        addresses: Vec<Address>,
-    ) -> Result<Map<Address, SCELedgerInfo>, ExecutionError> {
-        let (response_tx, response_rx) = oneshot::channel();
-        self.0
-            .send(ExecutionCommand::GetSCELedgerForAddresses {
-                response_tx,
-                addresses,
-            })
-            .await
-            .map_err(|_| {
-                ExecutionError::ChannelError(
-                    "could not send GetSCELedgerForAddresses command".into(),
-                )
-            })?;
-        response_rx.await.map_err(|_| {
-            ExecutionError::ChannelError("could not send GetSCELedgerForAddresses upstream".into())
-        })
+    VMManager {
+        controller,
+        thread_handle,
     }
 }

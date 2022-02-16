@@ -1,144 +1,23 @@
-use crate::speculative_ledger::SpeculativeLedger;
-use crate::ExecutionError;
-use massa_ledger::{Applicable, FinalLedger, LedgerChanges, LedgerEntry, LedgerEntryUpdate};
+use crate::config::VMConfig;
+use crate::controller::VMController;
+use crate::types::{ExecutionContext, ExecutionOutput, ReadOnlyExecutionRequest};
+use crate::{event_store::EventStore, speculative_ledger::SpeculativeLedger};
+use massa_ledger::{Applicable, FinalLedger, LedgerChanges};
+use massa_models::BlockId;
 use massa_models::{
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
     Block, Slot,
 };
-use massa_models::{Address, Amount, BlockId};
 use massa_time::MassaTime;
+use rand::SeedableRng;
+use rand_xoshiro::Xoshiro256PlusPlus;
 use std::{
     collections::{HashMap, VecDeque},
-    sync::{Arc, Condvar, Mutex, RwLock},
+    sync::{Arc, Mutex, RwLock},
 };
-use tracing::info;
-
-/// VM module configuration
-pub struct VMConfig {
-    /// number of threads
-    thread_count: u8,
-    /// extra lag to add on the cursor to improve performance
-    cursor_delay: MassaTime,
-    /// time compensation in milliseconds
-    clock_compensation: i64,
-    /// genesis timestamp
-    genesis_timestamp: MassaTime,
-    /// period duration
-    t0: MassaTime,
-}
-
-/// structure describing a read-only execution request
-pub struct ReadOnlyExecutionRequest {
-    /// The slot at which the execution will occur.
-    slot: Slot,
-    /// Maximum gas to spend in the execution.
-    max_gas: u64,
-    /// The simulated price of gas for the read-only execution.
-    simulated_gas_price: Amount,
-    /// The code to execute.
-    bytecode: Vec<u8>,
-    /// Call stack to simulate
-    call_stack: Vec<Address>,
-    /// The channel used to send the result of the execution.
-    result_sender: std::sync::mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
-}
-
-/// structure used to communicate with the VM thread
-#[derive(Default)]
-pub struct VMInputData {
-    /// set stop to true to stop the thread
-    stop: bool,
-    /// signal whether the blockclique changed
-    blockclique_changed: bool,
-    /// list of newly finalized blocks
-    finalized_blocks: HashMap<Slot, (BlockId, Block)>,
-    /// blockclique
-    blockclique: HashMap<Slot, (BlockId, Block)>,
-    /// readonly execution requests
-    readonly_requests: VecDeque<ReadOnlyExecutionRequest>,
-}
-
-/// VM controller
-pub struct VMController {
-    /// condition variable to wake up the VM loop
-    loop_cv: Condvar,
-    /// input data to process in the VM loop
-    input_data: Mutex<VMInputData>,
-}
-
-/// VM manager
-pub struct VMManager {
-    /// shared reference to the VM controller
-    controller: Arc<VMController>,
-    /// handle used to join the VM thread
-    thread_handle: std::thread::JoinHandle<()>,
-}
-
-impl VMManager {
-    /// stops the VM
-    pub fn stop(self) {
-        info!("stopping VM controller...");
-        // notify the VM thread to stop
-        {
-            let mut input_wlock = self
-                .controller
-                .input_data
-                .lock()
-                .expect("could not w-lock VM input data");
-            input_wlock.stop = true;
-            self.controller.loop_cv.notify_one();
-        }
-        // join the VM thread
-        self.thread_handle
-            .join()
-            .expect("VM controller thread panicked");
-        info!("VM controller stopped");
-    }
-
-    /// get a shared reference to the VM controller
-    pub fn get_controller(&self) -> Arc<VMController> {
-        self.controller.clone()
-    }
-}
-
-/// launches the VM and returns a VMManager
-///
-/// # parameters
-/// * config: VM configuration
-/// * bootstrap:
-pub fn start_vm(config: VMConfig, final_ledger: Arc<RwLock<FinalLedger>>) -> VMManager {
-    let controller = Arc::new(VMController {
-        loop_cv: Condvar::new(),
-        input_data: Mutex::new(VMInputData {
-            blockclique_changed: true,
-            ..Default::default()
-        }),
-    });
-
-    let ctl = controller.clone();
-    let thread_handle = std::thread::spawn(move || {
-        VMThread::new(config, ctl, final_ledger).main_loop();
-    });
-
-    VMManager {
-        controller,
-        thread_handle,
-    }
-}
-
-struct ExecutionOutput {
-    // slot
-    slot: Slot,
-    // optional block ID at that slot (None if miss)
-    block_id: Option<BlockId>,
-    // ledger_changes caused by the execution step
-    ledger_changes: LedgerChanges,
-    // events emitted by the execution step
-    //TODO events: EventStore
-}
 
 /// structure gathering all elements needed by the VM thread
-struct VMThread {
+pub struct VMThread {
     // VM config
     config: VMConfig,
     // Final ledger
@@ -166,17 +45,11 @@ struct VMThread {
     // execution context
     execution_context: Arc<Mutex<ExecutionContext>>,
     // final events
-    // final_events: EventStore,
-}
-
-pub(crate) struct ExecutionContext {
-    //TODO other things (eg. call stack)
-    speculative_ledger: SpeculativeLedger,
-    //TODO event store
+    final_events: EventStore,
 }
 
 impl VMThread {
-    fn new(
+    pub fn new(
         config: VMConfig,
         controller: Arc<VMController>,
         final_ledger: Arc<RwLock<FinalLedger>>,
@@ -190,6 +63,18 @@ impl VMThread {
                 final_ledger.clone(),
                 LedgerChanges::default(),
             ),
+            max_gas: Default::default(),
+            gas_price: Default::default(),
+            slot: Slot::new(0, 0),
+            created_addr_index: Default::default(),
+            created_event_index: Default::default(),
+            opt_block_id: Default::default(),
+            opt_block_creator_addr: Default::default(),
+            stack: Default::default(),
+            read_only: Default::default(),
+            events: Default::default(),
+            unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
+            origin_operation_id: Default::default(),
         }));
 
         VMThread {
@@ -206,19 +91,8 @@ impl VMThread {
             active_slots: Default::default(),
             execution_history: Default::default(),
             config,
+            final_events: Default::default(),
         }
-    }
-
-    /// reads the list of newly finalized blocks and the new blockclique, if there was a change
-    /// if found, remove from input queue
-    fn consume_input(&mut self) -> VMInputData {
-        std::mem::take(
-            &mut self
-                .controller
-                .input_data
-                .lock()
-                .expect("VM input data lock failed"),
-        )
     }
 
     /// update final slots
@@ -546,13 +420,15 @@ impl VMThread {
     /// executed a readonly request
     fn execute_readonly_request(&mut self, req: ReadOnlyExecutionRequest) {
         // TODO
+
+        //TODO send execution result back through req.result_sender
     }
 
     /// main VM loop
-    fn main_loop(&mut self) {
+    pub fn main_loop(&mut self) {
         loop {
             // read input queues
-            let input_data = self.consume_input();
+            let input_data = self.controller.consume_input();
 
             // check for stop signal
             if input_data.stop {

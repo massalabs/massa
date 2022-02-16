@@ -3,13 +3,14 @@
 mod config;
 mod controller;
 mod error;
+mod event_store;
 mod exports;
 mod interface_impl;
 mod sce_ledger;
 mod speculative_ledger;
 mod types;
 mod vm;
-mod vm_new;
+mod vm_thread;
 mod worker;
 
 pub use config::{ExecutionConfigs, ExecutionSettings};
