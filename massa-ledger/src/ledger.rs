@@ -374,6 +374,42 @@ impl LedgerChanges {
             None => f(),
         }
     }
+
+    /// set a datastore entry for an address
+    pub fn set_data_entry(&mut self, addr: Address, key: Hash, data: Vec<u8>) {
+        match self.0.entry(addr) {
+            hash_map::Entry::Occupied(mut occ) => {
+                match occ.get_mut() {
+                    SetUpdateOrDelete::Set(v) => {
+                        // we currently set the absolute value of the entry
+                        // so we need to update the data of that value
+                        v.datastore.insert(key, data);
+                    }
+                    SetUpdateOrDelete::Update(u) => {
+                        // we currently update the value of the entry
+                        // so we need to set the data for that update
+                        u.datastore.insert(key, SetOrDelete::Set(data));
+                    }
+                    d @ SetUpdateOrDelete::Delete => {
+                        // we currently delete the entry
+                        // so we need to create a default one with the target data
+                        *d = SetUpdateOrDelete::Set(LedgerEntry {
+                            datastore: vec![(key, data)].into_iter().collect(),
+                            ..Default::default()
+                        });
+                    }
+                }
+            }
+            hash_map::Entry::Vacant(vac) => {
+                // we currently aren't changing anything on that entry
+                // so we need to create an update with the target data
+                vac.insert(SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                    datastore: vec![(key, SetOrDelete::Set(data))].into_iter().collect(),
+                    ..Default::default()
+                }));
+            }
+        }
+    }
 }
 
 /// represents a final ledger

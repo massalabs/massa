@@ -1,13 +1,8 @@
-use std::sync::{Arc, RwLock};
-
-use anyhow::bail;
-use massa_hash::hash::Hash;
-use massa_ledger::{
-    Applicable, FinalLedger, LedgerChanges, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete,
-};
-use massa_models::{Address, Amount, AMOUNT_ZERO};
-
 use crate::ExecutionError;
+use massa_hash::hash::Hash;
+use massa_ledger::{Applicable, FinalLedger, LedgerChanges};
+use massa_models::{Address, Amount, AMOUNT_ZERO};
+use std::sync::{Arc, RwLock};
 
 /// represents a speculative ledger state combining
 /// data from the final ledger, previous speculative changes,
@@ -193,7 +188,23 @@ impl SpeculativeLedger {
 
     /// sets an entry for an address
     /// fails if the address doesn't exist
-    pub fn set_data_entry(&self, addr: Address, bytecode: Vec<u8>) -> Result<(), ExecutionError> {
-        self.added_changes.set_bytecode(addr, bytecode)
+    pub fn set_data_entry(
+        &self,
+        addr: &Address,
+        key: Hash,
+        data: Vec<u8>,
+    ) -> Result<(), ExecutionError> {
+        // check for address existence
+        if !self.entry_exists(&addr) {
+            return Err(ExecutionError::RuntimeError(format!(
+                "could not set data for address {}: entry does not exist",
+                addr
+            )));
+        }
+
+        // set data
+        self.added_changes.set_data_entry(*addr, key, data);
+
+        Ok(())
     }
 }

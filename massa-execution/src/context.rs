@@ -2,6 +2,7 @@ use crate::sce_ledger::SCELedgerChanges;
 use crate::speculative_ledger::SpeculativeLedger;
 use crate::types::ExecutionStackElement;
 use crate::{event_store::EventStore, ExecutionError};
+use massa_hash::hash::Hash;
 use massa_ledger::{FinalLedger, LedgerChanges};
 use massa_models::{Address, Amount, BlockId, OperationId, Slot};
 use rand::SeedableRng;
@@ -162,9 +163,38 @@ impl ExecutionContext {
         self.speculative_ledger.get_bytecode(address)
     }
 
+    /// gets the data from a datastore entry of an address if it exists
+    pub fn get_data_entry(&self, address: &Address, key: &Hash) -> Option<Vec<u8>> {
+        self.speculative_ledger.get_data_entry(address, key)
+    }
+
+    /// checks if a datastore entry exists
+    pub fn has_data_entry(&self, address: &Address, key: &Hash) -> bool {
+        self.speculative_ledger.has_data_entry(address, key)
+    }
+
     /// gets the bytecode of an address if it exists
     pub fn get_parallel_balance(&self, address: &Address) -> Option<Amount> {
         self.speculative_ledger.get_parallel_balance(address)
+    }
+
+    /// checks if a datastore entry exists
+    pub fn set_data_entry(
+        &self,
+        address: &Address,
+        key: Hash,
+        data: Vec<u8>,
+    ) -> Result<(), ExecutionError> {
+        // check access right
+        if !self.has_write_rights_on(address) {
+            return Err(ExecutionError::RuntimeError(format!(
+                "writing in the datastore of address {} is not allowed in this context",
+                address
+            )));
+        }
+
+        // set data entry
+        self.speculative_ledger.set_data_entry(address, key, data)
     }
 
     /// Transfers parallel coins from one address to another.

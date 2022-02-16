@@ -9,7 +9,6 @@ use massa_models::{
     AMOUNT_ZERO,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
-use massa_time::MassaTime;
 use rand::Rng;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -152,7 +151,7 @@ impl Interface for InterfaceImpl {
         let addr = massa_models::Address::from_str(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
-        context.set_data_entry(addr, key, value.to_vec())?;
+        context.set_data_entry(&addr, key, value.to_vec())?;
         Ok(())
     }
 
@@ -168,7 +167,7 @@ impl Interface for InterfaceImpl {
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         let addr = context.get_current_address()?;
         match context.get_data_entry(&addr, &key) {
-            Some(bytecode) => Ok(bytecode),
+            Some(data) => Ok(data),
             _ => bail!("data entry not found"),
         }
     }
@@ -177,7 +176,7 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         let addr = context.get_current_address()?;
-        context.set_data_entry(addr, key, value.to_vec())?;
+        context.set_data_entry(&addr, key, value.to_vec())?;
         Ok(())
     }
 

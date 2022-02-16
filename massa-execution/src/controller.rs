@@ -1,6 +1,6 @@
 use crate::execution::ExecutionState;
 use crate::speculative_ledger::SpeculativeLedger;
-use crate::types::{ExecutionContext, ExecutionOutput};
+use crate::types::ExecutionOutput;
 use crate::ExecutionError;
 use crate::{config::VMConfig, types::ReadOnlyExecutionRequest, vm_thread::VMThread};
 use massa_ledger::FinalLedger;

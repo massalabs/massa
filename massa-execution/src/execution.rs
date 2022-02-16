@@ -1,14 +1,13 @@
 use crate::config::VMConfig;
+use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;
-use crate::types::{ExecutionContext, ExecutionOutput, ReadOnlyExecutionRequest};
+use crate::types::{ExecutionOutput, ReadOnlyExecutionRequest};
 use crate::ExecutionError;
 use crate::{event_store::EventStore, speculative_ledger::SpeculativeLedger};
 use massa_ledger::{Applicable, FinalLedger, LedgerChanges};
 use massa_models::BlockId;
 use massa_models::{Block, Slot};
 use massa_sc_runtime::Interface;
-use rand::SeedableRng;
-use rand_xoshiro::Xoshiro256PlusPlus;
 use std::{
     collections::{HashMap, VecDeque},
     sync::{Arc, Mutex, RwLock},
