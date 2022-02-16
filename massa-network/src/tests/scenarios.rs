@@ -222,16 +222,7 @@ async fn test_peer_ban() {
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
     // add advertised peer to controller
-    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
-        ip: mock_addr.ip(),
-        peer_type: PeerType::Standard,
-        last_alive: None,
-        last_failure: None,
-        advertised: true,
-        active_out_connection_attempts: 0,
-        active_out_connections: 0,
-        active_in_connections: 0,
-    }]);
+    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo::new(mock_addr.ip(), true)]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.wakeup_interval = 1000.into();
@@ -364,16 +355,7 @@ async fn test_peer_ban_by_ip() {
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
     // add advertised peer to controller
-    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
-        ip: mock_addr.ip(),
-        peer_type: PeerType::Standard,
-        last_alive: None,
-        last_failure: None,
-        advertised: true,
-        active_out_connection_attempts: 0,
-        active_out_connections: 0,
-        active_in_connections: 0,
-    }]);
+    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo::new(mock_addr.ip(), true)]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.wakeup_interval = 1000.into();
@@ -513,6 +495,7 @@ async fn test_advertised_and_wakeup_interval() {
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
     network_conf.wakeup_interval = MassaTime::from(500);
@@ -645,6 +628,7 @@ async fn test_block_not_found() {
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
@@ -834,6 +818,7 @@ async fn test_retry_connection_closed() {
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
@@ -935,6 +920,7 @@ async fn test_operation_messages() {
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
@@ -1059,6 +1045,7 @@ async fn test_endorsements_messages() {
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());

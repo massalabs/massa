@@ -889,7 +889,7 @@ impl NetworkWorker {
                         .peer_info_db
                         .peers
                         .iter()
-                        .filter(|(_, p)| p.peer_type == PeerType::Banned)
+                        .filter(|(_, p)| p.banned)
                         .fold(0, |acc, _| acc + 1),
                     active_node_count: self.active_nodes.len() as u64,
                 };
