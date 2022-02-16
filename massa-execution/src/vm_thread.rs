@@ -1,27 +1,26 @@
 use crate::config::VMConfig;
-use crate::controller::VMController;
-use crate::types::{ExecutionContext, ExecutionOutput, ReadOnlyExecutionRequest};
-use crate::{event_store::EventStore, speculative_ledger::SpeculativeLedger};
-use massa_ledger::{Applicable, FinalLedger, LedgerChanges};
+use crate::controller::{VMController, VMInputData, VMManager};
+use crate::execution::ExecutionState;
+use crate::types::{ExecutionOutput, ReadOnlyExecutionRequest};
+use crate::ExecutionError;
+use massa_ledger::FinalLedger;
 use massa_models::BlockId;
 use massa_models::{
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
     Block, Slot,
 };
 use massa_time::MassaTime;
-use rand::SeedableRng;
-use rand_xoshiro::Xoshiro256PlusPlus;
+use std::sync::mpsc;
 use std::{
-    collections::{HashMap, VecDeque},
-    sync::{Arc, Mutex, RwLock},
+    collections::HashMap,
+    sync::{Arc, Condvar, Mutex, RwLock},
 };
-
+use tracing::debug;
 /// structure gathering all elements needed by the VM thread
 pub struct VMThread {
     // VM config
     config: VMConfig,
-    // Final ledger
-    final_ledger: Arc<RwLock<FinalLedger>>,
+
     // VM data exchange controller
     controller: Arc<VMController>,
     // map of SCE-final blocks not executed yet
@@ -36,62 +35,33 @@ pub struct VMThread {
     active_slots: HashMap<Slot, Option<(BlockId, Block)>>,
     // highest active slot
     last_active_slot: Slot,
-    // final execution cursor
-    final_cursor: Slot,
-    // active execution cursor
-    active_cursor: Slot,
-    // execution output history
-    execution_history: VecDeque<ExecutionOutput>,
-    // execution context
-    execution_context: Arc<Mutex<ExecutionContext>>,
-    // final events
-    final_events: EventStore,
+
+    // execution state
+    execution_state: Arc<RwLock<ExecutionState>>,
 }
 
 impl VMThread {
     pub fn new(
         config: VMConfig,
         controller: Arc<VMController>,
-        final_ledger: Arc<RwLock<FinalLedger>>,
+        execution_state: Arc<RwLock<ExecutionState>>,
     ) -> Self {
-        let final_slot = final_ledger
+        let final_cursor = execution_state
             .read()
-            .expect("could not R-lock final ledger in VM thread creation")
-            .slot;
-        let execution_context = Arc::new(Mutex::new(ExecutionContext {
-            speculative_ledger: SpeculativeLedger::new(
-                final_ledger.clone(),
-                LedgerChanges::default(),
-            ),
-            max_gas: Default::default(),
-            gas_price: Default::default(),
-            slot: Slot::new(0, 0),
-            created_addr_index: Default::default(),
-            created_event_index: Default::default(),
-            opt_block_id: Default::default(),
-            opt_block_creator_addr: Default::default(),
-            stack: Default::default(),
-            read_only: Default::default(),
-            events: Default::default(),
-            unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
-            origin_operation_id: Default::default(),
-        }));
+            .expect("could not r-lock execution context")
+            .final_cursor;
 
+        // return VMThread
         VMThread {
-            final_ledger,
-            last_active_slot: final_slot,
-            final_cursor: final_slot,
-            active_cursor: final_slot,
+            last_active_slot: final_cursor,
             controller,
-            last_sce_final: final_slot,
-            execution_context,
+            last_sce_final: final_cursor,
             sce_finals: Default::default(),
             remaining_css_finals: Default::default(),
             blockclique: Default::default(),
             active_slots: Default::default(),
-            execution_history: Default::default(),
             config,
-            final_events: Default::default(),
+            execution_state,
         }
     }
 
@@ -212,98 +182,6 @@ impl VMThread {
         }
     }
 
-    /// applies an execution output to the final state
-    fn apply_final_execution_output(&mut self, exec_out: ExecutionOutput) {
-        // update cursors
-        self.final_cursor = exec_out.slot;
-        if self.active_cursor <= self.final_cursor {
-            self.final_cursor = self.final_cursor;
-        }
-
-        // apply final ledger changes
-        {
-            let mut final_ledger = self
-                .final_ledger
-                .write()
-                .expect("could not lock final ledger for writing");
-            final_ledger.settle_slot(exec_out.slot, exec_out.ledger_changes);
-        }
-
-        // save generated events to final store
-        // TODO
-    }
-
-    /// applies an execution output to the active state
-    fn apply_active_execution_output(&mut self, exec_out: ExecutionOutput) {
-        // update active cursor
-        self.active_cursor = exec_out.slot;
-
-        // add execution output to history
-        self.execution_history.push_back(exec_out);
-    }
-
-    /// returns the speculative ledger at a given history slot
-    fn get_speculative_ledger_at_slot(&self, slot: Slot) -> SpeculativeLedger {
-        // check that the slot is within the reach of history
-        if slot <= self.final_cursor {
-            panic!("cannot execute at a slot before finality");
-        }
-        let max_slot = self
-            .active_cursor
-            .get_next_slot(self.config.thread_count)
-            .expect("slot overflow when getting speculative ledger");
-        if slot > max_slot {
-            panic!("cannot execute at a slot beyond active cursor + 1");
-        }
-
-        // gather the history of changes
-        let mut previous_ledger_changes = LedgerChanges::default();
-        for previous_output in &self.execution_history {
-            if previous_output.slot >= slot {
-                break;
-            }
-            previous_ledger_changes.apply(&previous_output.ledger_changes);
-        }
-
-        // return speculative ledger
-        SpeculativeLedger::new(self.final_ledger.clone(), previous_ledger_changes)
-    }
-
-    /// executes a full slot without causing any changes to the state,
-    /// and yields an execution output
-    fn execute_slot(&mut self, slot: Slot, opt_block: Option<(BlockId, Block)>) -> ExecutionOutput {
-        // get the speculative ledger
-        let ledger = self.get_speculative_ledger_at_slot(slot);
-
-        // TODO init context
-
-        // TODO intial executions
-
-        // TODO async executions
-
-        let mut out_block_id = None;
-        if let Some((block_id, block)) = opt_block {
-            out_block_id = Some(block_id);
-
-            //TODO block stuff
-        }
-
-        ExecutionOutput {
-            slot,
-            block_id: out_block_id,
-            ledger_changes: ledger.into_added_changes(),
-        }
-    }
-
-    /// clear execution history
-    fn clear_history(&mut self) {
-        // clear history
-        self.execution_history.clear();
-
-        // reset active cursor
-        self.active_cursor = self.final_cursor;
-    }
-
     /// executes one final slot, if any
     /// returns true if something was executed
     fn execute_one_final_slot(&mut self) -> bool {
@@ -312,25 +190,33 @@ impl VMThread {
             return false;
         }
 
+        // w-lock execution state
+        let mut exec_state = self
+            .execution_state
+            .write()
+            .expect("could not lock execution state for writing");
+
         // get the slot just after the last executed final slot
-        let slot = self
+        let slot = exec_state
             .final_cursor
             .get_next_slot(self.config.thread_count)
             .expect("final slot overflow in VM");
 
-        // take element from sce finals
+        // take the corresponding element from sce finals
         let exec_target = self
             .sce_finals
             .remove(&slot)
             .expect("the SCE final slot list skipped a slot");
 
         // check if the final slot is cached at the front of the speculative execution history
-        if let Some(exec_out) = self.execution_history.pop_front() {
+        if let Some(exec_out) = exec_state.active_history.pop_front() {
             if exec_out.slot == slot
                 && exec_out.block_id == exec_target.as_ref().map(|(b_id, _)| *b_id)
             {
                 // speculative execution front result matches what we want to compute
-                self.apply_final_execution_output(exec_out);
+
+                // apply the cached output and return
+                exec_state.apply_final_execution_output(exec_out);
                 return true;
             }
         }
@@ -338,63 +224,71 @@ impl VMThread {
         // speculative cache mismatch
 
         // clear the speculative execution output cache completely
-        self.clear_history();
+        exec_state.clear_history();
+
+        // downgrade execution state lock to read-only
+        // to allow for outside r-locks while the slot is being executed, which takes CPU time
+        // note that this downgrade does not happen atomically
+        // but the main loop is the only one writng in the execution state
+        // so there won't be writes in-between the release of write() and the acquiring of read()
+        let exec_state = self
+            .execution_state
+            .read()
+            .expect("could not lock execution state for reading");
 
         // execute slot
-        let exec_out = self.execute_slot(slot, exec_target);
+        let exec_out = exec_state.execute_slot(slot, exec_target);
+
+        // upgrade execution state lock to write
+        // note that this upgrade does not happen atomically
+        // but the main loop is the only one writng in the execution state
+        // so there won't be writes in-between the release of read() and the acquiring of write()
+        let exec_state = self
+            .execution_state
+            .write()
+            .expect("could not lock execution state for writing");
 
         // apply execution output to final state
-        self.apply_final_execution_output(exec_out);
+        exec_state.apply_final_execution_output(exec_out);
 
         return true;
-    }
-
-    /// truncates active slots at the first mismatch
-    /// between the active execution output history and the planned active_slots
-    fn truncate_history(&mut self) {
-        // find mismatch point (included)
-        let mut truncate_at = None;
-        for (hist_index, exec_output) in self.execution_history.iter().enumerate() {
-            let found_block_id = self
-                .active_slots
-                .get(&exec_output.slot)
-                .map(|opt_b| opt_b.as_ref().map(|(b_id, b)| *b_id));
-            if found_block_id == Some(exec_output.block_id) {
-                continue;
-            }
-            truncate_at = Some(hist_index);
-            break;
-        }
-
-        // truncate speculative execution output history
-        if let Some(truncate_at) = truncate_at {
-            self.execution_history.truncate(truncate_at);
-            self.active_cursor = self
-                .execution_history
-                .back()
-                .map_or(self.final_cursor, |out| out.slot);
-        }
     }
 
     /// executes one active slot, if any
     /// returns true if something was executed
     fn execute_one_active_slot(&mut self) -> bool {
+        // read-lock the execution state
+        let exec_state = self
+            .execution_state
+            .read()
+            .expect("could not lock execution state for reading");
+
         // get the next active slot
-        let slot = self
+        let slot = exec_state
             .active_cursor
             .get_next_slot(self.config.thread_count)
             .expect("active slot overflow in VM");
 
+        // choose the execution target
         let exec_target = match self.active_slots.get(&slot) {
             Some(b) => b.clone(), //TODO get rid of that clone
             None => return false,
         };
 
         // execute the slot
-        let exec_out = self.execute_slot(slot, exec_target);
+        let exec_out = exec_state.execute_slot(slot, exec_target);
+
+        // upgrade execution state lock to write
+        // note that this upgrade does not happen atomically
+        // but the main loop is the only one writng in the execution state
+        // so there won't be writes in-between the release of read() and the acquiring of write()
+        let exec_state = self
+            .execution_state
+            .write()
+            .expect("could not lock execution state for writing");
 
         // apply execution output to active state
-        self.apply_active_execution_output(exec_out);
+        exec_state.apply_active_execution_output(exec_out);
 
         return true;
     }
@@ -417,11 +311,34 @@ impl VMThread {
         next_timestmap.saturating_sub(now)
     }
 
-    /// executed a readonly request
-    fn execute_readonly_request(&mut self, req: ReadOnlyExecutionRequest) {
-        // TODO
+    /// truncates history if necessary
+    pub fn truncate_history(&mut self) {
+        // acquire write access to execution state
+        let exec_state = self
+            .execution_state
+            .write()
+            .expect("could not lock execution state for writing");
 
-        //TODO send execution result back through req.result_sender
+        exec_state.truncate_history(&self.active_slots);
+    }
+
+    /// execute readonly request
+    fn execute_readonly_request(
+        &self,
+        req: ReadOnlyExecutionRequest,
+        resp_tx: mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
+    ) {
+        // acquire read access to execution state and execute the request
+        let outcome = self
+            .execution_state
+            .read()
+            .expect("could not lock execution state for reading")
+            .execute_readonly_request(req);
+
+        // send the response
+        if resp_tx.send(outcome).is_err() {
+            debug!("could not send execute_readonly_request response: response channel died");
+        }
     }
 
     /// main VM loop
@@ -472,8 +389,8 @@ impl VMThread {
 
             // execute all queued readonly requests
             // must be done in this loop because of the static shared context
-            for req in input_data.readonly_requests {
-                self.execute_readonly_request(req);
+            for (req, resp_tx) in input_data.readonly_requests {
+                self.execute_readonly_request(req, resp_tx);
             }
 
             // check if new data or requests arrived during the iteration
@@ -503,5 +420,52 @@ impl VMThread {
                 .wait_timeout(input_data, delay_until_next_slot.to_duration())
                 .expect("VM main loop condition variable wait failed");
         }
+
+        // signal cancellation to all remaining readonly requests
+        let input_data = self
+            .controller
+            .input_data
+            .lock()
+            .expect("could not lock VM input data");
+        for (_req, resp_tx) in input_data.readonly_requests.drain(..) {
+            resp_tx.send(Err(ExecutionError::RuntimeError(
+                "readonly execution cancelled because VM is closing".into(),
+            )));
+        }
+    }
+}
+
+/// launches the VM and returns a VMManager
+///
+/// # parameters
+/// * config: VM configuration
+/// * bootstrap:
+pub fn start_vm(config: VMConfig, final_ledger: Arc<RwLock<FinalLedger>>) -> VMManager {
+    // create an execution state
+    let execution_state = Arc::new(RwLock::new(ExecutionState::new(
+        config.clone(),
+        final_ledger.clone(),
+    )));
+
+    // create a controller
+    let controller = Arc::new(VMController {
+        loop_cv: Condvar::new(),
+        input_data: Mutex::new(VMInputData {
+            blockclique_changed: true,
+            ..Default::default()
+        }),
+        execution_state: execution_state.clone(),
+    });
+
+    // launch the VM thread
+    let ctl = controller.clone();
+    let thread_handle = std::thread::spawn(move || {
+        VMThread::new(config, ctl, execution_state).main_loop();
+    });
+
+    // return the VM manager
+    VMManager {
+        controller,
+        thread_handle,
     }
 }

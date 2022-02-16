@@ -2,6 +2,7 @@ use massa_time::MassaTime;
 use std::path::PathBuf;
 
 /// VM module configuration
+#[derive(Debug, Clone)]
 pub struct VMConfig {
     /// Initial SCE ledger file
     pub initial_sce_ledger_path: PathBuf,

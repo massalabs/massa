@@ -1,8 +1,12 @@
+use crate::execution::ExecutionState;
+use crate::speculative_ledger::SpeculativeLedger;
+use crate::types::{ExecutionContext, ExecutionOutput};
+use crate::ExecutionError;
 use crate::{config::VMConfig, types::ReadOnlyExecutionRequest, vm_thread::VMThread};
 use massa_ledger::FinalLedger;
 use massa_models::{Block, BlockId, Slot};
 use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, Condvar, Mutex, RwLock};
+use std::sync::{mpsc, Arc, Condvar, Mutex, RwLock};
 use tracing::info;
 
 /// structure used to communicate with the VM thread
@@ -16,8 +20,11 @@ pub struct VMInputData {
     pub finalized_blocks: HashMap<Slot, (BlockId, Block)>,
     /// blockclique
     pub blockclique: HashMap<Slot, (BlockId, Block)>,
-    /// readonly execution requests
-    pub readonly_requests: VecDeque<ReadOnlyExecutionRequest>,
+    /// readonly execution requests and response mpscs
+    pub readonly_requests: VecDeque<(
+        ReadOnlyExecutionRequest,
+        mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
+    )>,
 }
 
 /// VM controller
@@ -26,13 +33,50 @@ pub struct VMController {
     pub loop_cv: Condvar,
     /// input data to process in the VM loop
     pub input_data: Mutex<VMInputData>,
+    /// execution state
+    pub execution_state: Arc<RwLock<ExecutionState>>,
 }
 
 impl VMController {
     /// reads the list of newly finalized blocks and the new blockclique, if there was a change
     /// if found, remove from input queue
-    pub fn consume_input(&mut self) -> VMInputData {
+    pub(crate) fn consume_input(&mut self) -> VMInputData {
         std::mem::take(&mut self.input_data.lock().expect("VM input data lock failed"))
+    }
+
+    /// Executes a readonly request
+    pub fn execute_readonly_request(
+        &mut self,
+        req: ReadOnlyExecutionRequest,
+        max_queue_length: usize,
+    ) -> Result<ExecutionOutput, ExecutionError> {
+        // queue request
+        let resp_rx = {
+            let input_data = self
+                .input_data
+                .lock()
+                .expect("could not lock VM input data");
+            if input_data.readonly_requests.len() > max_queue_length {
+                return Err(ExecutionError::RuntimeError(
+                    "too many queued readonly requests".into(),
+                ));
+            }
+            let (resp_tx, resp_rx) =
+                std::sync::mpsc::channel::<Result<ExecutionOutput, ExecutionError>>();
+            input_data.readonly_requests.push_back((req, resp_tx));
+            self.loop_cv.notify_one();
+            resp_rx
+        };
+
+        // wait for response
+        match resp_rx.recv() {
+            Ok(result) => return result,
+            Err(err) => {
+                return Err(ExecutionError::RuntimeError(
+                    "the VM input channel is closed".into(),
+                ))
+            }
+        }
     }
 }
 
@@ -68,30 +112,5 @@ impl VMManager {
     /// get a shared reference to the VM controller
     pub fn get_controller(&self) -> Arc<VMController> {
         self.controller.clone()
-    }
-}
-
-/// launches the VM and returns a VMManager
-///
-/// # parameters
-/// * config: VM configuration
-/// * bootstrap:
-pub fn start_vm(config: VMConfig, final_ledger: Arc<RwLock<FinalLedger>>) -> VMManager {
-    let controller = Arc::new(VMController {
-        loop_cv: Condvar::new(),
-        input_data: Mutex::new(VMInputData {
-            blockclique_changed: true,
-            ..Default::default()
-        }),
-    });
-
-    let ctl = controller.clone();
-    let thread_handle = std::thread::spawn(move || {
-        VMThread::new(config, ctl, final_ledger).main_loop();
-    });
-
-    VMManager {
-        controller,
-        thread_handle,
     }
 }

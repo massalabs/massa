@@ -19,6 +19,9 @@ pub enum ExecutionError {
 
     /// File error
     FileError(String),
+
+    /// Runtime error: {0}
+    RuntimeError(String),
 }
 
 macro_rules! bootstrap_file_error {
