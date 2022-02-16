@@ -537,7 +537,7 @@ impl Default for ConsensusConfig {
                 temp_files: vec![],
             },
             // reset genesis timestamp because we are in test mode that can take a while to process
-            genesis_timestamp: MassaTime::now().unwrap(),
+            genesis_timestamp: MassaTime::now().expect("Impossible to reset the timestamp in test"),
             end_timestamp: *END_TIMESTAMP,
             thread_count: THREAD_COUNT,
             t0: T0,
