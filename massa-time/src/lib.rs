@@ -178,7 +178,7 @@ impl MassaTime {
     /// let res: u64 = time.to_millis();
     /// assert_eq!(res, 42);
     /// ```
-    pub fn to_millis(&self) -> u64 {
+    pub const fn to_millis(&self) -> u64 {
         self.0
     }
 

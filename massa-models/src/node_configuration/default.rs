@@ -94,9 +94,9 @@ pub const POS_LOOKBACK_CYCLES: u64 = 2;
 /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles
 pub const POS_LOCK_CYCLES: u64 = 1;
 
-/* ***********************
- * Bootstrap constants
- */
+// ***********************
+// Bootstrap constants
+//
 
 /// Max message size for bootstrap
 pub const MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = 1048576000;
@@ -115,25 +115,25 @@ pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import
 pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 
-/* ***********************
- * Constants used for execution module (injected from ConsensusConfig)
- */
+// ***********************
+// Constants used for execution module (injected from ConsensusConfig)
+//
 
 /// Maximum of GAS allowed for a block
 pub const MAX_GAS_PER_BLOCK: u64 = 100_000_000;
 
-/**
- * Constants used in network
- */
+//
+// Constants used in network
+//
 
 /// Max number of endorsements per message
 pub const MAX_ENDORSEMENTS_PER_MESSAGE: u32 = 1024;
 pub const NODE_SEND_CHANNEL_SIZE: usize = 1024;
 pub const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
 
-/**
- * Divers constants
- */
+//
+// Divers constants
+//
 
 pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 /// Safe to import
@@ -146,7 +146,10 @@ pub const SLOT_KEY_SIZE: usize = 9;
 /// Size of the event id hash used in execution module, safe to import
 pub const EVENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
-//const _: () = {
-//    assert!((*T0).to_millis() >= 1);
-//    assert!((*T0).to_millis() % (THREAD_COUNT as u64) == 0);
-//};
+// Some checks at compile time that should not be ignored!
+#[allow(clippy::assertions_on_constants)]
+const _: () = {
+    assert!(THREAD_COUNT > 1);
+    assert!((T0).to_millis() >= 1);
+    assert!((T0).to_millis() % (THREAD_COUNT as u64) == 0);
+};

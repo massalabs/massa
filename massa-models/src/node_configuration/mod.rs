@@ -31,22 +31,19 @@
 //! ```
 //!
 
-/***************************************************************
- * Note:
- *
- * We can force the access to one of defined value (test or not)
- * with `use massa_config::exported_constants::CONST_VALUE`
- *
- * Nevertheless the disign is more like using `massa_config::CONST_VALUE`
- * and defining in `Cargo.toml` if we are testing or not
- *
- * ```toml
- * [dependencies]
- *     massa_config = { path = "../massa-config" }
- * [dev-dependencies]
- *     massa_config = { path = "../massa-config", features = ["testing"] }
- * ```
- */
+// **************************************************************
+// Note:
+// We can force the access to one of defined value (test or not)
+// with `use massa_config::exported_constants::CONST_VALUE`
+// Nevertheless the disign is more like using `massa_config::CONST_VALUE`
+// and defining in `Cargo.toml` if we are testing or not
+// ```toml
+// [dependencies]
+//     massa_config = { path = "../massa-config" }
+// [dev-dependencies]
+//     massa_config = { path = "../massa-config", features = ["testing"] }
+// ```
+//
 
 pub mod default;
 pub mod default_testing;
