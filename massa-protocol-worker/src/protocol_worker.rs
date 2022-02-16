@@ -94,6 +94,7 @@ pub async fn start_protocol_controller(
 
 //put in a module to block private access from Protocol_worker.
 mod nodeinfo {
+    use itertools::Itertools;
     use massa_models::prehash::{BuildMap, Map, Set};
     use massa_models::{BlockId, EndorsementId, OperationId};
     use massa_protocol_exports::ProtocolSettings;
@@ -161,6 +162,9 @@ mod nodeinfo {
 
         /// Insert knowledge of a list of blocks in NodeInfo
         ///
+        /// If there is just one item to pop, just find the min, otherwise,
+        /// sort the items and take the overflow from the first item.
+        ///
         /// ## Arguments
         /// - self: node info
         /// - block_ids: list of blocks
@@ -177,14 +181,27 @@ mod nodeinfo {
             for block_id in block_ids {
                 self.known_blocks.insert(*block_id, (val, instant));
             }
-            while self.known_blocks.len() > max_node_known_blocks_size {
-                // remove oldest item
-                let (&h, _) = self
+            let len = self.known_blocks.len();
+            if len == max_node_known_blocks_size {
+                /* Fast case where there is just one to pop */
+                let block_id = *self
                     .known_blocks
                     .iter()
                     .min_by_key(|(h, (_, t))| (*t, *h))
-                    .unwrap(); // never None because is the collection is empty, while loop isn't executed.
-                self.known_blocks.remove(&h);
+                    .unwrap()
+                    .0;
+                self.known_blocks.remove(&block_id);
+                return;
+            }
+            if len > max_node_known_blocks_size {
+                self.known_blocks
+                    .iter()
+                    .map(|(h, (_, t))| (*h, *t))
+                    .sorted()
+                    .take(len - max_node_known_blocks_size)
+                    .for_each(|(block_id, _)| {
+                        self.known_blocks.remove(&block_id);
+                    });
             }
         }
 
