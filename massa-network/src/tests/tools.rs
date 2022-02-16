@@ -4,6 +4,7 @@ use super::super::binders::{ReadBinder, WriteBinder};
 use super::mock_establisher::MockEstablisherInterface;
 use super::{mock_establisher, tools};
 use crate::messages::Message;
+use crate::settings::PeerTypeConnectionConfig;
 use crate::NetworkError;
 use crate::{handshake_worker::HandshakeWorker, ConnectionId};
 use crate::{start_network_controller, NetworkSettings};
@@ -84,13 +85,23 @@ pub fn create_network_config(
         protocol_port: network_controller_port,
         connect_timeout: MassaTime::from(3000),
         peers_file: peers_file_path.to_path_buf(),
-        target_out_nonbootstrap_connections: 10,
+        bootstrap_peers_config: PeerTypeConnectionConfig {
+            target_out: 0,
+            max_in: 0,
+            max_out_attempts: 1,
+        },
+        standard_peers_config: PeerTypeConnectionConfig {
+            target_out: 10,
+            max_in: 100,
+            max_out_attempts: 100,
+        },
+        whitelist_peers_config: PeerTypeConnectionConfig {
+            target_out: 5,
+            max_in: 5,
+            max_out_attempts: 5,
+        },
         wakeup_interval: MassaTime::from(3000),
-        target_bootstrap_connections: 0,
-        max_out_bootstrap_connection_attempts: 1,
-        max_in_nonbootstrap_connections: 100,
         max_in_connections_per_ip: 100,
-        max_out_nonbootstrap_connection_attempts: 100,
         max_idle_peers: 100,
         max_banned_peers: 100,
         peers_file_dump_interval: MassaTime::from(30000),

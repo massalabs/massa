@@ -996,7 +996,11 @@ mod tests {
     #[serial]
     async fn test_try_new_in_connection_in_connection_closed() {
         let network_settings = NetworkSettings {
-            target_out_nonbootstrap_connections: 5,
+            standard_peers_config: PeerTypeConnectionConfig {
+                target_out: 5,
+                max_in: 0,
+                max_out_attempts: 5,
+            },
             ..Default::default()
         };
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
@@ -1008,8 +1012,8 @@ mod tests {
         peers.insert(connected_peers1.ip, connected_peers1);
         let mut connected_peers1 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
-        connected_peers1.bootstrap = true;
-        connected_peers1.banned = true;
+        connected_peers1.peer_type = PeerType::Bootstrap;
+        connected_peers1.peer_type = PeerType::Banned;
         peers.insert(connected_peers1.ip, connected_peers1);
 
         let wakeup_interval = network_settings.wakeup_interval;
@@ -1023,13 +1027,11 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_bootstrap_connection_attempts: 0,
-            active_bootstrap_connections: 0,
-            active_out_nonbootstrap_connection_attempts: 0,
-            active_out_nonbootstrap_connections: 0,
-            active_in_nonbootstrap_connections: 0,
             wakeup_interval,
             clock_compensation: 0,
+            whitelist_connections: Default::default(),
+            bootstrap_connection_count: Default::default(),
+            standard_connection_count: Default::default(),
         };
 
         // test with no connection attempt before
@@ -1092,7 +1094,11 @@ mod tests {
     #[serial]
     async fn test_out_connection_attempt_failed() {
         let network_settings = NetworkSettings {
-            target_out_nonbootstrap_connections: 5,
+            standard_peers_config: PeerTypeConnectionConfig {
+                target_out: 5,
+                max_in: 0,
+                max_out_attempts: 5,
+            },
             ..Default::default()
         };
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
@@ -1104,8 +1110,8 @@ mod tests {
         peers.insert(connected_peers1.ip, connected_peers1);
         let mut connected_peers1 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
-        connected_peers1.bootstrap = true;
-        connected_peers1.banned = true;
+        connected_peers1.peer_type = PeerType::Bootstrap;
+        connected_peers1.peer_type = PeerType::Banned;
         peers.insert(connected_peers1.ip, connected_peers1);
 
         let wakeup_interval = network_settings.wakeup_interval;
@@ -1119,11 +1125,9 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_bootstrap_connection_attempts: 0,
-            active_bootstrap_connections: 0,
-            active_out_nonbootstrap_connection_attempts: 0,
-            active_out_nonbootstrap_connections: 0,
-            active_in_nonbootstrap_connections: 0,
+            whitelist_connections: Default::default(),
+            bootstrap_connection_count: Default::default(),
+            standard_connection_count: Default::default(),
             wakeup_interval,
             clock_compensation: 0,
         };
@@ -1189,7 +1193,11 @@ mod tests {
     #[serial]
     async fn test_try_out_connection_attempt_success() {
         let network_settings = NetworkSettings {
-            target_out_nonbootstrap_connections: 5,
+            standard_peers_config: PeerTypeConnectionConfig {
+                target_out: 5,
+                max_in: 0,
+                max_out_attempts: 5,
+            },
             ..Default::default()
         };
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
@@ -1201,8 +1209,8 @@ mod tests {
         peers.insert(connected_peers1.ip, connected_peers1);
         let mut connected_peers1 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
-        connected_peers1.bootstrap = true;
-        connected_peers1.banned = true;
+        connected_peers1.peer_type = PeerType::Bootstrap;
+        connected_peers1.peer_type = PeerType::Banned;
         peers.insert(connected_peers1.ip, connected_peers1);
 
         let wakeup_interval = network_settings.wakeup_interval;
@@ -1216,11 +1224,9 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_bootstrap_connection_attempts: 0,
-            active_bootstrap_connections: 0,
-            active_out_nonbootstrap_connection_attempts: 0,
-            active_out_nonbootstrap_connections: 0,
-            active_in_nonbootstrap_connections: 0,
+            whitelist_connections: Default::default(),
+            bootstrap_connection_count: Default::default(),
+            standard_connection_count: Default::default(),
             wakeup_interval,
             clock_compensation: 0,
         };
@@ -1288,7 +1294,11 @@ mod tests {
     #[serial]
     async fn test_new_out_connection_closed() {
         let network_settings = NetworkSettings {
-            max_out_nonbootstrap_connection_attempts: 5,
+            standard_peers_config: PeerTypeConnectionConfig {
+                target_out: 5,
+                max_in: 0,
+                max_out_attempts: 5,
+            },
             ..Default::default()
         };
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
@@ -1308,11 +1318,9 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_bootstrap_connection_attempts: 0,
-            active_bootstrap_connections: 0,
-            active_out_nonbootstrap_connection_attempts: 0,
-            active_out_nonbootstrap_connections: 0,
-            active_in_nonbootstrap_connections: 0,
+            whitelist_connections: Default::default(),
+            bootstrap_connection_count: Default::default(),
+            standard_connection_count: Default::default(),
             wakeup_interval,
             clock_compensation: 0,
         };
@@ -1365,7 +1373,11 @@ mod tests {
     #[serial]
     async fn test_new_out_connection_attempt() {
         let network_settings = NetworkSettings {
-            max_out_nonbootstrap_connection_attempts: 5,
+            standard_peers_config: PeerTypeConnectionConfig {
+                target_out: 5,
+                max_in: 0,
+                max_out_attempts: 5,
+            },
             ..Default::default()
         };
         let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
@@ -1384,11 +1396,9 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_bootstrap_connection_attempts: 0,
-            active_bootstrap_connections: 0,
-            active_out_nonbootstrap_connection_attempts: 0,
-            active_out_nonbootstrap_connections: 0,
-            active_in_nonbootstrap_connections: 0,
+            whitelist_connections: Default::default(),
+            bootstrap_connection_count: Default::default(),
+            standard_connection_count: Default::default(),
             wakeup_interval,
             clock_compensation: 0,
         };
@@ -1443,8 +1453,8 @@ mod tests {
         // peer banned not return.
         let mut banned_host1 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 23)));
-        banned_host1.bootstrap = true;
-        banned_host1.banned = true;
+        banned_host1.peer_type = PeerType::Bootstrap;
+        banned_host1.peer_type = PeerType::Banned;
         banned_host1.last_alive = Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
         peers.insert(banned_host1.ip, banned_host1);
         // peer not advertised, not return
@@ -1485,11 +1495,9 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_bootstrap_connection_attempts: 0,
-            active_bootstrap_connections: 0,
-            active_out_nonbootstrap_connection_attempts: 0,
-            active_out_nonbootstrap_connections: 0,
-            active_in_nonbootstrap_connections: 0,
+            whitelist_connections: Default::default(),
+            bootstrap_connection_count: Default::default(),
+            standard_connection_count: Default::default(),
             wakeup_interval,
             clock_compensation: 0,
         };
@@ -1531,7 +1539,7 @@ mod tests {
         // peer Ok, return
         let mut connected_peers1 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
-        connected_peers1.bootstrap = true;
+        connected_peers1.peer_type = PeerType::Bootstrap;
         peers.insert(connected_peers1.ip, connected_peers1);
         // peer failure to early. not return
         let mut connected_peers2 =
@@ -1556,8 +1564,8 @@ mod tests {
         // peer banned not return.
         let mut banned_host1 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 23)));
-        banned_host1.bootstrap = true;
-        banned_host1.banned = true;
+        banned_host1.peer_type = PeerType::Bootstrap;
+        banned_host1.peer_type = PeerType::Banned;
         banned_host1.last_alive = Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
         peers.insert(banned_host1.ip, banned_host1);
         // peer failure after alive not to early. return
@@ -1596,11 +1604,9 @@ mod tests {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            active_out_bootstrap_connection_attempts: 0,
-            active_bootstrap_connections: 0,
-            active_out_nonbootstrap_connection_attempts: 0,
-            active_out_nonbootstrap_connections: 0,
-            active_in_nonbootstrap_connections: 0,
+            whitelist_connections: Default::default(),
+            bootstrap_connection_count: Default::default(),
+            standard_connection_count: Default::default(),
             wakeup_interval,
             clock_compensation: 0,
         };
@@ -1669,35 +1675,35 @@ mod tests {
 
         let mut banned_host1 =
             default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 23)));
-        banned_host1.bootstrap = false;
-        banned_host1.banned = true;
+
+        banned_host1.peer_type = PeerType::Banned;
         banned_host1.active_out_connections = 0;
         banned_host1.last_alive = Some(now.checked_sub(1000.into()).unwrap());
         banned_host1.last_failure = Some(now.checked_sub(2000.into()).unwrap());
         let mut banned_host2 =
             default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 24)));
-        banned_host2.bootstrap = false;
-        banned_host2.banned = true;
+
+        banned_host2.peer_type = PeerType::Banned;
         banned_host2.active_out_connections = 0;
         banned_host2.last_alive = Some(now.checked_sub(900.into()).unwrap());
         banned_host2.last_failure = Some(now.checked_sub(2000.into()).unwrap());
         let mut banned_host3 =
             default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 25)));
-        banned_host3.bootstrap = false;
-        banned_host3.banned = true;
+
+        banned_host3.peer_type = PeerType::Banned;
         banned_host3.last_alive = Some(now.checked_sub(900.into()).unwrap());
         banned_host3.last_failure = Some(now.checked_sub(2000.into()).unwrap());
 
         let mut advertised_host1 =
             default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 35)));
-        advertised_host1.bootstrap = false;
+
         advertised_host1.advertised = true;
         advertised_host1.active_out_connections = 0;
         advertised_host1.last_alive =
             Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
         let mut advertised_host2 =
             default_peer_info_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 36)));
-        advertised_host2.bootstrap = false;
+        advertised_host2.peer_type = PeerType::Standard;
         advertised_host2.advertised = true;
         advertised_host2.active_out_connections = 0;
         advertised_host2.last_alive = Some(now.checked_sub(900.into()).unwrap());
@@ -1766,8 +1772,7 @@ mod tests {
     fn default_peer_info_connected(ip: IpAddr) -> PeerInfo {
         PeerInfo {
             ip,
-            banned: false,
-            bootstrap: false,
+            peer_type: PeerType::Standard,
             last_alive: None,
             last_failure: None,
             advertised: false,
@@ -1780,8 +1785,7 @@ mod tests {
     fn default_peer_info_not_connected(ip: IpAddr) -> PeerInfo {
         PeerInfo {
             ip,
-            banned: false,
-            bootstrap: false,
+            peer_type: PeerType::Standard,
             last_alive: None,
             last_failure: None,
             advertised: true,
@@ -1800,8 +1804,12 @@ mod tests {
                 let ip: [u8; 4] = [rng.gen(), rng.gen(), rng.gen(), rng.gen()];
                 let peer = PeerInfo {
                     ip: IpAddr::from(ip),
-                    banned: (ip[0] % 5) == 0,
-                    bootstrap: (ip[1] % 2) == 0,
+                    peer_type: match ip[0] % 5 {
+                        0 | 1 => PeerType::Bootstrap,
+                        2 | 3 => PeerType::Standard,
+                        4 => PeerType::Banned,
+                        _ => panic!("x % 5 >= 5"),
+                    },
                     last_alive: match i % 4 {
                         0 => None,
                         _ => Some(MassaTime::now().unwrap().checked_sub(50000.into()).unwrap()),
@@ -1826,11 +1834,9 @@ mod tests {
                 peers,
                 saver_join_handle,
                 saver_watch_tx,
-                active_out_bootstrap_connection_attempts: 0,
-                active_bootstrap_connections: 0,
-                active_out_nonbootstrap_connection_attempts: 0,
-                active_out_nonbootstrap_connections: 0,
-                active_in_nonbootstrap_connections: 0,
+                whitelist_connections: Default::default(),
+                bootstrap_connection_count: Default::default(),
+                standard_connection_count: Default::default(),
                 wakeup_interval,
                 clock_compensation: 0,
             }

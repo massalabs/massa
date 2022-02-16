@@ -9,6 +9,8 @@ use crate::ConnectionClosureReason;
 use crate::NetworkError;
 use crate::NetworkEvent;
 
+use crate::peer_info_database::PeerType;
+use crate::settings::PeerTypeConnectionConfig;
 use crate::PeerInfo;
 use crate::{
     binders::{ReadBinder, WriteBinder},
@@ -102,7 +104,11 @@ async fn test_multiple_connections_to_controller() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&[]);
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.max_in_nonbootstrap_connections = 2;
+    network_conf.standard_peers_config = PeerTypeConnectionConfig {
+        max_in: 2,
+        target_out: 0,
+        max_out_attempts: 0,
+    };
     network_conf.max_in_connections_per_ip = 1;
 
     let mock1_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
@@ -218,8 +224,7 @@ async fn test_peer_ban() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: false,
+        peer_type: PeerType::Standard,
         last_alive: None,
         last_failure: None,
         advertised: true,
@@ -361,8 +366,7 @@ async fn test_peer_ban_by_ip() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: false,
+        peer_type: PeerType::Standard,
         last_alive: None,
         last_failure: None,
         advertised: true,
@@ -502,8 +506,7 @@ async fn test_advertised_and_wakeup_interval() {
     let mock_ignore_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 13)), bind_port);
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_ignore_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: false,
@@ -635,8 +638,7 @@ async fn test_block_not_found() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: true,
@@ -646,7 +648,11 @@ async fn test_block_not_found() {
     }]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.target_bootstrap_connections = 1;
+    network_conf.bootstrap_peers_config = PeerTypeConnectionConfig {
+        max_in: 1,
+        target_out: 1,
+        max_out_attempts: 1,
+    };
 
     // Overwrite the context.
     let mut serialization_context = massa_models::get_serialization_context();
@@ -821,8 +827,7 @@ async fn test_retry_connection_closed() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: true,
@@ -832,7 +837,11 @@ async fn test_retry_connection_closed() {
     }]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.target_bootstrap_connections = 1;
+    network_conf.bootstrap_peers_config = PeerTypeConnectionConfig {
+        max_in: 1,
+        target_out: 1,
+        max_out_attempts: 1,
+    };
 
     tools::network_test(
         network_conf.clone(),
@@ -919,8 +928,7 @@ async fn test_operation_messages() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: true,
@@ -930,7 +938,11 @@ async fn test_operation_messages() {
     }]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.target_bootstrap_connections = 1;
+    network_conf.bootstrap_peers_config = PeerTypeConnectionConfig {
+        max_in: 1,
+        target_out: 1,
+        max_out_attempts: 1,
+    };
 
     // Overwrite the context.
     let mut serialization_context = massa_models::get_serialization_context();
@@ -1040,8 +1052,7 @@ async fn test_endorsements_messages() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: true,
@@ -1051,7 +1062,11 @@ async fn test_endorsements_messages() {
     }]);
 
     let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.target_bootstrap_connections = 1;
+    network_conf.bootstrap_peers_config = PeerTypeConnectionConfig {
+        max_in: 1,
+        target_out: 1,
+        max_out_attempts: 1,
+    };
 
     // Overwrite the context.
     let mut serialization_context = massa_models::get_serialization_context();
