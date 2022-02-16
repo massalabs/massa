@@ -9,7 +9,7 @@ extern crate massa_logging;
 pub use config::LedgerConfig;
 pub use error::LedgerError;
 pub use ledger::{
-    FinalLedger, LedgerChanges, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep,
+    Applicable, FinalLedger, LedgerChanges, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep,
     SetUpdateOrDelete,
 };
 

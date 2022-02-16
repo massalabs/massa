@@ -1,10 +1,11 @@
 use crate::speculative_ledger::SpeculativeLedger;
-use massa_ledger::{FinalLedger, LedgerChanges, LedgerEntry, LedgerEntryUpdate};
-use massa_models::BlockId;
+use crate::ExecutionError;
+use massa_ledger::{Applicable, FinalLedger, LedgerChanges, LedgerEntry, LedgerEntryUpdate};
 use massa_models::{
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
-    Slot,
+    Block, Slot,
 };
+use massa_models::{Address, Amount, BlockId};
 use massa_time::MassaTime;
 use std::{
     collections::{HashMap, VecDeque},
@@ -12,37 +13,72 @@ use std::{
 };
 use tracing::info;
 
+/// VM module configuration
 pub struct VMConfig {
+    /// number of threads
     thread_count: u8,
+    /// extra lag to add on the cursor to improve performance
     cursor_delay: MassaTime,
+    /// time compensation in milliseconds
     clock_compensation: i64,
+    /// genesis timestamp
     genesis_timestamp: MassaTime,
+    /// period duration
     t0: MassaTime,
 }
+
+/// structure describing a read-only execution request
+pub struct ReadOnlyExecutionRequest {
+    /// The slot at which the execution will occur.
+    slot: Slot,
+    /// Maximum gas to spend in the execution.
+    max_gas: u64,
+    /// The simulated price of gas for the read-only execution.
+    simulated_gas_price: Amount,
+    /// The code to execute.
+    bytecode: Vec<u8>,
+    /// Call stack to simulate
+    call_stack: Vec<Address>,
+    /// The channel used to send the result of the execution.
+    result_sender: std::sync::mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
+}
+
 /// structure used to communicate with the VM thread
 #[derive(Default)]
 pub struct VMInputData {
+    /// set stop to true to stop the thread
     stop: bool,
+    /// signal whether the blockclique changed
     blockclique_changed: bool,
-    finalized_blocks: HashMap<Slot, BlockId>,
-    blockclique: HashMap<Slot, BlockId>,
+    /// list of newly finalized blocks
+    finalized_blocks: HashMap<Slot, (BlockId, Block)>,
+    /// blockclique
+    blockclique: HashMap<Slot, (BlockId, Block)>,
+    /// readonly execution requests
+    readonly_requests: VecDeque<ReadOnlyExecutionRequest>,
 }
 
 /// VM controller
 pub struct VMController {
+    /// condition variable to wake up the VM loop
     loop_cv: Condvar,
+    /// input data to process in the VM loop
     input_data: Mutex<VMInputData>,
 }
 
 /// VM manager
 pub struct VMManager {
+    /// shared reference to the VM controller
     controller: Arc<VMController>,
+    /// handle used to join the VM thread
     thread_handle: std::thread::JoinHandle<()>,
 }
 
 impl VMManager {
+    /// stops the VM
     pub fn stop(self) {
         info!("stopping VM controller...");
+        // notify the VM thread to stop
         {
             let mut input_wlock = self
                 .controller
@@ -50,21 +86,27 @@ impl VMManager {
                 .lock()
                 .expect("could not w-lock VM input data");
             input_wlock.stop = true;
-            input_wlock.blockclique_changed = true;
             self.controller.loop_cv.notify_one();
         }
+        // join the VM thread
         self.thread_handle
             .join()
             .expect("VM controller thread panicked");
         info!("VM controller stopped");
     }
 
+    /// get a shared reference to the VM controller
     pub fn get_controller(&self) -> Arc<VMController> {
         self.controller.clone()
     }
 }
 
-pub fn start_vm(config: VMConfig, bootstrap: Option<VMBootstrapData>) -> VMManager {
+/// launches the VM and returns a VMManager
+///
+/// # parameters
+/// * config: VM configuration
+/// * bootstrap:
+pub fn start_vm(config: VMConfig, final_ledger: Arc<RwLock<FinalLedger>>) -> VMManager {
     let controller = Arc::new(VMController {
         loop_cv: Condvar::new(),
         input_data: Mutex::new(VMInputData {
@@ -75,7 +117,7 @@ pub fn start_vm(config: VMConfig, bootstrap: Option<VMBootstrapData>) -> VMManag
 
     let ctl = controller.clone();
     let thread_handle = std::thread::spawn(move || {
-        VMThread::new(config, ctl, bootstrap).main_loop();
+        VMThread::new(config, ctl, final_ledger).main_loop();
     });
 
     VMManager {
@@ -104,15 +146,15 @@ struct VMThread {
     // VM data exchange controller
     controller: Arc<VMController>,
     // map of SCE-final blocks not executed yet
-    sce_finals: HashMap<Slot, Option<BlockId>>,
+    sce_finals: HashMap<Slot, Option<(BlockId, Block)>>,
     // last SCE final slot in sce_finals list
     last_sce_final: Slot,
     // map of CSS-final but non-SCE-final blocks
-    remaining_css_finals: HashMap<Slot, BlockId>,
+    remaining_css_finals: HashMap<Slot, (BlockId, Block)>,
     // last blockclique
-    blockclique: HashMap<Slot, BlockId>,
+    blockclique: HashMap<Slot, (BlockId, Block)>,
     // map of active slots
-    active_slots: HashMap<Slot, Option<BlockId>>,
+    active_slots: HashMap<Slot, Option<(BlockId, Block)>>,
     // highest active slot
     last_active_slot: Slot,
     // final execution cursor
@@ -128,7 +170,9 @@ struct VMThread {
 }
 
 pub(crate) struct ExecutionContext {
+    //TODO other things (eg. call stack)
     speculative_ledger: SpeculativeLedger,
+    //TODO event store
 }
 
 impl VMThread {
@@ -142,12 +186,12 @@ impl VMThread {
             .expect("could not R-lock final ledger in VM thread creation")
             .slot;
         let execution_context = Arc::new(Mutex::new(ExecutionContext {
-            speculative_ledger: SpeculativeLedger {
-                final_ledger: final_ledger.clone(),
-                all_changes: Default::default(),
-                added_changes: Default::default(),
-            },
+            speculative_ledger: SpeculativeLedger::new(
+                final_ledger.clone(),
+                LedgerChanges::default(),
+            ),
         }));
+
         VMThread {
             final_ledger,
             last_active_slot: final_slot,
@@ -178,21 +222,21 @@ impl VMThread {
     }
 
     /// update final slots
-    fn update_final_slots(&mut self, new_css_finals: HashMap<Slot, BlockId>) {
+    fn update_final_slots(&mut self, new_css_finals: HashMap<Slot, (BlockId, Block)>) {
         // return if empty
         if new_css_finals.is_empty() {
             return;
         }
 
-        // add them to pending css finals
+        // add new_css_finals to pending css finals
         self.remaining_css_finals.extend(new_css_finals);
 
         // get maximal css-final slot
         let max_css_final_slot = self
             .remaining_css_finals
             .iter()
-            .max_by_key(|(s, _b_id)| *s)
-            .map(|(s, _b_id)| *s)
+            .max_by_key(|(s, _)| *s)
+            .map(|(s, _)| *s)
             .expect("expected remaining_css_finals to be non-empty");
 
         // detect SCE-final slots
@@ -203,9 +247,9 @@ impl VMThread {
                 .expect("final slot overflow in VM");
 
             // pop slot from remaining CSS finals
-            if let Some(block_id) = self.remaining_css_finals.remove(&slot) {
+            if let Some((block_id, block)) = self.remaining_css_finals.remove(&slot) {
                 // CSS-final block found at slot: add block to to sce_finals
-                self.sce_finals.insert(slot, Some(block_id));
+                self.sce_finals.insert(slot, Some((block_id, block)));
                 self.last_sce_final = slot;
                 // continue the loop
                 continue;
@@ -253,43 +297,137 @@ impl VMThread {
     }
 
     /// update active slot sequence
-    fn update_active_slots(&mut self, new_blockclique: Option<HashMap<Slot, BlockId>>) {
+    fn update_active_slots(&mut self, new_blockclique: Option<HashMap<Slot, (BlockId, Block)>>) {
         // update blockclique if changed
         if let Some(blockclique) = new_blockclique {
             self.blockclique = blockclique;
         }
 
-        // get last active slot, if any
-        let current_active_slot = self.get_end_active_slot();
+        // get end active slot, if any
+        let end_active_slot = self.get_end_active_slot();
 
         // reset active slots
         self.active_slots = HashMap::new();
         self.last_active_slot = self.last_sce_final;
 
         // if no active slot yet => keep the active_slots empty
-        let current_active_slot = match current_active_slot {
+        let end_active_slot = match end_active_slot {
             Some(s) => s,
             None => return,
         };
 
         // recompute non-SCE-final slot sequence
         let mut slot = self.last_sce_final;
-        while slot < current_active_slot {
+        while slot < end_active_slot {
             slot = slot
                 .get_next_slot(self.config.thread_count)
                 .expect("active slot overflow in VM");
-            if let Some(block_id) = self.remaining_css_finals.get(&slot) {
+            if let Some((block_id, block)) = self.remaining_css_finals.get(&slot) {
                 // found in remaining_css_finals
-                self.active_slots.insert(slot, Some(*block_id));
-            } else if let Some(block_id) = self.blockclique.get(&slot) {
+                self.active_slots
+                    .insert(slot, Some((*block_id, block.clone())));
+            } else if let Some((block_id, block)) = self.blockclique.get(&slot) {
                 // found in blockclique
-                self.active_slots.insert(slot, Some(*block_id));
+                self.active_slots
+                    .insert(slot, Some((*block_id, block.clone())));
             } else {
                 // miss
                 self.active_slots.insert(slot, None);
             }
             self.last_active_slot = slot;
         }
+    }
+
+    /// applies an execution output to the final state
+    fn apply_final_execution_output(&mut self, exec_out: ExecutionOutput) {
+        // update cursors
+        self.final_cursor = exec_out.slot;
+        if self.active_cursor <= self.final_cursor {
+            self.final_cursor = self.final_cursor;
+        }
+
+        // apply final ledger changes
+        {
+            let mut final_ledger = self
+                .final_ledger
+                .write()
+                .expect("could not lock final ledger for writing");
+            final_ledger.settle_slot(exec_out.slot, exec_out.ledger_changes);
+        }
+
+        // save generated events to final store
+        // TODO
+    }
+
+    /// applies an execution output to the active state
+    fn apply_active_execution_output(&mut self, exec_out: ExecutionOutput) {
+        // update active cursor
+        self.active_cursor = exec_out.slot;
+
+        // add execution output to history
+        self.execution_history.push_back(exec_out);
+    }
+
+    /// returns the speculative ledger at a given history slot
+    fn get_speculative_ledger_at_slot(&self, slot: Slot) -> SpeculativeLedger {
+        // check that the slot is within the reach of history
+        if slot <= self.final_cursor {
+            panic!("cannot execute at a slot before finality");
+        }
+        let max_slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow when getting speculative ledger");
+        if slot > max_slot {
+            panic!("cannot execute at a slot beyond active cursor + 1");
+        }
+
+        // gather the history of changes
+        let mut previous_ledger_changes = LedgerChanges::default();
+        for previous_output in &self.execution_history {
+            if previous_output.slot >= slot {
+                break;
+            }
+            previous_ledger_changes.apply(&previous_output.ledger_changes);
+        }
+
+        // return speculative ledger
+        SpeculativeLedger::new(self.final_ledger.clone(), previous_ledger_changes)
+    }
+
+    /// executes a full slot without causing any changes to the state,
+    /// and yields an execution output
+    fn execute_slot(&mut self, slot: Slot, opt_block: Option<(BlockId, Block)>) -> ExecutionOutput {
+        // get the speculative ledger
+        let ledger = self.get_speculative_ledger_at_slot(slot);
+
+        // TODO init context
+
+        // TODO intial executions
+
+        // TODO async executions
+
+        let mut out_block_id = None;
+        if let Some((block_id, block)) = opt_block {
+            out_block_id = Some(block_id);
+
+            //TODO block stuff
+        }
+
+        ExecutionOutput {
+            slot,
+            block_id: out_block_id,
+            ledger_changes: ledger.into_added_changes(),
+        }
+    }
+
+    /// clear execution history
+    fn clear_history(&mut self) {
+        // clear history
+        self.execution_history.clear();
+
+        // reset active cursor
+        self.active_cursor = self.final_cursor;
     }
 
     /// executes one final slot, if any
@@ -300,26 +438,25 @@ impl VMThread {
             return false;
         }
 
-        // get the next one
+        // get the slot just after the last executed final slot
         let slot = self
             .final_cursor
             .get_next_slot(self.config.thread_count)
             .expect("final slot overflow in VM");
-        let block_id = *self
-            .sce_finals
-            .get(&slot)
-            .expect("the SCE final slot list skipped a slot");
 
-        // update final cursor
-        self.final_cursor = slot;
+        // take element from sce finals
+        let exec_target = self
+            .sce_finals
+            .remove(&slot)
+            .expect("the SCE final slot list skipped a slot");
 
         // check if the final slot is cached at the front of the speculative execution history
         if let Some(exec_out) = self.execution_history.pop_front() {
-            if exec_out.slot == slot && exec_out.block_id == block_id {
-                // speculative execution front result matches what we wnat to compute
-
-                // TODO apply exec_out to final state
-
+            if exec_out.slot == slot
+                && exec_out.block_id == exec_target.as_ref().map(|(b_id, _)| *b_id)
+            {
+                // speculative execution front result matches what we want to compute
+                self.apply_final_execution_output(exec_out);
                 return true;
             }
         }
@@ -327,22 +464,28 @@ impl VMThread {
         // speculative cache mismatch
 
         // clear the speculative execution output cache completely
-        self.execution_history.clear();
-        self.active_cursor = self.final_cursor;
+        self.clear_history();
 
-        // TODO execute
-        // TODO apply exec_out to final state
+        // execute slot
+        let exec_out = self.execute_slot(slot, exec_target);
+
+        // apply execution output to final state
+        self.apply_final_execution_output(exec_out);
 
         return true;
     }
 
-    /// truncates active slots at the fitst mismatch
+    /// truncates active slots at the first mismatch
     /// between the active execution output history and the planned active_slots
     fn truncate_history(&mut self) {
         // find mismatch point (included)
         let mut truncate_at = None;
         for (hist_index, exec_output) in self.execution_history.iter().enumerate() {
-            if self.active_slots.get(&exec_output.slot) == Some(&exec_output.block_id) {
+            let found_block_id = self
+                .active_slots
+                .get(&exec_output.slot)
+                .map(|opt_b| opt_b.as_ref().map(|(b_id, b)| *b_id));
+            if found_block_id == Some(exec_output.block_id) {
                 continue;
             }
             truncate_at = Some(hist_index);
@@ -367,17 +510,17 @@ impl VMThread {
             .active_cursor
             .get_next_slot(self.config.thread_count)
             .expect("active slot overflow in VM");
-        let to_execute = match self.active_slots.get(&slot) {
-            Some(b) => b,
+
+        let exec_target = match self.active_slots.get(&slot) {
+            Some(b) => b.clone(), //TODO get rid of that clone
             None => return false,
         };
 
-        // update active cursor
-        self.active_cursor = slot;
+        // execute the slot
+        let exec_out = self.execute_slot(slot, exec_target);
 
-        // TODO execute
-
-        // TODO push_back result into history
+        // apply execution output to active state
+        self.apply_active_execution_output(exec_out);
 
         return true;
     }
@@ -398,6 +541,11 @@ impl VMThread {
         let now = MassaTime::compensated_now(self.config.clock_compensation)
             .expect("could not get current time in VM");
         next_timestmap.saturating_sub(now)
+    }
+
+    /// executed a readonly request
+    fn execute_readonly_request(&mut self, req: ReadOnlyExecutionRequest) {
+        // TODO
     }
 
     /// main VM loop
@@ -446,16 +594,22 @@ impl VMThread {
                 continue;
             }
 
-            // TODO execute readonly requests
+            // execute all queued readonly requests
             // must be done in this loop because of the static shared context
+            for req in input_data.readonly_requests {
+                self.execute_readonly_request(req);
+            }
 
-            // check if data changed during the iteration
-            let ctl = self.controller;
-            let input_data = ctl.input_data.lock().expect("could not lock VM input data");
+            // check if new data or requests arrived during the iteration
+            let input_data = self
+                .controller
+                .input_data
+                .lock()
+                .expect("could not lock VM input data");
             if input_data.stop {
                 break;
             }
-            if input_data.blockclique_changed {
+            if input_data.blockclique_changed || !input_data.readonly_requests.is_empty() {
                 continue;
             }
 
@@ -467,7 +621,8 @@ impl VMThread {
             }
 
             // wait for change or for next slot
-            let _ = ctl
+            let _ = self
+                .controller
                 .loop_cv
                 .wait_timeout(input_data, delay_until_next_slot.to_duration())
                 .expect("VM main loop condition variable wait failed");
