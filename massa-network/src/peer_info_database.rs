@@ -372,14 +372,7 @@ impl PeerInfoDatabase {
                 return Ok(());
             }
         }
-        cleanup_peers(
-            &self.network_settings,
-            &mut self.peers,
-            None,
-            self.clock_compensation,
-            self.network_settings.ban_timeout,
-        )?;
-        Ok(())
+        self.update()
     }
 
     /// Cleanly closes peerInfoDatabase, performing one last peer dump.
@@ -617,13 +610,7 @@ impl PeerInfoDatabase {
         if !peer.banned {
             peer.banned = true;
             if !peer.is_active() {
-                cleanup_peers(
-                    &self.network_settings,
-                    &mut self.peers,
-                    None,
-                    self.clock_compensation,
-                    self.network_settings.ban_timeout,
-                )?;
+                self.update()?
             }
         }
         self.request_dump()
@@ -659,13 +646,7 @@ impl PeerInfoDatabase {
         }
 
         if !peer.is_active() && peer.peer_type == PeerType::Standard {
-            cleanup_peers(
-                &self.network_settings,
-                &mut self.peers,
-                None,
-                self.clock_compensation,
-                self.network_settings.ban_timeout,
-            )?;
+            self.update()?;
             self.request_dump()
         } else {
             Ok(())
@@ -701,13 +682,7 @@ impl PeerInfoDatabase {
             PeerType::Standard => self.standard_connection_count.active_in_connections -= 1,
         }
         if !peer.is_active() && peer.peer_type == PeerType::Standard {
-            cleanup_peers(
-                &self.network_settings,
-                &mut self.peers,
-                None,
-                self.clock_compensation,
-                self.network_settings.ban_timeout,
-            )?;
+            self.update()?;
             self.request_dump()
         } else {
             Ok(())
@@ -780,13 +755,7 @@ impl PeerInfoDatabase {
         if peer.banned {
             peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
             if !peer.is_active() {
-                cleanup_peers(
-                    &self.network_settings,
-                    &mut self.peers,
-                    None,
-                    self.clock_compensation,
-                    self.network_settings.ban_timeout,
-                )?;
+                self.update()?;
             }
             self.request_dump()?;
             return Ok(false);
@@ -853,13 +822,7 @@ impl PeerInfoDatabase {
         }
         peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
         if !peer.is_active() && peer.peer_type == PeerType::Standard {
-            cleanup_peers(
-                &self.network_settings,
-                &mut self.peers,
-                None,
-                self.clock_compensation,
-                self.network_settings.ban_timeout,
-            )?;
+            self.update()?;
         }
         self.request_dump()
     }
