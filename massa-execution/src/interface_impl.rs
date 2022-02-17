@@ -19,7 +19,7 @@ macro_rules! context_guard {
         $self
             .context
             .lock()
-            .expect("Failed to acquire lock on context.")
+            .expect("failed to acquire lock on execution context")
     };
 }
 
@@ -69,7 +69,7 @@ impl Interface for InterfaceImpl {
         // transfer coins
         let coins = massa_models::Amount::from_raw(raw_coins);
         if let Err(err) =
-            context.transfer_parallel_coins(Some(from_address), Some(to_address), coins)
+            context.transfer_parallel_coins(Some(from_address), Some(to_address), coins, true)
         {
             bail!(
                 "error transferring {} parallel coins from {} to {}: {}",
@@ -151,7 +151,7 @@ impl Interface for InterfaceImpl {
         let addr = massa_models::Address::from_str(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
-        context.set_data_entry(&addr, key, value.to_vec())?;
+        context.set_data_entry(&addr, key, value.to_vec(), true)?;
         Ok(())
     }
 
@@ -176,7 +176,7 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         let addr = context.get_current_address()?;
-        context.set_data_entry(&addr, key, value.to_vec())?;
+        context.set_data_entry(&addr, key, value.to_vec(), true)?;
         Ok(())
     }
 
@@ -221,7 +221,7 @@ impl Interface for InterfaceImpl {
         let amount = massa_models::Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
         let from_address = context.get_current_address()?;
-        context.transfer_parallel_coins(Some(from_address), Some(to_address), amount)?;
+        context.transfer_parallel_coins(Some(from_address), Some(to_address), amount, true)?;
         Ok(())
     }
 
@@ -239,7 +239,7 @@ impl Interface for InterfaceImpl {
         let to_address = massa_models::Address::from_str(to_address)?;
         let amount = massa_models::Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
-        context.transfer_parallel_coins(Some(from_address), Some(to_address), amount)?;
+        context.transfer_parallel_coins(Some(from_address), Some(to_address), amount, true)?;
         Ok(())
     }
 

@@ -1,9 +1,7 @@
 use crate::execution::ExecutionState;
-use crate::speculative_ledger::SpeculativeLedger;
 use crate::types::ExecutionOutput;
+use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
-use crate::{config::VMConfig, types::ReadOnlyExecutionRequest, vm_thread::VMThread};
-use massa_ledger::FinalLedger;
 use massa_models::{Block, BlockId, Slot};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{mpsc, Arc, Condvar, Mutex, RwLock};

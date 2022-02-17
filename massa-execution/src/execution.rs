@@ -1,17 +1,27 @@
 use crate::config::VMConfig;
 use crate::context::ExecutionContext;
+use crate::event_store::EventStore;
 use crate::interface_impl::InterfaceImpl;
-use crate::types::{ExecutionOutput, ReadOnlyExecutionRequest};
+use crate::types::{ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest};
 use crate::ExecutionError;
-use crate::{event_store::EventStore, speculative_ledger::SpeculativeLedger};
 use massa_ledger::{Applicable, FinalLedger, LedgerChanges};
-use massa_models::BlockId;
+use massa_models::{Address, BlockId, Operation, OperationType};
 use massa_models::{Block, Slot};
 use massa_sc_runtime::Interface;
 use std::{
     collections::{HashMap, VecDeque},
     sync::{Arc, Mutex, RwLock},
 };
+use tracing::debug;
+
+macro_rules! context_guard {
+    ($self:ident) => {
+        $self
+            .execution_context
+            .lock()
+            .expect("failed to acquire lock on execution context")
+    };
+}
 
 pub struct ExecutionState {
     // VM config
@@ -42,7 +52,10 @@ impl ExecutionState {
             .slot;
 
         // init execution context
-        let execution_context = Arc::new(Mutex::new(ExecutionContext::new(final_ledger.clone())));
+        let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
+            final_ledger.clone(),
+            Default::default(),
+        )));
 
         // Instantiate the interface used by the assembly simulator.
         let execution_interface = Box::new(InterfaceImpl::new(
@@ -153,54 +166,166 @@ impl ExecutionState {
         accumulated_changes
     }
 
+    pub fn execute_operation(
+        &mut self,
+        operation: &Operation,
+        block_creator_addr: Address,
+    ) -> Result<(), ExecutionError> {
+        // process ExecuteSC operations only
+        let (bytecode, max_gas, coins, gas_price) = match &operation.content.op {
+            op @ OperationType::ExecuteSC {
+                data,
+                max_gas,
+                coins,
+                gas_price,
+            } => (data, max_gas, coins, gas_price),
+            _ => return Ok(()),
+        };
+
+        // get sender address
+        let sender_addr = Address::from_public_key(&operation.content.sender_public_key);
+
+        // get operation ID
+        // TODO have operation_id contained in the Operation object in the future to avoid recomputation
+        let operation_id = operation
+            .get_operation_id()
+            .expect("could not compute operation ID");
+
+        // prepare the context
+        let context_snapshot;
+        {
+            let context = context_guard!(self);
+
+            // credit the producer of the block B with max_gas * gas_price parallel coins
+            // note that errors are deterministic and do not cancel op execution
+            let gas_fees = gas_price.saturating_mul_u64(*max_gas);
+            if let Err(err) =
+                context.transfer_parallel_coins(None, Some(block_creator_addr), gas_fees, false)
+            {
+                debug!(
+                    "failed to credit block producer {} with {} gas fee coins: {}",
+                    block_creator_addr, gas_fees, err
+                );
+            }
+
+            // credit Op's sender with `coins` parallel coins
+            // note that errors are deterministic and do not cancel op execution
+            if let Err(err) =
+                context.transfer_parallel_coins(None, Some(sender_addr), *coins, false)
+            {
+                debug!(
+                    "failed to credit operation sender {} with {} operation coins: {}",
+                    sender_addr, *coins, err
+                );
+            }
+
+            // save a snapshot of the context state to restore it if the op fails to execute
+            context_snapshot = context.get_snapshot();
+
+            // prepare context for op execution
+            context.gas_price = *gas_price;
+            context.max_gas = *max_gas;
+            context.stack = vec![ExecutionStackElement {
+                address: sender_addr,
+                coins: *coins,
+                owned_addresses: vec![sender_addr],
+            }];
+            context.origin_operation_id = Some(operation_id);
+        };
+
+        // run in the intepreter
+        let run_result = massa_sc_runtime::run(bytecode, *max_gas, &*self.execution_interface);
+        if let Err(err) = run_result {
+            // there was an error during bytecode execution: cancel the effects of the execution
+            let mut context = context_guard!(self);
+            context.origin_operation_id = None;
+            context.reset_to_snapshot(context_snapshot);
+            return Err(ExecutionError::RuntimeError(format!(
+                "bytecode execution error: {}",
+                err
+            )));
+        }
+
+        Ok(())
+    }
+
     /// executes a full slot without causing any changes to the state,
     /// and yields an execution output
     pub fn execute_slot(&self, slot: Slot, opt_block: Option<(BlockId, Block)>) -> ExecutionOutput {
-        // get the speculative ledger
+        // get optional block ID and creator address
+        let (opt_block_id, opt_block_creator_addr) = opt_block
+            .as_ref()
+            .map(|(b_id, b)| (*b_id, Address::from_public_key(&b.header.content.creator)))
+            .unzip();
+
+        // accumulate previous active changes from history
         let previous_ledger_changes = self.get_accumulated_active_changes_at_slot(slot);
-        let ledger = SpeculativeLedger::new(self.final_ledger.clone(), previous_ledger_changes);
 
-        // TODO init context
-
-        // TODO async executions
-
-        let mut out_block_id = None;
-        if let Some((block_id, block)) = opt_block {
-            out_block_id = Some(block_id);
-
-            //TODO execute block elements
-        }
-
-        ExecutionOutput {
+        // prepare execution context for the whole active slot
+        let execution_context = ExecutionContext::new_active_slot(
             slot,
-            block_id: out_block_id,
-            ledger_changes: ledger.into_added_changes(),
+            opt_block_id,
+            opt_block_creator_addr,
+            previous_ledger_changes,
+            self.final_ledger.clone(),
+        );
+
+        // note that here, some pre-operations (like crediting block producers) can be performed before the lock
+
+        // set the execution context for slot execution
+        *context_guard!(self) = execution_context;
+
+        // note that here, async operations should be executed
+
+        // check if there is a block at this slot
+        if let (Some((block_id, block)), Some(block_creator_addr)) =
+            (opt_block, opt_block_creator_addr)
+        {
+            // execute operations
+            for (op_idx, operation) in block.operations.iter().enumerate() {
+                if let Err(err) = self.execute_operation(operation, block_creator_addr) {
+                    debug!(
+                        "failed executing operation index {} in block {}: {}",
+                        op_idx, block_id, err
+                    );
+                }
+            }
         }
+
+        // return the execution output
+        context_guard!(self).take_execution_output()
     }
 
-    /// executed a readonly request
+    /// execute a readonly request
     pub(crate) fn execute_readonly_request(
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ExecutionOutput, ExecutionError> {
-        // execute at the slot just after the latest executed active slot
+        // set the exec slot just after the latest executed active slot
         let slot = self
             .active_cursor
             .get_next_slot(self.config.thread_count)
             .expect("slot overflow in readonly execution");
 
-        // get the speculative ledger
+        // get previous changes
         let previous_ledger_changes = self.get_accumulated_active_changes_at_slot(slot);
-        let ledger = SpeculativeLedger::new(self.final_ledger.clone(), previous_ledger_changes);
 
-        // TODO execute ReadOnlyExecutionRequest at slot with context req
-
-        //TODO send execution result back through req.result_sender
-        Ok(ExecutionOutput {
+        // create readonly execution context
+        let execution_context = ExecutionContext::new_readonly(
             slot,
-            block_id: None,
-            events: TODO,
-            ledger_changes: TODO,
-        })
+            req,
+            previous_ledger_changes,
+            self.final_ledger.clone(),
+        );
+
+        // set the execution context for execution
+        *context_guard!(self) = execution_context;
+
+        // run the intepreter
+        massa_sc_runtime::run(&req.bytecode, req.max_gas, &*self.execution_interface)
+            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+
+        // return the execution output
+        Ok(context_guard!(self).take_execution_output())
     }
 }

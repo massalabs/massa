@@ -1,14 +1,32 @@
-use crate::sce_ledger::SCELedgerChanges;
 use crate::speculative_ledger::SpeculativeLedger;
-use crate::types::ExecutionStackElement;
+use crate::types::{ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest};
 use crate::{event_store::EventStore, ExecutionError};
 use massa_hash::hash::Hash;
 use massa_ledger::{FinalLedger, LedgerChanges};
 use massa_models::{Address, Amount, BlockId, OperationId, Slot};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
-use std::collections::VecDeque;
 use std::sync::{Arc, RwLock};
+
+pub(crate) struct ExecutionContextSnapshot {
+    // added speculative ledger changes
+    pub ledger_changes: LedgerChanges,
+
+    /// counter of newly created addresses so far during this execution
+    pub created_addr_index: u64,
+
+    /// counter of newly created events so far during this execution
+    pub created_event_index: u64,
+
+    /// address call stack, most recent is at the back
+    pub stack: Vec<ExecutionStackElement>,
+
+    /// generated events during this execution, with multiple indexes
+    pub events: EventStore,
+
+    /// Unsafe RNG state
+    pub unsafe_rng: Xoshiro256PlusPlus,
+}
 
 pub(crate) struct ExecutionContext {
     // speculative ledger
@@ -41,7 +59,7 @@ pub(crate) struct ExecutionContext {
     /// True if it's a read-only context
     pub read_only: bool,
 
-    /// geerated events during this execution, with multiple indexes
+    /// generated events during this execution, with multiple indexes
     pub events: EventStore,
 
     /// Unsafe RNG state
@@ -52,9 +70,12 @@ pub(crate) struct ExecutionContext {
 }
 
 impl ExecutionContext {
-    pub(crate) fn new(final_ledger: Arc<RwLock<FinalLedger>>) -> Self {
+    pub(crate) fn new(
+        final_ledger: Arc<RwLock<FinalLedger>>,
+        previous_changes: LedgerChanges,
+    ) -> Self {
         ExecutionContext {
-            speculative_ledger: SpeculativeLedger::new(final_ledger, Default::default()),
+            speculative_ledger: SpeculativeLedger::new(final_ledger, previous_changes),
             max_gas: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),
@@ -67,6 +88,91 @@ impl ExecutionContext {
             events: Default::default(),
             unsafe_rng: Xoshiro256PlusPlus::from_seed([0u8; 32]),
             origin_operation_id: Default::default(),
+        }
+    }
+
+    /// returns an copied execution state snapshot
+    pub(crate) fn get_snapshot(&self) -> ExecutionContextSnapshot {
+        ExecutionContextSnapshot {
+            ledger_changes: self.speculative_ledger.get_snapshot(),
+            created_addr_index: self.created_addr_index,
+            created_event_index: self.created_event_index,
+            stack: self.stack.clone(),
+            events: self.events.clone(),
+            unsafe_rng: self.unsafe_rng.clone(),
+        }
+    }
+
+    /// resets context to a snapshot
+    pub fn reset_to_snapshot(&mut self, snapshot: ExecutionContextSnapshot) {
+        self.speculative_ledger
+            .reset_to_snapshot(snapshot.ledger_changes);
+        self.created_addr_index = snapshot.created_addr_index;
+        self.created_event_index = snapshot.created_event_index;
+        self.stack = snapshot.stack;
+        self.events = snapshot.events;
+        self.unsafe_rng = snapshot.unsafe_rng;
+    }
+
+    /// create the execution context at the beginning of a readonly execution
+    pub(crate) fn new_readonly(
+        slot: Slot,
+        req: ReadOnlyExecutionRequest,
+        previous_changes: LedgerChanges,
+        final_ledger: Arc<RwLock<FinalLedger>>,
+    ) -> Self {
+        // Seed the RNG
+        let mut seed: Vec<u8> = slot.to_bytes_key().to_vec();
+        seed.push(0u8); // read-only
+        let seed = massa_hash::hash::Hash::compute_from(&seed).to_bytes();
+        let unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
+
+        // return readonly context
+        ExecutionContext {
+            max_gas: req.max_gas,
+            gas_price: req.simulated_gas_price,
+            slot,
+            stack: req.call_stack,
+            read_only: true,
+            unsafe_rng,
+            ..ExecutionContext::new(final_ledger, previous_changes)
+        }
+    }
+
+    /// create the execution context at the beginning of an active execution slot
+    pub(crate) fn new_active_slot(
+        slot: Slot,
+        opt_block_id: Option<BlockId>,
+        opt_block_creator_addr: Option<Address>,
+        previous_changes: LedgerChanges,
+        final_ledger: Arc<RwLock<FinalLedger>>,
+    ) -> Self {
+        // seed the RNG
+        let mut seed: Vec<u8> = slot.to_bytes_key().to_vec();
+        seed.push(1u8); // not read-only
+        if let Some(block_id) = &opt_block_id {
+            seed.extend(block_id.to_bytes()); // append block ID
+        }
+        let seed = massa_hash::hash::Hash::compute_from(&seed).to_bytes();
+        let unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
+
+        // return active slot execution context
+        ExecutionContext {
+            slot,
+            opt_block_id,
+            opt_block_creator_addr,
+            unsafe_rng,
+            ..ExecutionContext::new(final_ledger, previous_changes)
+        }
+    }
+
+    /// moves out the output of the execution, resetting some fields
+    pub fn take_execution_output(&mut self) -> ExecutionOutput {
+        ExecutionOutput {
+            slot: self.slot,
+            block_id: std::mem::take(&mut self.opt_block_id),
+            ledger_changes: self.speculative_ledger.take(),
+            events: std::mem::take(&mut self.events),
         }
     }
 
@@ -184,9 +290,10 @@ impl ExecutionContext {
         address: &Address,
         key: Hash,
         data: Vec<u8>,
+        check_rights: bool,
     ) -> Result<(), ExecutionError> {
         // check access right
-        if !self.has_write_rights_on(address) {
+        if check_rights && !self.has_write_rights_on(address) {
             return Err(ExecutionError::RuntimeError(format!(
                 "writing in the datastore of address {} is not allowed in this context",
                 address
@@ -205,15 +312,17 @@ impl ExecutionContext {
     /// * from_addr: optional spending address (use None for pure coin creation)
     /// * to_addr: optional crediting address (use None for pure coin destruction)
     /// * amount: amount of coins to transfer
+    /// * check_rights: if true, access rights are checked
     pub fn transfer_parallel_coins(
         &mut self,
         from_addr: Option<Address>,
         to_addr: Option<Address>,
         amount: Amount,
+        check_rights: bool,
     ) -> Result<(), ExecutionError> {
         // check access rights
         if let Some(from_addr) = &from_addr {
-            if !self.has_write_rights_on(from_addr) {
+            if check_rights && !self.has_write_rights_on(from_addr) {
                 return Err(ExecutionError::RuntimeError(format!(
                     "spending from address {} is not allowed in this context",
                     from_addr

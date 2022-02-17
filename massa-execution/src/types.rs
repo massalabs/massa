@@ -49,11 +49,11 @@ pub struct ExecutionOutput {
 /// structure describing a read-only execution request
 pub struct ReadOnlyExecutionRequest {
     /// Maximum gas to spend in the execution.
-    max_gas: u64,
+    pub max_gas: u64,
     /// The simulated price of gas for the read-only execution.
-    simulated_gas_price: Amount,
+    pub simulated_gas_price: Amount,
     /// The code to execute.
-    bytecode: Vec<u8>,
+    pub bytecode: Vec<u8>,
     /// Call stack to simulate
-    call_stack: Vec<ExecutionStackElement>,
+    pub call_stack: Vec<ExecutionStackElement>,
 }

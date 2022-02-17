@@ -28,6 +28,11 @@ impl SpeculativeLedger {
         }
     }
 
+    /// takes the added changes (move) and resets added changes
+    pub fn take(&mut self) -> LedgerChanges {
+        std::mem::take(&mut self.added_changes)
+    }
+
     /// takes a snapshot (clone) of the added changes
     pub fn get_snapshot(&self) -> LedgerChanges {
         self.added_changes.clone()
