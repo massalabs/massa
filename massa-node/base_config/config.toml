@@ -33,7 +33,7 @@
     force_keep_final_periods = 20
 
     # max number of batches of pool operations to scan when generating a block
-    max_operations_fill_attempts = 102400
+    max_operations_fill_attempts = 10
     # size of a pool operation batch for block creation
     operation_batch_size = 1024
 
