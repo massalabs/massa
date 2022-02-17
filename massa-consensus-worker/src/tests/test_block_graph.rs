@@ -9,7 +9,7 @@ use massa_models::{
     active_block::ActiveBlock,
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
-    prehash::{Map, Set},
+    prehash::{PreHashMap, PreHashSet},
     Address, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact, SerializeCompact,
     Slot,
 };
@@ -111,7 +111,7 @@ pub async fn test_get_ledger_at_parents() {
     // .unwrap();
     let thread_count: u8 = 2;
     let active_block: ActiveBlock = get_export_active_test_block().try_into().unwrap();
-    let ledger_file = generate_ledger_file(&Map::default());
+    let ledger_file = generate_ledger_file(&PreHashMap::default());
     let mut cfg = ConsensusConfig::from(ledger_file.path());
     cfg.thread_count = thread_count;
     cfg.block_reward = Amount::from_str("1").unwrap();
@@ -585,7 +585,7 @@ fn test_bootsrapable_graph_serialize_compact() {
 #[tokio::test]
 #[serial]
 async fn test_clique_calculation() {
-    let ledger_file = generate_ledger_file(&Map::default());
+    let ledger_file = generate_ledger_file(&PreHashMap::default());
     let cfg = ConsensusConfig::from(ledger_file.path());
     let mut block_graph = BlockGraph::new((&cfg).into(), None).await.unwrap();
     let hashes: Vec<BlockId> = vec![
@@ -614,7 +614,7 @@ async fn test_clique_calculation() {
     .collect();
     let computed_sets = block_graph.compute_max_cliques();
 
-    let expected_sets: Vec<Set<BlockId>> = vec![
+    let expected_sets: Vec<PreHashSet<BlockId>> = vec![
         vec![1, 2, 3, 4, 5],
         vec![1, 2, 3, 4, 6],
         vec![0, 5],
@@ -631,7 +631,7 @@ async fn test_clique_calculation() {
 }
 
 /// generate a named temporary JSON ledger file
-fn generate_ledger_file(ledger_vec: &Map<Address, LedgerData>) -> NamedTempFile {
+fn generate_ledger_file(ledger_vec: &PreHashMap<Address, LedgerData>) -> NamedTempFile {
     use std::io::prelude::*;
     let ledger_file_named = NamedTempFile::new().expect("cannot create temp file");
     serde_json::to_writer_pretty(ledger_file_named.as_file(), &ledger_vec)

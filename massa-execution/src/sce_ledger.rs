@@ -1,7 +1,7 @@
 use crate::ExecutionError;
 use massa_hash::hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
-use massa_models::prehash::{BuildMap, Map};
+use massa_models::prehash::{BuildMap, PreHashMap};
 use massa_models::{
     array_from_slice, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact,
     SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
@@ -19,7 +19,7 @@ pub struct SCELedgerEntry {
     pub opt_module: Option<Vec<u8>>,
 
     // datastore
-    pub data: Map<Hash, Vec<u8>>,
+    pub data: PreHashMap<Hash, Vec<u8>>,
 }
 
 impl SCELedgerEntry {
@@ -156,8 +156,8 @@ impl DeserializeCompact for SCELedgerEntry {
         cursor += delta;
 
         // read entry pairs
-        let mut data: Map<Hash, Vec<u8>> =
-            Map::with_capacity_and_hasher(length as usize, BuildMap::default());
+        let mut data: PreHashMap<Hash, Vec<u8>> =
+            PreHashMap::with_capacity_and_hasher(length as usize, BuildMap::default());
         for _ in 0..length {
             // read hash
             let h = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
@@ -200,7 +200,7 @@ impl DeserializeCompact for SCELedgerEntry {
 pub struct SCELedgerEntryUpdate {
     pub update_balance: Option<Amount>,
     pub update_opt_module: Option<Option<Vec<u8>>>,
-    pub update_data: Map<Hash, Option<Vec<u8>>>, // None for row deletion
+    pub update_data: PreHashMap<Hash, Option<Vec<u8>>>, // None for row deletion
 }
 
 impl SCELedgerEntryUpdate {
@@ -290,7 +290,7 @@ impl SCELedgerChange {
 
 /// SCE ledger
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct SCELedger(pub Map<Address, SCELedgerEntry>);
+pub struct SCELedger(pub PreHashMap<Address, SCELedgerEntry>);
 
 impl SerializeCompact for SCELedger {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
@@ -326,8 +326,8 @@ impl DeserializeCompact for SCELedger {
         cursor += delta;
 
         // read entry pairs
-        let mut res_ledger: Map<Address, SCELedgerEntry> =
-            Map::with_capacity_and_hasher(length as usize, BuildMap::default());
+        let mut res_ledger: PreHashMap<Address, SCELedgerEntry> =
+            PreHashMap::with_capacity_and_hasher(length as usize, BuildMap::default());
         for _ in 0..length {
             // read address
             let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
@@ -347,7 +347,7 @@ impl DeserializeCompact for SCELedger {
 
 /// list of ledger changes (deletions, resets, updates)
 #[derive(Debug, Clone, Default)]
-pub struct SCELedgerChanges(pub Map<Address, SCELedgerChange>);
+pub struct SCELedgerChanges(pub PreHashMap<Address, SCELedgerChange>);
 
 impl SCELedgerChanges {
     /// extends the current SCELedgerChanges with another
@@ -372,7 +372,7 @@ impl SCELedgerChanges {
 
 impl SCELedger {
     /// creates an SCELedger from a hashmap of balances
-    pub fn from_balances_map(balances_map: Map<Address, Amount>) -> Self {
+    pub fn from_balances_map(balances_map: PreHashMap<Address, Amount>) -> Self {
         SCELedger(
             balances_map
                 .into_iter()

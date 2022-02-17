@@ -55,8 +55,8 @@ pub type BuildMap<T> = BuildHasherDefault<PreHashedMap<T>>;
 
 /// HashMap specialization for PreHashed keys
 /// This hashmap is about 2x faster than the default HashMap
-pub type Map<K, V> = HashMap<K, V, BuildMap<K>>;
+pub type PreHashMap<K, V> = HashMap<K, V, BuildMap<K>>;
 
 /// HashSet specialization for PreHashed keys
 /// This hashset is about 2x faster than the default HashSet
-pub type Set<T> = HashSet<T, BuildMap<T>>;
+pub type PreHashSet<T> = HashSet<T, BuildMap<T>>;

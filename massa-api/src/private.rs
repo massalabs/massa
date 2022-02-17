@@ -14,7 +14,7 @@ use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::{Address, BlockId, EndorsementId, Operation, OperationId};
 use massa_network::NetworkCommandSender;
 use massa_signature::PrivateKey;
@@ -102,7 +102,7 @@ impl Endpoints for API<Private> {
         Box::pin(closure())
     }
 
-    fn get_staking_addresses(&self) -> BoxFuture<Result<Set<Address>, ApiError>> {
+    fn get_staking_addresses(&self) -> BoxFuture<Result<PreHashSet<Address>, ApiError>> {
         let cmd_sender = self.0.consensus_command_sender.clone();
         let closure = async move || Ok(cmd_sender.get_staking_addresses().await?);
         Box::pin(closure())
@@ -128,8 +128,8 @@ impl Endpoints for API<Private> {
         crate::wrong_api::<Vec<Clique>>()
     }
 
-    fn get_stakers(&self) -> BoxFuture<Result<Map<Address, u64>, ApiError>> {
-        crate::wrong_api::<Map<Address, u64>>()
+    fn get_stakers(&self) -> BoxFuture<Result<PreHashMap<Address, u64>, ApiError>> {
+        crate::wrong_api::<PreHashMap<Address, u64>>()
     }
 
     fn get_operations(

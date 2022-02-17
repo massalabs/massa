@@ -13,7 +13,7 @@ use massa_models::{
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_signature::PrivateKey;
 
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use tokio::sync::oneshot;
 
 use crate::{error::ConsensusResult as Result, ConsensusError, SelectionDraws};
@@ -47,37 +47,37 @@ pub enum ConsensusCommand {
     GetBootstrapState(oneshot::Sender<(ExportProofOfStake, BootstrapableGraph)>),
     /// Returns info for a set of addresses (rolls and balance)
     GetAddressesInfo {
-        addresses: Set<Address>,
-        response_tx: oneshot::Sender<Map<Address, AddressState>>,
+        addresses: PreHashSet<Address>,
+        response_tx: oneshot::Sender<PreHashMap<Address, AddressState>>,
     },
     GetRecentOperations {
         address: Address,
-        response_tx: oneshot::Sender<Map<OperationId, OperationSearchResult>>,
+        response_tx: oneshot::Sender<PreHashMap<OperationId, OperationSearchResult>>,
     },
     GetOperations {
-        operation_ids: Set<OperationId>,
-        response_tx: oneshot::Sender<Map<OperationId, OperationSearchResult>>,
+        operation_ids: PreHashSet<OperationId>,
+        response_tx: oneshot::Sender<PreHashMap<OperationId, OperationSearchResult>>,
     },
     GetStats(oneshot::Sender<ConsensusStats>),
-    GetActiveStakers(oneshot::Sender<Map<Address, u64>>),
+    GetActiveStakers(oneshot::Sender<PreHashMap<Address, u64>>),
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
-    RemoveStakingAddresses(Set<Address>),
-    GetStakingAddressses(oneshot::Sender<Set<Address>>),
+    RemoveStakingAddresses(PreHashSet<Address>),
+    GetStakingAddressses(oneshot::Sender<PreHashSet<Address>>),
     GetStakersProductionStats {
-        addrs: Set<Address>,
+        addrs: PreHashSet<Address>,
         response_tx: oneshot::Sender<Vec<StakersCycleProductionStats>>,
     },
     GetBlockIdsByCreator {
         address: Address,
-        response_tx: oneshot::Sender<Map<BlockId, Status>>,
+        response_tx: oneshot::Sender<PreHashMap<BlockId, Status>>,
     },
     GetEndorsementsByAddress {
         address: Address,
-        response_tx: oneshot::Sender<Map<EndorsementId, Endorsement>>,
+        response_tx: oneshot::Sender<PreHashMap<EndorsementId, Endorsement>>,
     },
     GetEndorsementsById {
-        endorsements: Set<EndorsementId>,
-        response_tx: oneshot::Sender<Map<EndorsementId, EndorsementInfo>>,
+        endorsements: PreHashSet<EndorsementId>,
+        response_tx: oneshot::Sender<PreHashMap<EndorsementId, EndorsementInfo>>,
     },
 
     GetCliques(oneshot::Sender<Vec<Clique>>),

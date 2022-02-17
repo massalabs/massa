@@ -1,7 +1,7 @@
 use massa_models::{
     array_from_slice,
     clique::Clique,
-    prehash::{BuildMap, Map, Set},
+    prehash::{BuildMap, PreHashMap, PreHashSet},
     with_serialization_context, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializeCompact, SerializeVarInt, BLOCK_ID_SIZE_BYTES,
 };
@@ -12,13 +12,13 @@ use crate::{export_active_block::ExportActiveBlock, ledger::LedgerSubset};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BootstrapableGraph {
     /// Map of active blocks, were blocks are in their exported version.
-    pub active_blocks: Map<BlockId, ExportActiveBlock>,
+    pub active_blocks: PreHashMap<BlockId, ExportActiveBlock>,
     /// Best parents hashe in each thread.
     pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
     pub latest_final_blocks_periods: Vec<(BlockId, u64)>,
     /// Head of the incompatibility graph.
-    pub gi_head: Map<BlockId, Set<BlockId>>,
+    pub gi_head: PreHashMap<BlockId, PreHashSet<BlockId>>,
     /// List of maximal cliques of compatible blocks.
     pub max_cliques: Vec<Clique>,
     /// Ledger at last final blocks
@@ -123,7 +123,7 @@ impl DeserializeCompact for BootstrapableGraph {
         }
         cursor += delta;
         let mut active_blocks =
-            Map::with_capacity_and_hasher(active_blocks_count as usize, BuildMap::default());
+            PreHashMap::with_capacity_and_hasher(active_blocks_count as usize, BuildMap::default());
         for _ in 0..(active_blocks_count as usize) {
             let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += BLOCK_ID_SIZE_BYTES;
@@ -163,7 +163,7 @@ impl DeserializeCompact for BootstrapableGraph {
         }
         cursor += delta;
         let mut gi_head =
-            Map::with_capacity_and_hasher(gi_head_count as usize, BuildMap::default());
+            PreHashMap::with_capacity_and_hasher(gi_head_count as usize, BuildMap::default());
         for _ in 0..(gi_head_count as usize) {
             let gihash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += BLOCK_ID_SIZE_BYTES;
@@ -172,8 +172,10 @@ impl DeserializeCompact for BootstrapableGraph {
                 return Err(ModelsError::DeserializeError(format!("too many blocks in a set in gi_head for deserialization context in BootstrapableGraph: {}", set_count)));
             }
             cursor += delta;
-            let mut set =
-                Set::<BlockId>::with_capacity_and_hasher(set_count as usize, BuildMap::default());
+            let mut set = PreHashSet::<BlockId>::with_capacity_and_hasher(
+                set_count as usize,
+                BuildMap::default(),
+            );
             for _ in 0..(set_count as usize) {
                 let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += BLOCK_ID_SIZE_BYTES;

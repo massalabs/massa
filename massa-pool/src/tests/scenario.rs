@@ -5,7 +5,7 @@ use crate::operation_pool::tests::POOL_SETTINGS;
 use crate::tests::tools::create_executesc;
 use crate::tests::tools::{self, get_transaction_with_addresses, pool_test};
 use crate::PoolSettings;
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::Address;
 use massa_models::Operation;
 use massa_models::OperationId;
@@ -46,7 +46,7 @@ async fn test_pool() {
                 let (op, thread) = get_transaction(expire_period, fee);
                 let id = op.verify_integrity().unwrap();
 
-                let mut ops = Map::default();
+                let mut ops = PreHashMap::default();
                 ops.insert(id, op.clone());
 
                 pool_command_sender
@@ -96,7 +96,7 @@ async fn test_pool() {
                     let res = pool_command_sender
                         .get_operation_batch(
                             target_slot,
-                            Set::<OperationId>::default(),
+                            PreHashSet::<OperationId>::default(),
                             max_count,
                             10000,
                         )
@@ -130,7 +130,7 @@ async fn test_pool() {
                     let res = pool_command_sender
                         .get_operation_batch(
                             target_slot,
-                            Set::<OperationId>::default(),
+                            PreHashSet::<OperationId>::default(),
                             max_count,
                             10000,
                         )
@@ -156,7 +156,7 @@ async fn test_pool() {
                 let expire_period: u64 = 300;
                 let (op, thread) = get_transaction(expire_period, fee);
                 let id = op.verify_integrity().unwrap();
-                let mut ops = Map::default();
+                let mut ops = PreHashMap::default();
                 ops.insert(id, op);
 
                 pool_command_sender.add_operations(ops).await.unwrap();
@@ -170,7 +170,7 @@ async fn test_pool() {
                 let res = pool_command_sender
                     .get_operation_batch(
                         Slot::new(expire_period - 1, thread),
-                        Set::<OperationId>::default(),
+                        PreHashSet::<OperationId>::default(),
                         10,
                         10000,
                     )
@@ -212,7 +212,7 @@ async fn test_pool_with_execute_sc() {
                 let (op, thread) = create_executesc(expire_period, fee, 100, 1); // Only the fee determines the rentability
                 let id = op.verify_integrity().unwrap();
 
-                let mut ops = Map::default();
+                let mut ops = PreHashMap::default();
                 ops.insert(id, op.clone());
 
                 pool_command_sender
@@ -260,7 +260,7 @@ async fn test_pool_with_execute_sc() {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 3;
                     let res = pool_command_sender
-                        .get_operation_batch(target_slot, Set::default(), max_count, 10000)
+                        .get_operation_batch(target_slot, PreHashSet::default(), max_count, 10000)
                         .await
                         .unwrap();
                     assert!(res
@@ -289,7 +289,7 @@ async fn test_pool_with_execute_sc() {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 4;
                     let res = pool_command_sender
-                        .get_operation_batch(target_slot, Set::default(), max_count, 10000)
+                        .get_operation_batch(target_slot, PreHashSet::default(), max_count, 10000)
                         .await
                         .unwrap();
                     assert!(res
@@ -312,7 +312,7 @@ async fn test_pool_with_execute_sc() {
                 let expire_period: u64 = 300;
                 let (op, thread) = get_transaction(expire_period, fee);
                 let id = op.verify_integrity().unwrap();
-                let mut ops = Map::default();
+                let mut ops = PreHashMap::default();
                 ops.insert(id, op);
 
                 pool_command_sender.add_operations(ops).await.unwrap();
@@ -326,7 +326,7 @@ async fn test_pool_with_execute_sc() {
                 let res = pool_command_sender
                     .get_operation_batch(
                         Slot::new(expire_period - 1, thread),
-                        Set::default(),
+                        PreHashSet::default(),
                         10,
                         10000,
                     )
@@ -365,7 +365,7 @@ async fn test_pool_with_protocol_events() {
                 let (op, thread) = get_transaction(expire_period, fee);
                 let id = op.verify_integrity().unwrap();
 
-                let mut ops = Map::default();
+                let mut ops = PreHashMap::default();
                 ops.insert(id, op.clone());
 
                 protocol_controller.received_operations(ops.clone()).await;
@@ -419,7 +419,7 @@ async fn test_pool_propagate_newly_added_endorsements() {
             };
             let target_slot = Slot::new(10, 0);
             let endorsement = tools::create_endorsement(target_slot);
-            let mut endorsements = Map::default();
+            let mut endorsements = PreHashMap::default();
             let id = endorsement.compute_endorsement_id().unwrap();
             endorsements.insert(id, endorsement.clone());
 
@@ -485,7 +485,7 @@ async fn test_pool_add_old_endorsements() {
             };
 
             let endorsement = tools::create_endorsement(Slot::new(1, 0));
-            let mut endorsements = Map::default();
+            let mut endorsements = PreHashMap::default();
             let id = endorsement.compute_endorsement_id().unwrap();
             endorsements.insert(id, endorsement.clone());
 
@@ -560,7 +560,7 @@ async fn test_get_involved_operations() {
             let op1_id = op1.get_operation_id().unwrap();
             let op2_id = op2.get_operation_id().unwrap();
             let op3_id = op3.get_operation_id().unwrap();
-            let mut ops = Map::default();
+            let mut ops = PreHashMap::default();
             for (op, id) in vec![op1, op2, op3]
                 .into_iter()
                 .zip(vec![op1_id, op2_id, op3_id].into_iter())
@@ -714,7 +714,11 @@ async fn test_new_final_ops() {
 
             // Add ops to pool
             protocol_controller
-                .received_operations(ops.clone().into_iter().collect::<Map<OperationId, _>>())
+                .received_operations(
+                    ops.clone()
+                        .into_iter()
+                        .collect::<PreHashMap<OperationId, _>>(),
+                )
                 .await;
 
             let newly_added = match protocol_controller
@@ -736,7 +740,7 @@ async fn test_new_final_ops() {
                         .to_vec()
                         .iter()
                         .map(|(id, _)| (*id, (8u64, 0u8)))
-                        .collect::<Map<OperationId, (u64, u8)>>(),
+                        .collect::<PreHashMap<OperationId, (u64, u8)>>(),
                 )
                 .await
                 .unwrap();
@@ -761,7 +765,7 @@ async fn test_new_final_ops() {
                         .to_vec()
                         .clone()
                         .into_iter()
-                        .collect::<Map<OperationId, _>>(),
+                        .collect::<PreHashMap<OperationId, _>>(),
                 )
                 .await;
 

@@ -6,7 +6,7 @@ use crate::worker::{
 use crate::BootstrapExecutionState;
 use massa_models::api::SCELedgerInfo;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Map;
+use massa_models::prehash::PreHashMap;
 use massa_models::OperationId;
 use massa_models::{execution::ExecuteReadOnlyResponse, Address, Amount, Block, BlockId, Slot};
 use std::collections::VecDeque;
@@ -102,8 +102,8 @@ impl ExecutionCommandSender {
     /// notify of a blockclique change
     pub async fn update_blockclique(
         &self,
-        finalized_blocks: Map<BlockId, Block>,
-        blockclique: Map<BlockId, Block>,
+        finalized_blocks: PreHashMap<BlockId, Block>,
+        blockclique: PreHashMap<BlockId, Block>,
     ) -> Result<(), ExecutionError> {
         self.0
             .send(ExecutionCommand::BlockCliqueChanged {
@@ -194,7 +194,7 @@ impl ExecutionCommandSender {
     pub async fn get_sce_ledger_for_addresses(
         self,
         addresses: Vec<Address>,
-    ) -> Result<Map<Address, SCELedgerInfo>, ExecutionError> {
+    ) -> Result<PreHashMap<Address, SCELedgerInfo>, ExecutionError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(ExecutionCommand::GetSCELedgerForAddresses {

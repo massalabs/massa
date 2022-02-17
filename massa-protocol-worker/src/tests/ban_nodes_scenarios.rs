@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::tools::protocol_test;
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::{BlockId, Slot};
 use massa_network::NetworkCommand;
 use massa_protocol_exports::tests::tools;
@@ -265,7 +265,7 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             protocol_command_sender
                 .send_wishlist_delta(
                     vec![expected_hash].into_iter().collect(),
-                    Set::<BlockId>::default(),
+                    PreHashSet::<BlockId>::default(),
                 )
                 .await
                 .expect("Failed to ask for block.");
@@ -359,7 +359,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
             tools::assert_banned_node(nodes[1].id, &mut network_controller).await;
 
             // 4. Simulate consensus sending block.
-            let mut results = Map::default();
+            let mut results = PreHashMap::default();
             results.insert(expected_hash, Some((block, None, None)));
             protocol_command_sender
                 .send_get_blocks_results(results)

@@ -8,7 +8,7 @@ use crate::types::{
 use crate::{config::ExecutionConfigs, ExecutionError};
 use massa_models::api::SCELedgerInfo;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Map;
+use massa_models::prehash::PreHashMap;
 use massa_models::timeslots::{get_latest_block_slot_at_timestamp, slot_count_in_range};
 use massa_models::{
     execution::{ExecuteReadOnlyResponse, ReadOnlyResult},
@@ -58,7 +58,7 @@ impl VM {
             } else {
                 // not bootstrapping: load initial SCE ledger from file
                 let ledger_slot = Slot::new(0, cfg.thread_count.saturating_sub(1)); // last genesis block
-                let ledgger_balances = serde_json::from_str::<Map<Address, Amount>>(
+                let ledgger_balances = serde_json::from_str::<PreHashMap<Address, Amount>>(
                     &std::fs::read_to_string(&cfg.settings.initial_sce_ledger_path)
                         .map_err(bootstrap_file_error!("loading", cfg))?,
                 )
@@ -155,7 +155,7 @@ impl VM {
     pub fn get_sce_ledger_entry_for_addresses(
         &self,
         addresses: Vec<Address>,
-    ) -> Map<Address, SCELedgerInfo> {
+    ) -> PreHashMap<Address, SCELedgerInfo> {
         let ledger = &self
             .execution_context
             .lock()

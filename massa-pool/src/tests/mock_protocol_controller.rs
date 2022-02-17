@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use massa_models::prehash::Map;
+use massa_models::prehash::PreHashMap;
 use massa_models::{Endorsement, EndorsementId, Operation, OperationId};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
@@ -47,7 +47,7 @@ impl MockProtocolController {
         }
     }
 
-    pub async fn received_operations(&mut self, operations: Map<OperationId, Operation>) {
+    pub async fn received_operations(&mut self, operations: PreHashMap<OperationId, Operation>) {
         self.pool_event_tx
             .send(ProtocolPoolEvent::ReceivedOperations {
                 operations,
@@ -57,7 +57,10 @@ impl MockProtocolController {
             .expect("could not send protocol pool event");
     }
 
-    pub async fn received_endorsements(&mut self, endorsements: Map<EndorsementId, Endorsement>) {
+    pub async fn received_endorsements(
+        &mut self,
+        endorsements: PreHashMap<EndorsementId, Endorsement>,
+    ) {
         self.pool_event_tx
             .send(ProtocolPoolEvent::ReceivedEndorsements {
                 endorsements,

@@ -10,7 +10,7 @@ use erased_serde::{Serialize, Serializer};
 use massa_models::api::{AddressInfo, BlockInfo, EndorsementInfo, NodeStatus, OperationInfo};
 use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::{Address, OperationId};
 use massa_wallet::Wallet;
 use rev_lines::RevLines;
@@ -207,7 +207,7 @@ impl Output for BlockInfo {
     }
 }
 
-impl Output for Set<Address> {
+impl Output for PreHashSet<Address> {
     fn pretty_print(&self) {
         println!(
             "{}",

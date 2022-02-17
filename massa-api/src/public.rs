@@ -16,7 +16,7 @@ use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{BuildMap, Map, Set};
+use massa_models::prehash::{BuildMap, PreHashMap, PreHashSet};
 use massa_models::timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range};
 use massa_models::{Address, BlockId, EndorsementId, Operation, OperationId, Slot, Version};
 use massa_network::{NetworkCommandSender, NetworkSettings};
@@ -84,8 +84,8 @@ impl Endpoints for API<Public> {
         crate::wrong_api::<()>()
     }
 
-    fn get_staking_addresses(&self) -> BoxFuture<Result<Set<Address>, ApiError>> {
-        crate::wrong_api::<Set<Address>>()
+    fn get_staking_addresses(&self) -> BoxFuture<Result<PreHashSet<Address>, ApiError>> {
+        crate::wrong_api::<PreHashSet<Address>>()
     }
 
     fn ban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
@@ -154,7 +154,7 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    fn get_stakers(&self) -> BoxFuture<Result<Map<Address, u64>, ApiError>> {
+    fn get_stakers(&self) -> BoxFuture<Result<PreHashMap<Address, u64>, ApiError>> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let closure = async move || Ok(consensus_command_sender.get_active_stakers().await?);
         Box::pin(closure())
@@ -172,7 +172,7 @@ impl Endpoints for API<Public> {
                 return Err(ApiError::TooManyArguments("too many arguments".into()));
             }
 
-            let operation_ids: Set<OperationId> = ops.iter().cloned().collect();
+            let operation_ids: PreHashSet<OperationId> = ops.iter().cloned().collect();
 
             // simultaneously ask pool and consensus
             let (pool_res, consensus_res) = tokio::join!(
@@ -180,10 +180,11 @@ impl Endpoints for API<Public> {
                 consensus_command_sender.get_operations(operation_ids)
             );
             let (pool_res, consensus_res) = (pool_res?, consensus_res?);
-            let mut res: Map<OperationId, OperationInfo> = Map::with_capacity_and_hasher(
-                pool_res.len() + consensus_res.len(),
-                BuildMap::default(),
-            );
+            let mut res: PreHashMap<OperationId, OperationInfo> =
+                PreHashMap::with_capacity_and_hasher(
+                    pool_res.len() + consensus_res.len(),
+                    BuildMap::default(),
+                );
 
             // add pool info
             res.extend(pool_res.into_iter().map(|(id, operation)| {
@@ -232,7 +233,7 @@ impl Endpoints for API<Public> {
         let consensus_command_sender = self.0.consensus_command_sender.clone();
         let pool_command_sender = self.0.pool_command_sender.clone();
         let closure = async move || {
-            let mapped: Set<EndorsementId> = eds.into_iter().collect();
+            let mapped: PreHashSet<EndorsementId> = eds.into_iter().collect();
             let mut res = consensus_command_sender
                 .get_endorsements_by_id(mapped.clone())
                 .await?;
@@ -388,12 +389,12 @@ impl Endpoints for API<Public> {
             let (next_draws, mut states, sce_info) = (next_draws?, states?, sce_info?);
 
             // operations block and endorsement info
-            let mut operations: Map<Address, Set<OperationId>> =
-                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            let mut blocks: Map<Address, Set<BlockId>> =
-                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            let mut endorsements: Map<Address, Set<EndorsementId>> =
-                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
+            let mut operations: PreHashMap<Address, PreHashSet<OperationId>> =
+                PreHashMap::with_capacity_and_hasher(addresses.len(), BuildMap::default());
+            let mut blocks: PreHashMap<Address, PreHashSet<BlockId>> =
+                PreHashMap::with_capacity_and_hasher(addresses.len(), BuildMap::default());
+            let mut endorsements: PreHashMap<Address, PreHashSet<EndorsementId>> =
+                PreHashMap::with_capacity_and_hasher(addresses.len(), BuildMap::default());
 
             let mut concurrent_getters = FuturesUnordered::new();
             for &address in addresses.iter() {
@@ -404,27 +405,33 @@ impl Endpoints for API<Public> {
                         .get_block_ids_by_creator(address)
                         .await?
                         .into_keys()
-                        .collect::<Set<BlockId>>();
+                        .collect::<PreHashSet<BlockId>>();
                     let get_pool_ops = pool_cmd_snd.get_operations_involving_address(address);
                     let get_consensus_ops = cmd_snd.get_operations_involving_address(address);
                     let (get_pool_ops, get_consensus_ops) =
                         tokio::join!(get_pool_ops, get_consensus_ops);
-                    let gathered: Set<OperationId> = get_pool_ops?
+                    let gathered: PreHashSet<OperationId> = get_pool_ops?
                         .into_keys()
                         .chain(get_consensus_ops?.into_keys())
                         .collect();
 
-                        let get_pool_eds = pool_cmd_snd.get_endorsements_by_address(address);
-                        let get_consensus_eds = cmd_snd.get_endorsements_by_address(address);
-                        let (get_pool_eds, get_consensus_eds) =
-                            tokio::join!(get_pool_eds, get_consensus_eds);
-                        let gathered_ed: Set<EndorsementId> = get_pool_eds?
-                            .into_keys()
-                            .chain(get_consensus_eds?.into_keys())
-                            .collect();
-                    Result::<(Address, Set<BlockId>, Set<OperationId>, Set<EndorsementId>), ApiError>::Ok((
-                        address, blocks, gathered, gathered_ed
-                    ))
+                    let get_pool_eds = pool_cmd_snd.get_endorsements_by_address(address);
+                    let get_consensus_eds = cmd_snd.get_endorsements_by_address(address);
+                    let (get_pool_eds, get_consensus_eds) =
+                        tokio::join!(get_pool_eds, get_consensus_eds);
+                    let gathered_ed: PreHashSet<EndorsementId> = get_pool_eds?
+                        .into_keys()
+                        .chain(get_consensus_eds?.into_keys())
+                        .collect();
+                    Result::<
+                        (
+                            Address,
+                            PreHashSet<BlockId>,
+                            PreHashSet<OperationId>,
+                            PreHashSet<EndorsementId>,
+                        ),
+                        ApiError,
+                    >::Ok((address, blocks, gathered, gathered_ed))
                 });
             }
             while let Some(res) = concurrent_getters.next().await {
@@ -488,7 +495,7 @@ impl Endpoints for API<Public> {
             let to_send = ops
                 .into_iter()
                 .map(|op| Ok((op.verify_integrity()?, op)))
-                .collect::<Result<Map<OperationId, _>, ApiError>>()?;
+                .collect::<Result<PreHashMap<OperationId, _>, ApiError>>()?;
             let ids = to_send.keys().copied().collect();
             cmd_sender.add_operations(to_send).await?;
             Ok(ids)

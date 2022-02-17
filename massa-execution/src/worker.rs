@@ -7,7 +7,7 @@ use crate::{config::ExecutionConfigs, types::ExecutionStep};
 use massa_models::api::SCELedgerInfo;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Map;
+use massa_models::prehash::PreHashMap;
 use massa_models::timeslots::{get_block_slot_timestamp, get_current_latest_block_slot};
 use massa_models::{Address, Amount, Block, BlockId, OperationId, Slot};
 use std::collections::BTreeMap;
@@ -23,8 +23,8 @@ pub enum ExecutionCommand {
     /// contains the blocks of the new blockclique
     /// and a list of blocks that became final
     BlockCliqueChanged {
-        blockclique: Map<BlockId, Block>,
-        finalized_blocks: Map<BlockId, Block>,
+        blockclique: PreHashMap<BlockId, Block>,
+        finalized_blocks: PreHashMap<BlockId, Block>,
     },
 
     /// Get a snapshot of the current state for bootstrap
@@ -60,7 +60,7 @@ pub enum ExecutionCommand {
         address: Option<Address>,
     },
     GetSCELedgerForAddresses {
-        response_tx: oneshot::Sender<Map<Address, SCELedgerInfo>>,
+        response_tx: oneshot::Sender<PreHashMap<Address, SCELedgerInfo>>,
         addresses: Vec<Address>,
     },
 }
@@ -401,8 +401,8 @@ impl ExecutionWorker {
     /// see spec at https://github.com/massalabs/massa/wiki/vm-block-feed
     fn blockclique_changed(
         &mut self,
-        blockclique: Map<BlockId, Block>,
-        finalized_blocks: Map<BlockId, Block>,
+        blockclique: PreHashMap<BlockId, Block>,
+        finalized_blocks: PreHashMap<BlockId, Block>,
     ) -> Result<(), ExecutionError> {
         // 1 - reset the SCE state back to its latest final state
 

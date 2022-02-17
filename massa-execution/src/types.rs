@@ -3,7 +3,7 @@ use crate::BootstrapExecutionState;
 use massa_models::api::SCELedgerInfo;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
-use massa_models::prehash::{Map, PreHashed, Set};
+use massa_models::prehash::{PreHashMap, PreHashSet, PreHashed};
 /// Define types used while executing block bytecodes
 use massa_models::{Address, Amount, Block, BlockId, OperationId, Slot};
 use rand::SeedableRng;
@@ -40,19 +40,19 @@ pub(crate) struct StepHistoryItem {
 #[derive(Default, Debug, Clone)]
 pub(crate) struct EventStore {
     /// maps ids to events
-    id_to_event: Map<SCOutputEventId, SCOutputEvent>,
+    id_to_event: PreHashMap<SCOutputEventId, SCOutputEvent>,
 
     /// maps slot to a set of event ids
-    slot_to_id: HashMap<Slot, Set<SCOutputEventId>>,
+    slot_to_id: HashMap<Slot, PreHashSet<SCOutputEventId>>,
 
     /// maps initial caller to a set of event ids
-    caller_to_id: Map<Address, Set<SCOutputEventId>>,
+    caller_to_id: PreHashMap<Address, PreHashSet<SCOutputEventId>>,
 
     /// maps direct event producer to a set of event ids
-    smart_contract_to_id: Map<Address, Set<SCOutputEventId>>,
+    smart_contract_to_id: PreHashMap<Address, PreHashSet<SCOutputEventId>>,
 
     /// maps operation id to a set of event ids
-    operation_id_to_event_id: Map<OperationId, Set<SCOutputEventId>>,
+    operation_id_to_event_id: PreHashMap<OperationId, PreHashSet<SCOutputEventId>>,
 }
 
 impl EventStore {
@@ -61,24 +61,24 @@ impl EventStore {
         if let Entry::Vacant(entry) = self.id_to_event.entry(id) {
             self.slot_to_id
                 .entry(event.context.slot)
-                .or_insert_with(Set::<SCOutputEventId>::default)
+                .or_insert_with(PreHashSet::<SCOutputEventId>::default)
                 .insert(id);
             if let Some(&caller) = event.context.call_stack.front() {
                 self.caller_to_id
                     .entry(caller)
-                    .or_insert_with(Set::<SCOutputEventId>::default)
+                    .or_insert_with(PreHashSet::<SCOutputEventId>::default)
                     .insert(id);
             }
             if let Some(&sc) = event.context.call_stack.back() {
                 self.smart_contract_to_id
                     .entry(sc)
-                    .or_insert_with(Set::<SCOutputEventId>::default)
+                    .or_insert_with(PreHashSet::<SCOutputEventId>::default)
                     .insert(id);
             }
             if let Some(op) = event.context.origin_operation_id {
                 self.operation_id_to_event_id
                     .entry(op)
-                    .or_insert_with(Set::<SCOutputEventId>::default)
+                    .or_insert_with(PreHashSet::<SCOutputEventId>::default)
                     .insert(id);
             }
             entry.insert(event);
@@ -89,7 +89,7 @@ impl EventStore {
     }
 
     /// get just the map if ids to events
-    pub fn export(&self) -> Map<SCOutputEventId, SCOutputEvent> {
+    pub fn export(&self) -> PreHashMap<SCOutputEventId, SCOutputEvent> {
         self.id_to_event.clone()
     }
 
@@ -203,7 +203,7 @@ impl EventStore {
         original_caller_address: Option<Address>,
         original_operation_id: Option<OperationId>,
     ) -> Vec<SCOutputEvent> {
-        let empty = Set::<SCOutputEventId>::default();
+        let empty = PreHashSet::<SCOutputEventId>::default();
         self.slot_to_id
             .iter()
             // filter on slots
@@ -400,7 +400,7 @@ pub(crate) enum ExecutionRequest {
     },
     /// Get ledger entry for address
     GetSCELedgerForAddresses {
-        response_tx: oneshot::Sender<Map<Address, SCELedgerInfo>>,
+        response_tx: oneshot::Sender<PreHashMap<Address, SCELedgerInfo>>,
         addresses: Vec<Address>,
     },
 }
@@ -451,7 +451,7 @@ impl TryFrom<&massa_models::Operation> for ExecutionData {
 ///
 /// Used in `prune()`
 fn remove_from_map<T: Eq + Hash + PreHashed>(
-    ctnr: &mut Map<T, Set<SCOutputEventId>>,
+    ctnr: &mut PreHashMap<T, PreHashSet<SCOutputEventId>>,
     key: &T,
     evt_id: &SCOutputEventId,
 ) {
@@ -476,7 +476,7 @@ fn remove_from_map<T: Eq + Hash + PreHashed>(
 ///
 /// Used in `prune()`
 fn remove_from_hashmap<T: Eq + Hash>(
-    ctnr: &mut HashMap<T, Set<SCOutputEventId>>,
+    ctnr: &mut HashMap<T, PreHashSet<SCOutputEventId>>,
     key: &T,
     evt_id: &SCOutputEventId,
 ) {

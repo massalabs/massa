@@ -3,7 +3,7 @@ use super::tools::*;
 use massa_consensus_exports::tools::*;
 
 use massa_models::ledger_models::LedgerData;
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::{Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use serial_test::serial;
@@ -91,7 +91,7 @@ async fn test_operations_check() {
             propagate_block(&mut protocol_controller, block_a, true, 150).await;
 
             // assert address 1 has 1 coin at blocks (A, genesis_ids[1]) (see #269)
-            let mut set = Set::<Address>::default();
+            let mut set = PreHashSet::<Address>::default();
             set.insert(address_1);
             let res = consensus_command_sender
                 .get_addresses_info(set)
@@ -125,7 +125,7 @@ async fn test_operations_check() {
             propagate_block(&mut protocol_controller, block_b, true, 150).await;
 
             // assert address 2 has 5 coins at block B
-            let mut set = Set::<Address>::default();
+            let mut set = PreHashSet::<Address>::default();
             set.insert(address_2);
             let res = consensus_command_sender
                 .get_addresses_info(set)
@@ -217,7 +217,7 @@ async fn test_execution_check() {
             propagate_block(&mut protocol_controller, block_a, true, 150).await;
 
             // assert the `coins` argument as been deducted from the balance of address 1.
-            let mut set = Set::<Address>::default();
+            let mut set = PreHashSet::<Address>::default();
             set.insert(address_1);
             let res = consensus_command_sender
                 .get_addresses_info(set)

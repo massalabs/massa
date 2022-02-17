@@ -26,7 +26,7 @@ use crate::{
     },
 };
 use massa_models::ledger_models::LedgerData;
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 
 use super::mock_execution_controller::MockExecutionController;
 
@@ -116,7 +116,7 @@ async fn test_roll() {
             let rb_a2_r2 = create_roll_buy(priv_2, 2, 90, 0);
             let rs_a2_r2 = create_roll_sell(priv_2, 2, 90, 0);
 
-            let mut addresses = Set::<Address>::default();
+            let mut addresses = PreHashSet::<Address>::default();
             addresses.insert(address_2);
             let addresses = addresses;
 
@@ -575,7 +575,7 @@ async fn test_roll_block_creation() {
     let rb_a2_r1 = create_roll_buy(priv_2, 1, 90, 0);
     let rs_a2_r1 = create_roll_sell(priv_2, 1, 90, 0);
 
-    let mut addresses = Set::<Address>::default();
+    let mut addresses = PreHashSet::<Address>::default();
     addresses.insert(address_2);
     let addresses = addresses;
 

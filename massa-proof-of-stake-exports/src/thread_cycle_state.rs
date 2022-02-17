@@ -1,7 +1,7 @@
 use bitvec::{order::Lsb0, prelude::BitVec};
 use massa_models::{
     array_from_slice,
-    prehash::{BuildMap, Map},
+    prehash::{BuildMap, PreHashMap},
     rolls::{RollCounts, RollUpdate, RollUpdates},
     with_serialization_context, Address, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
@@ -21,7 +21,7 @@ pub struct ThreadCycleState {
     /// Used to seed the random selector at each cycle
     pub rng_seed: BitVec<Lsb0, u8>,
     /// Per-address production statistics (ok_count, nok_count)
-    pub production_stats: Map<Address, (u64, u64)>,
+    pub production_stats: PreHashMap<Address, (u64, u64)>,
 }
 
 impl ThreadCycleState {
@@ -134,7 +134,7 @@ impl DeserializeCompact for ThreadCycleState {
                     .into(),
             ));
         }
-        let mut cycle_updates = RollUpdates(Map::with_capacity_and_hasher(
+        let mut cycle_updates = RollUpdates(PreHashMap::with_capacity_and_hasher(
             n_entries as usize,
             BuildMap::default(),
         ));
@@ -180,7 +180,7 @@ impl DeserializeCompact for ThreadCycleState {
             ));
         }
         let mut production_stats =
-            Map::with_capacity_and_hasher(n_entries as usize, BuildMap::default());
+            PreHashMap::with_capacity_and_hasher(n_entries as usize, BuildMap::default());
         for _ in 0..n_entries {
             let addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += ADDRESS_SIZE_BYTES;

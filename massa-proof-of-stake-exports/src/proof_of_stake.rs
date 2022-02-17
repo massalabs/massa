@@ -4,7 +4,7 @@ use bitvec::{order::Lsb0, prelude::BitVec};
 use massa_hash::hash::Hash;
 use massa_models::{
     active_block::ActiveBlock,
-    prehash::{Map, Set},
+    prehash::{PreHashMap, PreHashSet},
     rolls::{RollCounts, RollUpdates},
     Address, Amount, BlockId, Slot, StakersCycleProductionStats,
 };
@@ -35,7 +35,7 @@ pub struct ProofOfStake {
     /// the seeds are indexed from -1 to -N
     initial_seeds: Vec<Vec<u8>>,
     /// watched addresses
-    watched_addresses: Set<Address>,
+    watched_addresses: PreHashSet<Address>,
 }
 
 impl ProofOfStake {
@@ -97,11 +97,11 @@ impl ProofOfStake {
             draw_cache,
             cfg,
             draw_cache_counter,
-            watched_addresses: Set::<Address>::default(),
+            watched_addresses: PreHashSet::<Address>::default(),
         })
     }
 
-    pub fn set_watched_addresses(&mut self, addrs: Set<Address>) {
+    pub fn set_watched_addresses(&mut self, addrs: PreHashSet<Address>) {
         self.watched_addresses = addrs;
     }
 
@@ -116,7 +116,7 @@ impl ProofOfStake {
 
     async fn get_initial_rolls(cfg: &ProofOfStakeConfig) -> POSResult<Vec<RollCounts>> {
         let mut res = vec![BTreeMap::<Address, u64>::new(); cfg.thread_count as usize];
-        let addrs_map = serde_json::from_str::<Map<Address, u64>>(
+        let addrs_map = serde_json::from_str::<PreHashMap<Address, u64>>(
             &tokio::fs::read_to_string(&cfg.initial_rolls_path).await?,
         )?;
         for (addr, n_rolls) in addrs_map.into_iter() {
@@ -341,7 +341,10 @@ impl ProofOfStake {
 
     /// Update internal states after a set of blocks become final
     /// see /consensus/pos.md#when-a-block-b-in-thread-tau-and-cycle-n-becomes-final
-    pub fn note_final_blocks(&mut self, blocks: Map<BlockId, &ActiveBlock>) -> POSResult<()> {
+    pub fn note_final_blocks(
+        &mut self,
+        blocks: PreHashMap<BlockId, &ActiveBlock>,
+    ) -> POSResult<()> {
         // Update internal states after a set of blocks become final.
 
         // process blocks by increasing slot number
@@ -465,7 +468,7 @@ impl ProofOfStake {
 
     pub fn get_stakers_production_stats(
         &self,
-        addrs: &Set<Address>,
+        addrs: &PreHashSet<Address>,
     ) -> Vec<StakersCycleProductionStats> {
         let mut res: HashMap<u64, StakersCycleProductionStats> = HashMap::new();
         let mut completeness: HashMap<u64, u8> = HashMap::new();
@@ -480,7 +483,7 @@ impl ProofOfStake {
                     .or_insert_with(|| StakersCycleProductionStats {
                         cycle,
                         is_final: false,
-                        ok_nok_counts: Map::default(),
+                        ok_nok_counts: PreHashMap::default(),
                     });
 
                 cycle_entry.is_final = if thread_cycle_complete {
@@ -526,8 +529,12 @@ impl ProofOfStake {
     }
 
     /// returns the roll sell credit amount (in coins) for each credited address
-    pub fn get_roll_sell_credit(&self, cycle: u64, thread: u8) -> POSResult<Map<Address, Amount>> {
-        let mut res = Map::default();
+    pub fn get_roll_sell_credit(
+        &self,
+        cycle: u64,
+        thread: u8,
+    ) -> POSResult<PreHashMap<Address, Amount>> {
+        let mut res = PreHashMap::default();
         if let Some(target_cycle) =
             cycle.checked_sub(self.cfg.pos_lookback_cycles + self.cfg.pos_lock_cycles + 1)
         {
@@ -558,16 +565,16 @@ impl ProofOfStake {
         &self,
         cycle: u64,
         address_thread: u8,
-    ) -> POSResult<Set<Address>> {
+    ) -> POSResult<PreHashSet<Address>> {
         // compute target cycle
         if cycle <= self.cfg.pos_lookback_cycles {
             // no lookback cycles yet: do not deactivate anyone
-            return Ok(Set::<Address>::default());
+            return Ok(PreHashSet::<Address>::default());
         }
         let target_cycle = cycle - self.cfg.pos_lookback_cycles - 1;
 
         // get roll data from all threads for addresses belonging to address_thread
-        let mut addr_stats: Map<Address, (u64, u64)> = Map::default();
+        let mut addr_stats: PreHashMap<Address, (u64, u64)> = PreHashMap::default();
         for thread in 0..self.cfg.thread_count {
             // get roll data
             let roll_data = self
@@ -593,7 +600,7 @@ impl ProofOfStake {
             }
         }
         // list addresses with bad stats
-        let res: Set<Address> = addr_stats
+        let res: PreHashSet<Address> = addr_stats
             .into_iter()
             .filter_map(|(addr, (ok_count, nok_count))| {
                 if ok_count + nok_count == 0 {
@@ -619,16 +626,16 @@ impl ProofOfStake {
         &self,
         cycle: u64,
         thread: u8,
-        addrs: &Set<Address>,
-    ) -> Map<Address, u64> {
+        addrs: &PreHashSet<Address>,
+    ) -> PreHashMap<Address, u64> {
         if cycle < 1 + self.cfg.pos_lookback_cycles {
-            return Map::default();
+            return PreHashMap::default();
         }
         let start_cycle = cycle
             .saturating_sub(self.cfg.pos_lookback_cycles)
             .saturating_sub(self.cfg.pos_lock_cycles);
         let end_cycle = cycle - self.cfg.pos_lookback_cycles - 1;
-        let mut res: Map<Address, u64> = Map::default();
+        let mut res: PreHashMap<Address, u64> = PreHashMap::default();
         for origin_cycle in start_cycle..=end_cycle {
             if let Some(origin_state) = self.get_final_roll_data(origin_cycle, thread) {
                 for addr in addrs.iter() {

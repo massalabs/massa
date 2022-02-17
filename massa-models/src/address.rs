@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::api::{LedgerInfo, RollsInfo};
-use crate::prehash::{PreHashed, Set};
+use crate::prehash::{PreHashSet, PreHashed};
 use crate::settings::ADDRESS_SIZE_BYTES;
 use crate::ModelsError;
 use massa_hash::hash::Hash;
@@ -157,7 +157,7 @@ impl Address {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Addresses {
-    pub addrs: Set<Address>,
+    pub addrs: PreHashSet<Address>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

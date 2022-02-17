@@ -3,7 +3,7 @@
 use massa_execution::{
     ExecutionCommand, ExecutionCommandSender, ExecutionEvent, ExecutionEventReceiver,
 };
-use massa_models::prehash::Map;
+use massa_models::prehash::PreHashMap;
 use massa_models::{Block, BlockId};
 use massa_time::MassaTime;
 use tokio::{
@@ -57,8 +57,8 @@ impl MockExecutionController {
     #[allow(dead_code)]
     pub async fn blockclique_changed(
         &mut self,
-        blockclique: Map<BlockId, Block>,
-        finalized_blocks: Map<BlockId, Block>,
+        blockclique: PreHashMap<BlockId, Block>,
+        finalized_blocks: PreHashMap<BlockId, Block>,
     ) {
         self.execution_command_sender
             .send(ExecutionCommand::BlockCliqueChanged {

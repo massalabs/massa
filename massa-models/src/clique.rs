@@ -5,7 +5,7 @@ use std::convert::TryInto;
 
 use serde::{Deserialize, Serialize};
 
-use crate::prehash::{BuildMap, Set};
+use crate::prehash::{BuildMap, PreHashSet};
 use crate::settings::BLOCK_ID_SIZE_BYTES;
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, BlockId, DeserializeCompact,
@@ -14,7 +14,7 @@ use crate::{
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Clique {
-    pub block_ids: Set<BlockId>,
+    pub block_ids: PreHashSet<BlockId>,
     pub fitness: u64,
     pub is_blockclique: bool,
 }
@@ -101,8 +101,10 @@ impl DeserializeCompact for Clique {
             ));
         }
         cursor += delta;
-        let mut block_ids =
-            Set::<BlockId>::with_capacity_and_hasher(block_count as usize, BuildMap::default());
+        let mut block_ids = PreHashSet::<BlockId>::with_capacity_and_hasher(
+            block_count as usize,
+            BuildMap::default(),
+        );
         for _ in 0..block_count {
             let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
             cursor += BLOCK_ID_SIZE_BYTES;

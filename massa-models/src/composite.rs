@@ -3,7 +3,7 @@
 use std::fmt::Display;
 
 use super::operation::Operation;
-use crate::prehash::Map;
+use crate::prehash::PreHashMap;
 use crate::{Address, BlockId};
 use massa_signature::{PublicKey, Signature};
 use serde::{Deserialize, Serialize};
@@ -29,7 +29,7 @@ pub enum OperationSearchResultStatus {
 pub struct OperationSearchResult {
     pub op: Operation,
     pub in_pool: bool,
-    pub in_blocks: Map<BlockId, (usize, bool)>, // index, is_final
+    pub in_blocks: PreHashMap<BlockId, (usize, bool)>, // index, is_final
     pub status: OperationSearchResultStatus,
 }
 
@@ -44,7 +44,7 @@ impl OperationSearchResult {
 pub struct StakersCycleProductionStats {
     pub cycle: u64,
     pub is_final: bool,
-    pub ok_nok_counts: Map<Address, (u64, u64)>,
+    pub ok_nok_counts: PreHashMap<Address, (u64, u64)>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

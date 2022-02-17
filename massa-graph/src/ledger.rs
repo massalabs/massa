@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 use massa_models::ledger_models::{LedgerChange, LedgerChanges, LedgerData};
-use massa_models::prehash::{BuildMap, Map, Set};
+use massa_models::prehash::{BuildMap, PreHashMap, PreHashSet};
 use massa_models::{
     array_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, Operation,
     SerializeCompact, SerializeVarInt, ADDRESS_SIZE_BYTES,
@@ -199,7 +199,7 @@ impl Ledger {
     }
 
     /// Returns the final ledger data of a list of unique addresses belonging to any thread.
-    pub fn get_final_data(&self, addresses: Set<Address>) -> Result<LedgerSubset> {
+    pub fn get_final_data(&self, addresses: PreHashSet<Address>) -> Result<LedgerSubset> {
         self.ledger_per_thread
             .transaction(|ledger_per_thread| {
                 let mut result = LedgerSubset::default();
@@ -423,7 +423,10 @@ impl Ledger {
     }
 
     /// Gets ledger at latest final blocks for query_addrs
-    pub fn get_final_ledger_subset(&self, query_addrs: &Set<Address>) -> Result<LedgerSubset> {
+    pub fn get_final_ledger_subset(
+        &self,
+        query_addrs: &PreHashSet<Address>,
+    ) -> Result<LedgerSubset> {
         let res = self.ledger_per_thread.transaction(|ledger_per_thread| {
             let mut data = LedgerSubset::default();
             for addr in query_addrs {
@@ -450,7 +453,7 @@ impl Ledger {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct LedgerSubset(pub Map<Address, LedgerData>);
+pub struct LedgerSubset(pub PreHashMap<Address, LedgerData>);
 
 impl LedgerSubset {
     /// If subset contains given address
@@ -466,7 +469,7 @@ impl LedgerSubset {
     }
 
     /// List involved addresses
-    pub fn get_involved_addresses(&self) -> Set<Address> {
+    pub fn get_involved_addresses(&self) -> PreHashSet<Address> {
         self.0.keys().copied().collect()
     }
 
@@ -511,7 +514,7 @@ impl LedgerSubset {
 
     /// merge another ledger subset into self, overwriting existing data
     /// addrs that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: LedgerSubset) {
+    pub fn sync_from(&mut self, addrs: &PreHashSet<Address>, mut other: LedgerSubset) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -523,7 +526,7 @@ impl LedgerSubset {
 
     /// clone subset
     #[must_use]
-    pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
+    pub fn clone_subset(&self, addrs: &PreHashSet<Address>) -> Self {
         LedgerSubset(
             self.0
                 .iter()
@@ -617,7 +620,7 @@ impl DeserializeCompact for LedgerSubset {
         // TODO: add entry_count checks ... see #1200
         cursor += delta;
 
-        let mut ledger_subset = LedgerSubset(Map::with_capacity_and_hasher(
+        let mut ledger_subset = LedgerSubset(PreHashMap::with_capacity_and_hasher(
             entry_count as usize,
             BuildMap::default(),
         ));

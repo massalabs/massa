@@ -10,15 +10,17 @@ use tracing::{debug, error, info};
 use crate::consensus_worker::ConsensusWorker;
 use massa_consensus_exports::settings::ConsensusConfig;
 use massa_graph::{BlockGraph, BootstrapableGraph};
-use massa_models::{prehash::Map, Address};
+use massa_models::{prehash::PreHashMap, Address};
 use massa_proof_of_stake_exports::{ExportProofOfStake, ProofOfStake};
 use massa_signature::{derive_public_key, PrivateKey, PublicKey};
 use std::path::Path;
 use tokio::sync::mpsc;
 
-async fn load_initial_staking_keys(path: &Path) -> Result<Map<Address, (PublicKey, PrivateKey)>> {
+async fn load_initial_staking_keys(
+    path: &Path,
+) -> Result<PreHashMap<Address, (PublicKey, PrivateKey)>> {
     if !std::path::Path::is_file(path) {
-        return Ok(Map::default());
+        return Ok(PreHashMap::default());
     }
     serde_json::from_str::<Vec<PrivateKey>>(&tokio::fs::read_to_string(path).await?)?
         .iter()

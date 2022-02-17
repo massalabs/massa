@@ -3,8 +3,8 @@
 use crate::address::AddressCycleProductionStats;
 use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
-use crate::prehash::Map;
-use crate::prehash::Set;
+use crate::prehash::PreHashMap;
+use crate::prehash::PreHashSet;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
 use crate::{
     Address, Amount, Block, BlockId, CompactConfig, Endorsement, EndorsementId, Operation,
@@ -142,7 +142,7 @@ impl std::fmt::Display for RollsInfo {
 pub struct SCELedgerInfo {
     pub balance: Amount,
     pub module: Option<Vec<u8>>,
-    pub datastore: Map<Hash, Vec<u8>>,
+    pub datastore: PreHashMap<Hash, Vec<u8>>,
 }
 
 impl std::fmt::Display for SCELedgerInfo {
@@ -162,9 +162,9 @@ pub struct AddressInfo {
     pub rolls: RollsInfo,
     pub block_draws: HashSet<Slot>,
     pub endorsement_draws: HashSet<IndexedSlot>,
-    pub blocks_created: Set<BlockId>,
-    pub involved_in_endorsements: Set<EndorsementId>,
-    pub involved_in_operations: Set<OperationId>,
+    pub blocks_created: PreHashSet<BlockId>,
+    pub involved_in_endorsements: PreHashSet<EndorsementId>,
+    pub involved_in_operations: PreHashSet<OperationId>,
     pub production_stats: Vec<AddressCycleProductionStats>,
 }
 

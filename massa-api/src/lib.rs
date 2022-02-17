@@ -19,7 +19,7 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::node::NodeId;
 use massa_models::operation::{Operation, OperationId};
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::{Address, BlockId, EndorsementId, Version};
 use massa_network::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
@@ -126,7 +126,7 @@ pub trait Endpoints {
 
     /// Return hashset of staking addresses.
     #[rpc(name = "get_staking_addresses")]
-    fn get_staking_addresses(&self) -> BoxFuture<Result<Set<Address>, ApiError>>;
+    fn get_staking_addresses(&self) -> BoxFuture<Result<PreHashSet<Address>, ApiError>>;
 
     /// Bans given IP address.
     /// No confirmation to expect.
@@ -148,7 +148,7 @@ pub trait Endpoints {
 
     /// Returns the active stakers and their active roll counts for the current cycle.
     #[rpc(name = "get_stakers")]
-    fn get_stakers(&self) -> BoxFuture<Result<Map<Address, u64>, ApiError>>;
+    fn get_stakers(&self) -> BoxFuture<Result<PreHashMap<Address, u64>, ApiError>>;
 
     /// Returns operations information associated to a given list of operations' IDs.
     #[rpc(name = "get_operations")]

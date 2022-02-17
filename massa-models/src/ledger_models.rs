@@ -2,7 +2,7 @@
 
 use crate::{
     error::ModelsResult as Result,
-    prehash::{Map, Set},
+    prehash::{PreHashMap, PreHashSet},
     u8_from_slice, Address, Amount, DeserializeCompact, ModelsError, SerializeCompact,
 };
 use core::usize;
@@ -171,10 +171,10 @@ impl DeserializeCompact for LedgerChange {
 
 /// Map an address to a LedgerChange
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct LedgerChanges(pub Map<Address, LedgerChange>);
+pub struct LedgerChanges(pub PreHashMap<Address, LedgerChange>);
 
 impl LedgerChanges {
-    pub fn get_involved_addresses(&self) -> Set<Address> {
+    pub fn get_involved_addresses(&self) -> PreHashSet<Address> {
         self.0.keys().copied().collect()
     }
 
@@ -208,7 +208,7 @@ impl LedgerChanges {
 
     /// merge another ledger changes into self, overwriting existing data
     /// addrs that are in not other are removed from self
-    pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: LedgerChanges) {
+    pub fn sync_from(&mut self, addrs: &PreHashSet<Address>, mut other: LedgerChanges) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {
                 self.0.insert(*addr, new_val);
@@ -220,7 +220,7 @@ impl LedgerChanges {
 
     /// clone subset
     #[must_use]
-    pub fn clone_subset(&self, addrs: &Set<Address>) -> Self {
+    pub fn clone_subset(&self, addrs: &PreHashSet<Address>) -> Self {
         LedgerChanges(
             self.0
                 .iter()

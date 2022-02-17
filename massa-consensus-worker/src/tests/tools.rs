@@ -12,7 +12,7 @@ use massa_consensus_exports::{
 };
 use massa_graph::{export_active_block::ExportActiveBlock, BlockGraphExport, BootstrapableGraph};
 use massa_hash::hash::Hash;
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
     EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,
@@ -113,8 +113,8 @@ pub async fn validate_ask_for_block(
 
 pub async fn validate_wishlist(
     protocol_controller: &mut MockProtocolController,
-    new: Set<BlockId>,
-    remove: Set<BlockId>,
+    new: PreHashSet<BlockId>,
+    remove: PreHashSet<BlockId>,
     timeout_ms: u64,
 ) {
     let param = protocol_controller

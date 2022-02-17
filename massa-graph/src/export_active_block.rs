@@ -2,7 +2,7 @@ use crate::error::{GraphError, GraphResult as Result};
 use massa_models::{
     active_block::ActiveBlock,
     ledger_models::{LedgerChange, LedgerChanges},
-    prehash::{BuildMap, Map, Set},
+    prehash::{BuildMap, PreHashMap, PreHashSet},
     rolls::{RollUpdate, RollUpdates},
     *,
 };
@@ -18,9 +18,9 @@ pub struct ExportActiveBlock {
     pub parents: Vec<(BlockId, u64)>,
     /// one HashMap<Block id, period> per thread (blocks that need to be kept)
     /// Children reference that block as a parent
-    pub children: Vec<Map<BlockId, u64>>,
+    pub children: Vec<PreHashMap<BlockId, u64>>,
     /// dependencies required for validity check
-    pub dependencies: Set<BlockId>,
+    pub dependencies: PreHashSet<BlockId>,
     /// ie has its fitness reached the given threshold
     pub is_final: bool,
     /// Changes caused by this block
@@ -245,7 +245,8 @@ impl DeserializeCompact for ExportActiveBlock {
             ));
         }
         cursor += delta;
-        let mut children: Vec<Map<BlockId, u64>> = Vec::with_capacity(children_count as usize);
+        let mut children: Vec<PreHashMap<BlockId, u64>> =
+            Vec::with_capacity(children_count as usize);
         for _ in 0..(children_count as usize) {
             let (map_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
             if map_count > max_bootstrap_children {
@@ -254,8 +255,8 @@ impl DeserializeCompact for ExportActiveBlock {
                 ));
             }
             cursor += delta;
-            let mut map: Map<BlockId, u64> =
-                Map::with_capacity_and_hasher(map_count as usize, BuildMap::default());
+            let mut map: PreHashMap<BlockId, u64> =
+                PreHashMap::with_capacity_and_hasher(map_count as usize, BuildMap::default());
             for _ in 0..(map_count as usize) {
                 let hash = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                 cursor += BLOCK_ID_SIZE_BYTES;
@@ -274,7 +275,7 @@ impl DeserializeCompact for ExportActiveBlock {
             ));
         }
         cursor += delta;
-        let mut dependencies = Set::<BlockId>::with_capacity_and_hasher(
+        let mut dependencies = PreHashSet::<BlockId>::with_capacity_and_hasher(
             dependencies_count as usize,
             BuildMap::default(),
         );
@@ -288,7 +289,7 @@ impl DeserializeCompact for ExportActiveBlock {
         let (block_ledger_change_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         // TODO: count check ... see #1200
         cursor += delta;
-        let mut block_ledger_changes = LedgerChanges(Map::with_capacity_and_hasher(
+        let mut block_ledger_changes = LedgerChanges(PreHashMap::with_capacity_and_hasher(
             block_ledger_change_count as usize,
             BuildMap::default(),
         ));
@@ -308,7 +309,7 @@ impl DeserializeCompact for ExportActiveBlock {
             ));
         }
         cursor += delta;
-        let mut roll_updates = RollUpdates(Map::with_capacity_and_hasher(
+        let mut roll_updates = RollUpdates(PreHashMap::with_capacity_and_hasher(
             roll_updates_count as usize,
             BuildMap::default(),
         ));

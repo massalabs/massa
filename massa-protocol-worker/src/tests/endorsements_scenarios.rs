@@ -3,7 +3,7 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::protocol_test;
-use massa_models::prehash::Map;
+use massa_models::prehash::PreHashMap;
 use massa_models::{Address, Slot};
 use massa_network::NetworkCommand;
 use massa_protocol_exports::tests::tools;
@@ -157,7 +157,7 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
 
             let expected_endorsement_id = endorsement.compute_endorsement_id().unwrap();
 
-            let mut ends = Map::default();
+            let mut ends = PreHashMap::default();
             ends.insert(expected_endorsement_id, endorsement);
             protocol_command_sender
                 .propagate_endorsements(ends)
@@ -239,7 +239,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
             // send the endorsement to protocol
             // it should propagate it to nodes that don't know about it
-            let mut ops = Map::default();
+            let mut ops = PreHashMap::default();
             ops.insert(expected_endorsement_id, endorsement);
             protocol_command_sender
                 .propagate_endorsements(ops)
@@ -345,7 +345,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Send the endorsement to protocol
             // it should not propagate to the node that already knows about it
             // because of the previously integrated block.
-            let mut ops = Map::default();
+            let mut ops = PreHashMap::default();
             ops.insert(endorsement_id, endorsement);
             protocol_command_sender
                 .propagate_endorsements(ops)
@@ -426,7 +426,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             .await;
 
             // Send the block as search results.
-            let mut results = Map::default();
+            let mut results = PreHashMap::default();
             results.insert(
                 block_id,
                 Some((block.clone(), None, Some(vec![endorsement_id]))),
@@ -455,7 +455,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Send the endorsement to protocol
             // it should not propagate to the node that already knows about it
             // because of the previously integrated block.
-            let mut ops = Map::default();
+            let mut ops = PreHashMap::default();
             ops.insert(endorsement_id, endorsement);
             protocol_command_sender
                 .propagate_endorsements(ops)
@@ -544,7 +544,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Send the endorsement to protocol
             // it should not propagate to the node that already knows about it
             // because of the previously received header.
-            let mut ops = Map::default();
+            let mut ops = PreHashMap::default();
             ops.insert(endorsement_id, endorsement);
             protocol_command_sender
                 .propagate_endorsements(ops)

@@ -6,7 +6,7 @@ use super::{
     settings::{PoolSettings, CHANNEL_SIZE},
 };
 use massa_logging::massa_trace;
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::stats::PoolStats;
 use massa_models::{
     Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
@@ -76,7 +76,7 @@ pub struct PoolCommandSender(pub mpsc::Sender<PoolCommand>);
 impl PoolCommandSender {
     pub async fn add_operations(
         &mut self,
-        operations: Map<OperationId, Operation>,
+        operations: PreHashMap<OperationId, Operation>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.add_operations", { "ops": operations });
         let res = self
@@ -115,7 +115,7 @@ impl PoolCommandSender {
 
     pub async fn final_operations(
         &mut self,
-        ops: Map<OperationId, (u64, u8)>,
+        ops: PreHashMap<OperationId, (u64, u8)>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.final_operations", { "ops": ops });
         self.0
@@ -146,7 +146,7 @@ impl PoolCommandSender {
     pub async fn get_operation_batch(
         &mut self,
         target_slot: Slot,
-        exclude: Set<OperationId>,
+        exclude: PreHashSet<OperationId>,
         batch_size: usize,
         max_size: u64,
     ) -> Result<Vec<(OperationId, Operation, u64)>, PoolError> {
@@ -207,8 +207,8 @@ impl PoolCommandSender {
 
     pub async fn get_operations(
         &mut self,
-        operation_ids: Set<OperationId>,
-    ) -> Result<Map<OperationId, Operation>, PoolError> {
+        operation_ids: PreHashSet<OperationId>,
+    ) -> Result<PreHashMap<OperationId, Operation>, PoolError> {
         massa_trace!("pool.command_sender.get_operations", {
             "operation_ids": operation_ids
         });
@@ -233,7 +233,7 @@ impl PoolCommandSender {
     pub async fn get_operations_involving_address(
         &mut self,
         address: Address,
-    ) -> Result<Map<OperationId, OperationSearchResult>, PoolError> {
+    ) -> Result<PreHashMap<OperationId, OperationSearchResult>, PoolError> {
         massa_trace!("pool.command_sender.get_operations_involving_address", {
             "address": address
         });
@@ -261,7 +261,7 @@ impl PoolCommandSender {
 
     pub async fn add_endorsements(
         &mut self,
-        endorsements: Map<EndorsementId, Endorsement>,
+        endorsements: PreHashMap<EndorsementId, Endorsement>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.add_endorsements", {
             "endorsements": endorsements
@@ -277,7 +277,7 @@ impl PoolCommandSender {
     pub async fn get_endorsements_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, Endorsement>, PoolError> {
+    ) -> Result<PreHashMap<EndorsementId, Endorsement>, PoolError> {
         massa_trace!("pool.command_sender.get_endorsements_by_address", {
             "address": address
         });
@@ -303,8 +303,8 @@ impl PoolCommandSender {
 
     pub async fn get_endorsements_by_id(
         &self,
-        endorsements: Set<EndorsementId>,
-    ) -> Result<Map<EndorsementId, Endorsement>, PoolError> {
+        endorsements: PreHashSet<EndorsementId>,
+    ) -> Result<PreHashMap<EndorsementId, Endorsement>, PoolError> {
         massa_trace!("pool.command_sender.get_endorsements_by_id", {
             "endorsements": endorsements
         });

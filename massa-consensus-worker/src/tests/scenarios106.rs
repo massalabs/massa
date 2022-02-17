@@ -5,7 +5,7 @@
 use super::tools::*;
 use massa_consensus_exports::tools::*;
 
-use massa_models::prehash::Set;
+use massa_models::prehash::PreHashSet;
 use massa_models::timeslots;
 use massa_models::{BlockId, Slot};
 use massa_signature::{generate_random_private_key, PrivateKey};
@@ -437,7 +437,7 @@ async fn test_dep_in_back_order() {
             validate_wishlist(
                 &mut protocol_controller,
                 vec![hasht0s1, hasht1s1].into_iter().collect(),
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 500,
             )
             .await;
@@ -451,7 +451,7 @@ async fn test_dep_in_back_order() {
             validate_propagate_block(&mut protocol_controller, hasht0s1, 500).await;
             validate_wishlist(
                 &mut protocol_controller,
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 vec![hasht0s1].into_iter().collect(),
                 500,
             )
@@ -499,7 +499,7 @@ async fn test_dep_in_back_order() {
             validate_propagate_block_in_list(&mut protocol_controller, &integrated, 1000).await;
             validate_wishlist(
                 &mut protocol_controller,
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 vec![hasht1s2].into_iter().collect(),
                 500,
             )
@@ -594,7 +594,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
             validate_wishlist(
                 &mut protocol_controller,
                 vec![hasht0s1, hasht1s1].into_iter().collect(),
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 500,
             )
             .await;
@@ -607,7 +607,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
             validate_propagate_block(&mut protocol_controller, hasht0s1, 500).await;
             validate_wishlist(
                 &mut protocol_controller,
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 vec![hasht0s1].into_iter().collect(),
                 500,
             )
@@ -633,7 +633,7 @@ async fn test_dep_in_back_order_with_max_dependency_blocks() {
             .await;
             validate_wishlist(
                 &mut protocol_controller,
-                Set::<BlockId>::default(),
+                PreHashSet::<BlockId>::default(),
                 vec![hasht1s1].into_iter().collect(),
                 500,
             )

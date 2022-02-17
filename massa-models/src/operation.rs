@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::prehash::{PreHashed, Set};
+use crate::prehash::{PreHashSet, PreHashed};
 use crate::settings::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
 use crate::{
     serialization::{
@@ -452,8 +452,8 @@ impl Operation {
         start..=self.content.expire_period
     }
 
-    pub fn get_ledger_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
-        let mut res = Set::<Address>::default();
+    pub fn get_ledger_involved_addresses(&self) -> Result<PreHashSet<Address>, ModelsError> {
+        let mut res = PreHashSet::<Address>::default();
         let emitter_address = Address::from_public_key(&self.content.sender_public_key);
         res.insert(emitter_address);
         match self.content.op {
@@ -469,8 +469,8 @@ impl Operation {
         Ok(res)
     }
 
-    pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
-        let mut res = Set::<Address>::default();
+    pub fn get_roll_involved_addresses(&self) -> Result<PreHashSet<Address>, ModelsError> {
+        let mut res = PreHashSet::<Address>::default();
         match self.content.op {
             OperationType::Transaction { .. } => {}
             OperationType::RollBuy { .. } => {

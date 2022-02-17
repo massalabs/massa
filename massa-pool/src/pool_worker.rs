@@ -3,7 +3,7 @@
 use super::{error::PoolError, settings::PoolSettings};
 use crate::endorsement_pool::EndorsementPool;
 use crate::operation_pool::OperationPool;
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::stats::PoolStats;
 use massa_models::{
     Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
@@ -16,40 +16,40 @@ use tracing::warn;
 /// Commands that can be processed by pool.
 #[derive(Debug)]
 pub enum PoolCommand {
-    AddOperations(Map<OperationId, Operation>),
+    AddOperations(PreHashMap<OperationId, Operation>),
     UpdateCurrentSlot(Slot),
     UpdateLatestFinalPeriods(Vec<u64>),
     GetOperationBatch {
         target_slot: Slot,
-        exclude: Set<OperationId>,
+        exclude: PreHashSet<OperationId>,
         batch_size: usize,
         max_size: u64,
         response_tx: oneshot::Sender<Vec<(OperationId, Operation, u64)>>,
     },
     GetOperations {
-        operation_ids: Set<OperationId>,
-        response_tx: oneshot::Sender<Map<OperationId, Operation>>,
+        operation_ids: PreHashSet<OperationId>,
+        response_tx: oneshot::Sender<PreHashMap<OperationId, Operation>>,
     },
     GetRecentOperations {
         address: Address,
-        response_tx: oneshot::Sender<Map<OperationId, OperationSearchResult>>,
+        response_tx: oneshot::Sender<PreHashMap<OperationId, OperationSearchResult>>,
     },
-    FinalOperations(Map<OperationId, (u64, u8)>), // (end of validity period, thread)
+    FinalOperations(PreHashMap<OperationId, (u64, u8)>), // (end of validity period, thread)
     GetEndorsements {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
         response_tx: oneshot::Sender<Vec<(EndorsementId, Endorsement)>>,
     },
-    AddEndorsements(Map<EndorsementId, Endorsement>),
+    AddEndorsements(PreHashMap<EndorsementId, Endorsement>),
     GetStats(oneshot::Sender<PoolStats>),
     GetEndorsementsByAddress {
         address: Address,
-        response_tx: oneshot::Sender<Map<EndorsementId, Endorsement>>,
+        response_tx: oneshot::Sender<PreHashMap<EndorsementId, Endorsement>>,
     },
     GetEndorsementsById {
-        endorsements: Set<EndorsementId>,
-        response_tx: oneshot::Sender<Map<EndorsementId, Endorsement>>,
+        endorsements: PreHashSet<EndorsementId>,
+        response_tx: oneshot::Sender<PreHashMap<EndorsementId, Endorsement>>,
     },
 }
 

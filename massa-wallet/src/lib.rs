@@ -5,7 +5,7 @@ use massa_hash::hash::Hash;
 use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::composite::PubkeySig;
-use massa_models::prehash::{Map, Set};
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::Operation;
 use massa_models::OperationContent;
 use massa_models::SerializeCompact;
@@ -19,7 +19,7 @@ mod error;
 /// Contains the private keys created in the wallet.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Wallet {
-    pub keys: Map<Address, (PublicKey, PrivateKey)>,
+    pub keys: PreHashMap<Address, (PublicKey, PrivateKey)>,
     pub wallet_path: PathBuf,
 }
 
@@ -37,7 +37,7 @@ impl Wallet {
                 let pub_key = derive_public_key(key);
                 Ok((Address::from_public_key(&pub_key), (pub_key, *key)))
             })
-            .collect::<Result<Map<Address, _>, WalletError>>()?;
+            .collect::<Result<PreHashMap<Address, _>, WalletError>>()?;
         Ok(Wallet {
             keys,
             wallet_path: path,
@@ -95,7 +95,7 @@ impl Wallet {
         self.keys.get(&address).map(|(pub_key, _priv_key)| pub_key)
     }
 
-    pub fn get_wallet_address_list(&self) -> Set<Address> {
+    pub fn get_wallet_address_list(&self) -> PreHashSet<Address> {
         self.keys.keys().copied().collect()
     }
 
@@ -111,7 +111,7 @@ impl Wallet {
     }
 
     /// Export keys to json string
-    pub fn get_full_wallet(&self) -> &Map<Address, (PublicKey, PrivateKey)> {
+    pub fn get_full_wallet(&self) -> &PreHashMap<Address, (PublicKey, PrivateKey)> {
         &self.keys
     }
 
