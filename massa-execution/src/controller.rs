@@ -2,6 +2,8 @@ use crate::execution::ExecutionState;
 use crate::types::ExecutionOutput;
 use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
+use massa_ledger::LedgerEntry;
+use massa_models::Address;
 use massa_models::{Block, BlockId, Slot};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{mpsc, Arc, Condvar, Mutex, RwLock};
@@ -9,7 +11,7 @@ use tracing::info;
 
 /// structure used to communicate with the VM thread
 #[derive(Default)]
-pub struct VMInputData {
+pub(crate) struct VMInputData {
     /// set stop to true to stop the thread
     pub stop: bool,
     /// signal whether the blockclique changed
@@ -28,11 +30,11 @@ pub struct VMInputData {
 /// VM controller
 pub struct VMController {
     /// condition variable to wake up the VM loop
-    pub loop_cv: Condvar,
+    pub(crate) loop_cv: Condvar,
     /// input data to process in the VM loop
-    pub input_data: Mutex<VMInputData>,
+    pub(crate) input_data: Mutex<VMInputData>,
     /// execution state
-    pub execution_state: Arc<RwLock<ExecutionState>>,
+    pub(crate) execution_state: Arc<RwLock<ExecutionState>>,
 }
 
 impl VMController {
@@ -40,6 +42,20 @@ impl VMController {
     /// if found, remove from input queue
     pub(crate) fn consume_input(&mut self) -> VMInputData {
         std::mem::take(&mut self.input_data.lock().expect("VM input data lock failed"))
+    }
+
+    /// gets a copy of a full ledger entry
+    ///
+    /// # return value
+    /// * (final_entry, active_entry)
+    pub fn get_full_ledger_entry(
+        &self,
+        addr: &Address,
+    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
+        self.execution_state
+            .read()
+            .expect("could not lock execution state for reading")
+            .get_full_ledger_entry(addr)
     }
 
     /// Executes a readonly request
@@ -96,7 +112,7 @@ impl VMManager {
                 .controller
                 .input_data
                 .lock()
-                .expect("could not w-lock VM input data");
+                .expect("could not lock VM input data");
             input_wlock.stop = true;
             self.controller.loop_cv.notify_one();
         }

@@ -226,27 +226,8 @@ impl VMThread {
         // clear the speculative execution output cache completely
         exec_state.clear_history();
 
-        // downgrade execution state lock to read-only
-        // to allow for outside r-locks while the slot is being executed, which takes CPU time
-        // note that this downgrade does not happen atomically
-        // but the main loop is the only one writng in the execution state
-        // so there won't be writes in-between the release of write() and the acquiring of read()
-        let exec_state = self
-            .execution_state
-            .read()
-            .expect("could not lock execution state for reading");
-
         // execute slot
         let exec_out = exec_state.execute_slot(slot, exec_target);
-
-        // upgrade execution state lock to write
-        // note that this upgrade does not happen atomically
-        // but the main loop is the only one writng in the execution state
-        // so there won't be writes in-between the release of read() and the acquiring of write()
-        let exec_state = self
-            .execution_state
-            .write()
-            .expect("could not lock execution state for writing");
 
         // apply execution output to final state
         exec_state.apply_final_execution_output(exec_out);
@@ -257,11 +238,11 @@ impl VMThread {
     /// executes one active slot, if any
     /// returns true if something was executed
     fn execute_one_active_slot(&mut self) -> bool {
-        // read-lock the execution state
+        // write-lock the execution state
         let exec_state = self
             .execution_state
-            .read()
-            .expect("could not lock execution state for reading");
+            .write()
+            .expect("could not lock execution state for writing");
 
         // get the next active slot
         let slot = exec_state
@@ -277,15 +258,6 @@ impl VMThread {
 
         // execute the slot
         let exec_out = exec_state.execute_slot(slot, exec_target);
-
-        // upgrade execution state lock to write
-        // note that this upgrade does not happen atomically
-        // but the main loop is the only one writng in the execution state
-        // so there won't be writes in-between the release of read() and the acquiring of write()
-        let exec_state = self
-            .execution_state
-            .write()
-            .expect("could not lock execution state for writing");
 
         // apply execution output to active state
         exec_state.apply_active_execution_output(exec_out);

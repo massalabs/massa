@@ -4,7 +4,7 @@ use crate::event_store::EventStore;
 use crate::interface_impl::InterfaceImpl;
 use crate::types::{ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest};
 use crate::ExecutionError;
-use massa_ledger::{Applicable, FinalLedger, LedgerChanges};
+use massa_ledger::{Applicable, FinalLedger, LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_models::{Address, BlockId, Operation, OperationType};
 use massa_models::{Block, Slot};
 use massa_sc_runtime::Interface;
@@ -23,6 +23,7 @@ macro_rules! context_guard {
     };
 }
 
+/// structure holding consistent speculative and final execution states
 pub struct ExecutionState {
     // VM config
     pub config: VMConfig,
@@ -141,6 +142,8 @@ impl ExecutionState {
     /// returns the speculative ledger at the entrance of a given history slot
     /// warning: only use in the main loop because the lock on the final ledger
     /// at the base of the returned SpeculativeLedger is not held
+    /// TODO: do not do this anymore but allow the speculative ledger to lazily query any subentry
+    /// by scanning through history from end to beginning
     pub fn get_accumulated_active_changes_at_slot(&self, slot: Slot) -> LedgerChanges {
         // check that the slot is within the reach of history
         if slot <= self.final_cursor {
@@ -166,6 +169,7 @@ impl ExecutionState {
         accumulated_changes
     }
 
+    /// execute an operation in the context of a block
     pub fn execute_operation(
         &mut self,
         operation: &Operation,
@@ -233,7 +237,7 @@ impl ExecutionState {
             context.origin_operation_id = Some(operation_id);
         };
 
-        // run in the intepreter
+        // run the intepreter
         let run_result = massa_sc_runtime::run(bytecode, *max_gas, &*self.execution_interface);
         if let Err(err) = run_result {
             // there was an error during bytecode execution: cancel the effects of the execution
@@ -327,5 +331,47 @@ impl ExecutionState {
 
         // return the execution output
         Ok(context_guard!(self).take_execution_output())
+    }
+
+    /// gets a full ledger entry both at final and active states
+    /// TODO: this can be heavily optimized, see comments
+    ///
+    /// # returns
+    /// (final_entry, active_entry)
+    pub fn get_full_ledger_entry(
+        &self,
+        addr: &Address,
+    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
+        // get the full entry from the final ledger
+        let final_entry = self
+            .final_ledger
+            .read()
+            .expect("could not r-lock final ledger")
+            .get_full_entry(addr);
+
+        // get cumulative active changes and apply them
+        // TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it
+        // also we should proceed backwards through history for performance
+        let active_change = self
+            .get_accumulated_active_changes_at_slot(self.active_cursor)
+            .get(addr)
+            .cloned();
+        let active_entry = match (&final_entry, active_change) {
+            (final_v, None) => final_v.clone(),
+            (_, Some(SetUpdateOrDelete::Set(v))) => Some(v.clone()),
+            (_, Some(SetUpdateOrDelete::Delete)) => None,
+            (None, Some(SetUpdateOrDelete::Update(u))) => {
+                let mut v = LedgerEntry::default();
+                v.apply(u);
+                Some(v)
+            }
+            (Some(final_v), Some(SetUpdateOrDelete::Update(u))) => {
+                let mut v = final_v.clone();
+                v.apply(u);
+                Some(v)
+            }
+        };
+
+        (final_entry, active_entry)
     }
 }

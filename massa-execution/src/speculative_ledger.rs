@@ -12,6 +12,9 @@ pub struct SpeculativeLedger {
     final_ledger: Arc<RwLock<FinalLedger>>,
 
     /// accumulation of previous changes
+    /// TODO maybe have the history directly here,
+    /// so that we can avoid accumulating all the changes at every slot
+    /// but only lazily query addresses backwards in history (to avoid useless computations) with caching
     previous_changes: LedgerChanges,
 
     /// list of added changes

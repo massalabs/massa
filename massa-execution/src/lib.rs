@@ -16,10 +16,6 @@ mod vm;
 mod vm_thread;
 mod worker;
 
-pub use config::{ExecutionConfigs, ExecutionSettings};
-pub use controller::{
-    start_controller, ExecutionCommandSender, ExecutionEventReceiver, ExecutionManager,
-};
 pub use error::ExecutionError;
 pub use exports::BootstrapExecutionState;
 pub use sce_ledger::{SCELedger, SCELedgerEntry};

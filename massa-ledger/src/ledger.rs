@@ -2,7 +2,7 @@
 
 use crate::LedgerConfig;
 use massa_hash::hash::Hash;
-use massa_models::{prehash::Map, Address, Amount, Slot};
+use massa_models::{ledger_models::LedgerChange, prehash::Map, Address, Amount, Slot};
 use std::collections::{hash_map, BTreeMap, VecDeque};
 
 /// represents a structure that supports another one being applied to it
@@ -175,6 +175,14 @@ impl Applicable<LedgerChanges> for LedgerChanges {
 }
 
 impl LedgerChanges {
+    /// get an item
+    pub fn get(
+        &self,
+        addr: &Address,
+    ) -> Option<&SetUpdateOrDelete<LedgerEntry, LedgerEntryUpdate>> {
+        self.0.get(addr)
+    }
+
     /// tries to return the parallel balance or gets it from a function
     ///
     /// # Returns
@@ -454,6 +462,11 @@ impl Applicable<LedgerChanges> for FinalLedger {
 }
 
 impl FinalLedger {
+    /// gets a full cloned entry
+    pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
+        self.sorted_ledger.get(addr).cloned()
+    }
+
     /// settles a slot and saves the corresponding ledger changes to history
     pub fn settle_slot(&mut self, slot: Slot, changes: LedgerChanges) {
         // apply changes
