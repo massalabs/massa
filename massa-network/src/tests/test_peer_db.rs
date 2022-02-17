@@ -20,7 +20,7 @@ mod tests {
         let network_settings = NetworkSettings {
             standard_peers_config: PeerTypeConnectionConfig {
                 target_out: 5,
-                max_in: 0,
+                max_in: 5,
                 max_out_attempts: 5,
             },
             ..Default::default()
@@ -118,7 +118,7 @@ mod tests {
         let network_settings = NetworkSettings {
             standard_peers_config: PeerTypeConnectionConfig {
                 target_out: 5,
-                max_in: 0,
+                max_in: 5,
                 max_out_attempts: 5,
             },
             ..Default::default()
@@ -158,13 +158,13 @@ mod tests {
         let res =
             db.out_connection_attempt_failed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
         if let Err(NetworkError::PeerConnectionError(
-            NetworkConnectionErrorType::ToManyConnectionFailure(ip_err),
+            NetworkConnectionErrorType::TooManyConnectionFailure(ip_err),
         )) = res
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
         } else {
             println!("res: {:?}", res);
-            panic!("ToManyConnectionFailure error not return");
+            panic!("TooManyConnectionFailure error not return");
         }
 
         db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
@@ -186,7 +186,7 @@ mod tests {
         let res =
             db.out_connection_attempt_failed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
         if let Err(NetworkError::PeerConnectionError(
-            NetworkConnectionErrorType::ToManyConnectionFailure(ip_err),
+            NetworkConnectionErrorType::TooManyConnectionFailure(ip_err),
         )) = res
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
@@ -194,7 +194,6 @@ mod tests {
             println!("res: {:?}", res);
             panic!("ToManyConnectionFailure error not return");
         }
-
         // call ok.
         db.out_connection_attempt_failed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)))
             .expect("out_connection_attempt_failed failed");
@@ -202,7 +201,7 @@ mod tests {
         let res =
             db.out_connection_attempt_failed(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
         if let Err(NetworkError::PeerConnectionError(
-            NetworkConnectionErrorType::ToManyConnectionFailure(ip_err),
+            NetworkConnectionErrorType::TooManyConnectionFailure(ip_err),
         )) = res
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
@@ -217,7 +216,7 @@ mod tests {
         let network_settings = NetworkSettings {
             standard_peers_config: PeerTypeConnectionConfig {
                 target_out: 5,
-                max_in: 0,
+                max_in: 5,
                 max_out_attempts: 5,
             },
             ..Default::default()
@@ -258,7 +257,7 @@ mod tests {
             169, 202, 0, 11,
         )));
         if let Err(NetworkError::PeerConnectionError(
-            NetworkConnectionErrorType::ToManyConnectionAttempt(ip_err),
+            NetworkConnectionErrorType::TooManyConnectionAttempt(ip_err),
         )) = res
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
@@ -294,7 +293,7 @@ mod tests {
             169, 202, 0, 12,
         )));
         if let Err(NetworkError::PeerConnectionError(
-            NetworkConnectionErrorType::ToManyConnectionAttempt(ip_err),
+            NetworkConnectionErrorType::TooManyConnectionAttempt(ip_err),
         )) = res
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
@@ -318,7 +317,7 @@ mod tests {
         let network_settings = NetworkSettings {
             standard_peers_config: PeerTypeConnectionConfig {
                 target_out: 5,
-                max_in: 0,
+                max_in: 5,
                 max_out_attempts: 5,
             },
             ..Default::default()
@@ -397,7 +396,7 @@ mod tests {
         let network_settings = NetworkSettings {
             standard_peers_config: PeerTypeConnectionConfig {
                 target_out: 5,
-                max_in: 0,
+                max_in: 5,
                 max_out_attempts: 5,
             },
             ..Default::default()
@@ -452,7 +451,7 @@ mod tests {
         let res =
             db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
         if let Err(NetworkError::PeerConnectionError(
-            NetworkConnectionErrorType::ToManyConnectionAttempt(ip_err),
+            NetworkConnectionErrorType::TooManyConnectionAttempt(ip_err),
         )) = res
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
@@ -563,13 +562,15 @@ mod tests {
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
         connected_peers1.peer_type = PeerType::Bootstrap;
         peers.insert(connected_peers1.ip, connected_peers1);
-        // peer failure to early. not return
+
+        // peer failure too early. not return
         let mut connected_peers2 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)));
         connected_peers2.last_failure =
             Some(MassaTime::now().unwrap().checked_sub(900.into()).unwrap());
         peers.insert(connected_peers2.ip, connected_peers2);
-        // peer failure before alive but to early. return
+
+        // peer failure before alive but too early. return
         let mut connected_peers2 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 13)));
         connected_peers2.last_alive =
@@ -577,12 +578,14 @@ mod tests {
         connected_peers2.last_failure =
             Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
         peers.insert(connected_peers2.ip, connected_peers2);
+
         // peer alive no failure. return
         let mut connected_peers1 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 14)));
         connected_peers1.last_alive =
             Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
         peers.insert(connected_peers1.ip, connected_peers1);
+
         // peer banned not return.
         let mut banned_host1 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 23)));
@@ -590,7 +593,8 @@ mod tests {
         banned_host1.banned = true;
         banned_host1.last_alive = Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
         peers.insert(banned_host1.ip, banned_host1);
-        // peer failure after alive not to early. return
+
+        // peer failure after alive not too early. return
         let mut connected_peers2 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 15)));
         connected_peers2.last_alive =
@@ -598,7 +602,8 @@ mod tests {
         connected_peers2.last_failure =
             Some(MassaTime::now().unwrap().checked_sub(11000.into()).unwrap());
         peers.insert(connected_peers2.ip, connected_peers2);
-        // peer failure after alive to early. not return
+
+        // peer failure after alive too early. not return
         let mut connected_peers2 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 16)));
         connected_peers2.last_alive =
@@ -606,11 +611,13 @@ mod tests {
         connected_peers2.last_failure =
             Some(MassaTime::now().unwrap().checked_sub(1000.into()).unwrap());
         peers.insert(connected_peers2.ip, connected_peers2);
+
         // peer Ok, connected, not return
         let mut connected_peers1 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 17)));
         connected_peers1.active_out_connections = 1;
         peers.insert(connected_peers1.ip, connected_peers1);
+
         // peer Ok, not advertised, not return
         let mut connected_peers1 =
             default_peer_info_not_connected(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 18)));
@@ -638,11 +645,11 @@ mod tests {
         assert_eq!(4, ip_list.len());
 
         assert_eq!(
-            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)),
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 14)),
             ip_list[0]
         );
         assert_eq!(
-            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 14)),
+            IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)),
             ip_list[1]
         );
         assert_eq!(

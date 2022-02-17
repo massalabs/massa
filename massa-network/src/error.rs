@@ -79,13 +79,15 @@ pub enum NetworkConnectionErrorType {
     /// Peer info not found for address: {0}
     PeerInfoNotFoundError(IpAddr),
     /// Too many connection attempt: {0}
-    ToManyConnectionAttempt(IpAddr),
+    TooManyConnectionAttempt(IpAddr),
     /// Too many connection failure: {0}
-    ToManyConnectionFailure(IpAddr),
+    TooManyConnectionFailure(IpAddr),
     /// Max connected peers reached: {0}
     MaxPeersConnectionReached(IpAddr),
     /// Attempt too connect from you own IP
     SelfConnection,
     /// A banned peer is trying to connect: {0}
     BannedPeerTryingToConnect(IpAddr),
+    /// Unexpected error
+    UnexpectedError,
 }
