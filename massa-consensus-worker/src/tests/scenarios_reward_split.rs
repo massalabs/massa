@@ -1,14 +1,14 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::tools::*;
-use massa_consensus_exports::tools::*;
+use massa_consensus_exports::ConsensusConfig;
 
 use massa_hash::hash::Hash;
 use massa_models::ledger_models::LedgerData;
 use massa_models::{
     Address, Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot,
 };
-use massa_signature::{derive_public_key, generate_random_private_key, sign};
+use massa_signature::sign;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -23,54 +23,28 @@ async fn test_reward_split() {
     // .timestamp(stderrlog::Timestamp::Millisecond)
     // .init()
     // .unwrap();
-
     let thread_count = 2;
 
-    // A
-    let mut priv_a = generate_random_private_key();
-    let mut pubkey_a = derive_public_key(&priv_a);
-    let mut address_a = Address::from_public_key(&pubkey_a);
-    while 0 != address_a.get_thread(thread_count) {
-        priv_a = generate_random_private_key();
-        pubkey_a = derive_public_key(&priv_a);
-        address_a = Address::from_public_key(&pubkey_a);
-    }
-
-    // B
-    let mut priv_b = generate_random_private_key();
-    let mut pubkey_b = derive_public_key(&priv_b);
-    let mut address_b = Address::from_public_key(&pubkey_b);
-    while 0 != address_b.get_thread(thread_count) {
-        priv_b = generate_random_private_key();
-        pubkey_b = derive_public_key(&priv_b);
-        address_b = Address::from_public_key(&pubkey_b);
-    }
+    // Create addresses
+    let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, thread_count).into();
+    let (address_b, priv_b, pubkey_b) = random_address_on_thread(0, thread_count).into();
 
     let mut ledger = HashMap::new();
     ledger.insert(address_a, LedgerData::new(Amount::from_str("10").unwrap()));
     ledger.insert(address_b, LedgerData::new(Amount::from_str("10").unwrap()));
-    let ledger_file = generate_ledger_file(&ledger);
     let staking_keys = vec![priv_a, priv_b];
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 500.into();
-    cfg.delta_f0 = 32;
-    cfg.thread_count = thread_count;
-    cfg.operation_validity_periods = 10;
-    cfg.operation_batch_size = 500;
-    cfg.periods_per_cycle = 3;
-    cfg.max_operations_per_block = 5000;
-    cfg.max_block_size = 2000;
-    cfg.endorsement_count = 5;
-    cfg.block_reward = Amount::from_str("1").unwrap();
-
     let init_time: MassaTime = 1000.into();
-    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(init_time);
+    let cfg = ConsensusConfig {
+        endorsement_count: 5,
+        genesis_timestamp: MassaTime::now().unwrap().saturating_add(init_time),
+        max_block_size: 2000,
+        max_operations_per_block: 5000,
+        operation_batch_size: 500,
+        operation_validity_periods: 10,
+        periods_per_cycle: 3,
+        t0: 500.into(),
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(&staking_keys, &ledger)
+    };
 
     consensus_without_pool_test(
         cfg.clone(),

@@ -4,11 +4,17 @@ use super::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
 };
-use crate::settings::{NetworkSettings, NODE_SEND_CHANNEL_SIZE};
+use crate::settings::NetworkSettings;
 use crate::{error::NetworkError, ConnectionClosureReason};
 use massa_logging::massa_trace;
-use massa_models::node::NodeId;
-use massa_models::{Block, BlockHeader, BlockId, Endorsement, Operation};
+use massa_models::{
+    constants::{
+        MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_MESSAGE,
+        NODE_SEND_CHANNEL_SIZE,
+    },
+    node::NodeId,
+    Block, BlockHeader, BlockId, Endorsement, Operation,
+};
 use std::net::IpAddr;
 use tokio::{
     sync::mpsc,
@@ -332,7 +338,7 @@ impl NodeWorker {
                         Some(NodeCommand::AskForBlocks(list)) => {
                             // cut hash list on sub list if exceed max_ask_blocks_per_message
                             massa_trace!("node_worker.run_loop. send Message::AskForBlocks", {"hashlist": list, "node": self.node_id});
-                            for to_send_list in list.chunks(crate::settings::MAX_ASK_BLOCKS_PER_MESSAGE as usize) {
+                            for to_send_list in list.chunks(MAX_ASK_BLOCKS_PER_MESSAGE as usize) {
                                 if self.try_send_to_node(&writer_command_tx, Message::AskForBlocks(to_send_list.to_vec())).is_err() {
                                     break 'select_loop;
                                 }
@@ -347,7 +353,7 @@ impl NodeWorker {
                         Some(NodeCommand::SendOperations(operations)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": self.node_id, "operations": operations});
                             // cut operation list if it exceed max_operations_per_message
-                            for to_send_list in operations.chunks(crate::settings::MAX_OPERATIONS_PER_MESSAGE as usize) {
+                            for to_send_list in operations.chunks(MAX_OPERATIONS_PER_MESSAGE as usize) {
                                 if self.try_send_to_node(&writer_command_tx, Message::Operations(to_send_list.to_vec())).is_err() {
                                     break 'select_loop;
                                 }
@@ -356,7 +362,7 @@ impl NodeWorker {
                         Some(NodeCommand::SendEndorsements(endorsements)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendEndorsements", {"node": self.node_id, "endorsements": endorsements});
                             // cut endorsement list if it exceed max_endorsements_per_message
-                            for to_send_list in endorsements.chunks(crate::settings::MAX_ENDORSEMENTS_PER_MESSAGE as usize) {
+                            for to_send_list in endorsements.chunks(MAX_ENDORSEMENTS_PER_MESSAGE as usize) {
                                 if self.try_send_to_node(&writer_command_tx, Message::Endorsements(to_send_list.to_vec())).is_err() {
                                     break 'select_loop;
                                 }

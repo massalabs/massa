@@ -2,16 +2,16 @@ use massa_consensus_exports::{
     commands::{ConsensusCommand, ConsensusManagementCommand},
     error::{ConsensusError, ConsensusResult as Result},
     events::ConsensusEvent,
-    settings::{ConsensusChannels, ConsensusWorkerChannels, CHANNEL_SIZE},
+    settings::{ConsensusChannels, ConsensusWorkerChannels},
     ConsensusCommandSender, ConsensusEventReceiver, ConsensusManager,
 };
 use tracing::{debug, error, info};
 
 use crate::consensus_worker::ConsensusWorker;
 use massa_consensus_exports::settings::ConsensusConfig;
-use massa_graph::{BlockGraph, BootstrapableGraph};
-use massa_models::{prehash::Map, Address};
-use massa_proof_of_stake_exports::{ExportProofOfStake, ProofOfStake};
+use massa_graph::{settings::GraphConfig, BlockGraph, BootstrapableGraph};
+use massa_models::{constants::CHANNEL_SIZE, prehash::Map, Address};
+use massa_proof_of_stake_exports::{ExportProofOfStake, ProofOfStake, ProofOfStakeConfig};
 use massa_signature::{derive_public_key, PrivateKey, PublicKey};
 use std::path::Path;
 use tokio::sync::mpsc;
@@ -75,9 +75,13 @@ pub async fn start_consensus_controller(
     let staking_keys = load_initial_staking_keys(&cfg.staking_keys_path).await?;
 
     // start worker
-    let block_db = BlockGraph::new((&cfg).into(), boot_graph).await?;
-    let mut pos =
-        ProofOfStake::new((&cfg).into(), block_db.get_genesis_block_ids(), boot_pos).await?;
+    let block_db = BlockGraph::new(GraphConfig::from(&cfg), boot_graph).await?;
+    let mut pos = ProofOfStake::new(
+        ProofOfStakeConfig::from(&cfg),
+        block_db.get_genesis_block_ids(),
+        boot_pos,
+    )
+    .await?;
     pos.set_watched_addresses(staking_keys.keys().copied().collect());
     let (command_tx, command_rx) = mpsc::channel::<ConsensusCommand>(CHANNEL_SIZE);
     let (event_tx, event_rx) = mpsc::channel::<ConsensusEvent>(CHANNEL_SIZE);

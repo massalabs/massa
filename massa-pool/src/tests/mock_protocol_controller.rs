@@ -1,14 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use massa_models::prehash::Map;
-use massa_models::{Endorsement, EndorsementId, Operation, OperationId};
+use massa_models::{constants::CHANNEL_SIZE, Endorsement, EndorsementId, Operation, OperationId};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
-
-const CHANNEL_SIZE: usize = 256;
 
 pub struct MockProtocolController {
     protocol_command_rx: mpsc::Receiver<ProtocolCommand>,

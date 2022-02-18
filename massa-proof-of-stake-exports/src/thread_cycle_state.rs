@@ -1,10 +1,11 @@
 use bitvec::{order::Lsb0, prelude::BitVec};
 use massa_models::{
     array_from_slice,
+    constants::ADDRESS_SIZE_BYTES,
     prehash::{BuildMap, Map},
     rolls::{RollCounts, RollUpdate, RollUpdates},
     with_serialization_context, Address, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
+    SerializeCompact, SerializeVarInt, Slot,
 };
 use serde::{Deserialize, Serialize};
 

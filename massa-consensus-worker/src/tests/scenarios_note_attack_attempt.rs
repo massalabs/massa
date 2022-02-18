@@ -7,30 +7,23 @@ use super::{
     mock_protocol_controller::MockProtocolController,
 };
 use crate::start_consensus_controller;
-use massa_consensus_exports::tools::*;
+use massa_consensus_exports::ConsensusConfig;
 
 use massa_consensus_exports::settings::ConsensusChannels;
 use massa_hash::hash::Hash;
 use massa_models::{BlockId, Slot};
 use massa_signature::{generate_random_private_key, PrivateKey};
 use serial_test::serial;
-use std::collections::HashMap;
 
 #[tokio::test]
 #[serial]
 async fn test_invalid_block_notified_as_attack_attempt() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 1000.into();
-    cfg.future_block_processing_max_periods = 50;
-    cfg.max_future_processing_blocks = 10;
+    let cfg = ConsensusConfig {
+        t0: 1000.into(),
+        future_block_processing_max_periods: 50,
+        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+    };
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
@@ -92,18 +85,12 @@ async fn test_invalid_block_notified_as_attack_attempt() {
 #[tokio::test]
 #[serial]
 async fn test_invalid_header_notified_as_attack_attempt() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 1000.into();
-    cfg.future_block_processing_max_periods = 50;
-    cfg.max_future_processing_blocks = 10;
+    let cfg = ConsensusConfig {
+        t0: 1000.into(),
+        future_block_processing_max_periods: 50,
+        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+    };
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =

@@ -1,7 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::tests::tools::{self, create_endorsement, create_roll_transaction, create_transaction};
-use massa_consensus_exports::tools::*;
+use massa_consensus_exports::{tools::*, ConsensusConfig};
+use massa_graph::ledger::LedgerSubset;
 use massa_hash::hash::Hash;
 use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
 use massa_models::{ledger_models::LedgerData, EndorsementId, OperationType};
@@ -9,52 +10,35 @@ use massa_models::{Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot
 use massa_models::{Endorsement, SerializeCompact};
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
-use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
+use massa_signature::{generate_random_private_key, PrivateKey};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::time::sleep_until;
 
-use super::tools::create_executesc;
+use super::tools::{create_executesc, random_address_on_thread};
 
 #[tokio::test]
 #[serial]
 async fn test_genesis_block_creation() {
-    let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
     // addr 1 has 1 roll and 0 coins
     // addr 2 is in consensus and has 0 roll and 1000 coins
-    let mut priv_1 = generate_random_private_key();
-    let mut pubkey_1 = derive_public_key(&priv_1);
-    let mut address_1 = Address::from_public_key(&pubkey_1);
-    while 0 != address_1.get_thread(thread_count) {
-        priv_1 = generate_random_private_key();
-        pubkey_1 = derive_public_key(&priv_1);
-        address_1 = Address::from_public_key(&pubkey_1);
-    }
-    assert_eq!(0, address_1.get_thread(thread_count));
-
-    let mut priv_2 = generate_random_private_key();
-    let mut pubkey_2 = derive_public_key(&priv_2);
-    let mut address_2 = Address::from_public_key(&pubkey_2);
-    while 0 != address_2.get_thread(thread_count) {
-        priv_2 = generate_random_private_key();
-        pubkey_2 = derive_public_key(&priv_2);
-        address_2 = Address::from_public_key(&pubkey_2);
-    }
-    assert_eq!(0, address_2.get_thread(thread_count));
-
+    let thread_count = 2;
+    let (address_1, priv_1, _) = random_address_on_thread(0, thread_count).into();
+    let (address_2, priv_2, _) = random_address_on_thread(0, thread_count).into();
     let mut ledger = HashMap::new();
     ledger.insert(
         address_2,
         LedgerData::new(Amount::from_str("1000").unwrap()),
     );
-    let ledger_file = generate_ledger_file(&ledger);
-    let staking_keys: Vec<PrivateKey> = vec![priv_1, priv_2];
-
-    // init roll cont
+    let mut cfg = ConsensusConfig {
+        genesis_timestamp: MassaTime::from_str("1633301290000").unwrap(),
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[priv_1, priv_2], &ledger)
+    };
+    // init roll count
     let mut roll_counts = RollCounts::default();
     let update = RollUpdate {
         roll_purchases: 1,
@@ -63,17 +47,9 @@ async fn test_genesis_block_creation() {
     let mut updates = RollUpdates::default();
     updates.apply(&address_1, &update).unwrap();
     roll_counts.apply_updates(&updates).unwrap();
-    let staking_file = generate_staking_keys_file(&staking_keys);
 
-    let roll_counts_file = generate_roll_counts_file(&roll_counts);
-    let mut cfg = tools::default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-
-    // Set genesis timestamp.
-    cfg.genesis_timestamp = MassaTime::from_str("1633301290000").unwrap();
+    let initial_rolls_file = generate_roll_counts_file(&roll_counts);
+    cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
     tools::consensus_without_pool_test(
         cfg.clone(),
@@ -103,35 +79,40 @@ async fn test_block_creation_with_draw() {
     // addresses a and b both in thread 0
     // addr 1 has 1 roll and 0 coins
     // addr 2 is in consensus and has 0 roll and 1000 coins
-    let mut priv_1 = generate_random_private_key();
-    let mut pubkey_1 = derive_public_key(&priv_1);
-    let mut address_1 = Address::from_public_key(&pubkey_1);
-    while 0 != address_1.get_thread(thread_count) {
-        priv_1 = generate_random_private_key();
-        pubkey_1 = derive_public_key(&priv_1);
-        address_1 = Address::from_public_key(&pubkey_1);
-    }
-    assert_eq!(0, address_1.get_thread(thread_count));
+    let (address_1, priv_1, _) = random_address_on_thread(0, thread_count).into();
+    let (address_2, priv_2, pubkey_2) = random_address_on_thread(0, thread_count).into();
 
-    let mut priv_2 = generate_random_private_key();
-    let mut pubkey_2 = derive_public_key(&priv_2);
-    let mut address_2 = Address::from_public_key(&pubkey_2);
-    while 0 != address_2.get_thread(thread_count) {
-        priv_2 = generate_random_private_key();
-        pubkey_2 = derive_public_key(&priv_2);
-        address_2 = Address::from_public_key(&pubkey_2);
-    }
-    assert_eq!(0, address_2.get_thread(thread_count));
+    let staking_keys = vec![priv_1, priv_2];
 
+    // init address_2 with 1000 coins
     let mut ledger = HashMap::new();
     ledger.insert(
         address_2,
         LedgerData::new(Amount::from_str("1000").unwrap()),
     );
-    let ledger_file = generate_ledger_file(&ledger);
-    let staking_keys: Vec<PrivateKey> = vec![priv_1, priv_2];
 
-    // init roll cont
+    // finally create the configuration
+    let t0 = MassaTime::from(1000);
+    let periods_per_cycle = 1000;
+    let mut cfg = ConsensusConfig {
+        block_reward: Amount::default(),
+        delta_f0: 3,
+        disable_block_creation: false,
+        max_operations_per_block: 50,
+        operation_validity_periods: 100,
+        periods_per_cycle,
+        roll_price: Amount::from_str("1000").unwrap(),
+        t0,
+        genesis_timestamp: MassaTime::now()
+            .unwrap()
+            .checked_sub((t0.to_millis() * periods_per_cycle * 3).into())
+            .unwrap()
+            .checked_add(2000.into())
+            .unwrap(),
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(&staking_keys, &ledger)
+    };
+
+    // init roll count
     let mut roll_counts = RollCounts::default();
     let update = RollUpdate {
         roll_purchases: 1,
@@ -140,31 +121,8 @@ async fn test_block_creation_with_draw() {
     let mut updates = RollUpdates::default();
     updates.apply(&address_1, &update).unwrap();
     roll_counts.apply_updates(&updates).unwrap();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-
-    let roll_counts_file = generate_roll_counts_file(&roll_counts);
-    let mut cfg = tools::default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.roll_price = Amount::from_str("1000").unwrap();
-    cfg.periods_per_cycle = 1_000;
-    cfg.t0 = 1000.into();
-    cfg.pos_lookback_cycles = 2;
-    cfg.thread_count = thread_count;
-    cfg.delta_f0 = 3;
-    cfg.genesis_timestamp = MassaTime::now()
-        .unwrap()
-        .checked_sub((cfg.t0.to_millis() * cfg.periods_per_cycle * 3).into())
-        .unwrap()
-        .checked_add(2000.into())
-        .unwrap();
-    cfg.block_reward = Amount::default();
-    cfg.disable_block_creation = false;
-    cfg.operation_validity_periods = 100;
-    cfg.operation_batch_size = 3;
-    cfg.max_operations_per_block = 50;
+    let initial_rolls_file = generate_roll_counts_file(&roll_counts);
+    cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
     let operation_fee = 0;
 
@@ -270,34 +228,30 @@ async fn test_interleaving_block_creation_with_reception() {
     let thread_count = 1;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_1 = generate_random_private_key();
-    let mut pubkey_1 = derive_public_key(&priv_1);
-    let mut address_1 = Address::from_public_key(&pubkey_1);
-    while 0 != address_1.get_thread(thread_count) {
-        priv_1 = generate_random_private_key();
-        pubkey_1 = derive_public_key(&priv_1);
-        address_1 = Address::from_public_key(&pubkey_1);
-    }
-    assert_eq!(0, address_1.get_thread(thread_count));
-
-    let mut priv_2 = generate_random_private_key();
-    let mut pubkey_2 = derive_public_key(&priv_2);
-    let mut address_2 = Address::from_public_key(&pubkey_2);
-    while 0 != address_2.get_thread(thread_count) {
-        priv_2 = generate_random_private_key();
-        pubkey_2 = derive_public_key(&priv_2);
-        address_2 = Address::from_public_key(&pubkey_2);
-    }
-    assert_eq!(0, address_2.get_thread(thread_count));
+    let (address_1, priv_1, _) = random_address_on_thread(0, thread_count).into();
+    let (address_2, priv_2, _) = random_address_on_thread(0, thread_count).into();
 
     let mut ledger = HashMap::new();
-    ledger.insert(
-        address_2,
-        LedgerData::new(Amount::from_str("1000").unwrap()),
+    ledger.insert(address_2, LedgerData::new(Amount::from_raw(1000)));
+    let mut cfg = ConsensusConfig {
+        thread_count,
+        t0: 1000.into(),
+        genesis_timestamp: MassaTime::now().unwrap().checked_add(1000.into()).unwrap(),
+        disable_block_creation: false,
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[priv_1], &ledger)
+    };
+    serde_json::from_str::<LedgerSubset>(
+        &tokio::fs::read_to_string(&cfg.initial_ledger_path)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    println!(
+        "init ledger path {} {}",
+        cfg.initial_ledger_path.to_str().unwrap(),
+        std::env::current_dir().unwrap().to_str().unwrap()
     );
-    let ledger_file = generate_ledger_file(&ledger);
-
-    //init roll cont
+    //init roll count
     let mut roll_counts = RollCounts::default();
     let update = RollUpdate {
         roll_purchases: 1,
@@ -307,18 +261,8 @@ async fn test_interleaving_block_creation_with_reception() {
     updates.apply(&address_1, &update).unwrap();
     updates.apply(&address_2, &update).unwrap();
     roll_counts.apply_updates(&updates).unwrap();
-    let staking_file = generate_staking_keys_file(&[priv_1]);
-
-    let roll_counts_file = generate_roll_counts_file(&roll_counts);
-    let mut cfg = tools::default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 1000.into();
-    cfg.thread_count = thread_count;
-    cfg.genesis_timestamp = MassaTime::now().unwrap().checked_add(1000.into()).unwrap();
-    cfg.disable_block_creation = false;
+    let temp_roll_file = generate_roll_counts_file(&roll_counts);
+    cfg.initial_rolls_path = temp_roll_file.path().to_path_buf();
 
     tools::consensus_without_pool_test(
         cfg.clone(),
@@ -414,57 +358,26 @@ async fn test_interleaving_block_creation_with_reception() {
 #[tokio::test]
 #[serial]
 async fn test_order_of_inclusion() {
-    // // setup logging
-    // stderrlog::new()
-    //     .verbosity(4)
-    //     .timestamp(stderrlog::Timestamp::Millisecond)
-    //     .init()
-    //     .unwrap();
-    let thread_count = 2;
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    // Increase timestamp a bit to avoid missing the first slot.
+    let init_time: MassaTime = 1000.into();
+    let mut cfg = ConsensusConfig {
+        disable_block_creation: false,
+        genesis_timestamp: MassaTime::now().unwrap().checked_add(init_time).unwrap(),
+        max_operations_per_block: 50,
+        operation_validity_periods: 10,
+        t0: 1000.into(),
+        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+    };
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_a = generate_random_private_key();
-    let mut pubkey_a = derive_public_key(&priv_a);
-    let mut address_a = Address::from_public_key(&pubkey_a);
-    while 0 != address_a.get_thread(thread_count) {
-        priv_a = generate_random_private_key();
-        pubkey_a = derive_public_key(&priv_a);
-        address_a = Address::from_public_key(&pubkey_a);
-    }
-    assert_eq!(0, address_a.get_thread(thread_count));
-
-    let mut priv_b = generate_random_private_key();
-    let mut pubkey_b = derive_public_key(&priv_b);
-    let mut address_b = Address::from_public_key(&pubkey_b);
-    while 0 != address_b.get_thread(thread_count) {
-        priv_b = generate_random_private_key();
-        pubkey_b = derive_public_key(&priv_b);
-        address_b = Address::from_public_key(&pubkey_b);
-    }
-    assert_eq!(0, address_b.get_thread(thread_count));
+    let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_b, priv_b, pubkey_b) = random_address_on_thread(0, cfg.thread_count).into();
 
     let mut ledger = HashMap::new();
     ledger.insert(address_a, LedgerData::new(Amount::from_str("100").unwrap()));
-    let ledger_file = generate_ledger_file(&ledger);
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = tools::default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 1000.into();
-    cfg.delta_f0 = 32;
-    cfg.disable_block_creation = false;
-    cfg.thread_count = thread_count;
-    cfg.operation_validity_periods = 10;
-    cfg.operation_batch_size = 3;
-    cfg.max_operations_per_block = 50;
-    // Increase timestamp a bit to avoid missing the first slot.
-    let init_time: MassaTime = 1000.into();
-    cfg.genesis_timestamp = MassaTime::now().unwrap().checked_add(init_time).unwrap();
+    let initial_ledger_file = generate_ledger_file(&ledger); // don't drop the `NamedTempFile`
+    cfg.initial_ledger_path = initial_ledger_file.path().to_path_buf();
 
     let op1 = create_transaction(priv_a, pubkey_a, address_b, 5, 10, 1);
     let op2 = create_transaction(priv_a, pubkey_a, address_b, 50, 10, 10);
@@ -581,56 +494,28 @@ async fn test_order_of_inclusion() {
 #[tokio::test]
 #[serial]
 async fn test_block_filling() {
-    // setup logging
-    // stderrlog::new()
-    // .verbosity(2)
-    // .timestamp(stderrlog::Timestamp::Millisecond)
-    // .init()
-    // .unwrap();
-
     let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_a = generate_random_private_key();
-    let mut pubkey_a = derive_public_key(&priv_a);
-    let mut address_a = Address::from_public_key(&pubkey_a);
-    while 0 != address_a.get_thread(thread_count) {
-        priv_a = generate_random_private_key();
-        pubkey_a = derive_public_key(&priv_a);
-        address_a = Address::from_public_key(&pubkey_a);
-    }
-    let mut priv_b = generate_random_private_key();
-    let mut pubkey_b = derive_public_key(&priv_b);
-    let mut address_b = Address::from_public_key(&pubkey_b);
-    while 1 != address_b.get_thread(thread_count) {
-        priv_b = generate_random_private_key();
-        pubkey_b = derive_public_key(&priv_b);
-        address_b = Address::from_public_key(&pubkey_b);
-    }
+    let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, thread_count).into();
+    let (address_b, priv_b, _) = random_address_on_thread(0, thread_count).into();
     let mut ledger = HashMap::new();
     ledger.insert(
         address_a,
         LedgerData::new(Amount::from_str("1000000000").unwrap()),
     );
-    let ledger_file = generate_ledger_file(&ledger);
-    let staking_keys = vec![priv_a, priv_b];
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = tools::default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 1000.into();
-    cfg.delta_f0 = 32;
-    cfg.disable_block_creation = false;
-    cfg.thread_count = thread_count;
-    cfg.operation_validity_periods = 10;
-    cfg.operation_batch_size = 500;
-    cfg.periods_per_cycle = 3;
-    cfg.max_operations_per_block = 5000;
-    cfg.max_block_size = 2000;
-    cfg.endorsement_count = 10;
+    let cfg = ConsensusConfig {
+        disable_block_creation: false,
+        endorsement_count: 10,
+        max_block_size: 2000,
+        max_operations_per_block: 5000,
+        operation_batch_size: 500,
+        operation_validity_periods: 10,
+        periods_per_cycle: 3,
+        t0: 1000.into(),
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[priv_a, priv_b], &ledger)
+    };
+
     let mut ops = vec![create_executesc(
         priv_a,
         pubkey_a,

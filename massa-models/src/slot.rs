@@ -6,8 +6,8 @@ use super::{
     },
     with_serialization_context,
 };
+use crate::constants::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
-use crate::settings::SLOT_KEY_SIZE;
 use massa_hash::hash::Hash;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, convert::TryInto};
@@ -134,24 +134,7 @@ impl SerializeCompact for Slot {
     /// ```rust
     /// # use massa_models::Slot;
     /// # use massa_models::{DeserializeCompact, SerializeCompact};
-    /// # massa_models::init_serialization_context(massa_models::SerializationContext {
-    /// #    max_block_operations: 1024,
-    /// #    parent_count: 2,
-    /// #    max_peer_list_length: 128,
-    /// #    max_message_size: 3 * 1024 * 1024,
-    /// #    max_block_size: 3 * 1024 * 1024,
-    /// #    max_bootstrap_blocks: 100,
-    /// #    max_bootstrap_cliques: 100,
-    /// #    max_bootstrap_deps: 100,
-    /// #    max_bootstrap_children: 100,
-    /// #    max_ask_blocks_per_message: 10,
-    /// #    max_operations_per_message: 1024,
-    /// #    max_endorsements_per_message: 1024,
-    /// #    max_bootstrap_message_size: 100000000,
-    /// #     max_bootstrap_pos_cycles: 10000,
-    /// #     max_bootstrap_pos_entries: 10000,
-    /// #     max_block_endorsements: 8,
-    /// # });
+    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
     /// # let context = massa_models::get_serialization_context();
     /// let slot = Slot::new(10,1);
     /// let ser = slot.to_bytes_compact().unwrap();
@@ -175,24 +158,7 @@ impl DeserializeCompact for Slot {
     /// ```rust
     /// # use massa_models::Slot;
     /// # use massa_models::{DeserializeCompact, SerializeCompact};
-    /// # massa_models::init_serialization_context(massa_models::SerializationContext {
-    /// #     max_block_operations: 1024,
-    /// #     parent_count: 2,
-    /// #     max_peer_list_length: 128,
-    /// #     max_message_size: 3 * 1024 * 1024,
-    /// #     max_block_size: 3 * 1024 * 1024,
-    /// #     max_bootstrap_blocks: 100,
-    /// #     max_bootstrap_cliques: 100,
-    /// #     max_bootstrap_deps: 100,
-    /// #     max_bootstrap_children: 100,
-    /// #     max_ask_blocks_per_message: 10,
-    /// #     max_endorsements_per_message: 1024,
-    /// #     max_operations_per_message: 1024,
-    /// #     max_bootstrap_message_size: 100000000,
-    /// #     max_bootstrap_pos_cycles: 10000,
-    /// #     max_bootstrap_pos_entries: 10000,
-    /// #     max_block_endorsements: 8,
-    /// # });
+    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
     /// # let context = massa_models::get_serialization_context();
     /// let slot = Slot::new(10,1);
     /// let ser = slot.to_bytes_compact().unwrap();
@@ -205,7 +171,7 @@ impl DeserializeCompact for Slot {
     /// - Valid thread.
     /// - Valid thread number.
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let parent_count = with_serialization_context(|context| context.parent_count);
+        let parent_count = with_serialization_context(|context| context.thread_count);
         let mut cursor = 0usize;
         let (period, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;

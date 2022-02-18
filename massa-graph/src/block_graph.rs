@@ -7,6 +7,7 @@ use crate::{
     export_active_block::ExportActiveBlock,
     ledger::{read_genesis_ledger, Ledger, LedgerSubset, OperationLedgerInterface},
     settings::GraphConfig,
+    LedgerConfig,
 };
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
@@ -429,6 +430,7 @@ impl BlockGraph {
 
         let mut block_statuses = Map::default();
         let mut genesis_block_ids = Vec::with_capacity(cfg.thread_count as usize);
+        let ledger_config = LedgerConfig::from(&cfg);
         for thread in 0u8..cfg.thread_count {
             let (block_id, block) = create_genesis_block(&cfg, thread).map_err(|err| {
                 GraphError::GenesisCreationError(format!("genesis error {}", err))
@@ -465,7 +467,7 @@ impl BlockGraph {
                     .iter()
                     .map(|(_id, period)| *period)
                     .collect(),
-                (&cfg).into(),
+                ledger_config,
             )?;
             let mut res_graph = BlockGraph {
                 cfg,
@@ -524,7 +526,7 @@ impl BlockGraph {
             }
             Ok(res_graph)
         } else {
-            let ledger = read_genesis_ledger(&(&cfg).into()).await?;
+            let ledger = read_genesis_ledger(&ledger_config).await?;
             Ok(BlockGraph {
                 cfg,
                 sequence_counter: 0,
@@ -558,7 +560,7 @@ impl BlockGraph {
             Map::with_capacity_and_hasher(required_active_blocks.len(), BuildMap::default());
         for b_id in required_active_blocks {
             if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(&b_id) {
-                active_blocks.insert(b_id, (&**a_block).into());
+                active_blocks.insert(b_id, ExportActiveBlock::from(&**a_block));
             } else {
                 return Err(GraphError::ContainerInconsistency(format!(
                     "block {} was expected to be active but wasn't on bootstrap graph export",

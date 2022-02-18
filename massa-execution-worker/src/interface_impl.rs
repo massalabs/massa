@@ -8,7 +8,6 @@ use massa_hash::hash::Hash;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId},
     timeslots::get_block_slot_timestamp,
-    AMOUNT_ZERO,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
 use rand::Rng;

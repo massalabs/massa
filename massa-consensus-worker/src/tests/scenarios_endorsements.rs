@@ -1,17 +1,14 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use massa_hash::hash::Hash;
-use massa_models::{
-    Address, Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot,
-};
+use massa_models::{Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key, sign};
 use massa_time::MassaTime;
 use serial_test::serial;
-use std::collections::HashMap;
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use super::tools::*;
-use massa_consensus_exports::tools::*;
+use massa_consensus_exports::{tools::*, ConsensusConfig};
 
 #[tokio::test]
 #[serial]
@@ -24,51 +21,26 @@ async fn test_endorsement_check() {
         .init()
         .unwrap();
     */
-    let thread_count = 2;
+    let mut cfg = ConsensusConfig {
+        block_reward: Amount::default(),
+        delta_f0: 3,
+        endorsement_count: 1,
+        genesis_timestamp: MassaTime::now().unwrap().saturating_add(300.into()),
+        operation_validity_periods: 100,
+        periods_per_cycle: 2,
+        pos_lock_cycles: 1,
+        roll_price: Amount::from_str("1000").unwrap(),
+        t0: 500.into(),
+        ..ConsensusConfig::default_with_paths()
+    };
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
-    let mut priv_1 = generate_random_private_key();
-    let mut pubkey_1 = derive_public_key(&priv_1);
-    let mut address_1 = Address::from_public_key(&pubkey_1);
-    while 0 != address_1.get_thread(thread_count) {
-        priv_1 = generate_random_private_key();
-        pubkey_1 = derive_public_key(&priv_1);
-        address_1 = Address::from_public_key(&pubkey_1);
-    }
-    assert_eq!(0, address_1.get_thread(thread_count));
 
-    let mut priv_2 = generate_random_private_key();
-    let mut pubkey_2 = derive_public_key(&priv_2);
-    let mut address_2 = Address::from_public_key(&pubkey_2);
-    while 0 != address_2.get_thread(thread_count) {
-        priv_2 = generate_random_private_key();
-        pubkey_2 = derive_public_key(&priv_2);
-        address_2 = Address::from_public_key(&pubkey_2);
-    }
-    assert_eq!(0, address_2.get_thread(thread_count));
-
-    let ledger_file = generate_ledger_file(&HashMap::new());
-
-    let roll_counts_file = generate_default_roll_counts_file(vec![priv_1, priv_2]);
-
-    let staking_file = generate_staking_keys_file(&[]);
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.periods_per_cycle = 2;
-    cfg.pos_lookback_cycles = 2;
-    cfg.pos_lock_cycles = 1;
-    cfg.t0 = 500.into();
-    cfg.delta_f0 = 3;
-    cfg.disable_block_creation = true;
-    cfg.thread_count = thread_count;
-    cfg.block_reward = Amount::default();
-    cfg.roll_price = Amount::from_str("1000").unwrap();
-    cfg.operation_validity_periods = 100;
-    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
-    cfg.endorsement_count = 1;
+    let (address_1, priv_1, pubkey_1) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_2, priv_2, pubkey_2) = random_address_on_thread(0, cfg.thread_count).into();
+    assert_eq!(0, address_2.get_thread(cfg.thread_count));
+    let initial_rolls_file = generate_default_roll_counts_file(vec![priv_1, priv_2]);
+    cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
     consensus_without_pool_test(
         cfg.clone(),

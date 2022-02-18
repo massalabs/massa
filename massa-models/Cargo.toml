@@ -16,6 +16,10 @@ rust_decimal = "1.15"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
+num = { version = "0.4", features = ["serde"] }
+directories = "4.0"
+config = "0.11"
+
 # custom modules
 massa_hash = { path = "../massa-hash" }
 massa_signature = { path = "../massa-signature" }
@@ -26,4 +30,6 @@ pretty_assertions = "1.0"
 serial_test = "0.5"
 
 [features]
+testing = []
 hash-prefix = []
+sandbox = []
