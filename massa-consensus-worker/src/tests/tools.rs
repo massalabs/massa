@@ -12,9 +12,8 @@ use massa_consensus_exports::{
 };
 use massa_graph::{export_active_block::ExportActiveBlock, BlockGraphExport, BootstrapableGraph};
 use massa_hash::hash::Hash;
-use massa_models::prehash::Set;
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
+    prehash::Set, Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
     EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,
 };
 use massa_pool::PoolCommand;
@@ -24,14 +23,52 @@ use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
 };
 use massa_time::MassaTime;
-use num::rational::Ratio;
 use std::str::FromStr;
-use std::{collections::HashSet, future::Future, path::Path};
+use std::{collections::HashSet, future::Future};
 
 use tracing::info;
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
     BlockId(Hash::compute_from(s.as_bytes()))
+}
+
+pub struct AddressTest {
+    pub address: Address,
+    pub private_key: PrivateKey,
+    pub public_key: PublicKey,
+}
+
+impl From<AddressTest> for (Address, PrivateKey, PublicKey) {
+    fn from(addr: AddressTest) -> Self {
+        (addr.address, addr.private_key, addr.public_key)
+    }
+}
+
+/// Same as `random_address()` but force a specific thread
+pub fn random_address_on_thread(thread: u8, thread_count: u8) -> AddressTest {
+    loop {
+        let private_key = generate_random_private_key();
+        let public_key = derive_public_key(&private_key);
+        let address = Address::from_public_key(&public_key);
+        if thread == address.get_thread(thread_count) {
+            return AddressTest {
+                address,
+                private_key,
+                public_key,
+            };
+        }
+    }
+}
+
+/// Generate a random address
+pub fn random_address() -> AddressTest {
+    let private_key = generate_random_private_key();
+    let public_key = derive_public_key(&private_key);
+    AddressTest {
+        address: Address::from_public_key(&public_key),
+        public_key,
+        private_key,
+    }
 }
 
 /// return true if another block has been seen
@@ -83,7 +120,10 @@ pub async fn validate_propagate_block_in_list(
         .await;
     match param {
         Some(block_id) => {
-            assert!(valid.contains(&block_id), "not the valid hash propagated");
+            assert!(
+                valid.contains(&block_id),
+                "not the valid hash propagated, it can be a genesis_timestamp problem"
+            );
             block_id
         }
         None => panic!("Hash not propagated."),
@@ -570,79 +610,6 @@ pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<PrivateKey>) -> PrivateK
         }
     }
     panic!("Matching key for draw not found.");
-}
-
-pub fn default_consensus_config(
-    initial_ledger_path: &Path,
-    roll_counts_path: &Path,
-    staking_keys_path: &Path,
-) -> ConsensusConfig {
-    let genesis_key = generate_random_private_key();
-    let thread_count: u8 = 2;
-    let max_block_size: u32 = 3 * 1024 * 1024;
-    let max_operations_per_block: u32 = 1024;
-    let tempdir = tempfile::tempdir().expect("cannot create temp dir");
-
-    // Init the serialization context with a default,
-    // can be overwritten with a more specific one in the test.
-    massa_models::init_serialization_context(massa_models::SerializationContext {
-        max_block_operations: 1024,
-        parent_count: 2,
-        max_peer_list_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_block_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_endorsements_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-        max_bootstrap_pos_entries: 1000,
-        max_bootstrap_pos_cycles: 5,
-        max_block_endorsements: 8,
-    });
-
-    ConsensusConfig {
-        genesis_timestamp: MassaTime::now().unwrap(),
-        thread_count,
-        t0: 32000.into(),
-        genesis_key,
-        max_discarded_blocks: 10,
-        future_block_processing_max_periods: 3,
-        max_future_processing_blocks: 10,
-        max_dependency_blocks: 10,
-        delta_f0: 32,
-        disable_block_creation: true,
-        max_block_size,
-        max_operations_per_block,
-        max_operations_fill_attempts: 6,
-        operation_validity_periods: 1,
-        ledger_path: tempdir.path().to_path_buf(),
-        ledger_cache_capacity: 1000000,
-        ledger_flush_interval: Some(200.into()),
-        ledger_reset_at_startup: true,
-        block_reward: Amount::from_str("1").unwrap(),
-        initial_ledger_path: initial_ledger_path.to_path_buf(),
-        operation_batch_size: 100,
-        initial_rolls_path: roll_counts_path.to_path_buf(),
-        initial_draw_seed: "genesis".into(),
-        periods_per_cycle: 100,
-        pos_lookback_cycles: 2,
-        pos_lock_cycles: 1,
-        pos_draw_cached_cycles: 0,
-        pos_miss_rate_deactivation_threshold: Ratio::new(1, 1),
-        roll_price: Amount::default(),
-        stats_timespan: 60000.into(),
-        staking_keys_path: staking_keys_path.to_path_buf(),
-        end_timestamp: None,
-        max_send_wait: 500.into(),
-        force_keep_final_periods: 0,
-        endorsement_count: 0,
-        block_db_prune_interval: 1000.into(),
-        max_item_return_count: 1000,
-    }
 }
 
 /// Runs a consensus test, passing a mock pool controller to it.

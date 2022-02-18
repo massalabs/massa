@@ -41,13 +41,13 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
             let mut private_key = generate_random_private_key();
             let mut public_key = derive_public_key(&private_key);
             let mut address = Address::from_public_key(&public_key);
-            let mut thread = address.get_thread(serialization_context.parent_count);
+            let mut thread = address.get_thread(serialization_context.thread_count);
 
             while thread != 0 {
                 private_key = generate_random_private_key();
                 public_key = derive_public_key(&private_key);
                 address = Address::from_public_key(&public_key);
-                thread = address.get_thread(serialization_context.parent_count);
+                thread = address.get_thread(serialization_context.thread_count);
             }
 
             let slot_a = Slot::new(1, 0);

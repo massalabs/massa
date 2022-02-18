@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::{PoolError, PoolSettings};
+use crate::{settings::PoolConfig, PoolError};
 use massa_models::prehash::{Map, Set};
 use massa_models::{Address, BlockId, Endorsement, EndorsementContent, EndorsementId, Slot};
 
@@ -8,16 +8,16 @@ pub struct EndorsementPool {
     endorsements: Map<EndorsementId, Endorsement>,
     latest_final_periods: Vec<u64>,
     current_slot: Option<Slot>,
-    pool_settings: &'static PoolSettings,
+    cfg: &'static PoolConfig,
 }
 
 impl EndorsementPool {
-    pub fn new(pool_settings: &'static PoolSettings, thread_count: u8) -> EndorsementPool {
+    pub fn new(cfg: &'static PoolConfig) -> EndorsementPool {
         EndorsementPool {
             endorsements: Default::default(),
-            pool_settings,
+            cfg,
             current_slot: None,
-            latest_final_periods: vec![0; thread_count as usize],
+            latest_final_periods: vec![0; cfg.thread_count as usize],
         }
     }
 
@@ -113,9 +113,8 @@ impl EndorsementPool {
     fn prune(&mut self) -> Set<EndorsementId> {
         let mut removed = Set::<EndorsementId>::default();
 
-        if self.endorsements.len() > self.pool_settings.max_endorsement_count as usize {
-            let excess =
-                self.endorsements.len() - self.pool_settings.max_endorsement_count as usize;
+        if self.endorsements.len() > self.cfg.settings.max_endorsement_count as usize {
+            let excess = self.endorsements.len() - self.cfg.settings.max_endorsement_count as usize;
             let mut candidates: Vec<_> = self.endorsements.clone().into_iter().collect();
             let thread_count = self.latest_final_periods.len() as u8;
             let current_slot_index = self.current_slot.map_or(0u64, |s| {

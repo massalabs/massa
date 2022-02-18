@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::mock_protocol_controller::MockProtocolController;
-use crate::{pool_controller, PoolCommandSender, PoolManager, PoolSettings};
+use crate::{pool_controller, settings::PoolConfig, PoolCommandSender, PoolManager};
 use futures::Future;
 use massa_hash::hash::Hash;
 use massa_models::{
@@ -13,12 +13,8 @@ use massa_signature::{
 };
 use std::str::FromStr;
 
-pub async fn pool_test<F, V>(
-    pool_settings: &'static PoolSettings,
-    thread_count: u8,
-    operation_validity_periods: u64,
-    test: F,
-) where
+pub async fn pool_test<F, V>(cfg: &'static PoolConfig, test: F)
+where
     F: FnOnce(MockProtocolController, PoolCommandSender, PoolManager) -> V,
     V: Future<Output = (MockProtocolController, PoolCommandSender, PoolManager)>,
 {
@@ -26,9 +22,7 @@ pub async fn pool_test<F, V>(
         MockProtocolController::new();
 
     let (pool_command_sender, pool_manager) = pool_controller::start_pool_controller(
-        pool_settings,
-        thread_count,
-        operation_validity_periods,
+        cfg,
         protocol_command_sender,
         protocol_pool_event_receiver,
     )

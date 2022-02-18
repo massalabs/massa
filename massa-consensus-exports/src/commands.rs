@@ -1,6 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-///! Contains definitions of commands used by the controller
+//! Contains definitions of commands used by the controller
 use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Status};
 use massa_models::{
     address::AddressState, api::EndorsementInfo, Endorsement, EndorsementId, OperationId,

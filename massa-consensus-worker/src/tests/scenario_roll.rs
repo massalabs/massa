@@ -1,11 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use massa_consensus_exports::settings::ConsensusChannels;
 use massa_consensus_exports::tools;
+use massa_consensus_exports::{settings::ConsensusChannels, ConsensusConfig};
 use massa_models::{Address, Amount, BlockId, Slot};
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
-use massa_signature::{derive_public_key, generate_random_private_key};
 use massa_time::MassaTime;
 use num::rational::Ratio;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
@@ -20,7 +19,7 @@ use crate::{
         mock_protocol_controller::MockProtocolController,
         tools::{
             consensus_pool_test, create_block, create_block_with_operations, create_roll_buy,
-            create_roll_sell, default_consensus_config, get_creator_for_draw, propagate_block,
+            create_roll_sell, get_creator_for_draw, propagate_block, random_address_on_thread,
             wait_pool_slot,
         },
     },
@@ -41,55 +40,35 @@ async fn test_roll() {
             .init()
             .unwrap();
     */
-    let thread_count = 2;
+    let init_time: MassaTime = 1000.into();
+    let mut cfg = ConsensusConfig {
+        t0: 500.into(),
+        periods_per_cycle: 2,
+        delta_f0: 3,
+        block_reward: Amount::default(),
+        roll_price: Amount::from_str("1000").unwrap(),
+        operation_validity_periods: 100,
+        genesis_timestamp: MassaTime::now().unwrap().saturating_add(init_time),
+        ..Default::default()
+    };
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
-    let mut priv_1 = generate_random_private_key();
-    let mut pubkey_1 = derive_public_key(&priv_1);
-    let mut address_1 = Address::from_public_key(&pubkey_1);
-    while 0 != address_1.get_thread(thread_count) {
-        priv_1 = generate_random_private_key();
-        pubkey_1 = derive_public_key(&priv_1);
-        address_1 = Address::from_public_key(&pubkey_1);
-    }
-    assert_eq!(0, address_1.get_thread(thread_count));
-
-    let mut priv_2 = generate_random_private_key();
-    let mut pubkey_2 = derive_public_key(&priv_2);
-    let mut address_2 = Address::from_public_key(&pubkey_2);
-    while 0 != address_2.get_thread(thread_count) {
-        priv_2 = generate_random_private_key();
-        pubkey_2 = derive_public_key(&priv_2);
-        address_2 = Address::from_public_key(&pubkey_2);
-    }
-    assert_eq!(0, address_2.get_thread(thread_count));
+    let (address_1, priv_1, _) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_2, priv_2, _) = random_address_on_thread(0, cfg.thread_count).into();
 
     let mut ledger = HashMap::new();
     ledger.insert(
         address_2,
         LedgerData::new(Amount::from_str("10000").unwrap()),
     );
-    let ledger_file = tools::generate_ledger_file(&ledger);
+    let initial_ledger_file = tools::generate_ledger_file(&ledger);
+    cfg.initial_ledger_path = initial_ledger_file.path().to_path_buf();
 
-    let staking_file = tools::generate_staking_keys_file(&[priv_2]);
-    let roll_counts_file = tools::generate_default_roll_counts_file(vec![priv_1]);
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.periods_per_cycle = 2;
-    cfg.pos_lookback_cycles = 2;
-    cfg.pos_lock_cycles = 1;
-    cfg.t0 = 500.into();
-    cfg.delta_f0 = 3;
-    cfg.disable_block_creation = true;
-    cfg.thread_count = thread_count;
-    cfg.block_reward = Amount::default();
-    cfg.roll_price = Amount::from_str("1000").unwrap();
-    cfg.operation_validity_periods = 100;
-    let init_time: MassaTime = 1000.into();
-    cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(init_time);
+    let staking_keys_file = tools::generate_staking_keys_file(&[priv_2]);
+    cfg.staking_keys_path = staking_keys_file.path().to_path_buf();
+
+    let initial_rolls_file = tools::generate_default_roll_counts_file(vec![priv_1]);
+    cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
     consensus_pool_test(
         cfg.clone(),
@@ -491,58 +470,35 @@ async fn test_roll_block_creation() {
         .init()
         .unwrap();
     */
-    let thread_count = 2;
+
+    let mut cfg = ConsensusConfig {
+        block_reward: Amount::default(),
+        delta_f0: 3,
+        disable_block_creation: false,
+        operation_validity_periods: 10,
+        max_block_size: 500,
+        max_operations_per_block: 5000,
+        periods_per_cycle: 2,
+        roll_price: Amount::from_str("1000").unwrap(),
+        t0: 500.into(),
+        ..Default::default()
+    };
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
-    let mut priv_1 = generate_random_private_key();
-    let mut pubkey_1 = derive_public_key(&priv_1);
-    let mut address_1 = Address::from_public_key(&pubkey_1);
-    while 0 != address_1.get_thread(thread_count) {
-        priv_1 = generate_random_private_key();
-        pubkey_1 = derive_public_key(&priv_1);
-        address_1 = Address::from_public_key(&pubkey_1);
-    }
-    assert_eq!(0, address_1.get_thread(thread_count));
-
-    let mut priv_2 = generate_random_private_key();
-    let mut pubkey_2 = derive_public_key(&priv_2);
-    let mut address_2 = Address::from_public_key(&pubkey_2);
-    while 0 != address_2.get_thread(thread_count) {
-        priv_2 = generate_random_private_key();
-        pubkey_2 = derive_public_key(&priv_2);
-        address_2 = Address::from_public_key(&pubkey_2);
-    }
-    assert_eq!(0, address_2.get_thread(thread_count));
+    let (_, priv_1, _) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_2, priv_2, _) = random_address_on_thread(0, cfg.thread_count).into();
 
     let mut ledger = HashMap::new();
     ledger.insert(
         address_2,
         LedgerData::new(Amount::from_str("10000").unwrap()),
     );
-    let ledger_file = tools::generate_ledger_file(&ledger);
-
-    let staking_file = tools::generate_staking_keys_file(&[priv_1]);
-    let roll_counts_file = tools::generate_default_roll_counts_file(vec![priv_1]);
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.periods_per_cycle = 2;
-    cfg.pos_lookback_cycles = 2;
-    cfg.pos_lock_cycles = 1;
-    cfg.t0 = 500.into();
-    cfg.delta_f0 = 3;
-    cfg.disable_block_creation = false;
-    cfg.thread_count = thread_count;
-    cfg.operation_validity_periods = 10;
-    cfg.operation_batch_size = 500;
-    cfg.max_operations_per_block = 5000;
-    cfg.max_block_size = 500;
-    cfg.block_reward = Amount::default();
-    cfg.roll_price = Amount::from_str("1000").unwrap();
-    cfg.operation_validity_periods = 100;
-
+    let initial_ledger_file = tools::generate_ledger_file(&ledger);
+    let staking_keys_file = tools::generate_staking_keys_file(&[priv_1]);
+    let initial_rolls_file = tools::generate_default_roll_counts_file(vec![priv_1]);
+    cfg.initial_ledger_path = initial_ledger_file.path().to_path_buf();
+    cfg.staking_keys_path = staking_keys_file.path().to_path_buf();
+    cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
@@ -777,7 +733,7 @@ async fn test_roll_deactivation() {
             * deactivation threshold at 50%
             * thread_count = 10
             * lookback_cycles = 2
-            * periodes_per_cycle = 10
+            * periods_per_cycle = 10
             * delta_f0 = 2
             * all addresses have 1 roll initially
             * in cycle 0:
@@ -798,76 +754,33 @@ async fn test_roll_deactivation() {
               * address B1 has (1 candidate, 1 final, 1 active) rolls
     */
 
-    // setup logging
-    let thread_count = 4;
+    let mut cfg = ConsensusConfig {
+        delta_f0: 2,
+        thread_count: 4,
+        periods_per_cycle: 5,
+        pos_lookback_cycles: 1,
+        t0: 400.into(),
+        operation_batch_size: 500,
+        roll_price: Amount::from_raw(10),
+        pos_miss_rate_deactivation_threshold: Ratio::new(50, 100),
+        ..Default::default()
+    };
 
     // setup addresses
-    let mut privkey_a0;
-    let mut pubkey_a0;
-    let mut address_a0;
-    loop {
-        privkey_a0 = generate_random_private_key();
-        pubkey_a0 = derive_public_key(&privkey_a0);
-        address_a0 = Address::from_public_key(&pubkey_a0);
-        if address_a0.get_thread(thread_count) == 0 {
-            break;
-        }
-    }
-    let mut privkey_b0;
-    let mut pubkey_b0;
-    let mut address_b0;
-    loop {
-        privkey_b0 = generate_random_private_key();
-        pubkey_b0 = derive_public_key(&privkey_b0);
-        address_b0 = Address::from_public_key(&pubkey_b0);
-        if address_b0.get_thread(thread_count) == 0 {
-            break;
-        }
-    }
+    let (address_a0, privkey_a0, _) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_b0, privkey_b0, _) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_a1, privkey_a1, _) = random_address_on_thread(1, cfg.thread_count).into();
+    let (address_b1, privkey_b1, _) = random_address_on_thread(1, cfg.thread_count).into();
 
-    let mut privkey_a1;
-    let mut pubkey_a1;
-    let mut address_a1;
-    loop {
-        privkey_a1 = generate_random_private_key();
-        pubkey_a1 = derive_public_key(&privkey_a1);
-        address_a1 = Address::from_public_key(&pubkey_a1);
-        if address_a1.get_thread(thread_count) == 1 {
-            break;
-        }
-    }
-    let mut privkey_b1;
-    let mut pubkey_b1;
-    let mut address_b1;
-    loop {
-        privkey_b1 = generate_random_private_key();
-        pubkey_b1 = derive_public_key(&privkey_b1);
-        address_b1 = Address::from_public_key(&pubkey_b1);
-        if address_b1.get_thread(thread_count) == 1 {
-            break;
-        }
-    }
-
-    let ledger_file = tools::generate_ledger_file(&HashMap::new());
-    let staking_file = tools::generate_staking_keys_file(&[]);
-    let roll_counts_file = tools::generate_default_roll_counts_file(vec![
+    let initial_ledger_file = tools::generate_ledger_file(&HashMap::new());
+    let staking_keys_file = tools::generate_staking_keys_file(&[]);
+    let initial_rolls_file = tools::generate_default_roll_counts_file(vec![
         privkey_a0, privkey_a1, privkey_b0, privkey_b1,
     ]);
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.periods_per_cycle = 5;
-    cfg.pos_lookback_cycles = 1;
-    cfg.pos_lock_cycles = 1;
-    cfg.t0 = 400.into();
-    cfg.delta_f0 = 2;
-    cfg.disable_block_creation = true;
-    cfg.thread_count = thread_count;
-    cfg.operation_batch_size = 500;
-    cfg.roll_price = Amount::from_str("10").unwrap();
-    cfg.pos_miss_rate_deactivation_threshold = Ratio::new(50, 100);
+
+    cfg.initial_ledger_path = initial_ledger_file.path().to_path_buf();
+    cfg.staking_keys_path = staking_keys_file.path().to_path_buf();
+    cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
@@ -915,7 +828,7 @@ async fn test_roll_deactivation() {
         while cur_slot <= latest_slot {
             // skip genesis
             if cur_slot.period == 0 {
-                cur_slot = cur_slot.get_next_slot(thread_count).unwrap();
+                cur_slot = cur_slot.get_next_slot(cfg.thread_count).unwrap();
                 continue;
             }
             let cur_cycle = cur_slot.get_cycle(cfg.periods_per_cycle);
@@ -1027,7 +940,7 @@ async fn test_roll_deactivation() {
                 assert_eq!(addrs_info[&address_b1].rolls.candidate_rolls, 1);
             }
 
-            cur_slot = cur_slot.get_next_slot(thread_count).unwrap();
+            cur_slot = cur_slot.get_next_slot(cfg.thread_count).unwrap();
         }
     }
 }

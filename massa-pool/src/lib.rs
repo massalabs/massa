@@ -9,7 +9,7 @@ extern crate massa_logging;
 pub use error::PoolError;
 pub use pool_controller::{start_pool_controller, PoolCommandSender, PoolManager};
 pub use pool_worker::PoolCommand;
-pub use settings::PoolSettings;
+pub use settings::{PoolConfig, PoolSettings};
 
 mod endorsement_pool;
 mod error;

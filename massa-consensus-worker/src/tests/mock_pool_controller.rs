@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use massa_models::constants::CHANNEL_SIZE;
 use massa_pool::{PoolCommand, PoolCommandSender};
 use massa_time::MassaTime;
 use tokio::{
@@ -7,8 +8,6 @@ use tokio::{
     task::JoinHandle,
     time::sleep,
 };
-
-const CHANNEL_SIZE: usize = 256;
 
 pub struct MockPoolController {
     pub pool_command_rx: mpsc::Receiver<PoolCommand>,

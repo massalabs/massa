@@ -1,12 +1,13 @@
-use crate::ExecutionError;
-use massa_hash::hash::Hash;
-use massa_hash::HASH_SIZE_BYTES;
-use massa_models::prehash::{BuildMap, Map};
+use crate::{ExecutionError, AMOUNT_ZERO};
+use massa_hash::{hash::Hash, HASH_SIZE_BYTES};
 use massa_models::{
-    array_from_slice, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact,
-    SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
+    array_from_slice,
+    constants::ADDRESS_SIZE_BYTES,
+    prehash::{BuildMap, Map},
+    DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Slot,
+    {Address, Amount},
 };
-use massa_models::{Address, Amount, AMOUNT_ZERO};
+
 use serde::{Deserialize, Serialize};
 
 /// an entry in the SCE ledger

@@ -3,10 +3,9 @@
 use super::messages::BootstrapMessage;
 use crate::error::BootstrapError;
 use crate::establisher::Duplex;
-use crate::settings::BOOTSTRAP_RANDOMNESS_SIZE_BYTES;
 use massa_hash::hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
-use massa_models::SerializeMinBEInt;
+use massa_models::{constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, SerializeMinBEInt};
 use massa_models::{with_serialization_context, SerializeCompact};
 use massa_signature::{sign, PrivateKey, Signature, SIGNATURE_SIZE_BYTES};
 use std::convert::TryInto;

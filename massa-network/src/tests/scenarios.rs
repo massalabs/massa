@@ -2,17 +2,12 @@
 
 // To start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::tools;
-use crate::error::HandshakeErrorType;
-use crate::messages::Message;
-use crate::node_worker::{NodeCommand, NodeEvent, NodeWorker};
-use crate::ConnectionClosureReason;
-use crate::NetworkError;
-use crate::NetworkEvent;
-
-use crate::PeerInfo;
 use crate::{
     binders::{ReadBinder, WriteBinder},
-    ConnectionId,
+    error::HandshakeErrorType,
+    messages::Message,
+    node_worker::{NodeCommand, NodeEvent, NodeWorker},
+    ConnectionClosureReason, ConnectionId, NetworkError, NetworkEvent, NetworkSettings, PeerInfo,
 };
 use massa_hash::{self, hash::Hash};
 use massa_models::node::NodeId;
@@ -22,7 +17,6 @@ use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::{
-    convert::TryInto,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     time::{Duration, Instant},
 };
@@ -38,7 +32,7 @@ use tracing::trace;
 async fn test_node_worker_shutdown() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&[]);
-    let network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
+    let network_conf = NetworkSettings::scenarios_default(bind_port, temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
     let reader = ReadBinder::new(duplex_mock_read);
@@ -101,9 +95,11 @@ async fn test_multiple_connections_to_controller() {
     // test config
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&[]);
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.max_in_nonbootstrap_connections = 2;
-    network_conf.max_in_connections_per_ip = 1;
+    let network_conf = NetworkSettings {
+        max_in_nonbootstrap_connections: 2,
+        max_in_connections_per_ip: 1,
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+    };
 
     let mock1_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
     let mock2_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 12)), bind_port);
@@ -228,8 +224,10 @@ async fn test_peer_ban() {
         active_in_connections: 0,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.wakeup_interval = 1000.into();
+    let network_conf = NetworkSettings {
+        wakeup_interval: 1000.into(),
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+    };
 
     tools::network_test(
         network_conf.clone(),
@@ -371,8 +369,10 @@ async fn test_peer_ban_by_ip() {
         active_in_connections: 0,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.wakeup_interval = 1000.into();
+    let network_conf = NetworkSettings {
+        wakeup_interval: 1000.into(),
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+    };
 
     tools::network_test(
         network_conf.clone(),
@@ -511,9 +511,11 @@ async fn test_advertised_and_wakeup_interval() {
         active_out_connections: 0,
         active_in_connections: 0,
     }]);
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.wakeup_interval = MassaTime::from(500);
-    network_conf.connect_timeout = MassaTime::from(2000);
+    let network_conf = NetworkSettings {
+        wakeup_interval: MassaTime::from(500),
+        connect_timeout: MassaTime::from(2000),
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+    };
 
     tools::network_test(
         network_conf.clone(),
@@ -645,8 +647,10 @@ async fn test_block_not_found() {
         active_in_connections: 0,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.target_bootstrap_connections = 1;
+    let network_conf = NetworkSettings {
+        target_bootstrap_connections: 1,
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+    };
 
     // Overwrite the context.
     let mut serialization_context = massa_models::get_serialization_context();
@@ -831,8 +835,10 @@ async fn test_retry_connection_closed() {
         active_in_connections: 0,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.target_bootstrap_connections = 1;
+    let network_conf = NetworkSettings {
+        target_bootstrap_connections: 1,
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+    };
 
     tools::network_test(
         network_conf.clone(),
@@ -929,8 +935,10 @@ async fn test_operation_messages() {
         active_in_connections: 0,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.target_bootstrap_connections = 1;
+    let network_conf = NetworkSettings {
+        target_bootstrap_connections: 1,
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+    };
 
     // Overwrite the context.
     let mut serialization_context = massa_models::get_serialization_context();
@@ -1050,8 +1058,10 @@ async fn test_endorsements_messages() {
         active_in_connections: 0,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.target_bootstrap_connections = 1;
+    let network_conf = NetworkSettings {
+        target_bootstrap_connections: 1,
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+    };
 
     // Overwrite the context.
     let mut serialization_context = massa_models::get_serialization_context();

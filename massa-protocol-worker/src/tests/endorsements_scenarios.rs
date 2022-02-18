@@ -293,7 +293,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
             let address = Address::from_public_key(&nodes[0].id.0);
             let serialization_context = massa_models::get_serialization_context();
-            let thread = address.get_thread(serialization_context.parent_count);
+            let thread = address.get_thread(serialization_context.thread_count);
 
             let endorsement = tools::create_endorsement();
             let endorsement_id = endorsement.compute_endorsement_id().unwrap();
@@ -398,7 +398,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
             let address = Address::from_public_key(&nodes[0].id.0);
             let serialization_context = massa_models::get_serialization_context();
-            let thread = address.get_thread(serialization_context.parent_count);
+            let thread = address.get_thread(serialization_context.thread_count);
 
             let endorsement = tools::create_endorsement();
             let endorsement_id = endorsement.compute_endorsement_id().unwrap();
@@ -508,7 +508,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
             let address = Address::from_public_key(&nodes[0].id.0);
             let serialization_context = massa_models::get_serialization_context();
-            let thread = address.get_thread(serialization_context.parent_count);
+            let thread = address.get_thread(serialization_context.thread_count);
 
             let endorsement = tools::create_endorsement();
             let endorsement_id = endorsement.compute_endorsement_id().unwrap();
