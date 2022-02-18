@@ -1397,7 +1397,8 @@ dependencies = [
  "massa_bootstrap",
  "massa_consensus_exports",
  "massa_consensus_worker",
- "massa_execution",
+ "massa_execution_exports",
+ "massa_execution_worker",
  "massa_logging",
  "massa_models",
  "massa_network",
@@ -1445,7 +1446,7 @@ dependencies = [
  "jsonrpc-derive",
  "jsonrpc-http-server",
  "massa_consensus_exports",
- "massa_execution",
+ "massa_execution_exports",
  "massa_graph",
  "massa_hash",
  "massa_models",
@@ -1468,9 +1469,9 @@ dependencies = [
  "futures 0.3.19",
  "lazy_static",
  "massa_consensus_exports",
- "massa_execution",
  "massa_graph",
  "massa_hash",
+ "massa_ledger",
  "massa_logging",
  "massa_models",
  "massa_network",
@@ -1496,7 +1497,7 @@ dependencies = [
  "displaydoc",
  "futures 0.3.19",
  "lazy_static",
- "massa_execution",
+ "massa_execution_exports",
  "massa_graph",
  "massa_hash",
  "massa_logging",
@@ -1530,7 +1531,7 @@ dependencies = [
  "futures 0.3.19",
  "lazy_static",
  "massa_consensus_exports",
- "massa_execution",
+ "massa_execution_exports",
  "massa_graph",
  "massa_hash",
  "massa_logging",
@@ -1556,7 +1557,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa_execution"
+name = "massa_execution_exports"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1568,7 +1569,32 @@ dependencies = [
  "massa_models",
  "massa_signature",
  "massa_time",
- "parking_lot",
+ "pretty_assertions",
+ "rand 0.8.4",
+ "rand_xoshiro",
+ "serde 1.0.134",
+ "serde_json",
+ "serial_test",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "massa_execution_worker"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "displaydoc",
+ "lazy_static",
+ "massa-sc-runtime",
+ "massa_execution_exports",
+ "massa_hash",
+ "massa_ledger",
+ "massa_models",
+ "massa_signature",
+ "massa_time",
  "pretty_assertions",
  "rand 0.8.4",
  "rand_xoshiro",
@@ -1588,7 +1614,7 @@ dependencies = [
  "bitvec",
  "displaydoc",
  "lazy_static",
- "massa_execution",
+ "massa_execution_exports",
  "massa_hash",
  "massa_logging",
  "massa_models",
@@ -1636,7 +1662,6 @@ dependencies = [
  "massa_hash",
  "massa_logging",
  "massa_models",
- "massa_protocol_exports",
  "massa_signature",
  "massa_time",
  "num",

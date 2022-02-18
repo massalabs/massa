@@ -21,7 +21,7 @@ thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
 tracing = {version = "0.1", features = ["max_level_debug", "release_max_level_debug"] }
 # custom modules
-massa_execution = { path = "../massa-execution" }
+massa_execution_exports = { path = "../massa-execution-exports" }
 massa_hash = { path = "../massa-hash" }
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }

@@ -31,7 +31,7 @@ pub(crate) struct VMInputData {
 }
 
 /// VM controller
-pub struct VMController {
+pub struct ExecutionController {
     /// VM config
     pub(crate) config: VMConfig,
     /// condition variable to wake up the VM loop
@@ -42,7 +42,7 @@ pub struct VMController {
     pub(crate) execution_state: Arc<RwLock<ExecutionState>>,
 }
 
-impl VMController {
+impl ExecutionController {
     /// reads the list of newly finalized blocks and the new blockclique, if there was a change
     /// if found, remove from input queue
     pub(crate) fn consume_input(&mut self) -> VMInputData {

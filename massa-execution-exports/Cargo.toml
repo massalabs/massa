@@ -1,5 +1,5 @@
 [package]
-name = "massa_execution"
+name = "massa_execution_exports"
 version = "0.1.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
@@ -10,7 +10,6 @@ edition = "2021"
 anyhow = "1"
 displaydoc = "0.2"
 lazy_static = "1.4.0"
-parking_lot = { version = "0.11.2" }
 rand = "0.8"
 rand_xoshiro = "0.6"
 serde = { version = "1.0", features = ["derive"] }

@@ -6,7 +6,6 @@ use crate::types::{ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequ
 use crate::ExecutionError;
 use massa_ledger::{Applicable, FinalLedger, LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_models::output_event::SCOutputEvent;
-use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{Address, BlockId, Operation, OperationId, OperationType};
 use massa_models::{Block, Slot};
 use massa_sc_runtime::Interface;

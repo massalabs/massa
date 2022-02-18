@@ -18,7 +18,6 @@ tracing = {version = "0.1", features = ["max_level_debug", "release_max_level_de
 massa_hash = { path = "../massa-hash" }
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
-massa_protocol_exports = { path = "../massa-protocol-exports" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 
