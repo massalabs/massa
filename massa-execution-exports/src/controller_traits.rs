@@ -10,7 +10,7 @@ use massa_models::BlockId;
 use massa_models::OperationId;
 use massa_models::Slot;
 
-pub trait ExecutionController {
+pub trait ExecutionController: Sync + Send {
     /// Update blockclique status
     ///
     /// # arguments

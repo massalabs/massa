@@ -6,6 +6,7 @@
 #[macro_use]
 extern crate massa_logging;
 
+mod bootstrap;
 mod config;
 mod error;
 mod ledger;
@@ -13,10 +14,10 @@ mod ledger_changes;
 mod ledger_entry;
 mod types;
 
+pub use bootstrap::FinalLedgerBootstrapState;
 pub use config::LedgerConfig;
 pub use error::LedgerError;
 pub use ledger::FinalLedger;
-pub use ledger::FinalLedgerBootstrapState;
 pub use ledger_changes::LedgerChanges;
 pub use ledger_entry::LedgerEntry;
 pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};

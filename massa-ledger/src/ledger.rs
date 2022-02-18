@@ -3,18 +3,10 @@
 use crate::ledger_changes::LedgerChanges;
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
-use crate::{LedgerConfig, LedgerError};
+use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
 use massa_hash::hash::Hash;
 use massa_models::{Address, Amount, Slot};
 use std::collections::{BTreeMap, VecDeque};
-
-/// temporary ledger bootstrap structure
-pub struct FinalLedgerBootstrapState {
-    /// ledger slot
-    slot: Slot,
-    /// sorted ledger
-    sorted_ledger: BTreeMap<Address, LedgerEntry>,
-}
 
 /// represents a final ledger
 pub struct FinalLedger {
