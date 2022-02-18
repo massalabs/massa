@@ -1,7 +1,7 @@
 use massa_execution_exports::ExecutionError;
 use massa_hash::hash::Hash;
 use massa_ledger::{Applicable, FinalLedger, LedgerChanges};
-use massa_models::{Address, Amount, AMOUNT_ZERO};
+use massa_models::{Address, Amount};
 use std::sync::{Arc, RwLock};
 
 /// represents a speculative ledger state combining
