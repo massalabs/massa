@@ -17,12 +17,12 @@ use std::{
 };
 use tracing::debug;
 /// structure gathering all elements needed by the VM thread
-pub struct VMThread {
+pub(crate) struct VMThread {
     // VM config
     config: ExecutionConfig,
 
     // VM data exchange controller
-    controller: Arc<ExecutionControllerImpl>,
+    controller: ExecutionControllerImpl,
     // map of SCE-final blocks not executed yet
     sce_finals: HashMap<Slot, Option<(BlockId, Block)>>,
     // last SCE final slot in sce_finals list
@@ -43,7 +43,7 @@ pub struct VMThread {
 impl VMThread {
     pub fn new(
         config: ExecutionConfig,
-        controller: Arc<ExecutionControllerImpl>,
+        controller: ExecutionControllerImpl,
         execution_state: Arc<RwLock<ExecutionState>>,
     ) -> Self {
         let final_cursor = execution_state
@@ -317,7 +317,7 @@ impl VMThread {
     pub fn main_loop(&mut self) {
         loop {
             // read input queues
-            let mut input_data = self.controller.consume_input();
+            let input_data = self.controller.consume_input();
 
             // check for stop signal
             if input_data.stop {
@@ -369,6 +369,7 @@ impl VMThread {
             let input_data = self
                 .controller
                 .input_data
+                .1
                 .lock()
                 .expect("could not lock VM input data");
             if input_data.stop {
@@ -388,7 +389,8 @@ impl VMThread {
             // wait for change or for next slot
             let _ = self
                 .controller
-                .loop_cv
+                .input_data
+                .0
                 .wait_timeout(input_data, delay_until_next_slot.to_duration())
                 .expect("VM main loop condition variable wait failed");
         }
@@ -397,12 +399,18 @@ impl VMThread {
         let mut input_data = self
             .controller
             .input_data
+            .1
             .lock()
             .expect("could not lock VM input data");
         for (_req, resp_tx) in input_data.readonly_requests.drain(..) {
-            resp_tx.send(Err(ExecutionError::RuntimeError(
-                "readonly execution cancelled because VM is closing".into(),
-            )));
+            if resp_tx
+                .send(Err(ExecutionError::RuntimeError(
+                    "readonly execution cancelled because VM is closing".into(),
+                )))
+                .is_err()
+            {
+                debug!("failed sending readonly request response: channel down");
+            }
         }
     }
 }
@@ -423,15 +431,17 @@ pub fn start_vm(
     )));
 
     // create a controller
-    let controller = Arc::new(ExecutionControllerImpl {
+    let controller = ExecutionControllerImpl {
         config: config.clone(),
-        loop_cv: Condvar::new(),
-        input_data: Mutex::new(VMInputData {
-            blockclique_changed: true,
-            ..Default::default()
-        }),
+        input_data: Arc::new((
+            Condvar::new(),
+            Mutex::new(VMInputData {
+                blockclique_changed: true,
+                ..Default::default()
+            }),
+        )),
         execution_state: execution_state.clone(),
-    });
+    };
 
     // launch the VM thread
     let ctl = controller.clone();

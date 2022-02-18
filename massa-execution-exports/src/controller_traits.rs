@@ -6,7 +6,6 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::Address;
 use massa_models::OperationId;
 use massa_models::Slot;
-use std::sync::Arc;
 
 pub trait ExecutionController {
     /// Get events optionnally filtered by:
@@ -43,5 +42,5 @@ pub trait ExecutionManager {
     fn stop(self);
 
     /// get a shared reference to the VM controller
-    fn get_controller(&self) -> Arc<dyn ExecutionController>;
+    fn get_controller(&self) -> Box<dyn ExecutionController>;
 }

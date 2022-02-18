@@ -30,14 +30,13 @@ pub(crate) struct VMInputData {
     )>,
 }
 
+#[derive(Clone)]
 /// VM controller
 pub struct ExecutionControllerImpl {
     /// VM config
     pub(crate) config: ExecutionConfig,
-    /// condition variable to wake up the VM loop
-    pub(crate) loop_cv: Condvar,
-    /// input data to process in the VM loop
-    pub(crate) input_data: Mutex<VMInputData>,
+    /// input data to process in the VM loop with a wakeup condition variable
+    pub(crate) input_data: Arc<(Condvar, Mutex<VMInputData>)>,
     /// execution state
     pub(crate) execution_state: Arc<RwLock<ExecutionState>>,
 }
@@ -46,7 +45,7 @@ impl ExecutionControllerImpl {
     /// reads the list of newly finalized blocks and the new blockclique, if there was a change
     /// if found, remove from input queue
     pub(crate) fn consume_input(&mut self) -> VMInputData {
-        std::mem::take(&mut self.input_data.lock().expect("VM input data lock failed"))
+        std::mem::take(&mut self.input_data.1.lock().expect("VM input data lock failed"))
     }
 }
 
@@ -97,6 +96,7 @@ impl ExecutionController for ExecutionControllerImpl {
         let resp_rx = {
             let mut input_data = self
                 .input_data
+                .1
                 .lock()
                 .expect("could not lock VM input data");
             if input_data.readonly_requests.len() >= self.config.readonly_queue_length {
@@ -107,7 +107,7 @@ impl ExecutionController for ExecutionControllerImpl {
             let (resp_tx, resp_rx) =
                 std::sync::mpsc::channel::<Result<ExecutionOutput, ExecutionError>>();
             input_data.readonly_requests.push_back((req, resp_tx));
-            self.loop_cv.notify_one();
+            self.input_data.0.notify_one();
             resp_rx
         };
 
@@ -126,9 +126,9 @@ impl ExecutionController for ExecutionControllerImpl {
 /// Execution manager
 pub struct ExecutionManagerImpl {
     /// shared reference to the VM controller
-    controller: Arc<ExecutionControllerImpl>,
+    pub(crate) controller: ExecutionControllerImpl,
     /// handle used to join the VM thread
-    thread_handle: std::thread::JoinHandle<()>,
+    pub(crate) thread_handle: std::thread::JoinHandle<()>,
 }
 
 impl ExecutionManager for ExecutionManagerImpl {
@@ -140,10 +140,11 @@ impl ExecutionManager for ExecutionManagerImpl {
             let mut input_wlock = self
                 .controller
                 .input_data
+                .1
                 .lock()
                 .expect("could not lock VM input data");
             input_wlock.stop = true;
-            self.controller.loop_cv.notify_one();
+            self.controller.input_data.0.notify_one();
         }
         // join the VM thread
         self.thread_handle
@@ -153,7 +154,7 @@ impl ExecutionManager for ExecutionManagerImpl {
     }
 
     /// get a shared reference to the VM controller
-    fn get_controller(&self) -> Arc<dyn ExecutionController> {
-        self.controller.clone()
+    fn get_controller(&self) -> Box<dyn ExecutionController> {
+        Box::new(self.controller.clone())
     }
 }

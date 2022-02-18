@@ -25,7 +25,7 @@ macro_rules! context_guard {
 }
 
 /// structure holding consistent speculative and final execution states
-pub struct ExecutionState {
+pub(crate) struct ExecutionState {
     // VM config
     pub config: ExecutionConfig,
     // active execution output history
