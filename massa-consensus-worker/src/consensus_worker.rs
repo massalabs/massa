@@ -3,7 +3,7 @@ use massa_consensus_exports::{
     commands::ConsensusCommand,
     error::{ConsensusError, ConsensusResult as Result},
     events::ConsensusEvent,
-    settings::{self, ConsensusWorkerChannels},
+    settings::ConsensusWorkerChannels,
     ConsensusConfig,
 };
 use massa_execution::ExecutionEventReceiver;
@@ -557,7 +557,7 @@ impl ConsensusWorker {
                 } else {
                     0
                 };
-                if total_gas.saturating_add(op_gas) > settings::MAX_GAS_PER_BLOCK {
+                if total_gas.saturating_add(op_gas) > self.cfg.max_gas_per_block {
                     // no more gas left: do not include
                     continue;
                 }

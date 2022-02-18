@@ -8,9 +8,6 @@ use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, usize};
 
-/// Consensus full configuration (static + user defined)
-///
-/// Assert that `THREAD_COUNT >= 1 || T0.to_millis() >= 1 || T0.to_millis() % THREAD_COUNT == 0`
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct LedgerConfig {
     /// Number of threads

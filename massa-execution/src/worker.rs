@@ -1,9 +1,33 @@
+//! # Execution worker component
+//! --------------------------
+//! ## Loops
+//! The execution worker contains two threads, one in the main tokio runtime
+//! in the massa-node and another parrallel detached from the tokio runtime.
+//!
+//! The execution of bytecodes lock a lot of CPU time so we execute it in a
+//! pool worker in a dedicated thread `vm_thread`. This worker will execute
+//! each actions contained in the queue in the FIFO queue `execution_queue`
+//! (See: `run_vm_thread()`)
+//!
+//! ## Command passing
+//! The commands send by the controller, are managed later in another OS
+//! thread. The commands are dispached well by `process_command()` that will
+//! among other things append `ExecutionRequest`s into the `execution_queue`.
+//!
+//! ## Retreive information from `vm`
+//! The vm is contained by another thread and isn't shared between threads.
+//! Retreiving information in theledger is done with requests as
+//! `GetSCOutputEvents` in the `execution_queue`.
+//!
+//! ## Bytecode execution
+//! The bytecode execution is done in `vm.rs`
+//!
 use crate::error::ExecutionError;
-use crate::sce_ledger::FinalLedger;
+use crate::sce_ledger::{FinalLedger, SCELedger};
 use crate::types::{ExecutionQueue, ExecutionRequest};
 use crate::vm::VM;
 use crate::BootstrapExecutionState;
-use crate::{config::ExecutionConfigs, types::ExecutionStep};
+use crate::{settings::ExecutionConfigs, types::ExecutionStep};
 use massa_models::api::SCELedgerInfo;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
@@ -96,6 +120,9 @@ pub struct ExecutionWorker {
 }
 
 impl ExecutionWorker {
+    /// Create a new execution worker.
+    /// Start the worker and the vm threads. Init from bootstrap if
+    /// `bootstrap_state` is Some, otherwise initialise from _Slot 0_
     pub fn new(
         cfg: ExecutionConfigs,
         event_sender: mpsc::UnboundedSender<ExecutionEvent>,
@@ -104,7 +131,6 @@ impl ExecutionWorker {
         bootstrap_state: Option<BootstrapExecutionState>,
     ) -> Result<ExecutionWorker, ExecutionError> {
         let execution_queue = ExecutionQueue::default();
-        let execution_queue_clone = execution_queue.clone();
 
         // Check bootstrap
         let bootstrap_final_slot;
@@ -118,90 +144,7 @@ impl ExecutionWorker {
             bootstrap_final_slot = Slot::new(0, cfg.thread_count.saturating_sub(1));
             bootstrap_ledger = None;
         };
-
-        // Init VM
-        let mut vm = VM::new(cfg.clone(), bootstrap_ledger)?;
-
-        // Start VM thread
-        let vm_thread = thread::spawn(move || {
-            let (lock, condvar) = &*execution_queue_clone;
-            let mut requests = lock.lock().unwrap();
-            // Run until shutdown.
-            loop {
-                match requests.pop_front() {
-                    Some(ExecutionRequest::RunFinalStep(step)) => {
-                        vm.run_final_step(step, cfg.settings.max_final_events); // todo make settings static
-                    }
-                    Some(ExecutionRequest::RunActiveStep(step)) => {
-                        vm.run_active_step(step);
-                    }
-                    Some(ExecutionRequest::RunReadOnly {
-                        slot,
-                        max_gas,
-                        simulated_gas_price,
-                        bytecode,
-                        result_sender,
-                        address,
-                    }) => {
-                        vm.run_read_only(
-                            slot,
-                            max_gas,
-                            simulated_gas_price,
-                            bytecode,
-                            address,
-                            result_sender,
-                        );
-                    }
-                    Some(ExecutionRequest::ResetToFinalState) => vm.reset_to_final(),
-                    Some(ExecutionRequest::GetBootstrapState { response_tx }) => {
-                        let FinalLedger { ledger, slot } = vm.get_bootstrap_state();
-                        let bootstrap_state = BootstrapExecutionState {
-                            final_ledger: ledger,
-                            final_slot: slot,
-                        };
-                        if response_tx.send(bootstrap_state).is_err() {
-                            debug!("execution: could not send get_bootstrap_state answer");
-                        }
-                    }
-                    Some(ExecutionRequest::GetSCOutputEvents {
-                        start,
-                        end,
-                        emitter_address,
-                        original_caller_address,
-                        original_operation_id,
-                        response_tx,
-                    }) => {
-                        if response_tx
-                            .send(vm.get_filtered_sc_output_event(
-                                start,
-                                end,
-                                emitter_address,
-                                original_caller_address,
-                                original_operation_id,
-                            ))
-                            .is_err()
-                        {
-                            debug!("execution: could not send get_sc_output_event_by_caller_address answer");
-                        }
-                    }
-
-                    Some(ExecutionRequest::Shutdown) => return,
-                    Some(ExecutionRequest::GetSCELedgerForAddresses {
-                        addresses,
-                        response_tx,
-                    }) => {
-                        let res = vm.get_sce_ledger_entry_for_addresses(addresses);
-                        if response_tx.send(res).is_err() {
-                            debug!("execution: could not send GetSCELedgerForAddresses response")
-                        }
-                    }
-                    None => {
-                        requests = condvar.wait(requests).unwrap();
-                    }
-                };
-            }
-        });
-
+        let vm_thread = run_vm_thread(cfg.clone(), bootstrap_ledger, execution_queue.clone())?;
         // return execution worker
         Ok(ExecutionWorker {
             cfg,
@@ -237,6 +180,7 @@ impl ExecutionWorker {
     }
 
     /// sends an arbitrary VM request
+    /// See: `process_command()`
     fn push_request(&self, request: ExecutionRequest) {
         let (queue_lock, condvar) = &*self.execution_queue;
         let queue_guard = &mut queue_lock.lock().unwrap();
@@ -264,6 +208,13 @@ impl ExecutionWorker {
         ))
     }
 
+    /// Start the main worker loop in the main tokio `Runtime`
+    /// Dispatch the commands received by the controller with the
+    /// `process_command()`
+    ///
+    /// # Error management
+    /// The context of this function is in the main `Runtime` and the `Result`
+    /// returned is managed by the main loop that will stop the node on error.
     pub async fn run_loop(mut self) -> Result<(), ExecutionError> {
         // set slot timer
         let next_slot_timer = self.get_timer_to_next_slot()?;
@@ -289,7 +240,12 @@ impl ExecutionWorker {
         Ok(())
     }
 
-    /// Proces a given command.
+    /// Interact with the OS thread dispatching the given `cmd` through
+    /// differents method.
+    ///
+    /// # Error management
+    /// The `Result` here is managed in the main loop that will make the node
+    /// stop.
     ///
     /// # Argument
     /// * cmd: command to process
@@ -554,4 +510,127 @@ impl ExecutionWorker {
 
         Ok(())
     }
+}
+
+/// Start the vm thread that will loop and pop `ExecutionRequest` from the
+/// `execution_queue`.
+///
+/// The ExecutionRequest are in a FIFO queue that are poped by another thread
+/// and ask in a separated thread (to a `vm` object See `vm.rs`) to execute it.
+///
+/// * `RunFinalStep`
+/// Add a new change in the `context.ledger_change` with the result from
+/// new final items in the ledger. Prune the `final_events` in the vm object
+/// that overflow the max value defined by `cfg.settings.max_final_events`.
+/// See `vm.run_final_step()`
+///
+/// * `RunActiveStep`
+/// Add in the vm a new `StepHistoryItem` without moving the ledger in the
+/// context.
+///
+/// * `RunReadOnly`
+/// Execute request without saving any ledger_changes
+///
+/// * `ResetToFinalState`
+/// Clear the non-final steps history, required each time the blockclique
+/// change. Each blockclick modification suppose that the vm `ledger_changes`
+/// are obsoletes.
+///
+/// * `GetSCOutputEvents`
+/// Write in the given mpsc the current events contained in the vm.
+///
+/// * `Shutdown`
+/// Send to the vm to stop reading inputs, called only by the execution worker,
+/// when his main loop is close (See `self.run_loop()`)
+///
+/// * `GetSCELedgerForAddresses`
+/// Send a the SCELedgerInfo, get the sce ledger entry from the vm.
+fn run_vm_thread(
+    cfg: ExecutionConfigs,
+    bootstrap_ledger: Option<(SCELedger, Slot)>,
+    execution_queue: ExecutionQueue,
+) -> Result<JoinHandle<()>, ExecutionError> {
+    // Init VM
+    let mut vm = VM::new(cfg.clone(), bootstrap_ledger)?;
+
+    // Start VM thread
+    Ok(thread::spawn(move || {
+        let (lock, condvar) = &*execution_queue;
+        let mut requests = lock.lock().unwrap();
+        // Run until shutdown.
+        loop {
+            match requests.pop_front() {
+                Some(ExecutionRequest::RunFinalStep(step)) => {
+                    vm.run_final_step(step, cfg.settings.max_final_events);
+                }
+                Some(ExecutionRequest::RunActiveStep(step)) => {
+                    vm.run_active_step(step);
+                }
+                Some(ExecutionRequest::RunReadOnly {
+                    slot,
+                    max_gas,
+                    simulated_gas_price,
+                    bytecode,
+                    result_sender,
+                    address,
+                }) => {
+                    vm.run_read_only(
+                        slot,
+                        max_gas,
+                        simulated_gas_price,
+                        bytecode,
+                        address,
+                        result_sender,
+                    );
+                }
+                Some(ExecutionRequest::ResetToFinalState) => vm.reset_to_final(),
+                Some(ExecutionRequest::GetBootstrapState { response_tx }) => {
+                    let FinalLedger { ledger, slot } = vm.get_bootstrap_state();
+                    let bootstrap_state = BootstrapExecutionState {
+                        final_ledger: ledger,
+                        final_slot: slot,
+                    };
+                    if response_tx.send(bootstrap_state).is_err() {
+                        debug!("execution: could not send get_bootstrap_state answer");
+                    }
+                }
+                Some(ExecutionRequest::GetSCOutputEvents {
+                    start,
+                    end,
+                    emitter_address,
+                    original_caller_address,
+                    original_operation_id,
+                    response_tx,
+                }) => {
+                    if response_tx
+                        .send(vm.get_filtered_sc_output_event(
+                            start,
+                            end,
+                            emitter_address,
+                            original_caller_address,
+                            original_operation_id,
+                        ))
+                        .is_err()
+                    {
+                        debug!("execution: could not send get_sc_output_event_by_caller_address answer");
+                    }
+                }
+                Some(ExecutionRequest::Shutdown) => return,
+                Some(ExecutionRequest::GetSCELedgerForAddresses {
+                    addresses,
+                    response_tx,
+                }) => {
+                    let res = vm.get_sce_ledger_entry_for_addresses(addresses);
+                    if response_tx.send(res).is_err() {
+                        debug!("execution: could not send GetSCELedgerForAddresses response")
+                    }
+                }
+                None => {
+                    /* Condvar can self lock/unlock and the current line
+                    robustify the behavior by ignoring it */
+                    requests = condvar.wait(requests).unwrap();
+                }
+            };
+        }
+    }))
 }

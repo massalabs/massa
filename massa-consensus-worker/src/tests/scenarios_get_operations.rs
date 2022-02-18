@@ -1,13 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::tools::*;
-use massa_consensus_exports::tools::*;
+use massa_consensus_exports::ConsensusConfig;
 
 use massa_graph::{ledger::LedgerSubset, BootstrapableGraph};
-use massa_models::clique::Clique;
-use massa_models::ledger_models::LedgerData;
 use massa_models::{
-    Address, Amount, BlockId, Operation, OperationSearchResult, OperationSearchResultStatus, Slot,
+    clique::Clique, ledger_models::LedgerData, Amount, BlockId, Operation, OperationSearchResult,
+    OperationSearchResultStatus, Slot,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
@@ -24,47 +23,21 @@ async fn test_get_operation() {
     //     .timestamp(stderrlog::Timestamp::Millisecond)
     //     .init()
     //     .unwrap();
-    let thread_count = 2;
+    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
+    let cfg = ConsensusConfig {
+        t0: 1000.into(),
+        operation_validity_periods: 10,
+        max_operations_per_block: 50,
+        genesis_timestamp: MassaTime::now()
+            .unwrap()
+            .saturating_sub(MassaTime::from(32000).checked_mul(4).unwrap())
+            .saturating_add(300.into()),
+        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+    };
     // define addresses use for the test
     // addresses a and b both in thread 0
-    let mut priv_a = generate_random_private_key();
-    let mut pubkey_a = derive_public_key(&priv_a);
-    let mut address_a = Address::from_public_key(&pubkey_a);
-    while 0 != address_a.get_thread(thread_count) {
-        priv_a = generate_random_private_key();
-        pubkey_a = derive_public_key(&priv_a);
-        address_a = Address::from_public_key(&pubkey_a);
-    }
-    assert_eq!(0, address_a.get_thread(thread_count));
-
-    let mut priv_b = generate_random_private_key();
-    let mut pubkey_b = derive_public_key(&priv_b);
-    let mut address_b = Address::from_public_key(&pubkey_b);
-    while 0 != address_b.get_thread(thread_count) {
-        priv_b = generate_random_private_key();
-        pubkey_b = derive_public_key(&priv_b);
-        address_b = Address::from_public_key(&pubkey_b);
-    }
-    assert_eq!(0, address_b.get_thread(thread_count));
-
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-
-    cfg.t0 = 1000.into();
-    cfg.delta_f0 = 32;
-    cfg.thread_count = thread_count;
-    cfg.operation_validity_periods = 10;
-    cfg.operation_batch_size = 3;
-    cfg.max_operations_per_block = 50;
-    cfg.disable_block_creation = true;
-
+    let (address_a, priv_a, pubkey_a) = random_address_on_thread(0, cfg.thread_count).into();
+    let (address_b, _, _) = random_address_on_thread(0, cfg.thread_count).into();
     // to avoid timing pb for block in the future
 
     let op1 = create_transaction(priv_a, pubkey_a, address_b, 1, 10, 1);
@@ -93,11 +66,6 @@ async fn test_get_operation() {
         boot_ledger,
     );
     // there is only one node so it should be drawn at every slot
-
-    cfg.genesis_timestamp = MassaTime::now()
-        .unwrap()
-        .saturating_sub(cfg.t0.checked_mul(4).unwrap())
-        .saturating_add(300.into());
 
     consensus_pool_test(
         cfg.clone(),

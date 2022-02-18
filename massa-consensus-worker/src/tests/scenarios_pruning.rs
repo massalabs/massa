@@ -1,28 +1,21 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use super::tools::*;
-use massa_consensus_exports::tools::*;
+use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::{BlockId, Slot};
 use massa_signature::{generate_random_private_key, PrivateKey};
 use serial_test::serial;
-use std::collections::HashMap;
 
 #[tokio::test]
 #[serial]
 async fn test_pruning_of_discarded_blocks() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 1000.into();
-    cfg.future_block_processing_max_periods = 50;
-    cfg.max_future_processing_blocks = 10;
+    let cfg = ConsensusConfig {
+        t0: 1000.into(),
+        future_block_processing_max_periods: 50,
+        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+    };
 
     consensus_without_pool_test(
         cfg.clone(),
@@ -70,18 +63,12 @@ async fn test_pruning_of_discarded_blocks() {
 #[tokio::test]
 #[serial]
 async fn test_pruning_of_awaiting_slot_blocks() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 1000.into();
-    cfg.future_block_processing_max_periods = 50;
-    cfg.max_future_processing_blocks = 10;
+    let cfg = ConsensusConfig {
+        t0: 1000.into(),
+        future_block_processing_max_periods: 50,
+        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+    };
 
     consensus_without_pool_test(
         cfg.clone(),
@@ -128,19 +115,12 @@ async fn test_pruning_of_awaiting_slot_blocks() {
 #[tokio::test]
 #[serial]
 async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
     let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 200.into();
-    cfg.future_block_processing_max_periods = 50;
-    cfg.max_future_processing_blocks = 10;
+    let cfg = ConsensusConfig {
+        t0: 200.into(),
+        future_block_processing_max_periods: 50,
+        ..ConsensusConfig::default_with_staking_keys(&staking_keys)
+    };
 
     consensus_without_pool_test(
         cfg.clone(),

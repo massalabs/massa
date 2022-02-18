@@ -3,8 +3,6 @@
 use massa_time::MassaTime;
 use serde::Deserialize;
 
-pub const CHANNEL_SIZE: usize = 256;
-
 /// Protocol Configuration
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct ProtocolSettings {

@@ -1,20 +1,22 @@
-use crate::error::bootstrap_file_error;
-use crate::interface_impl::InterfaceImpl;
-use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges};
 use crate::types::{
     EventStore, ExecutionContext, ExecutionData, ExecutionStep, StackElement, StepHistory,
     StepHistoryItem,
 };
-use crate::{config::ExecutionConfigs, ExecutionError};
-use massa_models::api::SCELedgerInfo;
-use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Map;
-use massa_models::timeslots::{get_latest_block_slot_at_timestamp, slot_count_in_range};
-use massa_models::{
-    execution::{ExecuteReadOnlyResponse, ReadOnlyResult},
-    Address, Amount, BlockId, Slot,
+use crate::{error::bootstrap_file_error, AMOUNT_ZERO};
+use crate::{
+    interface_impl::InterfaceImpl,
+    sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges},
 };
-use massa_models::{OperationId, AMOUNT_ZERO};
+use crate::{settings::ExecutionConfigs, ExecutionError};
+
+use massa_models::{
+    api::SCELedgerInfo,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyResult},
+    output_event::SCOutputEvent,
+    prehash::Map,
+    timeslots::{get_latest_block_slot_at_timestamp, slot_count_in_range},
+    Address, Amount, BlockId, OperationId, Slot,
+};
 use massa_sc_runtime::Interface;
 use massa_signature::{derive_public_key, generate_random_private_key};
 use massa_time::MassaTime;
@@ -182,6 +184,11 @@ impl VM {
     /// runs an SCE-final execution step
     /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
     ///
+    /// If the node has already compute the bytecodes and found corresponding
+    /// `ledger_changes`, use it, clear step history and run the `step` again
+    /// otherwise.
+    ///
+    /// Prune old `final_events` if `max_final_events` overflow
     /// # Parameters
     ///   * step: execution step to run
     ///   * max_final_events: max number of events kept in cache (todo should be removed when config become static)
@@ -314,6 +321,12 @@ impl VM {
     }
 
     /// Run code in read-only mode
+    /// Same as `run_step_internal()` but don't save ledger_changes.
+    /// Execute a `bytecode` with an `address` as sender context and a
+    /// `simulated_gas_price` with some input parameters as context.
+    ///
+    /// As resulted and send a `ExecuteReadOnlyResponse` through the result
+    /// sender.
     pub(crate) fn run_read_only(
         &self,
         slot: Slot,
@@ -484,6 +497,12 @@ impl VM {
 
     /// runs an SCE-active execution step
     /// See https://github.com/massalabs/massa/wiki/vm_ledger_interaction
+    ///
+    /// Truncate the history by the number of slots between last added step in
+    /// `step_history` and the `step` in parameter. (todo: explain why)
+    ///
+    /// Call the internal `run_step_internal()` and push the `StepHistoryItem`
+    /// into `self.step_history`.
     ///
     /// # Parameters
     ///   * step: execution step to run

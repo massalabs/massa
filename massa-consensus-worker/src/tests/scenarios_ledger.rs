@@ -8,14 +8,14 @@ use super::{
 use crate::start_consensus_controller;
 
 use super::tools::*;
-use massa_consensus_exports::tools::*;
+use massa_consensus_exports::ConsensusConfig;
 
 use massa_consensus_exports::settings::ConsensusChannels;
-use massa_graph::ledger::Ledger;
+use massa_graph::{ledger::Ledger, LedgerConfig};
 use massa_models::ledger_models::LedgerData;
 use massa_models::ledger_models::{LedgerChange, LedgerChanges};
-use massa_models::{Address, Amount, Slot};
-use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
+use massa_models::{Amount, Slot};
+use massa_signature::PrivateKey;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -24,32 +24,16 @@ use std::str::FromStr;
 #[tokio::test]
 #[serial]
 async fn test_ledger_init() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys);
-    let cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    let ledger = Ledger::new((&cfg).into(), None);
+    let cfg = ConsensusConfig::default_with_paths();
+    let ledger = Ledger::new(LedgerConfig::from(&cfg), None);
     assert!(ledger.is_ok());
 }
 
 #[tokio::test]
 #[serial]
 async fn test_ledger_initializes_get_latest_final_periods() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys);
-    let cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    let ledger = Ledger::new((&cfg).into(), None).unwrap();
+    let cfg = ConsensusConfig::default_with_paths();
+    let ledger = Ledger::new(LedgerConfig::from(&cfg), None).unwrap();
 
     for latest_final in ledger
         .get_latest_final_periods()
@@ -62,20 +46,10 @@ async fn test_ledger_initializes_get_latest_final_periods() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_final_balance_increment_new_address() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys);
-    let cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    let ledger = Ledger::new((&cfg).into(), None).unwrap();
+    let cfg = ConsensusConfig::default_with_paths();
+    let ledger = Ledger::new(LedgerConfig::from(&cfg), None).unwrap();
 
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key);
+    let address = random_address().address;
     let thread = address.get_thread(cfg.thread_count);
 
     let changes = LedgerChanges(
@@ -109,20 +83,10 @@ async fn test_ledger_final_balance_increment_new_address() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_final_balance_increment_address_above_max() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys);
-    let cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    let ledger = Ledger::new((&cfg).into(), None).unwrap();
+    let cfg = ConsensusConfig::default_with_paths();
+    let ledger = Ledger::new(LedgerConfig::from(&cfg), None).unwrap();
 
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key);
+    let address = random_address().address;
     let thread = address.get_thread(cfg.thread_count);
 
     let changes = LedgerChanges(
@@ -169,20 +133,10 @@ async fn test_ledger_final_balance_increment_address_above_max() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys);
-    let cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    let ledger = Ledger::new((&cfg).into(), None).unwrap();
+    let cfg = ConsensusConfig::default_with_paths();
+    let ledger = Ledger::new(LedgerConfig::from(&cfg), None).unwrap();
 
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key);
+    let address = random_address().address;
     let thread = address.get_thread(cfg.thread_count);
 
     // Increment.
@@ -242,20 +196,10 @@ async fn test_ledger_final_balance_decrement_address_balance_to_zero() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_final_balance_decrement_address_below_zero() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys);
-    let cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    let ledger = Ledger::new((&cfg).into(), None).unwrap();
+    let cfg = ConsensusConfig::default_with_paths();
+    let ledger = Ledger::new(LedgerConfig::from(&cfg), None).unwrap();
 
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key);
+    let address = random_address().address;
     let thread = address.get_thread(cfg.thread_count);
 
     // Increment.
@@ -329,20 +273,10 @@ async fn test_ledger_final_balance_decrement_address_below_zero() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_final_balance_decrement_non_existing_address() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys);
-    let cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    let ledger = Ledger::new((&cfg).into(), None).unwrap();
+    let cfg = ConsensusConfig::default_with_paths();
+    let ledger = Ledger::new(LedgerConfig::from(&cfg), None).unwrap();
 
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key);
+    let address = random_address().address;
     let thread = address.get_thread(cfg.thread_count);
 
     // Decrement.
@@ -363,20 +297,10 @@ async fn test_ledger_final_balance_decrement_non_existing_address() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_final_balance_non_existing_address() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys);
-    let cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    let ledger = Ledger::new((&cfg).into(), None).unwrap();
+    let cfg = ConsensusConfig::default_with_paths();
+    let ledger = Ledger::new(LedgerConfig::from(&cfg), None).unwrap();
 
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key);
+    let address = random_address().address;
 
     let final_datas = ledger
         .get_final_data(vec![address].into_iter().collect())
@@ -391,20 +315,10 @@ async fn test_ledger_final_balance_non_existing_address() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_final_balance_duplicate_address() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    let ledger = Ledger::new((&cfg).into(), None).unwrap();
+    let cfg = ConsensusConfig::default_with_paths();
+    let ledger = Ledger::new(LedgerConfig::from(&cfg), None).unwrap();
 
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key);
+    let address = random_address().address;
 
     // Same address twice.
     let final_datas = ledger
@@ -423,23 +337,12 @@ async fn test_ledger_final_balance_duplicate_address() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_final_balance_multiple_addresses() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys);
-    let cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    let ledger = Ledger::new((&cfg).into(), None).unwrap();
+    let cfg = ConsensusConfig::default_with_paths();
+    let ledger = Ledger::new(LedgerConfig::from(&cfg), None).unwrap();
 
     let mut addresses = vec![];
     for _ in 0..5 {
-        let private_key = generate_random_private_key();
-        let public_key = derive_public_key(&private_key);
-        let address = Address::from_public_key(&public_key);
-        addresses.push(address);
+        addresses.push(random_address().address);
     }
 
     let final_datas = ledger
@@ -460,20 +363,10 @@ async fn test_ledger_final_balance_multiple_addresses() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_clear() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys);
-    let cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    let ledger = Ledger::new((&cfg).into(), None).unwrap();
+    let cfg = ConsensusConfig::default_with_paths();
+    let ledger = Ledger::new(LedgerConfig::from(&cfg), None).unwrap();
 
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key);
+    let address = random_address().address;
     let thread = address.get_thread(cfg.thread_count);
 
     let changes = LedgerChanges(
@@ -518,20 +411,10 @@ async fn test_ledger_clear() {
 #[tokio::test]
 #[serial]
 async fn test_ledger_read_whole() {
-    let ledger_file = generate_ledger_file(&HashMap::new());
-    let staking_keys: Vec<PrivateKey> = (0..1).map(|_| generate_random_private_key()).collect();
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys);
-    let cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    let ledger = Ledger::new((&cfg).into(), None).unwrap();
+    let cfg = ConsensusConfig::default_with_paths();
+    let ledger = Ledger::new(LedgerConfig::from(&cfg), None).unwrap();
 
-    let private_key = generate_random_private_key();
-    let public_key = derive_public_key(&private_key);
-    let address = Address::from_public_key(&public_key);
+    let address = random_address().address;
     let thread = address.get_thread(cfg.thread_count);
 
     let changes = LedgerChanges(
@@ -577,46 +460,9 @@ async fn test_ledger_read_whole() {
 #[serial]
 async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     let thread_count = 2;
-
-    let mut private_key_1;
-    let mut public_key_1;
-    let mut address_1;
-
-    let mut private_key_2;
-    let mut public_key_2;
-    let mut address_2;
-
-    let mut private_key_3;
-    let mut public_key_3;
-    let mut address_3;
-
-    loop {
-        // A
-        private_key_1 = generate_random_private_key();
-        public_key_1 = derive_public_key(&private_key_1);
-        address_1 = Address::from_public_key(&public_key_1);
-        if address_1.get_thread(thread_count) == 0 {
-            break;
-        }
-    }
-    loop {
-        // B
-        private_key_2 = generate_random_private_key();
-        public_key_2 = derive_public_key(&private_key_2);
-        address_2 = Address::from_public_key(&public_key_2);
-        if address_2.get_thread(thread_count) == 1 {
-            break;
-        }
-    }
-    loop {
-        // C
-        private_key_3 = generate_random_private_key();
-        public_key_3 = derive_public_key(&private_key_3);
-        address_3 = Address::from_public_key(&public_key_3);
-        if address_3.get_thread(thread_count) == 0 {
-            break;
-        }
-    }
+    let (address_1, private_key_1, public_key_1) = random_address_on_thread(0, thread_count).into();
+    let (address_2, private_key_2, public_key_2) = random_address_on_thread(1, thread_count).into();
+    let (address_3, _, _) = random_address_on_thread(0, thread_count).into();
 
     // Ledger at genesis:
     //
@@ -635,23 +481,17 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
         address_2,
         LedgerData::new(Amount::from_str("3000").unwrap()),
     );
-
-    let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<PrivateKey> = vec![private_key_1];
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 1000.into();
-    cfg.genesis_timestamp = MassaTime::now()
-        .unwrap()
-        .saturating_sub(cfg.t0.checked_mul(10).unwrap());
-    cfg.delta_f0 = 4;
-    cfg.block_reward = Amount::from_str("1").unwrap();
-    cfg.operation_validity_periods = 20;
+
+    let cfg = ConsensusConfig {
+        t0: 1000.into(),
+        genesis_timestamp: MassaTime::now()
+            .unwrap()
+            .saturating_sub(MassaTime::from(1000).checked_mul(10).unwrap()),
+        delta_f0: 4,
+        operation_validity_periods: 20,
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(&staking_keys, &ledger)
+    };
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =

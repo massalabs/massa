@@ -3,15 +3,12 @@
 use massa_execution::{
     ExecutionCommand, ExecutionCommandSender, ExecutionEvent, ExecutionEventReceiver,
 };
-use massa_models::prehash::Map;
-use massa_models::{Block, BlockId};
+use massa_models::{constants::CHANNEL_SIZE, prehash::Map, Block, BlockId};
 use massa_time::MassaTime;
 use tokio::{
     sync::mpsc::{channel, unbounded_channel, Receiver, Sender, UnboundedSender},
     time::sleep,
 };
-
-const CHANNEL_SIZE: usize = 256;
 
 #[allow(dead_code)]
 pub struct MockExecutionController {

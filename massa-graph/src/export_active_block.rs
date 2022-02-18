@@ -1,6 +1,7 @@
 use crate::error::{GraphError, GraphResult as Result};
 use massa_models::{
     active_block::ActiveBlock,
+    constants::*,
     ledger_models::{LedgerChange, LedgerChanges},
     prehash::{BuildMap, Map, Set},
     rolls::{RollUpdate, RollUpdates},
@@ -198,7 +199,7 @@ impl DeserializeCompact for ExportActiveBlock {
         let (parent_count, max_bootstrap_children, max_bootstrap_deps, max_bootstrap_pos_entries) =
             with_serialization_context(|context| {
                 (
-                    context.parent_count,
+                    context.thread_count,
                     context.max_bootstrap_children,
                     context.max_bootstrap_deps,
                     context.max_bootstrap_pos_entries,

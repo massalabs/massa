@@ -1,14 +1,13 @@
-use crate::config::{ExecutionConfigs, CHANNEL_SIZE};
 use crate::error::ExecutionError;
+use crate::settings::ExecutionConfigs;
 use crate::worker::{
     ExecutionCommand, ExecutionEvent, ExecutionManagementCommand, ExecutionWorker,
 };
 use crate::BootstrapExecutionState;
-use massa_models::api::SCELedgerInfo;
-use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Map;
-use massa_models::OperationId;
-use massa_models::{execution::ExecuteReadOnlyResponse, Address, Amount, Block, BlockId, Slot};
+use massa_models::{
+    api::SCELedgerInfo, constants::CHANNEL_SIZE, execution::ExecuteReadOnlyResponse,
+    output_event::SCOutputEvent, prehash::Map, Address, Amount, Block, BlockId, OperationId, Slot,
+};
 use std::collections::VecDeque;
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
@@ -57,10 +56,6 @@ impl ExecutionManager {
 ///
 /// # Arguments
 /// * cfg: execution configuration
-/// * thread_count: number of threads
-/// * genesis_timestamp: genesis timestamp
-/// * t0: period duration
-/// * clock_compensation: clock compensation in milliseconds
 /// * bootstrap_state: optional bootstrap state
 ///
 /// TODO: add a consensus command sender,
