@@ -4,6 +4,8 @@ use std::path::PathBuf;
 /// VM module configuration
 #[derive(Debug, Clone)]
 pub struct VMConfig {
+    /// read-only execution request queue length
+    pub readonly_queue_length: usize,
     /// Initial SCE ledger file
     pub initial_sce_ledger_path: PathBuf,
     /// maximum number of SC output events kept in cache

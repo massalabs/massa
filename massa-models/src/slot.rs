@@ -42,6 +42,22 @@ impl Slot {
         Slot { period, thread }
     }
 
+    /// returns the minimal slot
+    pub const fn min() -> Slot {
+        Slot {
+            period: 0,
+            thread: 0,
+        }
+    }
+
+    /// returns the maximal slot
+    pub const fn max() -> Slot {
+        Slot {
+            period: u64::MAX,
+            thread: u8::MAX,
+        }
+    }
+
     pub fn get_first_bit(&self) -> bool {
         Hash::compute_from(&self.to_bytes_key()).to_bytes()[0] >> 7 == 1
     }

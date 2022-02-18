@@ -1,9 +1,12 @@
+use crate::config::VMConfig;
 use crate::execution::ExecutionState;
 use crate::types::ExecutionOutput;
 use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
 use massa_ledger::LedgerEntry;
+use massa_models::output_event::SCOutputEvent;
 use massa_models::Address;
+use massa_models::OperationId;
 use massa_models::{Block, BlockId, Slot};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{mpsc, Arc, Condvar, Mutex, RwLock};
@@ -29,6 +32,8 @@ pub(crate) struct VMInputData {
 
 /// VM controller
 pub struct VMController {
+    /// VM config
+    pub(crate) config: VMConfig,
     /// condition variable to wake up the VM loop
     pub(crate) loop_cv: Condvar,
     /// input data to process in the VM loop
@@ -42,6 +47,32 @@ impl VMController {
     /// if found, remove from input queue
     pub(crate) fn consume_input(&mut self) -> VMInputData {
         std::mem::take(&mut self.input_data.lock().expect("VM input data lock failed"))
+    }
+
+    /// Get events optionnally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    pub fn get_filtered_sc_output_event(
+        &self,
+        start: Option<Slot>,
+        end: Option<Slot>,
+        emitter_address: Option<Address>,
+        original_caller_address: Option<Address>,
+        original_operation_id: Option<OperationId>,
+    ) -> Vec<SCOutputEvent> {
+        self.execution_state
+            .read()
+            .expect("could not lock execution state for reading")
+            .get_filtered_sc_output_event(
+                start,
+                end,
+                emitter_address,
+                original_caller_address,
+                original_operation_id,
+            )
     }
 
     /// gets a copy of a full ledger entry
@@ -62,7 +93,6 @@ impl VMController {
     pub fn execute_readonly_request(
         &mut self,
         req: ReadOnlyExecutionRequest,
-        max_queue_length: usize,
     ) -> Result<ExecutionOutput, ExecutionError> {
         // queue request
         let resp_rx = {
@@ -70,7 +100,7 @@ impl VMController {
                 .input_data
                 .lock()
                 .expect("could not lock VM input data");
-            if input_data.readonly_requests.len() > max_queue_length {
+            if input_data.readonly_requests.len() >= self.config.readonly_queue_length {
                 return Err(ExecutionError::RuntimeError(
                     "too many queued readonly requests".into(),
                 ));

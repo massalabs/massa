@@ -421,6 +421,7 @@ pub fn start_vm(config: VMConfig, final_ledger: Arc<RwLock<FinalLedger>>) -> VMM
 
     // create a controller
     let controller = Arc::new(VMController {
+        config: config.clone(),
         loop_cv: Condvar::new(),
         input_data: Mutex::new(VMInputData {
             blockclique_changed: true,

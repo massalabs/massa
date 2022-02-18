@@ -5,7 +5,9 @@ use crate::interface_impl::InterfaceImpl;
 use crate::types::{ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest};
 use crate::ExecutionError;
 use massa_ledger::{Applicable, FinalLedger, LedgerChanges, LedgerEntry, SetUpdateOrDelete};
-use massa_models::{Address, BlockId, Operation, OperationType};
+use massa_models::output_event::SCOutputEvent;
+use massa_models::timeslots::get_current_latest_block_slot;
+use massa_models::{Address, BlockId, Operation, OperationId, OperationType};
 use massa_models::{Block, Slot};
 use massa_sc_runtime::Interface;
 use std::{
@@ -373,5 +375,50 @@ impl ExecutionState {
         };
 
         (final_entry, active_entry)
+    }
+
+    /// Get events optionnally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
+    pub fn get_filtered_sc_output_event(
+        &self,
+        start: Option<Slot>,
+        end: Option<Slot>,
+        emitter_address: Option<Address>,
+        original_caller_address: Option<Address>,
+        original_operation_id: Option<OperationId>,
+    ) -> Vec<SCOutputEvent> {
+        // iter on step history chained with final events
+        let start = start.unwrap_or_else(|| Slot::min());
+        let end = end.unwrap_or_else(|| Slot::max());
+        self.final_events
+            .get_filtered_sc_output_event(
+                start,
+                end,
+                emitter_address,
+                original_caller_address,
+                original_operation_id,
+            )
+            .into_iter()
+            .chain(
+                // TODO note that active history is made of consecutive slots,
+                // so this algo does not need to scan all history items as iteation bounds can be derived a priori
+                self.active_history
+                    .iter()
+                    .filter(|item| item.slot >= start && item.slot < end)
+                    .flat_map(|item| {
+                        item.events.get_filtered_sc_output_event(
+                            start,
+                            end,
+                            emitter_address,
+                            original_caller_address,
+                            original_operation_id,
+                        )
+                    }),
+            )
+            .collect()
     }
 }
