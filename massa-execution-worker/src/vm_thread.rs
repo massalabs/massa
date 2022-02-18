@@ -420,7 +420,7 @@ impl VMThread {
 /// # parameters
 /// * config: VM configuration
 /// * bootstrap:
-pub fn start_vm(
+pub fn start_execution_worker(
     config: ExecutionConfig,
     final_ledger: Arc<RwLock<FinalLedger>>,
 ) -> ExecutionManagerImpl {

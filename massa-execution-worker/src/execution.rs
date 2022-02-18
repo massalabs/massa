@@ -122,7 +122,7 @@ impl ExecutionState {
         for (hist_index, exec_output) in self.active_history.iter().enumerate() {
             let found_block_id = active_slots
                 .get(&exec_output.slot)
-                .map(|opt_b| opt_b.as_ref().map(|(b_id, b)| *b_id));
+                .map(|opt_b| opt_b.as_ref().map(|(b_id, _b)| *b_id));
             if found_block_id == Some(exec_output.block_id) {
                 continue;
             }
@@ -178,7 +178,7 @@ impl ExecutionState {
     ) -> Result<(), ExecutionError> {
         // process ExecuteSC operations only
         let (bytecode, max_gas, coins, gas_price) = match &operation.content.op {
-            op @ OperationType::ExecuteSC {
+            OperationType::ExecuteSC {
                 data,
                 max_gas,
                 coins,
@@ -270,7 +270,6 @@ impl ExecutionState {
         let execution_context = ExecutionContext::new_active_slot(
             slot,
             opt_block_id,
-            opt_block_creator_addr,
             previous_ledger_changes,
             self.final_ledger.clone(),
         );

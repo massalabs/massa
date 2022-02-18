@@ -12,7 +12,8 @@ use massa_consensus_exports::{
     ConsensusEventReceiver, ConsensusManager,
 };
 use massa_consensus_worker::start_consensus_controller;
-use massa_execution::{ExecutionConfigs, ExecutionManager};
+use massa_execution_exports::{ExecutionConfig, ExecutionManager};
+use massa_execution_worker::start_execution_worker;
 
 use massa_logging::massa_trace;
 use massa_models::{init_serialization_context, SerializationContext};

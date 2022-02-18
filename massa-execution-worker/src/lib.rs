@@ -8,7 +8,7 @@ mod interface_impl;
 mod speculative_ledger;
 mod vm_thread;
 
-pub use vm_thread::start_vm;
+pub use vm_thread::start_execution_worker;
 
 #[cfg(test)]
 mod tests;

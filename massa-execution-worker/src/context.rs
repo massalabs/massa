@@ -51,9 +51,6 @@ pub(crate) struct ExecutionContext {
     /// block ID, if one is present at this slot
     pub opt_block_id: Option<BlockId>,
 
-    /// block creator addr, if there is a block at this slot
-    pub opt_block_creator_addr: Option<Address>,
-
     /// address call stack, most recent is at the back
     pub stack: Vec<ExecutionStackElement>,
 
@@ -83,7 +80,6 @@ impl ExecutionContext {
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
             opt_block_id: Default::default(),
-            opt_block_creator_addr: Default::default(),
             stack: Default::default(),
             read_only: Default::default(),
             events: Default::default(),
@@ -144,7 +140,6 @@ impl ExecutionContext {
     pub(crate) fn new_active_slot(
         slot: Slot,
         opt_block_id: Option<BlockId>,
-        opt_block_creator_addr: Option<Address>,
         previous_changes: LedgerChanges,
         final_ledger: Arc<RwLock<FinalLedger>>,
     ) -> Self {
@@ -161,7 +156,6 @@ impl ExecutionContext {
         ExecutionContext {
             slot,
             opt_block_id,
-            opt_block_creator_addr,
             unsafe_rng,
             ..ExecutionContext::new(final_ledger, previous_changes)
         }

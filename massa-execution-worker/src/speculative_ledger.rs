@@ -46,11 +46,6 @@ impl SpeculativeLedger {
         self.added_changes = snapshot;
     }
 
-    /// consumes Self to get added changes
-    pub fn into_added_changes(self) -> LedgerChanges {
-        self.added_changes
-    }
-
     /// gets the parallel balance of an address
     pub fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
         // try to read from added_changes, then previous_changes, then final_ledger
@@ -153,6 +148,7 @@ impl SpeculativeLedger {
 
     /// sets the bytecode of an address
     /// fails if the address doesn't exist
+    #[allow(dead_code)] // TODO remove when it is used
     pub fn set_bytecode(&mut self, addr: Address, bytecode: Vec<u8>) -> Result<(), ExecutionError> {
         // check for existence
         if !self.entry_exists(&addr) {

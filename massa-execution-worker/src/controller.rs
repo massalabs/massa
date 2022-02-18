@@ -115,9 +115,10 @@ impl ExecutionController for ExecutionControllerImpl {
         match resp_rx.recv() {
             Ok(result) => return result,
             Err(err) => {
-                return Err(ExecutionError::RuntimeError(
-                    "the VM input channel is closed".into(),
-                ))
+                return Err(ExecutionError::RuntimeError(format!(
+                    "the VM input channel failed: {}",
+                    err
+                )))
             }
         }
     }
