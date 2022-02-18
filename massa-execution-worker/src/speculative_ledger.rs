@@ -1,4 +1,4 @@
-use crate::ExecutionError;
+use massa_execution_exports::ExecutionError;
 use massa_hash::hash::Hash;
 use massa_ledger::{Applicable, FinalLedger, LedgerChanges};
 use massa_models::{Address, Amount, AMOUNT_ZERO};
@@ -143,7 +143,7 @@ impl SpeculativeLedger {
 
     /// creates a new smart contract address with initial bytecode
     pub fn create_new_sc_address(
-        &self,
+        &mut self,
         addr: Address,
         bytecode: Vec<u8>,
     ) -> Result<(), ExecutionError> {
@@ -153,7 +153,7 @@ impl SpeculativeLedger {
 
     /// sets the bytecode of an address
     /// fails if the address doesn't exist
-    pub fn set_bytecode(&self, addr: Address, bytecode: Vec<u8>) -> Result<(), ExecutionError> {
+    pub fn set_bytecode(&mut self, addr: Address, bytecode: Vec<u8>) -> Result<(), ExecutionError> {
         // check for existence
         if !self.entry_exists(&addr) {
             return Err(ExecutionError::RuntimeError(format!(
@@ -197,7 +197,7 @@ impl SpeculativeLedger {
     /// sets an entry for an address
     /// fails if the address doesn't exist
     pub fn set_data_entry(
-        &self,
+        &mut self,
         addr: &Address,
         key: Hash,
         data: Vec<u8>,

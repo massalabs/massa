@@ -1,10 +1,11 @@
 mod config;
-mod controller;
-mod types;
+mod controller_traits;
 mod error;
+mod event_store;
+mod types;
 
 pub use config::ExecutionConfig;
-pub use types::{ExecutionOutput, ReadOnlyExecutionRequest};
+pub use controller_traits::{ExecutionController, ExecutionManager};
 pub use error::ExecutionError;
-pub use controller::ExecutionController;
-
+pub use event_store::EventStore;
+pub use types::{ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest};

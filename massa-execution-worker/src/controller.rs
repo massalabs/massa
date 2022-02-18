@@ -1,8 +1,8 @@
-use crate::config::VMConfig;
 use crate::execution::ExecutionState;
-use crate::types::ExecutionOutput;
-use crate::types::ReadOnlyExecutionRequest;
-use crate::ExecutionError;
+use massa_execution_exports::{
+    ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
+    ReadOnlyExecutionRequest,
+};
 use massa_ledger::LedgerEntry;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::Address;
@@ -31,9 +31,9 @@ pub(crate) struct VMInputData {
 }
 
 /// VM controller
-pub struct ExecutionController {
+pub struct ExecutionControllerImpl {
     /// VM config
-    pub(crate) config: VMConfig,
+    pub(crate) config: ExecutionConfig,
     /// condition variable to wake up the VM loop
     pub(crate) loop_cv: Condvar,
     /// input data to process in the VM loop
@@ -42,20 +42,22 @@ pub struct ExecutionController {
     pub(crate) execution_state: Arc<RwLock<ExecutionState>>,
 }
 
-impl ExecutionController {
+impl ExecutionControllerImpl {
     /// reads the list of newly finalized blocks and the new blockclique, if there was a change
     /// if found, remove from input queue
     pub(crate) fn consume_input(&mut self) -> VMInputData {
         std::mem::take(&mut self.input_data.lock().expect("VM input data lock failed"))
     }
+}
 
+impl ExecutionController for ExecutionControllerImpl {
     /// Get events optionnally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address
     /// * original caller address
     /// * operation id
-    pub fn get_filtered_sc_output_event(
+    fn get_filtered_sc_output_event(
         &self,
         start: Option<Slot>,
         end: Option<Slot>,
@@ -79,10 +81,7 @@ impl ExecutionController {
     ///
     /// # return value
     /// * (final_entry, active_entry)
-    pub fn get_full_ledger_entry(
-        &self,
-        addr: &Address,
-    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
+    fn get_full_ledger_entry(&self, addr: &Address) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
         self.execution_state
             .read()
             .expect("could not lock execution state for reading")
@@ -90,13 +89,13 @@ impl ExecutionController {
     }
 
     /// Executes a readonly request
-    pub fn execute_readonly_request(
+    fn execute_readonly_request(
         &mut self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ExecutionOutput, ExecutionError> {
         // queue request
         let resp_rx = {
-            let input_data = self
+            let mut input_data = self
                 .input_data
                 .lock()
                 .expect("could not lock VM input data");
@@ -124,17 +123,17 @@ impl ExecutionController {
     }
 }
 
-/// VM manager
-pub struct VMManager {
+/// Execution manager
+pub struct ExecutionManagerImpl {
     /// shared reference to the VM controller
-    controller: Arc<VMController>,
+    controller: Arc<ExecutionControllerImpl>,
     /// handle used to join the VM thread
     thread_handle: std::thread::JoinHandle<()>,
 }
 
-impl VMManager {
+impl ExecutionManager for ExecutionManagerImpl {
     /// stops the VM
-    pub fn stop(self) {
+    fn stop(self) {
         info!("stopping VM controller...");
         // notify the VM thread to stop
         {
@@ -154,7 +153,7 @@ impl VMManager {
     }
 
     /// get a shared reference to the VM controller
-    pub fn get_controller(&self) -> Arc<VMController> {
+    fn get_controller(&self) -> Arc<dyn ExecutionController> {
         self.controller.clone()
     }
 }

@@ -1,9 +1,9 @@
-use crate::config::VMConfig;
 use crate::context::ExecutionContext;
-use crate::event_store::EventStore;
 use crate::interface_impl::InterfaceImpl;
-use crate::types::{ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest};
-use crate::ExecutionError;
+use massa_execution_exports::{
+    EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
+    ReadOnlyExecutionRequest,
+};
 use massa_ledger::{Applicable, FinalLedger, LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_models::output_event::SCOutputEvent;
 use massa_models::{Address, BlockId, Operation, OperationId, OperationType};
@@ -27,7 +27,7 @@ macro_rules! context_guard {
 /// structure holding consistent speculative and final execution states
 pub struct ExecutionState {
     // VM config
-    pub config: VMConfig,
+    pub config: ExecutionConfig,
     // active execution output history
     pub active_history: VecDeque<ExecutionOutput>,
     // active execution cursor
@@ -46,7 +46,7 @@ pub struct ExecutionState {
 
 impl ExecutionState {
     /// create a new execution state
-    pub fn new(config: VMConfig, final_ledger: Arc<RwLock<FinalLedger>>) -> ExecutionState {
+    pub fn new(config: ExecutionConfig, final_ledger: Arc<RwLock<FinalLedger>>) -> ExecutionState {
         // get last final slot from final ledger
         let last_final_slot = final_ledger
             .read()
@@ -172,7 +172,7 @@ impl ExecutionState {
 
     /// execute an operation in the context of a block
     pub fn execute_operation(
-        &mut self,
+        &self,
         operation: &Operation,
         block_creator_addr: Address,
     ) -> Result<(), ExecutionError> {
@@ -199,7 +199,7 @@ impl ExecutionState {
         // prepare the context
         let context_snapshot;
         {
-            let context = context_guard!(self);
+            let mut context = context_guard!(self);
 
             // credit the producer of the block B with max_gas * gas_price parallel coins
             // note that errors are deterministic and do not cancel op execution
@@ -316,6 +316,8 @@ impl ExecutionState {
         let previous_ledger_changes = self.get_accumulated_active_changes_at_slot(slot);
 
         // create readonly execution context
+        let max_gas = req.max_gas;
+        let bytecode = req.bytecode.clone();
         let execution_context = ExecutionContext::new_readonly(
             slot,
             req,
@@ -327,7 +329,7 @@ impl ExecutionState {
         *context_guard!(self) = execution_context;
 
         // run the intepreter
-        massa_sc_runtime::run(&req.bytecode, req.max_gas, &*self.execution_interface)
+        massa_sc_runtime::run(&bytecode, max_gas, &*self.execution_interface)
             .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
 
         // return the execution output

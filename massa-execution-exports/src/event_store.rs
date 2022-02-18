@@ -59,7 +59,7 @@ fn remove_from_hashmap<T: Eq + std::hash::Hash>(
 
 /// Keep all events you need with some useful indexes
 #[derive(Default, Debug, Clone)]
-pub(crate) struct EventStore {
+pub struct EventStore {
     /// maps ids to events
     id_to_event: Map<SCOutputEventId, SCOutputEvent>,
 

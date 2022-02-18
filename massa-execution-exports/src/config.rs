@@ -18,4 +18,3 @@ pub struct ExecutionConfig {
     /// period duration
     pub t0: MassaTime,
 }
-

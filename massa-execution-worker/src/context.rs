@@ -1,6 +1,7 @@
 use crate::speculative_ledger::SpeculativeLedger;
-use crate::types::{ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest};
-use crate::{event_store::EventStore, ExecutionError};
+use massa_execution_exports::{
+    EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest,
+};
 use massa_hash::hash::Hash;
 use massa_ledger::{FinalLedger, LedgerChanges};
 use massa_models::{Address, Amount, BlockId, OperationId, Slot};
@@ -232,8 +233,7 @@ impl ExecutionContext {
         //  they won't have ownership over it but this can still be a pain
 
         // generate address
-        let (slot, created_addr_index) = (self.slot, self.created_addr_index);
-        let mut data: Vec<u8> = slot.to_bytes_key().to_vec();
+        let mut data: Vec<u8> = self.slot.to_bytes_key().to_vec();
         data.append(&mut self.created_addr_index.to_be_bytes().to_vec());
         if self.read_only {
             data.push(0u8);
@@ -286,7 +286,7 @@ impl ExecutionContext {
 
     /// checks if a datastore entry exists
     pub fn set_data_entry(
-        &self,
+        &mut self,
         address: &Address,
         key: Hash,
         data: Vec<u8>,

@@ -1,10 +1,9 @@
-
 use crate::event_store::EventStore;
-use crate::sce_ledger::SCELedgerChanges;
 use massa_ledger::LedgerChanges;
 use massa_models::{Address, Amount, BlockId, Slot};
-use std::collections::VecDeque;
 
+/// structure describing the output of an execution
+#[derive(Debug, Clone)]
 pub struct ExecutionOutput {
     // slot
     pub slot: Slot,
@@ -17,6 +16,7 @@ pub struct ExecutionOutput {
 }
 
 /// structure describing a read-only execution request
+#[derive(Debug, Clone)]
 pub struct ReadOnlyExecutionRequest {
     /// Maximum gas to spend in the execution.
     pub max_gas: u64,
@@ -26,4 +26,14 @@ pub struct ReadOnlyExecutionRequest {
     pub bytecode: Vec<u8>,
     /// Call stack to simulate
     pub call_stack: Vec<ExecutionStackElement>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExecutionStackElement {
+    /// called address
+    pub address: Address,
+    /// coins transferred to the target address during a call,
+    pub coins: Amount,
+    /// list of addresses created so far during excution,
+    pub owned_addresses: Vec<Address>,
 }

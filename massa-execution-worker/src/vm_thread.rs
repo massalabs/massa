@@ -1,8 +1,8 @@
-use crate::config::VMConfig;
-use crate::controller::{VMController, VMInputData, VMManager};
+use crate::controller::{ExecutionControllerImpl, ExecutionManagerImpl, VMInputData};
 use crate::execution::ExecutionState;
-use crate::types::{ExecutionOutput, ReadOnlyExecutionRequest};
-use crate::ExecutionError;
+use massa_execution_exports::{
+    ExecutionConfig, ExecutionError, ExecutionOutput, ReadOnlyExecutionRequest,
+};
 use massa_ledger::FinalLedger;
 use massa_models::BlockId;
 use massa_models::{
@@ -19,10 +19,10 @@ use tracing::debug;
 /// structure gathering all elements needed by the VM thread
 pub struct VMThread {
     // VM config
-    config: VMConfig,
+    config: ExecutionConfig,
 
     // VM data exchange controller
-    controller: Arc<VMController>,
+    controller: Arc<ExecutionControllerImpl>,
     // map of SCE-final blocks not executed yet
     sce_finals: HashMap<Slot, Option<(BlockId, Block)>>,
     // last SCE final slot in sce_finals list
@@ -42,8 +42,8 @@ pub struct VMThread {
 
 impl VMThread {
     pub fn new(
-        config: VMConfig,
-        controller: Arc<VMController>,
+        config: ExecutionConfig,
+        controller: Arc<ExecutionControllerImpl>,
         execution_state: Arc<RwLock<ExecutionState>>,
     ) -> Self {
         let final_cursor = execution_state
@@ -239,7 +239,7 @@ impl VMThread {
     /// returns true if something was executed
     fn execute_one_active_slot(&mut self) -> bool {
         // write-lock the execution state
-        let exec_state = self
+        let mut exec_state = self
             .execution_state
             .write()
             .expect("could not lock execution state for writing");
@@ -286,7 +286,7 @@ impl VMThread {
     /// truncates history if necessary
     pub fn truncate_history(&mut self) {
         // acquire write access to execution state
-        let exec_state = self
+        let mut exec_state = self
             .execution_state
             .write()
             .expect("could not lock execution state for writing");
@@ -317,7 +317,7 @@ impl VMThread {
     pub fn main_loop(&mut self) {
         loop {
             // read input queues
-            let input_data = self.controller.consume_input();
+            let mut input_data = self.controller.consume_input();
 
             // check for stop signal
             if input_data.stop {
@@ -394,7 +394,7 @@ impl VMThread {
         }
 
         // signal cancellation to all remaining readonly requests
-        let input_data = self
+        let mut input_data = self
             .controller
             .input_data
             .lock()
@@ -412,7 +412,10 @@ impl VMThread {
 /// # parameters
 /// * config: VM configuration
 /// * bootstrap:
-pub fn start_vm(config: VMConfig, final_ledger: Arc<RwLock<FinalLedger>>) -> VMManager {
+pub fn start_vm(
+    config: ExecutionConfig,
+    final_ledger: Arc<RwLock<FinalLedger>>,
+) -> ExecutionManagerImpl {
     // create an execution state
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
@@ -420,7 +423,7 @@ pub fn start_vm(config: VMConfig, final_ledger: Arc<RwLock<FinalLedger>>) -> VMM
     )));
 
     // create a controller
-    let controller = Arc::new(VMController {
+    let controller = Arc::new(ExecutionControllerImpl {
         config: config.clone(),
         loop_cv: Condvar::new(),
         input_data: Mutex::new(VMInputData {
@@ -437,7 +440,7 @@ pub fn start_vm(config: VMConfig, final_ledger: Arc<RwLock<FinalLedger>>) -> VMM
     });
 
     // return the VM manager
-    VMManager {
+    ExecutionManagerImpl {
         controller,
         thread_handle,
     }

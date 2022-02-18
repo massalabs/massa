@@ -1,7 +1,9 @@
 /// Implementation of the interface used in the execution external library
 ///
-use crate::{config::VMConfig, context::ExecutionContext, types::ExecutionStackElement};
+use crate::context::ExecutionContext;
 use anyhow::{bail, Result};
+use massa_execution_exports::ExecutionConfig;
+use massa_execution_exports::ExecutionStackElement;
 use massa_hash::hash::Hash;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId},
@@ -25,12 +27,12 @@ macro_rules! context_guard {
 
 #[derive(Clone)]
 pub(crate) struct InterfaceImpl {
-    config: VMConfig,
+    config: ExecutionConfig,
     context: Arc<Mutex<ExecutionContext>>,
 }
 
 impl InterfaceImpl {
-    pub fn new(config: VMConfig, context: Arc<Mutex<ExecutionContext>>) -> InterfaceImpl {
+    pub fn new(config: ExecutionConfig, context: Arc<Mutex<ExecutionContext>>) -> InterfaceImpl {
         InterfaceImpl { config, context }
     }
 }
