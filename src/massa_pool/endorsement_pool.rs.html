@@ -180,10 +180,9 @@
 <span id="175">175</span>
 <span id="176">176</span>
 <span id="177">177</span>
-<span id="178">178</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">PoolError</span>, <span class="ident">PoolSettings</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">settings::PoolConfig</span>, <span class="ident">PoolError</span>};
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementContent</span>, <span class="ident">EndorsementId</span>, <span class="ident">Slot</span>};
 
@@ -191,16 +190,16 @@
     <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span>,
     <span class="ident">latest_final_periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
     <span class="ident">current_slot</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
-    <span class="ident">pool_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">PoolSettings</span>,
+    <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">PoolConfig</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">EndorsementPool</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">pool_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">PoolSettings</span>, <span class="ident">thread_count</span>: <span class="ident">u8</span>) -&gt; <span class="ident">EndorsementPool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">PoolConfig</span>) -&gt; <span class="ident">EndorsementPool</span> {
         <span class="ident">EndorsementPool</span> {
             <span class="ident">endorsements</span>: <span class="ident">Default::default</span>(),
-            <span class="ident">pool_settings</span>,
+            <span class="ident">cfg</span>,
             <span class="ident">current_slot</span>: <span class="prelude-val">None</span>,
-            <span class="ident">latest_final_periods</span>: <span class="macro">vec!</span>[<span class="number">0</span>; <span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>],
+            <span class="ident">latest_final_periods</span>: <span class="macro">vec!</span>[<span class="number">0</span>; <span class="ident">cfg</span>.<span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>],
         }
     }
 
@@ -296,9 +295,8 @@
     <span class="kw">fn</span> <span class="ident">prune</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">removed</span> <span class="op">=</span> <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="ident">::default</span>();
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">pool_settings</span>.<span class="ident">max_endorsement_count</span> <span class="kw">as</span> <span class="ident">usize</span> {
-            <span class="kw">let</span> <span class="ident">excess</span> <span class="op">=</span>
-                <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="self">self</span>.<span class="ident">pool_settings</span>.<span class="ident">max_endorsement_count</span> <span class="kw">as</span> <span class="ident">usize</span>;
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">settings</span>.<span class="ident">max_endorsement_count</span> <span class="kw">as</span> <span class="ident">usize</span> {
+            <span class="kw">let</span> <span class="ident">excess</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">settings</span>.<span class="ident">max_endorsement_count</span> <span class="kw">as</span> <span class="ident">usize</span>;
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">endorsements</span>.<span class="ident">clone</span>().<span class="ident">into_iter</span>().<span class="ident">collect</span>();
             <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">latest_final_periods</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u8</span>;
             <span class="kw">let</span> <span class="ident">current_slot_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">current_slot</span>.<span class="ident">map_or</span>(<span class="number">0u64</span>, <span class="op">|</span><span class="ident">s</span><span class="op">|</span> {
@@ -360,5 +358,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (09cb29c64 2022-02-15)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (30b3f35c4 2022-02-17)" ></div>
 </body></html>

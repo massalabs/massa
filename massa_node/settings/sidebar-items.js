@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["LoggingSettings",""],["SETTINGS",""],["Settings",""],["VERSION",""]]});
+initSidebarItems({"struct":[["LoggingSettings",""],["POOL_CONFIG",""],["SETTINGS",""],["Settings",""]]});

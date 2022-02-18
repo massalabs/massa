@@ -37,58 +37,12 @@
 <span id="32">32</span>
 <span id="33">33</span>
 <span id="34">34</span>
-<span id="35">35</span>
-<span id="36">36</span>
-<span id="37">37</span>
-<span id="38">38</span>
-<span id="39">39</span>
-<span id="40">40</span>
-<span id="41">41</span>
-<span id="42">42</span>
-<span id="43">43</span>
-<span id="44">44</span>
-<span id="45">45</span>
-<span id="46">46</span>
-<span id="47">47</span>
-<span id="48">48</span>
-<span id="49">49</span>
-<span id="50">50</span>
-<span id="51">51</span>
-<span id="52">52</span>
-<span id="53">53</span>
-<span id="54">54</span>
-<span id="55">55</span>
-<span id="56">56</span>
-<span id="57">57</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">massa_signature::PublicKey</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
 <span class="kw">use</span> <span class="ident">std::net::SocketAddr</span>;
-
-<span class="doccomment">/// Max message size for bootstrap</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_MESSAGE_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1048576000</span>;
-
-<span class="doccomment">/// Max number of blocks we provide/ take into account while bootstrapping</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_BLOCKS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000000</span>;
-
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_CLIQUES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000</span>;
-
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_DEPS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000</span>;
-
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_CHILDREN</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000</span>;
-
-<span class="doccomment">/// Max number of cycles in PoS bootstrap</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_POS_CYCLES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
-
-<span class="doccomment">/// Max number of address and rng entries for PoS bootstrap</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_POS_ENTRIES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000000000</span>;
-
-<span class="doccomment">/// Max size of the IP list</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IP_LIST_MAX_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10000</span>;
-
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BOOTSTRAP_RANDOMNESS_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BootstrapSettings</span> {
@@ -118,5 +72,5 @@
     <span class="kw">pub</span> <span class="ident">ip_list_max_size</span>: <span class="ident">usize</span>,
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (09cb29c64 2022-02-15)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (30b3f35c4 2022-02-17)" ></div>
 </body></html>

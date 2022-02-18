@@ -123,23 +123,6 @@
 <span id="118">118</span>
 <span id="119">119</span>
 <span id="120">120</span>
-<span id="121">121</span>
-<span id="122">122</span>
-<span id="123">123</span>
-<span id="124">124</span>
-<span id="125">125</span>
-<span id="126">126</span>
-<span id="127">127</span>
-<span id="128">128</span>
-<span id="129">129</span>
-<span id="130">130</span>
-<span id="131">131</span>
-<span id="132">132</span>
-<span id="133">133</span>
-<span id="134">134</span>
-<span id="135">135</span>
-<span id="136">136</span>
-<span id="137">137</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">core::usize</span>;
@@ -147,8 +130,8 @@
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::BLOCK_ID_SIZE_BYTES</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">Set</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::BLOCK_ID_SIZE_BYTES</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">array_from_slice</span>, <span class="ident">u8_from_slice</span>, <span class="ident">with_serialization_context</span>, <span class="ident">BlockId</span>, <span class="ident">DeserializeCompact</span>,
     <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
@@ -168,24 +151,7 @@
     <span class="doccomment">/// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, BlockId};</span>
     <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
     <span class="doccomment">/// # use std::str::FromStr;</span>
-    <span class="doccomment">/// # massa_models::init_serialization_context(massa_models::SerializationContext {</span>
-    <span class="doccomment">/// #     max_block_operations: 1024,</span>
-    <span class="doccomment">/// #     parent_count: 2,</span>
-    <span class="doccomment">/// #     max_peer_list_length: 128,</span>
-    <span class="doccomment">/// #     max_message_size: 3 * 1024 * 1024,</span>
-    <span class="doccomment">/// #     max_block_size: 3 * 1024 * 1024,</span>
-    <span class="doccomment">/// #     max_bootstrap_blocks: 100,</span>
-    <span class="doccomment">/// #     max_bootstrap_cliques: 100,</span>
-    <span class="doccomment">/// #     max_bootstrap_deps: 100,</span>
-    <span class="doccomment">/// #     max_bootstrap_children: 100,</span>
-    <span class="doccomment">/// #     max_ask_blocks_per_message: 10,</span>
-    <span class="doccomment">/// #     max_operations_per_message: 1024,</span>
-    <span class="doccomment">/// #     max_endorsements_per_message: 1024,</span>
-    <span class="doccomment">/// #     max_bootstrap_message_size: 100000000,</span>
-    <span class="doccomment">/// #     max_bootstrap_pos_cycles: 10000,</span>
-    <span class="doccomment">/// #     max_bootstrap_pos_entries: 10000,</span>
-    <span class="doccomment">/// #     max_block_endorsements: 8,</span>
-    <span class="doccomment">/// # });</span>
+    <span class="doccomment">/// # massa_models::init_serialization_context(massa_models::SerializationContext::default());</span>
     <span class="doccomment">/// # pub fn get_dummy_block_id(s: &amp;str) -&gt; BlockId {</span>
     <span class="doccomment">/// #     BlockId(Hash::compute_from(s.as_bytes()))</span>
     <span class="doccomment">/// # }</span>
@@ -278,5 +244,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (09cb29c64 2022-02-15)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (30b3f35c4 2022-02-17)" ></div>
 </body></html>

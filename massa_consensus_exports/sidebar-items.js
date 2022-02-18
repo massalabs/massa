@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["commands",""],["error",""],["events",""],["settings",""],["tools",""]],"struct":[["ConsensusCommandSender",""],["ConsensusEventReceiver",""],["ConsensusManager",""]]});
+initSidebarItems({"mod":[["commands","Contains definitions of commands used by the controller"],["error",""],["events",""],["settings","Definition & Implementation of the consensus settings"],["tools",""]],"struct":[["ConsensusCommandSender",""],["ConsensusEventReceiver",""],["ConsensusManager",""]]});

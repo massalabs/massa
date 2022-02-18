@@ -128,41 +128,26 @@
 <span id="123">123</span>
 <span id="124">124</span>
 <span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
-
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CHANNEL_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">256</span>;
-
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">NODE_SEND_CHANNEL_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1024</span>;
-
-<span class="doccomment">/// Limit on the number of peers we advertise to others.</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">test</span>))]</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ADVERTISE_LENGTH</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">10000</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ADVERTISE_LENGTH</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">10</span>;
-
-<span class="doccomment">/// Maximum message length in bytes</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">test</span>))]</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_MESSAGE_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1048576000</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_MESSAGE_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">3145728</span>;
-
-<span class="doccomment">/// Max number of hash in the message AskForBlocks</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">test</span>))]</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASK_BLOCKS_PER_MESSAGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">128</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASK_BLOCKS_PER_MESSAGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">3</span>;
-
-<span class="doccomment">/// Max number of operations per message</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1024</span>;
-
-<span class="doccomment">/// Max number of endorsements per message</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ENDORSEMENTS_PER_MESSAGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1024</span>;
-
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">HANDSHAKE_RANDOMNESS_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
 
 <span class="doccomment">/// Network configuration</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
@@ -220,6 +205,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::NetworkSettings</span>;
+    <span class="kw">use</span> <span class="ident">massa_models::constants</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
     <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">Ipv4Addr</span>, <span class="ident">SocketAddr</span>};
 
@@ -252,7 +238,51 @@
             }
         }
     }
+
+    <span class="kw">impl</span> <span class="ident">NetworkSettings</span> {
+        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">scenarios_default</span>(<span class="ident">port</span>: <span class="ident">u16</span>, <span class="ident">peers_file</span>: <span class="kw-2">&amp;</span><span class="ident">std::path::Path</span>) -&gt; <span class="self">Self</span> {
+            <span class="comment">// Init the serialization context with a default,</span>
+            <span class="comment">// can be overwritten with a more specific one in the test.</span>
+            <span class="ident">massa_models::init_serialization_context</span>(<span class="ident">massa_models::SerializationContext</span> {
+                <span class="ident">max_advertise_length</span>: <span class="number">128</span>,
+                <span class="ident">max_bootstrap_blocks</span>: <span class="number">100</span>,
+                <span class="ident">max_bootstrap_cliques</span>: <span class="number">100</span>,
+                <span class="ident">max_bootstrap_deps</span>: <span class="number">100</span>,
+                <span class="ident">max_bootstrap_children</span>: <span class="number">100</span>,
+                <span class="ident">max_ask_blocks_per_message</span>: <span class="number">10</span>,
+                <span class="ident">endorsement_count</span>: <span class="number">8</span>,
+                ..<span class="ident">massa_models::SerializationContext::default</span>()
+            });
+            <span class="self">Self</span> {
+                <span class="ident">bind</span>: <span class="macro">format!</span>(<span class="string">&quot;0.0.0.0:{}&quot;</span>, <span class="ident">port</span>).<span class="ident">parse</span>().<span class="ident">unwrap</span>(),
+                <span class="ident">routable_ip</span>: <span class="prelude-val">Some</span>(<span class="ident">BASE_NETWORK_CONTROLLER_IP</span>),
+                <span class="ident">protocol_port</span>: <span class="ident">port</span>,
+                <span class="ident">connect_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">3000</span>),
+                <span class="ident">peers_file</span>: <span class="ident">peers_file</span>.<span class="ident">to_path_buf</span>(),
+                <span class="ident">target_out_nonbootstrap_connections</span>: <span class="number">10</span>,
+                <span class="ident">wakeup_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">3000</span>),
+                <span class="ident">target_bootstrap_connections</span>: <span class="number">0</span>,
+                <span class="ident">max_out_bootstrap_connection_attempts</span>: <span class="number">1</span>,
+                <span class="ident">max_in_nonbootstrap_connections</span>: <span class="number">100</span>,
+                <span class="ident">max_in_connections_per_ip</span>: <span class="number">100</span>,
+                <span class="ident">max_out_nonbootstrap_connection_attempts</span>: <span class="number">100</span>,
+                <span class="ident">max_idle_peers</span>: <span class="number">100</span>,
+                <span class="ident">max_banned_peers</span>: <span class="number">100</span>,
+                <span class="ident">peers_file_dump_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">30000</span>),
+                <span class="ident">message_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">5000u64</span>),
+                <span class="ident">ask_peer_list_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">50000u64</span>),
+                <span class="ident">private_key_file</span>: <span class="ident"><span class="kw">crate</span>::tests::tools::get_temp_private_key_file</span>()
+                    .<span class="ident">path</span>()
+                    .<span class="ident">to_path_buf</span>(),
+                <span class="ident">max_send_wait</span>: <span class="ident">MassaTime::from</span>(<span class="number">100</span>),
+                <span class="ident">ban_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">100_000_000</span>),
+                <span class="ident">initial_peers_file</span>: <span class="ident">peers_file</span>.<span class="ident">to_path_buf</span>(),
+                <span class="ident">peer_list_send_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">50</span>),
+                <span class="ident">max_in_connection_overflow</span>: <span class="number">10</span>,
+            }
+        }
+    }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (09cb29c64 2022-02-15)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (30b3f35c4 2022-02-17)" ></div>
 </body></html>

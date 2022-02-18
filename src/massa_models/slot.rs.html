@@ -174,40 +174,6 @@
 <span id="169">169</span>
 <span id="170">170</span>
 <span id="171">171</span>
-<span id="172">172</span>
-<span id="173">173</span>
-<span id="174">174</span>
-<span id="175">175</span>
-<span id="176">176</span>
-<span id="177">177</span>
-<span id="178">178</span>
-<span id="179">179</span>
-<span id="180">180</span>
-<span id="181">181</span>
-<span id="182">182</span>
-<span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
-<span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
-<span id="195">195</span>
-<span id="196">196</span>
-<span id="197">197</span>
-<span id="198">198</span>
-<span id="199">199</span>
-<span id="200">200</span>
-<span id="201">201</span>
-<span id="202">202</span>
-<span id="203">203</span>
-<span id="204">204</span>
-<span id="205">205</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
@@ -216,8 +182,8 @@
     },
     <span class="ident">with_serialization_context</span>,
 };
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::SLOT_KEY_SIZE</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ModelsError</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::SLOT_KEY_SIZE</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">cmp::Ordering</span>, <span class="ident">convert::TryInto</span>};
@@ -328,24 +294,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use massa_models::Slot;</span>
     <span class="doccomment">/// # use massa_models::{DeserializeCompact, SerializeCompact};</span>
-    <span class="doccomment">/// # massa_models::init_serialization_context(massa_models::SerializationContext {</span>
-    <span class="doccomment">/// #    max_block_operations: 1024,</span>
-    <span class="doccomment">/// #    parent_count: 2,</span>
-    <span class="doccomment">/// #    max_peer_list_length: 128,</span>
-    <span class="doccomment">/// #    max_message_size: 3 * 1024 * 1024,</span>
-    <span class="doccomment">/// #    max_block_size: 3 * 1024 * 1024,</span>
-    <span class="doccomment">/// #    max_bootstrap_blocks: 100,</span>
-    <span class="doccomment">/// #    max_bootstrap_cliques: 100,</span>
-    <span class="doccomment">/// #    max_bootstrap_deps: 100,</span>
-    <span class="doccomment">/// #    max_bootstrap_children: 100,</span>
-    <span class="doccomment">/// #    max_ask_blocks_per_message: 10,</span>
-    <span class="doccomment">/// #    max_operations_per_message: 1024,</span>
-    <span class="doccomment">/// #    max_endorsements_per_message: 1024,</span>
-    <span class="doccomment">/// #    max_bootstrap_message_size: 100000000,</span>
-    <span class="doccomment">/// #     max_bootstrap_pos_cycles: 10000,</span>
-    <span class="doccomment">/// #     max_bootstrap_pos_entries: 10000,</span>
-    <span class="doccomment">/// #     max_block_endorsements: 8,</span>
-    <span class="doccomment">/// # });</span>
+    <span class="doccomment">/// # massa_models::init_serialization_context(massa_models::SerializationContext::default());</span>
     <span class="doccomment">/// # let context = massa_models::get_serialization_context();</span>
     <span class="doccomment">/// let slot = Slot::new(10,1);</span>
     <span class="doccomment">/// let ser = slot.to_bytes_compact().unwrap();</span>
@@ -369,24 +318,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use massa_models::Slot;</span>
     <span class="doccomment">/// # use massa_models::{DeserializeCompact, SerializeCompact};</span>
-    <span class="doccomment">/// # massa_models::init_serialization_context(massa_models::SerializationContext {</span>
-    <span class="doccomment">/// #     max_block_operations: 1024,</span>
-    <span class="doccomment">/// #     parent_count: 2,</span>
-    <span class="doccomment">/// #     max_peer_list_length: 128,</span>
-    <span class="doccomment">/// #     max_message_size: 3 * 1024 * 1024,</span>
-    <span class="doccomment">/// #     max_block_size: 3 * 1024 * 1024,</span>
-    <span class="doccomment">/// #     max_bootstrap_blocks: 100,</span>
-    <span class="doccomment">/// #     max_bootstrap_cliques: 100,</span>
-    <span class="doccomment">/// #     max_bootstrap_deps: 100,</span>
-    <span class="doccomment">/// #     max_bootstrap_children: 100,</span>
-    <span class="doccomment">/// #     max_ask_blocks_per_message: 10,</span>
-    <span class="doccomment">/// #     max_endorsements_per_message: 1024,</span>
-    <span class="doccomment">/// #     max_operations_per_message: 1024,</span>
-    <span class="doccomment">/// #     max_bootstrap_message_size: 100000000,</span>
-    <span class="doccomment">/// #     max_bootstrap_pos_cycles: 10000,</span>
-    <span class="doccomment">/// #     max_bootstrap_pos_entries: 10000,</span>
-    <span class="doccomment">/// #     max_block_endorsements: 8,</span>
-    <span class="doccomment">/// # });</span>
+    <span class="doccomment">/// # massa_models::init_serialization_context(massa_models::SerializationContext::default());</span>
     <span class="doccomment">/// # let context = massa_models::get_serialization_context();</span>
     <span class="doccomment">/// let slot = Slot::new(10,1);</span>
     <span class="doccomment">/// let ser = slot.to_bytes_compact().unwrap();</span>
@@ -399,7 +331,7 @@
     <span class="doccomment">/// - Valid thread.</span>
     <span class="doccomment">/// - Valid thread number.</span>
     <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">parent_count</span> <span class="op">=</span> <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">parent_count</span>);
+        <span class="kw">let</span> <span class="ident">parent_count</span> <span class="op">=</span> <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">thread_count</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
         <span class="kw">let</span> (<span class="ident">period</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">u64::from_varint_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
@@ -414,5 +346,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (09cb29c64 2022-02-15)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (30b3f35c4 2022-02-17)" ></div>
 </body></html>

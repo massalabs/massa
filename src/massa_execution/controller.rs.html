@@ -212,22 +212,16 @@
 <span id="207">207</span>
 <span id="208">208</span>
 <span id="209">209</span>
-<span id="210">210</span>
-<span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">ExecutionConfigs</span>, <span class="ident">CHANNEL_SIZE</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ExecutionError</span>;
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ExecutionError</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::ExecutionConfigs</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::worker</span>::{
     <span class="ident">ExecutionCommand</span>, <span class="ident">ExecutionEvent</span>, <span class="ident">ExecutionManagementCommand</span>, <span class="ident">ExecutionWorker</span>,
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::BootstrapExecutionState</span>;
-<span class="kw">use</span> <span class="ident">massa_models::api::SCELedgerInfo</span>;
-<span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
-<span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
-<span class="kw">use</span> <span class="ident">massa_models::OperationId</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">execution::ExecuteReadOnlyResponse</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">Slot</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{
+    <span class="ident">api::SCELedgerInfo</span>, <span class="ident">constants::CHANNEL_SIZE</span>, <span class="ident">execution::ExecuteReadOnlyResponse</span>,
+    <span class="ident">output_event::SCOutputEvent</span>, <span class="ident">prehash::Map</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>,
+};
 <span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">mpsc</span>, <span class="ident">oneshot</span>};
 <span class="kw">use</span> <span class="ident">tokio::task::JoinHandle</span>;
@@ -276,10 +270,6 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Arguments</span>
 <span class="doccomment">/// * cfg: execution configuration</span>
-<span class="doccomment">/// * thread_count: number of threads</span>
-<span class="doccomment">/// * genesis_timestamp: genesis timestamp</span>
-<span class="doccomment">/// * t0: period duration</span>
-<span class="doccomment">/// * clock_compensation: clock compensation in milliseconds</span>
 <span class="doccomment">/// * bootstrap_state: optional bootstrap state</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// TODO: add a consensus command sender,</span>
@@ -432,5 +422,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (09cb29c64 2022-02-15)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (30b3f35c4 2022-02-17)" ></div>
 </body></html>
