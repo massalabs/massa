@@ -1,4 +1,4 @@
-use crate::{ExecutionError, AMOUNT_ZERO};
+use crate::ExecutionError;
 use massa_hash::{hash::Hash, HASH_SIZE_BYTES};
 use massa_models::{
     array_from_slice,
@@ -446,7 +446,7 @@ impl SCELedgerStep {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {
-                Some(SCELedgerChange::Delete) => return AMOUNT_ZERO,
+                Some(SCELedgerChange::Delete) => return Amount::zero(),
                 Some(SCELedgerChange::Set(new_entry)) => return new_entry.balance,
                 Some(SCELedgerChange::Update(update)) => {
                     if let Some(updated_balance) = update.update_balance {
@@ -461,7 +461,7 @@ impl SCELedgerStep {
             return entry.balance;
         }
         // otherwise, just return zero
-        AMOUNT_ZERO
+        Amount::zero()
     }
 
     /// sets the balance of an address

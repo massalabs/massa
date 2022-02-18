@@ -11,6 +11,11 @@ use std::str::FromStr;
 pub struct Amount(u64);
 
 impl Amount {
+    /// Create a zero Amount
+    pub const fn zero() -> Self {
+        Self(0)
+    }
+
     pub fn to_raw(&self) -> u64 {
         self.0
     }
