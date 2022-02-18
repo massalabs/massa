@@ -1,8 +1,3 @@
-use crate::LedgerConfig;
-use massa_hash::hash::Hash;
-use massa_models::{prehash::Map, Address, Amount, Slot};
-use std::collections::{BTreeMap, VecDeque};
-
 /// represents a structure that supports another one being applied to it
 pub trait Applicable<V> {
     fn apply(&mut self, _: V);

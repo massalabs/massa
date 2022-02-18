@@ -3,7 +3,6 @@
 //! Build here the default node settings from the config file toml
 use massa_bootstrap::settings::BootstrapSettings;
 use massa_consensus_exports::ConsensusSettings;
-use massa_execution::ExecutionSettings;
 use massa_models::{
     api::APISettings,
     constants::{build_massa_settings, OPERATION_VALIDITY_PERIODS, THREAD_COUNT},
@@ -27,6 +26,18 @@ pub struct LoggingSettings {
     pub level: usize,
 }
 
+#[derive(Clone, Debug)]
+pub struct ExecutionSettings {
+    max_final_events: usize,
+    readonly_queue_length: usize,
+}
+
+#[derive(Clone, Debug)]
+pub struct LedgerSettings {
+    initial_sce_ledger_path: usize,
+    final_history_length: usize,
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
     pub logging: LoggingSettings,
@@ -37,4 +48,5 @@ pub struct Settings {
     pub bootstrap: BootstrapSettings,
     pub pool: PoolSettings,
     pub execution: ExecutionSettings,
+    pub ledger: LedgerSettings,
 }

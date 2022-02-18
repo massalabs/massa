@@ -9,8 +9,8 @@ use error::BootstrapError;
 pub use establisher::Establisher;
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_consensus_exports::ConsensusCommandSender;
-use massa_execution::{BootstrapExecutionState, ExecutionCommandSender};
 use massa_graph::BootstrapableGraph;
+use massa_ledger::FinalLedgerBootstrapState;
 use massa_logging::massa_trace;
 use massa_models::Version;
 use massa_network::{BootstrapPeers, NetworkCommandSender};
@@ -49,8 +49,8 @@ pub struct GlobalBootstrapState {
     /// list of network peers
     pub peers: Option<BootstrapPeers>,
 
-    /// state of the execution state
-    pub execution: Option<BootstrapExecutionState>,
+    /// state of the final ledger
+    pub final_ledger: Option<FinalLedgerBootstrapState>,
 }
 
 /// Gets the state from a bootstrap server (internal private function)
@@ -181,18 +181,18 @@ async fn get_state_internal(
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
 
-    // Fourth, get execution state
+    // Fourth, get final ledger
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    let execution = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
+    let final_ledger = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
         Err(_) => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
-                "bootstrap state read timed out",
+                "final ledger bootstrap state read timed out",
             )
             .into())
         }
         Ok(Err(e)) => return Err(e),
-        Ok(Ok(BootstrapMessage::ExecutionState { execution_state })) => execution_state,
+        Ok(Ok(BootstrapMessage::FinalLedgerState { ledger_state })) => ledger_state,
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
 
@@ -203,7 +203,7 @@ async fn get_state_internal(
         graph: Some(graph),
         compensation_millis,
         peers: Some(peers),
-        execution: Some(execution),
+        final_ledger: Some(final_ledger),
     })
 }
 

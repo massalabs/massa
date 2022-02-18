@@ -109,7 +109,7 @@ impl SpeculativeLedger {
         if let Some(to_addr) = to_addr {
             let new_balance = changes
                 .get_parallel_balance_or_else(&to_addr, || self.get_parallel_balance(&to_addr))
-                .unwrap_or(AMOUNT_ZERO)
+                .unwrap_or(Amount::default())
                 .checked_add(amount)
                 .ok_or(ExecutionError::RuntimeError(
                     "overflow in to_addr balance".into(),

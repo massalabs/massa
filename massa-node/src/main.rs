@@ -14,7 +14,7 @@ use massa_consensus_exports::{
 use massa_consensus_worker::start_consensus_controller;
 use massa_execution_exports::{ExecutionConfig, ExecutionManager};
 use massa_execution_worker::start_execution_worker;
-
+use massa_ledger::{FinalLedger, LedgerConfig};
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
@@ -120,17 +120,25 @@ async fn launch() -> (
     .await
     .expect("could not start pool controller");
 
-    let execution_config = ExecutionConfigs {
-        settings: SETTINGS.execution.clone(),
+    // init ledger
+    let ledger_config = LedgerConfig {
+        initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path,
+        final_history_length: SETTINGS.ledger.final_history_length,
+        ..Default::default()
+    };
+    let final_ledger = Arc::new(RwLock::new(match bootstrap_state.final_ledger {
+        Some(l) => FinalLedger::from_bootstrap_state(ledger_config, l),
+        None => FinalLedger::new(ledger_config).expect("could not init final ledger"),
+    }));
+
+    // launch execution module
+    let execution_config = ExecutionConfig {
+        max_final_events: SETTINGS.execution.max_final_events,
+        readonly_queue_length: SETTINGS.execution.readonly_queue_length,
         clock_compensation: bootstrap_state.compensation_millis,
         ..Default::default()
     };
-
-    // launch execution controller
-    let (execution_command_sender, execution_event_receiver, execution_manager) =
-        massa_execution::start_controller(execution_config, bootstrap_state.execution)
-            .await
-            .expect("could not start execution controller");
+    let execution_manager = start_execution_worker(execution_config, final_ledger.clone());
 
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
     // launch consensus controller
@@ -138,8 +146,7 @@ async fn launch() -> (
         start_consensus_controller(
             consensus_config.clone(),
             ConsensusChannels {
-                execution_command_sender: execution_command_sender.clone(),
-                execution_event_receiver,
+                execution_controller: execution_manager.get_controller(),
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
                 pool_command_sender: pool_command_sender.clone(),
@@ -252,7 +259,6 @@ async fn stop(
     // Stop execution controller.
     execution_manager
         .stop()
-        .await
         .expect("Failed to shutdown execution.");
 
     // stop pool controller
@@ -269,6 +275,8 @@ async fn stop(
         .stop(network_event_receiver)
         .await
         .expect("network shutdown failed");
+
+    // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
 }
 
 #[tokio::main]

@@ -3,11 +3,25 @@ use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
 use massa_ledger::LedgerEntry;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::Map;
 use massa_models::Address;
+use massa_models::Block;
+use massa_models::BlockId;
 use massa_models::OperationId;
 use massa_models::Slot;
 
 pub trait ExecutionController {
+    /// Update blockclique status
+    ///
+    /// # arguments
+    /// * finalized_blocks: newly finalized blocks
+    /// * blockclique: new blockclique
+    fn update_blockclique_status(
+        &self,
+        finalized_blocks: Map<BlockId, Block>,
+        blockclique: Map<BlockId, Block>,
+    );
+
     /// Get events optionnally filtered by:
     /// * start slot
     /// * end slot

@@ -5,6 +5,7 @@ use massa_execution_exports::{
 };
 use massa_ledger::LedgerEntry;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::Map;
 use massa_models::Address;
 use massa_models::OperationId;
 use massa_models::{Block, BlockId, Slot};
@@ -50,6 +51,31 @@ impl ExecutionControllerImpl {
 }
 
 impl ExecutionController for ExecutionControllerImpl {
+    /// Updates blockclique status
+    fn update_blockclique_status(
+        &self,
+        finalized_blocks: Map<BlockId, Block>,
+        blockclique: Map<BlockId, Block>,
+    ) {
+        let mapped_finalized_blocks: HashMap<_, _> = finalized_blocks
+            .into_iter()
+            .map(|(b_id, b)| (b.header.content.slot, (b_id, b)))
+            .collect();
+        let mapped_blockclique = blockclique
+            .into_iter()
+            .map(|(b_id, b)| (b.header.content.slot, (b_id, b)))
+            .collect();
+        let mut input_data = self
+            .input_data
+            .1
+            .lock()
+            .expect("could not lock VM input data");
+        input_data.blockclique = mapped_blockclique;
+        input_data.finalized_blocks.extend(mapped_finalized_blocks);
+        input_data.blockclique_changed = true;
+        self.input_data.0.notify_one();
+    }
+
     /// Get events optionnally filtered by:
     /// * start slot
     /// * end slot

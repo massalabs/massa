@@ -5,6 +5,7 @@ use anyhow::{bail, Result};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_hash::hash::Hash;
+use massa_models::Amount;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId},
     timeslots::get_block_slot_timestamp,
@@ -107,7 +108,7 @@ impl Interface for InterfaceImpl {
         let address = context.get_current_address()?;
         Ok(context
             .get_parallel_balance(&address)
-            .unwrap_or(AMOUNT_ZERO)
+            .unwrap_or(Amount::default())
             .to_raw())
     }
 
@@ -116,7 +117,7 @@ impl Interface for InterfaceImpl {
         let address = massa_models::Address::from_str(address)?;
         Ok(context_guard!(self)
             .get_parallel_balance(&address)
-            .unwrap_or(AMOUNT_ZERO)
+            .unwrap_or(Amount::default())
             .to_raw())
     }
 

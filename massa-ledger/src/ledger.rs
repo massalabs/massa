@@ -3,10 +3,18 @@
 use crate::ledger_changes::LedgerChanges;
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
-use crate::LedgerConfig;
+use crate::{LedgerConfig, LedgerError};
 use massa_hash::hash::Hash;
 use massa_models::{Address, Amount, Slot};
 use std::collections::{BTreeMap, VecDeque};
+
+/// temporary ledger bootstrap structure
+pub struct FinalLedgerBootstrapState {
+    /// ledger slot
+    slot: Slot,
+    /// sorted ledger
+    sorted_ledger: BTreeMap<Address, LedgerEntry>,
+}
 
 /// represents a final ledger
 pub struct FinalLedger {
@@ -49,7 +57,69 @@ impl Applicable<LedgerChanges> for FinalLedger {
     }
 }
 
+macro_rules! init_file_error {
+    ($st:expr, $cfg:ident) => {
+        |err| {
+            LedgerError::FileError(format!(
+                "error $st initial ledger file {}: {}",
+                $cfg.initial_sce_ledger_path
+                    .to_str()
+                    .unwrap_or("(non-utf8 path)"),
+                err
+            ))
+        }
+    };
+}
+pub(crate) use init_file_error;
+
 impl FinalLedger {
+    /// init from file
+    pub fn new(config: LedgerConfig) -> Result<Self, LedgerError> {
+        // load file
+        let sorted_ledger = serde_json::from_str::<BTreeMap<Address, Amount>>(
+            &std::fs::read_to_string(&config.initial_sce_ledger_path)
+                .map_err(init_file_error!("loading", config))?,
+        )
+        .map_err(init_file_error!("parsing", config))?
+        .into_iter()
+        .map(|(address, balance)| {
+            (
+                address,
+                LedgerEntry {
+                    parallel_balance: balance,
+                    ..Default::default()
+                },
+            )
+        })
+        .collect();
+
+        // generate final ledger
+        Ok(FinalLedger {
+            slot: Slot::new(0, config.thread_count.saturating_sub(1)),
+            sorted_ledger,
+            changes_history: Default::default(),
+            config,
+        })
+    }
+
+    /// load from bootstrap
+    pub fn from_bootstrap_state(config: LedgerConfig, state: FinalLedgerBootstrapState) -> Self {
+        FinalLedger {
+            slot: state.slot,
+            sorted_ledger: state.sorted_ledger,
+            changes_history: Default::default(),
+            config,
+        }
+    }
+
+    /// get bootstrap state
+    pub fn get_bootstrap_state(&self) -> FinalLedgerBootstrapState {
+        FinalLedgerBootstrapState {
+            slot: self.slot,
+            sorted_ledger: self.sorted_ledger.clone(),
+        }
+    }
+
     /// gets a full cloned entry
     pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
         self.sorted_ledger.get(addr).cloned()
