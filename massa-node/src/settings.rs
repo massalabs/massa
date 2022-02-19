@@ -10,6 +10,7 @@ use massa_models::{
 use massa_network::NetworkSettings;
 use massa_pool::{PoolConfig, PoolSettings};
 use massa_protocol_exports::ProtocolSettings;
+use massa_time::MassaTime;
 use serde::Deserialize;
 
 lazy_static::lazy_static! {
@@ -30,6 +31,7 @@ pub struct LoggingSettings {
 pub struct ExecutionSettings {
     max_final_events: usize,
     readonly_queue_length: usize,
+    cursor_delay: MassaTime,
 }
 
 #[derive(Clone, Debug)]

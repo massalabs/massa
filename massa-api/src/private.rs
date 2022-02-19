@@ -76,20 +76,9 @@ impl Endpoints for API<Private> {
 
     fn execute_read_only_request(
         &self,
-        ReadOnlyExecution {
-            max_gas,
-            simulated_gas_price,
-            bytecode,
-            address,
-        }: ReadOnlyExecution,
+        _: ReadOnlyExecution,
     ) -> BoxFuture<Result<ExecuteReadOnlyResponse, ApiError>> {
-        let cmd_sender = self.0.execution_command_sender.clone();
-        let closure = async move || {
-            Ok(cmd_sender
-                .execute_read_only_request(max_gas, simulated_gas_price, bytecode, address)
-                .await?)
-        };
-        Box::pin(closure())
+        crate::wrong_api::<ExecuteReadOnlyResponse>()
     }
 
     fn remove_staking_addresses(&self, keys: Vec<Address>) -> BoxFuture<Result<(), ApiError>> {

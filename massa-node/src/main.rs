@@ -18,7 +18,8 @@ use massa_ledger::{FinalLedger, LedgerConfig};
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
-        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, VERSION,
+        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS,
+        THREAD_COUNT, VERSION,
     },
     init_serialization_context, SerializationContext,
 };
@@ -124,7 +125,7 @@ async fn launch() -> (
     let ledger_config = LedgerConfig {
         initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path,
         final_history_length: SETTINGS.ledger.final_history_length,
-        ..Default::default()
+        thread_count: THREAD_COUNT,
     };
     let final_ledger = Arc::new(RwLock::new(match bootstrap_state.final_ledger {
         Some(l) => FinalLedger::from_bootstrap_state(ledger_config, l),
@@ -135,8 +136,11 @@ async fn launch() -> (
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
         readonly_queue_length: SETTINGS.execution.readonly_queue_length,
+        cursor_delay: SETTINGS.execution.cursor_delay,
         clock_compensation: bootstrap_state.compensation_millis,
-        ..Default::default()
+        thread_count: THREAD_COUNT,
+        t0: T0,
+        genesis_timestamp: GENESIS_TIMESTAMP,
     };
     let execution_manager = start_execution_worker(execution_config, final_ledger.clone());
 
@@ -162,7 +166,7 @@ async fn launch() -> (
     let bootstrap_manager = start_bootstrap_server(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
-        execution_command_sender.clone(),
+        final_ledger.clone(),
         &SETTINGS.bootstrap,
         massa_bootstrap::Establisher::new(),
         private_key,
@@ -176,7 +180,7 @@ async fn launch() -> (
     let (api_private, api_private_stop_rx) = API::<Private>::new(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
-        execution_command_sender.clone(),
+        execution_controller.clone(),
         &SETTINGS.api,
         consensus_config.clone(),
     );
@@ -185,7 +189,7 @@ async fn launch() -> (
     // spawn public API
     let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
-        execution_command_sender,
+        execution_controller,
         &SETTINGS.api,
         consensus_config,
         pool_command_sender.clone(),

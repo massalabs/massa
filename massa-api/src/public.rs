@@ -5,8 +5,11 @@ use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
-use massa_execution_exports::ExecutionController;
+use massa_execution_exports::{
+    ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest,
+};
 use massa_graph::{DiscardReason, ExportBlockStatus};
+use massa_models::execution::ReadOnlyResult;
 use massa_models::{
     api::{
         APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
@@ -23,7 +26,7 @@ use massa_models::{
 };
 use massa_network::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
-use massa_signature::PrivateKey;
+use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
 use std::net::{IpAddr, SocketAddr};
 
@@ -77,9 +80,50 @@ impl Endpoints for API<Public> {
 
     fn execute_read_only_request(
         &self,
-        _: ReadOnlyExecution,
+        ReadOnlyExecution {
+            max_gas,
+            simulated_gas_price,
+            bytecode,
+            address,
+        }: ReadOnlyExecution,
     ) -> BoxFuture<Result<ExecuteReadOnlyResponse, ApiError>> {
-        crate::wrong_api::<ExecuteReadOnlyResponse>()
+        let address = address.unwrap_or_else(|| {
+            // if no addr provided, use a random one
+            Address::from_public_key(&derive_public_key(&generate_random_private_key()))
+        });
+
+        // TODO:
+        // * stop mapping request and result, reuse execution's structures
+        // * remove async stuff
+
+        // translate request
+        let req = ReadOnlyExecutionRequest {
+            max_gas,
+            simulated_gas_price,
+            bytecode,
+            call_stack: vec![ExecutionStackElement {
+                address,
+                coins: Default::default(),
+                owned_addresses: vec![address],
+            }],
+        };
+
+        // run
+        let result = self.0.execution_controller.execute_readonly_request(req);
+
+        // map result
+        let result = ExecuteReadOnlyResponse {
+            executed_at: result.as_ref().map_or_else(|_| Slot::new(0, 0), |v| v.slot),
+            result: result.as_ref().map_or_else(
+                |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
+                |_| ReadOnlyResult::Ok,
+            ),
+            output_events: result.map_or_else(|_| Default::default(), |v| v.events.export()),
+        };
+
+        // return result
+        let closure = async move || Ok(result);
+        Box::pin(closure())
     }
 
     fn remove_staking_addresses(&self, _: Vec<Address>) -> BoxFuture<Result<(), ApiError>> {
