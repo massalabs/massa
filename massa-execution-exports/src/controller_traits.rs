@@ -45,7 +45,7 @@ pub trait ExecutionController: Sync + Send {
 
     /// Executes a readonly request
     fn execute_readonly_request(
-        &mut self,
+        &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ExecutionOutput, ExecutionError>;
 }

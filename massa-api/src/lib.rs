@@ -50,7 +50,7 @@ pub struct Public {
 pub struct Private {
     pub consensus_command_sender: ConsensusCommandSender,
     pub network_command_sender: NetworkCommandSender,
-    execution_controller: Box<dyn ExecutionController>,
+    pub execution_controller: Box<dyn ExecutionController>,
     pub consensus_config: ConsensusConfig,
     pub api_settings: &'static APISettings,
     pub stop_node_channel: mpsc::Sender<()>,
