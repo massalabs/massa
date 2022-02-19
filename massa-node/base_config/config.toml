@@ -15,10 +15,19 @@
     max_arguments = 128
 
 [execution]
-    # path to the initial smart contract balance ledger
-    initial_sce_ledger_path = "base_config/initial_sce_ledger.json"
     # max number of generated events kept in RAM
     max_final_events = 100
+    # maximum length of the read-only execution requests queue
+    readonly_queue_length = 10
+    # by how many milliseconds shoud the execution lag behind real time
+    # higher values increase speculative execution lag but improve performance
+    cursor_delay = 0
+
+[ledger]
+    # path to the initial smart contract balance ledger
+    initial_sce_ledger_path = "base_config/initial_sce_ledger.json"
+    # length of the changes history. Higher values allow bootstrapping nodes with slower connections
+    final_history_length = 100
 
 [consensus]
     # max number of previously discarded blocks kept in RAM

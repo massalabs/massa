@@ -94,6 +94,7 @@ impl Endpoints for API<Public> {
         });
 
         // TODO:
+        // * set a maximum gas value for read-only executions to prevent attacks
         // * stop mapping request and result, reuse execution's structures
         // * remove async stuff
 
