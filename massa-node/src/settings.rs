@@ -1,6 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 //! Build here the default node settings from the config file toml
+use std::path::PathBuf;
+
 use massa_bootstrap::settings::BootstrapSettings;
 use massa_consensus_exports::ConsensusSettings;
 use massa_models::{
@@ -22,22 +24,22 @@ lazy_static::lazy_static! {
     };
 }
 
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct LoggingSettings {
     pub level: usize,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ExecutionSettings {
-    max_final_events: usize,
-    readonly_queue_length: usize,
-    cursor_delay: MassaTime,
+    pub max_final_events: usize,
+    pub readonly_queue_length: usize,
+    pub cursor_delay: MassaTime,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct LedgerSettings {
-    initial_sce_ledger_path: usize,
-    final_history_length: usize,
+    pub initial_sce_ledger_path: PathBuf,
+    pub final_history_length: usize,
 }
 
 #[derive(Debug, Deserialize, Clone)]

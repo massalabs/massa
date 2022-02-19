@@ -155,12 +155,12 @@ pub struct ExecutionManagerImpl {
     /// shared reference to the VM controller
     pub(crate) controller: ExecutionControllerImpl,
     /// handle used to join the VM thread
-    pub(crate) thread_handle: std::thread::JoinHandle<()>,
+    pub(crate) thread_handle: Option<std::thread::JoinHandle<()>>,
 }
 
 impl ExecutionManager for ExecutionManagerImpl {
     /// stops the VM
-    fn stop(self) {
+    fn stop(&mut self) {
         info!("stopping VM controller...");
         // notify the VM thread to stop
         {
@@ -174,9 +174,10 @@ impl ExecutionManager for ExecutionManagerImpl {
             self.controller.input_data.0.notify_one();
         }
         // join the VM thread
-        self.thread_handle
-            .join()
-            .expect("VM controller thread panicked");
+        if let Some(join_handle) = self.thread_handle.take() {
+            join_handle.join().expect("VM controller thread panicked");
+        }
+
         info!("VM controller stopped");
     }
 

@@ -1,7 +1,7 @@
 use crate::controller::{ExecutionControllerImpl, ExecutionManagerImpl, VMInputData};
 use crate::execution::ExecutionState;
 use massa_execution_exports::{
-    ExecutionConfig, ExecutionError, ExecutionOutput, ReadOnlyExecutionRequest,
+    ExecutionConfig, ExecutionError, ExecutionManager, ExecutionOutput, ReadOnlyExecutionRequest,
 };
 use massa_ledger::FinalLedger;
 use massa_models::BlockId;
@@ -423,7 +423,7 @@ impl VMThread {
 pub fn start_execution_worker(
     config: ExecutionConfig,
     final_ledger: Arc<RwLock<FinalLedger>>,
-) -> ExecutionManagerImpl {
+) -> Box<dyn ExecutionManager> {
     // create an execution state
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
@@ -450,8 +450,8 @@ pub fn start_execution_worker(
     });
 
     // return the VM manager
-    ExecutionManagerImpl {
+    Box::new(ExecutionManagerImpl {
         controller,
-        thread_handle,
-    }
+        thread_handle: Some(thread_handle),
+    })
 }

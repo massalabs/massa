@@ -3,9 +3,6 @@
 #![feature(map_first_last)]
 #![feature(async_closure)]
 
-#[macro_use]
-extern crate massa_logging;
-
 mod bootstrap;
 mod config;
 mod error;

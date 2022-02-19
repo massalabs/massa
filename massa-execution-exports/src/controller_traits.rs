@@ -53,7 +53,7 @@ pub trait ExecutionController: Sync + Send {
 /// execution manager
 pub trait ExecutionManager {
     /// stops the VM
-    fn stop(self);
+    fn stop(&mut self);
 
     /// get a shared reference to the VM controller
     fn get_controller(&self) -> Box<dyn ExecutionController>;

@@ -18,7 +18,7 @@ use massa_ledger::{FinalLedger, LedgerConfig};
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
-        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS,
+        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, T0,
         THREAD_COUNT, VERSION,
     },
     init_serialization_context, SerializationContext,
@@ -28,7 +28,10 @@ use massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use massa_protocol_exports::ProtocolManager;
 use massa_protocol_worker::start_protocol_controller;
 use massa_time::MassaTime;
-use std::process;
+use std::{
+    process,
+    sync::{Arc, RwLock},
+};
 use tokio::signal;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
@@ -46,7 +49,7 @@ async fn launch() -> (
     NetworkCommandSender,
     Option<BootstrapManager>,
     ConsensusManager,
-    ExecutionManager,
+    Box<dyn ExecutionManager>,
     PoolManager,
     ProtocolManager,
     NetworkManager,
@@ -123,7 +126,7 @@ async fn launch() -> (
 
     // init ledger
     let ledger_config = LedgerConfig {
-        initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path,
+        initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
         final_history_length: SETTINGS.ledger.final_history_length,
         thread_count: THREAD_COUNT,
     };
@@ -140,7 +143,7 @@ async fn launch() -> (
         clock_compensation: bootstrap_state.compensation_millis,
         thread_count: THREAD_COUNT,
         t0: T0,
-        genesis_timestamp: GENESIS_TIMESTAMP,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
     };
     let execution_manager = start_execution_worker(execution_config, final_ledger.clone());
 
@@ -180,7 +183,7 @@ async fn launch() -> (
     let (api_private, api_private_stop_rx) = API::<Private>::new(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
-        execution_controller.clone(),
+        execution_manager.get_controller(),
         &SETTINGS.api,
         consensus_config.clone(),
     );
@@ -189,7 +192,7 @@ async fn launch() -> (
     // spawn public API
     let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
-        execution_controller,
+        execution_manager.get_controller(),
         &SETTINGS.api,
         consensus_config,
         pool_command_sender.clone(),
@@ -221,7 +224,7 @@ async fn launch() -> (
 struct Managers {
     bootstrap_manager: Option<BootstrapManager>,
     consensus_manager: ConsensusManager,
-    execution_manager: ExecutionManager,
+    execution_manager: Box<dyn ExecutionManager>,
     pool_manager: PoolManager,
     protocol_manager: ProtocolManager,
     network_manager: NetworkManager,
@@ -232,7 +235,7 @@ async fn stop(
     Managers {
         bootstrap_manager,
         consensus_manager,
-        execution_manager,
+        mut execution_manager,
         pool_manager,
         protocol_manager,
         network_manager,
@@ -255,15 +258,13 @@ async fn stop(
     api_private_handle.stop();
 
     // stop consensus controller
-    let (protocol_event_receiver, _execution_event_receiver) = consensus_manager
+    let protocol_event_receiver = consensus_manager
         .stop(consensus_event_receiver)
         .await
         .expect("consensus shutdown failed");
 
     // Stop execution controller.
-    execution_manager
-        .stop()
-        .expect("Failed to shutdown execution.");
+    execution_manager.stop();
 
     // stop pool controller
     let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
