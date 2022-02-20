@@ -1,8 +1,8 @@
+use crate::error::bootstrap_file_error;
 use crate::types::{
     EventStore, ExecutionContext, ExecutionData, ExecutionStep, StackElement, StepHistory,
     StepHistoryItem,
 };
-use crate::{error::bootstrap_file_error, AMOUNT_ZERO};
 use crate::{
     interface_impl::InterfaceImpl,
     sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges},
@@ -340,7 +340,7 @@ impl VM {
 
             context.stack = vec![StackElement {
                 address,
-                coins: AMOUNT_ZERO,
+                coins: Amount::zero(),
                 owned_addresses: vec![address],
             }];
 
