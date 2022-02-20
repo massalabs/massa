@@ -61,7 +61,7 @@ fn get_random_ledger_entry() -> LedgerEntry {
 }
 
 /// generates a rendom bootstrap state for a final ledger
-pub fn get_random_ledger_bootstrap_state() -> FinalLedgerBootstrapState {
+pub fn get_random_ledger_bootstrap_state(thread_count: u8) -> FinalLedgerBootstrapState {
     let mut rng = rand::thread_rng();
 
     let mut sorted_ledger = BTreeMap::new();
@@ -69,7 +69,10 @@ pub fn get_random_ledger_bootstrap_state() -> FinalLedgerBootstrapState {
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
 
-    make_bootstrap_state(Slot::new(rng.gen::<u64>(), rng.gen::<u8>()), sorted_ledger)
+    make_bootstrap_state(
+        Slot::new(rng.gen::<u64>(), rng.gen_range(0..thread_count)),
+        sorted_ledger,
+    )
 }
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {

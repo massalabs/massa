@@ -411,9 +411,8 @@ impl BootstrapServer {
                         // If the consensus state snapshot is older than the execution state snapshot,
                         //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
                         let peer_boot = self.network_command_sender.get_bootstrap_peers().await?;
-                        let get_pos_graph = self.consensus_command_sender.get_bootstrap_state();
                         let res_ledger = self.final_ledger.read().expect("could not lock final ledger for reading").get_bootstrap_state();
-                        let (pos_boot, graph_boot) = get_pos_graph.await?;
+                        let (pos_boot, graph_boot) = self.consensus_command_sender.get_bootstrap_state().await?;
                         bootstrap_data = Some((pos_boot, graph_boot, peer_boot, res_ledger));
                         cache_timer.set(sleep(cache_timeout));
                     }
@@ -499,13 +498,13 @@ async fn manage_bootstrap(
     )
     .await?;
 
-    // Fourth, send execution state
+    // Fourth, send ledger state
     send_state_timeout(
         write_timeout,
         server.send(messages::BootstrapMessage::FinalLedgerState {
             ledger_state: ledger_state,
         }),
-        "bootstrap execution state send timed out",
+        "bootstrap ledger state send timed out",
     )
     .await
 }

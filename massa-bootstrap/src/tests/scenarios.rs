@@ -15,7 +15,7 @@ use crate::{
     },
 };
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
-use massa_ledger::FinalLedger;
+use massa_ledger::{test_exports::assert_eq_ledger_bootstrap_state, FinalLedger};
 use massa_models::Version;
 use massa_network::{NetworkCommand, NetworkCommandSender};
 use massa_signature::PrivateKey;
@@ -42,7 +42,7 @@ async fn test_bootstrap_server() {
 
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
-    let ledger_bootstrap_state = get_random_ledger_bootstrap_state();
+    let ledger_bootstrap_state = get_random_ledger_bootstrap_state(2);
     let final_ledger = Arc::new(RwLock::new(FinalLedger::from_bootstrap_state(
         Default::default(),
         ledger_bootstrap_state.clone(),
@@ -108,7 +108,7 @@ async fn test_bootstrap_server() {
         bridge_mock_streams(remote_rw, bootstrap_rw).await;
     });
 
-    // peers and execution are asked simultaneously
+    // intercept peers being asked
     let wait_peers = async move || {
         // wait for bootstrap to ask network for peers, send them
         let response = match wait_network_command(&mut network_cmd_rx, 1000.into(), |cmd| match cmd
@@ -126,25 +126,10 @@ async fn test_bootstrap_server() {
         sent_peers
     };
 
-    let wait_execution = async move || {
-        // wait for bootstrap to ask execution for bootstrap state, send it
-        let response =
-            match wait_execution_command(&mut execution_cmd_rx, 1000.into(), |cmd| match cmd {
-                ExecutionCommand::GetBootstrapState(resp) => Some(resp),
-                _ => None,
-            })
-            .await
-            {
-                Some(resp) => resp,
-                None => panic!("timeout waiting for get boot execution command"),
-            };
-        let sent_execution_state = get_execution_state();
-        response.send(sent_execution_state.clone()).unwrap();
-        sent_execution_state
-    };
+    // wait for peers
+    let sent_peers = wait_peers().await;
 
-    // wait for peers and execution at the same time
-    let (sent_peers, sent_execution_state) = tokio::join!(wait_peers(), wait_execution());
+    // here the ledger is queried directly. We don't intercept this
 
     // wait for bootstrap to ask consensus for bootstrap graph, send it
     let response = match wait_consensus_command(&mut consensus_cmd_rx, 1000.into(), |cmd| match cmd
@@ -170,10 +155,6 @@ async fn test_bootstrap_server() {
     // wait for bridge
     bridge.await.expect("bridge join failed");
 
-    // check states
-    assert_eq_thread_cycle_states(&sent_pos, &bootstrap_res.pos.unwrap());
-    assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
-
     // check peers
     assert_eq!(
         sent_peers.0,
@@ -181,8 +162,15 @@ async fn test_bootstrap_server() {
         "mismatch between sent and received peers"
     );
 
-    // check execution
-    assert_eq_exec(&sent_execution_state, &bootstrap_res.execution.unwrap());
+    // check ledger
+    assert_eq_ledger_bootstrap_state(
+        &ledger_bootstrap_state,
+        &bootstrap_res.final_ledger.unwrap(),
+    );
+
+    // check states
+    assert_eq_thread_cycle_states(&sent_pos, &bootstrap_res.pos.unwrap());
+    assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
 
     // stop bootstrap server
     bootstrap_manager
