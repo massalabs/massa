@@ -1,3 +1,5 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 use massa_time::MassaTime;
 
 /// VM module configuration

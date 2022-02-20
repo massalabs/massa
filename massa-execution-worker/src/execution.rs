@@ -1,3 +1,5 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;
 use massa_execution_exports::{

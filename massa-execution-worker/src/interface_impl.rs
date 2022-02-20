@@ -1,3 +1,5 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 /// Implementation of the interface used in the execution external library
 ///
 use crate::context::ExecutionContext;

@@ -1,3 +1,5 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 use crate::event_store::EventStore;
 use massa_ledger::LedgerChanges;
 use massa_models::{Address, Amount, BlockId, Slot};

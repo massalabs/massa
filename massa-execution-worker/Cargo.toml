@@ -33,3 +33,5 @@ massa_ledger = { path = "../massa-ledger" }
 pretty_assertions = "1.0"
 serial_test = "0.5"
 tempfile = "3.2"
+# custom modules with testing enabled
+massa_execution_exports = { path = "../massa-execution-exports", features = ["testing"] }

@@ -1,3 +1,5 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 use massa_execution_exports::ExecutionError;
 use massa_hash::hash::Hash;
 use massa_ledger::{Applicable, FinalLedger, LedgerChanges};

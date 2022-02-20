@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::ledger_changes::LedgerChanges;
 use crate::ledger_entry::LedgerEntry;

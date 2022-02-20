@@ -1,3 +1,5 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 /// represents a structure that supports another one being applied to it
 pub trait Applicable<V> {
     fn apply(&mut self, _: V);

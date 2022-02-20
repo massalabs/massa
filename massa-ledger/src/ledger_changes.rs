@@ -1,3 +1,5 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 use massa_hash::hash::Hash;

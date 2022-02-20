@@ -1,3 +1,5 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+
 use crate::controller::{ExecutionControllerImpl, ExecutionManagerImpl, VMInputData};
 use crate::execution::ExecutionState;
 use massa_execution_exports::{
