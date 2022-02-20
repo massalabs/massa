@@ -411,18 +411,14 @@
 <span id="406">406</span>
 <span id="407">407</span>
 <span id="408">408</span>
-<span id="409">409</span>
-<span id="410">410</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Implementation of the interface used in the execution external library</span>
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">types</span>::{<span class="ident">ExecutionContext</span>, <span class="ident">StackElement</span>},
-    <span class="ident">AMOUNT_ZERO</span>,
-};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types</span>::{<span class="ident">ExecutionContext</span>, <span class="ident">StackElement</span>};
 <span class="kw">use</span> <span class="ident">anyhow</span>::{<span class="ident">bail</span>, <span class="prelude-ty">Result</span>};
 <span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">output_event</span>::{<span class="ident">EventExecutionContext</span>, <span class="ident">SCOutputEvent</span>, <span class="ident">SCOutputEventId</span>},
     <span class="ident">timeslots::get_block_slot_timestamp</span>,
+    <span class="ident">Amount</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_sc_runtime</span>::{<span class="ident">Interface</span>, <span class="ident">InterfaceClone</span>};
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
@@ -780,7 +776,7 @@
             .<span class="ident">stack</span>
             .<span class="ident">last</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">coins</span>)
-            .<span class="ident">unwrap_or</span>(<span class="ident">AMOUNT_ZERO</span>)
+            .<span class="ident">unwrap_or</span>(<span class="ident">Amount::zero</span>())
             .<span class="ident">to_raw</span>())
     }
 
@@ -824,5 +820,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (30b3f35c4 2022-02-17)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (3b348d932 2022-02-19)" ></div>
 </body></html>
