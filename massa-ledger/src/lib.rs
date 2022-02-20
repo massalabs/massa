@@ -21,3 +21,6 @@ pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(feature = "testing")]
+pub mod test_exports;

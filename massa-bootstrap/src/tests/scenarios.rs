@@ -3,28 +3,28 @@
 use super::{
     mock_establisher,
     tools::{
-        bridge_mock_streams, get_boot_state, get_keys, get_peers, wait_consensus_command,
-        wait_network_command,
+        bridge_mock_streams, get_boot_state, get_keys, get_peers,
+        get_random_ledger_bootstrap_state, wait_consensus_command, wait_network_command,
     },
 };
+use crate::BootstrapSettings;
 use crate::{
     get_state, start_bootstrap_server,
     tests::tools::{
         assert_eq_bootstrap_graph, assert_eq_thread_cycle_states, get_bootstrap_config,
     },
 };
-use crate::{
-    tests::tools::{assert_eq_exec, get_execution_state, wait_execution_command},
-    BootstrapSettings,
-};
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
-use massa_execution::{ExecutionCommand, ExecutionCommandSender};
+use massa_ledger::FinalLedger;
 use massa_models::Version;
 use massa_network::{NetworkCommand, NetworkCommandSender};
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;
 use serial_test::serial;
-use std::str::FromStr;
+use std::{
+    str::FromStr,
+    sync::{Arc, RwLock},
+};
 use tokio::sync::mpsc;
 
 lazy_static::lazy_static! {
@@ -42,13 +42,17 @@ async fn test_bootstrap_server() {
 
     let (consensus_cmd_tx, mut consensus_cmd_rx) = mpsc::channel::<ConsensusCommand>(5);
     let (network_cmd_tx, mut network_cmd_rx) = mpsc::channel::<NetworkCommand>(5);
-    let (execution_cmd_tx, mut execution_cmd_rx) = mpsc::channel::<ExecutionCommand>(5);
+    let ledger_bootstrap_state = get_random_ledger_bootstrap_state();
+    let final_ledger = Arc::new(RwLock::new(FinalLedger::from_bootstrap_state(
+        Default::default(),
+        ledger_bootstrap_state.clone(),
+    )));
 
     let (bootstrap_establisher, bootstrap_interface) = mock_establisher::new();
     let bootstrap_manager = start_bootstrap_server(
         ConsensusCommandSender(consensus_cmd_tx),
         NetworkCommandSender(network_cmd_tx),
-        ExecutionCommandSender(execution_cmd_tx),
+        final_ledger,
         bootstrap_settings,
         bootstrap_establisher,
         *private_key,

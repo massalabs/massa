@@ -1477,7 +1477,6 @@ dependencies = [
  "futures 0.3.21",
  "lazy_static",
  "massa_consensus_exports",
- "massa_execution_exports",
  "massa_graph",
  "massa_hash",
  "massa_ledger",
