@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+//! this file defines all possible execution error categories
+
 use displaydoc::Display;
 use thiserror::Error;
 

@@ -1,5 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+//! This module represents an event store allowing to store, search and retrieve
+//! a config-limited number of execution-generated events
+
 use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
 use massa_models::prehash::{Map, PreHashed, Set};
 /// Define types used while executing block bytecodes

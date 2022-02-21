@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-/// This file defines testing tools related to the config
+//! This file defines testing tools related to the config
+
 use massa_time::MassaTime;
 
 use crate::ExecutionConfig;

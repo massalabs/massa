@@ -1,5 +1,12 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+//! This module represents the context in which the VM executes bytecode.
+//! It provides information such as the current call stack.
+//! It also maintians a "speculative" ledger state which is a virtual ledger
+//! as seen after applying everything that happened so far in the context.
+//! More generally, the context acts only on its own state
+//! and does not write anything persistent to the conensus state.
+
 use crate::speculative_ledger::SpeculativeLedger;
 use massa_execution_exports::{
     EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest,
@@ -11,11 +18,13 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::sync::{Arc, RwLock};
 
+/// A snapshot taken from an ExecutionContext and that represents its current state.
+/// The ExecutionContext state can then be restored later from this snapshot.
 pub(crate) struct ExecutionContextSnapshot {
-    // added speculative ledger changes
+    // speculative ledger changes caused so far in the context
     pub ledger_changes: LedgerChanges,
 
-    /// counter of newly created addresses so far during this execution
+    /// counter of newly created addresses so far at this slot during this execution
     pub created_addr_index: u64,
 
     /// counter of newly created events so far during this execution
@@ -31,8 +40,12 @@ pub(crate) struct ExecutionContextSnapshot {
     pub unsafe_rng: Xoshiro256PlusPlus,
 }
 
+/// An execution context that needs to be initialized before executing bytecode,
+/// passed to the VM to interact with during bytecode execution (through ABIs),
+/// and read after execution to gather results.
 pub(crate) struct ExecutionContext {
-    // speculative ledger
+    /// speculative ledger state,
+    /// as seen after everything that happened so far in the context
     speculative_ledger: SpeculativeLedger,
 
     /// max gas for this execution
@@ -50,7 +63,7 @@ pub(crate) struct ExecutionContext {
     /// counter of newly created events so far during this execution
     pub created_event_index: u64,
 
-    /// block ID, if one is present at this slot
+    /// block ID, if one is present at the execution slot
     pub opt_block_id: Option<BlockId>,
 
     /// address call stack, most recent is at the back
@@ -62,14 +75,25 @@ pub(crate) struct ExecutionContext {
     /// generated events during this execution, with multiple indexes
     pub events: EventStore,
 
-    /// Unsafe RNG state
+    /// Unsafe RNG state (can be predicted and manipulated)
     pub unsafe_rng: Xoshiro256PlusPlus,
 
-    /// origin operation id
+    /// operation id that originally caused this execution (if any)
     pub origin_operation_id: Option<OperationId>,
 }
 
 impl ExecutionContext {
+    /// Create a new empty ExecutionContext
+    /// This should only be used as a placeholder.
+    /// Further initialization is required before running bytecode
+    /// (see new_readonly and new_active_slot methods).
+    ///
+    /// # arguments
+    /// * final_ledger: thread-safe access to the final ledger. Note that this will be used only for reading, never for writing
+    /// * previous_changes: list of ledger changes that happened since the final ledger state and before the current execution
+    ///
+    /// # returns
+    /// A new (empty) ExecutionContext instance
     pub(crate) fn new(
         final_ledger: Arc<RwLock<FinalLedger>>,
         previous_changes: LedgerChanges,
@@ -90,7 +114,8 @@ impl ExecutionContext {
         }
     }
 
-    /// returns an copied execution state snapshot
+    /// Returns a snapshot containing the clone of the current execution state.
+    /// Note that the snapshot does not include slot-level information such as the slot number or block ID.
     pub(crate) fn get_snapshot(&self) -> ExecutionContextSnapshot {
         ExecutionContextSnapshot {
             ledger_changes: self.speculative_ledger.get_snapshot(),
@@ -102,7 +127,8 @@ impl ExecutionContext {
         }
     }
 
-    /// resets context to a snapshot
+    /// Resets context to an existing snapshot
+    /// Note that the snapshot does not include slot-level information such as the slot number or block ID.
     pub fn reset_to_snapshot(&mut self, snapshot: ExecutionContextSnapshot) {
         self.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
@@ -113,17 +139,36 @@ impl ExecutionContext {
         self.unsafe_rng = snapshot.unsafe_rng;
     }
 
-    /// create the execution context at the beginning of a readonly execution
+    /// Create a new ExecutionContext for readonly execution
+    /// This should be used before performing a readonly execution.
+    ///
+    /// # arguments
+    /// * slot: slot at which the execution will happen
+    /// * req: parameters of the read only execution
+    /// * previous_changes: list of ledger changes that happened since the final ledger state and before this execution
+    /// * final_ledger: thread-safe access to the final ledger. Note that this will be used only for reading, never for writing
+    ///
+    /// # returns
+    /// A ExecutionContext instance ready for a read-only execution
     pub(crate) fn new_readonly(
         slot: Slot,
         req: ReadOnlyExecutionRequest,
         previous_changes: LedgerChanges,
         final_ledger: Arc<RwLock<FinalLedger>>,
     ) -> Self {
-        // Seed the RNG
+        // Deterministically seed the unsafe RNG to allow the bytecode to use it.
+        // Note that consecutive read-only calls for the same slot will get the same random seed.
+
+        // Add the current slot to the seed to ensure different draws at every slot
         let mut seed: Vec<u8> = slot.to_bytes_key().to_vec();
-        seed.push(0u8); // read-only
+        // Add a marker to the seed indicating that we are in read-only mode
+        // to prevent random draw collisions with active executions
+        seed.push(0u8); // 0u8 = read-only
         let seed = massa_hash::hash::Hash::compute_from(&seed).to_bytes();
+        // We use Xoshiro256PlusPlus because it is very fast,
+        // has a period long enough to ensure no repetitions will ever happen,
+        // of decent quality (given the unsafe constraints)
+        // but not cryptographically secure (and that's ok because the internal state is exposed anyways)
         let unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
 
         // return readonly context
@@ -138,16 +183,31 @@ impl ExecutionContext {
         }
     }
 
-    /// create the execution context at the beginning of an active execution slot
+    /// Create a new ExecutionContext for executing an active slot.
+    /// This should be used before performing any executions at that slot.
+    ///
+    /// # arguments
+    /// * slot: slot at which the execution will happen
+    /// * opt_block_id: optional ID of the block at that slot
+    /// * previous_changes: list of ledger changes that happened since the final ledger state and before this execution
+    /// * final_ledger: thread-safe access to the final ledger. Note that this will be used only for reading, never for writing
+    ///
+    /// # returns
+    /// A ExecutionContext instance ready for a read-only execution
     pub(crate) fn new_active_slot(
         slot: Slot,
         opt_block_id: Option<BlockId>,
         previous_changes: LedgerChanges,
         final_ledger: Arc<RwLock<FinalLedger>>,
     ) -> Self {
-        // seed the RNG
+        // Deterministically seed the unsafe RNG to allow the bytecode to use it.
+
+        // Add the current slot to the seed to ensure different draws at every slot
         let mut seed: Vec<u8> = slot.to_bytes_key().to_vec();
-        seed.push(1u8); // not read-only
+        // Add a marker to the seed indicating that we are in active mode
+        // to prevent random draw collisions with read-only executions
+        seed.push(1u8); // 1u8 = active
+                        // For more deterministic entropy, seed with the block ID if any
         if let Some(block_id) = &opt_block_id {
             seed.extend(block_id.to_bytes()); // append block ID
         }
@@ -163,7 +223,11 @@ impl ExecutionContext {
         }
     }
 
-    /// moves out the output of the execution, resetting some fields
+    /// Moves the output of the execution out of the context,
+    /// resetting some context fields in the process.
+    ///
+    /// This is used to get the output of an execution before discarding the context.
+    /// Note that we are not taking self by value to consume it because the context is shared.
     pub fn take_execution_output(&mut self) -> ExecutionOutput {
         ExecutionOutput {
             slot: self.slot,
@@ -173,7 +237,7 @@ impl ExecutionContext {
         }
     }
 
-    /// gets the address at the top of the stack
+    /// Gets the address at the top of the call stack, if any
     pub fn get_current_address(&self) -> Result<Address, ExecutionError> {
         match self.stack.last() {
             Some(addr) => Ok(addr.address),
@@ -185,8 +249,8 @@ impl ExecutionContext {
         }
     }
 
-    /// gets the current list of owned addresses (top of the stack)
-    /// ordering is conserved for determinism
+    /// Gets the current list of owned addresses (top of the stack)
+    /// Ordering is conserved for determinism
     pub fn get_current_owned_addresses(&self) -> Result<Vec<Address>, ExecutionError> {
         match self.stack.last() {
             Some(v) => Ok(v.owned_addresses.clone()),
@@ -198,7 +262,7 @@ impl ExecutionContext {
         }
     }
 
-    /// gets the current call coins
+    /// Gets the current call coins
     pub fn get_current_call_coins(&self) -> Result<Amount, ExecutionError> {
         match self.stack.last() {
             Some(v) => Ok(v.coins),
@@ -210,39 +274,48 @@ impl ExecutionContext {
         }
     }
 
-    /// gets the call stack (addresses)
+    /// Gets the addresses from the call stack (last = top of the stack)
     pub fn get_call_stack(&self) -> Vec<Address> {
         self.stack.iter().map(|v| v.address).collect()
     }
 
-    /// check whether the context grants write access on a given address
+    /// Checks whether the context currently grants write access to a given address
     pub fn has_write_rights_on(&self, addr: &Address) -> bool {
         self.stack
             .last()
             .map_or(false, |v| v.owned_addresses.contains(&addr))
     }
 
-    /// creates a new smart contract address with initial bytecode, within the current execution context
+    /// Creates a new smart contract address with initial bytecode, and returns this address
     pub fn create_new_sc_address(&mut self, bytecode: Vec<u8>) -> Result<Address, ExecutionError> {
         // TODO: security problem:
         //  prefix addresses to know if they are SCs or normal, otherwise people can already create new accounts by sending coins to the right hash
         //  they won't have ownership over it but this can still be a pain
 
-        // generate address
+        // deterministically generate a new unique smart contract address
+
+        // create a seed from the current slot
         let mut data: Vec<u8> = self.slot.to_bytes_key().to_vec();
+        // add the index of the created address within this context to the seed
         data.append(&mut self.created_addr_index.to_be_bytes().to_vec());
+        // add a flag on whether we are in read-only mode or not to the seed
+        // this prevents read-only contexts from shadowing existing addresses
         if self.read_only {
             data.push(0u8);
         } else {
             data.push(1u8);
         }
+        // hash the seed to get a unique address
         let address = Address(massa_hash::hash::Hash::compute_from(&data));
 
-        // create address in the speculative ledger
+        // add this address with its bytecode to the speculative ledger
         self.speculative_ledger
             .create_new_sc_address(address, bytecode)?;
 
-        // add to owned addresses
+        // add the address to owned addresses
+        // so that the current call has write access to it
+        // from now and for its whole duration,
+        // in order to allow initializing newly created ledger entries.
         match self.stack.last_mut() {
             Some(v) => {
                 v.owned_addresses.push(address);
@@ -260,27 +333,35 @@ impl ExecutionContext {
         Ok(address)
     }
 
-    /// gets the bytecode of an address if it exists
+    /// gets the bytecode of an address if it exists in the speculative ledger, or returns None
     pub fn get_bytecode(&self, address: &Address) -> Option<Vec<u8>> {
         self.speculative_ledger.get_bytecode(address)
     }
 
-    /// gets the data from a datastore entry of an address if it exists
+    /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
     pub fn get_data_entry(&self, address: &Address, key: &Hash) -> Option<Vec<u8>> {
         self.speculative_ledger.get_data_entry(address, key)
     }
 
-    /// checks if a datastore entry exists
+    /// checks if a datastore entry exists in the speculative ledger
     pub fn has_data_entry(&self, address: &Address, key: &Hash) -> bool {
         self.speculative_ledger.has_data_entry(address, key)
     }
 
-    /// gets the bytecode of an address if it exists
+    /// gets the bytecode of an address if it exists in the speculative ledger, or returns None
     pub fn get_parallel_balance(&self, address: &Address) -> Option<Amount> {
         self.speculative_ledger.get_parallel_balance(address)
     }
 
-    /// checks if a datastore entry exists
+    /// Sets a datastore entry for an address in the speculative ledger.
+    /// Fail if the address is absent from the ledger.
+    /// The datastore entry is created if it is absent for that address.
+    ///
+    /// # Arguments
+    /// * address: the address of the ledger entry
+    /// * key: the datastore key
+    /// * data: the data to insert
+    /// * check_rights: if true, the function quits with an error if the current context has no writing rights on the target address
     pub fn set_data_entry(
         &mut self,
         address: &Address,

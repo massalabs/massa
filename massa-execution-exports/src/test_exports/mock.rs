@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-// This file defines utilities to mock the crate for testing purposes
+
+//! This file defines utilities to mock the crate for testing purposes
 
 use crate::{ExecutionController, ExecutionError, ExecutionOutput, ReadOnlyExecutionRequest};
 use massa_ledger::LedgerEntry;
@@ -11,6 +12,11 @@ use std::sync::{
     Arc, Mutex,
 };
 
+/// List of possible messages coming from the mock.
+/// Each variant corresponds to a unique method in ExecutionController,
+/// and is emitted in a thread-safe way by the mock whenever that method is called.
+/// Some variants wait for a response on their response_tx field, if present.
+/// See the documentation of ExecutionController for details on parameters and return values.
 #[derive(Clone)]
 pub enum MockExecutionControllerMessage {
     UpdateBlockcliqueStatus {
@@ -35,10 +41,16 @@ pub enum MockExecutionControllerMessage {
     },
 }
 
+/// A mocked execution controller that will intercept calls on its methods
+/// and emit corresponding MockExecutionControllerMessage messages through a MPSC in a thread-safe way.
+/// For messages with a response_tx field, the mock will await a response through their response_tx channel
+/// in order to simulate returning this value at the end of the call.
 #[derive(Clone)]
 pub struct MockExecutionController(Arc<Mutex<mpsc::Sender<MockExecutionControllerMessage>>>);
 
 impl MockExecutionController {
+    /// Create a new pair (mock execution controller, mpsc receiver for emitted messages)
+    /// Note that unbounded mpsc channels are used
     pub fn new() -> (
         Box<dyn ExecutionController>,
         Receiver<MockExecutionControllerMessage>,
@@ -51,12 +63,12 @@ impl MockExecutionController {
     }
 }
 
+/// Implements all the methods of the ExecutionController trait,
+/// but simply make them emit a MockExecutionControllerMessage.
+/// If the message contains a response_tx,
+/// a response from that channel is read and returned as return value.
+/// See the documentation of ExecutionController for details on each function.
 impl ExecutionController for MockExecutionController {
-    /// Update blockclique status
-    ///
-    /// # arguments
-    /// * finalized_blocks: newly finalized blocks
-    /// * blockclique: new blockclique
     fn update_blockclique_status(
         &self,
         finalized_blocks: Map<BlockId, Block>,
@@ -72,12 +84,6 @@ impl ExecutionController for MockExecutionController {
             .unwrap();
     }
 
-    /// Get events optionnally filtered by:
-    /// * start slot
-    /// * end slot
-    /// * emitter address
-    /// * original caller address
-    /// * operation id
     fn get_filtered_sc_output_event(
         &self,
         start: Option<Slot>,
@@ -102,10 +108,6 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
-    /// gets a copy of a full ledger entry
-    ///
-    /// # return value
-    /// * (final_entry, active_entry)
     fn get_full_ledger_entry(&self, addr: &Address) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
@@ -119,7 +121,6 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
-    /// Executes a readonly request
     fn execute_readonly_request(
         &self,
         req: ReadOnlyExecutionRequest,

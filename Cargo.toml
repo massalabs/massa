@@ -1,5 +1,4 @@
 [workspace]
-resolver = "2"
 members = [
   "massa-api",
   "massa-bootstrap",
@@ -23,6 +22,7 @@ members = [
   "massa-wallet",
   "massa-ledger"
 ]
+resolver = "2"
 
 # From https://doc.rust-lang.org/cargo/reference/profiles.html#overrides
 [profile.dev.package."*"]

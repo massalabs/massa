@@ -1,8 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+//! This module provides the structures used to provide configuration parameters to the Execution system
+
 use massa_time::MassaTime;
 
-/// VM module configuration
+/// Executio module configuration
 #[derive(Debug, Clone)]
 pub struct ExecutionConfig {
     /// read-only execution request queue length
