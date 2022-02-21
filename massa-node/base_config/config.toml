@@ -96,18 +96,8 @@
     peers_file = "storage/peers.json"
     # path to the initial peers file
     initial_peers_file = "base_config/initial_peers.json"
-    # target number of connections to bootstrap nodes
-    target_bootstrap_connections = 1
-    # max number of simultaneous protocol connection attempts towards bootstrap nodes
-    max_out_bootstrap_connection_attempts = 1
-    # target number of non bootstrap outgoing connections
-    target_out_nonbootstrap_connections = 10
-    # max number of inbound non bootstrap connections
-    max_in_nonbootstrap_connections = 15
     # max number of inbound connections per ip
     max_in_connections_per_ip = 5
-    # max number of outgoing non bootstrap simultaneous connection attempts
-    max_out_nonbootstrap_connection_attempts = 10
     # max number of stored idle peers
     max_idle_peers = 10000
     # max number of stored banned peers
@@ -134,9 +124,6 @@
     max_send_wait = 500
     # we forget we banned a node after ban_timeout milliseconds
     ban_timeout = 3600000
-    # Timeout duration when in handshake we respond with a PeerList
-    # (on max in connection reached we send a list of peers)
-    peer_list_send_timeout = 100
 
     # Timeout duration when in handshake we respond with a PeerList
     # (on max in connection reached we send a list of peers)
@@ -144,6 +131,24 @@
     # Max number of in connection overflowed managed by the handshake
     # that send a list of peers
     max_in_connection_overflow = 100
+
+    [network.bootstrap_peers_config]
+        target_out= 1
+        max_out_attempts= 1
+        max_in= 1
+
+
+    [network.whitelist_peers_config]
+        target_out= 1
+        max_out_attempts= 1
+        max_in= 1
+
+
+    [network.standard_peers_config]
+        target_out= 15
+        max_out_attempts= 10
+        max_in= 5
+
 
 [bootstrap]
     # list of bootstrap (ip, node id)
