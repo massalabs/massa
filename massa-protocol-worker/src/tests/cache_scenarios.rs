@@ -37,7 +37,7 @@ async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size()
 
             let address = Address::from_public_key(&nodes[0].id.0);
             let serialization_context = massa_models::get_serialization_context();
-            let thread = address.get_thread(serialization_context.parent_count);
+            let thread = address.get_thread(serialization_context.thread_count);
 
             let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
 

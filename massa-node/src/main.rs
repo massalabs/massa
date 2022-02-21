@@ -4,18 +4,23 @@
 #![doc = include_str!("../../README.md")]
 
 extern crate massa_logging;
-use crate::settings::SETTINGS;
+use crate::settings::{POOL_CONFIG, SETTINGS};
 use massa_api::{Private, Public, RpcServer, StopHandle, API};
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
-use massa_consensus::{
-    start_consensus_controller, ConsensusChannels, ConsensusCommandSender, ConsensusEvent,
+use massa_consensus_exports::{
+    events::ConsensusEvent, settings::ConsensusChannels, ConsensusCommandSender, ConsensusConfig,
     ConsensusEventReceiver, ConsensusManager,
 };
-
+use massa_consensus_worker::start_consensus_controller;
 use massa_execution::{ExecutionConfigs, ExecutionManager};
 
 use massa_logging::massa_trace;
-use massa_models::{init_serialization_context, SerializationContext};
+use massa_models::{
+    constants::{
+        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, VERSION,
+    },
+    init_serialization_context, SerializationContext,
+};
 use massa_network::{start_network_controller, Establisher, NetworkCommandSender, NetworkManager};
 use massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use massa_protocol_exports::ProtocolManager;
@@ -47,32 +52,15 @@ async fn launch() -> (
     StopHandle,
     StopHandle,
 ) {
-    info!("Node version : {}", *crate::settings::VERSION);
-    if let Some(end) = *massa_consensus::settings::END_TIMESTAMP {
+    info!("Node version : {}", *VERSION);
+    if let Some(end) = *END_TIMESTAMP {
         if MassaTime::now().expect("could not get now time") > end {
             panic!("This episode has come to an end, please get the latest testnet node version to continue");
         }
     }
 
     // Init the global serialization context
-    init_serialization_context(SerializationContext {
-        max_block_operations: massa_consensus::settings::MAX_OPERATIONS_PER_BLOCK,
-        parent_count: massa_consensus::settings::THREAD_COUNT,
-        max_block_size: massa_consensus::settings::MAX_BLOCK_SIZE,
-        max_block_endorsements: massa_consensus::settings::ENDORSEMENT_COUNT,
-        max_peer_list_length: massa_network::settings::MAX_ADVERTISE_LENGTH,
-        max_message_size: massa_network::settings::MAX_MESSAGE_SIZE,
-        max_bootstrap_blocks: massa_bootstrap::settings::MAX_BOOTSTRAP_BLOCKS,
-        max_bootstrap_cliques: massa_bootstrap::settings::MAX_BOOTSTRAP_CLIQUES,
-        max_bootstrap_deps: massa_bootstrap::settings::MAX_BOOTSTRAP_DEPS,
-        max_bootstrap_children: massa_bootstrap::settings::MAX_BOOTSTRAP_CHILDREN,
-        max_ask_blocks_per_message: massa_network::settings::MAX_ASK_BLOCKS_PER_MESSAGE,
-        max_operations_per_message: massa_network::settings::MAX_OPERATIONS_PER_MESSAGE,
-        max_endorsements_per_message: massa_network::settings::MAX_ENDORSEMENTS_PER_MESSAGE,
-        max_bootstrap_message_size: massa_bootstrap::settings::MAX_BOOTSTRAP_MESSAGE_SIZE,
-        max_bootstrap_pos_cycles: massa_bootstrap::settings::MAX_BOOTSTRAP_POS_CYCLES,
-        max_bootstrap_pos_entries: massa_bootstrap::settings::MAX_BOOTSTRAP_POS_ENTRIES,
-    });
+    init_serialization_context(SerializationContext::default());
 
     // interrupt signal listener
     let stop_signal = signal::ctrl_c();
@@ -85,9 +73,9 @@ async fn launch() -> (
         res = get_state(
             &SETTINGS.bootstrap,
             massa_bootstrap::establisher::Establisher::new(),
-            *settings::VERSION,
-            *massa_consensus::settings::GENESIS_TIMESTAMP,
-            *massa_consensus::settings::END_TIMESTAMP,
+            *VERSION,
+            *GENESIS_TIMESTAMP,
+            *END_TIMESTAMP,
         ) => match res {
             Ok(vals) => vals,
             Err(err) => panic!("critical error detected in the bootstrap process: {}", err)
@@ -101,7 +89,7 @@ async fn launch() -> (
             Establisher::new(),
             bootstrap_state.compensation_millis,
             bootstrap_state.peers,
-            *crate::settings::VERSION,
+            *VERSION,
         )
         .await
         .expect("could not start network controller");
@@ -114,8 +102,8 @@ async fn launch() -> (
         protocol_manager,
     ) = start_protocol_controller(
         &SETTINGS.protocol,
-        massa_consensus::settings::OPERATION_VALIDITY_PERIODS,
-        massa_consensus::settings::MAX_GAS_PER_BLOCK,
+        OPERATION_VALIDITY_PERIODS,
+        MAX_GAS_PER_BLOCK,
         network_command_sender.clone(),
         network_event_receiver,
     )
@@ -124,9 +112,7 @@ async fn launch() -> (
 
     // launch pool controller
     let (pool_command_sender, pool_manager) = start_pool_controller(
-        &SETTINGS.pool,
-        massa_consensus::settings::THREAD_COUNT,
-        massa_consensus::settings::OPERATION_VALIDITY_PERIODS,
+        &POOL_CONFIG,
         protocol_command_sender.clone(),
         protocol_pool_event_receiver,
     )
@@ -135,10 +121,8 @@ async fn launch() -> (
 
     let execution_config = ExecutionConfigs {
         settings: SETTINGS.execution.clone(),
-        thread_count: massa_consensus::settings::THREAD_COUNT,
-        genesis_timestamp: *massa_consensus::settings::GENESIS_TIMESTAMP,
-        t0: *massa_consensus::settings::T0,
         clock_compensation: bootstrap_state.compensation_millis,
+        ..Default::default()
     };
 
     // launch execution controller
@@ -147,10 +131,11 @@ async fn launch() -> (
             .await
             .expect("could not start execution controller");
 
+    let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
-            SETTINGS.consensus.config(),
+            consensus_config.clone(),
             ConsensusChannels {
                 execution_command_sender: execution_command_sender.clone(),
                 execution_event_receiver,
@@ -174,7 +159,7 @@ async fn launch() -> (
         massa_bootstrap::Establisher::new(),
         private_key,
         bootstrap_state.compensation_millis,
-        *crate::settings::VERSION,
+        *VERSION,
     )
     .await
     .unwrap();
@@ -185,7 +170,7 @@ async fn launch() -> (
         network_command_sender.clone(),
         execution_command_sender.clone(),
         &SETTINGS.api,
-        SETTINGS.consensus.config(),
+        consensus_config.clone(),
     );
     let api_private_handle = api_private.serve(&SETTINGS.api.bind_private);
 
@@ -194,10 +179,10 @@ async fn launch() -> (
         consensus_command_sender.clone(),
         execution_command_sender,
         &SETTINGS.api,
-        SETTINGS.consensus.config(),
+        consensus_config,
         pool_command_sender.clone(),
         &SETTINGS.network,
-        *crate::settings::VERSION,
+        *VERSION,
         network_command_sender.clone(),
         bootstrap_state.compensation_millis,
         node_id,

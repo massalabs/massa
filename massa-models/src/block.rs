@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::constants::{BLOCK_ID_SIZE_BYTES, SLOT_KEY_SIZE};
 use crate::prehash::{Map, PreHashed, Set};
-use crate::settings::{BLOCK_ID_SIZE_BYTES, SLOT_KEY_SIZE};
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
     DeserializeMinBEInt, DeserializeVarInt, Endorsement, EndorsementId, ModelsError, Operation,
@@ -261,7 +261,7 @@ impl SerializeCompact for Block {
         res.extend(self.header.to_bytes_compact()?);
 
         let max_block_operations =
-            with_serialization_context(|context| context.max_block_operations);
+            with_serialization_context(|context| context.max_operations_per_block);
 
         // operations
         let operation_count: u32 =
@@ -295,7 +295,7 @@ impl DeserializeCompact for Block {
         let mut cursor = 0usize;
 
         let (max_block_size, max_block_operations) = with_serialization_context(|context| {
-            (context.max_block_size, context.max_block_operations)
+            (context.max_block_size, context.max_operations_per_block)
         });
 
         // header
@@ -489,7 +489,7 @@ impl DeserializeCompact for BlockHeaderContent {
         // parents
         let has_parents = u8_from_slice(&buffer[cursor..])?;
         cursor += 1;
-        let parent_count = with_serialization_context(|context| context.parent_count);
+        let parent_count = with_serialization_context(|context| context.thread_count);
         let parents = if has_parents == 1 {
             let mut parents: Vec<BlockId> = Vec::with_capacity(parent_count as usize);
             for _ in 0..parent_count {
@@ -511,7 +511,7 @@ impl DeserializeCompact for BlockHeaderContent {
         cursor += HASH_SIZE_BYTES;
 
         let max_block_endorsements =
-            with_serialization_context(|context| context.max_block_endorsements);
+            with_serialization_context(|context| context.endorsement_count);
 
         // endorsements
         let (endorsement_count, delta) =
@@ -550,9 +550,9 @@ mod test {
     fn test_block_serialization() {
         let ctx = crate::SerializationContext {
             max_block_size: 1024 * 1024,
-            max_block_operations: 1024,
-            parent_count: 3,
-            max_peer_list_length: 128,
+            max_operations_per_block: 1024,
+            thread_count: 3,
+            max_advertise_length: 128,
             max_message_size: 3 * 1024 * 1024,
             max_bootstrap_blocks: 100,
             max_bootstrap_cliques: 100,
@@ -564,7 +564,7 @@ mod test {
             max_operations_per_message: 1024,
             max_endorsements_per_message: 1024,
             max_bootstrap_message_size: 100000000,
-            max_block_endorsements: 8,
+            endorsement_count: 8,
         };
         crate::init_serialization_context(ctx);
         let private_key = generate_random_private_key();

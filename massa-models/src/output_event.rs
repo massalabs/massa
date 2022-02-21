@@ -1,10 +1,10 @@
 use crate::{
-    prehash::PreHashed, settings::EVENT_ID_SIZE_BYTES, Address, BlockId, ModelsError, OperationId,
-    Slot,
+    node_configuration::EVENT_ID_SIZE_BYTES, prehash::PreHashed, Address, BlockId, ModelsError,
+    OperationId, Slot,
 };
 use massa_hash::hash::Hash;
 use serde::{Deserialize, Serialize};
-use std::{collections::VecDeque, str::FromStr};
+use std::{collections::VecDeque, fmt::Display, str::FromStr};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// By product of a byte code execution
@@ -15,6 +15,14 @@ pub struct SCOutputEvent {
     pub context: EventExecutionContext,
     /// json data string
     pub data: String,
+}
+
+impl Display for SCOutputEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Id: {}", self.id)?;
+        writeln!(f, "Context: {}", self.context)?;
+        writeln!(f, "Data: {}", self.data)
+    }
 }
 
 const SC_OUTPUT_EVENT_ID_STRING_PREFIX: &str = "SCE";
@@ -44,6 +52,20 @@ impl FromStr for SCOutputEventId {
     }
 }
 
+impl Display for SCOutputEventId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if cfg!(feature = "hash-prefix") {
+            write!(
+                f,
+                "{}-{}",
+                SC_OUTPUT_EVENT_ID_STRING_PREFIX,
+                self.0.to_bs58_check()
+            )
+        } else {
+            write!(f, "{}", self.0.to_bs58_check())
+        }
+    }
+}
 impl PreHashed for SCOutputEventId {}
 
 impl SCOutputEventId {
@@ -147,4 +169,35 @@ pub struct EventExecutionContext {
     pub call_stack: VecDeque<Address>,
     /// origin operation id
     pub origin_operation_id: Option<OperationId>,
+}
+
+impl Display for EventExecutionContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Slot: {} at index: {}", self.slot, self.index_in_slot)?;
+
+        writeln!(
+            f,
+            "{}",
+            if self.read_only {
+                "Read only execution"
+            } else {
+                "On chain execution"
+            }
+        )?;
+        if let Some(id) = self.block {
+            writeln!(f, "Block id: {}", id)?;
+        }
+        if let Some(id) = self.origin_operation_id {
+            writeln!(f, "Origin operation id: {}", id)?;
+        }
+        writeln!(
+            f,
+            "Call stack: {}",
+            self.call_stack
+                .iter()
+                .map(|a| format!("{}", a))
+                .collect::<Vec<_>>()
+                .join(",")
+        )
+    }
 }

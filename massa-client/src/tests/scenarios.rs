@@ -1,10 +1,11 @@
-///! Tested only with feature "local"
+//! Tested only with feature "local"
 use anyhow::{bail, Result};
 use assert_cmd::Command;
 use massa_models::api::NodeStatus;
 use serde::de::DeserializeOwned;
 use serial_test::serial;
 use std::{thread::JoinHandle, time::Duration};
+
 const TIMEOUT: u64 = 30;
 const TENTATIVES: u64 = 5;
 
@@ -68,7 +69,7 @@ async fn test_run_node() {
 
     send_cmd_without_output("node_stop").await.unwrap();
 
-    // check that `massa-node` did stop
+    // Check that `massa-node` did stop
     let output = handle.join().expect("did not succeed to close the node");
     // TODO: assert_eq! or try a REGEX against the node log log to check that we stop gracefully
     println!("{}", output);

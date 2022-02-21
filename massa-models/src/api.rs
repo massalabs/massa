@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
 use crate::address::AddressCycleProductionStats;
-use crate::ledger::LedgerData;
+use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
 use crate::prehash::Map;
 use crate::prehash::Set;
@@ -397,4 +397,12 @@ pub struct EventFilter {
     pub emitter_address: Option<Address>,
     pub original_caller_address: Option<Address>,
     pub original_operation_id: Option<OperationId>,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize)]
+pub struct ReadOnlyExecution {
+    pub max_gas: u64,
+    pub simulated_gas_price: Amount,
+    pub bytecode: Vec<u8>,
+    pub address: Option<Address>,
 }

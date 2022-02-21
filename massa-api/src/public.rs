@@ -4,21 +4,22 @@ use crate::error::ApiError;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
-use massa_consensus::{ConsensusCommandSender, ConsensusConfig, DiscardReason, ExportBlockStatus};
+use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution::ExecutionCommandSender;
-use massa_models::api::{
-    APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
-    EventFilter, IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
-};
-use massa_models::clique::Clique;
-use massa_models::composite::PubkeySig;
-use massa_models::execution::ExecuteReadOnlyResponse;
-use massa_models::node::NodeId;
-use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{BuildMap, Map, Set};
-use massa_models::timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range};
+use massa_graph::{DiscardReason, ExportBlockStatus};
 use massa_models::{
-    Address, Amount, BlockId, EndorsementId, Operation, OperationId, Slot, Version,
+    api::{
+        APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
+        EventFilter, IndexedSlot, NodeStatus, OperationInfo, ReadOnlyExecution, TimeInterval,
+    },
+    clique::Clique,
+    composite::PubkeySig,
+    execution::ExecuteReadOnlyResponse,
+    node::NodeId,
+    output_event::SCOutputEvent,
+    prehash::{BuildMap, Map, Set},
+    timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
+    Address, BlockId, CompactConfig, EndorsementId, Operation, OperationId, Slot, Version,
 };
 use massa_network::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
@@ -76,10 +77,7 @@ impl Endpoints for API<Public> {
 
     fn execute_read_only_request(
         &self,
-        _max_gas: u64,
-        _simulated_gas_price: Amount,
-        _bytecode: Vec<u8>,
-        _address: Option<Address>,
+        _: ReadOnlyExecution,
     ) -> BoxFuture<Result<ExecuteReadOnlyResponse, ApiError>> {
         crate::wrong_api::<ExecuteReadOnlyResponse>()
     }
@@ -109,7 +107,7 @@ impl Endpoints for API<Public> {
         let compensation_millis = self.0.compensation_millis;
         let mut pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
-        let config = consensus_settings.compact_config();
+        let config = CompactConfig::default();
         let closure = async move || {
             let now = MassaTime::compensated_now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(

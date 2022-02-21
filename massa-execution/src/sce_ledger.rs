@@ -1,13 +1,13 @@
 use crate::ExecutionError;
-use massa_hash::hash::Hash;
-use massa_hash::HASH_SIZE_BYTES;
-use massa_models::prehash::{BuildMap, Map};
+use massa_hash::{hash::Hash, HASH_SIZE_BYTES};
 use massa_models::{
-    array_from_slice, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact,
-    SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
+    array_from_slice,
+    constants::ADDRESS_SIZE_BYTES,
+    prehash::{BuildMap, Map},
+    DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Slot,
+    {Address, Amount},
 };
-use massa_models::{Address, Amount, AMOUNT_ZERO};
-use massa_sc_runtime::Bytecode;
+
 use serde::{Deserialize, Serialize};
 
 /// an entry in the SCE ledger
@@ -17,7 +17,7 @@ pub struct SCELedgerEntry {
     pub balance: Amount,
 
     // optional executable module
-    pub opt_module: Option<Bytecode>,
+    pub opt_module: Option<Vec<u8>>,
 
     // datastore
     pub data: Map<Hash, Vec<u8>>,
@@ -130,7 +130,7 @@ impl DeserializeCompact for SCELedgerEntry {
             }
         };
         cursor += 1;
-        let opt_module: Option<Bytecode> = if has_module {
+        let opt_module: Option<Vec<u8>> = if has_module {
             // read length
             let (length, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
             // TOOD limit length with from_varint_bytes_bounded
@@ -200,7 +200,7 @@ impl DeserializeCompact for SCELedgerEntry {
 #[derive(Debug, Clone, Default)]
 pub struct SCELedgerEntryUpdate {
     pub update_balance: Option<Amount>,
-    pub update_opt_module: Option<Option<Bytecode>>,
+    pub update_opt_module: Option<Option<Vec<u8>>>,
     pub update_data: Map<Hash, Option<Vec<u8>>>, // None for row deletion
 }
 
@@ -446,7 +446,7 @@ impl SCELedgerStep {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {
-                Some(SCELedgerChange::Delete) => return AMOUNT_ZERO,
+                Some(SCELedgerChange::Delete) => return Amount::zero(),
                 Some(SCELedgerChange::Set(new_entry)) => return new_entry.balance,
                 Some(SCELedgerChange::Update(update)) => {
                     if let Some(updated_balance) = update.update_balance {
@@ -461,7 +461,7 @@ impl SCELedgerStep {
             return entry.balance;
         }
         // otherwise, just return zero
-        AMOUNT_ZERO
+        Amount::zero()
     }
 
     /// sets the balance of an address
@@ -499,7 +499,7 @@ impl SCELedgerStep {
 
     /// gets the module of an SCE ledger entry
     ///  returns None if the entry was not found or has no module
-    pub fn get_module(&self, addr: &Address) -> Option<Bytecode> {
+    pub fn get_module(&self, addr: &Address) -> Option<Vec<u8>> {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {

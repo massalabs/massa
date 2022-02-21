@@ -1,8 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::{error::PoolError, settings::PoolSettings};
-use crate::endorsement_pool::EndorsementPool;
+use super::error::PoolError;
 use crate::operation_pool::OperationPool;
+use crate::{endorsement_pool::EndorsementPool, settings::PoolConfig};
 use massa_models::prehash::{Map, Set};
 use massa_models::stats::PoolStats;
 use massa_models::{
@@ -86,9 +86,7 @@ impl PoolWorker {
     /// * controller_command_rx: Channel receiving pool commands.
     /// * controller_manager_rx: Channel receiving pool management commands.
     pub fn new(
-        pool_settings: &'static PoolSettings,
-        thread_count: u8,
-        operation_validity_periods: u64,
+        cfg: &'static PoolConfig,
         protocol_command_sender: ProtocolCommandSender,
         protocol_pool_event_receiver: ProtocolPoolEventReceiver,
         controller_command_rx: mpsc::Receiver<PoolCommand>,
@@ -100,12 +98,8 @@ impl PoolWorker {
             protocol_pool_event_receiver,
             controller_command_rx,
             controller_manager_rx,
-            operation_pool: OperationPool::new(
-                pool_settings,
-                thread_count,
-                operation_validity_periods,
-            ),
-            endorsement_pool: EndorsementPool::new(pool_settings, thread_count),
+            operation_pool: OperationPool::new(cfg),
+            endorsement_pool: EndorsementPool::new(cfg),
         })
     }
 

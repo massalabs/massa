@@ -3,10 +3,15 @@
 use super::super::binders::{ReadBinder, WriteBinder};
 use super::mock_establisher::MockEstablisherInterface;
 use super::{mock_establisher, tools};
-use crate::handshake_worker::HandshakeWorker;
-use crate::messages::Message;
-use crate::{start_network_controller, NetworkSettings};
-use crate::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver, NetworkManager, PeerInfo};
+use crate::{
+    handshake_worker::HandshakeWorker, network_controller::NetworkEventReceiver, ConnectionId,
+    NetworkError, NetworkEvent,
+};
+use crate::{
+    messages::Message,
+    network_controller::{start_network_controller, NetworkCommandSender, NetworkManager},
+};
+use crate::{NetworkSettings, PeerInfo};
 use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::{
@@ -17,16 +22,13 @@ use massa_time::MassaTime;
 use std::str::FromStr;
 use std::{
     future::Future,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::Path,
+    net::{IpAddr, SocketAddr},
     time::Duration,
 };
 use tempfile::NamedTempFile;
 use tokio::time::sleep;
 use tokio::{sync::oneshot, task::JoinHandle, time::timeout};
 use tracing::trace;
-
-pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
     BlockId(Hash::compute_from(s.as_bytes()))
@@ -45,61 +47,8 @@ pub fn generate_peers_file(peer_vec: &[PeerInfo]) -> NamedTempFile {
     peers_file_named
 }
 
-fn get_temp_private_key_file() -> NamedTempFile {
+pub fn get_temp_private_key_file() -> NamedTempFile {
     NamedTempFile::new().expect("cannot create temp file")
-}
-
-/// create a NetworkConfig with typical values
-pub fn create_network_config(
-    network_controller_port: u16,
-    peers_file_path: &Path,
-) -> NetworkSettings {
-    // Init the serialization context with a default,
-    // can be overwritten with a more specific one in the test.
-    massa_models::init_serialization_context(massa_models::SerializationContext {
-        max_block_operations: 1024,
-        parent_count: 2,
-        max_peer_list_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_block_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_endorsements_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-        max_bootstrap_pos_entries: 1000,
-        max_bootstrap_pos_cycles: 5,
-        max_block_endorsements: 8,
-    });
-
-    NetworkSettings {
-        bind: format!("0.0.0.0:{}", network_controller_port)
-            .parse()
-            .unwrap(),
-        routable_ip: Some(BASE_NETWORK_CONTROLLER_IP),
-        protocol_port: network_controller_port,
-        connect_timeout: MassaTime::from(3000),
-        peers_file: peers_file_path.to_path_buf(),
-        target_out_nonbootstrap_connections: 10,
-        wakeup_interval: MassaTime::from(3000),
-        target_bootstrap_connections: 0,
-        max_out_bootstrap_connection_attempts: 1,
-        max_in_nonbootstrap_connections: 100,
-        max_in_connections_per_ip: 100,
-        max_out_nonbootstrap_connection_attempts: 100,
-        max_idle_peers: 100,
-        max_banned_peers: 100,
-        peers_file_dump_interval: MassaTime::from(30000),
-        message_timeout: MassaTime::from(5000u64),
-        ask_peer_list_interval: MassaTime::from(50000u64),
-        private_key_file: get_temp_private_key_file().path().to_path_buf(),
-        max_send_wait: MassaTime::from(100),
-        ban_timeout: MassaTime::from(100_000_000),
-        initial_peers_file: peers_file_path.to_path_buf(),
-    }
 }
 
 /// Establish a full alive connection to the controller
@@ -118,6 +67,7 @@ pub async fn full_connection_to_controller(
     connect_timeout_ms: u64,
     event_timeout_ms: u64,
     rw_timeout_ms: u64,
+    connection_id: ConnectionId,
 ) -> (NodeId, ReadBinder, WriteBinder) {
     // establish connection towards controller
     let (mock_read_half, mock_write_half) = timeout(
@@ -132,16 +82,18 @@ pub async fn full_connection_to_controller(
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
-    let (_, read_binder, write_binder) = HandshakeWorker::new(
+    let res = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
+        connection_id,
     )
-    .run()
     .await
+    .expect("handshake creation failed")
+    .1
     .expect("handshake failed");
 
     // wait for a NetworkEvent::NewConnection event
@@ -161,11 +113,11 @@ pub async fn full_connection_to_controller(
     )
     .await
     .expect("did not receive NewConnection event with expected node id");
-
-    (mock_node_id, read_binder, write_binder)
+    (mock_node_id, res.1, res.2)
 }
 
-/// try to establish a connection to the controller and expect rejection
+/// try to establish a connection to the controller and expect rejection.
+/// Return the `NetworkError` that spawned from the HanshakeWorker.
 pub async fn rejected_connection_to_controller(
     network_event_receiver: &mut NetworkEventReceiver,
     mock_interface: &mut MockEstablisherInterface,
@@ -173,7 +125,8 @@ pub async fn rejected_connection_to_controller(
     connect_timeout_ms: u64,
     event_timeout_ms: u64,
     rw_timeout_ms: u64,
-) {
+    connection_id: ConnectionId,
+) -> NetworkError {
     // establish connection towards controller
     let (mock_read_half, mock_write_half) = timeout(
         Duration::from_millis(connect_timeout_ms),
@@ -187,16 +140,25 @@ pub async fn rejected_connection_to_controller(
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
-    let _handshake_res = HandshakeWorker::new(
+
+    let result = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
+        connection_id,
     )
-    .run()
-    .await;
+    .await
+    .expect("handshake creation failed")
+    .1;
+
+    let ret = if let Err(err) = result {
+        err
+    } else {
+        panic!("Handshake Operation was supposed to failed")
+    };
 
     // wait for NetworkEvent::NewConnection or NetworkEvent::ConnectionClosed events to NOT happen
     if wait_network_event(
@@ -225,6 +187,8 @@ pub async fn rejected_connection_to_controller(
     {
         panic!("unexpected node connection event detected");
     }
+
+    ret
 }
 
 /// establish a full alive connection from the network controller
@@ -244,6 +208,7 @@ pub async fn full_connection_from_controller(
     connect_timeout_ms: u64,
     event_timeout_ms: u64,
     rw_timeout_ms: u64,
+    connection_id: ConnectionId,
 ) -> (NodeId, ReadBinder, WriteBinder) {
     // wait for the incoming connection attempt, check address and accept
     let (mock_read_half, mock_write_half, ctl_addr, resp_tx) = timeout(
@@ -260,16 +225,18 @@ pub async fn full_connection_from_controller(
     let private_key = generate_random_private_key();
     let public_key = derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
-    let (_controller_node_id, read_binder, write_binder) = HandshakeWorker::new(
+    let res = HandshakeWorker::spawn(
         mock_read_half,
         mock_write_half,
         mock_node_id,
         private_key,
         rw_timeout_ms.into(),
         Version::from_str("TEST.1.2").unwrap(),
+        connection_id,
     )
-    .run()
     .await
+    .expect("handshake creation failed")
+    .1
     .expect("handshake failed");
 
     // wait for a NetworkEvent::NewConnection event
@@ -290,7 +257,7 @@ pub async fn full_connection_from_controller(
     .await
     .expect("did not receive expected node connection event");
 
-    (mock_node_id, read_binder, write_binder)
+    (mock_node_id, res.1, res.2)
 }
 
 pub async fn wait_network_event<F, T>(

@@ -1,14 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use massa_models::constants::{CHANNEL_SIZE, MAX_DUPLEX_BUFFER_SIZE};
 use massa_time::MassaTime;
 use std::io;
 use std::net::SocketAddr;
 use tokio::io::DuplexStream;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
-
-const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
-const CHANNEL_SIZE: usize = 256;
 
 pub type Duplex = DuplexStream;
 

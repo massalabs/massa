@@ -3,19 +3,21 @@
 use super::{
     mock_establisher,
     tools::{
-        bridge_mock_streams, get_boot_state, get_bootstrap_config, get_keys, get_peers,
-        wait_consensus_command, wait_network_command,
+        bridge_mock_streams, get_boot_state, get_keys, get_peers, wait_consensus_command,
+        wait_network_command,
     },
 };
 use crate::{
     get_state, start_bootstrap_server,
-    tests::tools::{assert_eq_bootstrap_graph, assert_eq_thread_cycle_states},
+    tests::tools::{
+        assert_eq_bootstrap_graph, assert_eq_thread_cycle_states, get_bootstrap_config,
+    },
 };
 use crate::{
     tests::tools::{assert_eq_exec, get_execution_state, wait_execution_command},
     BootstrapSettings,
 };
-use massa_consensus::{ConsensusCommand, ConsensusCommandSender};
+use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
 use massa_execution::{ExecutionCommand, ExecutionCommandSender};
 use massa_models::Version;
 use massa_network::{NetworkCommand, NetworkCommandSender};

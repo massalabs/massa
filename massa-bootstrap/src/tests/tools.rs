@@ -1,23 +1,24 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::mock_establisher::Duplex;
 use crate::settings::BootstrapSettings;
+
+use super::mock_establisher::Duplex;
 use bitvec::prelude::*;
-use massa_consensus::ledger::LedgerChanges;
-use massa_consensus::{
-    BootstrapableGraph, ConsensusCommand, ExportActiveBlock, ExportProofOfStake, LedgerSubset,
-    RollCounts, RollUpdate, RollUpdates, ThreadCycleState,
-};
+use massa_consensus_exports::commands::ConsensusCommand;
 use massa_execution::{BootstrapExecutionState, ExecutionCommand, SCELedger, SCELedgerEntry};
+use massa_graph::{
+    export_active_block::ExportActiveBlock, ledger::LedgerSubset, BootstrapableGraph,
+};
 use massa_hash::hash::Hash;
-use massa_models::clique::Clique;
-use massa_models::ledger::LedgerChange;
-use massa_models::ledger::LedgerData;
 use massa_models::{
+    clique::Clique,
+    ledger_models::{LedgerChange, LedgerChanges, LedgerData},
+    rolls::{RollCounts, RollUpdate, RollUpdates},
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact,
     Endorsement, EndorsementContent, Operation, OperationContent, SerializeCompact, Slot,
 };
 use massa_network::{BootstrapPeers, NetworkCommand};
+use massa_proof_of_stake_exports::{ExportProofOfStake, ThreadCycleState};
 use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
 };
@@ -54,9 +55,9 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSetting
     // Init the serialization context with a default,
     // can be overwritten with a more specific one in the test.
     massa_models::init_serialization_context(massa_models::SerializationContext {
-        max_block_operations: 1024,
-        parent_count: 2,
-        max_peer_list_length: 128,
+        max_operations_per_block: 1024,
+        thread_count: 2,
+        max_advertise_length: 128,
         max_message_size: 3 * 1024 * 1024,
         max_block_size: 3 * 1024 * 1024,
         max_bootstrap_blocks: 100,
@@ -69,7 +70,7 @@ pub fn get_bootstrap_config(bootstrap_public_key: PublicKey) -> BootstrapSetting
         max_bootstrap_message_size: 100000000,
         max_bootstrap_pos_entries: 1000,
         max_bootstrap_pos_cycles: 5,
-        max_block_endorsements: 8,
+        endorsement_count: 8,
     });
 
     BootstrapSettings {

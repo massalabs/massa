@@ -1,0 +1,33 @@
+[package]
+name = "massa_proof_of_stake_exports"
+version = "0.1.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bitvec = { version = "0.22", features = ["serde"] }
+displaydoc = "0.2"
+lazy_static = "1.4"
+num = { version = "0.4", features = ["serde"] }
+rand = "0.8"
+rand_xoshiro = "0.6"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+tokio = { version = "1.11", features = ["full"] }
+tracing = {version = "0.1", features = ["max_level_debug", "release_max_level_debug"] }
+# custom modules
+massa_models = { path = "../massa-models" }
+massa_signature = { path = "../massa-signature" }
+massa_hash = { path = "../massa-hash" }
+
+[dev-dependencies]
+pretty_assertions = "1.0"
+serial_test = "0.5"
+stderrlog = "0.5"
+tempfile = "3.2"
+
+[features]
+test = []

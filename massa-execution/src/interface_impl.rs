@@ -1,12 +1,11 @@
-/// Implementation of the interface used in the execution external library
-///
+//! Implementation of the interface used in the execution external library
 use crate::types::{ExecutionContext, StackElement};
 use anyhow::{bail, Result};
 use massa_hash::hash::Hash;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId},
     timeslots::get_block_slot_timestamp,
-    AMOUNT_ZERO,
+    Amount,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
 use massa_time::MassaTime;
@@ -60,7 +59,7 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    fn init_call(&self, address: &String, raw_coins: u64) -> Result<Vec<u8>> {
+    fn init_call(&self, address: &str, raw_coins: u64) -> Result<Vec<u8>> {
         // get target
         let to_address = massa_models::Address::from_str(address)?;
 
@@ -128,7 +127,7 @@ impl Interface for InterfaceImpl {
     }
 
     /// Returns zero as a default if address not found.
-    fn get_balance_for(&self, address: &String) -> Result<u64> {
+    fn get_balance_for(&self, address: &str) -> Result<u64> {
         let address = massa_models::Address::from_str(address)?;
         Ok(context_guard!(self)
             .ledger_step
@@ -142,10 +141,7 @@ impl Interface for InterfaceImpl {
     /// operation index in the block and the index of address owned in context.
     ///
     /// Insert in the ledger the given bytecode in the generated address
-    fn create_module(
-        &self,
-        module: &massa_sc_runtime::Bytecode,
-    ) -> Result<massa_sc_runtime::Address> {
+    fn create_module(&self, module: &[u8]) -> Result<String> {
         let mut context = context_guard!(self);
         let (slot, created_addr_index) = (context.slot, context.created_addr_index);
         let mut data: Vec<u8> = slot.to_bytes_key().to_vec();
@@ -159,7 +155,7 @@ impl Interface for InterfaceImpl {
         let res = address.to_bs58_check();
         context
             .ledger_step
-            .set_module(address, Some(module.clone()));
+            .set_module(address, Some(module.to_vec()));
         match context.stack.last_mut() {
             Some(v) => {
                 v.owned_addresses.push(address);
@@ -171,11 +167,7 @@ impl Interface for InterfaceImpl {
     }
 
     /// Requires the data at the address
-    fn get_data_for(
-        &self,
-        address: &massa_sc_runtime::Address,
-        key: &String,
-    ) -> Result<massa_sc_runtime::Bytecode> {
+    fn raw_get_data_for(&self, address: &str, key: &str) -> Result<Vec<u8>> {
         let addr = &massa_models::Address::from_bs58_check(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
@@ -189,12 +181,7 @@ impl Interface for InterfaceImpl {
     ///
     /// Note:
     /// The execution lib will allways use the current context address for the update
-    fn set_data_for(
-        &self,
-        address: &massa_sc_runtime::Address,
-        key: &String,
-        value: &[u8],
-    ) -> Result<()> {
+    fn raw_set_data_for(&self, address: &str, key: &str, value: &[u8]) -> Result<()> {
         let addr = massa_models::Address::from_str(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
@@ -211,14 +198,14 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    fn has_data_for(&self, address: &massa_sc_runtime::Address, key: &str) -> Result<bool> {
+    fn has_data_for(&self, address: &str, key: &str) -> Result<bool> {
         let context = context_guard!(self);
         let addr = massa_models::Address::from_str(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
         Ok(context.ledger_step.has_data_entry(&addr, &key))
     }
 
-    fn get_data(&self, key: &str) -> Result<Vec<u8>> {
+    fn raw_get_data(&self, key: &str) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let addr = match context.stack.last() {
             Some(addr) => addr.address,
@@ -231,7 +218,7 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    fn set_data(&self, key: &str, value: &[u8]) -> Result<()> {
+    fn raw_set_data(&self, key: &str, value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let addr = match context.stack.last() {
             Some(addr) => addr.address,
@@ -255,27 +242,19 @@ impl Interface for InterfaceImpl {
     }
 
     /// hash data
-    fn hash(&self, data: &[u8]) -> Result<massa_sc_runtime::MassaHash> {
+    fn hash(&self, data: &[u8]) -> Result<String> {
         Ok(massa_hash::hash::Hash::compute_from(data).to_bs58_check())
     }
 
     /// convert a pubkey to an address
-    fn address_from_public_key(
-        &self,
-        public_key: &massa_sc_runtime::PublicKey,
-    ) -> Result<massa_sc_runtime::Address> {
+    fn address_from_public_key(&self, public_key: &str) -> Result<String> {
         let public_key = massa_signature::PublicKey::from_bs58_check(public_key)?;
         let addr = massa_models::Address::from_public_key(&public_key);
         Ok(addr.to_bs58_check())
     }
 
     /// Verify signature
-    fn signature_verify(
-        &self,
-        data: &[u8],
-        signature: &massa_sc_runtime::Signature,
-        public_key: &massa_sc_runtime::PublicKey,
-    ) -> Result<bool> {
+    fn signature_verify(&self, data: &[u8], signature: &str, public_key: &str) -> Result<bool> {
         let signature = match massa_signature::Signature::from_bs58_check(signature) {
             Ok(sig) => sig,
             Err(_) => return Ok(false),
@@ -291,7 +270,7 @@ impl Interface for InterfaceImpl {
     /// Transfer coins from the current address to a target address
     /// to_address: target address
     /// raw_amount: amount to transfer (in raw u64)
-    fn transfer_coins(&self, to_address: &String, raw_amount: u64) -> Result<()> {
+    fn transfer_coins(&self, to_address: &str, raw_amount: u64) -> Result<()> {
         let to_address = massa_models::Address::from_str(to_address)?;
         let mut context = context_guard!(self);
         let from_address = match context.stack.last() {
@@ -324,8 +303,8 @@ impl Interface for InterfaceImpl {
     /// raw_amount: amount to transfer (in raw u64)
     fn transfer_coins_for(
         &self,
-        from_address: &String,
-        to_address: &String,
+        from_address: &str,
+        to_address: &str,
         raw_amount: u64,
     ) -> Result<()> {
         let from_address = massa_models::Address::from_str(from_address)?;
@@ -359,7 +338,7 @@ impl Interface for InterfaceImpl {
     }
 
     /// Return the list of owned adresses of a given SC user
-    fn get_owned_addresses(&self) -> Result<Vec<massa_sc_runtime::Address>> {
+    fn get_owned_addresses(&self) -> Result<Vec<String>> {
         match context_guard!(self).stack.last() {
             Some(v) => Ok(v
                 .owned_addresses
@@ -370,7 +349,7 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    fn get_call_stack(&self) -> Result<Vec<massa_sc_runtime::Address>> {
+    fn get_call_stack(&self) -> Result<Vec<String>> {
         Ok(context_guard!(self)
             .stack
             .iter()
@@ -384,7 +363,7 @@ impl Interface for InterfaceImpl {
             .stack
             .last()
             .map(|e| e.coins)
-            .unwrap_or(AMOUNT_ZERO)
+            .unwrap_or(Amount::zero())
             .to_raw())
     }
 

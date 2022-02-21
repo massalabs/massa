@@ -1,10 +1,10 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::settings::HANDSHAKE_RANDOMNESS_SIZE_BYTES;
 use massa_models::{
-    array_from_slice, with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact,
-    DeserializeVarInt, Endorsement, ModelsError, Operation, SerializeCompact, SerializeVarInt,
-    Version, BLOCK_ID_SIZE_BYTES,
+    array_from_slice,
+    constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
+    with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
+    Endorsement, ModelsError, Operation, SerializeCompact, SerializeVarInt, Version,
 };
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -152,7 +152,7 @@ impl DeserializeCompact for Message {
         ) = with_serialization_context(|context| {
             (
                 context.max_ask_blocks_per_message,
-                context.max_peer_list_length,
+                context.max_advertise_length,
                 context.max_operations_per_message,
                 context.max_endorsements_per_message,
             )
@@ -281,9 +281,9 @@ mod tests {
         // Init the serialization context with a default,
         // can be overwritten with a more specific one in the test.
         let ctx = massa_models::SerializationContext {
-            max_block_operations: 1024,
-            parent_count: 2,
-            max_peer_list_length: 128,
+            max_operations_per_block: 1024,
+            thread_count: 2,
+            max_advertise_length: 128,
             max_message_size: 3 * 1024 * 1024,
             max_block_size: 3 * 1024 * 1024,
             max_bootstrap_blocks: 100,
@@ -296,7 +296,7 @@ mod tests {
             max_bootstrap_message_size: 100000000,
             max_bootstrap_pos_entries: 1000,
             max_bootstrap_pos_cycles: 5,
-            max_block_endorsements: 8,
+            endorsement_count: 8,
         };
         massa_models::init_serialization_context(ctx.clone());
         ctx
