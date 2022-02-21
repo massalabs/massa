@@ -117,10 +117,10 @@ impl RpcClient {
         &self,
         read_only_execution: ReadOnlyExecution,
     ) -> RpcResult<ExecuteReadOnlyResponse> {
-        self.call_method::<Vec<ReadOnlyExecution>, Vec<ExecuteReadOnlyResponse>>(
+        self.call_method::<Vec<Vec<ReadOnlyExecution>>, Vec<ExecuteReadOnlyResponse>>(
             "execute_read_only_request",
-            "ExecuteReadOnlyResponse",
-            vec![read_only_execution],
+            "Vec<ExecuteReadOnlyResponse>",
+            vec![vec![read_only_execution]],
         )
         .await?.pop().ok_or(RpcError::Client("missing return value on execute_read_only_request".into()))
     }
