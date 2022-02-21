@@ -1,14 +1,16 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::settings::PoolConfig;
+
 use super::{
     error::PoolError,
     pool_worker::{PoolCommand, PoolManagementCommand, PoolWorker},
-    settings::{PoolSettings, CHANNEL_SIZE},
 };
 use massa_logging::massa_trace;
-use massa_models::prehash::{Map, Set};
-use massa_models::stats::PoolStats;
 use massa_models::{
+    constants::CHANNEL_SIZE,
+    prehash::{Map, Set},
+    stats::PoolStats,
     Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
     Slot,
 };
@@ -26,9 +28,7 @@ use tracing::{debug, error, info};
 /// * protocol_command_sender: a ProtocolCommandSender instance to send commands to Protocol.
 /// * protocol_pool_event_receiver: a ProtocolPoolEventReceiver instance to receive pool events from Protocol.
 pub async fn start_pool_controller(
-    pool_settings: &'static PoolSettings,
-    thread_count: u8,
-    operation_validity_periods: u64,
+    cfg: &'static PoolConfig,
     protocol_command_sender: ProtocolCommandSender,
     protocol_pool_event_receiver: ProtocolPoolEventReceiver,
 ) -> Result<(PoolCommandSender, PoolManager), PoolError> {
@@ -40,9 +40,7 @@ pub async fn start_pool_controller(
     let (manager_tx, manager_rx) = mpsc::channel::<PoolManagementCommand>(1);
     let join_handle = tokio::spawn(async move {
         let res = PoolWorker::new(
-            pool_settings,
-            thread_count,
-            operation_validity_periods,
+            cfg,
             protocol_command_sender,
             protocol_pool_event_receiver,
             command_rx,

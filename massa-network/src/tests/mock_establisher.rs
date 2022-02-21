@@ -1,5 +1,6 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use massa_models::constants::CHANNEL_SIZE;
 use massa_time::MassaTime;
 use std::io;
 use std::net::SocketAddr;
@@ -8,14 +9,15 @@ use tokio::sync::{mpsc, oneshot};
 use tokio::time::timeout;
 
 const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
-const CHANNEL_SIZE: usize = 256;
 
 pub type ReadHalf = tokio::io::ReadHalf<DuplexStream>;
 pub type WriteHalf = tokio::io::WriteHalf<DuplexStream>;
 
+type AddrSender = (SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>);
+
 pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
     let (connection_listener_tx, connection_listener_rx) =
-        mpsc::channel::<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>(CHANNEL_SIZE);
+        mpsc::channel::<AddrSender>(CHANNEL_SIZE);
 
     let (connection_connector_tx, connection_connector_rx) =
         mpsc::channel::<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>(CHANNEL_SIZE);
@@ -34,7 +36,7 @@ pub fn new() -> (MockEstablisher, MockEstablisherInterface) {
 
 #[derive(Debug)]
 pub struct MockListener {
-    connection_listener_rx: mpsc::Receiver<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>, // (controller, mock)
+    connection_listener_rx: mpsc::Receiver<AddrSender>, // (controller, mock)
 }
 
 impl MockListener {
@@ -109,8 +111,7 @@ impl MockConnector {
 
 #[derive(Debug)]
 pub struct MockEstablisher {
-    connection_listener_rx:
-        Option<mpsc::Receiver<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>>,
+    connection_listener_rx: Option<mpsc::Receiver<AddrSender>>,
     connection_connector_tx: mpsc::Sender<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>,
 }
 
@@ -138,8 +139,7 @@ impl MockEstablisher {
 }
 
 pub struct MockEstablisherInterface {
-    connection_listener_tx:
-        Option<mpsc::Sender<(SocketAddr, oneshot::Sender<(ReadHalf, WriteHalf)>)>>,
+    connection_listener_tx: Option<mpsc::Sender<AddrSender>>,
     connection_connector_rx:
         mpsc::Receiver<(ReadHalf, WriteHalf, SocketAddr, oneshot::Sender<bool>)>,
 }

@@ -4,19 +4,22 @@
 use super::{
     common::{ConnectionClosureReason, ConnectionId},
     establisher::{Establisher, Listener, ReadHalf, WriteHalf},
-    handshake_worker::{HandshakeReturnType, HandshakeWorker},
+    handshake_worker::HandshakeReturnType,
     node_worker::{NodeCommand, NodeEvent, NodeEventType, NodeWorker},
     peer_info_database::*,
 };
-use crate::error::{HandshakeErrorType, NetworkError};
-use crate::settings::{NetworkSettings, CHANNEL_SIZE};
+use crate::{
+    binders::{ReadBinder, WriteBinder},
+    error::{HandshakeErrorType, NetworkConnectionErrorType, NetworkError},
+    handshake_worker::HandshakeWorker,
+    messages::Message,
+    settings::NetworkSettings,
+};
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::composite::PubkeySig;
-use massa_models::node::NodeId;
-use massa_models::stats::NetworkStats;
 use massa_models::{
+    composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, stats::NetworkStats,
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializeCompact, SerializeVarInt, Version,
 };
@@ -138,7 +141,7 @@ impl SerializeCompact for BootstrapPeers {
             ModelsError::SerializeError(format!("too many peers blocks in BootstrapPeers: {}", err))
         })?;
         let max_peer_list_length =
-            with_serialization_context(|context| context.max_peer_list_length);
+            with_serialization_context(|context| context.max_advertise_length);
         if peers_count > max_peer_list_length {
             return Err(ModelsError::SerializeError(format!(
                 "too many peers for serialization context in BootstrapPeers: {}",
@@ -161,7 +164,7 @@ impl DeserializeCompact for BootstrapPeers {
         // peers
         let (peers_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         let max_peer_list_length =
-            with_serialization_context(|context| context.max_peer_list_length);
+            with_serialization_context(|context| context.max_advertise_length);
         if peers_count > max_peer_list_length {
             return Err(ModelsError::DeserializeError(format!(
                 "too many peers for deserialization context in BootstrapPeers: {}",
@@ -204,6 +207,8 @@ pub struct NetworkWorker {
     running_handshakes: HashSet<ConnectionId>,
     /// Running handshakes futures.
     handshake_futures: FuturesUnordered<JoinHandle<(ConnectionId, HandshakeReturnType)>>,
+    /// Running handshakes that send a list of peers.
+    handshake_peer_list_futures: FuturesUnordered<JoinHandle<()>>,
     /// Channel for sending node events.
     node_event_tx: mpsc::Sender<NodeEvent>,
     /// Receiving channel for node events.
@@ -264,6 +269,7 @@ impl NetworkWorker {
             controller_manager_rx,
             running_handshakes: HashSet::new(),
             handshake_futures: FuturesUnordered::new(),
+            handshake_peer_list_futures: FuturesUnordered::new(),
             node_event_tx,
             node_event_rx,
             active_nodes: HashMap::new(),
@@ -373,6 +379,9 @@ impl NetworkWorker {
                     need_connect_retry = true; // retry out connections
                 },
 
+                // Managing handshakes that return a PeerList
+                Some(_) = self.handshake_peer_list_futures.next() => {},
+
                 // node closed
                 Some(evt) = self.node_worker_handles.next() => {
                     let (node_id, res) = evt?;  // ? => when a node worker panics
@@ -473,6 +482,7 @@ impl NetworkWorker {
         // wait for all running handshakes
         self.running_handshakes.clear();
         while self.handshake_futures.next().await.is_some() {}
+        while self.handshake_peer_list_futures.next().await.is_some() {}
         Ok(())
     }
 
@@ -586,6 +596,16 @@ impl NetworkWorker {
                     }
                 }
             }
+            // a handshake failed and sent a list of peers
+            Err(NetworkError::HandshakeError(HandshakeErrorType::PeerListReceived(peers))) => {
+                // Manage the final of an handshake that send us a list of new peers
+                // instead of accepting a connection. Notify to the DB that `to_remove`
+                // has failed and merge new `to_add` candidates.
+                self.peer_info_db.merge_candidate_peers(&peers)?;
+                self.running_handshakes.remove(&new_connection_id);
+                self.connection_closed(new_connection_id, ConnectionClosureReason::Failed)
+                    .await?;
+            }
             // a handshake finished and failed
             Err(err) => {
                 debug!(
@@ -601,50 +621,6 @@ impl NetworkWorker {
                     .await?;
             }
         };
-        Ok(())
-    }
-
-    fn new_connection(
-        &mut self,
-        connection_id: ConnectionId,
-        reader: ReadHalf,
-        writer: WriteHalf,
-    ) -> Result<(), NetworkError> {
-        // add connection ID to running_handshakes
-        // launch async handshake_fn(connectionId, socket)
-        // add its handle to handshake_futures
-        if !self.running_handshakes.insert(connection_id) {
-            return Err(NetworkError::HandshakeError(
-                HandshakeErrorType::HandshakeIdAlreadyExist(format!("{}", connection_id)),
-            ));
-        }
-
-        debug!("starting handshake with connection_id={}", connection_id);
-        massa_trace!("network_worker.new_connection", {
-            "connection_id": connection_id
-        });
-
-        let self_node_id = self.self_node_id;
-        let private_key = self.private_key;
-        let message_timeout = self.cfg.message_timeout;
-        let connection_id_copy = connection_id;
-        let version = self.version;
-        let handshake_fn_handle = tokio::spawn(async move {
-            (
-                connection_id_copy,
-                HandshakeWorker::new(
-                    reader,
-                    writer,
-                    self_node_id,
-                    private_key,
-                    message_timeout,
-                    version,
-                )
-                .run()
-                .await,
-            )
-        });
-        self.handshake_futures.push(handshake_fn_handle);
         Ok(())
     }
 
@@ -952,10 +928,8 @@ impl NetworkWorker {
     ///
     /// # Arguments
     /// * res : (reader, writer) in a result coming out of out_connecting_futures
-    /// * peer_info_db: Database with peer information.
+    /// * ip_addr: distant address we are trying to reach.
     /// * cur_connection_id : connection id of the node we are trying to reach
-    /// * active_connections: hashmap linking connection id to ipAddr to whether connection is outgoing (true)
-    /// * event_tx: channel to send network events out.
     async fn manage_out_connections(
         &mut self,
         res: tokio::io::Result<(ReadHalf, WriteHalf)>,
@@ -981,7 +955,7 @@ impl NetworkWorker {
                     cur_connection_id.0 += 1;
                     self.active_connections
                         .insert(connection_id, (ip_addr, true));
-                    self.new_connection(connection_id, reader, writer)?;
+                    self.manage_successfull_connection(connection_id, reader, writer)?;
                 } else {
                     debug!("out connection towards ip={} refused", ip_addr);
                     massa_trace!("out_connection_refused", { "ip": ip_addr });
@@ -1005,12 +979,16 @@ impl NetworkWorker {
     /// Manages in connection
     /// Only used inside worker's run_loop
     ///
+    /// Try a connection with an incomming node, if success insert the remote
+    /// address at the index `connection_id` inside `self.active_connections`
+    /// and call `self.manage_successfull_connection`
+    ///
+    /// If the connection failed with `MaxPeersConnectionReached`, mock the
+    /// handshake and send a list of advertisable peer ips.
+    ///
     /// # Arguments
     /// * res : (reader, writer, socketAddr) in a result coming out of the listener
-    /// * peer_info_db: Database with peer information.
     /// * cur_connection_id : connection id of the node we are trying to reach
-    /// * active_connections: hashmap linking connection id to ipAddr to whether connection is outgoing (true)
-    /// * event_tx: channel to send network events out.
     async fn manage_in_connections(
         &mut self,
         res: std::io::Result<(ReadHalf, WriteHalf, SocketAddr)>,
@@ -1018,23 +996,29 @@ impl NetworkWorker {
     ) -> Result<(), NetworkError> {
         match res {
             Ok((reader, writer, remote_addr)) => {
-                if self.peer_info_db.try_new_in_connection(&remote_addr.ip())? {
-                    let connection_id = *cur_connection_id;
-                    debug!(
-                        "inbound connection from addr={} succeeded => connection_id={}",
-                        remote_addr, connection_id
-                    );
-                    massa_trace!("in_connection_established", {
-                        "ip": remote_addr.ip(),
-                        "connection_id": connection_id
-                    });
-                    cur_connection_id.0 += 1;
-                    self.active_connections
-                        .insert(connection_id, (remote_addr.ip(), false));
-                    self.new_connection(connection_id, reader, writer)?;
-                } else {
-                    debug!("inbound connection from addr={} refused", remote_addr);
-                    massa_trace!("in_connection_refused", {"ip": remote_addr.ip()});
+                match self.peer_info_db.try_new_in_connection(&remote_addr.ip()) {
+                    Ok(_) => {
+                        let connection_id = *cur_connection_id;
+                        debug!(
+                            "inbound connection from addr={} succeeded => connection_id={}",
+                            remote_addr, connection_id
+                        );
+                        massa_trace!("in_connection_established", {
+                            "ip": remote_addr.ip(),
+                            "connection_id": connection_id
+                        });
+                        cur_connection_id.0 += 1;
+                        self.active_connections
+                            .insert(connection_id, (remote_addr.ip(), false));
+                        self.manage_successfull_connection(connection_id, reader, writer)?;
+                    }
+                    Err(NetworkError::PeerConnectionError(
+                        NetworkConnectionErrorType::MaxPeersConnectionReached(_),
+                    )) => self.try_send_peer_list_in_handshake(reader, writer, remote_addr),
+                    Err(_) => {
+                        debug!("inbound connection from addr={} refused", remote_addr);
+                        massa_trace!("in_connection_refused", {"ip": remote_addr.ip()});
+                    }
                 }
             }
             Err(err) => {
@@ -1042,6 +1026,92 @@ impl NetworkWorker {
                 massa_trace!("in_connection_failed", {"err": err.to_string()});
             }
         }
+        Ok(())
+    }
+
+    /// Start to mock a handshake and try to send a message with a list of
+    /// peers.
+    /// The function is used while `manage_in_connections()` if the current
+    /// node reach the number of maximum in connection.
+    ///
+    /// Timeout if the connection as not been done really quickly resolved
+    /// but don't throw the timeout error.
+    ///
+    /// ```txt
+    /// In connection node            Curr node
+    ///        |                          |
+    ///        |------------------------->|      : Try to connect but the
+    ///        |                          |        curr node reach the max
+    ///        |                          |        number of node.
+    ///        |                          |      : Connection success anyway
+    ///        |                          |        and the in connection enter
+    ///        |<------------------------>|        in `HandshakeWorker::run()`
+    ///        |  symetric read & write   |
+    ///```
+    ///
+    /// In the `symetric read & write` the current node simulate a handshake
+    /// managed by the *connection node* in `HandshakeWorker::run()`, the
+    /// current node send a ListPeer as a message.
+    ///
+    /// Spawn a future in `self.handshake_peer_list_futures` managed by the
+    /// main loop.
+    fn try_send_peer_list_in_handshake(
+        &self,
+        reader: ReadHalf,
+        writer: WriteHalf,
+        remote_addr: SocketAddr,
+    ) {
+        debug!(
+            "Maximum connection reached. Inbound connection from addr={} refused, try to send a list of peers",
+            remote_addr
+        );
+        if self.cfg.max_in_connection_overflow > self.handshake_peer_list_futures.len() {
+            let msg = Message::PeerList(self.peer_info_db.get_advertisable_peer_ips());
+            let timeout = self.cfg.peer_list_send_timeout.to_duration();
+            self.handshake_peer_list_futures
+                .push(tokio::spawn(async move {
+                    let mut writer = WriteBinder::new(writer);
+                    let mut reader = ReadBinder::new(reader);
+                    match tokio::time::timeout(
+                        timeout,
+                        futures::future::try_join(writer.send(&msg), reader.next()),
+                    )
+                    .await
+                    {
+                        Ok(Err(e)) => debug!("Ignored network error on send peerlist={}", e),
+                        Err(_) => debug!("Ignored timeout error on send peerlist"),
+                        _ => (),
+                    }
+                }));
+        }
+    }
+
+    /// Manage a successful incomming and outgoing connection,
+    /// Check if we're not already running an handshake for `connection_id` by inserting the connection id in
+    /// `self.running_handshakes`
+    /// Add a new handshake to perform in `self.handshake_futures` to be handle in the main loop.
+    ///
+    /// Return an hanshake error if connection already running/waiting
+    fn manage_successfull_connection(
+        &mut self,
+        connection_id: ConnectionId,
+        reader: ReadHalf,
+        writer: WriteHalf,
+    ) -> Result<(), NetworkError> {
+        if !self.running_handshakes.insert(connection_id) {
+            return Err(NetworkError::HandshakeError(
+                HandshakeErrorType::HandshakeIdAlreadyExist(format!("{}", connection_id)),
+            ));
+        }
+        self.handshake_futures.push(HandshakeWorker::spawn(
+            reader,
+            writer,
+            self.self_node_id,
+            self.private_key,
+            self.cfg.connect_timeout,
+            self.version,
+            connection_id,
+        ));
         Ok(())
     }
 

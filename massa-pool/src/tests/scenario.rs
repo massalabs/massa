@@ -1,10 +1,8 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::tools::get_transaction;
-use crate::operation_pool::tests::POOL_SETTINGS;
+use super::{settings::POOL_CONFIG, tools::get_transaction};
 use crate::tests::tools::create_executesc;
 use crate::tests::tools::{self, get_transaction_with_addresses, pool_test};
-use crate::PoolSettings;
 use massa_models::prehash::{Map, Set};
 use massa_models::Address;
 use massa_models::Operation;
@@ -21,28 +19,20 @@ use tokio::time::sleep;
 #[tokio::test]
 #[serial]
 async fn test_pool() {
-    let (cfg, thread_count, operation_validity_periods, max_pool_size_per_thread): &(
-        PoolSettings,
-        u8,
-        u64,
-        u64,
-    ) = &POOL_SETTINGS;
-
     pool_test(
-        cfg,
-        *thread_count,
-        *operation_validity_periods,
+        &POOL_CONFIG,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
                 _ => None,
             };
             // generate (id, transactions, range of validity) by threads
-            let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
+            let mut thread_tx_lists = vec![Vec::new(); POOL_CONFIG.thread_count as usize];
             for i in 0..18 {
                 let fee = 40 + i;
                 let expire_period: u64 = 40 + i;
-                let start_period = expire_period.saturating_sub(*operation_validity_periods);
+                let start_period =
+                    expire_period.saturating_sub(POOL_CONFIG.operation_validity_periods);
                 let (op, thread) = get_transaction(expire_period, fee);
                 let id = op.verify_integrity().unwrap();
 
@@ -85,7 +75,7 @@ async fn test_pool() {
             // sort from bigger fee to smaller and truncate
             for lst in thread_tx_lists.iter_mut() {
                 lst.reverse();
-                lst.truncate(*max_pool_size_per_thread as usize);
+                lst.truncate(POOL_CONFIG.settings.max_pool_size_per_thread as usize);
             }
 
             // checks ops are the expected ones for thread 0 and 1 and various periods
@@ -116,7 +106,7 @@ async fn test_pool() {
             // we don't keep them as expected ops
             let final_period = 45u64;
             pool_command_sender
-                .update_latest_final_periods(vec![final_period; *thread_count as usize])
+                .update_latest_final_periods(vec![final_period; POOL_CONFIG.thread_count as usize])
                 .await
                 .unwrap();
             for lst in thread_tx_lists.iter_mut() {
@@ -187,28 +177,20 @@ async fn test_pool() {
 #[tokio::test]
 #[serial]
 async fn test_pool_with_execute_sc() {
-    let (cfg, thread_count, operation_validity_periods, max_pool_size_per_thread): &(
-        PoolSettings,
-        u8,
-        u64,
-        u64,
-    ) = &POOL_SETTINGS;
-
     pool_test(
-        cfg,
-        *thread_count,
-        *operation_validity_periods,
+        &POOL_CONFIG,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
                 _ => None,
             };
             // generate (id, transactions, range of validity) by threads
-            let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
+            let mut thread_tx_lists = vec![Vec::new(); POOL_CONFIG.thread_count as usize];
             for i in 0..18 {
                 let fee = 40 + i;
                 let expire_period: u64 = 40 + i;
-                let start_period = expire_period.saturating_sub(*operation_validity_periods);
+                let start_period =
+                    expire_period.saturating_sub(POOL_CONFIG.operation_validity_periods);
                 let (op, thread) = create_executesc(expire_period, fee, 100, 1); // Only the fee determines the rentability
                 let id = op.verify_integrity().unwrap();
 
@@ -251,7 +233,7 @@ async fn test_pool_with_execute_sc() {
             // sort from bigger fee to smaller and truncate
             for lst in thread_tx_lists.iter_mut() {
                 lst.reverse();
-                lst.truncate(*max_pool_size_per_thread as usize);
+                lst.truncate(POOL_CONFIG.settings.max_pool_size_per_thread as usize);
             }
 
             // checks ops are the expected ones for thread 0 and 1 and various periods
@@ -277,7 +259,7 @@ async fn test_pool_with_execute_sc() {
             // we don't keep them as expected ops
             let final_period = 45u64;
             pool_command_sender
-                .update_latest_final_periods(vec![final_period; *thread_count as usize])
+                .update_latest_final_periods(vec![final_period; POOL_CONFIG.thread_count as usize])
                 .await
                 .unwrap();
             for lst in thread_tx_lists.iter_mut() {
@@ -343,13 +325,8 @@ async fn test_pool_with_execute_sc() {
 #[tokio::test]
 #[serial]
 async fn test_pool_with_protocol_events() {
-    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
-        &POOL_SETTINGS;
-
     pool_test(
-        cfg,
-        *thread_count,
-        *operation_validity_periods,
+        &POOL_CONFIG,
         async move |mut protocol_controller, pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
@@ -357,11 +334,12 @@ async fn test_pool_with_protocol_events() {
             };
 
             // generate (id, transactions, range of validity) by threads
-            let mut thread_tx_lists = vec![Vec::new(); *thread_count as usize];
+            let mut thread_tx_lists = vec![Vec::new(); POOL_CONFIG.thread_count as usize];
             for i in 0..18 {
                 let fee = 40 + i;
                 let expire_period: u64 = 40 + i;
-                let start_period = expire_period.saturating_sub(*operation_validity_periods);
+                let start_period =
+                    expire_period.saturating_sub(POOL_CONFIG.operation_validity_periods);
                 let (op, thread) = get_transaction(expire_period, fee);
                 let id = op.verify_integrity().unwrap();
 
@@ -405,13 +383,8 @@ async fn test_pool_with_protocol_events() {
 #[tokio::test]
 #[serial]
 async fn test_pool_propagate_newly_added_endorsements() {
-    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
-        &POOL_SETTINGS;
-
     pool_test(
-        cfg,
-        *thread_count,
-        *operation_validity_periods,
+        &POOL_CONFIG,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateEndorsements(_) => Some(cmd),
@@ -471,13 +444,8 @@ async fn test_pool_propagate_newly_added_endorsements() {
 #[tokio::test]
 #[serial]
 async fn test_pool_add_old_endorsements() {
-    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
-        &POOL_SETTINGS;
-
     pool_test(
-        cfg,
-        *thread_count,
-        *operation_validity_periods,
+        &POOL_CONFIG,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateEndorsements(_) => Some(cmd),
@@ -537,13 +505,8 @@ async fn test_get_involved_operations() {
     }
     assert_eq!(1, address_b.get_thread(thread_count));
 
-    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
-        &POOL_SETTINGS;
-
     pool_test(
-        cfg,
-        *thread_count,
-        *operation_validity_periods,
+        &POOL_CONFIG,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),
@@ -693,13 +656,8 @@ async fn test_new_final_ops() {
     }
     assert_eq!(0, address_b.get_thread(thread_count));
 
-    let (cfg, thread_count, operation_validity_periods, _): &(PoolSettings, u8, u64, u64) =
-        &POOL_SETTINGS;
-
     pool_test(
-        cfg,
-        *thread_count,
-        *operation_validity_periods,
+        &POOL_CONFIG,
         async move |mut protocol_controller, mut pool_command_sender, pool_manager| {
             let op_filter = |cmd| match cmd {
                 cmd @ ProtocolCommand::PropagateOperations(_) => Some(cmd),

@@ -1,9 +1,10 @@
 use massa_models::{
     array_from_slice,
     clique::Clique,
+    constants::BLOCK_ID_SIZE_BYTES,
     prehash::{BuildMap, Map, Set},
     with_serialization_context, BlockId, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt, BLOCK_ID_SIZE_BYTES,
+    SerializeCompact, SerializeVarInt,
 };
 use serde::{Deserialize, Serialize};
 
@@ -111,7 +112,7 @@ impl DeserializeCompact for BootstrapableGraph {
             with_serialization_context(|context| {
                 (
                     context.max_bootstrap_blocks,
-                    context.parent_count,
+                    context.thread_count,
                     context.max_bootstrap_cliques,
                 )
             });

@@ -1,11 +1,12 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 use super::tools::*;
-use massa_consensus_exports::tools::*;
+use massa_consensus_exports::ConsensusConfig;
 
 use massa_models::ledger_models::LedgerData;
 use massa_models::prehash::Set;
 use massa_models::{Address, Amount, Slot};
-use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
+use massa_signature::PrivateKey;
+use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -24,51 +25,20 @@ async fn test_operations_check() {
 
     let thread_count = 2;
 
-    let mut private_key_1;
-    let mut public_key_1;
-    let mut address_1;
-    let mut private_key_2;
-    let mut public_key_2;
-    let mut address_2;
+    let (address_1, private_key_1, public_key_1) = random_address_on_thread(0, thread_count).into();
+    let (address_2, private_key_2, public_key_2) = random_address_on_thread(1, thread_count).into();
 
-    // make sure that both threads are different
-    loop {
-        private_key_1 = generate_random_private_key();
-        public_key_1 = derive_public_key(&private_key_1);
-        address_1 = Address::from_public_key(&public_key_1);
-        if address_1.get_thread(thread_count) == 0 {
-            break;
-        }
-    }
-    loop {
-        private_key_2 = generate_random_private_key();
-        public_key_2 = derive_public_key(&private_key_2);
-        address_2 = Address::from_public_key(&public_key_2);
-        if address_2.get_thread(thread_count) == 1 {
-            break;
-        }
-    }
-
+    assert_eq!(1, address_2.get_thread(thread_count));
     let mut ledger = HashMap::new();
     ledger.insert(address_1, LedgerData::new(Amount::from_str("5").unwrap()));
 
-    let ledger_file = generate_ledger_file(&ledger);
-    let staking_keys: Vec<PrivateKey> = vec![private_key_1];
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 1000.into();
-    cfg.future_block_processing_max_periods = 50;
-    cfg.max_future_processing_blocks = 10;
-    cfg.block_reward = Amount::from_str("1").unwrap();
-    cfg.thread_count = thread_count;
-    cfg.operation_validity_periods = 10;
-    cfg.disable_block_creation = true;
-    cfg.genesis_timestamp = cfg.genesis_timestamp.saturating_sub(10000.into());
+    let cfg = ConsensusConfig {
+        t0: 1000.into(),
+        future_block_processing_max_periods: 50,
+        operation_validity_periods: 10,
+        genesis_timestamp: MassaTime::now().unwrap().saturating_sub(10000.into()),
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[private_key_1], &ledger)
+    };
 
     consensus_without_pool_test(
         cfg.clone(),
@@ -160,32 +130,19 @@ async fn test_operations_check() {
 #[tokio::test]
 #[serial]
 async fn test_execution_check() {
-    let thread_count = 2;
-
-    let private_key_1 = generate_random_private_key();
-    let public_key_1 = derive_public_key(&private_key_1);
-    let address_1 = Address::from_public_key(&public_key_1);
+    let (address_1, private_key_1, public_key_1) = random_address().into();
 
     let mut ledger = HashMap::new();
     ledger.insert(address_1, LedgerData::new(Amount::from_str("5").unwrap()));
 
-    let ledger_file = generate_ledger_file(&ledger);
     let staking_keys: Vec<PrivateKey> = vec![private_key_1];
-    let staking_file = generate_staking_keys_file(&staking_keys);
-    let roll_counts_file = generate_default_roll_counts_file(staking_keys.clone());
-    let mut cfg = default_consensus_config(
-        ledger_file.path(),
-        roll_counts_file.path(),
-        staking_file.path(),
-    );
-    cfg.t0 = 1000.into();
-    cfg.future_block_processing_max_periods = 50;
-    cfg.max_future_processing_blocks = 10;
-    cfg.block_reward = Amount::from_str("1").unwrap();
-    cfg.thread_count = thread_count;
-    cfg.operation_validity_periods = 10;
-    cfg.disable_block_creation = true;
-    cfg.genesis_timestamp = cfg.genesis_timestamp.saturating_sub(10000.into());
+    let cfg = ConsensusConfig {
+        t0: 1000.into(),
+        future_block_processing_max_periods: 50,
+        operation_validity_periods: 10,
+        genesis_timestamp: MassaTime::now().unwrap().saturating_sub(10000.into()),
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(&staking_keys, &ledger)
+    };
 
     consensus_without_pool_test(
         cfg.clone(),

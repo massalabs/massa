@@ -1,13 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::settings::AMOUNT_DECIMAL_FACTOR;
+use crate::constants::AMOUNT_DECIMAL_FACTOR;
 use crate::ModelsError;
 use rust_decimal::prelude::*;
 use serde::de::Unexpected;
 use std::fmt;
 use std::str::FromStr;
-
-pub const AMOUNT_ZERO: Amount = Amount::from_raw(0);
 
 /// A structure representing a decimal Amount of coins with safe operations
 /// this allows ensuring that there is never an uncontrolled overflow or precision loss
@@ -18,7 +16,12 @@ pub const AMOUNT_ZERO: Amount = Amount::from_raw(0);
 pub struct Amount(u64);
 
 impl Amount {
-    /// obtains the underlying raw u64 representation
+    /// Create a zero Amount
+    pub const fn zero() -> Self {
+        Self(0)
+    }
+
+    /// Obtains the underlying raw u64 representation
     /// Warning:do not use this unless you know what you are doing
     /// because the raw value does not take the AMOUNT_DECIMAL_FACTOR into account.
     pub fn to_raw(&self) -> u64 {

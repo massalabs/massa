@@ -1,7 +1,7 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+use crate::constants::{BLOCK_ID_SIZE_BYTES, ENDORSEMENT_ID_SIZE_BYTES};
 use crate::prehash::PreHashed;
-use crate::settings::{BLOCK_ID_SIZE_BYTES, ENDORSEMENT_ID_SIZE_BYTES};
 use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
@@ -219,7 +219,7 @@ impl SerializeCompact for EndorsementContent {
 impl DeserializeCompact for EndorsementContent {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let max_block_endorsements =
-            with_serialization_context(|context| context.max_block_endorsements);
+            with_serialization_context(|context| context.endorsement_count);
         let mut cursor = 0usize;
 
         // sender public key
@@ -269,9 +269,9 @@ mod tests {
     fn test_endorsement_serialization() {
         let ctx = crate::SerializationContext {
             max_block_size: 1024 * 1024,
-            max_block_operations: 1024,
-            parent_count: 3,
-            max_peer_list_length: 128,
+            max_operations_per_block: 1024,
+            thread_count: 3,
+            max_advertise_length: 128,
             max_message_size: 3 * 1024 * 1024,
             max_bootstrap_blocks: 100,
             max_bootstrap_cliques: 100,
@@ -283,7 +283,7 @@ mod tests {
             max_operations_per_message: 1024,
             max_endorsements_per_message: 1024,
             max_bootstrap_message_size: 100000000,
-            max_block_endorsements: 8,
+            endorsement_count: 8,
         };
         crate::init_serialization_context(ctx);
 

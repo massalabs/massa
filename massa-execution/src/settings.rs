@@ -1,13 +1,11 @@
+use massa_models::constants::{GENESIS_TIMESTAMP, T0, THREAD_COUNT};
 use massa_time::MassaTime;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-/// Max size for channels used with communication with other components.
-pub const CHANNEL_SIZE: usize = 256;
-
 /// Execution setting parsed with .toml in `massa-node/src/settings.rs`
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct ExecutionSettings {
     /// Initial SCE ledger file
     pub initial_sce_ledger_path: PathBuf,
@@ -27,4 +25,16 @@ pub struct ExecutionConfigs {
     pub t0: MassaTime,
     /// clock compensation in milliseconds
     pub clock_compensation: i64,
+}
+
+impl Default for ExecutionConfigs {
+    fn default() -> Self {
+        Self {
+            settings: Default::default(),
+            thread_count: THREAD_COUNT,
+            genesis_timestamp: *GENESIS_TIMESTAMP,
+            t0: T0,
+            clock_compensation: Default::default(),
+        }
+    }
 }

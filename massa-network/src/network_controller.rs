@@ -1,20 +1,21 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::{
+use crate::{
+    error::NetworkError,
     establisher::Establisher,
+    network_worker::NetworkWorkerChannels,
     network_worker::{
         NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkWorker, Peers,
     },
     peer_info_database::*,
+    settings::NetworkSettings,
     BootstrapPeers,
 };
-use crate::settings::{NetworkSettings, CHANNEL_SIZE};
-use crate::{error::NetworkError, network_worker::NetworkWorkerChannels};
 use massa_logging::massa_trace;
-use massa_models::composite::PubkeySig;
-use massa_models::node::NodeId;
-use massa_models::stats::NetworkStats;
-use massa_models::{Block, BlockHeader, BlockId, Endorsement, Operation, Version};
+use massa_models::{
+    composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, stats::NetworkStats, Block,
+    BlockHeader, BlockId, Endorsement, Operation, Version,
+};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use std::{
     collections::{HashMap, VecDeque},
@@ -221,11 +222,11 @@ impl NetworkCommandSender {
             .send(NetworkCommand::GetPeers(response_tx))
             .await
             .map_err(|_| NetworkError::ChannelError("could not send GetPeers command".into()))?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             NetworkError::ChannelError(
                 "could not send GetAdvertisablePeerListChannelError upstream".into(),
             )
-        })?)
+        })
     }
 
     pub async fn get_network_stats(&self) -> Result<NetworkStats, NetworkError> {
@@ -234,11 +235,11 @@ impl NetworkCommandSender {
             .send(NetworkCommand::GetStats { response_tx })
             .await
             .map_err(|_| NetworkError::ChannelError("could not send GetPeers command".into()))?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             NetworkError::ChannelError(
                 "could not send GetAdvertisablePeerListChannelError upstream".into(),
             )
-        })?)
+        })
     }
 
     /// Send the order to get bootstrap peers.
@@ -250,9 +251,9 @@ impl NetworkCommandSender {
             .map_err(|_| {
                 NetworkError::ChannelError("could not send GetBootstrapPeers command".into())
             })?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             NetworkError::ChannelError("could not send GetBootstrapPeers response upstream".into())
-        })?)
+        })
     }
 
     pub async fn block_not_found(
@@ -306,9 +307,9 @@ impl NetworkCommandSender {
             .map_err(|_| {
                 NetworkError::ChannelError("could not send GetBootstrapPeers command".into())
             })?;
-        Ok(response_rx.await.map_err(|_| {
+        response_rx.await.map_err(|_| {
             NetworkError::ChannelError("could not send GetBootstrapPeers response upstream".into())
-        })?)
+        })
     }
 }
 

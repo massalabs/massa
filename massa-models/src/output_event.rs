@@ -1,6 +1,6 @@
 use crate::{
-    prehash::PreHashed, settings::EVENT_ID_SIZE_BYTES, Address, BlockId, ModelsError, OperationId,
-    Slot,
+    node_configuration::EVENT_ID_SIZE_BYTES, prehash::PreHashed, Address, BlockId, ModelsError,
+    OperationId, Slot,
 };
 use massa_hash::hash::Hash;
 use serde::{Deserialize, Serialize};

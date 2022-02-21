@@ -2,8 +2,8 @@
 use massa_models::ledger_models::{LedgerChange, LedgerChanges, LedgerData};
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::{
-    array_from_slice, Address, Amount, DeserializeCompact, DeserializeVarInt, Operation,
-    SerializeCompact, SerializeVarInt, ADDRESS_SIZE_BYTES,
+    array_from_slice, constants::ADDRESS_SIZE_BYTES, Address, Amount, DeserializeCompact,
+    DeserializeVarInt, Operation, SerializeCompact, SerializeVarInt,
 };
 use serde::{Deserialize, Serialize};
 use sled::{Transactional, Tree};
@@ -565,24 +565,7 @@ impl SerializeCompact for LedgerSubset {
     /// #   (Address::from_bs58_check("2oxLZc6g6EHfc5VtywyPttEeGDxWq3xjvTNziayWGDfxETZVTi".into()).unwrap(), LedgerData::new(Amount::from_str("1022").unwrap())),
     /// #   (Address::from_bs58_check("2mvD6zEvo8gGaZbcs6AYTyWKFonZaKvKzDGRsiXhZ9zbxPD11q".into()).unwrap(), LedgerData::new(Amount::from_str("1020").unwrap())),
     /// # ].into_iter().collect());
-    /// # massa_models::init_serialization_context(massa_models::SerializationContext {
-    /// #     max_block_operations: 1024,
-    /// #     parent_count: 2,
-    /// #     max_peer_list_length: 128,
-    /// #     max_message_size: 3 * 1024 * 1024,
-    /// #     max_block_size: 3 * 1024 * 1024,
-    /// #     max_bootstrap_blocks: 100,
-    /// #     max_bootstrap_cliques: 100,
-    /// #     max_bootstrap_deps: 100,
-    /// #     max_bootstrap_children: 100,
-    /// #     max_ask_blocks_per_message: 10,
-    /// #     max_operations_per_message: 1024,
-    /// #     max_endorsements_per_message: 1024,
-    /// #     max_bootstrap_message_size: 100000000,
-    /// #     max_bootstrap_pos_cycles: 10000,
-    /// #     max_bootstrap_pos_entries: 10000,
-    /// #     max_block_endorsements: 8,
-    /// # });
+    /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
     /// let bytes = ledger.clone().to_bytes_compact().unwrap();
     /// let (res, _) = LedgerSubset::from_bytes_compact(&bytes).unwrap();
     /// for (address, data) in &ledger.0 {

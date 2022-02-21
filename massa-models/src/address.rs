@@ -1,9 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use crate::api::{LedgerInfo, RollsInfo};
 use crate::prehash::{PreHashed, Set};
-use crate::settings::ADDRESS_SIZE_BYTES;
 use crate::ModelsError;
+use crate::{
+    api::{LedgerInfo, RollsInfo},
+    constants::ADDRESS_SIZE_BYTES,
+};
 use massa_hash::hash::Hash;
 use massa_signature::PublicKey;
 use serde::{Deserialize, Serialize};

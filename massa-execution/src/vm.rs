@@ -1,20 +1,22 @@
 use crate::error::bootstrap_file_error;
-use crate::interface_impl::InterfaceImpl;
-use crate::sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges};
 use crate::types::{
     EventStore, ExecutionContext, ExecutionData, ExecutionStep, StackElement, StepHistory,
     StepHistoryItem,
 };
-use crate::{config::ExecutionConfigs, ExecutionError};
-use massa_models::api::SCELedgerInfo;
-use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Map;
-use massa_models::timeslots::{get_latest_block_slot_at_timestamp, slot_count_in_range};
-use massa_models::{
-    execution::{ExecuteReadOnlyResponse, ReadOnlyResult},
-    Address, Amount, BlockId, Slot,
+use crate::{
+    interface_impl::InterfaceImpl,
+    sce_ledger::{FinalLedger, SCELedger, SCELedgerChanges},
 };
-use massa_models::{OperationId, AMOUNT_ZERO};
+use crate::{settings::ExecutionConfigs, ExecutionError};
+
+use massa_models::{
+    api::SCELedgerInfo,
+    execution::{ExecuteReadOnlyResponse, ReadOnlyResult},
+    output_event::SCOutputEvent,
+    prehash::Map,
+    timeslots::{get_latest_block_slot_at_timestamp, slot_count_in_range},
+    Address, Amount, BlockId, OperationId, Slot,
+};
 use massa_sc_runtime::Interface;
 use massa_signature::{derive_public_key, generate_random_private_key};
 use massa_time::MassaTime;
@@ -338,7 +340,7 @@ impl VM {
 
             context.stack = vec![StackElement {
                 address,
-                coins: AMOUNT_ZERO,
+                coins: Amount::zero(),
                 owned_addresses: vec![address],
             }];
 
