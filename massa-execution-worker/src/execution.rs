@@ -1,5 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+//! This module deals with executing final and active slots, as well as read-only requests.
+//! It also keeps a history of executed slots, thus holding the speculative state of the ledger.
+
 use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;
 use massa_execution_exports::{
@@ -17,6 +20,7 @@ use std::{
 };
 use tracing::debug;
 
+/// Used to lock the execution context for exclusive access
 macro_rules! context_guard {
     ($self:ident) => {
         $self
@@ -26,115 +30,155 @@ macro_rules! context_guard {
     };
 }
 
-/// structure holding consistent speculative and final execution states
+/// Structure holding consistent speculative and final execution states,
+/// and allowing access to them.
 pub(crate) struct ExecutionState {
-    // VM config
+    // execution config
     pub config: ExecutionConfig,
-    // active execution output history
+    // History of the outputs of recently executed slots. Slots should be consecutive, newest at the back.
+    // Whenever an active slot is executed, it is appended at the back of active_history.
+    // Whenever an executed active slot becomes final,
+    // its output is popped from the front of active_history and applied to the final state.
     pub active_history: VecDeque<ExecutionOutput>,
-    // active execution cursor
+    // a cursor pointing to the highest executed slot
     pub active_cursor: Slot,
-    // final execution cursor
+    // a cursor pointing to the highest executed final slot
     pub final_cursor: Slot,
-    // final events
+    // store containing execution events that became final
     pub final_events: EventStore,
-    // final ledger
+    // final ledger with atomic R/W access
     pub final_ledger: Arc<RwLock<FinalLedger>>,
-    // execution context
+    // execution context (see documentation in context.rs)
     pub execution_context: Arc<Mutex<ExecutionContext>>,
-    // execution interface
+    // execution interface exposing ABI functions to the VM executing bytecode
     pub execution_interface: Box<dyn Interface>,
 }
 
 impl ExecutionState {
-    /// create a new execution state
+    /// Create a new execution state. This should be called only once at the start of the executon worker.
+    ///
+    /// # arguments
+    /// * config: execution config
+    /// * final_lefger: atomic access to the final ledger
+    ///
+    /// # returns
+    /// A new ExecutionState
     pub fn new(config: ExecutionConfig, final_ledger: Arc<RwLock<FinalLedger>>) -> ExecutionState {
-        // get last final slot from final ledger
+        // Get the slot at the output of which the final ledger is attached.
+        // This should be among the latest final slots.
         let last_final_slot = final_ledger
             .read()
             .expect("could not r-lock final ledger")
             .slot;
 
-        // init execution context
+        // Create an empty placeholder execution context, with shared atomic access
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
             final_ledger.clone(),
             Default::default(),
         )));
 
-        // Instantiate the interface used by the assembly simulator.
+        // Instantiate the interface providing ABI access to the VM, share the execution contex with it
         let execution_interface = Box::new(InterfaceImpl::new(
             config.clone(),
             execution_context.clone(),
         ));
 
-        // build execution state
+        // build the execution state
         ExecutionState {
             config,
             final_ledger,
             execution_context,
             execution_interface,
+            // empty execution output history: it is not recovered through bootstrap
             active_history: Default::default(),
+            // empty final event store: it is not recovered through bootstrap
             final_events: Default::default(),
+            // no active slots executed yet: set active_cursor to the last final block
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
         }
     }
 
-    /// applies an execution output to the final state
+    /// Applies the output of an execution to the final execution state.
+    /// The newly applied final output should be from the slot just after the last executed final slot
+    ///
+    /// # Arguments
+    /// * exec_out: execution output to apply
     pub fn apply_final_execution_output(&mut self, exec_out: ExecutionOutput) {
-        // apply final ledger changes
+        // apply ledger changes to the final ledger
         self.final_ledger
             .write()
             .expect("could not lock final ledger for writing")
             .settle_slot(exec_out.slot, exec_out.ledger_changes);
+        // update the final ledger's slot
         self.final_cursor = exec_out.slot;
 
-        // update active cursor
+        // update active cursor:
+        // if it was at the previous latest final block, set it to point to the new one
         if self.active_cursor < self.final_cursor {
             self.active_cursor = self.final_cursor;
         }
 
-        // save generated events to final store
+        // append generated events to the final event store
         self.final_events.extend(exec_out.events);
     }
 
-    /// applies an execution output to the active state
+    /// Applies an execution output to the active (non-final) state
+    /// The newly active final output should be from the slot just after the last executed active slot
+    ///
+    /// # Arguments
+    /// * exec_out: execution output to apply
     pub fn apply_active_execution_output(&mut self, exec_out: ExecutionOutput) {
-        // update active cursor
+        // update active cursor to reflect the new latest active slot
         self.active_cursor = exec_out.slot;
 
-        // add execution output to history
+        // add the execution output at the end of the output history
         self.active_history.push_back(exec_out);
     }
 
-    /// clear execution history
+    /// Clear the whole execution history,
+    /// deleting caches on executed non-final slots.
     pub fn clear_history(&mut self) {
         // clear history
         self.active_history.clear();
 
-        // reset active cursor
+        // reset active cursor to point to the latest final slot
         self.active_cursor = self.final_cursor;
     }
 
-    /// truncates active slots at the first mismatch
-    /// between the active execution output history and the planned active_slots
+    /// This function receives a new sequence of blocks to execute as argument.
+    /// It then scans the output history to see until which slot this sequence was already executed (and is outputs cached).
+    /// If a mismatch is found, it means that the sequence of blocks to execute has changed
+    /// and the existing output cache is truncated to keep output history only until the mismatch slot (excluded).
+    /// Slots after that point will need to be (re-executed) to account for the new sequence.
+    ///
+    /// # Arguments
+    /// * active_slots: A HashMap mapping each slot to a block or None if the slot is a miss
     pub fn truncate_history(&mut self, active_slots: &HashMap<Slot, Option<(BlockId, Block)>>) {
         // find mismatch point (included)
         let mut truncate_at = None;
+        // iterate over the output history, in chronological order
         for (hist_index, exec_output) in self.active_history.iter().enumerate() {
+            // try to find the corresponding slot in active_slots
             let found_block_id = active_slots
                 .get(&exec_output.slot)
                 .map(|opt_b| opt_b.as_ref().map(|(b_id, _b)| *b_id));
             if found_block_id == Some(exec_output.block_id) {
+                // the slot number and block ID still match. Continue scanning
                 continue;
             }
+            // mismatch found: stop scannig and return the cutoff index
             truncate_at = Some(hist_index);
             break;
         }
 
-        // truncate speculative execution output history
+        // If a mismatch was found
         if let Some(truncate_at) = truncate_at {
+            // Truncate the execution output history at the cutoff index (excluded)
             self.active_history.truncate(truncate_at);
+            // Now that part of the speculative executions were cancelled,
+            // update the active cursor to match the latest executed slot.
+            // The cursor is set to the latest executed final slot if the history is empty.
             self.active_cursor = self
                 .active_history
                 .back()
@@ -142,10 +186,11 @@ impl ExecutionState {
         }
     }
 
-    /// returns the speculative ledger at the entrance of a given history slot
-    /// warning: only use in the main loop because the lock on the final ledger
-    /// at the base of the returned SpeculativeLedger is not held
-    /// TODO: do not do this anymore but allow the speculative ledger to lazily query any subentry
+    /// Returns he ledger changes accumulated from the beginning of the output history,
+    /// up until a provided slot (excluded).
+    /// Only used in the VM main loop because the lock on the final ledger
+    /// carried by the returned SpeculativeLedger is not held.
+    /// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any subentry
     /// by scanning through history from end to beginning
     pub fn get_accumulated_active_changes_at_slot(&self, slot: Slot) -> LedgerChanges {
         // check that the slot is within the reach of history
@@ -160,7 +205,7 @@ impl ExecutionState {
             panic!("cannot execute at a slot beyond active cursor + 1");
         }
 
-        // gather the history of changes
+        // gather the history of changes in the relevant history range
         let mut accumulated_changes = LedgerChanges::default();
         for previous_output in &self.active_history {
             if previous_output.slot >= slot {
@@ -172,13 +217,18 @@ impl ExecutionState {
         accumulated_changes
     }
 
-    /// execute an operation in the context of a block
+    /// Execute an operation in the context of a block.
+    /// Assumes the execution context was initialized at the beginning of the slot.
+    ///
+    /// # arguments
+    /// * operation: operation to execute
+    /// * block_creator_addr: address of the block creator
     pub fn execute_operation(
         &self,
         operation: &Operation,
         block_creator_addr: Address,
     ) -> Result<(), ExecutionError> {
-        // process ExecuteSC operations only
+        // process ExecuteSC operations only, ignore other types of operations
         let (bytecode, max_gas, coins, gas_price) = match &operation.content.op {
             OperationType::ExecuteSC {
                 data,
@@ -189,7 +239,7 @@ impl ExecutionState {
             _ => return Ok(()),
         };
 
-        // get sender address
+        // get the operation's sender address
         let sender_addr = Address::from_public_key(&operation.content.sender_public_key);
 
         // get operation ID
@@ -198,13 +248,15 @@ impl ExecutionState {
             .get_operation_id()
             .expect("could not compute operation ID");
 
-        // prepare the context
+        // prepare the current slot context for executing the operation
         let context_snapshot;
         {
+            // get exclusive write access to the contex
             let mut context = context_guard!(self);
 
-            // credit the producer of the block B with max_gas * gas_price parallel coins
-            // note that errors are deterministic and do not cancel op execution
+            // Use the context to credit the producer of the block with max_gas * gas_price parallel coins.
+            // Note that errors are deterministic and do not cancel the operation execution.
+            // That way, even if the sender sent an invalid operation, the block producer will still get credited.
             let gas_fees = gas_price.saturating_mul_u64(*max_gas);
             if let Err(err) =
                 context.transfer_parallel_coins(None, Some(block_creator_addr), gas_fees, false)
@@ -215,8 +267,8 @@ impl ExecutionState {
                 );
             }
 
-            // credit Op's sender with `coins` parallel coins
-            // note that errors are deterministic and do not cancel op execution
+            // Credit the operation sender with `coins` parallel coins.
+            // Note that errors are deterministic and do not cancel op execution.
             if let Err(err) =
                 context.transfer_parallel_coins(None, Some(sender_addr), *coins, false)
             {
@@ -226,24 +278,35 @@ impl ExecutionState {
                 );
             }
 
-            // save a snapshot of the context state to restore it if the op fails to execute
+            // save a snapshot of the context state to restore it if the op fails to execute,
+            // this reverting any changes except the coin transfers above
             context_snapshot = context.get_snapshot();
 
-            // prepare context for op execution
+            // set the context gas price to match the one defined in the operation
             context.gas_price = *gas_price;
+
+            // set the context max gas to match the one defined in the operation
             context.max_gas = *max_gas;
+
+            // Set the call stack to a single element:
+            // * the execution will happen in the context of the address of the operation's sender
+            // * the context will signal that `coins` were creditedto the parallel balance of the sender during that call
+            // * the context will give the operation's sender write access to its own ledger entry
             context.stack = vec![ExecutionStackElement {
                 address: sender_addr,
                 coins: *coins,
                 owned_addresses: vec![sender_addr],
             }];
+
+            // set the context origin operation ID
             context.origin_operation_id = Some(operation_id);
         };
 
-        // run the intepreter
+        // run the VM on the bytecode contained in the operation
         let run_result = massa_sc_runtime::run(bytecode, *max_gas, &*self.execution_interface);
         if let Err(err) = run_result {
-            // there was an error during bytecode execution: cancel the effects of the execution
+            // there was an error during bytecode execution:
+            // cancel the effects of the execution by resetting the context to the previously saved snapshot
             let mut context = context_guard!(self);
             context.origin_operation_id = None;
             context.reset_to_snapshot(context_snapshot);
@@ -256,8 +319,15 @@ impl ExecutionState {
         Ok(())
     }
 
-    /// executes a full slot without causing any changes to the state,
-    /// and yields an execution output
+    /// Executes a full slot (with or without a block inside) without causing any changes to the state,
+    /// just yielding the execution output.
+    ///
+    /// # Arguments
+    /// * slot: slot to execute
+    /// * opt_block: block ID if there is a block a that slot, otherwise None
+    ///
+    /// # Returns
+    /// An `ExecutionOutput` structure summarizing the output of the executed slot
     pub fn execute_slot(&self, slot: Slot, opt_block: Option<(BlockId, Block)>) -> ExecutionOutput {
         // get optional block ID and creator address
         let (opt_block_id, opt_block_creator_addr) = opt_block
@@ -265,10 +335,10 @@ impl ExecutionState {
             .map(|(b_id, b)| (*b_id, Address::from_public_key(&b.header.content.creator)))
             .unzip();
 
-        // accumulate previous active changes from history
+        // accumulate previous active changes from output history
         let previous_ledger_changes = self.get_accumulated_active_changes_at_slot(slot);
 
-        // prepare execution context for the whole active slot
+        // create a new execution context for the whole active slot
         let execution_context = ExecutionContext::new_active_slot(
             slot,
             opt_block_id,
@@ -278,7 +348,7 @@ impl ExecutionState {
 
         // note that here, some pre-operations (like crediting block producers) can be performed before the lock
 
-        // set the execution context for slot execution
+        // apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
 
         // note that here, async operations should be executed
@@ -287,7 +357,8 @@ impl ExecutionState {
         if let (Some((block_id, block)), Some(block_creator_addr)) =
             (opt_block, opt_block_creator_addr)
         {
-            // execute operations
+            // Try executing the operations of this block in the order in which they appear in the block.
+            // Errors are logged but do not interrupt the execution of the slot.
             for (op_idx, operation) in block.operations.iter().enumerate() {
                 if let Err(err) = self.execute_operation(operation, block_creator_addr) {
                     debug!(
@@ -302,21 +373,30 @@ impl ExecutionState {
         context_guard!(self).take_execution_output()
     }
 
-    /// execute a readonly request
+    /// Execues a read-only execution request.
+    /// The executed bytecode appears to be able to read and write the consensus state,
+    /// but all accumulated changes are simply returned as an ExecutionOutput object,
+    /// and not actually applied to the consensus state.
+    ///
+    /// # Arguments
+    /// * req: a read-only execution request
+    ///
+    /// # Returns
+    ///  ExecutionOutput describing the output of the execution, or an error
     pub(crate) fn execute_readonly_request(
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ExecutionOutput, ExecutionError> {
-        // set the exec slot just after the latest executed active slot
+        // set the execution slot to be the one after the latest executed active slot
         let slot = self
             .active_cursor
             .get_next_slot(self.config.thread_count)
             .expect("slot overflow in readonly execution");
 
-        // get previous changes
+        // accumulate ledger changes that happened in the output history before this slot
         let previous_ledger_changes = self.get_accumulated_active_changes_at_slot(slot);
 
-        // create readonly execution context
+        // create a readonly execution context
         let max_gas = req.max_gas;
         let bytecode = req.bytecode.clone();
         let execution_context = ExecutionContext::new_readonly(
@@ -337,7 +417,7 @@ impl ExecutionState {
         Ok(context_guard!(self).take_execution_output())
     }
 
-    /// gets a full ledger entry both at final and active states
+    /// Gets a full ledger entry both at the latest final and active executed slots
     /// TODO: this can be heavily optimized, see comments
     ///
     /// # returns
@@ -379,7 +459,7 @@ impl ExecutionState {
         (final_entry, active_entry)
     }
 
-    /// Get events optionnally filtered by:
+    /// Gets execution events optionnally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address

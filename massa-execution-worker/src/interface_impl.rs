@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-/// Implementation of the interface used in the execution external library
-///
+//! Implementation of ABI that the VM provides to the executed bytecode.
+
 use crate::context::ExecutionContext;
 use anyhow::{bail, Result};
 use massa_execution_exports::ExecutionConfig;
@@ -18,6 +18,7 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use tracing::debug;
 
+/// helper for locking the context mutex
 macro_rules! context_guard {
     ($self:ident) => {
         $self
@@ -27,9 +28,12 @@ macro_rules! context_guard {
     };
 }
 
+/// an implementation of the Interface trait (see masa-sc-runtime crate)
 #[derive(Clone)]
 pub(crate) struct InterfaceImpl {
+    /// execution config
     config: ExecutionConfig,
+    /// exclusive access to the execution context (see context.rs)
     context: Arc<Mutex<ExecutionContext>>,
 }
 
@@ -45,6 +49,8 @@ impl InterfaceClone for InterfaceImpl {
     }
 }
 
+/// Implementation of the Interface trait providing an ABI to VM-executed bytecode.
+/// See the massa-sc-runtime crate for a functional description of the trait.
 impl Interface for InterfaceImpl {
     fn print(&self, message: &str) -> Result<()> {
         debug!("SC print: {}", message);
