@@ -76,9 +76,9 @@ impl Endpoints for API<Private> {
 
     fn execute_read_only_request(
         &self,
-        _: ReadOnlyExecution,
-    ) -> BoxFuture<Result<ExecuteReadOnlyResponse, ApiError>> {
-        crate::wrong_api::<ExecuteReadOnlyResponse>()
+        _: Vec<ReadOnlyExecution>,
+    ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
+        crate::wrong_api::<Vec<ExecuteReadOnlyResponse>>()
     }
 
     fn remove_staking_addresses(&self, keys: Vec<Address>) -> BoxFuture<Result<(), ApiError>> {

@@ -116,8 +116,8 @@ pub trait Endpoints {
     #[rpc(name = "execute_read_only_request")]
     fn execute_read_only_request(
         &self,
-        _: ReadOnlyExecution,
-    ) -> BoxFuture<Result<ExecuteReadOnlyResponse, ApiError>>;
+        _: Vec<ReadOnlyExecution>,
+    ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>>;
 
     /// Remove a vec of addresses used to stake.
     /// No confirmation to expect.

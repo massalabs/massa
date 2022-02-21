@@ -174,7 +174,7 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(args = "PathToBytecode MaxGas GasPrice Address", todo = "[unstable] "),
-        message = "execute byte code, address is optionnal. Nothing is really executed on chain"
+        message = "execute bytecode without changing anything to the blockchain, address is optionnal."
     )]
     read_only_smart_contract,
 
@@ -761,7 +761,7 @@ impl Command {
                 };
                 let bytecode = get_file_as_byte_vec(&path).await?;
                 match client
-                    .private
+                    .public
                     .execute_read_only_request(ReadOnlyExecution {
                         max_gas,
                         simulated_gas_price,

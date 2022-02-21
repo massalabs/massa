@@ -81,50 +81,56 @@ impl Endpoints for API<Public> {
 
     fn execute_read_only_request(
         &self,
-        ReadOnlyExecution {
-            max_gas,
-            simulated_gas_price,
-            bytecode,
-            address,
-        }: ReadOnlyExecution,
-    ) -> BoxFuture<Result<ExecuteReadOnlyResponse, ApiError>> {
-        let address = address.unwrap_or_else(|| {
-            // if no addr provided, use a random one
-            Address::from_public_key(&derive_public_key(&generate_random_private_key()))
-        });
+        reqs: Vec<ReadOnlyExecution>
+    ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
+        if reqs.len() > self.0.api_settings.max_arguments as usize {
+            let closure = async move || Err(ApiError::TooManyArguments("too many arguments".into()));
+            return Box::pin(closure());
+        }
 
-        // TODO:
-        // * set a maximum gas value for read-only executions to prevent attacks
-        // * stop mapping request and result, reuse execution's structures
-        // * remove async stuff
+        let mut res: Vec<ExecuteReadOnlyResponse> = Vec::with_capacity(reqs.len());
+        for ReadOnlyExecution{max_gas, address, simulated_gas_price, bytecode} in reqs {
+            let address = address.unwrap_or_else(|| {
+                // if no addr provided, use a random one
+                Address::from_public_key(&derive_public_key(&generate_random_private_key()))
+            });
+    
+            // TODO:
+            // * set a maximum gas value for read-only executions to prevent attacks
+            // * stop mapping request and result, reuse execution's structures
+            // * remove async stuff
+    
+            // translate request
+            let req = ReadOnlyExecutionRequest {
+                max_gas,
+                simulated_gas_price,
+                bytecode,
+                call_stack: vec![ExecutionStackElement {
+                    address,
+                    coins: Default::default(),
+                    owned_addresses: vec![address],
+                }],
+            };
+    
+            // run
+            let result = self.0.execution_controller.execute_readonly_request(req);
+    
+            // map result
+            let result = ExecuteReadOnlyResponse {
+                executed_at: result.as_ref().map_or_else(|_| Slot::new(0, 0), |v| v.slot),
+                result: result.as_ref().map_or_else(
+                    |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
+                    |_| ReadOnlyResult::Ok,
+                ),
+                output_events: result.map_or_else(|_| Default::default(), |v| v.events.export()),
+            };
 
-        // translate request
-        let req = ReadOnlyExecutionRequest {
-            max_gas,
-            simulated_gas_price,
-            bytecode,
-            call_stack: vec![ExecutionStackElement {
-                address,
-                coins: Default::default(),
-                owned_addresses: vec![address],
-            }],
-        };
+            res.push(result);
+        }
 
-        // run
-        let result = self.0.execution_controller.execute_readonly_request(req);
-
-        // map result
-        let result = ExecuteReadOnlyResponse {
-            executed_at: result.as_ref().map_or_else(|_| Slot::new(0, 0), |v| v.slot),
-            result: result.as_ref().map_or_else(
-                |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
-                |_| ReadOnlyResult::Ok,
-            ),
-            output_events: result.map_or_else(|_| Default::default(), |v| v.events.export()),
-        };
 
         // return result
-        let closure = async move || Ok(result);
+        let closure = async move || Ok(res);
         Box::pin(closure())
     }
 
