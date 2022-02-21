@@ -80,9 +80,6 @@ pub enum ProtocolManagementCommand {}
 #[derive(Clone)]
 pub struct ProtocolCommandSender(pub mpsc::Sender<ProtocolCommand>);
 
-type BlockResults =
-    Map<BlockId, Option<(Block, Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
-
 impl ProtocolCommandSender {
     /// Sends the order to propagate the header of a block
     ///
@@ -127,7 +124,7 @@ impl ProtocolCommandSender {
     /// Send the response to a ProtocolEvent::GetBlocks.
     pub async fn send_get_blocks_results(
         &mut self,
-        results: BlockResults,
+        results: BlocksResults,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.send_get_blocks_results", {
             "results": results
