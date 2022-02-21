@@ -11,10 +11,11 @@ use crate::NetworkEvent;
 
 use crate::peer_info_database::PeerType;
 use crate::settings::PeerTypeConnectionConfig;
+use crate::tests::tools::{get_dummy_block_id, get_transaction};
 use crate::PeerInfo;
 use crate::{
     binders::{ReadBinder, WriteBinder},
-    ConnectionId,
+    ConnectionId, NetworkSettings,
 };
 use massa_hash::{self, hash::Hash};
 use massa_models::node::NodeId;
@@ -24,13 +25,11 @@ use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
 use std::{
-    convert::TryInto,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     time::{Duration, Instant},
 };
 use tokio::sync::mpsc;
 use tokio::time::sleep;
-use tools::{get_dummy_block_id, get_transaction};
 use tracing::trace;
 
 /// Test that a node worker can shutdown even if the event channel is full,
@@ -40,7 +39,7 @@ use tracing::trace;
 async fn test_node_worker_shutdown() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&[]);
-    let network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
+    let network_conf = NetworkSettings::scenarios_default(bind_port, temp_peers_file.path());
     let (duplex_controller, _duplex_mock) = tokio::io::duplex(1);
     let (duplex_mock_read, duplex_mock_write) = tokio::io::split(duplex_controller);
     let reader = ReadBinder::new(duplex_mock_read);
@@ -103,13 +102,15 @@ async fn test_multiple_connections_to_controller() {
     // test config
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&[]);
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.standard_peers_config = PeerTypeConnectionConfig {
-        max_in: 2,
-        target_out: 0,
-        max_out_attempts: 0,
+    let network_conf = NetworkSettings {
+        standard_peers_config: PeerTypeConnectionConfig {
+            max_in: 2,
+            target_out: 0,
+            max_out_attempts: 0,
+        },
+        max_in_connections_per_ip: 1,
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
-    network_conf.max_in_connections_per_ip = 1;
 
     let mock1_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
     let mock2_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 12)), bind_port);
@@ -224,8 +225,10 @@ async fn test_peer_ban() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo::new(mock_addr.ip(), true)]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.wakeup_interval = 1000.into();
+    let network_conf = NetworkSettings {
+        wakeup_interval: 1000.into(),
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+    };
 
     tools::network_test(
         network_conf.clone(),
@@ -357,8 +360,10 @@ async fn test_peer_ban_by_ip() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo::new(mock_addr.ip(), true)]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.wakeup_interval = 1000.into();
+    let network_conf = NetworkSettings {
+        wakeup_interval: 1000.into(),
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+    };
 
     tools::network_test(
         network_conf.clone(),
@@ -497,9 +502,11 @@ async fn test_advertised_and_wakeup_interval() {
         active_in_connections: 0,
         banned: false,
     }]);
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.wakeup_interval = MassaTime::from(500);
-    network_conf.connect_timeout = MassaTime::from(2000);
+    let network_conf = NetworkSettings {
+        wakeup_interval: MassaTime::from(500),
+        connect_timeout: MassaTime::from(2000),
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
+    };
 
     tools::network_test(
         network_conf.clone(),
@@ -631,11 +638,13 @@ async fn test_block_not_found() {
         banned: false,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.bootstrap_peers_config = PeerTypeConnectionConfig {
-        max_in: 1,
-        target_out: 1,
-        max_out_attempts: 1,
+    let network_conf = NetworkSettings {
+        bootstrap_peers_config: PeerTypeConnectionConfig {
+            max_in: 1,
+            target_out: 1,
+            max_out_attempts: 1,
+        },
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     // Overwrite the context.
@@ -821,11 +830,13 @@ async fn test_retry_connection_closed() {
         banned: false,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.bootstrap_peers_config = PeerTypeConnectionConfig {
-        max_in: 1,
-        target_out: 1,
-        max_out_attempts: 1,
+    let network_conf = NetworkSettings {
+        bootstrap_peers_config: PeerTypeConnectionConfig {
+            max_in: 1,
+            target_out: 1,
+            max_out_attempts: 1,
+        },
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     tools::network_test(
@@ -923,11 +934,13 @@ async fn test_operation_messages() {
         banned: false,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.bootstrap_peers_config = PeerTypeConnectionConfig {
-        max_in: 1,
-        target_out: 1,
-        max_out_attempts: 1,
+    let network_conf = NetworkSettings {
+        bootstrap_peers_config: PeerTypeConnectionConfig {
+            max_in: 1,
+            target_out: 1,
+            max_out_attempts: 1,
+        },
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     // Overwrite the context.
@@ -1048,11 +1061,13 @@ async fn test_endorsements_messages() {
         banned: false,
     }]);
 
-    let mut network_conf = super::tools::create_network_config(bind_port, temp_peers_file.path());
-    network_conf.bootstrap_peers_config = PeerTypeConnectionConfig {
-        max_in: 1,
-        target_out: 1,
-        max_out_attempts: 1,
+    let network_conf = NetworkSettings {
+        bootstrap_peers_config: PeerTypeConnectionConfig {
+            max_in: 1,
+            target_out: 1,
+            max_out_attempts: 1,
+        },
+        ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
     // Overwrite the context.

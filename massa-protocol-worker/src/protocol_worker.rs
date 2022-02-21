@@ -3,15 +3,18 @@
 use itertools::Itertools;
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::node::NodeId;
-use massa_models::prehash::{BuildMap, Map, Set};
-use massa_models::{Address, Block, BlockHeader, BlockId, Operation, OperationId, OperationType};
-use massa_models::{Endorsement, EndorsementId};
+use massa_models::{
+    constants::CHANNEL_SIZE,
+    node::NodeId,
+    prehash::{BuildMap, Map, Set},
+    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
+    OperationType,
+};
 use massa_network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolError, ProtocolEvent, ProtocolEventReceiver,
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
-    ProtocolSettings, CHANNEL_SIZE,
+    ProtocolSettings,
 };
 use massa_time::TimeError;
 use std::collections::{HashMap, HashSet};
@@ -1146,7 +1149,7 @@ impl ProtocolWorker {
 
             // check address and thread
             let addr = Address::from_public_key(&op.content.sender_public_key);
-            if addr.get_thread(serialization_context.parent_count)
+            if addr.get_thread(serialization_context.thread_count)
                 != block.header.content.slot.thread
             {
                 massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_thread",

@@ -4,36 +4,6 @@ use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::{IpAddr, SocketAddr};
 
-pub const CHANNEL_SIZE: usize = 256;
-
-pub const NODE_SEND_CHANNEL_SIZE: usize = 1024;
-
-/// Limit on the number of peers we advertise to others.
-#[cfg(not(test))]
-pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
-#[cfg(test)]
-pub const MAX_ADVERTISE_LENGTH: u32 = 10;
-
-/// Maximum message length in bytes
-#[cfg(not(test))]
-pub const MAX_MESSAGE_SIZE: u32 = 1048576000;
-#[cfg(test)]
-pub const MAX_MESSAGE_SIZE: u32 = 3145728;
-
-/// Max number of hash in the message AskForBlocks
-#[cfg(not(test))]
-pub const MAX_ASK_BLOCKS_PER_MESSAGE: u32 = 128;
-#[cfg(test)]
-pub const MAX_ASK_BLOCKS_PER_MESSAGE: u32 = 3;
-
-/// Max number of operations per message
-pub const MAX_OPERATIONS_PER_MESSAGE: u32 = 1024;
-
-/// Max number of endorsements per message
-pub const MAX_ENDORSEMENTS_PER_MESSAGE: u32 = 1024;
-
-pub const HANDSHAKE_RANDOMNESS_SIZE_BYTES: usize = 32;
-
 /// Network configuration
 #[derive(Debug, Deserialize, Clone)]
 pub struct NetworkSettings {
@@ -93,6 +63,7 @@ pub struct PeerTypeConnectionConfig {
 #[cfg(test)]
 mod tests {
     use crate::NetworkSettings;
+    use massa_models::constants::*;
     use massa_time::MassaTime;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
@@ -119,6 +90,60 @@ mod tests {
                 initial_peers_file: std::path::PathBuf::new(),
                 peer_list_send_timeout: MassaTime::from(500),
                 max_in_connection_overflow: 2,
+                bootstrap_peers_config: PeerTypeConnectionConfig {
+                    target_out: 1,
+                    max_out_attempts: 1,
+                    max_in: 1,
+                },
+                whitelist_peers_config: PeerTypeConnectionConfig {
+                    max_in: 10,
+                    target_out: 10,
+                    max_out_attempts: 10,
+                },
+                standard_peers_config: PeerTypeConnectionConfig {
+                    target_out: 10,
+                    max_in: 5,
+                    max_out_attempts: 15,
+                },
+            }
+        }
+    }
+
+    impl NetworkSettings {
+        pub fn scenarios_default(port: u16, peers_file: &std::path::Path) -> Self {
+            // Init the serialization context with a default,
+            // can be overwritten with a more specific one in the test.
+            massa_models::init_serialization_context(massa_models::SerializationContext {
+                max_advertise_length: 128,
+                max_bootstrap_blocks: 100,
+                max_bootstrap_cliques: 100,
+                max_bootstrap_deps: 100,
+                max_bootstrap_children: 100,
+                max_ask_blocks_per_message: 10,
+                endorsement_count: 8,
+                ..massa_models::SerializationContext::default()
+            });
+            Self {
+                bind: format!("0.0.0.0:{}", port).parse().unwrap(),
+                routable_ip: Some(BASE_NETWORK_CONTROLLER_IP),
+                protocol_port: port,
+                connect_timeout: MassaTime::from(3000),
+                peers_file: peers_file.to_path_buf(),
+                wakeup_interval: MassaTime::from(3000),
+                max_in_connections_per_ip: 100,
+                max_idle_peers: 100,
+                max_banned_peers: 100,
+                peers_file_dump_interval: MassaTime::from(30000),
+                message_timeout: MassaTime::from(5000u64),
+                ask_peer_list_interval: MassaTime::from(50000u64),
+                private_key_file: crate::tests::tools::get_temp_private_key_file()
+                    .path()
+                    .to_path_buf(),
+                max_send_wait: MassaTime::from(100),
+                ban_timeout: MassaTime::from(100_000_000),
+                initial_peers_file: peers_file.to_path_buf(),
+                peer_list_send_timeout: MassaTime::from(50),
+                max_in_connection_overflow: 10,
                 bootstrap_peers_config: PeerTypeConnectionConfig {
                     target_out: 1,
                     max_out_attempts: 1,

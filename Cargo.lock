@@ -1398,6 +1398,7 @@ dependencies = [
  "massa_consensus_exports",
  "massa_consensus_worker",
  "massa_execution",
+ "massa_graph",
  "massa_logging",
  "massa_models",
  "massa_network",
@@ -1639,12 +1640,15 @@ dependencies = [
 name = "massa_models"
 version = "0.1.0"
 dependencies = [
+ "config",
+ "directories",
  "displaydoc",
  "integer-encoding",
  "lazy_static",
  "massa_hash",
  "massa_signature",
  "massa_time",
+ "num",
  "num-traits 0.2.14",
  "num_enum",
  "pretty_assertions",

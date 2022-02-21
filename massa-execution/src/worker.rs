@@ -3,7 +3,7 @@ use crate::sce_ledger::FinalLedger;
 use crate::types::{ExecutionQueue, ExecutionRequest};
 use crate::vm::VM;
 use crate::BootstrapExecutionState;
-use crate::{config::ExecutionConfigs, types::ExecutionStep};
+use crate::{settings::ExecutionConfigs, types::ExecutionStep};
 use massa_models::api::SCELedgerInfo;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;

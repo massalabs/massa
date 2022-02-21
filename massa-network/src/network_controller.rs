@@ -1,20 +1,21 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use super::{
+use crate::{
+    error::NetworkError,
     establisher::Establisher,
+    network_worker::NetworkWorkerChannels,
     network_worker::{
         NetworkCommand, NetworkEvent, NetworkManagementCommand, NetworkWorker, Peers,
     },
     peer_info_database::*,
+    settings::NetworkSettings,
     BootstrapPeers,
 };
-use crate::settings::{NetworkSettings, CHANNEL_SIZE};
-use crate::{error::NetworkError, network_worker::NetworkWorkerChannels};
 use massa_logging::massa_trace;
-use massa_models::composite::PubkeySig;
-use massa_models::node::NodeId;
-use massa_models::stats::NetworkStats;
-use massa_models::{Block, BlockHeader, BlockId, Endorsement, Operation, Version};
+use massa_models::{
+    composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, stats::NetworkStats, Block,
+    BlockHeader, BlockId, Endorsement, Operation, Version,
+};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use std::{
     collections::{HashMap, VecDeque},

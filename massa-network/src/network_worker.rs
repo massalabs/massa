@@ -13,15 +13,13 @@ use crate::{
     error::{HandshakeErrorType, NetworkConnectionErrorType, NetworkError},
     handshake_worker::HandshakeWorker,
     messages::Message,
-    settings::{NetworkSettings, CHANNEL_SIZE},
+    settings::NetworkSettings,
 };
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::composite::PubkeySig;
-use massa_models::node::NodeId;
-use massa_models::stats::NetworkStats;
 use massa_models::{
+    composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, stats::NetworkStats,
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializeCompact, SerializeVarInt, Version,
 };
@@ -143,7 +141,7 @@ impl SerializeCompact for BootstrapPeers {
             ModelsError::SerializeError(format!("too many peers blocks in BootstrapPeers: {}", err))
         })?;
         let max_peer_list_length =
-            with_serialization_context(|context| context.max_peer_list_length);
+            with_serialization_context(|context| context.max_advertise_length);
         if peers_count > max_peer_list_length {
             return Err(ModelsError::SerializeError(format!(
                 "too many peers for serialization context in BootstrapPeers: {}",
@@ -166,7 +164,7 @@ impl DeserializeCompact for BootstrapPeers {
         // peers
         let (peers_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         let max_peer_list_length =
-            with_serialization_context(|context| context.max_peer_list_length);
+            with_serialization_context(|context| context.max_advertise_length);
         if peers_count > max_peer_list_length {
             return Err(ModelsError::DeserializeError(format!(
                 "too many peers for deserialization context in BootstrapPeers: {}",

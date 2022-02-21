@@ -44,7 +44,7 @@ impl SerializeCompact for ExportProofOfStake {
 impl DeserializeCompact for ExportProofOfStake {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let (thread_count, max_cycles) = with_serialization_context(|context| {
-            (context.parent_count, context.max_bootstrap_pos_cycles)
+            (context.thread_count, context.max_bootstrap_pos_cycles)
         });
         let mut cursor = 0usize;
 

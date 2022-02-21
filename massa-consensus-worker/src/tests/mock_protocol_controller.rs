@@ -1,13 +1,11 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
-use massa_models::{Block, BlockHeader, BlockId};
+use massa_models::{constants::CHANNEL_SIZE, Block, BlockHeader, BlockId};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
-
-const CHANNEL_SIZE: usize = 256;
 
 pub struct MockProtocolController {
     protocol_command_rx: mpsc::Receiver<ProtocolCommand>,

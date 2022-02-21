@@ -4,11 +4,12 @@ use super::super::binders::{ReadBinder, WriteBinder};
 use super::mock_establisher::MockEstablisherInterface;
 use super::{mock_establisher, tools};
 use crate::messages::Message;
-use crate::settings::PeerTypeConnectionConfig;
+use crate::network_controller::{start_network_controller, NetworkCommandSender, NetworkManager};
 use crate::NetworkError;
+use crate::NetworkSettings;
+use crate::PeerInfo;
 use crate::{handshake_worker::HandshakeWorker, ConnectionId};
-use crate::{start_network_controller, NetworkSettings};
-use crate::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver, NetworkManager, PeerInfo};
+use crate::{network_controller::NetworkEventReceiver, NetworkEvent};
 use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::{
@@ -19,16 +20,13 @@ use massa_time::MassaTime;
 use std::str::FromStr;
 use std::{
     future::Future,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::Path,
+    net::{IpAddr, SocketAddr},
     time::Duration,
 };
 use tempfile::NamedTempFile;
 use tokio::time::sleep;
 use tokio::{sync::oneshot, task::JoinHandle, time::timeout};
 use tracing::trace;
-
-pub const BASE_NETWORK_CONTROLLER_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
     BlockId(Hash::compute_from(s.as_bytes()))
@@ -47,72 +45,8 @@ pub fn generate_peers_file(peer_vec: &[PeerInfo]) -> NamedTempFile {
     peers_file_named
 }
 
-fn get_temp_private_key_file() -> NamedTempFile {
+pub fn get_temp_private_key_file() -> NamedTempFile {
     NamedTempFile::new().expect("cannot create temp file")
-}
-
-/// create a NetworkConfig with typical values
-pub fn create_network_config(
-    network_controller_port: u16,
-    peers_file_path: &Path,
-) -> NetworkSettings {
-    // Init the serialization context with a default,
-    // can be overwritten with a more specific one in the test.
-    massa_models::init_serialization_context(massa_models::SerializationContext {
-        max_block_operations: 1024,
-        parent_count: 2,
-        max_peer_list_length: 128,
-        max_message_size: 3 * 1024 * 1024,
-        max_block_size: 3 * 1024 * 1024,
-        max_bootstrap_blocks: 100,
-        max_bootstrap_cliques: 100,
-        max_bootstrap_deps: 100,
-        max_bootstrap_children: 100,
-        max_ask_blocks_per_message: 10,
-        max_operations_per_message: 1024,
-        max_endorsements_per_message: 1024,
-        max_bootstrap_message_size: 100000000,
-        max_bootstrap_pos_entries: 1000,
-        max_bootstrap_pos_cycles: 5,
-        max_block_endorsements: 8,
-    });
-
-    NetworkSettings {
-        bind: format!("0.0.0.0:{}", network_controller_port)
-            .parse()
-            .unwrap(),
-        routable_ip: Some(BASE_NETWORK_CONTROLLER_IP),
-        protocol_port: network_controller_port,
-        connect_timeout: MassaTime::from(3000),
-        peers_file: peers_file_path.to_path_buf(),
-        bootstrap_peers_config: PeerTypeConnectionConfig {
-            target_out: 0,
-            max_in: 0,
-            max_out_attempts: 1,
-        },
-        standard_peers_config: PeerTypeConnectionConfig {
-            target_out: 10,
-            max_in: 100,
-            max_out_attempts: 100,
-        },
-        whitelist_peers_config: PeerTypeConnectionConfig {
-            target_out: 5,
-            max_in: 5,
-            max_out_attempts: 5,
-        },
-        wakeup_interval: MassaTime::from(3000),
-        max_in_connections_per_ip: 100,
-        max_idle_peers: 100,
-        max_banned_peers: 100,
-        peers_file_dump_interval: MassaTime::from(30000),
-        message_timeout: MassaTime::from(5000u64),
-        ask_peer_list_interval: MassaTime::from(50000u64),
-        private_key_file: get_temp_private_key_file().path().to_path_buf(),
-        max_send_wait: MassaTime::from(100),
-        ban_timeout: MassaTime::from(100_000_000),
-        initial_peers_file: peers_file_path.to_path_buf(),
-        ..Default::default()
-    }
 }
 
 /// Establish a full alive connection to the controller

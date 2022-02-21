@@ -1,12 +1,11 @@
-/// Implementation of the interface used in the execution external library
-///
+//! Implementation of the interface used in the execution external library
 use crate::types::{ExecutionContext, StackElement};
 use anyhow::{bail, Result};
 use massa_hash::hash::Hash;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId},
     timeslots::get_block_slot_timestamp,
-    AMOUNT_ZERO,
+    Amount,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
 use massa_time::MassaTime;
@@ -364,7 +363,7 @@ impl Interface for InterfaceImpl {
             .stack
             .last()
             .map(|e| e.coins)
-            .unwrap_or(AMOUNT_ZERO)
+            .unwrap_or(Amount::zero())
             .to_raw())
     }
 

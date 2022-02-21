@@ -4,6 +4,7 @@ use crate::error::{NetworkConnectionErrorType, NetworkError};
 use crate::settings::{NetworkSettings, PeerTypeConnectionConfig};
 use itertools::Itertools;
 use massa_logging::massa_trace;
+use massa_models::constants::MAX_ADVERTISE_LENGTH;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map, HashMap};
@@ -189,7 +190,7 @@ pub(crate) fn cleanup_peers(
                 }
                 true
             })
-            .take(crate::settings::MAX_ADVERTISE_LENGTH as usize)
+            .take(MAX_ADVERTISE_LENGTH as usize)
             .map(|&ip| PeerInfo::new(ip, true))
             .collect()
     } else {
@@ -450,12 +451,12 @@ impl PeerInfoDatabase {
         sorted_peers.sort_unstable_by_key(|&p| (std::cmp::Reverse(p.last_alive), p.last_failure));
         let mut sorted_ips: Vec<IpAddr> = sorted_peers
             .into_iter()
-            .take(crate::settings::MAX_ADVERTISE_LENGTH as usize)
+            .take(MAX_ADVERTISE_LENGTH as usize)
             .map(|p| p.ip)
             .collect();
         if let Some(our_ip) = self.network_settings.routable_ip {
             sorted_ips.insert(0, our_ip);
-            sorted_ips.truncate(crate::settings::MAX_ADVERTISE_LENGTH as usize);
+            sorted_ips.truncate(MAX_ADVERTISE_LENGTH as usize);
         }
         sorted_ips
     }

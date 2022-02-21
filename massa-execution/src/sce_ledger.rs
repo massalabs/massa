@@ -1,12 +1,13 @@
 use crate::ExecutionError;
-use massa_hash::hash::Hash;
-use massa_hash::HASH_SIZE_BYTES;
-use massa_models::prehash::{BuildMap, Map};
+use massa_hash::{hash::Hash, HASH_SIZE_BYTES};
 use massa_models::{
-    array_from_slice, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact,
-    SerializeVarInt, Slot, ADDRESS_SIZE_BYTES,
+    array_from_slice,
+    constants::ADDRESS_SIZE_BYTES,
+    prehash::{BuildMap, Map},
+    DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Slot,
+    {Address, Amount},
 };
-use massa_models::{Address, Amount, AMOUNT_ZERO};
+
 use serde::{Deserialize, Serialize};
 
 /// an entry in the SCE ledger
@@ -445,7 +446,7 @@ impl SCELedgerStep {
         // check if caused_changes or cumulative_history_changes have an update on this
         for changes in [&self.caused_changes, &self.cumulative_history_changes] {
             match changes.0.get(addr) {
-                Some(SCELedgerChange::Delete) => return AMOUNT_ZERO,
+                Some(SCELedgerChange::Delete) => return Amount::zero(),
                 Some(SCELedgerChange::Set(new_entry)) => return new_entry.balance,
                 Some(SCELedgerChange::Update(update)) => {
                     if let Some(updated_balance) = update.update_balance {
@@ -460,7 +461,7 @@ impl SCELedgerStep {
             return entry.balance;
         }
         // otherwise, just return zero
-        AMOUNT_ZERO
+        Amount::zero()
     }
 
     /// sets the balance of an address

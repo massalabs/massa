@@ -7,18 +7,20 @@ use jsonrpc_core::BoxFuture;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution::ExecutionCommandSender;
 use massa_graph::{DiscardReason, ExportBlockStatus};
-use massa_models::api::{
-    APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
-    EventFilter, IndexedSlot, NodeStatus, OperationInfo, ReadOnlyExecution, TimeInterval,
+use massa_models::{
+    api::{
+        APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
+        EventFilter, IndexedSlot, NodeStatus, OperationInfo, ReadOnlyExecution, TimeInterval,
+    },
+    clique::Clique,
+    composite::PubkeySig,
+    execution::ExecuteReadOnlyResponse,
+    node::NodeId,
+    output_event::SCOutputEvent,
+    prehash::{BuildMap, Map, Set},
+    timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
+    Address, BlockId, CompactConfig, EndorsementId, Operation, OperationId, Slot, Version,
 };
-use massa_models::clique::Clique;
-use massa_models::composite::PubkeySig;
-use massa_models::execution::ExecuteReadOnlyResponse;
-use massa_models::node::NodeId;
-use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{BuildMap, Map, Set};
-use massa_models::timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range};
-use massa_models::{Address, BlockId, EndorsementId, Operation, OperationId, Slot, Version};
 use massa_network::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
 use massa_signature::PrivateKey;
@@ -105,7 +107,7 @@ impl Endpoints for API<Public> {
         let compensation_millis = self.0.compensation_millis;
         let mut pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
-        let config = consensus_settings.compact_config();
+        let config = CompactConfig::default();
         let closure = async move || {
             let now = MassaTime::compensated_now(compensation_millis)?;
             let last_slot = get_latest_block_slot_at_timestamp(
