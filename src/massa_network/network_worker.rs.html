@@ -1227,6 +1227,7 @@
 <span id="1222">1222</span>
 <span id="1223">1223</span>
 <span id="1224">1224</span>
+<span id="1225">1225</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2021 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! The network worker actually does the job of managing connections</span>
@@ -1679,10 +1680,11 @@
         <span class="kw">for</span> (<span class="kw">_</span>, (<span class="kw">_</span>, <span class="ident">node_tx</span>)) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">active_nodes</span>.<span class="ident">drain</span>() {
             <span class="comment">// close opened connection.</span>
             <span class="macro">trace!</span>(<span class="string">&quot;before sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop&quot;</span>);
-            <span class="ident">node_tx</span>
+            <span class="comment">// send a close command to every node</span>
+            <span class="comment">// note that we ignore any error here because nodes might have closed by themselves just before</span>
+            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">node_tx</span>
                 .<span class="ident">send</span>(<span class="ident">NodeCommand::Close</span>(<span class="ident">ConnectionClosureReason::Normal</span>))
-                .<span class="kw">await</span>
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;node close command send failed&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
+                .<span class="kw">await</span>;
             <span class="macro">trace!</span>(<span class="string">&quot;after sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop&quot;</span>);
         }
         <span class="comment">// drain incoming node events</span>
