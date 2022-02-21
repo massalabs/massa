@@ -39,6 +39,7 @@ serial_test = "0.5"
 stderrlog = "0.5"
 tempfile = "3.2"
 massa_models = { path = "../massa-models", features = ["testing"] }
+massa_execution_exports = { path = "../massa-execution-exports", features = ["testing"] }
 massa_consensus_exports = { path = "../massa-consensus-exports", features = ["testing"] }
 
 [features]
