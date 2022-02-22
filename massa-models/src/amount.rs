@@ -7,32 +7,53 @@ use serde::de::Unexpected;
 use std::fmt;
 use std::str::FromStr;
 
+/// A structure representing a decimal Amount of coins with safe operations
+/// this allows ensuring that there is never an uncontrolled overflow or precision loss
+/// while providig a convenient decimal interface for users
+/// The underlying u64 raw representation if a fixed-point value with factor AMOUNT_DECIMAL_FACTOR
+/// The minimal value is 0 and the maximal value is 18446744073.709551615
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);
 
 impl Amount {
+    /// Create a zero Amount
+    pub const fn zero() -> Self {
+        Self(0)
+    }
+
+    /// Obtains the underlying raw u64 representation
+    /// Warning:do not use this unless you know what you are doing
+    /// because the raw value does not take the AMOUNT_DECIMAL_FACTOR into account.
     pub fn to_raw(&self) -> u64 {
         self.0
     }
 
+    /// constructs an Amount from the underlying raw u64 representation
+    /// Warning: do not use this unless you know what you are doing
+    /// because the raw value does not take the AMOUNT_DECIMAL_FACTOR into account
+    /// In most cases, you should be using Amount::from_str("11.23")
     pub const fn from_raw(raw: u64) -> Self {
         Self(raw)
     }
 
+    /// safely add self to another amount, saturating the result on overflow
     #[must_use]
     pub fn saturating_add(self, amount: Amount) -> Self {
         Amount(self.0.saturating_add(amount.0))
     }
 
+    /// safely substact another amount from self, saturating the result on udnerflow
     #[must_use]
     pub fn saturating_sub(self, amount: Amount) -> Self {
         Amount(self.0.saturating_sub(amount.0))
     }
 
+    /// returns true if the amount is zero
     pub fn is_zero(&self) -> bool {
         self.0 == 0
     }
 
+    /// safely substact another amount from self, returning None on underflow
     /// ```
     /// # use massa_models::Amount;
     /// # use std::str::FromStr;
@@ -45,6 +66,7 @@ impl Amount {
         self.0.checked_sub(amount.0).map(Amount)
     }
 
+    /// safely add self to another amount, returning None on overflow
     /// ```
     /// # use massa_models::Amount;
     /// # use std::str::FromStr;
@@ -57,6 +79,7 @@ impl Amount {
         self.0.checked_add(amount.0).map(Amount)
     }
 
+    /// safely multiply self with a u64, returning None on overflow
     /// ```
     /// # use massa_models::Amount;
     /// # use std::str::FromStr;
@@ -68,6 +91,7 @@ impl Amount {
         self.0.checked_mul(factor).map(Amount)
     }
 
+    /// safely multiply self with a u64, saturating the result on overflow
     /// ```
     /// # use massa_models::Amount;
     /// # use std::str::FromStr;
@@ -80,6 +104,7 @@ impl Amount {
         Amount(self.0.saturating_mul(factor))
     }
 
+    /// safely divide self by a u64, returning None if the factor is zero
     /// ```
     /// # use massa_models::Amount;
     /// # use std::str::FromStr;
@@ -92,6 +117,14 @@ impl Amount {
     }
 }
 
+/// display an Amount in decimal string form (like "10.33")
+///
+/// ```
+/// # use massa_models::Amount;
+/// # use std::str::FromStr;
+/// let value = Amount::from_str("11.111").unwrap();
+/// assert_eq!(format!("{}", value), "11.111")
+/// ```
 impl fmt::Display for Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let res_string = Decimal::from_u64(self.0)
@@ -103,6 +136,19 @@ impl fmt::Display for Amount {
     }
 }
 
+/// build an Amount from decimal string form (like "10.33")
+/// note that this will fail if the string format is invalid
+/// or if the conversion would cause an overflow, underflow or precision loss
+///
+/// ```
+/// # use massa_models::Amount;
+/// # use std::str::FromStr;
+/// assert!(Amount::from_str("11.1").is_ok());
+/// assert!(Amount::from_str("11.1111111111111111111111").is_err());
+/// assert!(Amount::from_str("1111111111111111111111").is_err());
+/// assert!(Amount::from_str("-11.1").is_err());
+/// assert!(Amount::from_str("abc").is_err());
+/// ```
 impl FromStr for Amount {
     type Err = ModelsError;
 
