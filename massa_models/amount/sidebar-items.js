@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Amount",""]]});
+initSidebarItems({"struct":[["Amount","A structure representing a decimal Amount of coins with safe operations this allows ensuring that there is never an uncontrolled overflow or precision loss while providig a convenient decimal interface for users The underlying u64 raw representation if a fixed-point value with factor AMOUNT_DECIMAL_FACTOR The minimal value is 0 and the maximal value is 18446744073.709551615"]]});
