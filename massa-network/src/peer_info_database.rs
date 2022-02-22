@@ -19,7 +19,9 @@ use tracing::{trace, warn};
 /// There is a defined number af slots for each category.
 #[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum PeerType {
-    /// TODO: I don't like this piece of information been decoupled from the bootstrap list
+    /// if the peer is in bootstrap servers list
+    /// for now it is decoupled from the real bootstrap sever list, it's just parsed
+    /// TODO: https://github.com/massalabs/massa/issues/2320
     Bootstrap,
     /// Connection from these nodes are always accepted
     WhiteListed,
@@ -158,18 +160,6 @@ async fn dump_peers(
     let peer_vec: Vec<_> = peers
         .values()
         .filter(|v| v.advertised || v.peer_type != PeerType::Standard)
-        // TODO We were really serializing by hand ? :confused:
-        //        .cloned()
-        // .map(|peer| {
-        //     json!({
-        //         "ip": peer.ip,
-        //         "peer_type": peer.banned,
-        //         "bootstrap": peer.bootstrap,
-        //         "last_alive": peer.last_alive,
-        //         "last_failure": peer.last_failure,
-        //         "advertised": peer.advertised,
-        //     })
-        // })
         .collect();
 
     tokio::fs::write(file_path, serde_json::to_string_pretty(&peer_vec)?).await?;
