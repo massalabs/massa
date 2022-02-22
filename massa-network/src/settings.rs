@@ -53,10 +53,15 @@ pub struct NetworkSettings {
     pub max_in_connection_overflow: usize,
 }
 
+/// Connection config for a peer type
+/// Limit the current connections for a given peer type as a whole
 #[derive(Debug, Deserialize, Clone)]
 pub struct PeerTypeConnectionConfig {
+    /// max number of incomming connection
     pub max_in: usize,
+    /// target number of outgoing connections
     pub target_out: usize,
+    /// max number of on going outgoing connection attempt
     pub max_out_attempts: usize,
 }
 
