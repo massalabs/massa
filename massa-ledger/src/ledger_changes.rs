@@ -70,13 +70,13 @@ impl LedgerChanges {
     /// no need to dig further (for example in the FinalLedger).
     ///
     /// # Arguments
-    ///     * addr: address for which to get the value
-    ///     * f: fallback function with no arguments and returning Option<Amount>
+    /// * addr: address for which to get the value
+    /// * f: fallback function with no arguments and returning Option<Amount>
     ///
     /// # Returns
-    ///     * Some(v) if a value is present, where v is a copy of the value
-    ///     * None if the value is absent
-    ///     * f() if the value is unknown
+    /// * Some(v) if a value is present, where v is a copy of the value
+    /// * None if the value is absent
+    /// * f() if the value is unknown
     pub fn get_parallel_balance_or_else<F: FnOnce() -> Option<Amount>>(
         &self,
         addr: &Address,
@@ -117,13 +117,13 @@ impl LedgerChanges {
     /// no need to dig further (for example in the FinalLedger).
     ///
     /// # Arguments
-    ///     * addr: address for which to get the value
-    ///     * f: fallback function with no arguments and returning Option<Vec<u8>>
+    /// * addr: address for which to get the value
+    /// * f: fallback function with no arguments and returning Option<Vec<u8>>
     ///
     /// # Returns
-    ///     * Some(v) if a value is present, where v is a copy of the value
-    ///     * None if the value is absent
-    ///     * f() if the value is unknown
+    /// * Some(v) if a value is present, where v is a copy of the value
+    /// * None if the value is absent
+    /// * f() if the value is unknown
     pub fn get_bytecode_or_else<F: FnOnce() -> Option<Vec<u8>>>(
         &self,
         addr: &Address,
@@ -163,13 +163,13 @@ impl LedgerChanges {
     /// no need to dig further (for example in the FinalLedger).
     ///
     /// # Arguments
-    ///     * addr: address to search for
-    ///     * f: fallback function with no arguments and returning bool
+    /// * addr: address to search for
+    /// * f: fallback function with no arguments and returning bool
     ///
     /// # Returns
-    ///     * true if the entry exists
-    ///     * false if the value is absent
-    ///     * f() if the value's existence is unknown
+    /// * true if the entry exists
+    /// * false if the value is absent
+    /// * f() if the value's existence is unknown
     pub fn entry_exists_or_else<F: FnOnce() -> bool>(&self, addr: &Address, f: F) -> bool {
         // Get the changes for the provided address
         match self.0.get(addr) {
@@ -292,14 +292,14 @@ impl LedgerChanges {
     /// no need to dig further (for example in the FinalLedger).
     ///
     /// # Arguments
-    ///     * addr: target address
-    ///     * key: datastore key
-    ///     * f: fallback function with no arguments and returning Option<Vec<u8>>
+    /// * addr: target address
+    /// * key: datastore key
+    /// * f: fallback function with no arguments and returning Option<Vec<u8>>
     ///
     /// # Returns
-    ///     * Some(v) if the value was found, where v is a copy of the value
-    ///     * None if the value is absent
-    ///     * f() if the value is unknown
+    /// * Some(v) if the value was found, where v is a copy of the value
+    /// * None if the value is absent
+    /// * f() if the value is unknown
     pub fn get_data_entry_or_else<F: FnOnce() -> Option<Vec<u8>>>(
         &self,
         addr: &Address,
@@ -347,14 +347,14 @@ impl LedgerChanges {
     /// no need to dig further (for example in the FinalLedger).
     ///
     /// # Arguments
-    ///     * addr: target address
-    ///     * key: datastore key
-    ///     * f: fallback function with no arguments and returning bool
+    /// * addr: target address
+    /// * key: datastore key
+    /// * f: fallback function with no arguments and returning bool
     ///
     /// # Returns
-    ///     * true if the ledger entry exists and the key is present in its datastore
-    ///     * false if the ledger entry is absent, or if the key is not in its datastore
-    ///     * f() if the existence of the ledger entry or datastore entry is unknown
+    /// * true if the ledger entry exists and the key is present in its datastore
+    /// * false if the ledger entry is absent, or if the key is not in its datastore
+    /// * f() if the existence of the ledger entry or datastore entry is unknown
     pub fn has_data_entry_or_else<F: FnOnce() -> bool>(
         &self,
         addr: &Address,
