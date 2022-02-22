@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+//! This file defines the structure representing an entry in the FinalLedger
+
 use crate::ledger_changes::LedgerEntryUpdate;
 use crate::types::{Applicable, SetOrDelete};
 use massa_hash::hash::Hash;
@@ -9,26 +11,42 @@ use massa_models::{DeserializeCompact, SerializeCompact};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// structure defining a ledger entry
+/// Structure defining an entry associated to an address in the FinalLedger
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct LedgerEntry {
+    /// The parallel balance of that entry.
+    /// See lib.rs for an explanation on parallel vs sequential balances.
     pub parallel_balance: Amount,
+
+    /// Executable bytecode
     pub bytecode: Vec<u8>,
+
+    /// A key-value store associating a hash to arbitrary bytes
     pub datastore: BTreeMap<Hash, Vec<u8>>,
 }
 
-/// LedgerEntryUpdate can be applied to a LedgerEntry
+/// A LedgerEntryUpdate can be applied to a LedgerEntry
 impl Applicable<LedgerEntryUpdate> for LedgerEntry {
-    /// applies a LedgerEntryUpdate
     fn apply(&mut self, update: LedgerEntryUpdate) {
+        // apply updates to the parallel balance
         update.parallel_balance.apply_to(&mut self.parallel_balance);
+
+        // apply updates to the executable bytecode
         update.bytecode.apply_to(&mut self.bytecode);
+
+        // iterate over all datastore updates
         for (key, value_update) in update.datastore {
             match value_update {
+                // this update sets a new value to a datastore entry
                 SetOrDelete::Set(v) => {
+                    // insert the new value in the datastore,
+                    // replacing any existing value
                     self.datastore.insert(key, v);
                 }
+
+                // this update deletes a datastore entry
                 SetOrDelete::Delete => {
+                    // remove that entry from the datastore if it exists
                     self.datastore.remove(&key);
                 }
             }
@@ -36,7 +54,7 @@ impl Applicable<LedgerEntryUpdate> for LedgerEntry {
     }
 }
 
-/// serialize as compact binary
+/// Allow serializing the LedgerEntry into a compact binary representation
 impl SerializeCompact for LedgerEntry {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -78,6 +96,7 @@ impl SerializeCompact for LedgerEntry {
     }
 }
 
+/// Allow deserializing a LedgerEntry from its compact binary representation
 impl DeserializeCompact for LedgerEntry {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
         let mut cursor = 0usize;

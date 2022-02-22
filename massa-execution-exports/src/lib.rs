@@ -20,10 +20,27 @@
 //! while ignoring all the changes it would cause to the consensus state (read-only execution),
 //! or reading the state at the output of the executed blockclique blocks.
 //!
-//! # Test exports
+//! # Architecture
+//!
+//! ## config.rs
+//! Contains configuration parameters for the execution system.
+//!
+//! ## controller_traits.rs
+//! Defines the ExecutionManager and ExecutionController traits for interacting with the execution worker.
+//!
+//! ## erorrs.rs
+//! Defines error types for the crate.
+//!
+//! ## event_store.rs
+//! Defines an indexed, finite-size storage system for execution events.
+//!
+//! ## types.rs
+//! Defines useful shared structures.
+//!
+//! ## Test exports
 //!
 //! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
-//! See test_exports/ for details.
+//! See test_exports/mod.rs for details.
 
 mod config;
 mod controller_traits;

@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+//! This file defines all error types for the ledger system
+
 use displaydoc::Display;
 use thiserror::Error;
 
