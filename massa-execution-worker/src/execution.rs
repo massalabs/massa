@@ -50,7 +50,7 @@ pub(crate) struct ExecutionState {
     pub final_ledger: Arc<RwLock<FinalLedger>>,
     // execution context (see documentation in context.rs)
     pub execution_context: Arc<Mutex<ExecutionContext>>,
-    // execution interface exposing ABI functions to the VM executing bytecode
+    // execution interface allowing the VM runtime to access the Massa context
     pub execution_interface: Box<dyn Interface>,
 }
 

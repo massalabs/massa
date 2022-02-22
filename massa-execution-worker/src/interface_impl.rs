@@ -1,6 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Implementation of ABI that the VM provides to the executed bytecode.
+//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
+//! This allows the VM runtime to acceess the Massa execution context,
+//! for example to interact with the ledger.
+//! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
 use crate::context::ExecutionContext;
 use anyhow::{bail, Result};
@@ -38,45 +41,65 @@ pub(crate) struct InterfaceImpl {
 }
 
 impl InterfaceImpl {
+    /// creates a new InterfaceImpl
+    ///
+    /// # Arguments
+    /// * config: execution config
+    /// * context: exclusive access to the current execution context (see context.rs)
     pub fn new(config: ExecutionConfig, context: Arc<Mutex<ExecutionContext>>) -> InterfaceImpl {
         InterfaceImpl { config, context }
     }
 }
 
 impl InterfaceClone for InterfaceImpl {
+    /// allows cloning a boxed InterfaceImpl
     fn clone_box(&self) -> Box<dyn Interface> {
         Box::new(self.clone())
     }
 }
 
-/// Implementation of the Interface trait providing an ABI to VM-executed bytecode.
-/// See the massa-sc-runtime crate for a functional description of the trait.
+/// Implementation of the Interface trait providing functions for massa-sc-runtime to call
+/// in order to interact with the execution context during bytecode execution.
+/// See the massa-sc-runtime crate for a functional description of the trait and its methods.
+/// Note that massa-sc-runtime uses basic types (str for addresses, u64 for amounts...) for genericity.
 impl Interface for InterfaceImpl {
+    /// prints a message in the node logs at log level 3 (debug)
     fn print(&self, message: &str) -> Result<()> {
         debug!("SC print: {}", message);
         Ok(())
     }
 
+    /// Initialize the call when bytecode calls a function from another bytecode
+    /// This function transfers the coins passed as parameter,
+    /// prepares the current execution context by pushing a new element on the top of the call stack,
+    /// and returns the target bytecode from the ledger.
+    ///
+    /// # Arguments
+    /// * address: string representation of the target address on which the bytecode will be called
+    /// * raw_coins: raw representation (without decimal factor) of the amount of parallel coins to transfer from the caller address to the target address at the beginning of the call
+    ///
+    /// # Returns
+    /// The target bytecode or an error
     fn init_call(&self, address: &str, raw_coins: u64) -> Result<Vec<u8>> {
-        // get target
+        // get target address
         let to_address = massa_models::Address::from_str(address)?;
 
         // write-lock context
         let mut context = context_guard!(self);
 
-        // get bytecode
+        // get target bytecode
         let bytecode = match context.get_bytecode(&to_address) {
             Some(bytecode) => bytecode,
             None => bail!("bytecode not found for address {}", to_address),
         };
 
-        // get caller
+        // get caller address
         let from_address = match context.stack.last() {
             Some(addr) => addr.address,
             _ => bail!("failed to read call stack current address"),
         };
 
-        // transfer coins
+        // transfer coins from caller to target address
         let coins = massa_models::Amount::from_raw(raw_coins);
         if let Err(err) =
             context.transfer_parallel_coins(Some(from_address), Some(to_address), coins, true)
@@ -90,16 +113,19 @@ impl Interface for InterfaceImpl {
             );
         }
 
-        // prepare context
+        // push a new call stack element on top of the current call stack
         context.stack.push(ExecutionStackElement {
             address: to_address,
             coins,
             owned_addresses: vec![to_address],
         });
 
+        // return the target bytecode
         Ok(bytecode)
     }
 
+    /// Called to finish the call process after a bytecode calls a function from another one.
+    /// This function just pops away the top element of the call stack.
     fn finish_call(&self) -> Result<()> {
         let mut context = context_guard!(self);
 
@@ -110,7 +136,11 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    /// Returns zero as a default if address not found.
+    /// Gets the parallel balance of the current address address (top of the stack).
+    ///
+    /// # Returns
+    /// The raw representation (no decimal factor) of the parallel balance of the address,
+    /// or zero if the address is not found in the ledger.
     fn get_balance(&self) -> Result<u64> {
         let context = context_guard!(self);
         let address = context.get_current_address()?;
@@ -120,7 +150,14 @@ impl Interface for InterfaceImpl {
             .to_raw())
     }
 
-    /// Returns zero as a default if address not found.
+    /// Gets the parallel balance of arbitrary address passed as argument.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address for which to get the balance
+    ///
+    /// # Returns
+    /// The raw representation (no decimal factor) of the parallel balance of the address,
+    /// or zero if the address is not found in the ledger.
     fn get_balance_for(&self, address: &str) -> Result<u64> {
         let address = massa_models::Address::from_str(address)?;
         Ok(context_guard!(self)
@@ -129,20 +166,29 @@ impl Interface for InterfaceImpl {
             .to_raw())
     }
 
-    /// Requires a new address that contains the sent bytecode.
+    /// Creates a new ledger entry with the initial bytecode given as argument.
+    /// A new unique address is generated for that entry and returned.
     ///
-    /// Generate a new address with a concatenation of the block_id hash, the
-    /// operation index in the block and the index of address owned in context.
+    /// # Arguments
+    /// * bytecode: the bytecode to set for the newly created address
     ///
-    /// Insert in the ledger the given bytecode in the generated address
-    fn create_module(&self, module: &[u8]) -> Result<String> {
-        match context_guard!(self).create_new_sc_address(module.to_vec()) {
+    /// # Returns
+    /// The string representation of the newly created address
+    fn create_module(&self, bytecode: &[u8]) -> Result<String> {
+        match context_guard!(self).create_new_sc_address(bytecode.to_vec()) {
             Ok(addr) => Ok(addr.to_bs58_check()),
             Err(err) => bail!("couldn't create new SC address: {}", err),
         }
     }
 
-    /// Requires the data at the address
+    /// Gets a datastore value by key for a given address.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// The datastore value matching the provided key, if found, otherwise an error.
     fn raw_get_data_for(&self, address: &str, key: &str) -> Result<Vec<u8>> {
         let addr = &massa_models::Address::from_bs58_check(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
@@ -153,10 +199,12 @@ impl Interface for InterfaceImpl {
         }
     }
 
-    /// Requires to replace the data in the current address
+    /// Sets a datastore entry for a given address
     ///
-    /// Note:
-    /// The execution lib will allways use the current context address for the update
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry to set
+    /// * value: new value to set
     fn raw_set_data_for(&self, address: &str, key: &str, value: &[u8]) -> Result<()> {
         let addr = massa_models::Address::from_str(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
@@ -165,6 +213,14 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
+    /// Checks if a datastore entry exists for a given address.
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
     fn has_data_for(&self, address: &str, key: &str) -> Result<bool> {
         let addr = massa_models::Address::from_str(address)?;
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
@@ -172,6 +228,13 @@ impl Interface for InterfaceImpl {
         Ok(context.has_data_entry(&addr, &key))
     }
 
+    /// Gets a datastore value by key for a the current address (top of the call stack).
+    ///
+    /// # Arguments
+    /// * key: string key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// The datastore value matching the provided key, if found, otherwise an error.
     fn raw_get_data(&self, key: &str) -> Result<Vec<u8>> {
         let context = context_guard!(self);
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
@@ -182,6 +245,12 @@ impl Interface for InterfaceImpl {
         }
     }
 
+    /// Sets a datastore entry for the current address (top of the call stack).
+    ///
+    /// # Arguments
+    /// * address: string representation of the address
+    /// * key: string key of the datastore entry to set
+    /// * value: new value to set
     fn raw_set_data(&self, key: &str, value: &[u8]) -> Result<()> {
         let mut context = context_guard!(self);
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
@@ -190,6 +259,13 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
+    /// Checks if a datastore entry exists for the current address (top of the call stack).
+    ///
+    /// # Arguments
+    /// * key: string key of the datastore entry to retrieve
+    ///
+    /// # Returns
+    /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
     fn has_data(&self, key: &str) -> Result<bool> {
         let context = context_guard!(self);
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
@@ -197,19 +273,39 @@ impl Interface for InterfaceImpl {
         Ok(context.has_data_entry(&addr, &key))
     }
 
-    /// hash data
+    /// Hashses arbitrary data
+    ///
+    /// # Arguments
+    /// * data: data bytes to hash
+    ///
+    /// # Returns
+    /// The string representation of the resulting hash
     fn hash(&self, data: &[u8]) -> Result<String> {
         Ok(massa_hash::hash::Hash::compute_from(data).to_bs58_check())
     }
 
-    /// convert a pubkey to an address
+    /// Converts a pubkey to an address
+    ///
+    /// # Arguments
+    /// * public_key: string representation of the public key
+    ///
+    /// # Returns
+    /// The string representation of the resulting address
     fn address_from_public_key(&self, public_key: &str) -> Result<String> {
         let public_key = massa_signature::PublicKey::from_bs58_check(public_key)?;
         let addr = massa_models::Address::from_public_key(&public_key);
         Ok(addr.to_bs58_check())
     }
 
-    /// Verify signature
+    /// Verifies a signature
+    ///
+    /// # Arguments
+    /// * data: the data bytes that were signed
+    /// * signature: string representation of the signature
+    /// * public key: string representation of the public key to check against
+    ///
+    /// # Returns
+    /// true if the signature verification succeeded, false otherwise
     fn signature_verify(&self, data: &[u8], signature: &str, public_key: &str) -> Result<bool> {
         let signature = match massa_signature::Signature::from_bs58_check(signature) {
             Ok(sig) => sig,
@@ -223,9 +319,11 @@ impl Interface for InterfaceImpl {
         Ok(massa_signature::verify_signature(&h, &signature, &public_key).is_ok())
     }
 
-    /// Transfer parallel coins from the current address to a target address
-    /// to_address: target address
-    /// raw_amount: amount to transfer (in raw u64)
+    /// Transfer parallel coins from the current address (top of the call stack) towards a target address.
+    ///
+    /// # Arguments
+    /// * to_address: string representation of the address to which the coins are sent
+    /// * raw_amount: raw representation (no decimal factor) of the amount of coins to transfer
     fn transfer_coins(&self, to_address: &str, raw_amount: u64) -> Result<()> {
         let to_address = massa_models::Address::from_str(to_address)?;
         let amount = massa_models::Amount::from_raw(raw_amount);
@@ -235,10 +333,12 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    /// Transfer coins from the current address to a target address
-    /// from_address: source address
-    /// to_address: target address
-    /// raw_amount: amount to transfer (in raw u64)
+    /// Transfer parallel coins from a given address towards a target address.
+    ///
+    /// # Arguments
+    /// * from_address: string representation of the address that is sending the coins
+    /// * to_address: string representation of the address to which the coins are sent
+    /// * raw_amount: raw representation (no decimal factor) of the amount of coins to transfer
     fn transfer_coins_for(
         &self,
         from_address: &str,
@@ -253,7 +353,14 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    /// Return the list of owned adresses of a given SC user
+    /// Returns the list of owned adresses (top of the call stack).
+    /// Those addresses are the ones the current execution context has write access to,
+    /// typically it includes the current address itself,
+    /// but also the ones that were created previously by the current call to allow initializing them.
+    ///
+    /// # Returns
+    /// A vector with the string representation of each owned address.
+    /// Note that the ordering of this vector is deterministic and conserved.
     fn get_owned_addresses(&self) -> Result<Vec<String>> {
         Ok(context_guard!(self)
             .get_current_owned_addresses()?
@@ -262,7 +369,10 @@ impl Interface for InterfaceImpl {
             .collect())
     }
 
-    /// Return the call stack (addresses)
+    /// Returns the addresses in the call stack, from the bottom to the top.
+    ///
+    /// # Returns
+    /// A vector with the string representation of each call stack address.
     fn get_call_stack(&self) -> Result<Vec<String>> {
         Ok(context_guard!(self)
             .get_call_stack()
@@ -271,21 +381,34 @@ impl Interface for InterfaceImpl {
             .collect())
     }
 
-    /// Get the amount of coins that have been made available for use by the caller of the currently executing code.
+    /// Gets the amount of coins that have been ransferred at the beginning of the call.
+    /// See the init_call method.
+    ///
+    /// # Returns
+    /// The raw representation (no decimal factor) of the amount of coins
     fn get_call_coins(&self) -> Result<u64> {
         Ok(context_guard!(self).get_current_call_coins()?.to_raw())
     }
 
-    /// generate an execution event and stores it
+    /// Emits an execution event to be stored.
+    ///
+    /// # Arguments:
+    /// data: the string data that is the payload of the event
     fn generate_event(&self, data: String) -> Result<()> {
         let mut execution_context = context_guard!(self);
 
-        // prepare id computation
-        // it is the hash of (slot, index_at_slot, readonly)
+        // Generate a unique event ID
+        // Initialize a seed from the current slot
         let mut to_hash: Vec<u8> = execution_context.slot.to_bytes_key().to_vec();
+        // Append the index of the emitted event during the current slot
         to_hash.append(&mut execution_context.created_event_index.to_be_bytes().to_vec());
+        // Append 0u8 if the context is readonly, 1u8 otherwise
+        // This is used to allow event ID collisions between readonly and active executions
         to_hash.push(!execution_context.read_only as u8);
+        // Hash the seed to generate the ID
+        let id = SCOutputEventId(Hash::compute_from(&to_hash));
 
+        // Gather contextual information from the execution context
         let context = EventExecutionContext {
             slot: execution_context.slot,
             block: execution_context.opt_block_id,
@@ -294,14 +417,21 @@ impl Interface for InterfaceImpl {
             index_in_slot: execution_context.created_event_index,
             origin_operation_id: execution_context.origin_operation_id,
         };
-        let id = SCOutputEventId(Hash::compute_from(&to_hash));
+
+        // Generate the event
         let event = SCOutputEvent { id, context, data };
+
+        // Increment the event counter fot this slot
         execution_context.created_event_index += 1;
+
+        // Add the event to the context store
         execution_context.events.insert(id, event);
+
         Ok(())
     }
 
     /// Returns the current time (millisecond unix timestamp)
+    /// Note that in order to ensure determinism, this is actually the time of the context slot.
     fn get_time(&self) -> Result<u64> {
         let slot = context_guard!(self).slot;
         let ts = get_block_slot_timestamp(
@@ -313,7 +443,11 @@ impl Interface for InterfaceImpl {
         Ok(ts.to_millis())
     }
 
-    /// Returns a random number (unsafe: can be predicted and manipulated)
+    /// Returns a pseudo-random deterministic i64 number
+    ///
+    /// # Warning
+    /// This random number generator is unsafe:
+    /// it can be both predicted and manipulated before the execution
     fn unsafe_random(&self) -> Result<i64> {
         let distr = rand::distributions::Uniform::new_inclusive(i64::MIN, i64::MAX);
         Ok(context_guard!(self).unsafe_rng.sample(distr))
