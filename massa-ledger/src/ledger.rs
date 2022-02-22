@@ -49,7 +49,7 @@ impl Applicable<LedgerChanges> for FinalLedger {
                     // if the entry does not exist, inserts a default one and applies the updates to it
                     self.sorted_ledger
                         .entry(addr)
-                        .or_insert_with(|| Default::default())
+                        .or_insert_with(Default::default)
                         .apply(entry_update);
                 }
 

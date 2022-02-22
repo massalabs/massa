@@ -447,7 +447,7 @@ impl ExecutionState {
             .cloned();
         let active_entry = match (&final_entry, active_change) {
             (final_v, None) => final_v.clone(),
-            (_, Some(SetUpdateOrDelete::Set(v))) => Some(v.clone()),
+            (_, Some(SetUpdateOrDelete::Set(v))) => Some(v),
             (_, Some(SetUpdateOrDelete::Delete)) => None,
             (None, Some(SetUpdateOrDelete::Update(u))) => {
                 let mut v = LedgerEntry::default();
@@ -479,8 +479,8 @@ impl ExecutionState {
         original_operation_id: Option<OperationId>,
     ) -> Vec<SCOutputEvent> {
         // iter on step history chained with final events
-        let start = start.unwrap_or_else(|| Slot::min());
-        let end = end.unwrap_or_else(|| Slot::max());
+        let start = start.unwrap_or_else(Slot::min);
+        let end = end.unwrap_or_else(Slot::max);
         self.final_events
             .get_filtered_sc_output_event(
                 start,

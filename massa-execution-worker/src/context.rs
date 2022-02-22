@@ -241,11 +241,9 @@ impl ExecutionContext {
     pub fn get_current_address(&self) -> Result<Address, ExecutionError> {
         match self.stack.last() {
             Some(addr) => Ok(addr.address),
-            _ => {
-                return Err(ExecutionError::RuntimeError(
-                    "failed to read current address: call stack empty".into(),
-                ))
-            }
+            _ => Err(ExecutionError::RuntimeError(
+                "failed to read current address: call stack empty".into(),
+            )),
         }
     }
 
@@ -254,11 +252,9 @@ impl ExecutionContext {
     pub fn get_current_owned_addresses(&self) -> Result<Vec<Address>, ExecutionError> {
         match self.stack.last() {
             Some(v) => Ok(v.owned_addresses.clone()),
-            None => {
-                return Err(ExecutionError::RuntimeError(
-                    "failed to read current owned addresses list: call stack empty".into(),
-                ))
-            }
+            None => Err(ExecutionError::RuntimeError(
+                "failed to read current owned addresses list: call stack empty".into(),
+            )),
         }
     }
 
@@ -266,11 +262,9 @@ impl ExecutionContext {
     pub fn get_current_call_coins(&self) -> Result<Amount, ExecutionError> {
         match self.stack.last() {
             Some(v) => Ok(v.coins),
-            None => {
-                return Err(ExecutionError::RuntimeError(
-                    "failed to read current call coins: call stack empty".into(),
-                ))
-            }
+            None => Err(ExecutionError::RuntimeError(
+                "failed to read current call coins: call stack empty".into(),
+            )),
         }
     }
 
@@ -283,7 +277,7 @@ impl ExecutionContext {
     pub fn has_write_rights_on(&self, addr: &Address) -> bool {
         self.stack
             .last()
-            .map_or(false, |v| v.owned_addresses.contains(&addr))
+            .map_or(false, |v| v.owned_addresses.contains(addr))
     }
 
     /// Creates a new smart contract address with initial bytecode, and returns this address

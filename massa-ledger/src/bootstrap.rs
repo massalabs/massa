@@ -57,11 +57,7 @@ impl DeserializeCompact for FinalLedgerBootstrapState {
         cursor += delta;
 
         // ledger size
-        let (ledger_size, delta) = u64::from_varint_bytes(&buffer[cursor..])?
-            .try_into()
-            .map_err(|_| {
-                ModelsError::SerializeError("could not convert ledger size to usize".into())
-            })?;
+        let (ledger_size, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
         // TODO cap the ledger size
         cursor += delta;
 

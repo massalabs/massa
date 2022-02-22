@@ -501,9 +501,7 @@ async fn manage_bootstrap(
     // Fourth, send ledger state
     send_state_timeout(
         write_timeout,
-        server.send(messages::BootstrapMessage::FinalLedgerState {
-            ledger_state: ledger_state,
-        }),
+        server.send(messages::BootstrapMessage::FinalLedgerState { ledger_state }),
         "bootstrap ledger state send timed out",
     )
     .await

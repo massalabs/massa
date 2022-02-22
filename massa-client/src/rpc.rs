@@ -124,9 +124,7 @@ impl RpcClient {
         )
         .await?
         .pop()
-        .ok_or(RpcError::Client(
-            "missing return value on execute_read_only_request".into(),
-        ))
+        .ok_or_else(|| RpcError::Client("missing return value on execute_read_only_request".into()))
     }
 
     ////////////////

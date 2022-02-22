@@ -156,7 +156,7 @@ impl ExecutionController for ExecutionControllerImpl {
 
         // wait for the result of the execution
         match resp_rx.recv() {
-            Ok(result) => return result,
+            Ok(result) => result,
             Err(err) => {
                 return Err(ExecutionError::RuntimeError(format!(
                     "the VM input channel failed: {}",

@@ -123,13 +123,11 @@ impl SpeculativeLedger {
         if let Some(from_addr) = from_addr {
             let new_balance = self
                 .get_parallel_balance(&from_addr)
-                .ok_or(ExecutionError::RuntimeError(
-                    "source address not found".into(),
-                ))?
+                .ok_or_else(|| ExecutionError::RuntimeError("source address not found".into()))?
                 .checked_sub(amount)
-                .ok_or(ExecutionError::RuntimeError(
-                    "unsufficient from_addr balance".into(),
-                ))?;
+                .ok_or_else(|| {
+                    ExecutionError::RuntimeError("unsufficient from_addr balance".into())
+                })?;
             changes.set_parallel_balance(from_addr, new_balance);
         }
 
@@ -138,11 +136,11 @@ impl SpeculativeLedger {
         if let Some(to_addr) = to_addr {
             let new_balance = changes
                 .get_parallel_balance_or_else(&to_addr, || self.get_parallel_balance(&to_addr))
-                .unwrap_or(Amount::default())
+                .unwrap_or_default()
                 .checked_add(amount)
-                .ok_or(ExecutionError::RuntimeError(
-                    "overflow in to_addr balance".into(),
-                ))?;
+                .ok_or_else(|| {
+                    ExecutionError::RuntimeError("overflow in to_addr balance".into())
+                })?;
             changes.set_parallel_balance(to_addr, new_balance);
         }
 
@@ -182,7 +180,8 @@ impl SpeculativeLedger {
         bytecode: Vec<u8>,
     ) -> Result<(), ExecutionError> {
         // set bytecode (create if non-existant)
-        Ok(self.added_changes.set_bytecode(addr, bytecode))
+        self.added_changes.set_bytecode(addr, bytecode);
+        Ok(())
     }
 
     /// Sets the bytecode associated to an address in the ledger.
@@ -262,7 +261,7 @@ impl SpeculativeLedger {
         data: Vec<u8>,
     ) -> Result<(), ExecutionError> {
         // check for address existence
-        if !self.entry_exists(&addr) {
+        if !self.entry_exists(addr) {
             return Err(ExecutionError::RuntimeError(format!(
                 "could not set data for address {}: entry does not exist",
                 addr

@@ -280,7 +280,7 @@ impl ExecutionThread {
         // apply execution output to final state
         exec_state.apply_final_execution_output(exec_out);
 
-        return true;
+        true
     }
 
     /// executes one active slot, if any
@@ -310,7 +310,7 @@ impl ExecutionThread {
         // apply execution output to active state
         exec_state.apply_active_execution_output(exec_out);
 
-        return true;
+        true
     }
 
     /// Gets the time from now() to the slot just after next last_active_slot.
@@ -472,7 +472,7 @@ impl ExecutionThread {
             // Wait to be notified of new input, for at most time_until_next_slot
             // Note: spurious wake-ups are not a problem:
             // the next loop iteration will just do nohing and come back to wait here.
-            let _ = self
+            let (_lock, _timeout_result) = self
                 .controller
                 .input_data
                 .0
@@ -517,7 +517,7 @@ pub fn start_execution_worker(
     // create an execution state
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
-        final_ledger.clone(),
+        final_ledger,
     )));
 
     // create a controller
