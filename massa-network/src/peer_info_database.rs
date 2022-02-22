@@ -66,8 +66,9 @@ pub struct PeerInfo {
 
 impl PeerInfo {
     /// Returns true if there is at least one connection attempt /
-    ///  one active connection in either direction
+    /// one active connection in either direction
     /// with this peer
+    #[inline]
     pub(crate) fn is_active(&self) -> bool {
         self.active_out_connection_attempts > 0
             || self.active_out_connections > 0
@@ -114,6 +115,7 @@ pub(crate) struct ConnectionCount {
 }
 
 impl ConnectionCount {
+    #[inline]
     /// Gets available out connection attempts for given connection count and settings
     fn get_available_out_connection_attempts(&self, cfg: &PeerTypeConnectionConfig) -> usize {
         std::cmp::min(
@@ -360,6 +362,7 @@ impl PeerInfoDatabase {
     /// total in connection count, considering all peer types
     /// quite similar to get_out_connection_count
     /// todo https://github.com/massalabs/massa/issues/2319
+    #[inline]
     pub fn get_in_connection_count(&self) -> u64 {
         (self.bootstrap_connection_count.active_in_connections
             + self.whitelist_connection_count.active_in_connections
@@ -369,6 +372,7 @@ impl PeerInfoDatabase {
     /// total out connections count, considering all peer types
     /// quite similar to get_in_connection_count
     /// todo https://github.com/massalabs/massa/issues/2319
+    #[inline]
     pub fn get_out_connection_count(&self) -> u64 {
         (self.bootstrap_connection_count.active_out_connections
             + self.whitelist_connection_count.active_out_connections
@@ -1048,6 +1052,7 @@ impl PeerInfoDatabase {
 
     /// similar to get_global_active_out_connection_count and get_global_active_in_connection_count
     /// todo https://github.com/massalabs/massa/issues/2319
+    #[inline]
     fn get_global_active_out_connection_attempt_count(&self, peer_type: PeerType) -> usize {
         match peer_type {
             PeerType::Bootstrap => {
@@ -1067,6 +1072,7 @@ impl PeerInfoDatabase {
 
     /// similar to get_global_active_out_connection_attempt_count and get_global_active_in_connection_count
     /// todo https://github.com/massalabs/massa/issues/2319
+    #[inline]
     fn get_global_active_out_connection_count(&self, peer_type: PeerType) -> usize {
         match peer_type {
             PeerType::Bootstrap => self.bootstrap_connection_count.active_out_connections,
@@ -1077,6 +1083,7 @@ impl PeerInfoDatabase {
 
     /// similar to get_global_active_out_connection_count and get_global_active_out_connection_attempt_count
     /// todo https://github.com/massalabs/massa/issues/2319
+    #[inline]
     fn get_global_active_in_connection_count(&self, peer_type: PeerType) -> usize {
         match peer_type {
             PeerType::Bootstrap => self.bootstrap_connection_count.active_in_connections,
