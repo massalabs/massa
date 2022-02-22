@@ -35,7 +35,7 @@ pub async fn start_network_controller(
     network_settings: NetworkSettings,
     mut establisher: Establisher,
     clock_compensation: i64,
-    initial_peers: Option<BootstrapPeers>,
+    initial_peers: Vec<(IpAddr, bool)>,
     version: Version,
 ) -> Result<
     (
@@ -97,12 +97,8 @@ pub async fn start_network_controller(
 
     debug!("Loading peer database");
     // load peer info database
-    let mut peer_info_db = PeerInfoDatabase::new(&network_settings, clock_compensation).await?;
-
-    // add bootstrap peers
-    if let Some(peers) = initial_peers {
-        peer_info_db.merge_candidate_peers(&peers.0)?;
-    }
+    let peer_info_db =
+        PeerInfoDatabase::new(&network_settings, clock_compensation, initial_peers).await?;
 
     // launch controller
     let (command_tx, controller_command_rx) = mpsc::channel::<NetworkCommand>(CHANNEL_SIZE);

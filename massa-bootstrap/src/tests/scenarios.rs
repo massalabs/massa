@@ -170,10 +170,16 @@ async fn test_bootstrap_server() {
     assert_eq_thread_cycle_states(&sent_pos, &bootstrap_res.pos.unwrap());
     assert_eq_bootstrap_graph(&sent_graph, &bootstrap_res.graph.unwrap());
 
+    let mut expected_ips = sent_peers.0.clone();
+    expected_ips.push(expect_conn_addr.ip());
     // check peers
     assert_eq!(
-        sent_peers.0,
-        bootstrap_res.peers.unwrap().0,
+        expected_ips,
+        bootstrap_res
+            .peers
+            .into_iter()
+            .map(|(ip, _)| ip)
+            .collect::<Vec<_>>(),
         "mismatch between sent and received peers"
     );
 

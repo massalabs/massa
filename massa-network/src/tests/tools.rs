@@ -373,7 +373,7 @@ pub async fn network_test<F, V>(
             network_settings,
             establisher,
             0,
-            None,
+            Vec::new(),
             Version::from_str("TEST.1.2").unwrap(),
         )
         .await

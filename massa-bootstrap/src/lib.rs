@@ -46,13 +46,25 @@ pub struct GlobalBootstrapState {
     /// timestamp correction in milliseconds
     pub compensation_millis: i64,
 
-    /// list of network peers
-    pub peers: Option<BootstrapPeers>,
+    /// list of network and bootstrap peers, true if bootstrap
+    pub peers: Vec<(IpAddr, bool)>,
 
     /// state of the execution state
     pub execution: Option<BootstrapExecutionState>,
 }
 
+impl GlobalBootstrapState {
+    fn new(peers: Vec<(IpAddr, bool)>) -> Self {
+        GlobalBootstrapState {
+            peers,
+            ..Default::default()
+        }
+    }
+
+    fn extend_peers(&mut self, peers: Vec<(IpAddr, bool)>) {
+        self.peers.extend(peers)
+    }
+}
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
 async fn get_state_internal(
@@ -202,7 +214,7 @@ async fn get_state_internal(
         pos: Some(pos),
         graph: Some(graph),
         compensation_millis,
-        peers: Some(peers),
+        peers: peers.0.into_iter().map(|ip| (ip, false)).collect(),
         execution: Some(execution),
     })
 }
@@ -218,10 +230,15 @@ pub async fn get_state(
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
     let now = MassaTime::now()?;
+    let peer_list: Vec<_> = bootstrap_settings
+        .bootstrap_list
+        .iter()
+        .map(|(s, _)| (s.ip(), true))
+        .collect();
     // if we are before genesis, do not bootstrap
     if now < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
-        return Ok(GlobalBootstrapState::default());
+        return Ok(GlobalBootstrapState::new(peer_list.clone()));
     }
     // we are after genesis => bootstrap
     massa_trace!("bootstrap.lib.get_state.init_from_others", {});
@@ -246,7 +263,8 @@ pub async fn get_state(
                     warn!("error while bootstrapping: {}", e);
                     sleep(bootstrap_settings.retry_delay.into()).await;
                 }
-                Ok(res) => {
+                Ok(mut res) => {
+                    res.extend_peers(peer_list);
                     return Ok(res)
                 }
             }
