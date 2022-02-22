@@ -2,6 +2,11 @@
 
 //! This module deals with executing final and active slots, as well as read-only requests.
 //! It also keeps a history of executed slots, thus holding the speculative state of the ledger.
+//!
+//! Execution usually happens in the following way:
+//! * an execution context is set up
+//! * the VM is called for execution within this context
+//! * the output of the execution is extracted from the context
 
 use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;

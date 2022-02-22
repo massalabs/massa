@@ -13,7 +13,7 @@ pub struct ExecutionConfig {
     pub max_final_events: usize,
     /// number of threads
     pub thread_count: u8,
-    /// extra lag to add on the cursor to improve performance
+    /// extra lag to add on the execution cursor to improve performance
     pub cursor_delay: MassaTime,
     /// time compensation in milliseconds
     pub clock_compensation: i64,

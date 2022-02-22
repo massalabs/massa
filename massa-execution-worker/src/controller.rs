@@ -18,7 +18,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{mpsc, Arc, Condvar, Mutex, RwLock};
 use tracing::info;
 
-/// structure used to communicate with the VM thread
+/// structure used to communicate with execution thread
 #[derive(Default)]
 pub(crate) struct VMInputData {
     /// set stop to true to stop the thread
@@ -179,7 +179,7 @@ pub struct ExecutionManagerImpl {
 impl ExecutionManager for ExecutionManagerImpl {
     /// stops the worker
     fn stop(&mut self) {
-        info!("stopping VM controller...");
+        info!("stopping Execution controller...");
         // notify the worker thread to stop
         {
             let mut input_wlock = self
@@ -191,11 +191,11 @@ impl ExecutionManager for ExecutionManagerImpl {
             input_wlock.stop = true;
             self.controller.input_data.0.notify_one();
         }
-        // join the VM thread
+        // join the execution thread
         if let Some(join_handle) = self.thread_handle.take() {
             join_handle.join().expect("VM controller thread panicked");
         }
-        info!("VM controller stopped");
+        info!("Execution controller stopped");
     }
 
     /// return a new execution controller
