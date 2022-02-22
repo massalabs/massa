@@ -59,6 +59,8 @@ pub enum NetworkCommand {
     Ban(NodeId),
     BanIp(Vec<IpAddr>),
     Unban(Vec<IpAddr>),
+    Whitelist(Vec<IpAddr>),
+    RemoveFromWhitelist(Vec<IpAddr>),
     BlockNotFound {
         node: NodeId,
         block_id: BlockId,
@@ -894,6 +896,10 @@ impl NetworkWorker {
                 if response_tx.send(res).is_err() {
                     warn!("network: could not send NodeSignMessage response upstream");
                 }
+            }
+            NetworkCommand::Whitelist(ip) => self.peer_info_db.whitelist(ip).await?,
+            NetworkCommand::RemoveFromWhitelist(ip) => {
+                self.peer_info_db.remove_from_whitelist(ip).await?
             }
         }
         Ok(())

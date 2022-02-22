@@ -528,4 +528,12 @@ impl Endpoints for API<Public> {
         };
         Box::pin(closure())
     }
+
+    fn node_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        crate::wrong_api::<()>()
+    }
+
+    fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        crate::wrong_api::<()>()
+    }
 }

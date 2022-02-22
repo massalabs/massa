@@ -171,4 +171,16 @@ impl Endpoints for API<Private> {
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
         crate::wrong_api::<Vec<SCOutputEvent>>()
     }
+
+    fn node_whitelist(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        let network_command_sender = self.0.network_command_sender.clone();
+        let closure = async move || Ok(network_command_sender.whitelist(ips).await?);
+        Box::pin(closure())
+    }
+
+    fn node_remove_from_whitelist(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        let network_command_sender = self.0.network_command_sender.clone();
+        let closure = async move || Ok(network_command_sender.remove_from_whitelist(ips).await?);
+        Box::pin(closure())
+    }
 }

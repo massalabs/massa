@@ -171,6 +171,24 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    pub async fn whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::Whitelist(ips))
+            .await
+            .map_err(|_| NetworkError::ChannelError("could not send Whitelist command".into()))?;
+        Ok(())
+    }
+
+    pub async fn remove_from_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::RemoveFromWhitelist(ips))
+            .await
+            .map_err(|_| {
+                NetworkError::ChannelError("could not send RemoveFromWhitelist command".into())
+            })?;
+        Ok(())
+    }
+
     pub async fn unban(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::Unban(ips))
