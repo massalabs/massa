@@ -53,7 +53,7 @@ async fn test_wishlist_delta_with_empty_remove() {
                 &mut protocol_controller,
                 expected_new,
                 expected_remove,
-                cfg.t0.saturating_add(1000.into()),  // leave 1sec extra for init and margin
+                cfg.t0.saturating_add(1000.into()), // leave 1sec extra for init and margin
             )
             .await;
             (
