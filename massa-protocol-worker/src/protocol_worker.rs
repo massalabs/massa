@@ -229,7 +229,7 @@ mod nodeinfo {
         /// Remove the oldest items from known_blocks
         /// to ensure it contains at most max_node_wanted_blocks_size items.
         /// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.
-        fn remove_escess_wanted_blocks(&mut self, max_node_wanted_blocks_size: usize) {
+        fn remove_excess_wanted_blocks(&mut self, max_node_wanted_blocks_size: usize) {
             while self.wanted_blocks.len() > max_node_wanted_blocks_size {
                 // remove oldest item
                 let (&h, _) = self
@@ -252,7 +252,7 @@ mod nodeinfo {
             // Insert into known_blocks
             let now = Instant::now();
             self.wanted_blocks.insert(block_id, now);
-            self.remove_escess_wanted_blocks(max_node_wanted_blocks_size);
+            self.remove_excess_wanted_blocks(max_node_wanted_blocks_size);
 
             // If the node wants a block, it means that it doesn't have it.
             // To avoid asking the node for this block in the meantime,
