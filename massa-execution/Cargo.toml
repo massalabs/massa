@@ -24,7 +24,7 @@ tracing = { version = "0.1", features = [
 # custom modules
 massa_models = { path = "../massa-models" }
 massa_hash = { path = "../massa-hash" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", tag = "v0.4.3" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", tag = "v0.4.4" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 
