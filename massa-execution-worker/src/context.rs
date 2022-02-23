@@ -357,16 +357,14 @@ impl ExecutionContext {
     /// * address: the address of the ledger entry
     /// * key: the datastore key
     /// * data: the data to insert
-    /// * check_rights: if true, the function quits with an error if the current context has no writing rights on the target address
     pub fn set_data_entry(
         &mut self,
         address: &Address,
         key: Hash,
         data: Vec<u8>,
-        check_rights: bool,
     ) -> Result<(), ExecutionError> {
         // check access right
-        if check_rights && !self.has_write_rights_on(address) {
+        if !self.has_write_rights_on(address) {
             return Err(ExecutionError::RuntimeError(format!(
                 "writing in the datastore of address {} is not allowed in this context",
                 address
@@ -385,17 +383,15 @@ impl ExecutionContext {
     /// * from_addr: optional spending address (use None for pure coin creation)
     /// * to_addr: optional crediting address (use None for pure coin destruction)
     /// * amount: amount of coins to transfer
-    /// * check_rights: if true, access rights are checked
     pub fn transfer_parallel_coins(
         &mut self,
         from_addr: Option<Address>,
         to_addr: Option<Address>,
         amount: Amount,
-        check_rights: bool,
     ) -> Result<(), ExecutionError> {
         // check access rights
         if let Some(from_addr) = &from_addr {
-            if check_rights && !self.has_write_rights_on(from_addr) {
+            if !self.has_write_rights_on(from_addr) {
                 return Err(ExecutionError::RuntimeError(format!(
                     "spending from address {} is not allowed in this context",
                     from_addr

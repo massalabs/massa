@@ -260,7 +260,7 @@ impl ExecutionState {
             // That way, even if the sender sent an invalid operation, the block producer will still get credited.
             let gas_fees = gas_price.saturating_mul_u64(*max_gas);
             if let Err(err) =
-                context.transfer_parallel_coins(None, Some(block_creator_addr), gas_fees, false)
+                context.transfer_parallel_coins(None, Some(block_creator_addr), gas_fees)
             {
                 debug!(
                     "failed to credit block producer {} with {} gas fee coins: {}",
@@ -270,9 +270,7 @@ impl ExecutionState {
 
             // Credit the operation sender with `coins` parallel coins.
             // Note that errors are deterministic and do not cancel op execution.
-            if let Err(err) =
-                context.transfer_parallel_coins(None, Some(sender_addr), *coins, false)
-            {
+            if let Err(err) = context.transfer_parallel_coins(None, Some(sender_addr), *coins) {
                 debug!(
                     "failed to credit operation sender {} with {} operation coins: {}",
                     sender_addr, *coins, err
