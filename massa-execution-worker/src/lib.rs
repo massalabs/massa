@@ -4,9 +4,9 @@
 //!
 //! The execution worker launches a persistent thread allowing the execution
 //! of operations that can contain executable bytecode and managing interactions with the ledger.
-//! When the worker is launched, an ExecutionManager is returned,
-//! allowing to stop the worker,
-//! and to generate an arbitrary number of ExecutionController instances through which users interact with the worker.
+//! When the worker is launched, a ExecutionManager and a ExecutionController are returned.
+//! ExecutionManager allows stopping the worker,
+//! and ExecutionController is the clonable structure through which users interact with the worker.
 //!
 //! The worker is fed through the ExecutionController with information about blockclique changes and newly finalized blocks
 //! and will execute the operations in those blocks, as well as pending asynchronous operations on empty slots.
