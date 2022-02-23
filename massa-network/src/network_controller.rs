@@ -31,6 +31,9 @@ use tracing::{debug, error, info, warn};
 ///
 /// # Arguments
 /// * cfg : network configuration
+/// * estalisher
+/// * clock_compensation: time provided by server
+/// * initial_peers: peers provided by bootstrap, true if it's a bootstrap peer
 pub async fn start_network_controller(
     network_settings: NetworkSettings,
     mut establisher: Establisher,

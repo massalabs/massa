@@ -274,6 +274,7 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * cfg : network configuration
     /// * clock_compensation: sync with server
+    /// * initial_peers: peers provided by bootstrap, true if it's a bootstrap peer
     pub async fn new(
         cfg: &NetworkSettings,
         clock_compensation: i64,
