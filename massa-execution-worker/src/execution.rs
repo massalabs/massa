@@ -243,6 +243,8 @@ impl ExecutionState {
 
         // get operation ID
         // TODO have operation_id contained in the Operation object in the future to avoid recomputation
+        // https://github.com/massalabs/massa/issues/1121
+        // https://github.com/massalabs/massa/issues/2264
         let operation_id = operation
             .get_operation_id()
             .expect("could not compute operation ID");
