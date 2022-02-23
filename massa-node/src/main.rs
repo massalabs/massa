@@ -33,10 +33,8 @@ use std::{process, sync::Arc};
 use tokio::signal;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
-use tracing_subscriber::{
-    filter::{filter_fn, LevelFilter},
-    prelude::*,
-};
+#[cfg(not(feature = "instrument"))]
+use tracing_subscriber::filter::{filter_fn, LevelFilter};
 
 mod settings;
 
@@ -283,10 +281,18 @@ async fn stop(
     // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
 }
 
+/// To instrument `massa-node` with `tokio-console` run
+/// ```shell
+/// RUSTFLAGS="--cfg tokio_unstable" cargo run --bin massa-node --features instrument
+/// ```
 #[tokio::main]
 async fn main() {
-    // setup logging
-    let fmt_layer = tracing_subscriber::fmt::layer()
+    use tracing_subscriber::prelude::*;
+    // spawn the console server in the background, returning a `Layer`:
+    #[cfg(feature = "instrument")]
+    let tracing_layer = console_subscriber::spawn();
+    #[cfg(not(feature = "instrument"))]
+    let tracing_layer = tracing_subscriber::fmt::layer()
         .with_filter(match SETTINGS.logging.level {
             4 => LevelFilter::TRACE,
             3 => LevelFilter::DEBUG,
@@ -295,9 +301,13 @@ async fn main() {
             _ => LevelFilter::ERROR,
         })
         .with_filter(filter_fn(|metadata| {
-            metadata.target().starts_with("massa") // ignore non-massa logs
+            metadata.target().starts_with("massa:") // ignore non-massa logs
         }));
-    tracing_subscriber::registry().with(fmt_layer).init();
+    // build a `Subscriber` by combining layers with a `tracing_subscriber::Registry`:
+    tracing_subscriber::registry()
+        // add the console layer to the subscriber or default layers...
+        .with(tracing_layer)
+        .init();
 
     // run
     loop {
