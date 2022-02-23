@@ -112,9 +112,9 @@ mod nodeinfo {
     pub struct NodeInfo {
         /// The blocks the node "knows about",
         /// defined as the one the node propagated headers to us for.
-        known_blocks: Map<BlockId, (bool, Instant)>,
+        pub known_blocks: Map<BlockId, (bool, Instant)>,
         /// The blocks the node asked for.
-        wanted_blocks: Map<BlockId, Instant>,
+        pub wanted_blocks: Map<BlockId, Instant>,
         /// Blocks we asked that node for
         pub asked_blocks: Map<BlockId, Instant>,
         /// Instant when the node was added
@@ -162,6 +162,21 @@ mod nodeinfo {
             self.known_blocks.get(block_id)
         }
 
+        /// Remove the oldest items from known_blocks
+        /// to ensure it contains at most max_node_known_blocks_size items.
+        /// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.
+        fn remove_excess_known_blocks(&mut self, max_node_known_blocks_size: usize) {
+            while self.known_blocks.len() > max_node_known_blocks_size {
+                // remove oldest item
+                let (&h, _) = self
+                    .known_blocks
+                    .iter()
+                    .min_by_key(|(h, (_, t))| (*t, *h))
+                    .unwrap(); // never None because is the collection is empty, while loop isn't executed.
+                self.known_blocks.remove(&h);
+            }
+        }
+
         /// Insert knowledge of a list of blocks in NodeInfo
         ///
         /// ## Arguments
@@ -180,15 +195,7 @@ mod nodeinfo {
             for block_id in block_ids {
                 self.known_blocks.insert(*block_id, (val, instant));
             }
-            while self.known_blocks.len() > max_node_known_blocks_size {
-                // remove oldest item
-                let (&h, _) = self
-                    .known_blocks
-                    .iter()
-                    .min_by_key(|(h, (_, t))| (*t, *h))
-                    .unwrap(); // never None because is the collection is empty, while loop isn't executed.
-                self.known_blocks.remove(&h);
-            }
+            self.remove_excess_known_blocks(max_node_known_blocks_size);
         }
 
         pub fn insert_known_endorsements(
@@ -229,27 +236,42 @@ mod nodeinfo {
             self.known_operations.contains(op)
         }
 
-        /// insert a block in wanted list of a node.
-        /// Note that it also insert the block as a not known block for that node.
-        pub fn insert_wanted_blocks(
-            &mut self,
-            block_id: BlockId,
-            max_node_wanted_blocks_size: usize,
-        ) {
-            self.wanted_blocks.insert(block_id, Instant::now());
-            while self.known_blocks.len() > max_node_wanted_blocks_size {
+        /// Remove the oldest items from wanted_blocks
+        /// to ensure it contains at most max_node_wanted_blocks_size items.
+        /// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.
+        fn remove_excess_wanted_blocks(&mut self, max_node_wanted_blocks_size: usize) {
+            while self.wanted_blocks.len() > max_node_wanted_blocks_size {
                 // remove oldest item
                 let (&h, _) = self
-                    .known_blocks
+                    .wanted_blocks
                     .iter()
                     .min_by_key(|(h, t)| (*t, *h))
                     .unwrap(); // never None because is the collection is empty, while loop isn't executed.
-                self.known_blocks.remove(&h);
+                self.wanted_blocks.remove(&h);
             }
         }
 
-        /// If given node previously manifested it wanted given block.
-        pub fn contains_wanted_block(&mut self, block_id: &BlockId) -> bool {
+        /// Insert a block in the wanted list of a node.
+        /// Also lists the block as not known by the node
+        pub fn insert_wanted_block(
+            &mut self,
+            block_id: BlockId,
+            max_node_wanted_blocks_size: usize,
+            max_node_known_blocks_size: usize,
+        ) {
+            // Insert into known_blocks
+            let now = Instant::now();
+            self.wanted_blocks.insert(block_id, now);
+            self.remove_excess_wanted_blocks(max_node_wanted_blocks_size);
+
+            // If the node wants a block, it means that it doesn't have it.
+            // To avoid asking the node for this block in the meantime,
+            // mark the node as not knowing the block.
+            self.insert_known_blocks(&[block_id], false, now, max_node_known_blocks_size);
+        }
+
+        /// returns whether a node wants a block, and if so, updates the timestamp of that info to now()
+        pub fn contains_wanted_block_update_timestamp(&mut self, block_id: &BlockId) -> bool {
             self.wanted_blocks
                 .get_mut(block_id)
                 .map(|instant| *instant = Instant::now())
@@ -606,7 +628,7 @@ impl ProtocolWorker {
                                 { "block_id": block_id }
                             );
                             for (node_id, node_info) in self.active_nodes.iter_mut() {
-                                if node_info.contains_wanted_block(&block_id) {
+                                if node_info.contains_wanted_block_update_timestamp(&block_id) {
                                     massa_trace!("protocol.protocol_worker.process_command.block_not_found.notify_node", { "node": node_id, "block_id": block_id });
                                     self.network_command_sender
                                         .block_not_found(*node_id, block_id)
@@ -1379,9 +1401,10 @@ impl ProtocolWorker {
                 massa_trace!("protocol.protocol_worker.on_network_event.asked_for_blocks", { "node": from_node_id, "hashlist": list});
                 if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
                     for hash in &list {
-                        node_info.insert_wanted_blocks(
+                        node_info.insert_wanted_block(
                             *hash,
                             self.protocol_settings.max_node_wanted_blocks_size,
+                            self.protocol_settings.max_node_known_blocks_size,
                         );
                     }
                 } else {
@@ -1469,6 +1492,45 @@ mod tests {
     pub fn get_dummy_block_id(s: &str) -> BlockId {
         BlockId(Hash::compute_from(s.as_bytes()))
     }
+
+    /// Test the pruning behavior of NodeInfo::insert_wanted_block
+    #[test]
+    #[serial]
+    fn test_node_info_wanted_blocks_pruning() {
+        let protocol_settings = &PROTOCOL_SETTINGS;
+        let mut nodeinfo = NodeInfo::new(protocol_settings);
+
+        // cap to 10 wanted blocks
+        let max_node_wanted_blocks_size = 10;
+
+        // cap to 5 known blocks
+        let max_node_known_blocks_size = 5;
+
+        // try to insert 15 wanted blocks
+        for index in 0usize..15 {
+            let hash = get_dummy_block_id(&index.to_string());
+            nodeinfo.insert_wanted_block(
+                hash,
+                max_node_wanted_blocks_size,
+                max_node_known_blocks_size,
+            );
+        }
+
+        // ensure that only max_node_wanted_blocks_size wanted blocks are kept
+        assert_eq!(
+            nodeinfo.wanted_blocks.len(),
+            max_node_wanted_blocks_size,
+            "wanted_blocks pruning incorrect"
+        );
+
+        // ensure that there are max_node_known_blocks_size entries for knwon blocks
+        assert_eq!(
+            nodeinfo.known_blocks.len(),
+            max_node_known_blocks_size,
+            "known_blocks pruning incorrect"
+        );
+    }
+
     #[test]
     #[serial]
     fn test_node_info_know_block() {
@@ -1528,36 +1590,55 @@ mod tests {
     #[serial]
     fn test_node_info_wanted_block() {
         let max_node_wanted_blocks_size = 10;
+        let max_node_known_blocks_size = 10;
         let protocol_settings = &PROTOCOL_SETTINGS;
         let mut nodeinfo = NodeInfo::new(protocol_settings);
 
         let hash = get_dummy_block_id("test");
-        nodeinfo.insert_wanted_blocks(hash, max_node_wanted_blocks_size);
-        assert!(nodeinfo.contains_wanted_block(&hash));
+        nodeinfo.insert_wanted_block(
+            hash,
+            max_node_wanted_blocks_size,
+            max_node_known_blocks_size,
+        );
+        assert!(nodeinfo.contains_wanted_block_update_timestamp(&hash));
         nodeinfo.remove_wanted_block(&hash);
-        assert!(!nodeinfo.contains_wanted_block(&hash));
+        assert!(!nodeinfo.contains_wanted_block_update_timestamp(&hash));
 
         for index in 0..9 {
             let hash = get_dummy_block_id(&index.to_string());
-            nodeinfo.insert_wanted_blocks(hash, max_node_wanted_blocks_size);
-            assert!(nodeinfo.contains_wanted_block(&hash));
+            nodeinfo.insert_wanted_block(
+                hash,
+                max_node_wanted_blocks_size,
+                max_node_known_blocks_size,
+            );
+            assert!(nodeinfo.contains_wanted_block_update_timestamp(&hash));
         }
 
         // change the oldest time to now
-        assert!(nodeinfo.contains_wanted_block(&get_dummy_block_id(&0.to_string())));
+        assert!(
+            nodeinfo.contains_wanted_block_update_timestamp(&get_dummy_block_id(&0.to_string()))
+        );
         // add hash that triggers container pruning
-        nodeinfo.insert_wanted_blocks(get_dummy_block_id("test2"), max_node_wanted_blocks_size);
+        nodeinfo.insert_wanted_block(
+            get_dummy_block_id("test2"),
+            max_node_wanted_blocks_size,
+            max_node_known_blocks_size,
+        );
 
         // 0 is present because because its timestamp has been updated with contains_wanted_block
-        assert!(nodeinfo.contains_wanted_block(&get_dummy_block_id(&0.to_string())));
+        assert!(
+            nodeinfo.contains_wanted_block_update_timestamp(&get_dummy_block_id(&0.to_string()))
+        );
 
         // 1 has been removed because it's the oldest.
-        assert!(nodeinfo.contains_wanted_block(&get_dummy_block_id(&1.to_string())));
+        assert!(
+            nodeinfo.contains_wanted_block_update_timestamp(&get_dummy_block_id(&1.to_string()))
+        );
 
         // Other blocks are present.
         for index in 2..9 {
             let hash = get_dummy_block_id(&index.to_string());
-            assert!(nodeinfo.contains_wanted_block(&hash));
+            assert!(nodeinfo.contains_wanted_block_update_timestamp(&hash));
         }
     }
 }
