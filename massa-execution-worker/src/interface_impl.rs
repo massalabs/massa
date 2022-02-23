@@ -28,7 +28,7 @@ macro_rules! context_guard {
     };
 }
 
-/// an implementation of the Interface trait (see masa-sc-runtime crate)
+/// an implementation of the Interface trait (see massa-sc-runtime crate)
 #[derive(Clone)]
 pub(crate) struct InterfaceImpl {
     /// execution config
