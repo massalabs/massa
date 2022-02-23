@@ -639,7 +639,7 @@ pub async fn consensus_pool_test<F, V>(
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
-    let (execution_controller, _execution_rx) = MockExecutionController::new();
+    let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -700,7 +700,7 @@ where
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
-    let (execution_controller, _execution_rx) = MockExecutionController::new();
+    let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller

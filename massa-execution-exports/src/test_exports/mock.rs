@@ -51,7 +51,7 @@ pub struct MockExecutionController(Arc<Mutex<mpsc::Sender<MockExecutionControlle
 impl MockExecutionController {
     /// Create a new pair (mock execution controller, mpsc receiver for emitted messages)
     /// Note that unbounded mpsc channels are used
-    pub fn new() -> (
+    pub fn new_with_receiver() -> (
         Box<dyn ExecutionController>,
         Receiver<MockExecutionControllerMessage>,
     ) {
