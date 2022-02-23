@@ -284,9 +284,13 @@ impl ExecutionContext {
 
     /// Creates a new smart contract address with initial bytecode, and returns this address
     pub fn create_new_sc_address(&mut self, bytecode: Vec<u8>) -> Result<Address, ExecutionError> {
-        // TODO: security problem:
-        //  prefix addresses to know if they are SCs or normal, otherwise people can already create new accounts by sending coins to the right hash
-        //  they won't have ownership over it but this can still be a pain
+        // TODO: collision problem:
+        //  prefix addresses to know if they are SCs or normal,
+        //  otherwise people can already create new accounts by sending coins to the right hash
+        //  they won't have ownership over it but this can still be unexpected
+        //  to have initial extra coins when an address is created
+        //  It may also induce that for read-only calls.
+        //  https://github.com/massalabs/massa/issues/2331
 
         // deterministically generate a new unique smart contract address
 
