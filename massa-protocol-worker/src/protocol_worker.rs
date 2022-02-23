@@ -109,9 +109,9 @@ mod nodeinfo {
     pub struct NodeInfo {
         /// The blocks the node "knows about",
         /// defined as the one the node propagated headers to us for.
-        known_blocks: Map<BlockId, (bool, Instant)>,
+        pub known_blocks: Map<BlockId, (bool, Instant)>,
         /// The blocks the node asked for.
-        wanted_blocks: Map<BlockId, Instant>,
+        pub wanted_blocks: Map<BlockId, Instant>,
         /// Blocks we asked that node for
         pub asked_blocks: Map<BlockId, Instant>,
         /// Instant when the node was added
@@ -1489,6 +1489,45 @@ mod tests {
     pub fn get_dummy_block_id(s: &str) -> BlockId {
         BlockId(Hash::compute_from(s.as_bytes()))
     }
+
+    /// Test the pruning behavior of NodeInfo::insert_wanted_block
+    #[test]
+    #[serial]
+    fn test_node_info_wanted_blocks_pruning() {
+        let protocol_settings = &PROTOCOL_SETTINGS;
+        let mut nodeinfo = NodeInfo::new(protocol_settings);
+
+        // cap to 10 wanted blocks
+        let max_node_wanted_blocks_size = 10;
+
+        // cap to 5 known blocks
+        let max_node_known_blocks_size = 5;
+
+        // try to insert 15 wanted blocks
+        for index in 0usize..15 {
+            let hash = get_dummy_block_id(&index.to_string());
+            nodeinfo.insert_wanted_block(
+                hash,
+                max_node_wanted_blocks_size,
+                max_node_known_blocks_size,
+            );
+        }
+
+        // ensure that only max_node_wanted_blocks_size wanted blocks are kept
+        assert_eq!(
+            nodeinfo.wanted_blocks.len(),
+            max_node_wanted_blocks_size,
+            "wanted_blocks pruning incorrect"
+        );
+
+        // ensure that there are max_node_known_blocks_size entries for knwon blocks
+        assert_eq!(
+            nodeinfo.known_blocks.len(),
+            max_node_known_blocks_size,
+            "known_blocks pruning incorrect"
+        );
+    }
+
     #[test]
     #[serial]
     fn test_node_info_know_block() {
