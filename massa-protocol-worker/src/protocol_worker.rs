@@ -159,6 +159,21 @@ mod nodeinfo {
             self.known_blocks.get(block_id)
         }
 
+        /// Remove the oldest items from known_blocks
+        /// to ensure it contains at most max_node_known_blocks_size items.
+        /// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.
+        fn remove_excess_known_blocks(&mut self, max_node_known_blocks_size: usize) {
+            while self.known_blocks.len() > max_node_known_blocks_size {
+                // remove oldest item
+                let (&h, _) = self
+                    .known_blocks
+                    .iter()
+                    .min_by_key(|(h, (_, t))| (*t, *h))
+                    .unwrap(); // never None because is the collection is empty, while loop isn't executed.
+                self.known_blocks.remove(&h);
+            }
+        }
+
         /// Insert knowledge of a list of blocks in NodeInfo
         ///
         /// ## Arguments
@@ -177,15 +192,7 @@ mod nodeinfo {
             for block_id in block_ids {
                 self.known_blocks.insert(*block_id, (val, instant));
             }
-            while self.known_blocks.len() > max_node_known_blocks_size {
-                // remove oldest item
-                let (&h, _) = self
-                    .known_blocks
-                    .iter()
-                    .min_by_key(|(h, (_, t))| (*t, *h))
-                    .unwrap(); // never None because is the collection is empty, while loop isn't executed.
-                self.known_blocks.remove(&h);
-            }
+            self.remove_excess_known_blocks(max_node_known_blocks_size);
         }
 
         pub fn insert_known_endorsements(
