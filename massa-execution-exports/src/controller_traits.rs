@@ -67,6 +67,7 @@ pub trait ExecutionManager {
     /// Stop the execution thread
     /// Note that we do not take self by value to consume it
     /// because it is not allowed to move out of Box<dyn ExecutionManager>
+    /// This will improve if the `unsized_fn_params` feature stabilizes enough to be safely usable.
     fn stop(&mut self);
 
     /// Get a new execution controller
