@@ -235,8 +235,8 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
     fn raw_get_data(&self, key: &str) -> Result<Vec<u8>> {
-        let context = context_guard!(self);
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let context = context_guard!(self);
         let addr = context.get_current_address()?;
         match context.get_data_entry(&addr, &key) {
             Some(data) => Ok(data),
@@ -251,8 +251,8 @@ impl Interface for InterfaceImpl {
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
     fn raw_set_data(&self, key: &str, value: &[u8]) -> Result<()> {
-        let mut context = context_guard!(self);
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
         context.set_data_entry(&addr, key, value.to_vec(), true)?;
         Ok(())
@@ -266,8 +266,8 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
     fn has_data(&self, key: &str) -> Result<bool> {
-        let context = context_guard!(self);
         let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let context = context_guard!(self);
         let addr = context.get_current_address()?;
         Ok(context.has_data_entry(&addr, &key))
     }
