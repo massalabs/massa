@@ -14,9 +14,10 @@ use massa_execution_exports::{
 use massa_hash::hash::Hash;
 use massa_ledger::{FinalLedger, LedgerChanges};
 use massa_models::{Address, Amount, BlockId, OperationId, Slot};
+use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 /// A snapshot taken from an ExecutionContext and that represents its current state.
 /// The ExecutionContext state can then be restored later from this snapshot.

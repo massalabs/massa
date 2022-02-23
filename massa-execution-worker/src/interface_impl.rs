@@ -15,18 +15,16 @@ use massa_models::{
     timeslots::get_block_slot_timestamp,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
+use parking_lot::Mutex;
 use rand::Rng;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tracing::debug;
 
 /// helper for locking the context mutex
 macro_rules! context_guard {
     ($self:ident) => {
-        $self
-            .context
-            .lock()
-            .expect("failed to acquire lock on execution context")
+        $self.context.lock()
     };
 }
 

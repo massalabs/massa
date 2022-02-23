@@ -28,10 +28,8 @@ use massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use massa_protocol_exports::ProtocolManager;
 use massa_protocol_worker::start_protocol_controller;
 use massa_time::MassaTime;
-use std::{
-    process,
-    sync::{Arc, RwLock},
-};
+use parking_lot::RwLock;
+use std::{process, sync::Arc};
 use tokio::signal;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};

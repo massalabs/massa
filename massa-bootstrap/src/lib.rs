@@ -18,11 +18,12 @@ use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_signature::{PrivateKey, PublicKey};
 use massa_time::MassaTime;
 use messages::BootstrapMessage;
+use parking_lot::RwLock;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use settings::BootstrapSettings;
 use std::collections::{hash_map, HashMap};
 use std::net::SocketAddr;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::{convert::TryInto, net::IpAddr};
 use tokio::time::Instant;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
@@ -411,7 +412,7 @@ impl BootstrapServer {
                         // If the consensus state snapshot is older than the execution state snapshot,
                         //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
                         let peer_boot = self.network_command_sender.get_bootstrap_peers().await?;
-                        let res_ledger = self.final_ledger.read().expect("could not lock final ledger for reading").get_bootstrap_state();
+                        let res_ledger = self.final_ledger.read().get_bootstrap_state();
                         let (pos_boot, graph_boot) = self.consensus_command_sender.get_bootstrap_state().await?;
                         bootstrap_data = Some((pos_boot, graph_boot, peer_boot, res_ledger));
                         cache_timer.set(sleep(cache_timeout));

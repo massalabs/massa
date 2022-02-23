@@ -9,7 +9,8 @@ use massa_execution_exports::ExecutionError;
 use massa_hash::hash::Hash;
 use massa_ledger::{Applicable, FinalLedger, LedgerChanges};
 use massa_models::{Address, Amount};
-use std::sync::{Arc, RwLock};
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 /// The SpeculativeLedger contains an thread-safe shared reference to the final ledger (read-only),
 /// a list of existing changes that happened o the ledger since its finality,
@@ -75,10 +76,7 @@ impl SpeculativeLedger {
         self.added_changes.get_parallel_balance_or_else(addr, || {
             self.previous_changes
                 .get_parallel_balance_or_else(addr, || {
-                    self.final_ledger
-                        .read()
-                        .expect("couldn't r-lock final ledger")
-                        .get_parallel_balance(addr)
+                    self.final_ledger.read().get_parallel_balance(addr)
                 })
         })
     }
@@ -93,12 +91,8 @@ impl SpeculativeLedger {
     pub fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
         // try to read from added_changes, then previous_changes, then final_ledger
         self.added_changes.get_bytecode_or_else(addr, || {
-            self.previous_changes.get_bytecode_or_else(addr, || {
-                self.final_ledger
-                    .read()
-                    .expect("couldn't r-lock final ledger")
-                    .get_bytecode(addr)
-            })
+            self.previous_changes
+                .get_bytecode_or_else(addr, || self.final_ledger.read().get_bytecode(addr))
         })
     }
 
@@ -160,12 +154,8 @@ impl SpeculativeLedger {
     pub fn entry_exists(&self, addr: &Address) -> bool {
         // try to read from added_changes, then previous_changes, then final_ledger
         self.added_changes.entry_exists_or_else(addr, || {
-            self.previous_changes.entry_exists_or_else(addr, || {
-                self.final_ledger
-                    .read()
-                    .expect("couldn't r-lock final ledger")
-                    .entry_exists(addr)
-            })
+            self.previous_changes
+                .entry_exists_or_else(addr, || self.final_ledger.read().entry_exists(addr))
         })
     }
 
@@ -218,10 +208,7 @@ impl SpeculativeLedger {
         // try to read from added_changes, then previous_changes, then final_ledger
         self.added_changes.get_data_entry_or_else(addr, key, || {
             self.previous_changes.get_data_entry_or_else(addr, key, || {
-                self.final_ledger
-                    .read()
-                    .expect("couldn't r-lock final ledger")
-                    .get_data_entry(addr, key)
+                self.final_ledger.read().get_data_entry(addr, key)
             })
         })
     }
@@ -238,10 +225,7 @@ impl SpeculativeLedger {
         // try to read from added_changes, then previous_changes, then final_ledger
         self.added_changes.has_data_entry_or_else(addr, key, || {
             self.previous_changes.has_data_entry_or_else(addr, key, || {
-                self.final_ledger
-                    .read()
-                    .expect("couldn't r-lock final ledger")
-                    .has_data_entry(addr, key)
+                self.final_ledger.read().has_data_entry(addr, key)
             })
         })
     }

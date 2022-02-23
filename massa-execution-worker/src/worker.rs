@@ -17,11 +17,9 @@ use massa_models::{
     Block, Slot,
 };
 use massa_time::MassaTime;
+use parking_lot::{Condvar, Mutex, RwLock};
 use std::sync::mpsc;
-use std::{
-    collections::HashMap,
-    sync::{Arc, Condvar, Mutex, RwLock},
-};
+use std::{collections::HashMap, sync::Arc};
 use tracing::debug;
 
 /// Structure gathering all elements needed by the execution thread
@@ -62,10 +60,7 @@ impl ExecutionThread {
         execution_state: Arc<RwLock<ExecutionState>>,
     ) -> Self {
         // get the latest executed final slot, at the output of which the final ledger is attached
-        let final_cursor = execution_state
-            .read()
-            .expect("could not r-lock execution context")
-            .final_cursor;
+        let final_cursor = execution_state.read().final_cursor;
 
         // create and return the ExecutionThread
         ExecutionThread {
@@ -239,10 +234,7 @@ impl ExecutionThread {
         }
 
         // w-lock execution state
-        let mut exec_state = self
-            .execution_state
-            .write()
-            .expect("could not lock execution state for writing");
+        let mut exec_state = self.execution_state.write();
 
         // get the slot just after the last executed final slot
         let slot = exec_state
@@ -287,10 +279,7 @@ impl ExecutionThread {
     /// returns true if something was executed
     fn execute_one_active_slot(&mut self) -> bool {
         // write-lock the execution state
-        let mut exec_state = self
-            .execution_state
-            .write()
-            .expect("could not lock execution state for writing");
+        let mut exec_state = self.execution_state.write();
 
         // get the next active slot
         let slot = exec_state
@@ -347,10 +336,7 @@ impl ExecutionThread {
     /// Speculative execution will then resume from the point of truncation.
     pub fn truncate_execution_history(&mut self) {
         // acquire write access to execution state
-        let mut exec_state = self
-            .execution_state
-            .write()
-            .expect("could not lock execution state for writing");
+        let mut exec_state = self.execution_state.write();
 
         // tells the execution state to truncate its execution output history
         // given the new list of active slots
@@ -368,11 +354,7 @@ impl ExecutionThread {
         resp_tx: mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
     ) {
         // acquire read access to execution state and execute the read-only request
-        let outcome = self
-            .execution_state
-            .read()
-            .expect("could not lock execution state for reading")
-            .execute_readonly_request(req);
+        let outcome = self.execution_state.read().execute_readonly_request(req);
 
         // send the execution output through resp_tx
         if resp_tx.send(outcome).is_err() {
@@ -444,12 +426,7 @@ impl ExecutionThread {
             }
 
             // Peek into the input data to see if new input arrived during this iteration of the loop
-            let input_data = self
-                .controller
-                .input_data
-                .1
-                .lock()
-                .expect("could not lock execution input data");
+            let mut input_data = self.controller.input_data.1.lock();
             if input_data.stop {
                 // there is a request to stop: quit the loop
                 break;
@@ -472,22 +449,16 @@ impl ExecutionThread {
             // Wait to be notified of new input, for at most time_until_next_slot
             // Note: spurious wake-ups are not a problem:
             // the next loop iteration will just do nohing and come back to wait here.
-            let (_lock, _timeout_result) = self
+            let _res = self
                 .controller
                 .input_data
                 .0
-                .wait_timeout(input_data, time_until_next_slot.to_duration())
-                .expect("Execution worker main loop condition variable wait failed");
+                .wait_for(&mut input_data, time_until_next_slot.to_duration());
         }
 
         // the execution worker is stopping:
         // signal cancellation to all remaining read-only execution requests waiting for an MPSC response
-        let mut input_data = self
-            .controller
-            .input_data
-            .1
-            .lock()
-            .expect("could not lock VM input data");
+        let mut input_data = self.controller.input_data.1.lock();
         for (_req, resp_tx) in input_data.readonly_requests.drain(..) {
             if resp_tx
                 .send(Err(ExecutionError::RuntimeError(

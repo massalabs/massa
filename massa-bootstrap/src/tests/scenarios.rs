@@ -20,11 +20,9 @@ use massa_models::Version;
 use massa_network::{NetworkCommand, NetworkCommandSender};
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;
+use parking_lot::RwLock;
 use serial_test::serial;
-use std::{
-    str::FromStr,
-    sync::{Arc, RwLock},
-};
+use std::{str::FromStr, sync::Arc};
 use tokio::sync::mpsc;
 
 lazy_static::lazy_static! {

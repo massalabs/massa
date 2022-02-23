@@ -9,13 +9,9 @@ edition = "2021"
 [dependencies]
 anyhow = "1"
 displaydoc = "0.2"
-lazy_static = "1.4.0"
-rand = "0.8"
-rand_xoshiro = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-tokio = { version = "1.11", features = ["full"] }
 tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_debug",
@@ -28,7 +24,6 @@ massa_ledger = { path = "../massa-ledger" }
 [dev-dependencies]
 pretty_assertions = "1.0"
 serial_test = "0.5"
-tempfile = "3.2"
 
 [features]
 testing = []

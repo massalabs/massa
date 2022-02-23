@@ -19,19 +19,17 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::{Address, BlockId, Operation, OperationId, OperationType};
 use massa_models::{Block, Slot};
 use massa_sc_runtime::Interface;
+use parking_lot::{Mutex, RwLock};
 use std::{
     collections::{HashMap, VecDeque},
-    sync::{Arc, Mutex, RwLock},
+    sync::Arc,
 };
 use tracing::debug;
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
     ($self:ident) => {
-        $self
-            .execution_context
-            .lock()
-            .expect("failed to acquire lock on execution context")
+        $self.execution_context.lock()
     };
 }
 
@@ -71,10 +69,7 @@ impl ExecutionState {
     pub fn new(config: ExecutionConfig, final_ledger: Arc<RwLock<FinalLedger>>) -> ExecutionState {
         // Get the slot at the output of which the final ledger is attached.
         // This should be among the latest final slots.
-        let last_final_slot = final_ledger
-            .read()
-            .expect("could not r-lock final ledger")
-            .slot;
+        let last_final_slot = final_ledger.read().slot;
 
         // Create an empty placeholder execution context, with shared atomic access
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
@@ -113,7 +108,6 @@ impl ExecutionState {
         // apply ledger changes to the final ledger
         self.final_ledger
             .write()
-            .expect("could not lock final ledger for writing")
             .settle_slot(exec_out.slot, exec_out.ledger_changes);
         // update the final ledger's slot
         self.final_cursor = exec_out.slot;
@@ -432,11 +426,7 @@ impl ExecutionState {
         addr: &Address,
     ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
         // get the full entry from the final ledger
-        let final_entry = self
-            .final_ledger
-            .read()
-            .expect("could not r-lock final ledger")
-            .get_full_entry(addr);
+        let final_entry = self.final_ledger.read().get_full_entry(addr);
 
         // get cumulative active changes and apply them
         // TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it

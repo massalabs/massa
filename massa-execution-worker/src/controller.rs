@@ -14,8 +14,9 @@ use massa_models::prehash::Map;
 use massa_models::Address;
 use massa_models::OperationId;
 use massa_models::{Block, BlockId, Slot};
+use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::{HashMap, VecDeque};
-use std::sync::{mpsc, Arc, Condvar, Mutex, RwLock};
+use std::sync::{mpsc, Arc};
 use tracing::info;
 
 /// structure used to communicate with execution thread
@@ -51,7 +52,7 @@ pub struct ExecutionControllerImpl {
 impl ExecutionControllerImpl {
     /// consumes and returns the input fed to the controller
     pub(crate) fn consume_input(&mut self) -> VMInputData {
-        std::mem::take(&mut self.input_data.1.lock().expect("VM input data lock failed"))
+        std::mem::take(&mut self.input_data.1.lock())
     }
 }
 
@@ -77,11 +78,7 @@ impl ExecutionController for ExecutionControllerImpl {
             .map(|(b_id, b)| (b.header.content.slot, (b_id, b)))
             .collect();
         //update input data
-        let mut input_data = self
-            .input_data
-            .1
-            .lock()
-            .expect("could not lock VM input data");
+        let mut input_data = self.input_data.1.lock();
         input_data.blockclique = mapped_blockclique; // replace blockclique
         input_data.finalized_blocks.extend(mapped_finalized_blocks); // append finalized blocks
         input_data.blockclique_changed = true; // signal a blockclique change
@@ -102,16 +99,13 @@ impl ExecutionController for ExecutionControllerImpl {
         original_caller_address: Option<Address>,
         original_operation_id: Option<OperationId>,
     ) -> Vec<SCOutputEvent> {
-        self.execution_state
-            .read()
-            .expect("could not lock execution state for reading")
-            .get_filtered_sc_output_event(
-                start,
-                end,
-                emitter_address,
-                original_caller_address,
-                original_operation_id,
-            )
+        self.execution_state.read().get_filtered_sc_output_event(
+            start,
+            end,
+            emitter_address,
+            original_caller_address,
+            original_operation_id,
+        )
     }
 
     /// gets a copy of a full ledger entry
@@ -119,10 +113,7 @@ impl ExecutionController for ExecutionControllerImpl {
     /// # return value
     /// * (final_entry, active_entry)
     fn get_full_ledger_entry(&self, addr: &Address) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
-        self.execution_state
-            .read()
-            .expect("could not lock execution state for reading")
-            .get_full_ledger_entry(addr)
+        self.execution_state.read().get_full_ledger_entry(addr)
     }
 
     /// Executes a readonly request
@@ -133,11 +124,7 @@ impl ExecutionController for ExecutionControllerImpl {
     ) -> Result<ExecutionOutput, ExecutionError> {
         // queue request into input, get response mpsc receiver
         let resp_rx = {
-            let mut input_data = self
-                .input_data
-                .1
-                .lock()
-                .expect("could not lock VM input data");
+            let mut input_data = self.input_data.1.lock();
             // limit the read-only queue length
             if input_data.readonly_requests.len() >= self.config.readonly_queue_length {
                 return Err(ExecutionError::RuntimeError(
@@ -182,12 +169,7 @@ impl ExecutionManager for ExecutionManagerImpl {
         info!("stopping Execution controller...");
         // notify the worker thread to stop
         {
-            let mut input_wlock = self
-                .controller
-                .input_data
-                .1
-                .lock()
-                .expect("could not lock VM input data");
+            let mut input_wlock = self.controller.input_data.1.lock();
             input_wlock.stop = true;
             self.controller.input_data.0.notify_one();
         }
