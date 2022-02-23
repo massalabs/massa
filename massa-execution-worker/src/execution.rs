@@ -482,7 +482,7 @@ impl ExecutionState {
             .into_iter()
             .chain(
                 // TODO note that active history is made of consecutive slots,
-                // so this algo does not need to scan all history items as iteation bounds can be derived a priori
+                // so this algo does not need to scan all history items as iteration bounds can be derived a priori
                 self.active_history
                     .iter()
                     .filter(|item| item.slot >= start && item.slot < end)
