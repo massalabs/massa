@@ -28,7 +28,7 @@ pub struct ReadOnlyExecutionRequest {
     pub simulated_gas_price: Amount,
     /// The code to execute.
     pub bytecode: Vec<u8>,
-    /// Call stack to simulate
+    /// Call stack to simulate, older caller first
     pub call_stack: Vec<ExecutionStackElement>,
 }
 
