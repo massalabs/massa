@@ -77,7 +77,7 @@ impl ExecutionController for ExecutionControllerImpl {
             .into_iter()
             .map(|(b_id, b)| (b.header.content.slot, (b_id, b)))
             .collect();
-        //update input data
+        // update input data
         let mut input_data = self.input_data.1.lock();
         input_data.blockclique = mapped_blockclique; // replace blockclique
         input_data.finalized_blocks.extend(mapped_finalized_blocks); // append finalized blocks
