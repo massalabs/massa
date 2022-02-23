@@ -26,7 +26,7 @@ pub(crate) struct VMInputData {
     pub stop: bool,
     /// signal whether the blockclique changed
     pub blockclique_changed: bool,
-    /// list of newly finalized blocks, index by slot
+    /// list of newly finalized blocks, indexed by slot
     pub finalized_blocks: HashMap<Slot, (BlockId, Block)>,
     /// blockclique, blocks indexed by slot
     pub blockclique: HashMap<Slot, (BlockId, Block)>,
