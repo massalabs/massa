@@ -58,9 +58,9 @@ pub struct NetworkSettings {
 #[derive(Debug, Deserialize, Clone)]
 pub struct PeerTypeConnectionConfig {
     /// max number of incomming connection
-    pub max_in: usize,
+    pub max_in_connections: usize,
     /// target number of outgoing connections
-    pub target_out: usize,
+    pub target_out_connections: usize,
     /// max number of on going outgoing connection attempt
     pub max_out_attempts: usize,
 }
@@ -96,18 +96,18 @@ mod tests {
                 peer_list_send_timeout: MassaTime::from(500),
                 max_in_connection_overflow: 2,
                 bootstrap_peers_config: PeerTypeConnectionConfig {
-                    target_out: 1,
+                    target_out_connections: 1,
                     max_out_attempts: 1,
-                    max_in: 1,
+                    max_in_connections: 1,
                 },
                 whitelist_peers_config: PeerTypeConnectionConfig {
-                    max_in: 10,
-                    target_out: 10,
+                    max_in_connections: 10,
+                    target_out_connections: 10,
                     max_out_attempts: 10,
                 },
                 standard_peers_config: PeerTypeConnectionConfig {
-                    target_out: 10,
-                    max_in: 5,
+                    target_out_connections: 10,
+                    max_in_connections: 5,
                     max_out_attempts: 15,
                 },
             }
@@ -150,18 +150,18 @@ mod tests {
                 peer_list_send_timeout: MassaTime::from(50),
                 max_in_connection_overflow: 10,
                 bootstrap_peers_config: PeerTypeConnectionConfig {
-                    target_out: 1,
+                    target_out_connections: 1,
                     max_out_attempts: 1,
-                    max_in: 1,
+                    max_in_connections: 1,
                 },
                 whitelist_peers_config: PeerTypeConnectionConfig {
-                    max_in: 10,
-                    target_out: 10,
+                    max_in_connections: 10,
+                    target_out_connections: 10,
                     max_out_attempts: 10,
                 },
                 standard_peers_config: PeerTypeConnectionConfig {
-                    target_out: 10,
-                    max_in: 5,
+                    target_out_connections: 10,
+                    max_in_connections: 5,
                     max_out_attempts: 15,
                 },
             }

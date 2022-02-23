@@ -133,21 +133,21 @@
     max_in_connection_overflow = 100
 
     [network.bootstrap_peers_config]
-        target_out= 1
+        target_out_connections= 1
         max_out_attempts= 1
-        max_in= 1
+        max_in_connections= 1
 
 
     [network.whitelist_peers_config]
-        target_out= 1
-        max_out_attempts= 1
-        max_in= 1
+        target_out_connections= 10
+        max_out_attempts= 10
+        max_in_connections= 10
 
 
     [network.standard_peers_config]
-        target_out= 15
+        target_out_connections= 15
         max_out_attempts= 10
-        max_in= 5
+        max_in_connections= 5
 
 
 [bootstrap]

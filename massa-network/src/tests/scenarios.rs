@@ -104,8 +104,8 @@ async fn test_multiple_connections_to_controller() {
     let temp_peers_file = super::tools::generate_peers_file(&[]);
     let network_conf = NetworkSettings {
         standard_peers_config: PeerTypeConnectionConfig {
-            max_in: 2,
-            target_out: 0,
+            max_in_connections: 2,
+            target_out_connections: 0,
             max_out_attempts: 0,
         },
         max_in_connections_per_ip: 1,
@@ -640,8 +640,8 @@ async fn test_block_not_found() {
 
     let network_conf = NetworkSettings {
         bootstrap_peers_config: PeerTypeConnectionConfig {
-            max_in: 1,
-            target_out: 1,
+            max_in_connections: 1,
+            target_out_connections: 1,
             max_out_attempts: 1,
         },
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
@@ -832,8 +832,8 @@ async fn test_retry_connection_closed() {
 
     let network_conf = NetworkSettings {
         bootstrap_peers_config: PeerTypeConnectionConfig {
-            max_in: 1,
-            target_out: 1,
+            max_in_connections: 1,
+            target_out_connections: 1,
             max_out_attempts: 1,
         },
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
@@ -936,8 +936,8 @@ async fn test_operation_messages() {
 
     let network_conf = NetworkSettings {
         bootstrap_peers_config: PeerTypeConnectionConfig {
-            max_in: 1,
-            target_out: 1,
+            max_in_connections: 1,
+            target_out_connections: 1,
             max_out_attempts: 1,
         },
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
@@ -1063,8 +1063,8 @@ async fn test_endorsements_messages() {
 
     let network_conf = NetworkSettings {
         bootstrap_peers_config: PeerTypeConnectionConfig {
-            max_in: 1,
-            target_out: 1,
+            max_in_connections: 1,
+            target_out_connections: 1,
             max_out_attempts: 1,
         },
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())

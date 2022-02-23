@@ -19,8 +19,8 @@ mod tests {
     async fn test_try_new_in_connection_in_connection_closed() {
         let network_settings = NetworkSettings {
             standard_peers_config: PeerTypeConnectionConfig {
-                target_out: 5,
-                max_in: 5,
+                target_out_connections: 5,
+                max_in_connections: 5,
                 max_out_attempts: 5,
             },
             ..Default::default()
@@ -117,8 +117,8 @@ mod tests {
     async fn test_out_connection_attempt_failed() {
         let network_settings = NetworkSettings {
             standard_peers_config: PeerTypeConnectionConfig {
-                target_out: 5,
-                max_in: 5,
+                target_out_connections: 5,
+                max_in_connections: 5,
                 max_out_attempts: 5,
             },
             ..Default::default()
@@ -215,8 +215,8 @@ mod tests {
     async fn test_try_out_connection_attempt_success() {
         let network_settings = NetworkSettings {
             standard_peers_config: PeerTypeConnectionConfig {
-                target_out: 5,
-                max_in: 5,
+                target_out_connections: 5,
+                max_in_connections: 5,
                 max_out_attempts: 5,
             },
             ..Default::default()
@@ -316,8 +316,8 @@ mod tests {
     async fn test_new_out_connection_closed() {
         let network_settings = NetworkSettings {
             standard_peers_config: PeerTypeConnectionConfig {
-                target_out: 5,
-                max_in: 5,
+                target_out_connections: 5,
+                max_in_connections: 5,
                 max_out_attempts: 5,
             },
             ..Default::default()
@@ -395,8 +395,8 @@ mod tests {
     async fn test_new_out_connection_attempt() {
         let network_settings = NetworkSettings {
             standard_peers_config: PeerTypeConnectionConfig {
-                target_out: 5,
-                max_in: 5,
+                target_out_connections: 5,
+                max_in_connections: 5,
                 max_out_attempts: 5,
             },
             ..Default::default()

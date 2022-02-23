@@ -119,7 +119,7 @@ impl ConnectionCount {
     /// Gets available out connection attempts for given connection count and settings
     fn get_available_out_connection_attempts(&self, cfg: &PeerTypeConnectionConfig) -> usize {
         std::cmp::min(
-            cfg.target_out
+            cfg.target_out_connections
                 .saturating_sub(self.active_out_connection_attempts)
                 .saturating_sub(self.active_out_connections),
             cfg.max_out_attempts
@@ -883,15 +883,24 @@ impl PeerInfoDatabase {
         match peer_type {
             PeerType::Bootstrap => {
                 self.bootstrap_connection_count.active_out_connections
-                    >= self.network_settings.bootstrap_peers_config.target_out
+                    >= self
+                        .network_settings
+                        .bootstrap_peers_config
+                        .target_out_connections
             }
             PeerType::WhiteListed => {
                 self.whitelist_connection_count.active_out_connections
-                    >= self.network_settings.whitelist_peers_config.target_out
+                    >= self
+                        .network_settings
+                        .whitelist_peers_config
+                        .target_out_connections
             }
             PeerType::Standard => {
                 self.standard_connection_count.active_out_connections
-                    >= self.network_settings.standard_peers_config.target_out
+                    >= self
+                        .network_settings
+                        .standard_peers_config
+                        .target_out_connections
             }
         }
     }
@@ -900,15 +909,24 @@ impl PeerInfoDatabase {
         match peer_type {
             PeerType::Bootstrap => {
                 self.bootstrap_connection_count.active_in_connections
-                    >= self.network_settings.bootstrap_peers_config.max_in
+                    >= self
+                        .network_settings
+                        .bootstrap_peers_config
+                        .max_in_connections
             }
             PeerType::WhiteListed => {
                 self.whitelist_connection_count.active_in_connections
-                    >= self.network_settings.whitelist_peers_config.max_in
+                    >= self
+                        .network_settings
+                        .whitelist_peers_config
+                        .max_in_connections
             }
             PeerType::Standard => {
                 self.standard_connection_count.active_in_connections
-                    >= self.network_settings.standard_peers_config.max_in
+                    >= self
+                        .network_settings
+                        .standard_peers_config
+                        .max_in_connections
             }
         }
     }
