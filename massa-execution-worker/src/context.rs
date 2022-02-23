@@ -87,7 +87,7 @@ impl ExecutionContext {
     /// Create a new empty ExecutionContext
     /// This should only be used as a placeholder.
     /// Further initialization is required before running bytecode
-    /// (see new_readonly and new_active_slot methods).
+    /// (see readonly and active_slot methods).
     ///
     /// # arguments
     /// * final_ledger: thread-safe access to the final ledger. Note that this will be used only for reading, never for writing
@@ -151,7 +151,7 @@ impl ExecutionContext {
     ///
     /// # returns
     /// A ExecutionContext instance ready for a read-only execution
-    pub(crate) fn new_readonly(
+    pub(crate) fn readonly(
         slot: Slot,
         req: ReadOnlyExecutionRequest,
         previous_changes: LedgerChanges,
@@ -195,7 +195,7 @@ impl ExecutionContext {
     ///
     /// # returns
     /// A ExecutionContext instance ready for a read-only execution
-    pub(crate) fn new_active_slot(
+    pub(crate) fn active_slot(
         slot: Slot,
         opt_block_id: Option<BlockId>,
         previous_changes: LedgerChanges,

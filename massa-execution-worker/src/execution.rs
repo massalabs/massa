@@ -338,7 +338,7 @@ impl ExecutionState {
         let previous_ledger_changes = self.get_accumulated_active_changes_at_slot(slot);
 
         // create a new execution context for the whole active slot
-        let execution_context = ExecutionContext::new_active_slot(
+        let execution_context = ExecutionContext::active_slot(
             slot,
             opt_block_id,
             previous_ledger_changes,
@@ -398,7 +398,7 @@ impl ExecutionState {
         // create a readonly execution context
         let max_gas = req.max_gas;
         let bytecode = req.bytecode.clone();
-        let execution_context = ExecutionContext::new_readonly(
+        let execution_context = ExecutionContext::readonly(
             slot,
             req,
             previous_ledger_changes,
