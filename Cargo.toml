@@ -20,6 +20,7 @@ members = [
   "massa-time",
   "massa-wallet",
 ]
+resolver = "2"
 
 # From https://doc.rust-lang.org/cargo/reference/profiles.html#overrides
 [profile.dev.package."*"]
