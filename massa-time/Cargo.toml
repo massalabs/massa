@@ -11,8 +11,11 @@ chrono = "0.4"
 displaydoc = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
-tokio = { version = "1.11", features = ["full"] }
+tokio = { version = "1.15", features = ["full"] }
 
 [dev-dependencies]
 pretty_assertions = "1.0"
 serial_test = "0.5"
+
+[features]
+instrument = ["tokio/tracing"]
