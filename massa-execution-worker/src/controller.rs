@@ -152,13 +152,21 @@ impl ExecutionController for ExecutionControllerImpl {
             }
         }
     }
+
+    /// Returns a boxed clone of self.
+    /// Allows cloning Box<dyn ExecutionController>,
+    /// see massa-execution-exports/controller_traits.rs
+    fn clone_box(&self) -> Box<dyn ExecutionController> {
+        Box::new(self.clone())
+    }
 }
 
 /// Execution manager
-/// Allows creating execution controllers, and stopping the execution worker
+/// Allows stopping the execution worker
 pub struct ExecutionManagerImpl {
-    /// shared reference to the execution controller
-    pub(crate) controller: ExecutionControllerImpl,
+    /// input data to process in the VM loop
+    /// with a wakeup condition variable that needs to be triggered when the data changes
+    pub(crate) input_data: Arc<(Condvar, Mutex<VMInputData>)>,
     /// handle used to join the worker thread
     pub(crate) thread_handle: Option<std::thread::JoinHandle<()>>,
 }
@@ -169,19 +177,14 @@ impl ExecutionManager for ExecutionManagerImpl {
         info!("stopping Execution controller...");
         // notify the worker thread to stop
         {
-            let mut input_wlock = self.controller.input_data.1.lock();
+            let mut input_wlock = self.input_data.1.lock();
             input_wlock.stop = true;
-            self.controller.input_data.0.notify_one();
+            self.input_data.0.notify_one();
         }
         // join the execution thread
         if let Some(join_handle) = self.thread_handle.take() {
             join_handle.join().expect("VM controller thread panicked");
         }
-        info!("Execution controller stopped");
-    }
-
-    /// return a new execution controller
-    fn get_controller(&self) -> Box<dyn ExecutionController> {
-        Box::new(self.controller.clone())
+        info!("execution controller stopped");
     }
 }

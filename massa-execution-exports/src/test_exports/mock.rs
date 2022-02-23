@@ -133,4 +133,8 @@ impl ExecutionController for MockExecutionController {
             .unwrap();
         response_rx.recv().unwrap()
     }
+
+    fn clone_box(&self) -> Box<dyn ExecutionController> {
+        Box::new(self.clone())
+    }
 }

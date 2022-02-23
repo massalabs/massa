@@ -9,12 +9,12 @@
 //! # Usage
 //!
 //! When an execution worker is launched to run in a separate thread for the whole duration of the process,
-//! an instance of ExecutionManager is returned (see the documentation of start_execution_worker in massa-execution-worker).
+//! an instance of ExecutionManager is returned (see the documentation of start_execution_worker in massa-execution-worker),
+//! as well as an instance of ExecutionController.
 //!
-//! ExecutionManager allows stopping the execution worker thread,
-//! but it also allows generating as many instances of ExecutionController as necessary.
+//! The non-clonable ExecutionManager allows stopping the execution worker thread.
 //!
-//! Each ExecutionController allows sending updates on the latest blockclique changes to the execution worker
+//! The clonable ExecutionController allows sending updates on the latest blockclique changes to the execution worker
 //! for it to keep track of them and execute the operations present in blocks.
 //! It also allows various read-only queries such as executing bytecode
 //! while ignoring all the changes it would cause to the consensus state (read-only execution),

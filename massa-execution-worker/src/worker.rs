@@ -8,7 +8,8 @@
 use crate::controller::{ExecutionControllerImpl, ExecutionManagerImpl, VMInputData};
 use crate::execution::ExecutionState;
 use massa_execution_exports::{
-    ExecutionConfig, ExecutionError, ExecutionManager, ExecutionOutput, ReadOnlyExecutionRequest,
+    ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
+    ReadOnlyExecutionRequest,
 };
 use massa_ledger::FinalLedger;
 use massa_models::BlockId;
@@ -479,29 +480,33 @@ impl ExecutionThread {
 /// * final_ledger: a thread-safe shared access to the final ledger for reading and writing
 ///
 /// # Returns
-/// An instance of ExecutionManager allowing to stop the worker or generate ExecutionController instances,
-/// which are used to send requests and notifications to the worker.
+/// A pair (execution_manager, execution_controller) where:
+/// * execution_manager allows to stop the worker
+/// * execution_controller allows sending requests and notifications to the worker
 pub fn start_execution_worker(
     config: ExecutionConfig,
     final_ledger: Arc<RwLock<FinalLedger>>,
-) -> Box<dyn ExecutionManager> {
+) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     // create an execution state
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
         final_ledger,
     )));
 
+    // define the input data interface
+    let input_data = Arc::new((
+        Condvar::new(),
+        Mutex::new(VMInputData {
+            // notify of a blockclique change to run one initialization loop itration
+            blockclique_changed: true,
+            ..Default::default()
+        }),
+    ));
+
     // create a controller
     let controller = ExecutionControllerImpl {
         config: config.clone(),
-        input_data: Arc::new((
-            Condvar::new(),
-            Mutex::new(VMInputData {
-                // ntify of a blockclique change to run one initialization loop itration
-                blockclique_changed: true,
-                ..Default::default()
-            }),
-        )),
+        input_data: input_data.clone(),
         execution_state: execution_state.clone(),
     };
 
@@ -511,9 +516,12 @@ pub fn start_execution_worker(
         ExecutionThread::new(config, ctl, execution_state).main_loop();
     });
 
-    // return the execution manager
-    Box::new(ExecutionManagerImpl {
-        controller,
+    // create a manager
+    let manager = ExecutionManagerImpl {
+        input_data,
         thread_handle: Some(thread_handle),
-    })
+    };
+
+    // return the execution manager and controller pair
+    (Box::new(manager), Box::new(controller))
 }

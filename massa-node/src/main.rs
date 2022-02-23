@@ -143,7 +143,8 @@ async fn launch() -> (
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
     };
-    let execution_manager = start_execution_worker(execution_config, final_ledger.clone());
+    let (execution_manager, execution_controller) =
+        start_execution_worker(execution_config, final_ledger.clone());
 
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
     // launch consensus controller
@@ -151,7 +152,7 @@ async fn launch() -> (
         start_consensus_controller(
             consensus_config.clone(),
             ConsensusChannels {
-                execution_controller: execution_manager.get_controller(),
+                execution_controller: execution_controller.clone(),
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
                 pool_command_sender: pool_command_sender.clone(),
@@ -181,7 +182,7 @@ async fn launch() -> (
     let (api_private, api_private_stop_rx) = API::<Private>::new(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
-        execution_manager.get_controller(),
+        execution_controller.clone(),
         &SETTINGS.api,
         consensus_config.clone(),
     );
@@ -190,7 +191,7 @@ async fn launch() -> (
     // spawn public API
     let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
-        execution_manager.get_controller(),
+        execution_controller.clone(),
         &SETTINGS.api,
         consensus_config,
         pool_command_sender.clone(),

@@ -60,16 +60,25 @@ pub trait ExecutionController: Send + Sync {
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ExecutionOutput, ExecutionError>;
+
+    /// Returns a boxed clone of self.
+    /// Useful to alow cloning Box<dyn ExecutionController>.
+    fn clone_box(&self) -> Box<dyn ExecutionController>;
 }
 
-/// Execution manager used to generate controllers and to stop the execution thread
+/// Allow cloning Box<dyn ExecutionController>
+/// Uses ExecutionController::clone_box internally
+impl Clone for Box<dyn ExecutionController> {
+    fn clone(&self) -> Box<dyn ExecutionController> {
+        self.clone_box()
+    }
+}
+
+/// Execution manager used to stop the execution thread
 pub trait ExecutionManager {
     /// Stop the execution thread
     /// Note that we do not take self by value to consume it
     /// because it is not allowed to move out of Box<dyn ExecutionManager>
     /// This will improve if the `unsized_fn_params` feature stabilizes enough to be safely usable.
     fn stop(&mut self);
-
-    /// Get a new execution controller
-    fn get_controller(&self) -> Box<dyn ExecutionController>;
 }
