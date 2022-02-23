@@ -33,7 +33,7 @@ macro_rules! context_guard {
 pub(crate) struct InterfaceImpl {
     /// execution config
     config: ExecutionConfig,
-    /// thread-safe sared access to the execution context (see context.rs)
+    /// thread-safe shared access to the execution context (see context.rs)
     context: Arc<Mutex<ExecutionContext>>,
 }
 
