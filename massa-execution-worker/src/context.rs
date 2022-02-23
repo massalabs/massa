@@ -208,7 +208,8 @@ impl ExecutionContext {
         // Add a marker to the seed indicating that we are in active mode
         // to prevent random draw collisions with read-only executions
         seed.push(1u8); // 1u8 = active
-                        // For more deterministic entropy, seed with the block ID if any
+
+        // For more deterministic entropy, seed with the block ID if any
         if let Some(block_id) = &opt_block_id {
             seed.extend(block_id.to_bytes()); // append block ID
         }
