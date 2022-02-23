@@ -25,7 +25,7 @@ use std::{
 };
 use tracing::debug;
 
-/// Used to lock the execution context for exclusive access
+/// Used to acquire a lock on the execution context
 macro_rules! context_guard {
     ($self:ident) => {
         $self
@@ -256,7 +256,7 @@ impl ExecutionState {
         // prepare the current slot context for executing the operation
         let context_snapshot;
         {
-            // get exclusive write access to the contex
+            // acquire write access to the context
             let mut context = context_guard!(self);
 
             // Use the context to credit the producer of the block with max_gas * gas_price parallel coins.

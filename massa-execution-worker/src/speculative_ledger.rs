@@ -11,14 +11,14 @@ use massa_ledger::{Applicable, FinalLedger, LedgerChanges};
 use massa_models::{Address, Amount};
 use std::sync::{Arc, RwLock};
 
-/// The SpeculativeLedger contains an exclusive reference to the final ledger (read-only),
+/// The SpeculativeLedger contains an thread-safe shared reference to the final ledger (read-only),
 /// a list of existing changes that happened o the ledger since its finality,
 /// as well as an extra list of "added" changes.
 /// The SpeculativeLedger makes it possible to transparently manipulate a virtual ledger
 /// that takes into account all those ledger changes and allows adding more
 /// while keeping track of all the newly added changes, and never writing in the final ledger.
 pub struct SpeculativeLedger {
-    /// Exclusive access to the final ledger. For reading only.
+    /// Thread-safe shared access to the final ledger. For reading only.
     final_ledger: Arc<RwLock<FinalLedger>>,
 
     /// Accumulation of changes that previously happened to the ledger since finality.
@@ -37,7 +37,7 @@ impl SpeculativeLedger {
     /// creates a new SpeculativeLedger
     ///
     /// # Arguments
-    /// * final_ledger: exclusive access to the final ledger (for reading only)
+    /// * final_ledger: thread-safe shared access to the final ledger (for reading only)
     /// * previous_changes: accumulation of changes that previously happened to the ledger since finality
     pub fn new(final_ledger: Arc<RwLock<FinalLedger>>, previous_changes: LedgerChanges) -> Self {
         SpeculativeLedger {

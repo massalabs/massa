@@ -35,7 +35,7 @@ macro_rules! context_guard {
 pub(crate) struct InterfaceImpl {
     /// execution config
     config: ExecutionConfig,
-    /// exclusive access to the execution context (see context.rs)
+    /// thread-safe sared access to the execution context (see context.rs)
     context: Arc<Mutex<ExecutionContext>>,
 }
 
@@ -44,7 +44,7 @@ impl InterfaceImpl {
     ///
     /// # Arguments
     /// * config: execution config
-    /// * context: exclusive access to the current execution context (see context.rs)
+    /// * context: thread-safe shared access to the current execution context (see context.rs)
     pub fn new(config: ExecutionConfig, context: Arc<Mutex<ExecutionContext>>) -> InterfaceImpl {
         InterfaceImpl { config, context }
     }

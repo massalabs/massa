@@ -55,7 +55,7 @@ impl ExecutionThread {
     /// # Arguments
     /// * config: execution config
     /// * controller: a copy of the ExecutionController to get incoming requests from
-    /// * execution_state: an exclusive reference to the execution state, which can be bootstrapped or newly created
+    /// * execution_state: an thread-safe shared access to the execution state, which can be bootstrapped or newly created
     pub fn new(
         config: ExecutionConfig,
         controller: ExecutionControllerImpl,
@@ -505,7 +505,7 @@ impl ExecutionThread {
 ///
 /// # parameters
 /// * config: execution config
-/// * final_ledger: a reference to the final ledger for shared reading and exclusive writing
+/// * final_ledger: a thread-safe shared access to the final ledger for reading and writing
 ///
 /// # Returns
 /// An instance of ExecutionManager allowing to stop the worker or generate ExecutionController instances,
