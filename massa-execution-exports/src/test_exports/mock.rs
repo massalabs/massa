@@ -108,7 +108,10 @@ impl ExecutionController for MockExecutionController {
         response_rx.recv().unwrap()
     }
 
-    fn get_full_ledger_entry(&self, addr: &Address) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
+    fn get_final_and_active_ledger_entry(
+        &self,
+        addr: &Address,
+    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()

@@ -112,8 +112,13 @@ impl ExecutionController for ExecutionControllerImpl {
     ///
     /// # return value
     /// * (final_entry, active_entry)
-    fn get_full_ledger_entry(&self, addr: &Address) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
-        self.execution_state.read().get_full_ledger_entry(addr)
+    fn get_final_and_active_ledger_entry(
+        &self,
+        addr: &Address,
+    ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
+        self.execution_state
+            .read()
+            .get_final_and_active_ledger_entry(addr)
     }
 
     /// Executes a readonly request

@@ -425,7 +425,12 @@ impl Endpoints for API<Public> {
             let mut sce_ledger_info: Map<Address, SCELedgerInfo> =
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
             for addr in &addresses {
-                let active_entry = match self.0.execution_controller.get_full_ledger_entry(addr).1 {
+                let active_entry = match self
+                    .0
+                    .execution_controller
+                    .get_final_and_active_ledger_entry(addr)
+                    .1
+                {
                     None => continue,
                     Some(v) => SCELedgerInfo {
                         balance: v.parallel_balance,

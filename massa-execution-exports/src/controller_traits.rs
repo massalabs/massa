@@ -42,11 +42,14 @@ pub trait ExecutionController: Send + Sync {
         original_operation_id: Option<OperationId>,
     ) -> Vec<SCOutputEvent>;
 
-    /// Get a copy of a full ledger entry
+    /// Get a copy of a full ledger entry with its final and active values
     ///
     /// # return value
     /// * (final_entry, active_entry)
-    fn get_full_ledger_entry(&self, addr: &Address) -> (Option<LedgerEntry>, Option<LedgerEntry>);
+    fn get_final_and_active_ledger_entry(
+        &self,
+        addr: &Address,
+    ) -> (Option<LedgerEntry>, Option<LedgerEntry>);
 
     /// Execute read-only bytecode without causing modifications to the consensus state
     ///

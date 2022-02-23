@@ -421,7 +421,7 @@ impl ExecutionState {
     ///
     /// # returns
     /// (final_entry, active_entry)
-    pub fn get_full_ledger_entry(
+    pub fn get_final_and_active_ledger_entry(
         &self,
         addr: &Address,
     ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
