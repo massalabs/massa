@@ -135,6 +135,7 @@ pub trait Endpoints {
 
     /// whitelist given IP address.
     /// No confirmation to expect.
+    /// Note: If the ip was unknown it adds it to the known peers, otherwise it updates the peer type
     #[rpc(name = "node_whitelist")]
     fn node_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
 
