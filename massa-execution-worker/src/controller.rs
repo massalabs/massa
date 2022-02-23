@@ -61,7 +61,7 @@ impl ExecutionController for ExecutionControllerImpl {
     ///
     /// # arguments
     /// * finalized_blocks: list of newly finalized blocks to be appended to the input finalized blocks
-    /// * blockclique: new blockclique, replaces the curren one in the input
+    /// * blockclique: new blockclique, replaces the current one in the input
     fn update_blockclique_status(
         &self,
         finalized_blocks: Map<BlockId, Block>,
