@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::{BLOCK_ID_SIZE_BYTES, SLOT_KEY_SIZE};
 use crate::prehash::{Map, PreHashed, Set};
