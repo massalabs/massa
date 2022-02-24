@@ -448,8 +448,8 @@ impl ExecutionThread {
 
         // the execution worker is stopping:
         // signal cancellation to all remaining read-only execution requests waiting for an MPSC response
-        let mut input_data = self.input_data.1.lock();
-        for (_req, resp_tx) in input_data.readonly_requests.drain(..) {
+        let readonly_requests = std::mem::take(&mut self.input_data.1.lock().readonly_requests);
+        for (_req, resp_tx) in readonly_requests.into_iter() {
             if resp_tx
                 .send(Err(ExecutionError::RuntimeError(
                     "readonly execution cancelled because VM is closing".into(),
