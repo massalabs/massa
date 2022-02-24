@@ -49,13 +49,6 @@ pub struct ExecutionControllerImpl {
     pub(crate) execution_state: Arc<RwLock<ExecutionState>>,
 }
 
-impl ExecutionControllerImpl {
-    /// consumes and returns the input fed to the controller
-    pub(crate) fn consume_input(&mut self) -> VMInputData {
-        std::mem::take(&mut self.input_data.1.lock())
-    }
-}
-
 impl ExecutionController for ExecutionControllerImpl {
     /// called to signal changes on the current blockclique, also listing newly finalized blocks
     ///

@@ -27,8 +27,8 @@ use tracing::debug;
 pub(crate) struct ExecutionThread {
     // Execution config
     config: ExecutionConfig,
-    // A copy of the controller allowing access to incoming requests
-    controller: ExecutionControllerImpl,
+    /// Incoming Vm inputs.
+    input_data: Arc<(Condvar, Mutex<VMInputData>)>,
     // Map of final slots not executed yet but ready for execution
     // See lib.rs for an explanation on final execution ordering.
     ready_final_slots: HashMap<Slot, Option<(BlockId, Block)>>,
@@ -57,7 +57,7 @@ impl ExecutionThread {
     /// * execution_state: an thread-safe shared access to the execution state, which can be bootstrapped or newly created
     pub fn new(
         config: ExecutionConfig,
-        controller: ExecutionControllerImpl,
+        input_data: Arc<(Condvar, Mutex<VMInputData>)>,
         execution_state: Arc<RwLock<ExecutionState>>,
     ) -> Self {
         // get the latest executed final slot, at the output of which the final ledger is attached
@@ -66,7 +66,7 @@ impl ExecutionThread {
         // create and return the ExecutionThread
         ExecutionThread {
             last_active_slot: final_cursor,
-            controller,
+            input_data,
             last_ready_final_slot: final_cursor,
             ready_final_slots: Default::default(),
             pending_final_blocks: Default::default(),
@@ -367,7 +367,7 @@ impl ExecutionThread {
     pub fn main_loop(&mut self) {
         loop {
             // read input requests
-            let input_data = self.controller.consume_input();
+            let input_data = std::mem::take(&mut *self.input_data.1.lock());
 
             // check for stop signal
             if input_data.stop {
@@ -427,7 +427,7 @@ impl ExecutionThread {
             }
 
             // Peek into the input data to see if new input arrived during this iteration of the loop
-            let mut input_data = self.controller.input_data.1.lock();
+            let mut input_data = self.input_data.1.lock();
             if input_data.stop {
                 // there is a request to stop: quit the loop
                 break;
@@ -451,7 +451,6 @@ impl ExecutionThread {
             // Note: spurious wake-ups are not a problem:
             // the next loop iteration will just do nohing and come back to wait here.
             let _res = self
-                .controller
                 .input_data
                 .0
                 .wait_for(&mut input_data, time_until_next_slot.to_duration());
@@ -459,7 +458,7 @@ impl ExecutionThread {
 
         // the execution worker is stopping:
         // signal cancellation to all remaining read-only execution requests waiting for an MPSC response
-        let mut input_data = self.controller.input_data.1.lock();
+        let mut input_data = self.input_data.1.lock();
         for (_req, resp_tx) in input_data.readonly_requests.drain(..) {
             if resp_tx
                 .send(Err(ExecutionError::RuntimeError(
@@ -511,9 +510,9 @@ pub fn start_execution_worker(
     };
 
     // launch the execution thread
-    let ctl = controller.clone();
+    let input_data_clone = input_data.clone();
     let thread_handle = std::thread::spawn(move || {
-        ExecutionThread::new(config, ctl, execution_state).main_loop();
+        ExecutionThread::new(config, input_data_clone, execution_state).main_loop();
     });
 
     // create a manager
