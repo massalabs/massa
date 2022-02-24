@@ -21,15 +21,13 @@ use tracing::info;
 
 /// structure used to communicate with execution thread
 #[derive(Default)]
-pub(crate) struct VMInputData {
+pub(crate) struct ExecutionInputData {
     /// set stop to true to stop the thread
     pub stop: bool,
-    /// signal whether the blockclique changed
-    pub blockclique_changed: bool,
     /// list of newly finalized blocks, indexed by slot
     pub finalized_blocks: HashMap<Slot, (BlockId, Block)>,
-    /// blockclique, blocks indexed by slot
-    pub blockclique: HashMap<Slot, (BlockId, Block)>,
+    /// new blockclique (if there is a new one), blocks indexed by slot
+    pub new_blockclique: Option<HashMap<Slot, (BlockId, Block)>>,
     /// queue for readonly execution requests and response mpscs to send back their outputs
     pub readonly_requests: VecDeque<(
         ReadOnlyExecutionRequest,
@@ -44,16 +42,9 @@ pub struct ExecutionControllerImpl {
     pub(crate) config: ExecutionConfig,
     /// input data to process in the VM loop
     /// with a wakeup condition variable that needs to be triggered when the data changes
-    pub(crate) input_data: Arc<(Condvar, Mutex<VMInputData>)>,
+    pub(crate) input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     /// current execution state (see execution.rs for details)
     pub(crate) execution_state: Arc<RwLock<ExecutionState>>,
-}
-
-impl ExecutionControllerImpl {
-    /// consumes and returns the input fed to the controller
-    pub(crate) fn consume_input(&mut self) -> VMInputData {
-        std::mem::take(&mut self.input_data.1.lock())
-    }
 }
 
 impl ExecutionController for ExecutionControllerImpl {
@@ -79,9 +70,8 @@ impl ExecutionController for ExecutionControllerImpl {
             .collect();
         // update input data
         let mut input_data = self.input_data.1.lock();
-        input_data.blockclique = mapped_blockclique; // replace blockclique
+        input_data.new_blockclique = Some(mapped_blockclique); // replace blockclique
         input_data.finalized_blocks.extend(mapped_finalized_blocks); // append finalized blocks
-        input_data.blockclique_changed = true; // signal a blockclique change
         self.input_data.0.notify_one(); // wake up VM loop
     }
 
@@ -171,7 +161,7 @@ impl ExecutionController for ExecutionControllerImpl {
 pub struct ExecutionManagerImpl {
     /// input data to process in the VM loop
     /// with a wakeup condition variable that needs to be triggered when the data changes
-    pub(crate) input_data: Arc<(Condvar, Mutex<VMInputData>)>,
+    pub(crate) input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     /// handle used to join the worker thread
     pub(crate) thread_handle: Option<std::thread::JoinHandle<()>>,
 }

@@ -5,7 +5,7 @@
 //! orders active and final blocks in queues sorted by increasing slot number,
 //! and requests the execution of active and final slots from execution.rs.
 
-use crate::controller::{ExecutionControllerImpl, ExecutionManagerImpl, VMInputData};
+use crate::controller::{ExecutionControllerImpl, ExecutionInputData, ExecutionManagerImpl};
 use crate::execution::ExecutionState;
 use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
@@ -28,8 +28,8 @@ use tracing::debug;
 pub(crate) struct ExecutionThread {
     // Execution config
     config: ExecutionConfig,
-    // A copy of the controller allowing access to incoming requests
-    controller: ExecutionControllerImpl,
+    // A copy of the input data allowing access to incoming requests
+    input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     // Map of final slots not executed yet but ready for execution
     // See lib.rs for an explanation on final execution ordering.
     ready_final_slots: HashMap<Slot, Option<(BlockId, Block)>>,
@@ -59,11 +59,11 @@ impl ExecutionThread {
     ///
     /// # Arguments
     /// * config: execution config
-    /// * controller: a copy of the ExecutionController to get incoming requests from
+    /// * input_data: a copy of the input data interface to get incoming requests from
     /// * execution_state: an thread-safe shared access to the execution state, which can be bootstrapped or newly created
     pub fn new(
         config: ExecutionConfig,
-        controller: ExecutionControllerImpl,
+        input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
         execution_state: Arc<RwLock<ExecutionState>>,
     ) -> Self {
         // get the latest executed final slot, at the output of which the final ledger is attached
@@ -72,7 +72,7 @@ impl ExecutionThread {
         // create and return the ExecutionThread
         ExecutionThread {
             last_active_slot: final_cursor,
-            controller,
+            input_data,
             last_ready_final_slot: final_cursor,
             ready_final_slots: Default::default(),
             pending_final_blocks: Default::default(),
@@ -411,7 +411,7 @@ impl ExecutionThread {
         // 3 - read-only executions
         loop {
             // read input requests
-            let input_data = self.controller.consume_input();
+            let input_data: ExecutionInputData = std::mem::take(&mut self.input_data.1.lock());
 
             // check for stop signal
             if input_data.stop {
@@ -421,11 +421,9 @@ impl ExecutionThread {
             // update the sequence of final slots given the newly finalized blocks
             self.update_final_slots(input_data.finalized_blocks);
 
-            // if the blockclique has changed
-            if input_data.blockclique_changed {
-                // update the sequence of active slots given the new blockclique
-                self.update_active_slots(Some(input_data.blockclique));
-            }
+            // update the sequence of active slots
+            let blockclique_changed = input_data.new_blockclique.is_some();
+            self.update_active_slots(input_data.new_blockclique);
 
             // update the sequence of read-only requests
             self.update_readonly_requests(input_data.readonly_requests);
@@ -440,17 +438,11 @@ impl ExecutionThread {
 
             // now all the slots that were ready for final execution have been executed as final
 
-            // if the blockclique was not updated, the update_active_slots hasn't been called previously.
-            // But we still fill up active slots with misses until now() so we call it with None as argument.
-            if !input_data.blockclique_changed {
-                self.update_active_slots(None);
-            }
-
             // If the blockclique has changed, the list of active slots might have seen
             // new insertions/deletions of blocks at different slot depths.
             // It is therefore important to signal this to the execution state,
             // so that it can remove out-of-date speculative execution results from its history.
-            if input_data.blockclique_changed {
+            if blockclique_changed {
                 self.truncate_execution_history();
             }
 
@@ -460,6 +452,8 @@ impl ExecutionThread {
                 continue;
             }
 
+            // now all the slots that were ready for final and active execution have been executed
+
             // Execute a read-only request (note that the queue is of finite length), if there is one ready.
             // This must be done in this loop because even though read-only executions do not alter consensus state,
             // they still act temporarily on the static shared execution context.
@@ -468,13 +462,15 @@ impl ExecutionThread {
                 continue;
             }
 
+            // now there are no more executions to run
+
             // Peek into the input data to see if new input arrived during this iteration of the loop
-            let mut input_data = self.controller.input_data.1.lock();
+            let mut input_data = self.input_data.1.lock();
             if input_data.stop {
                 // there is a request to stop: quit the loop
                 break;
             }
-            if input_data.blockclique_changed || !input_data.readonly_requests.is_empty() {
+            if input_data.new_blockclique.is_some() || !input_data.readonly_requests.is_empty() {
                 // there are blockclique updates or read-only requests: restart the loop
                 continue;
             }
@@ -493,7 +489,6 @@ impl ExecutionThread {
             // Note: spurious wake-ups are not a problem:
             // the next loop iteration will just do nohing and come back to wait here.
             let _res = self
-                .controller
                 .input_data
                 .0
                 .wait_for(&mut input_data, time_until_next_slot.to_duration());
@@ -502,7 +497,7 @@ impl ExecutionThread {
         // The execution worker is stopping:
         // signal cancellation to all remaining read-only execution requests waiting for an MPSC response
         // (both in input_data and in the internal queue)
-        let mut input_data = self.controller.input_data.1.lock();
+        let mut input_data = self.input_data.1.lock();
         let request_iterator = self
             .readonly_requests
             .drain(..)
@@ -541,14 +536,7 @@ pub fn start_execution_worker(
     )));
 
     // define the input data interface
-    let input_data = Arc::new((
-        Condvar::new(),
-        Mutex::new(VMInputData {
-            // notify of a blockclique change to run one initialization loop itration
-            blockclique_changed: true,
-            ..Default::default()
-        }),
-    ));
+    let input_data = Arc::new((Condvar::new(), Mutex::new(ExecutionInputData::default())));
 
     // create a controller
     let controller = ExecutionControllerImpl {
@@ -558,9 +546,9 @@ pub fn start_execution_worker(
     };
 
     // launch the execution thread
-    let ctl = controller.clone();
+    let input_data_clone = input_data.clone();
     let thread_handle = std::thread::spawn(move || {
-        ExecutionThread::new(config, ctl, execution_state).main_loop();
+        ExecutionThread::new(config, input_data_clone, execution_state).main_loop();
     });
 
     // create a manager
