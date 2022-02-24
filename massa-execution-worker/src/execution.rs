@@ -372,7 +372,7 @@ impl ExecutionState {
         context_guard!(self).take_execution_output()
     }
 
-    /// Execues a read-only execution request.
+    /// Executes a read-only execution request.
     /// The executed bytecode appears to be able to read and write the consensus state,
     /// but all accumulated changes are simply returned as an ExecutionOutput object,
     /// and not actually applied to the consensus state.
