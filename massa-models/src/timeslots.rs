@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! warning: assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
 
