@@ -137,10 +137,6 @@
     # Timeout duration when in handshake we respond with a PeerList
     # (on max in connection reached we send a list of peers)
     peer_list_send_timeout = 100
-
-    # Timeout duration when in handshake we respond with a PeerList
-    # (on max in connection reached we send a list of peers)
-    peer_list_send_timeout = 100
     # Max number of in connection overflowed managed by the handshake
     # that send a list of peers
     max_in_connection_overflow = 100
