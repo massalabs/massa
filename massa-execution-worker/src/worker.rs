@@ -19,6 +19,7 @@ use massa_models::{
 };
 use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
+use std::collections::VecDeque;
 use std::sync::mpsc;
 use std::{collections::HashMap, sync::Arc};
 use tracing::debug;
@@ -45,6 +46,11 @@ pub(crate) struct ExecutionThread {
     last_active_slot: Slot,
     // Execution state (see execution.rs) to which execution requests are sent
     execution_state: Arc<RwLock<ExecutionState>>,
+    /// queue for readonly execution requests and response mpscs to send back their outputs
+    readonly_requests: VecDeque<(
+        ReadOnlyExecutionRequest,
+        mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
+    )>,
 }
 
 impl ExecutionThread {
@@ -74,6 +80,7 @@ impl ExecutionThread {
             active_slots: Default::default(),
             config,
             execution_state,
+            readonly_requests: Default::default(),
         }
     }
 
@@ -344,27 +351,64 @@ impl ExecutionThread {
         exec_state.truncate_history(&self.active_slots);
     }
 
-    /// Executes a read-only request, and asynchronously returns the result once finished.
-    ///
-    /// # Arguments
-    /// * req: read-only execution request parameters
-    /// * resp_tx: MPSC sender through which the execution output is sent when the execution is over
-    fn execute_readonly_request(
-        &self,
-        req: ReadOnlyExecutionRequest,
-        resp_tx: mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
+    /// Append incoming read-only requests to the relevant queue,
+    /// Cancel those that are in excess if there are too many.
+    fn update_readonly_requests(
+        &mut self,
+        new_requests: VecDeque<(
+            ReadOnlyExecutionRequest,
+            mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
+        )>,
     ) {
-        // acquire read access to execution state and execute the read-only request
-        let outcome = self.execution_state.read().execute_readonly_request(req);
+        // append incoming readonly requests to our readonly request queue
+        self.readonly_requests.extend(new_requests);
 
-        // send the execution output through resp_tx
-        if resp_tx.send(outcome).is_err() {
-            debug!("could not send execute_readonly_request response: response channel died");
+        // if there are too many requests, cancel those in excess
+        if self.readonly_requests.len() > self.config.readonly_queue_length {
+            for (_req, resp_tx) in self
+                .readonly_requests
+                .drain(self.config.readonly_queue_length..)
+            {
+                // send a message to the requests in excess to signal the cancelling
+                if resp_tx
+                    .send(Err(ExecutionError::RuntimeError(
+                        "too many queued readonly requests".into(),
+                    )))
+                    .is_err()
+                {
+                    debug!("failed sending readonly request response: channel down");
+                }
+            }
         }
+    }
+
+    /// Executes a read-only request from the queue, if any.
+    /// The result of the execution is sent asynchronously through the response channel provided with the request.
+    ///
+    /// # Returns
+    /// true if a request was executed, false otherwise
+    fn execute_one_readonly_request(&mut self) -> bool {
+        if let Some((req, resp_tx)) = self.readonly_requests.pop_front() {
+            // acquire read access to the execution state and execute the read-only request
+            let outcome = self.execution_state.read().execute_readonly_request(req);
+
+            // send the execution output through resp_tx
+            if resp_tx.send(outcome).is_err() {
+                debug!("could not send execute_readonly_request response: response channel died");
+            }
+
+            return true;
+        }
+        false
     }
 
     /// Main loop of the executin worker
     pub fn main_loop(&mut self) {
+        // This loop restarts everytime an execution happens for easier tracking.
+        // It also prioritizes executions in the following order:
+        // 1 - final executions
+        // 2 - speculative executions
+        // 3 - read-only executions
         loop {
             // read input requests
             let input_data = self.controller.consume_input();
@@ -382,6 +426,9 @@ impl ExecutionThread {
                 // update the sequence of active slots given the new blockclique
                 self.update_active_slots(Some(input_data.blockclique));
             }
+
+            // update the sequence of read-only requests
+            self.update_readonly_requests(input_data.readonly_requests);
 
             // execute one slot as final, if there is one ready for final execution
             if self.execute_one_final_slot() {
@@ -410,20 +457,15 @@ impl ExecutionThread {
             // Execute one active slot in a speculative way, if there is one ready for that
             if self.execute_one_active_slot() {
                 // An active slot was executed: restart the loop
-                // This loop continue is useful for monitoring:
-                // it allows tracking the state of all execution queues,
-                // as well as prioritizing executions in the following order:
-                // 1 - final executions
-                // 2 - speculative executions
-                // 3 - read-only executions
                 continue;
             }
 
-            // Execute all queued readonly requests (note that the queue is of finite length)
+            // Execute a read-only request (note that the queue is of finite length), if there is one ready.
             // This must be done in this loop because even though read-only executions do not alter consensus state,
             // they still act temporarily on the static shared execution context.
-            for (req, resp_tx) in input_data.readonly_requests {
-                self.execute_readonly_request(req, resp_tx);
+            if self.execute_one_readonly_request() {
+                // a read-only request was executed: restart the loop
+                continue;
             }
 
             // Peek into the input data to see if new input arrived during this iteration of the loop
@@ -457,10 +499,15 @@ impl ExecutionThread {
                 .wait_for(&mut input_data, time_until_next_slot.to_duration());
         }
 
-        // the execution worker is stopping:
+        // The execution worker is stopping:
         // signal cancellation to all remaining read-only execution requests waiting for an MPSC response
+        // (both in input_data and in the internal queue)
         let mut input_data = self.controller.input_data.1.lock();
-        for (_req, resp_tx) in input_data.readonly_requests.drain(..) {
+        let request_iterator = self
+            .readonly_requests
+            .drain(..)
+            .chain(input_data.readonly_requests.drain(..));
+        for (_req, resp_tx) in request_iterator {
             if resp_tx
                 .send(Err(ExecutionError::RuntimeError(
                     "readonly execution cancelled because VM is closing".into(),
