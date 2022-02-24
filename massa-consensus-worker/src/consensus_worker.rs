@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 use massa_consensus_exports::{
     commands::ConsensusCommand,
     error::{ConsensusError, ConsensusResult as Result},

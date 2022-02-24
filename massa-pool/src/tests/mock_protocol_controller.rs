@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::prehash::Map;
 use massa_models::{constants::CHANNEL_SIZE, Endorsement, EndorsementId, Operation, OperationId};
