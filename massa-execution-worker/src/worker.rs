@@ -363,6 +363,13 @@ impl ExecutionThread {
         }
     }
 
+    /// Critical section on `self.input_data`.
+    /// Returns `None` for shutdown.
+    /// and `Some(VMInputData)` if:
+    /// - We are at the next active slot.
+    /// - The blockclique changed.
+    /// - There are read-only requests pending.
+    /// Otherwise waits on the condvar for either of the above.
     fn wait_for_next_input(&mut self) -> Option<VMInputData> {
         let mut input_data = self.input_data.1.lock();
         loop {
@@ -389,10 +396,10 @@ impl ExecutionThread {
         }
     }
 
-    /// Main loop of the executin worker
+    /// Main loop of the worker.
     pub fn main_loop(&mut self) {
         loop {
-            // read input requests
+            // Wait for the next input, or slot.
             let input_data = match self.wait_for_next_input() {
                 Some(input_data) => input_data,
                 None => break,
