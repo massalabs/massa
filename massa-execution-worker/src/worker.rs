@@ -363,16 +363,40 @@ impl ExecutionThread {
         }
     }
 
+    fn wait_for_next_input(&mut self) -> Option<VMInputData> {
+        let mut input_data = self.input_data.1.lock();
+        loop {
+            // check for stop signal
+            if input_data.stop {
+                return None;
+            }
+
+            // Compute when the next slot will be
+            // This is useful to wait for the next speculative miss to append to active slots.
+            let time_until_next_slot = self.get_time_until_next_active_slot();
+
+            if input_data.blockclique_changed
+                || !input_data.readonly_requests.is_empty()
+                || time_until_next_slot == 0.into()
+            {
+                return Some(std::mem::take(&mut *input_data));
+            } else {
+                // Wait to be notified of new input, for at most time_until_next_slot.
+                self.input_data
+                    .0
+                    .wait_for(&mut input_data, time_until_next_slot.to_duration());
+            }
+        }
+    }
+
     /// Main loop of the executin worker
     pub fn main_loop(&mut self) {
         loop {
             // read input requests
-            let input_data = std::mem::take(&mut *self.input_data.1.lock());
-
-            // check for stop signal
-            if input_data.stop {
-                break;
-            }
+            let input_data = match self.wait_for_next_input() {
+                Some(input_data) => input_data,
+                None => break,
+            };
 
             // if the blockclique has changed
             if input_data.blockclique_changed {
@@ -381,30 +405,25 @@ impl ExecutionThread {
 
                 // update the sequence of active slots given the new blockclique
                 self.update_active_slots(Some(input_data.blockclique));
-            }
 
-            // execute one slot as final, if there is one ready for final execution
-            if self.execute_one_final_slot() {
-                // A slot was executed as final: restart the loop
-                // This loop continue is useful for monitoring:
-                // it allows tracking the state of all execution queues
-                continue;
-            }
-
-            // now all the slots that were ready for final execution have been executed as final
-
-            // if the blockclique was not updated, the update_active_slots hasn't been called previously.
-            // But we still fill up active slots with misses until now() so we call it with None as argument.
-            if !input_data.blockclique_changed {
-                self.update_active_slots(None);
-            }
-
-            // If the blockclique has changed, the list of active slots might have seen
-            // new insertions/deletions of blocks at different slot depths.
-            // It is therefore important to signal this to the execution state,
-            // so that it can remove out-of-date speculative execution results from its history.
-            if input_data.blockclique_changed {
+                // execute one slot as final, if there is one ready for final execution
+                if self.execute_one_final_slot() {
+                    // A slot was executed as final: restart the loop
+                    // This loop continue is useful for monitoring:
+                    // it allows tracking the state of all execution queues
+                    continue;
+                }
+                // If the blockclique has changed, the list of active slots might have seen
+                // new insertions/deletions of blocks at different slot depths.
+                // It is therefore important to signal this to the execution state,
+                // so that it can remove out-of-date speculative execution results from its history.
                 self.truncate_execution_history();
+            } else {
+                // now all the slots that were ready for final execution have been executed as final
+
+                // if the blockclique was not updated, the update_active_slots hasn't been called previously.
+                // But we still fill up active slots with misses until now() so we call it with None as argument.
+                self.update_active_slots(None);
             }
 
             // Execute one active slot in a speculative way, if there is one ready for that
@@ -425,35 +444,6 @@ impl ExecutionThread {
             for (req, resp_tx) in input_data.readonly_requests {
                 self.execute_readonly_request(req, resp_tx);
             }
-
-            // Peek into the input data to see if new input arrived during this iteration of the loop
-            let mut input_data = self.input_data.1.lock();
-            if input_data.stop {
-                // there is a request to stop: quit the loop
-                break;
-            }
-            if input_data.blockclique_changed || !input_data.readonly_requests.is_empty() {
-                // there are blockclique updates or read-only requests: restart the loop
-                continue;
-            }
-
-            // Here, we know that there is currently nothing to do for this worker
-
-            // Compute when the next slot will be
-            // This is useful to wait for the next speculative miss to append to active slots.
-            let time_until_next_slot = self.get_time_until_next_active_slot();
-            if time_until_next_slot == 0.into() {
-                // next slot is right now: simply restart the loop
-                continue;
-            }
-
-            // Wait to be notified of new input, for at most time_until_next_slot
-            // Note: spurious wake-ups are not a problem:
-            // the next loop iteration will just do nohing and come back to wait here.
-            let _res = self
-                .input_data
-                .0
-                .wait_for(&mut input_data, time_until_next_slot.to_duration());
         }
 
         // the execution worker is stopping:
