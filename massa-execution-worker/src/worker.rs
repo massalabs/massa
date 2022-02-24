@@ -418,11 +418,11 @@ impl ExecutionThread {
                 break;
             }
 
+            // update the sequence of final slots given the newly finalized blocks
+            self.update_final_slots(input_data.finalized_blocks);
+
             // if the blockclique has changed
             if input_data.blockclique_changed {
-                // update the sequence of final slots given the newly finalized blocks
-                self.update_final_slots(input_data.finalized_blocks);
-
                 // update the sequence of active slots given the new blockclique
                 self.update_active_slots(Some(input_data.blockclique));
             }
