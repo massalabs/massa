@@ -257,7 +257,7 @@ mod tests {
             169, 202, 0, 11,
         )));
         if let Err(NetworkError::PeerConnectionError(
-            NetworkConnectionErrorType::TooManyConnectionAttempt(ip_err),
+            NetworkConnectionErrorType::TooManyConnectionAttempts(ip_err),
         )) = res
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
@@ -293,7 +293,7 @@ mod tests {
             169, 202, 0, 12,
         )));
         if let Err(NetworkError::PeerConnectionError(
-            NetworkConnectionErrorType::TooManyConnectionAttempt(ip_err),
+            NetworkConnectionErrorType::TooManyConnectionAttempts(ip_err),
         )) = res
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
@@ -451,7 +451,7 @@ mod tests {
         let res =
             db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)));
         if let Err(NetworkError::PeerConnectionError(
-            NetworkConnectionErrorType::TooManyConnectionAttempt(ip_err),
+            NetworkConnectionErrorType::TooManyConnectionAttempts(ip_err),
         )) = res
         {
             assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);

@@ -79,7 +79,7 @@ pub enum NetworkConnectionErrorType {
     /// Peer info not found for address: {0}
     PeerInfoNotFoundError(IpAddr),
     /// Too many connection attempt: {0}
-    TooManyConnectionAttempt(IpAddr),
+    TooManyConnectionAttempts(IpAddr),
     /// Too many connection failure: {0}
     TooManyConnectionFailure(IpAddr),
     /// Max connected peers reached: {0}

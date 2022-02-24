@@ -7,7 +7,7 @@ use massa_logging::massa_trace;
 use massa_models::constants::MAX_ADVERTISE_LENGTH;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
-use std::collections::{hash_map, HashMap};
+use std::collections::HashMap;
 use std::net::IpAddr;
 use std::path::Path;
 use tokio::sync::watch;
@@ -25,7 +25,7 @@ pub enum PeerType {
     Bootstrap,
     /// Connection from these nodes are always accepted
     WhiteListed,
-    /// Just a peer :pear:
+    /// Just a peer
     Standard,
 }
 
@@ -75,6 +75,8 @@ impl PeerInfo {
             || self.active_in_connections > 0
     }
 
+    /// New standard PeerInfo for ipaddr
+    /// advertized is true if peer has been advertized
     pub fn new(ip: IpAddr, advertised: bool) -> PeerInfo {
         PeerInfo {
             ip,
@@ -109,8 +111,11 @@ impl PeerInfo {
 /// Connection count for a category
 #[derive(Default, Debug)]
 pub(crate) struct ConnectionCount {
+    /// active out connection attempts
     pub(crate) active_out_connection_attempts: usize,
+    /// active out connections
     pub(crate) active_out_connections: usize,
+    /// active in connections
     pub(crate) active_in_connections: usize,
 }
 
@@ -161,7 +166,7 @@ async fn dump_peers(
 ) -> Result<(), NetworkError> {
     let peer_vec: Vec<_> = peers
         .values()
-        .filter(|v| v.advertised || v.peer_type != PeerType::Standard)
+        .filter(|v| v.advertised || v.peer_type != PeerType::Standard || v.banned)
         .collect();
 
     tokio::fs::write(file_path, serde_json::to_string_pretty(&peer_vec)?).await?;
@@ -173,7 +178,7 @@ async fn dump_peers(
 /// provided by NetworkConfig.ProtocolConfig.
 /// If opt_new_peers is provided, adds its contents as well.
 ///
-/// Note: only non-active, non-bootstrap peers are counted when clipping to size limits.
+/// Note: only standard non-active peers are counted when clipping to size limits.
 ///
 /// Arguments :
 /// * cfg : NetworkSettings
@@ -432,13 +437,17 @@ impl PeerInfoDatabase {
 
     /// Unbans a list of ip
     pub async fn unban(&mut self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+        let mut update_happened = false;
         for ip in ips.into_iter() {
             if let Some(peer) = self.peers.get_mut(&ip) {
-                peer.peer_type = Default::default();
                 peer.banned = false;
+                update_happened = true;
             } else {
-                return Ok(());
+                continue;
             }
+        }
+        if update_happened {
+            self.request_dump()?
         }
         self.update()
     }
@@ -461,7 +470,7 @@ impl PeerInfoDatabase {
         self.update_global_active_out_connection_attempt_count(
             peer_type,
             true,
-            NetworkConnectionErrorType::TooManyConnectionAttempt(*ip),
+            NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
         )?;
 
         let peer = self.peers.get_mut(ip).ok_or({
@@ -635,7 +644,7 @@ impl PeerInfoDatabase {
         self.update_global_active_out_connection_attempt_count(
             peer_type,
             false,
-            NetworkConnectionErrorType::TooManyConnectionAttempt(*ip),
+            NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
         )?;
 
         let peer = self.peers.get_mut(ip).ok_or({
@@ -645,7 +654,7 @@ impl PeerInfoDatabase {
         })?;
         if peer.active_out_connection_attempts == 0 {
             return Err(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::TooManyConnectionAttempt(*ip),
+                NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
             ));
         }
         peer.active_out_connection_attempts -= 1;
@@ -752,37 +761,29 @@ impl PeerInfoDatabase {
             ));
         }
 
-        let res = match self.peers.entry(*ip) {
-            hash_map::Entry::Occupied(mut occ) => {
-                let peer = occ.get_mut();
-                // is there a attempt slot avaible
-                if peer.banned {
-                    massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
-                    peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
-                    self.request_dump()?;
-                    Err(NetworkConnectionErrorType::BannedPeerTryingToConnect(*ip))
-                } else if peer.active_in_connections
-                    >= self.network_settings.max_in_connections_per_ip
-                {
-                    self.request_dump()?;
-                    Err(NetworkConnectionErrorType::MaxPeersConnectionReached(*ip))
-                } else {
-                    peer.active_in_connections += 1;
-                    Ok(())
-                }
-            }
-            hash_map::Entry::Vacant(vac) => {
-                let mut peer = PeerInfo::new(*ip, false);
-                if peer.active_in_connections >= self.network_settings.max_in_connections_per_ip {
-                    self.request_dump()?;
-                    Err(NetworkConnectionErrorType::MaxPeersConnectionReached(*ip))
-                } else {
-                    peer.active_in_connections += 1;
-                    vac.insert(peer);
-                    Ok(())
-                }
-            }
-        };
+        let peer = self.peers.get_mut(ip).ok_or({
+            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
+                *ip,
+            ))
+        })?; // peer was inserted just before
+
+        // is there a attempt slot avaible
+        if peer.banned {
+            massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
+            peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
+            self.request_dump()?;
+            return Err(NetworkError::PeerConnectionError(
+                NetworkConnectionErrorType::BannedPeerTryingToConnect(*ip),
+            ));
+        } else if peer.active_in_connections >= self.network_settings.max_in_connections_per_ip {
+            self.request_dump()?;
+            return Err(NetworkError::PeerConnectionError(
+                NetworkConnectionErrorType::MaxPeersConnectionReached(*ip),
+            ));
+        } else {
+            peer.active_in_connections += 1;
+        }
+
         let peer = self.get_peer_type(ip).ok_or({
             NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
                 *ip,
@@ -794,9 +795,7 @@ impl PeerInfoDatabase {
             true,
             NetworkConnectionErrorType::UnexpectedError,
         )?;
-        if let Err(res) = res {
-            return Err(NetworkError::PeerConnectionError(res));
-        }
+
         self.request_dump()?;
         Ok(())
     }
@@ -809,17 +808,17 @@ impl PeerInfoDatabase {
     /// and returns as many peers as there are available slots to attempt outgoing connections to.
     pub fn get_out_connection_candidate_ips(&self) -> Result<Vec<IpAddr>, NetworkError> {
         let mut res: Vec<_> = self
-            .get_candidate_ips_for_type(
+            .get_out_connection_candidate_ips_for_type(
                 PeerType::Bootstrap,
                 &self.bootstrap_connection_count,
                 &self.network_settings.bootstrap_peers_config,
             )?
-            .chain(self.get_candidate_ips_for_type(
+            .chain(self.get_out_connection_candidate_ips_for_type(
                 PeerType::WhiteListed,
                 &self.whitelist_connection_count,
                 &self.network_settings.whitelist_peers_config,
             )?)
-            .chain(self.get_candidate_ips_for_type(
+            .chain(self.get_out_connection_candidate_ips_for_type(
                 PeerType::Standard,
                 &self.standard_connection_count,
                 &self.network_settings.standard_peers_config,
@@ -939,7 +938,7 @@ impl PeerInfoDatabase {
     /// * cfg: settings for that peer type
     ///
     /// Returns an iterator
-    fn get_candidate_ips_for_type(
+    fn get_out_connection_candidate_ips_for_type(
         &self,
         peer_type: PeerType,
         count: &ConnectionCount,
