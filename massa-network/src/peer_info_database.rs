@@ -460,12 +460,16 @@ impl PeerInfoDatabase {
         if !ip.is_global() {
             return Err(NetworkError::InvalidIpError(*ip));
         }
-
-        let peer_type = self.get_peer_type(ip).ok_or({
-            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
-                *ip,
-            ))
-        })?;
+        let mut update_happened = false;
+        let peer_type = if let Some(p) = self.get_peer_type(ip) {
+            p
+        } else {
+            let mut p = PeerInfo::new(*ip, false);
+            p.active_out_connection_attempts += 1;
+            self.peers.insert(*ip, p);
+            update_happened = true;
+            self.get_peer_type(ip).unwrap()
+        };
 
         self.update_global_active_out_connection_attempt_count(
             peer_type,
@@ -479,6 +483,10 @@ impl PeerInfoDatabase {
             ))
         })?;
         peer.active_out_connection_attempts += 1;
+
+        if update_happened {
+            self.update()?
+        }
 
         Ok(())
     }
