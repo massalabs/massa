@@ -1,5 +1,20 @@
 // Copyright (c) 2021 MASSA LABS <info@massa.net>
 
+//! Peer management (conection counts and storage)
+//!
+//! If you wish to provide initial peers, fillup the initial_peers.json file
+//! with that kind of objects
+//! ```javascript
+//! {
+//!     "advertised": true,
+//!     "banned": false,
+//!     "peer_type": "Bootstrap", // or "WhiteListed" or "Standard"
+//!     "ip": "200.200.200.200",
+//!     "last_alive": null,
+//!     "last_failure": null
+//! },
+//!
+
 use crate::error::{NetworkConnectionErrorType, NetworkError};
 use crate::settings::{NetworkSettings, PeerTypeConnectionConfig};
 use itertools::Itertools;
