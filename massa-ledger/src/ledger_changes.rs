@@ -11,8 +11,6 @@ use std::collections::hash_map;
 /// represents an update to one or more fields of a LedgerEntry
 #[derive(Default, Debug, Clone)]
 pub struct LedgerEntryUpdate {
-    /// change the number of rolls
-    pub roll_count: SetOrKeep<u64>,
     /// change the parallel balance
     pub parallel_balance: SetOrKeep<Amount>,
     /// change the executable bytecode
@@ -24,7 +22,6 @@ pub struct LedgerEntryUpdate {
 impl Applicable<LedgerEntryUpdate> for LedgerEntryUpdate {
     /// extends the LedgerEntryUpdate with another one
     fn apply(&mut self, update: LedgerEntryUpdate) {
-        self.roll_count.apply(update.roll_count);
         self.parallel_balance.apply(update.parallel_balance);
         self.bytecode.apply(update.bytecode);
         self.datastore.extend(update.datastore);
