@@ -155,7 +155,7 @@ impl Completion for CommandCompletion {
             let mut default_path = "./";
             let path_to_complete = args.last_mut().unwrap_or(&mut default_path);
             let expanded_path = expand_path(path_to_complete);
-            *path_to_complete =  str::from_utf8(&expanded_path).unwrap_or(path_to_complete);
+            *path_to_complete = str::from_utf8(&expanded_path).unwrap_or(path_to_complete);
             if let Ok(paths) = glob(&(path_to_complete.to_owned() + "*")) {
                 let suggestions: Vec<String> = paths
                     .filter_map(|x| x.map(|path| path.display().to_string()).ok())
