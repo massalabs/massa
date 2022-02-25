@@ -163,18 +163,15 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(
-            args = "SenderAddress PathToBytecode MaxGas GasPrice Coins Fee",
-            todo = "[unstable] "
-        ),
+        props(args = "SenderAddress PathToBytecode MaxGas GasPrice Coins Fee",),
         message = "create and send an operation containing byte code"
     )]
     send_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "PathToBytecode MaxGas GasPrice Address", todo = "[unstable] "),
-        message = "execute bytecode without changing anything to the blockchain, address is optionnal."
+        props(args = "PathToBytecode MaxGas GasPrice Address",),
+        message = "execute byte code, address is optionnal. Nothing is really executed on chain"
     )]
     read_only_smart_contract,
 
