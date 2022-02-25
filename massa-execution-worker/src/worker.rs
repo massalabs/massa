@@ -451,7 +451,7 @@ impl ExecutionThread {
         // The loop needs to quit
 
         // Cancel pending readonly requests
-        let cancel_err = ExecutionError::RuntimeError(
+        let cancel_err = ExecutionError::ChannelError(
             "readonly execution cancelled because the execution worker is closing".into(),
         );
         cancel_input.readonly_requests.cancel(cancel_err.clone());
