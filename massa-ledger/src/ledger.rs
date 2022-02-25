@@ -144,6 +144,7 @@ impl FinalLedger {
     /// A clone of the whole LedgerEntry, or None if not found.
     ///
     /// TODO: in the future, never manipulate full ledger entries because their datastore can be huge
+    /// https://github.com/massalabs/massa/issues/2342
     pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
         self.sorted_ledger.get(addr).cloned()
     }

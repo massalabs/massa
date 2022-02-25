@@ -191,6 +191,7 @@ impl ExecutionState {
     /// carried by the returned SpeculativeLedger is not held.
     /// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any subentry
     /// by scanning through history from end to beginning
+    /// https://github.com/massalabs/massa/issues/2343
     pub fn get_accumulated_active_changes_at_slot(&self, slot: Slot) -> LedgerChanges {
         // check that the slot is within the reach of history
         if slot <= self.final_cursor {
@@ -417,7 +418,7 @@ impl ExecutionState {
     }
 
     /// Gets a full ledger entry both at the latest final and active executed slots
-    /// TODO: this can be heavily optimized, see comments
+    /// TODO: this can be heavily optimized, see comments and https://github.com/massalabs/massa/issues/2343
     ///
     /// # returns
     /// (final_entry, active_entry)
@@ -431,6 +432,7 @@ impl ExecutionState {
         // get cumulative active changes and apply them
         // TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it
         // also we should proceed backwards through history for performance
+        // https://github.com/massalabs/massa/issues/2343
         let active_change = self
             .get_accumulated_active_changes_at_slot(self.active_cursor)
             .get(addr)
@@ -483,6 +485,7 @@ impl ExecutionState {
             .chain(
                 // TODO note that active history is made of consecutive slots,
                 // so this algo does not need to scan all history items as iteration bounds can be derived a priori
+                // https://github.com/massalabs/massa/issues/2335
                 self.active_history
                     .iter()
                     .filter(|item| item.slot >= start && item.slot < end)

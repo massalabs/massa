@@ -58,7 +58,7 @@ impl DeserializeCompact for FinalLedgerBootstrapState {
 
         // ledger size
         let (ledger_size, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
-        // TODO cap the ledger size
+        // TODO cap the ledger size https://github.com/massalabs/massa/issues/1200
         cursor += delta;
 
         // final ledger

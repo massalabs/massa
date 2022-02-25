@@ -110,7 +110,7 @@ impl DeserializeCompact for LedgerEntry {
         let bytecode_len: usize = bytecode_len.try_into().map_err(|_| {
             ModelsError::SerializeError("could not convert bytecode size to usize".into())
         })?;
-        //TODO cap bytecode length
+        //TODO cap bytecode length https://github.com/massalabs/massa/issues/1200
         cursor += delta;
 
         // bytecode
@@ -128,7 +128,7 @@ impl DeserializeCompact for LedgerEntry {
         let datastore_len: usize = datastore_len.try_into().map_err(|_| {
             ModelsError::SerializeError("could not convert datastore size to usize".into())
         })?;
-        //TODO cap datastore length
+        //TODO cap datastore length https://github.com/massalabs/massa/issues/1200
         cursor += delta;
 
         // datastore entries
@@ -145,7 +145,7 @@ impl DeserializeCompact for LedgerEntry {
                     "could not convert datastore entry value size to usize".into(),
                 )
             })?;
-            //TODO cap value length
+            //TODO cap value length https://github.com/massalabs/massa/issues/1200
             cursor += delta;
 
             // value

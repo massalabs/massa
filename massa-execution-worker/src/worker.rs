@@ -307,7 +307,7 @@ impl ExecutionThread {
 
         // choose the execution target
         let exec_target = match self.active_slots.get(&slot) {
-            Some(b) => b.clone(), //TODO get rid of that clone
+            Some(b) => b.clone(), //TODO get rid of that clone on storage refactorig https://github.com/massalabs/massa/issues/2178
             None => return false,
         };
 
