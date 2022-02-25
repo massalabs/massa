@@ -452,7 +452,7 @@ impl ExecutionThread {
 
         // Cancel pending readonly requests
         let cancel_err = ExecutionError::RuntimeError(
-            "readonly execution cancelled because VM is closing".into(),
+            "readonly execution cancelled because the execution worker is closing".into(),
         );
         cancel_input.readonly_requests.cancel(cancel_err.clone());
         self.input_data
