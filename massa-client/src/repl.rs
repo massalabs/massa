@@ -137,14 +137,13 @@ impl Default for CommandCompletion {
 }
 
 #[cfg(not(windows))]
-fn expand_path(partial_path: &str) -> &str {
-    let expanded_path = tilde_expand(partial_path.as_bytes());
-    str::from_utf8(&expanded_path).unwrap_or(partial_path)
+fn expand_path(partial_path: &str) -> Vec<u8> {
+    tilde_expand(partial_path.as_bytes())
 }
 
 #[cfg(windows)]
-fn expand_path(partial_path: &str) -> &str {
-    partial_path
+fn expand_path(partial_path: &str) -> Vec<u8> {
+    partial_path.as_bytes().to_vec()
 }
 
 impl Completion for CommandCompletion {
@@ -155,7 +154,8 @@ impl Completion for CommandCompletion {
             let mut args: Vec<&str> = input.split(' ').collect();
             let mut default_path = "./";
             let path_to_complete = args.last_mut().unwrap_or(&mut default_path);
-            *path_to_complete = expand_path(path_to_complete);
+            let expanded_path = expand_path(path_to_complete);
+            *path_to_complete =  str::from_utf8(&expanded_path).unwrap_or(path_to_complete);
             if let Ok(paths) = glob(&(path_to_complete.to_owned() + "*")) {
                 let suggestions: Vec<String> = paths
                     .filter_map(|x| x.map(|path| path.display().to_string()).ok())
