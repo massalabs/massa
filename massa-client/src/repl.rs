@@ -7,7 +7,6 @@ use crate::utils::longest_common_prefix;
 use console::style;
 use dialoguer::{theme::ColorfulTheme, Completion, History, Input};
 use erased_serde::{Serialize, Serializer};
-use expanduser::expanduser;
 use glob::glob;
 use massa_models::api::{AddressInfo, BlockInfo, EndorsementInfo, NodeStatus, OperationInfo};
 use massa_models::composite::PubkeySig;
@@ -18,6 +17,7 @@ use massa_wallet::Wallet;
 use rev_lines::RevLines;
 use std::collections::VecDeque;
 use std::io::Error;
+use std::str;
 use std::{
     fs::File,
     fs::OpenOptions,
@@ -25,6 +25,7 @@ use std::{
 };
 use strum::IntoEnumIterator;
 use strum::ParseError;
+use tilde_expand::tilde_expand;
 
 macro_rules! massa_fancy_ascii_art_logo {
     () => {
@@ -142,10 +143,8 @@ impl Completion for CommandCompletion {
             let mut args: Vec<&str> = input.split(' ').collect();
             let mut default_path = "./";
             let path_to_complete = args.last_mut().unwrap_or(&mut default_path);
-            let expanded_path = expanduser(*path_to_complete)
-                .map(|path| path.display().to_string())
-                .unwrap_or(String::from(*path_to_complete));
-            *path_to_complete = expanded_path.as_str();
+            let expanded_path = tilde_expand(path_to_complete.as_bytes());
+            *path_to_complete = str::from_utf8(&expanded_path).unwrap_or(*path_to_complete);
             if let Ok(paths) = glob(&(path_to_complete.to_owned() + "*")) {
                 let suggestions: Vec<String> = paths
                     .filter_map(|x| x.map(|path| path.display().to_string()).ok())
