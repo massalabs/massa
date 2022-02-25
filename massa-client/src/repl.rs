@@ -25,6 +25,7 @@ use std::{
 };
 use strum::IntoEnumIterator;
 use strum::ParseError;
+#[cfg(not(windows))]
 use tilde_expand::tilde_expand;
 
 macro_rules! massa_fancy_ascii_art_logo {
@@ -135,6 +136,17 @@ impl Default for CommandCompletion {
     }
 }
 
+#[cfg(not(windows))]
+fn expand_path(partial_path: &str) -> &str {
+    let expanded_path = tilde_expand(partial_path.as_bytes());
+    str::from_utf8(&expanded_path).unwrap_or(partial_path)
+}
+
+#[cfg(windows)]
+fn expand_path(partial_path: &str) -> &str {
+    partial_path
+}
+
 impl Completion for CommandCompletion {
     /// Simple completion implementation based on substring
     fn get(&self, input: &str) -> Option<String> {
@@ -143,8 +155,7 @@ impl Completion for CommandCompletion {
             let mut args: Vec<&str> = input.split(' ').collect();
             let mut default_path = "./";
             let path_to_complete = args.last_mut().unwrap_or(&mut default_path);
-            let expanded_path = tilde_expand(path_to_complete.as_bytes());
-            *path_to_complete = str::from_utf8(&expanded_path).unwrap_or(*path_to_complete);
+            *path_to_complete = expand_path(path_to_complete);
             if let Ok(paths) = glob(&(path_to_complete.to_owned() + "*")) {
                 let suggestions: Vec<String> = paths
                     .filter_map(|x| x.map(|path| path.display().to_string()).ok())
