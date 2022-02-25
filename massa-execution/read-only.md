@@ -10,7 +10,7 @@ See: https://ethereum.stackexchange.com/questions/765/what-is-the-difference-bet
 
 ## API
 
-Add a "sc_readonly_call" API endpoint 
+Add a "sc_readonly_call" API endpoint
 
 Parameters:
 * max_gas: u64  // max gas allowed for the readonly run
@@ -21,7 +21,7 @@ Parameters:
 Return value:
 * executed_at: Slot  // slot at which the execution occurred
 * result:
-  * (optional) error: Error 
+  * (optional) error: Error
   * (optional) output_events: `Vec<SCOutputEvent>`  // output events generated during execution
 
  ## Operation

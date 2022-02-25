@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_consensus_exports::tools;
 use massa_consensus_exports::{settings::ConsensusChannels, ConsensusConfig};

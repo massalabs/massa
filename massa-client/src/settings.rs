@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! Build here the default client settings from the config file toml
 use massa_models::constants::build_massa_settings;
