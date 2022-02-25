@@ -7,6 +7,7 @@
 
 use crate::controller::{ExecutionControllerImpl, ExecutionInputData, ExecutionManagerImpl};
 use crate::execution::ExecutionState;
+use crate::request_queue::RequestQueue;
 use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
     ReadOnlyExecutionRequest,
@@ -19,10 +20,7 @@ use massa_models::{
 };
 use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
-use std::collections::VecDeque;
-use std::sync::mpsc;
 use std::{collections::HashMap, sync::Arc};
-use tracing::debug;
 
 /// Structure gathering all elements needed by the execution thread
 pub(crate) struct ExecutionThread {
@@ -47,10 +45,7 @@ pub(crate) struct ExecutionThread {
     // Execution state (see execution.rs) to which execution requests are sent
     execution_state: Arc<RwLock<ExecutionState>>,
     /// queue for readonly execution requests and response mpscs to send back their outputs
-    readonly_requests: VecDeque<(
-        ReadOnlyExecutionRequest,
-        mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
-    )>,
+    readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
 }
 
 impl ExecutionThread {
@@ -78,9 +73,9 @@ impl ExecutionThread {
             pending_final_blocks: Default::default(),
             blockclique: Default::default(),
             active_slots: Default::default(),
+            readonly_requests: RequestQueue::new(config.readonly_queue_length),
             config,
             execution_state,
-            readonly_requests: Default::default(),
         }
     }
 
@@ -283,6 +278,21 @@ impl ExecutionThread {
         true
     }
 
+    /// Check if there are any active slots ready for execution
+    /// This is used to check if the main loop should run an iteration
+    fn are_there_active_slots_ready_for_execution(&self) -> bool {
+        let execution_state = self.execution_state.read();
+
+        // get the next active slot
+        let slot = execution_state
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("active slot overflow in VM");
+
+        // check if it is in the active slot queue
+        self.active_slots.contains_key(&slot)
+    }
+
     /// executes one active slot, if any
     /// returns true if something was executed
     fn execute_one_active_slot(&mut self) -> bool {
@@ -355,31 +365,11 @@ impl ExecutionThread {
     /// Cancel those that are in excess if there are too many.
     fn update_readonly_requests(
         &mut self,
-        new_requests: VecDeque<(
-            ReadOnlyExecutionRequest,
-            mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
-        )>,
+        new_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
     ) {
-        // append incoming readonly requests to our readonly request queue
+        // Append incoming readonly requests to our readonly request queue
+        // Excess requests are cancelld
         self.readonly_requests.extend(new_requests);
-
-        // if there are too many requests, cancel those in excess
-        if self.readonly_requests.len() > self.config.readonly_queue_length {
-            for (_req, resp_tx) in self
-                .readonly_requests
-                .drain(self.config.readonly_queue_length..)
-            {
-                // send a message to the requests in excess to signal the cancelling
-                if resp_tx
-                    .send(Err(ExecutionError::RuntimeError(
-                        "too many queued readonly requests".into(),
-                    )))
-                    .is_err()
-                {
-                    debug!("failed sending readonly request response: channel down");
-                }
-            }
-        }
     }
 
     /// Executes a read-only request from the queue, if any.
@@ -388,18 +378,91 @@ impl ExecutionThread {
     /// # Returns
     /// true if a request was executed, false otherwise
     fn execute_one_readonly_request(&mut self) -> bool {
-        if let Some((req, resp_tx)) = self.readonly_requests.pop_front() {
-            // acquire read access to the execution state and execute the read-only request
+        if let Some(req_resp) = self.readonly_requests.pop() {
+            let (req, resp_tx) = req_resp.into_request_sender_pair();
+
+            // Acquire read access to the execution state and execute the read-only request
             let outcome = self.execution_state.read().execute_readonly_request(req);
 
-            // send the execution output through resp_tx
-            if resp_tx.send(outcome).is_err() {
-                debug!("could not send execute_readonly_request response: response channel died");
-            }
+            // Send the execution output through resp_tx.
+            // Ignore errors because they just mean that the request emitter dropped the received
+            // because it doesn't need the response anymore.
+            let _ = resp_tx.send(outcome);
 
             return true;
         }
         false
+    }
+
+    /// Waits for an event to trigger a new iteration in the excution main loop.
+    ///
+    /// # Returns
+    /// Some(ExecutionInputData) representing the input requests,
+    /// or None if the main loop needs to stop.
+    fn wait_loop_event(&mut self) -> Option<ExecutionInputData> {
+        let mut cancel_input = loop {
+            let mut input_data_lock = self.input_data.1.lock();
+
+            // take current input data, resetting it
+            let input_data: ExecutionInputData = input_data_lock.take();
+
+            // check for stop signal
+            if input_data.stop {
+                break input_data;
+            }
+
+            // Check for readonly requests, new blockclique or final slot changes
+            // The most frequent triggers are checked first.
+            if !input_data.readonly_requests.is_empty()
+                || input_data.new_blockclique.is_some()
+                || !input_data.finalized_blocks.is_empty()
+            {
+                return Some(input_data);
+            }
+
+            // Check for slots to execute.
+            // The most frequent triggers are checked first,
+            // except for the active slot check which is last because it is more expensive.
+            if !self.readonly_requests.is_empty()
+                || !self.ready_final_slots.is_empty()
+                || self.are_there_active_slots_ready_for_execution()
+            {
+                return Some(input_data);
+            }
+
+            // No input data, and no slots to execute.
+
+            // Compute when the next slot will be
+            // This is useful to wait for the next speculative miss to append to active slots.
+            let time_until_next_slot = self.get_time_until_next_active_slot();
+            if time_until_next_slot == 0.into() {
+                // next slot is right now: the loop needs to iterate
+                return Some(input_data);
+            }
+
+            // Wait to be notified of new input, for at most time_until_next_slot
+            // The return value is ignored because we don't care what woke up the condition variable.
+            let _res = self
+                .input_data
+                .0
+                .wait_for(&mut input_data_lock, time_until_next_slot.to_duration());
+        };
+
+        // The loop needs to quit
+
+        // Cancel pending readonly requests
+        let cancel_err = ExecutionError::RuntimeError(
+            "readonly execution cancelled because VM is closing".into(),
+        );
+        cancel_input.readonly_requests.cancel(cancel_err.clone());
+        self.input_data
+            .1
+            .lock()
+            .take()
+            .readonly_requests
+            .cancel(cancel_err);
+
+        None
     }
 
     /// Main loop of the executin worker
@@ -409,21 +472,18 @@ impl ExecutionThread {
         // 1 - final executions
         // 2 - speculative executions
         // 3 - read-only executions
-        loop {
-            // read input requests
-            let input_data: ExecutionInputData = std::mem::take(&mut self.input_data.1.lock());
-
-            // check for stop signal
-            if input_data.stop {
-                break;
-            }
-
+        while let Some(input_data) = self.wait_loop_event() {
             // update the sequence of final slots given the newly finalized blocks
             self.update_final_slots(input_data.finalized_blocks);
 
             // update the sequence of active slots
-            let blockclique_changed = input_data.new_blockclique.is_some();
             self.update_active_slots(input_data.new_blockclique);
+
+            // The list of active slots might have seen
+            // new insertions/deletions of blocks at different slot depths.
+            // It is therefore important to signal this to the execution state,
+            // so that it can remove out-of-date speculative execution results from its history.
+            self.truncate_execution_history();
 
             // update the sequence of read-only requests
             self.update_readonly_requests(input_data.readonly_requests);
@@ -437,14 +497,6 @@ impl ExecutionThread {
             }
 
             // now all the slots that were ready for final execution have been executed as final
-
-            // If the blockclique has changed, the list of active slots might have seen
-            // new insertions/deletions of blocks at different slot depths.
-            // It is therefore important to signal this to the execution state,
-            // so that it can remove out-of-date speculative execution results from its history.
-            if blockclique_changed {
-                self.truncate_execution_history();
-            }
 
             // Execute one active slot in a speculative way, if there is one ready for that
             if self.execute_one_active_slot() {
@@ -460,56 +512,6 @@ impl ExecutionThread {
             if self.execute_one_readonly_request() {
                 // a read-only request was executed: restart the loop
                 continue;
-            }
-
-            // now there are no more executions to run
-
-            // Peek into the input data to see if new input arrived during this iteration of the loop
-            let mut input_data = self.input_data.1.lock();
-            if input_data.stop {
-                // there is a request to stop: quit the loop
-                break;
-            }
-            if input_data.new_blockclique.is_some() || !input_data.readonly_requests.is_empty() {
-                // there are blockclique updates or read-only requests: restart the loop
-                continue;
-            }
-
-            // Here, we know that there is currently nothing to do for this worker
-
-            // Compute when the next slot will be
-            // This is useful to wait for the next speculative miss to append to active slots.
-            let time_until_next_slot = self.get_time_until_next_active_slot();
-            if time_until_next_slot == 0.into() {
-                // next slot is right now: simply restart the loop
-                continue;
-            }
-
-            // Wait to be notified of new input, for at most time_until_next_slot
-            // Note: spurious wake-ups are not a problem:
-            // the next loop iteration will just do nohing and come back to wait here.
-            let _res = self
-                .input_data
-                .0
-                .wait_for(&mut input_data, time_until_next_slot.to_duration());
-        }
-
-        // The execution worker is stopping:
-        // signal cancellation to all remaining read-only execution requests waiting for an MPSC response
-        // (both in input_data and in the internal queue)
-        let mut input_data = self.input_data.1.lock();
-        let request_iterator = self
-            .readonly_requests
-            .drain(..)
-            .chain(input_data.readonly_requests.drain(..));
-        for (_req, resp_tx) in request_iterator {
-            if resp_tx
-                .send(Err(ExecutionError::RuntimeError(
-                    "readonly execution cancelled because VM is closing".into(),
-                )))
-                .is_err()
-            {
-                debug!("failed sending readonly request response: channel down");
             }
         }
     }
@@ -536,11 +538,13 @@ pub fn start_execution_worker(
     )));
 
     // define the input data interface
-    let input_data = Arc::new((Condvar::new(), Mutex::new(ExecutionInputData::default())));
+    let input_data = Arc::new((
+        Condvar::new(),
+        Mutex::new(ExecutionInputData::new(config.clone())),
+    ));
 
     // create a controller
     let controller = ExecutionControllerImpl {
-        config: config.clone(),
         input_data: input_data.clone(),
         execution_state: execution_state.clone(),
     };

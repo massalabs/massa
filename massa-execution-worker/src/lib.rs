@@ -60,6 +60,11 @@
 //! ## speculative_ledger.rs
 //! A speculative (non-final) ledger that supports cancelling already-executed operations
 //! in the case of some blockclique changes.
+//!
+//! ## request_queue.rs
+//! This module contains the implementation of a generic finite-size execution request queue.
+//! It handles requests that come with an MPSC to send back the result of their execution once it's done.
+//!
 
 #![feature(map_first_last)]
 #![feature(unzip_option)]
@@ -68,6 +73,7 @@ mod context;
 mod controller;
 mod execution;
 mod interface_impl;
+mod request_queue;
 mod speculative_ledger;
 mod worker;
 

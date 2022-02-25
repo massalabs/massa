@@ -4,6 +4,7 @@
 //! See massa-execution-exports/controller_traits.rs for functional details.
 
 use crate::execution::ExecutionState;
+use crate::request_queue::{RequestQueue, RequestWithResponseSender};
 use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
     ReadOnlyExecutionRequest,
@@ -15,12 +16,11 @@ use massa_models::Address;
 use massa_models::OperationId;
 use massa_models::{Block, BlockId, Slot};
 use parking_lot::{Condvar, Mutex, RwLock};
-use std::collections::{HashMap, VecDeque};
-use std::sync::{mpsc, Arc};
+use std::collections::HashMap;
+use std::sync::Arc;
 use tracing::info;
 
 /// structure used to communicate with execution thread
-#[derive(Default)]
 pub(crate) struct ExecutionInputData {
     /// set stop to true to stop the thread
     pub stop: bool,
@@ -29,17 +29,35 @@ pub(crate) struct ExecutionInputData {
     /// new blockclique (if there is a new one), blocks indexed by slot
     pub new_blockclique: Option<HashMap<Slot, (BlockId, Block)>>,
     /// queue for readonly execution requests and response mpscs to send back their outputs
-    pub readonly_requests: VecDeque<(
-        ReadOnlyExecutionRequest,
-        mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
-    )>,
+    pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
+}
+
+impl ExecutionInputData {
+    /// Creates a new empty ExecutionInputData
+    pub fn new(config: ExecutionConfig) -> Self {
+        ExecutionInputData {
+            stop: Default::default(),
+            finalized_blocks: Default::default(),
+            new_blockclique: Default::default(),
+            readonly_requests: RequestQueue::new(config.max_final_events),
+        }
+    }
+
+    /// Takes the current input data into a clone that is returned,
+    /// and resets self.
+    pub fn take(&mut self) -> Self {
+        ExecutionInputData {
+            stop: std::mem::take(&mut self.stop),
+            finalized_blocks: std::mem::take(&mut self.finalized_blocks),
+            new_blockclique: std::mem::take(&mut self.new_blockclique),
+            readonly_requests: self.readonly_requests.take(),
+        }
+    }
 }
 
 #[derive(Clone)]
 /// implementation of the execution controller
 pub struct ExecutionControllerImpl {
-    /// execution config
-    pub(crate) config: ExecutionConfig,
     /// input data to process in the VM loop
     /// with a wakeup condition variable that needs to be triggered when the data changes
     pub(crate) input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
@@ -117,31 +135,37 @@ impl ExecutionController for ExecutionControllerImpl {
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ExecutionOutput, ExecutionError> {
-        // queue request into input, get response mpsc receiver
         let resp_rx = {
             let mut input_data = self.input_data.1.lock();
-            // limit the read-only queue length
-            if input_data.readonly_requests.len() >= self.config.readonly_queue_length {
-                return Err(ExecutionError::RuntimeError(
+
+            // if the read-onlyi queue is already full, return an error
+            if input_data.readonly_requests.is_full() {
+                return Err(ExecutionError::ChannelError(
                     "too many queued readonly requests".into(),
                 ));
             }
+
             // prepare the channel to send back the result of the read-only execution
             let (resp_tx, resp_rx) =
                 std::sync::mpsc::channel::<Result<ExecutionOutput, ExecutionError>>();
-            // append to the queue of input read-only requests
-            input_data.readonly_requests.push_back((req, resp_tx));
-            // wake up VM loop
+
+            // append the request to the queue of input read-only requests
+            input_data
+                .readonly_requests
+                .push(RequestWithResponseSender::new(req, resp_tx));
+
+            // wake up the execution main loop
             self.input_data.0.notify_one();
+
             resp_rx
         };
 
-        // wait for the result of the execution
+        // Wait for the result of the execution
         match resp_rx.recv() {
             Ok(result) => result,
             Err(err) => {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "the VM input channel failed: {}",
+                return Err(ExecutionError::ChannelError(format!(
+                    "readonly execution response channel readout failed: {}",
                     err
                 )))
             }
