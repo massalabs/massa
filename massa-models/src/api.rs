@@ -172,8 +172,8 @@ impl std::fmt::Display for AddressInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
-        writeln!(f, "Parallel balance:\n{}", self.ledger_info)?;
-        writeln!(f, "Sequential balance:\n{}", self.sce_ledger_info)?;
+        writeln!(f, "Sequential balance:\n{}", self.ledger_info)?;
+        writeln!(f, "Parallel balance:\n{}", self.sce_ledger_info)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         writeln!(
             f,
