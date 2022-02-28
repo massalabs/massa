@@ -2,7 +2,7 @@ name: Security audit
 on:
   push:
     branches: [main]
-    paths: 
+    paths:
       - '**/Cargo.toml'
       - '**/Cargo.lock'
 jobs:
