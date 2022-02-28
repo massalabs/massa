@@ -877,7 +877,7 @@ impl NetworkWorker {
                     warn!("network: could not send NodeSignMessage response upstream");
                 }
             }
-            NetworkCommand::Unban(ip) => self.peer_info_db.unban(ip).await?,
+            NetworkCommand::Unban(ip) => self.peer_info_db.unban(ip)?,
             NetworkCommand::GetStats { response_tx } => {
                 let res = NetworkStats {
                     in_connection_count: self.peer_info_db.get_in_connection_count(),

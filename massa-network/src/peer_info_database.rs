@@ -452,20 +452,22 @@ impl PeerInfoDatabase {
     ////////////////////////////////
 
     /// Unbans a list of ip
-    pub async fn unban(&mut self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+    pub fn unban(&mut self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         let mut update_happened = false;
         for ip in ips.into_iter() {
             if let Some(peer) = self.peers.get_mut(&ip) {
+                update_happened = update_happened || peer.banned;
                 peer.banned = false;
-                update_happened = true;
             } else {
+                // todo insert ip ?
                 continue;
             }
         }
+        self.update()?;
         if update_happened {
             self.request_dump()?
         }
-        self.update()
+        Ok(())
     }
 
     /// Acknowledges a new out connection attempt to ip.
