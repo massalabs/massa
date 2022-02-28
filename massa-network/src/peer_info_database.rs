@@ -17,16 +17,27 @@ use tracing::{trace, warn};
 
 /// Peer categories.
 /// There is a defined number af slots for each category.
-#[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq)]
+/// Order matters: less prioritized peer type first
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PeerType {
+    /// Just a peer
+    Standard,
+    /// Connection from these nodes are always accepted
+    WhiteListed,
     /// if the peer is in bootstrap servers list
     /// for now it is decoupled from the real bootstrap sever list, it's just parsed
     /// TODO: https://github.com/massalabs/massa/issues/2320
     Bootstrap,
-    /// Connection from these nodes are always accepted
-    WhiteListed,
-    /// Just a peer
-    Standard,
+}
+
+mod test {
+
+    #[test]
+    fn test_order() {
+        use crate::peer_info_database::PeerType;
+        assert!(PeerType::Bootstrap >= PeerType::WhiteListed);
+        assert!(PeerType::WhiteListed >= PeerType::Standard);
+    }
 }
 
 impl Default for PeerType {
@@ -76,7 +87,11 @@ impl PeerInfo {
     }
 
     /// New standard PeerInfo for ipaddr
-    /// advertized is true if peer has been advertized
+    ///
+    /// # Arguments
+    /// * ip: the IP address of the peer
+    /// * advertised: true if this peer was advertised as routable,
+    /// which means that our node can attempt outgoing connections to it
     pub fn new(ip: IpAddr, advertised: bool) -> PeerInfo {
         PeerInfo {
             ip,
@@ -111,11 +126,12 @@ impl PeerInfo {
 /// Connection count for a category
 #[derive(Default, Debug)]
 pub(crate) struct ConnectionCount {
-    /// active out connection attempts
+    /// Number of outgoing connections our node is currently trying to establish.
+    /// We might be in the process of establishing a TCP connection or handshaking with the peer.
     pub(crate) active_out_connection_attempts: usize,
-    /// active out connections
+    /// Number of currently live (TCP connection active, handshake successful) outgoing connections
     pub(crate) active_out_connections: usize,
-    /// active in connections
+    /// Number of currently live (TCP connection active, handshake successful) incoming connections
     pub(crate) active_in_connections: usize,
 }
 
@@ -832,7 +848,9 @@ impl PeerInfoDatabase {
                 &self.network_settings.standard_peers_config,
             )?)
             .collect();
-        res.sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
+        res.sort_unstable_by_key(|&p| {
+            (p.peer_type, p.last_failure, std::cmp::Reverse(p.last_alive))
+        });
         Ok(res.into_iter().map(|p| p.ip).collect())
     }
 

@@ -101,9 +101,9 @@ mod tests {
                     max_in_connections: 1,
                 },
                 whitelist_peers_config: PeerTypeConnectionConfig {
-                    max_in_connections: 10,
-                    target_out_connections: 10,
-                    max_out_attempts: 10,
+                    max_in_connections: 3,
+                    target_out_connections: 2,
+                    max_out_attempts: 2,
                 },
                 standard_peers_config: PeerTypeConnectionConfig {
                     target_out_connections: 10,
@@ -155,9 +155,9 @@ mod tests {
                     max_in_connections: 1,
                 },
                 whitelist_peers_config: PeerTypeConnectionConfig {
-                    max_in_connections: 10,
-                    target_out_connections: 10,
-                    max_out_attempts: 10,
+                    max_in_connections: 3,
+                    target_out_connections: 2,
+                    max_out_attempts: 2,
                 },
                 standard_peers_config: PeerTypeConnectionConfig {
                     target_out_connections: 10,

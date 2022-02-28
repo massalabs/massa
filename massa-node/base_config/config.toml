@@ -139,9 +139,9 @@
 
 
     [network.whitelist_peers_config]
-        target_out_connections= 10
-        max_out_attempts= 10
-        max_in_connections= 10
+        target_out_connections= 3
+        max_out_attempts= 2
+        max_in_connections= 2
 
 
     [network.standard_peers_config]
