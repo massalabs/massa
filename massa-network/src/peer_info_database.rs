@@ -488,11 +488,21 @@ impl PeerInfoDatabase {
             peer.peer_type
         };
 
-        self.update_global_active_out_connection_attempt_count(
+        if let Err(e) = self.update_global_active_out_connection_attempt_count(
             peer_type,
             true,
             NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
-        )?;
+        ) {
+            //roll back
+            let p = self
+                .peers
+                .get_mut(ip)
+                .ok_or(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                ))?;
+            p.active_out_connection_attempts -= 1;
+            return Err(e);
+        }
         if update_happened {
             self.update()?
         }
@@ -583,11 +593,22 @@ impl PeerInfoDatabase {
             peer_type
         };
 
-        self.update_global_active_out_connection_count(
+        if let Err(e) = self.update_global_active_out_connection_count(
             peer_type,
             false,
             NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
-        )
+        ) {
+            //roll back
+            let p = self
+                .peers
+                .get_mut(ip)
+                .ok_or(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                ))?;
+            p.active_out_connections += 1;
+            return Err(e);
+        }
+        Ok(())
     }
 
     /// Notifies that an inbound connection is closed.
@@ -618,11 +639,22 @@ impl PeerInfoDatabase {
             peer_type
         };
 
-        self.update_global_active_in_connection_count(
+        if let Err(e) = self.update_global_active_in_connection_count(
             peer_type,
             false,
             NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
-        )
+        ) {
+            //roll back
+            let p = self
+                .peers
+                .get_mut(ip)
+                .ok_or(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                ))?;
+            p.active_in_connections += 1;
+            return Err(e);
+        }
+        Ok(())
     }
 
     /// Yay an out connection attempt succeeded.
@@ -682,11 +714,30 @@ impl PeerInfoDatabase {
             peer.peer_type
         };
 
-        self.update_global_active_out_connection_count(
+        if let Err(e) = self.update_global_active_out_connection_count(
             peer_type,
             true,
             NetworkConnectionErrorType::UnexpectedError,
-        )?;
+        ) {
+            //roll back
+            let peer_type = {
+                let p = self
+                    .peers
+                    .get_mut(ip)
+                    .ok_or(NetworkError::PeerConnectionError(
+                        NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                    ))?;
+                p.active_out_connections -= 1;
+                p.active_out_connection_attempts += 1;
+                p.peer_type
+            };
+            self.update_global_active_out_connection_attempt_count(
+                peer_type,
+                true,
+                NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
+            )?;
+            return Err(e);
+        }
 
         self.request_dump()?;
         Ok(true)
@@ -718,11 +769,21 @@ impl PeerInfoDatabase {
             }
             pt
         };
-        self.update_global_active_out_connection_attempt_count(
+        if let Err(e) = self.update_global_active_out_connection_attempt_count(
             peer_type,
             false,
             NetworkConnectionErrorType::TooManyConnectionFailure(*ip),
-        )?;
+        ) {
+            //roll back
+            let p = self
+                .peers
+                .get_mut(ip)
+                .ok_or(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                ))?;
+            p.active_out_connection_attempts += 1;
+            return Err(e);
+        }
         self.request_dump()
     }
 
@@ -791,11 +852,21 @@ impl PeerInfoDatabase {
             peer.peer_type
         };
 
-        self.update_global_active_in_connection_count(
+        if let Err(e) = self.update_global_active_in_connection_count(
             peer_type,
             true,
             NetworkConnectionErrorType::UnexpectedError,
-        )?;
+        ) {
+            //roll back
+            let p = self
+                .peers
+                .get_mut(ip)
+                .ok_or(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                ))?;
+            p.active_in_connections -= 1;
+            return Err(e);
+        }
 
         self.request_dump()?;
         Ok(())
