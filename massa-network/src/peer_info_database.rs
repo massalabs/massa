@@ -759,51 +759,49 @@ impl PeerInfoDatabase {
                 ));
             }
         }
-        let peer = if let Some(p) = self.get_peer_type(ip) {
-            p
-        } else {
-            let p = PeerInfo::new(*ip, false);
-            self.peers.insert(*ip, p);
-            self.get_peer_type(ip).unwrap()
+
+        let peer_type = self
+            .peers
+            .entry(*ip)
+            .or_insert_with(|| PeerInfo::new(*ip, false))
+            .peer_type;
+
+        // we need to first check if there is a global slot avaible
+        if self.is_max_in_connection_count_reached(peer_type) {
+            return Err(NetworkError::PeerConnectionError(
+                NetworkConnectionErrorType::MaxPeersConnectionReached(*ip),
+            ));
+        }
+
+        let peer_type = {
+            let peer = self.peers.get_mut(ip).ok_or({
+                NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                )
+            })?; // peer was inserted just before
+
+            // is there a attempt slot avaible
+            if peer.banned {
+                massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
+                peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
+                self.request_dump()?;
+                return Err(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::BannedPeerTryingToConnect(*ip),
+                ));
+            } else if peer.active_in_connections >= self.network_settings.max_in_connections_per_ip
+            {
+                self.request_dump()?;
+                return Err(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::MaxPeersConnectionReached(*ip),
+                ));
+            } else {
+                peer.active_in_connections += 1;
+            }
+            peer.peer_type
         };
 
-        if self.is_max_in_connection_count_reached(peer) {
-            return Err(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::MaxPeersConnectionReached(*ip),
-            ));
-        }
-
-        let peer = self.peers.get_mut(ip).ok_or({
-            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
-                *ip,
-            ))
-        })?; // peer was inserted just before
-
-        // is there a attempt slot avaible
-        if peer.banned {
-            massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
-            peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
-            self.request_dump()?;
-            return Err(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::BannedPeerTryingToConnect(*ip),
-            ));
-        } else if peer.active_in_connections >= self.network_settings.max_in_connections_per_ip {
-            self.request_dump()?;
-            return Err(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::MaxPeersConnectionReached(*ip),
-            ));
-        } else {
-            peer.active_in_connections += 1;
-        }
-
-        let peer = self.get_peer_type(ip).ok_or({
-            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
-                *ip,
-            ))
-        })?;
-
         self.update_global_active_in_connection_count(
-            peer,
+            peer_type,
             true,
             NetworkConnectionErrorType::UnexpectedError,
         )?;
