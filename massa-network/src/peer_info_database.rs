@@ -708,33 +708,30 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn out_connection_attempt_failed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
-        let peer_type = self.get_peer_type(ip).ok_or({
-            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
-                *ip,
-            ))
-        })?;
-
+        let peer_type = {
+            let peer = self.peers.get_mut(ip).ok_or({
+                NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                )
+            })?;
+            if peer.active_out_connection_attempts == 0 {
+                return Err(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::TooManyConnectionFailure(*ip),
+                ));
+            }
+            peer.active_out_connection_attempts -= 1;
+            peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
+            let pt = peer.peer_type;
+            if !peer.is_active() && peer.peer_type == PeerType::Standard {
+                self.update()?;
+            }
+            pt
+        };
         self.update_global_active_out_connection_attempt_count(
             peer_type,
             false,
             NetworkConnectionErrorType::TooManyConnectionFailure(*ip),
         )?;
-
-        let peer = self.peers.get_mut(ip).ok_or({
-            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
-                *ip,
-            ))
-        })?;
-        if peer.active_out_connection_attempts == 0 {
-            return Err(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::TooManyConnectionFailure(*ip),
-            ));
-        }
-        peer.active_out_connection_attempts -= 1;
-        peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
-        if !peer.is_active() && peer.peer_type == PeerType::Standard {
-            self.update()?;
-        }
         self.request_dump()
     }
 
