@@ -665,34 +665,31 @@ impl PeerInfoDatabase {
             NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
         )?;
 
-        let peer = self.peers.get_mut(ip).ok_or({
-            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
-                *ip,
-            ))
-        })?;
-        if peer.active_out_connection_attempts == 0 {
-            return Err(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
-            ));
-        }
-        peer.active_out_connection_attempts -= 1;
-        peer.advertised = true; // we just connected to it. Assume advertised.
-
-        if peer.banned {
-            peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
-            if !peer.is_active() && peer.peer_type == Default::default() {
-                self.update()?;
+        let peer_type = {
+            let peer = self.peers.get_mut(ip).ok_or({
+                NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                )
+            })?;
+            if peer.active_out_connection_attempts == 0 {
+                return Err(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
+                ));
             }
-            self.request_dump()?;
-            return Ok(false);
-        }
-        peer.active_out_connections += 1;
+            peer.active_out_connection_attempts -= 1;
+            peer.advertised = true; // we just connected to it. Assume advertised.
 
-        let peer_type = self.get_peer_type(ip).ok_or({
-            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
-                *ip,
-            ))
-        })?;
+            if peer.banned {
+                peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
+                if !peer.is_active() && peer.peer_type == Default::default() {
+                    self.update()?;
+                }
+                self.request_dump()?;
+                return Ok(false);
+            }
+            peer.active_out_connections += 1;
+            peer.peer_type
+        };
 
         self.update_global_active_out_connection_count(
             peer_type,
