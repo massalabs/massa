@@ -479,14 +479,13 @@ impl PeerInfoDatabase {
             return Err(NetworkError::InvalidIpError(*ip));
         }
         let mut update_happened = false;
-        let peer_type = if let Some(p) = self.get_peer_type(ip) {
-            p
-        } else {
-            let mut p = PeerInfo::new(*ip, false);
-            p.active_out_connection_attempts += 1;
-            self.peers.insert(*ip, p);
-            update_happened = true;
-            self.get_peer_type(ip).unwrap()
+        let peer_type = {
+            let peer = self.peers.entry(*ip).or_insert_with(|| {
+                update_happened = true;
+                PeerInfo::new(*ip, false)
+            });
+            peer.active_out_connection_attempts += 1;
+            peer.peer_type
         };
 
         self.update_global_active_out_connection_attempt_count(
@@ -494,14 +493,6 @@ impl PeerInfoDatabase {
             true,
             NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
         )?;
-
-        let peer = self.peers.get_mut(ip).ok_or({
-            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
-                *ip,
-            ))
-        })?;
-        peer.active_out_connection_attempts += 1;
-
         if update_happened {
             self.update()?
         }
