@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.3-labs
-FROM rust:bullseye AS builder
+FROM jonoh/sccache-rust AS builder
 
 ENV PATH=/usr/local/cargo/bin:$PATH \
     RUSTUP_HOME=/usr/local/rustup \
@@ -22,8 +22,6 @@ RUN <<END
 END
 
 ARG BUILD_ENV=dev
-ARG CI_COMMIT_SHORT_SHA
-ARG CI_JOB_URL
 ARG RUSTC_WRAPPER
 ARG SCCACHE_BUCKET
 ARG SCCACHE_S3_KEY_PREFIX
@@ -42,13 +40,13 @@ RUN --mount=type=secret,id=git \
         ;;
       (release)
         target=/tmp/target/release
-        apps="masa-node --release"
+        apps="massa-node --release"
         ;;
     esac
 
     echo "${apps}" | tr ';' '\n' | awk NF | while read bin args; do
       rm -f ${target}/${bin}
-      RUST_BACKTRACE=full cargo build --bin ${bin} ${args} 
+      RUST_BACKTRACE=full cargo build --bin ${bin} ${args}
       cp ${target}/${bin} /
     done
 
@@ -75,9 +73,9 @@ WORKDIR /app
 
 COPY --from=builder /massa-node .
 COPY /entrypoint.sh .
-COPY /massa-node/base_config .
-COPY /massa-node/config .
-COPY /massa-node/storage .
+COPY /massa-node/base_config ./base_config
+COPY /massa-node/config ./config
+COPY /massa-node/storage ./storage
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 
@@ -101,9 +99,9 @@ WORKDIR /app
 
 COPY --from=builder /massa-node .
 COPY /entrypoint.sh .
-COPY /massa-node/base_config .
-COPY /massa-node/config .
-COPY /massa-node/storage .
+COPY /massa-node/base_config ./base_config
+COPY /massa-node/config ./config
+COPY /massa-node/storage ./storage
 
 ENV APP_BIN=/app/massa-node
 ENTRYPOINT ["/app/entrypoint.sh"]

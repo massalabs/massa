@@ -4,3 +4,6 @@
 [submodule "docs"]
 	path = docs
 	url = https://github.com/massalabs/massa.wiki.git
+[submodule "massa"]
+	path = massa
+	url = https://github.com/massalabs/massa.git
