@@ -572,36 +572,31 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn out_connection_closed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
-        let peer_type = self.get_peer_type(ip).ok_or({
-            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
-                *ip,
-            ))
-        })?;
+        let peer_type = {
+            let peer = self.peers.get_mut(ip).ok_or({
+                NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                )
+            })?;
+            if peer.active_out_connections == 0 {
+                return Err(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
+                ));
+            }
+            peer.active_out_connections -= 1;
+            let peer_type = peer.peer_type;
+            if !peer.is_active() && peer.peer_type == Default::default() {
+                self.update()?;
+                self.request_dump()?;
+            }
+            peer_type
+        };
 
         self.update_global_active_out_connection_count(
             peer_type,
             false,
             NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
-        )?;
-
-        let peer = self.peers.get_mut(ip).ok_or({
-            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
-                *ip,
-            ))
-        })?;
-        if peer.active_out_connections == 0 {
-            return Err(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
-            ));
-        }
-        peer.active_out_connections -= 1;
-
-        if !peer.is_active() && peer.peer_type == Default::default() {
-            self.update()?;
-            self.request_dump()
-        } else {
-            Ok(())
-        }
+        )
     }
 
     /// Notifies that an inbound connection is closed.
