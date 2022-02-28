@@ -808,27 +808,24 @@ impl PeerInfoDatabase {
     /// Sorts peers by ( last_failure, rev(last_success) )
     /// and returns as many peers as there are available slots to attempt outgoing connections to.
     pub fn get_out_connection_candidate_ips(&self) -> Result<Vec<IpAddr>, NetworkError> {
-        let mut res: Vec<_> = self
-            .get_out_connection_candidate_ips_for_type(
+        Ok([
+            self.get_out_connection_candidate_ips_for_type(
                 PeerType::Bootstrap,
                 &self.bootstrap_connection_count,
                 &self.network_settings.bootstrap_peers_config,
-            )?
-            .chain(self.get_out_connection_candidate_ips_for_type(
+            )?,
+            self.get_out_connection_candidate_ips_for_type(
                 PeerType::WhiteListed,
                 &self.whitelist_connection_count,
                 &self.network_settings.whitelist_peers_config,
-            )?)
-            .chain(self.get_out_connection_candidate_ips_for_type(
+            )?,
+            self.get_out_connection_candidate_ips_for_type(
                 PeerType::Standard,
                 &self.standard_connection_count,
                 &self.network_settings.standard_peers_config,
-            )?)
-            .collect();
-        res.sort_unstable_by_key(|&p| {
-            (p.peer_type, p.last_failure, std::cmp::Reverse(p.last_alive))
-        });
-        Ok(res.into_iter().map(|p| p.ip).collect())
+            )?,
+        ]
+        .concat())
     }
 
     /// returns Hashmap of ipAddrs -> Peerinfo
@@ -946,7 +943,7 @@ impl PeerInfoDatabase {
         peer_type: PeerType,
         count: &ConnectionCount,
         cfg: &PeerTypeConnectionConfig,
-    ) -> Result<impl Iterator<Item = &PeerInfo>, NetworkError> {
+    ) -> Result<Vec<IpAddr>, NetworkError> {
         let avaible_slots = count.get_available_out_connection_attempts(cfg);
         let now = MassaTime::compensated_now(self.clock_compensation)?;
         let f = move |p: &&PeerInfo| {
@@ -955,8 +952,9 @@ impl PeerInfoDatabase {
             }
             p.is_peer_ready(self.wakeup_interval, now)
         };
-
-        Ok(self.peers.values().filter(f).take(avaible_slots))
+        let mut res: Vec<_> = self.peers.values().filter(f).take(avaible_slots).collect();
+        res.sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
+        Ok(res.into_iter().map(|p| p.ip).collect())
     }
 
     fn get_peer_type(&self, ip: &IpAddr) -> Option<PeerType> {

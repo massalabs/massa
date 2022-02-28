@@ -617,12 +617,16 @@ async fn test_get_out_connection_candidate_ips() {
     let ip_list = db.get_out_connection_candidate_ips().unwrap();
     assert_eq!(4, ip_list.len());
 
-    assert_eq!(
-        IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 14)),
-        ip_list[0]
-    );
+    // first bootstrap ppers
     assert_eq!(
         IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)),
+        ip_list[0]
+    );
+    // then whitelist
+    // then standard
+
+    assert_eq!(
+        IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 14)),
         ip_list[1]
     );
     assert_eq!(
