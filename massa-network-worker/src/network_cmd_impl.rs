@@ -19,16 +19,20 @@
 //!         NetworkCommand::GetBootstrapPeers(response_tx) => on_get_bootstrap_peers_cmd(self, response_tx).await,
 //!         ...
 //! ```
-use crate::{network_worker::NetworkWorker, node_worker::NodeCommand};
+use crate::network_worker::NetworkWorker;
+use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
+use massa_models::signed::Signable;
 use massa_models::{
-    composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId, SignedEndorsement,
-    SignedHeader, SignedOperation,
+    composite::PubkeySig,
+    node::NodeId,
+    operation::{AskedOperations, OperationBatches, WantOperations},
+    stats::NetworkStats,
+    Block, BlockId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
 };
-use massa_models::{signed::Signable, OperationId};
 use massa_network_exports::{
-    BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, Peer, Peers,
+    BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, NodeCommand, Peer, Peers,
 };
 use massa_signature::{derive_public_key, sign};
 use std::{
@@ -181,7 +185,7 @@ pub async fn on_send_block_header_cmd(
     worker
         .event
         .forward(
-            &node,
+            node,
             worker.active_nodes.get(&node),
             NodeCommand::SendBlockHeader(header),
         )
@@ -189,7 +193,7 @@ pub async fn on_send_block_header_cmd(
     Ok(())
 }
 
-pub async fn on_ask_bfor_block_cmd(worker: &mut NetworkWorker, map: HashMap<NodeId, Vec<BlockId>>) {
+pub async fn on_ask_for_block_cmd(worker: &mut NetworkWorker, map: HashMap<NodeId, Vec<BlockId>>) {
     for (node, hash_list) in map.into_iter() {
         massa_trace!(
             "network_worker.manage_network_command receive NetworkCommand::AskForBlocks",
@@ -198,7 +202,7 @@ pub async fn on_ask_bfor_block_cmd(worker: &mut NetworkWorker, map: HashMap<Node
         worker
             .event
             .forward(
-                &node,
+                node,
                 worker.active_nodes.get(&node),
                 NodeCommand::AskForBlocks(hash_list.clone()),
             )
@@ -218,7 +222,7 @@ pub async fn on_send_block_cmd(
     worker
         .event
         .forward(
-            &node,
+            node,
             worker.active_nodes.get(&node),
             NodeCommand::SendBlock(block),
         )
@@ -256,7 +260,7 @@ pub async fn on_block_not_found_cmd(worker: &mut NetworkWorker, node: NodeId, bl
     worker
         .event
         .forward(
-            &node,
+            node,
             worker.active_nodes.get(&node),
             NodeCommand::BlockNotFound(block_id),
         )
@@ -275,7 +279,7 @@ pub async fn on_send_operation_cmd(
     worker
         .event
         .forward(
-            &node,
+            node,
             worker.active_nodes.get(&node),
             NodeCommand::SendOperations(operations),
         )
@@ -294,7 +298,7 @@ pub async fn on_send_endorsements_cmd(
     worker
         .event
         .forward(
-            &node,
+            node,
             worker.active_nodes.get(&node),
             NodeCommand::SendEndorsements(endorsements),
         )
@@ -350,4 +354,61 @@ pub async fn on_get_stats_cmd(
     if response_tx.send(res).is_err() {
         warn!("network: could not send NodeSignMessage response upstream");
     }
+}
+
+pub async fn on_send_operations_cmd(
+    worker: &mut NetworkWorker,
+    node: NodeId,
+    operations: AskedOperations,
+) {
+    massa_trace!(
+        "network_worker.manage_network_command receive NetworkCommand::SendOperations",
+        { "node": node, "operations": operations }
+    );
+    worker
+        .event
+        .forward(
+            node,
+            worker.active_nodes.get(&node),
+            NodeCommand::SendOperations(operations),
+        )
+        .await;
+}
+
+/// On the command [massa_network_exports::NetworkCommand::SendOperationBatch] is called,
+/// Forward (and split) the command to the `NodeWorker` and propagate to the network
+pub async fn on_send_operation_batches_cmd(worker: &mut NetworkWorker, batches: OperationBatches) {
+    massa_trace!(
+        "network_worker.manage_network_command receive NetworkCommand::SendOperationBatch",
+        { "batches": batches }
+    );
+    let mut futs = FuturesUnordered::new();
+    for (node, operation_ids) in batches {
+        let fut = worker.event.forward(
+            node,
+            worker.active_nodes.get(&node),
+            NodeCommand::SendOperationBatch(operation_ids),
+        );
+        futs.push(fut);
+    }
+    while futs.next().await.is_some() {}
+}
+
+/// On the command [massa_network_exports::NetworkCommand::AskForOperations] is called,
+/// Forward the command to the `NodeWorker` and propagate to the network
+pub async fn on_ask_for_operations_cmd(worker: &mut NetworkWorker, wishlist: WantOperations) {
+    massa_trace!(
+        "network_worker.manage_network_command receive NetworkCommand::SendOperationBatch",
+        { "wishlist": wishlist }
+    );
+    let mut futs = FuturesUnordered::new();
+    for (node, operation_ids) in wishlist {
+        let fut = worker.event.forward(
+            node,
+            worker.active_nodes.get(&node),
+            NodeCommand::AskForOperations(operation_ids),
+        );
+        futs.push(fut);
+    }
+    while futs.next().await.is_some() {}
 }

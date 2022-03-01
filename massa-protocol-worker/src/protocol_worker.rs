@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::node_info::NodeInfo;
 use itertools::Itertools;
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
@@ -96,196 +97,6 @@ pub async fn start_protocol_controller(
     ))
 }
 
-//put in a module to block private access from Protocol_worker.
-mod nodeinfo {
-    use massa_models::prehash::{BuildMap, Map, Set};
-    use massa_models::{BlockId, EndorsementId, OperationId};
-    use massa_protocol_exports::ProtocolSettings;
-    use std::collections::VecDeque;
-    use tokio::time::Instant;
-
-    /// Information about a node we are connected to,
-    /// essentially our view of its state.
-    ///
-    /// Note: should we prune the set of known and wanted blocks during lifetime of a node connection?
-    /// Currently it would only be dropped alongside the rest when the node becomes inactive.
-    #[derive(Debug, Clone)]
-    pub struct NodeInfo {
-        /// The blocks the node "knows about",
-        /// defined as the one the node propagated headers to us for.
-        pub known_blocks: Map<BlockId, (bool, Instant)>,
-        /// The blocks the node asked for.
-        pub wanted_blocks: Map<BlockId, Instant>,
-        /// Blocks we asked that node for
-        pub asked_blocks: Map<BlockId, Instant>,
-        /// Instant when the node was added
-        pub connection_instant: Instant,
-        /// all known operations
-        pub known_operations: Set<OperationId>,
-        pub known_operations_queue: VecDeque<OperationId>,
-        /// all known endorsements
-        pub known_endorsements: Set<EndorsementId>,
-        pub known_endorsements_queue: VecDeque<EndorsementId>,
-    }
-
-    impl NodeInfo {
-        /// Creates empty node info
-        pub fn new(pool_settings: &'static ProtocolSettings) -> NodeInfo {
-            NodeInfo {
-                known_blocks: Map::with_capacity_and_hasher(
-                    pool_settings.max_node_known_blocks_size,
-                    BuildMap::default(),
-                ),
-                wanted_blocks: Map::with_capacity_and_hasher(
-                    pool_settings.max_node_wanted_blocks_size,
-                    BuildMap::default(),
-                ),
-                asked_blocks: Default::default(),
-                connection_instant: Instant::now(),
-                known_operations: Set::<OperationId>::with_capacity_and_hasher(
-                    pool_settings.max_known_ops_size,
-                    BuildMap::default(),
-                ),
-                known_operations_queue: VecDeque::with_capacity(pool_settings.max_known_ops_size),
-                known_endorsements: Set::<EndorsementId>::with_capacity_and_hasher(
-                    pool_settings.max_known_endorsements_size,
-                    BuildMap::default(),
-                ),
-                known_endorsements_queue: VecDeque::with_capacity(
-                    pool_settings.max_known_endorsements_size,
-                ),
-            }
-        }
-
-        /// Get bool if block knows about the block and when this information was got
-        /// in a option if we don't know if that node knows that block or not
-        pub fn get_known_block(&self, block_id: &BlockId) -> Option<&(bool, Instant)> {
-            self.known_blocks.get(block_id)
-        }
-
-        /// Remove the oldest items from known_blocks
-        /// to ensure it contains at most max_node_known_blocks_size items.
-        /// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.
-        fn remove_excess_known_blocks(&mut self, max_node_known_blocks_size: usize) {
-            while self.known_blocks.len() > max_node_known_blocks_size {
-                // remove oldest item
-                let (&h, _) = self
-                    .known_blocks
-                    .iter()
-                    .min_by_key(|(h, (_, t))| (*t, *h))
-                    .unwrap(); // never None because is the collection is empty, while loop isn't executed.
-                self.known_blocks.remove(&h);
-            }
-        }
-
-        /// Insert knowledge of a list of blocks in NodeInfo
-        ///
-        /// ## Arguments
-        /// - self: node info
-        /// - block_ids: list of blocks
-        /// - val: if that node knows that block
-        /// - instant: when that information was created
-        /// - max_node_known_blocks_size : max size of the knowledge of an other node we want to keep
-        pub fn insert_known_blocks(
-            &mut self,
-            block_ids: &[BlockId],
-            val: bool,
-            instant: Instant,
-            max_node_known_blocks_size: usize,
-        ) {
-            for block_id in block_ids {
-                self.known_blocks.insert(*block_id, (val, instant));
-            }
-            self.remove_excess_known_blocks(max_node_known_blocks_size);
-        }
-
-        pub fn insert_known_endorsements(
-            &mut self,
-            endorsements: Vec<EndorsementId>,
-            max_endorsements_nb: usize,
-        ) {
-            for endorsement_id in endorsements.into_iter() {
-                if self.known_endorsements.insert(endorsement_id) {
-                    self.known_endorsements_queue.push_front(endorsement_id);
-                    if self.known_endorsements_queue.len() > max_endorsements_nb {
-                        if let Some(r) = self.known_endorsements_queue.pop_back() {
-                            self.known_endorsements.remove(&r);
-                        }
-                    }
-                }
-            }
-        }
-
-        pub fn knows_endorsement(&self, endorsement_id: &EndorsementId) -> bool {
-            self.known_endorsements.contains(endorsement_id)
-        }
-
-        pub fn insert_known_ops(&mut self, ops: Set<OperationId>, max_ops_nb: usize) {
-            for operation_id in ops.into_iter() {
-                if self.known_operations.insert(operation_id) {
-                    self.known_operations_queue.push_front(operation_id);
-                    if self.known_operations_queue.len() > max_ops_nb {
-                        if let Some(op_id) = self.known_operations_queue.pop_back() {
-                            self.known_operations.remove(&op_id);
-                        }
-                    }
-                }
-            }
-        }
-
-        pub fn knows_op(&self, op: &OperationId) -> bool {
-            self.known_operations.contains(op)
-        }
-
-        /// Remove the oldest items from wanted_blocks
-        /// to ensure it contains at most max_node_wanted_blocks_size items.
-        /// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.
-        fn remove_excess_wanted_blocks(&mut self, max_node_wanted_blocks_size: usize) {
-            while self.wanted_blocks.len() > max_node_wanted_blocks_size {
-                // remove oldest item
-                let (&h, _) = self
-                    .wanted_blocks
-                    .iter()
-                    .min_by_key(|(h, t)| (*t, *h))
-                    .unwrap(); // never None because is the collection is empty, while loop isn't executed.
-                self.wanted_blocks.remove(&h);
-            }
-        }
-
-        /// Insert a block in the wanted list of a node.
-        /// Also lists the block as not known by the node
-        pub fn insert_wanted_block(
-            &mut self,
-            block_id: BlockId,
-            max_node_wanted_blocks_size: usize,
-            max_node_known_blocks_size: usize,
-        ) {
-            // Insert into known_blocks
-            let now = Instant::now();
-            self.wanted_blocks.insert(block_id, now);
-            self.remove_excess_wanted_blocks(max_node_wanted_blocks_size);
-
-            // If the node wants a block, it means that it doesn't have it.
-            // To avoid asking the node for this block in the meantime,
-            // mark the node as not knowing the block.
-            self.insert_known_blocks(&[block_id], false, now, max_node_known_blocks_size);
-        }
-
-        /// returns whether a node wants a block, and if so, updates the timestamp of that info to now()
-        pub fn contains_wanted_block_update_timestamp(&mut self, block_id: &BlockId) -> bool {
-            self.wanted_blocks
-                .get_mut(block_id)
-                .map(|instant| *instant = Instant::now())
-                .is_some()
-        }
-
-        /// Removes given block from wanted block for that node
-        pub fn remove_wanted_block(&mut self, block_id: &BlockId) -> bool {
-            self.wanted_blocks.remove(block_id).is_some()
-        }
-    }
-}
-
 /// Info about a block we've seen
 struct BlockInfo {
     /// Endorsements contained in the block header.
@@ -324,7 +135,7 @@ pub struct ProtocolWorker {
     /// Channel to send management commands to the controller.
     controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
     /// Ids of active nodes mapped to node info.
-    active_nodes: HashMap<NodeId, nodeinfo::NodeInfo>,
+    active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks.
     block_wishlist: Set<BlockId>,
     /// List of processed endorsements
@@ -441,6 +252,8 @@ impl ProtocolWorker {
     pub async fn run_loop(mut self) -> Result<NetworkEventReceiver, ProtocolError> {
         let block_ask_timer = sleep(self.protocol_settings.ask_block_timeout.into());
         tokio::pin!(block_ask_timer);
+        let operation_ask_timer = sleep(self.protocol_settings.ask_block_timeout.into());
+        tokio::pin!(operation_ask_timer);
         loop {
             massa_trace!("protocol.protocol_worker.run_loop.begin", {});
             /*
@@ -479,9 +292,15 @@ impl ProtocolWorker {
                     massa_trace!("protocol.protocol_worker.run_loop.block_ask_timer", { });
                     self.update_ask_block(&mut block_ask_timer).await?;
                 }
-            } // end select!
+
+                // operation ask timer
+                _ = &mut operation_ask_timer => {
+                    massa_trace!("protocol.protocol_worker.run_loop.operation_ask_timer", { });
+                    self.update_ask_operation(&mut operation_ask_timer).await?;
+                }
+            }
             massa_trace!("protocol.protocol_worker.run_loop.end", {});
-        } // end loop
+        }
 
         Ok(self.network_event_receiver)
     }
@@ -659,23 +478,27 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operations": ops }
                 );
-                for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_ops: Map<OperationId, SignedOperation> = ops
-                        .iter()
-                        .filter(|(id, _)| !node_info.knows_op(*id))
-                        .map(|(k, v)| (*k, v.clone()))
-                        .collect();
-                    node_info.insert_known_ops(
-                        new_ops.keys().copied().collect(),
-                        self.protocol_settings.max_known_ops_size,
-                    );
-                    let to_send = new_ops.into_iter().map(|(_, op)| op).collect::<Vec<_>>();
-                    if !to_send.is_empty() {
-                        self.network_command_sender
-                            .send_operations(*node, to_send)
-                            .await?;
-                    }
-                }
+                //for (node, node_info) in self.active_nodes.iter_mut() {
+                //    let new_ops: Map<OperationId, SignedOperation> = ops
+                //        .iter()
+                //        .filter(|(id, _)| !node_info.knows_op(*id))
+                //        .map(|(k, v)| (*k, v.clone()))
+                //        .collect();
+                //    node_info.insert_known_ops(
+                //        new_ops.keys().copied().collect(),
+                //        self.protocol_settings.max_known_ops_size,
+                //    );
+                //    let to_send = new_ops.into_iter().map(|(_, op)| op).collect::<Vec<_>>();
+                //    if !to_send.is_empty() {
+                //        self.network_command_sender
+                //            .send_operations(*node, to_send)
+                //            .await?;
+                //    }
+                //}
+                todo!("Implement build `OperationBatches` method")
+                // TODO: correctly build an `OperationBatches` with the previous loop and send that
+                //       result to the massa-network.
+                //       Refer to documentation in `massa-network-exports/src/commands.rs`
             }
             ProtocolCommand::PropagateEndorsements(endorsements) => {
                 massa_trace!(
@@ -719,6 +542,13 @@ impl ProtocolWorker {
         }
         self.block_wishlist.retain(|h| !remove_hashes.contains(h));
         Ok(())
+    }
+
+    async fn update_ask_operation(
+        &mut self,
+        ask_operation_timer: &mut std::pin::Pin<&mut Sleep>,
+    ) -> Result<(), ProtocolError> {
+        todo!("update the operations to ask")
     }
 
     async fn update_ask_block(
@@ -1358,7 +1188,7 @@ impl ProtocolWorker {
                     { "node": node_id }
                 );
                 self.active_nodes
-                    .insert(node_id, nodeinfo::NodeInfo::new(self.protocol_settings));
+                    .insert(node_id, NodeInfo::new(self.protocol_settings));
                 self.update_ask_block(block_ask_timer).await?;
             }
             NetworkEvent::ConnectionClosed(node_id) => {
@@ -1454,15 +1284,16 @@ impl ProtocolWorker {
             NetworkEvent::ReceivedOperations { node, operations } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_operations", { "node": node, "operations": operations});
 
+                todo!("Update local state and build imput to call the note_operations_from_node")
                 // Perform general checks on the operations, and propagate them.
-                if self
-                    .note_operations_from_node(operations, &node, true)
-                    .await
-                    .is_err()
-                {
-                    warn!("node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node", node,);
-                    let _ = self.ban_node(&node).await;
-                }
+                //if self
+                //    .note_operations_from_node(operations, &node, true)
+                //    .await
+                //    .is_err()
+                //{
+                //    warn!("node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node", node,);
+                //    let _ = self.ban_node(&node).await;
+                //}
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_endorsements", { "node": node, "endorsements": endorsements});
@@ -1475,6 +1306,24 @@ impl ProtocolWorker {
                     let _ = self.ban_node(&node).await;
                 }
             }
+            NetworkEvent::ReceivedOperationBatch {
+                node,
+                operation_ids,
+            } => todo!(
+                "implement behavior with input {} and {:?}",
+                node,
+                operation_ids
+            ),
+            NetworkEvent::ReceiveAskForOperations {
+                node,
+                operation_ids,
+            } => {
+                todo!(
+                    "implement behavior with input {} and {:?}",
+                    node,
+                    operation_ids
+                )
+            }
         }
         Ok(())
     }
@@ -1482,8 +1331,8 @@ impl ProtocolWorker {
 
 #[cfg(test)]
 mod tests {
-    use super::nodeinfo::NodeInfo;
     use super::*;
+    use crate::node_info::NodeInfo;
     use massa_protocol_exports::tests::tools::create_protocol_settings;
     use serial_test::serial;
 

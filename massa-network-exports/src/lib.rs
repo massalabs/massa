@@ -1,5 +1,7 @@
 //! Manages a connection with a node
-pub use commands::{NetworkCommand, NetworkEvent, NetworkManagementCommand};
+pub use commands::{
+    NetworkCommand, NetworkEvent, NetworkManagementCommand, NodeCommand, NodeEvent, NodeEventType,
+};
 pub use common::{ConnectionClosureReason, ConnectionId};
 pub use error::{HandshakeErrorType, NetworkConnectionErrorType, NetworkError};
 pub use establisher::{Establisher, Listener, ReadHalf, WriteHalf};

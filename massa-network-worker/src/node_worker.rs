@@ -10,10 +10,12 @@ use massa_models::{
     constants::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
     node::NodeId,
     signed::Signable,
-    Block, BlockId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
+    OperationId, SignedOperation,
 };
 use massa_network_exports::{ConnectionClosureReason, NetworkError, NetworkSettings};
-use std::{collections::HashMap, net::IpAddr};
+use std::collections::HashMap;
+
+use massa_network_exports::{NodeCommand, NodeEvent, NodeEventType};
 use tokio::{
     sync::mpsc,
     sync::mpsc::{
@@ -23,56 +25,6 @@ use tokio::{
     time::timeout,
 };
 use tracing::{debug, trace, warn};
-
-#[derive(Clone, Debug)]
-pub enum NodeCommand {
-    /// Send given peer list to node.
-    SendPeerList(Vec<IpAddr>),
-    /// Send that block to node.
-    SendBlock(Block),
-    /// Send the header of a block to a node.
-    SendBlockHeader(SignedHeader),
-    /// Ask for a block from that node.
-    AskForBlocks(Vec<BlockId>),
-    /// Close the node worker.
-    Close(ConnectionClosureReason),
-    /// Block not found
-    BlockNotFound(BlockId),
-    /// Send full Operations (send to a node that previously asked for)
-    SendOperations(HashMap<OperationId, Option<SignedOperation>>),
-    /// Send a batch of operation ids
-    SendOperationsBatch(Vec<OperationId>),
-    /// Ask for a set of operations, will ask for a `SendOperation` response
-    AskForOperations(Vec<OperationId>),
-    /// Endorsements
-    SendEndorsements(Vec<SignedEndorsement>),
-}
-
-/// Event types that node worker can emit
-#[derive(Clone, Debug)]
-pub enum NodeEventType {
-    /// Node we are connected to asked for advertised peers
-    AskedPeerList,
-    /// Node we are connected to sent peer list
-    ReceivedPeerList(Vec<IpAddr>),
-    /// Node we are connected to sent block
-    ReceivedBlock(Block),
-    /// Node we are connected to sent block header
-    ReceivedBlockHeader(SignedHeader),
-    /// Node we are connected to asks for a block.
-    ReceivedAskForBlocks(Vec<BlockId>),
-    /// Didn't found given block,
-    BlockNotFound(BlockId),
-    /// Operation
-    ReceivedOperations(HashMap<OperationId, Option<SignedOperation>>),
-    /// Operation
-    ReceivedEndorsements(Vec<SignedEndorsement>),
-}
-
-/// Events node worker can emit.
-/// Events are a tuple linking a node id to an event type
-#[derive(Clone, Debug)]
-pub struct NodeEvent(pub NodeId, pub NodeEventType);
 
 /// Manages connections
 /// One worker per node.
@@ -365,7 +317,7 @@ impl NodeWorker {
                                 }
                             }
                         },
-                        Some(NodeCommand::SendOperationsBatch(operation_ids)) => {
+                        Some(NodeCommand::SendOperationBatch(operation_ids)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendOperationsBatch", {"node": self.node_id, "operation_ids": operation_ids});
                             for to_send_list in operation_ids.chunks(self.cfg.max_operations_per_message as usize) {
                                 if self.try_send_to_node(&writer_command_tx, Message::AskForOperations(to_send_list.to_vec())).is_err() {

@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{constants::CHANNEL_SIZE, node::NodeId};
-use massa_models::{Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation};
+use massa_models::{constants::CHANNEL_SIZE, node::NodeId, operation::AskedOperations};
+use massa_models::{Block, BlockId, SignedEndorsement, SignedHeader};
 use massa_network_exports::{
     NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
 };
@@ -79,11 +79,7 @@ impl MockNetworkController {
             .expect("Couldn't send block to protocol.");
     }
 
-    pub async fn send_operations(
-        &mut self,
-        source_node_id: NodeId,
-        operations: Vec<SignedOperation>,
-    ) {
+    pub async fn send_operations(&mut self, source_node_id: NodeId, operations: AskedOperations) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedOperations {
                 node: source_node_id,

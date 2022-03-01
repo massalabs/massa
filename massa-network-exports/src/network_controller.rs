@@ -5,8 +5,11 @@ use crate::{
     NetworkEvent, Peers,
 };
 use massa_models::{
-    composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId, OperationId,
-    SignedEndorsement, SignedHeader, SignedOperation,
+    composite::PubkeySig,
+    node::NodeId,
+    operation::{AskedOperations, OperationBatches, WantOperations},
+    stats::NetworkStats,
+    Block, BlockId, SignedEndorsement, SignedHeader,
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -139,13 +142,39 @@ impl NetworkCommandSender {
     pub async fn send_operations(
         &self,
         node: NodeId,
-        operations: HashMap<OperationId, Option<SignedOperation>>,
+        operations: AskedOperations,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendOperations { node, operations })
             .await
             .map_err(|_| {
                 NetworkError::ChannelError("could not send SendOperations command".into())
+            })?;
+        Ok(())
+    }
+
+    pub async fn send_operations_batches(
+        &self,
+        batches: OperationBatches,
+    ) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::SendOperationBatch { batches })
+            .await
+            .map_err(|_| {
+                NetworkError::ChannelError("could not send SendOperationBatch command".into())
+            })?;
+        Ok(())
+    }
+
+    pub async fn send_ask_for_operations(
+        &self,
+        wishlist: WantOperations,
+    ) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::AskForOperations { wishlist })
+            .await
+            .map_err(|_| {
+                NetworkError::ChannelError("could not send AskForOperations command".into())
             })?;
         Ok(())
     }

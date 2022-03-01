@@ -69,8 +69,8 @@ pub enum ProtocolCommand {
     },
     /// The response to a ProtocolEvent::GetBlocks.
     GetBlocksResults(BlocksResults),
-    /// Propagate operations
-    PropagateOperations(Map<OperationId, SignedOperation>),
+    /// Propagate operations ids (send batches)
+    PropagateOperations(Vec<OperationId>),
     /// Propagate endorsements
     PropagateEndorsements(Map<EndorsementId, SignedEndorsement>),
 }
@@ -158,7 +158,7 @@ impl ProtocolCommandSender {
 
     pub async fn propagate_operations(
         &mut self,
-        operations: Map<OperationId, SignedOperation>,
+        operations: Vec<OperationId>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
             "operations": operations

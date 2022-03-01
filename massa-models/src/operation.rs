@@ -1,8 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
 use crate::prehash::{PreHashed, Set};
 use crate::signed::{Id, Signable, Signed};
+use crate::{
+    constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES},
+    node::NodeId,
+};
 use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
@@ -477,6 +480,14 @@ impl Operation {
         Ok(res)
     }
 }
+
+/// Data structure forwarded in the network after asking [Operation].
+/// Option is None if the asked node hasn't the operation.
+pub type AskedOperations = std::collections::HashMap<OperationId, Option<SignedOperation>>;
+/// Internal data structure describing the [Operation] we do want from which `NodeId`.
+pub type WantOperations = std::collections::HashMap<NodeId, Vec<OperationId>>;
+/// Same as wanted operation but used to propagate `OperationId` through `NodeId`
+pub type OperationBatches = std::collections::HashMap<NodeId, Vec<OperationId>>;
 
 #[cfg(test)]
 mod tests {
