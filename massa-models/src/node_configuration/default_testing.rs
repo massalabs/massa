@@ -42,7 +42,7 @@ lazy_static::lazy_static! {
     };
 
     /// TESTNET: time when the blockclique is ended.
-    pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
+    pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") || cfg!(feature = "testing") {
         None
     } else {
         Some(1646078400000.into())
