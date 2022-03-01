@@ -23,8 +23,12 @@ use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
 };
 use massa_time::MassaTime;
-use std::str::FromStr;
 use std::{collections::HashSet, future::Future};
+use std::{
+    str::FromStr,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use tracing::info;
 
@@ -639,7 +643,14 @@ pub async fn consensus_pool_test<F, V>(
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
-    let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
+    let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
+    let stop_sinks = Arc::new(Mutex::new(false));
+    let stop_sinks_clone = stop_sinks.clone();
+    let execution_sink = std::thread::spawn(move || {
+        while *stop_sinks_clone.lock().unwrap() == true {
+            let _ = execution_rx.recv_timeout(Duration::from_millis(500));
+        }
+    });
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
@@ -681,6 +692,10 @@ pub async fn consensus_pool_test<F, V>(
         .await
         .unwrap();
     pool_sink.stop().await;
+
+    // stop sinks
+    *stop_sinks.lock().unwrap() = true;
+    execution_sink.join().unwrap();
 }
 
 /// Runs a consensus test, without passing a mock pool controller to it.
@@ -700,7 +715,14 @@ where
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
-    let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
+    let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
+    let stop_sinks = Arc::new(Mutex::new(false));
+    let stop_sinks_clone = stop_sinks.clone();
+    let execution_sink = std::thread::spawn(move || {
+        while *stop_sinks_clone.lock().unwrap() == true {
+            let _ = execution_rx.recv_timeout(Duration::from_millis(500));
+        }
+    });
     let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
@@ -736,6 +758,10 @@ where
         .await
         .unwrap();
     pool_sink.stop().await;
+
+    // stop sinks
+    *stop_sinks.lock().unwrap() = true;
+    execution_sink.join().unwrap();
 }
 
 pub fn get_cliques(graph: &BlockGraphExport, hash: BlockId) -> HashSet<usize> {
