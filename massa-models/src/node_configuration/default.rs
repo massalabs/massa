@@ -36,35 +36,17 @@ pub const CHANNEL_SIZE: usize = 256;
 
 lazy_static::lazy_static! {
     /// Time in millis when the blockclique started.
-    pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
-        MassaTime::now()
-            .unwrap()
-            .saturating_add(MassaTime::from(1000 * 60 * 3))
-    } else {
-        1643918400000.into()
-    };
+    pub static ref GENESIS_TIMESTAMP: MassaTime = 1646168202990.into();
 
     /// TESTNET: time when the blockclique is ended.
-    pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
-        None
-    } else {
-        Some(1646078400000.into())
-    };
+    pub static ref END_TIMESTAMP: Option<MassaTime> = None;
     /// Private_key to sign genesis blocks.
     pub static ref GENESIS_KEY: PrivateKey = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
         .parse()
         .unwrap();
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(7, 10);
-    pub static ref VERSION: Version = {
-        if cfg!(feature = "sandbox") {
-            "SAND.0.0"
-        } else {
-            "TEST.7.0"
-        }
-        .parse()
-        .unwrap()
-    };
+    pub static ref VERSION: Version = "LABN.0.0".parse().unwrap();
 }
 
 /// Price of a roll in the network
