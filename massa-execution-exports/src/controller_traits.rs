@@ -15,7 +15,7 @@ use massa_models::OperationId;
 use massa_models::Slot;
 
 /// interface that communicates with the execution worker thread
-pub trait ExecutionController: Send + Sync {
+pub trait ExecutionController: Send {
     /// Updates blockclique status by signalling newly finalized blocks and the latest blockclique.
     ///
     /// # arguments
