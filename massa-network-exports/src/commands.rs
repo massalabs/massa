@@ -1,11 +1,9 @@
 use std::{collections::HashMap, net::IpAddr};
-
 use massa_models::{
     composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockHeader, BlockId,
     Endorsement, Operation,
 };
 use tokio::sync::oneshot;
-
 use crate::{BootstrapPeers, Peers};
 
 /// Commands that the worker can execute
@@ -35,9 +33,10 @@ pub enum NetworkCommand {
         node: NodeId,
         block_id: BlockId,
     },
+    /// Require to the network to send a list of operation
     SendOperations {
         node: NodeId,
-        operations: Vec<Operation>,
+        operations: HashMap<OperationId, Option<Operation>>,
     },
     SendEndorsements {
         node: NodeId,
