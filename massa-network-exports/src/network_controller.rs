@@ -5,8 +5,8 @@ use crate::{
     NetworkEvent, Peers,
 };
 use massa_models::{
-    composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId, SignedEndorsement,
-    SignedHeader, SignedOperation,
+    composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId, OperationId,
+    SignedEndorsement, SignedHeader, SignedOperation,
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -139,7 +139,7 @@ impl NetworkCommandSender {
     pub async fn send_operations(
         &self,
         node: NodeId,
-        operations: Vec<SignedOperation>,
+        operations: HashMap<OperationId, Option<SignedOperation>>,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendOperations { node, operations })

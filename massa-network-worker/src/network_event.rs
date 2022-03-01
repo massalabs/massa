@@ -80,12 +80,12 @@ impl EventSender {
 pub mod event_impl {
     use crate::{network_worker::NetworkWorker, node_worker::NodeCommand};
     use massa_logging::massa_trace;
-    use massa_models::signed::Signable;
     use massa_models::{
         node::NodeId, Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation,
     };
+    use massa_models::{signed::Signable, OperationId};
     use massa_network_exports::{NetworkError, NetworkEvent};
-    use std::net::IpAddr;
+    use std::{collections::HashMap, net::IpAddr};
     use tracing::{debug, info};
     macro_rules! evt_failed {
         ($err: ident) => {
@@ -208,7 +208,7 @@ pub mod event_impl {
     pub async fn on_received_operations(
         worker: &mut NetworkWorker,
         from: NodeId,
-        operations: Vec<SignedOperation>,
+        operations: HashMap<OperationId, Option<SignedOperation>>,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",

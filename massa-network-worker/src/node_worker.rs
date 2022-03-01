@@ -4,19 +4,16 @@ use super::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
 };
-
+use itertools::Itertools;
 use massa_logging::massa_trace;
 use massa_models::{
-    constants::{
-        MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_OPERATIONS_PER_MESSAGE,
-        NODE_SEND_CHANNEL_SIZE,
-    },
+    constants::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
     node::NodeId,
     signed::Signable,
-    Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation,
+    Block, BlockId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
 };
 use massa_network_exports::{ConnectionClosureReason, NetworkError, NetworkSettings};
-use std::net::IpAddr;
+use std::{collections::HashMap, net::IpAddr};
 use tokio::{
     sync::mpsc,
     sync::mpsc::{
@@ -41,8 +38,12 @@ pub enum NodeCommand {
     Close(ConnectionClosureReason),
     /// Block not found
     BlockNotFound(BlockId),
-    /// Operation
-    SendOperations(Vec<SignedOperation>),
+    /// Send full Operations (send to a node that previously asked for)
+    SendOperations(HashMap<OperationId, Option<SignedOperation>>),
+    /// Send a batch of operation ids
+    SendOperationsBatch(Vec<OperationId>),
+    /// Ask for a set of operations, will ask for a `SendOperation` response
+    AskForOperations(Vec<OperationId>),
     /// Endorsements
     SendEndorsements(Vec<SignedEndorsement>),
 }
@@ -63,7 +64,7 @@ pub enum NodeEventType {
     /// Didn't found given block,
     BlockNotFound(BlockId),
     /// Operation
-    ReceivedOperations(Vec<SignedOperation>),
+    ReceivedOperations(HashMap<OperationId, Option<SignedOperation>>),
     /// Operation
     ReceivedEndorsements(Vec<SignedEndorsement>),
 }
@@ -354,12 +355,32 @@ impl NodeWorker {
                         Some(NodeCommand::SendOperations(operations)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": self.node_id, "operations": operations});
                             // cut operation list if it exceed max_operations_per_message
-                            for to_send_list in operations.chunks(MAX_OPERATIONS_PER_MESSAGE as usize) {
-                                if self.try_send_to_node(&writer_command_tx, Message::Operations(to_send_list.to_vec())).is_err() {
+                            for to_send_list in &operations.iter().chunks(self.cfg.max_operations_per_message as usize) {
+                                let mut chunked_map: HashMap<OperationId, Option<SignedOperation>> = HashMap::with_capacity(self.cfg.max_operations_per_message as usize);
+                                for (&op_id, opt_op) in to_send_list {
+                                    chunked_map.insert(op_id, opt_op.clone());
+                                }
+                                if self.try_send_to_node(&writer_command_tx, Message::Operations(chunked_map)).is_err() {
                                     break 'select_loop;
                                 }
                             }
                         },
+                        Some(NodeCommand::SendOperationsBatch(operation_ids)) => {
+                            massa_trace!("node_worker.run_loop. send Message::SendOperationsBatch", {"node": self.node_id, "operation_ids": operation_ids});
+                            for to_send_list in operation_ids.chunks(self.cfg.max_operations_per_message as usize) {
+                                if self.try_send_to_node(&writer_command_tx, Message::AskForOperations(to_send_list.to_vec())).is_err() {
+                                    break 'select_loop;
+                                }
+                            }
+                        }
+                        Some(NodeCommand::AskForOperations(operation_ids)) => {
+                            massa_trace!("node_worker.run_loop. send Message::AskForOperations", {"node": self.node_id, "operation_ids": operation_ids});
+                            for to_send_list in operation_ids.chunks(self.cfg.max_operations_per_message as usize) {
+                                if self.try_send_to_node(&writer_command_tx, Message::AskForOperations(to_send_list.to_vec())).is_err() {
+                                    break 'select_loop;
+                                }
+                            }
+                        }
                         Some(NodeCommand::SendEndorsements(endorsements)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendEndorsements", {"node": self.node_id, "endorsements": endorsements});
                             // cut endorsement list if it exceed max_endorsements_per_message

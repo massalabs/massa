@@ -1,10 +1,9 @@
-use std::{collections::HashMap, net::IpAddr};
-
 use crate::{BootstrapPeers, Peers};
-use massa_models::SignedEndorsement;
-use massa_models::SignedHeader;
-use massa_models::SignedOperation;
-use massa_models::{composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId};
+use massa_models::{
+    composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId, OperationId,
+    SignedEndorsement, SignedHeader, SignedOperation,
+};
+use std::{collections::HashMap, net::IpAddr};
 use tokio::sync::oneshot;
 
 /// Commands that the worker can execute
@@ -34,9 +33,10 @@ pub enum NetworkCommand {
         node: NodeId,
         block_id: BlockId,
     },
+    /// Require to the network to send a list of operation
     SendOperations {
         node: NodeId,
-        operations: Vec<SignedOperation>,
+        operations: HashMap<OperationId, Option<SignedOperation>>,
     },
     SendEndorsements {
         node: NodeId,
@@ -75,9 +75,20 @@ pub enum NetworkEvent {
         node: NodeId,
         block_id: BlockId,
     },
+    /// Receive previously asked Operation
     ReceivedOperations {
         node: NodeId,
-        operations: Vec<SignedOperation>,
+        operations: HashMap<OperationId, Option<SignedOperation>>,
+    },
+    /// Receive a batch of operation ids by someone
+    OperationsBatch {
+        node: NodeId,
+        operations_id: Vec<OperationId>,
+    },
+    /// Someone ask for operations.
+    AskedForOperations {
+        node: NodeId,
+        list: Vec<OperationId>,
     },
     ReceivedEndorsements {
         node: NodeId,

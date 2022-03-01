@@ -22,11 +22,11 @@
 use crate::{network_worker::NetworkWorker, node_worker::NodeCommand};
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::signed::Signable;
 use massa_models::{
     composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId, SignedEndorsement,
     SignedHeader, SignedOperation,
 };
+use massa_models::{signed::Signable, OperationId};
 use massa_network_exports::{
     BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, Peer, Peers,
 };
@@ -266,7 +266,7 @@ pub async fn on_block_not_found_cmd(worker: &mut NetworkWorker, node: NodeId, bl
 pub async fn on_send_operation_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
-    operations: Vec<SignedOperation>,
+    operations: HashMap<OperationId, Option<SignedOperation>>,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendOperations",
