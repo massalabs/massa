@@ -54,3 +54,9 @@ pub struct Settings {
     pub execution: ExecutionSettings,
     pub ledger: LedgerSettings,
 }
+
+#[cfg(test)]
+#[test]
+fn test_load_node_config() {
+    let _ = *SETTINGS;
+}

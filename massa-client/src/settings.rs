@@ -24,3 +24,9 @@ pub struct DefaultNode {
     pub private_port: u16,
     pub public_port: u16,
 }
+
+#[cfg(test)]
+#[test]
+fn test_load_client_config() {
+    let _ = *SETTINGS;
+}
