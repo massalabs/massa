@@ -662,7 +662,7 @@
             <span class="kw">_</span> =&gt; <span class="ident">LevelFilter::ERROR</span>,
         })
         .<span class="ident">with_filter</span>(<span class="ident">filter_fn</span>(<span class="op">|</span><span class="ident">metadata</span><span class="op">|</span> {
-            <span class="ident">metadata</span>.<span class="ident">target</span>().<span class="ident">starts_with</span>(<span class="string">&quot;massa:&quot;</span>) <span class="comment">// ignore non-massa logs</span>
+            <span class="ident">metadata</span>.<span class="ident">target</span>().<span class="ident">starts_with</span>(<span class="string">&quot;massa&quot;</span>) <span class="comment">// ignore non-massa logs</span>
         }));
     <span class="comment">// build a `Subscriber` by combining layers with a `tracing_subscriber::Registry`:</span>
     <span class="ident">tracing_subscriber::registry</span>()
