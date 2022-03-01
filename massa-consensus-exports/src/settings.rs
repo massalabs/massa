@@ -44,7 +44,7 @@
 //! In unit test your allowed to use the `testing` feature flag that will
 //! use the default values from `/node_configuration/default_testing.rs` in the
 //! `massa-models` crate sources.
-use massa_execution::{ExecutionCommandSender, ExecutionEventReceiver};
+use massa_execution_exports::ExecutionController;
 use massa_graph::{settings::GraphConfig, LedgerConfig};
 use massa_models::Amount;
 use massa_pool::PoolCommandSender;
@@ -303,10 +303,8 @@ pub struct ConsensusWorkerChannels {
     pub protocol_command_sender: ProtocolCommandSender,
     /// Associated protocol event listener.
     pub protocol_event_receiver: ProtocolEventReceiver,
-    /// Associated execution event listener.
-    pub execution_event_receiver: ExecutionEventReceiver,
     /// Execution command sender.
-    pub execution_command_sender: ExecutionCommandSender,
+    pub execution_controller: Box<dyn ExecutionController>,
     /// Associated Pool command sender.
     pub pool_command_sender: PoolCommandSender,
     /// Channel receiving consensus commands.
@@ -320,8 +318,7 @@ pub struct ConsensusWorkerChannels {
 /// Public channels associated to the consensus module.
 /// Execution & Protocol Sender/Receiver
 pub struct ConsensusChannels {
-    pub execution_command_sender: ExecutionCommandSender,
-    pub execution_event_receiver: ExecutionEventReceiver,
+    pub execution_controller: Box<dyn ExecutionController>,
     pub protocol_command_sender: ProtocolCommandSender,
     pub protocol_event_receiver: ProtocolEventReceiver,
     pub pool_command_sender: PoolCommandSender,

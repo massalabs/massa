@@ -2,7 +2,7 @@ use std::array::TryFromSliceError;
 
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use displaydoc::Display;
-use massa_execution::ExecutionError;
+use massa_execution_exports::ExecutionError;
 use massa_models::ModelsError;
 use massa_proof_of_stake_exports::error::ProofOfStakeError;
 use thiserror::Error;

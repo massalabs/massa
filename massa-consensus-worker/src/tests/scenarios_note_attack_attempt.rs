@@ -2,12 +2,12 @@
 
 use super::tools::*;
 use super::{
-    mock_execution_controller::MockExecutionController,
     mock_pool_controller::{MockPoolController, PoolCommandSink},
     mock_protocol_controller::MockProtocolController,
 };
 use crate::start_consensus_controller;
 use massa_consensus_exports::ConsensusConfig;
+use massa_execution_exports::test_exports::MockExecutionController;
 
 use massa_consensus_exports::settings::ConsensusChannels;
 use massa_hash::hash::Hash;
@@ -30,16 +30,14 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
-    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
-        MockExecutionController::new();
+    let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
 
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
             ConsensusChannels {
-                execution_command_sender,
-                execution_event_receiver,
+                execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
                 pool_command_sender,
@@ -96,8 +94,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (pool_controller, pool_command_sender) = MockPoolController::new();
-    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
-        MockExecutionController::new();
+    let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
 
     // launch consensus controller
@@ -105,8 +102,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         start_consensus_controller(
             cfg.clone(),
             ConsensusChannels {
-                execution_command_sender,
-                execution_event_receiver,
+                execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
                 pool_command_sender,

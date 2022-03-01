@@ -9,8 +9,8 @@ use error::BootstrapError;
 pub use establisher::Establisher;
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_consensus_exports::ConsensusCommandSender;
-use massa_execution::{BootstrapExecutionState, ExecutionCommandSender};
 use massa_graph::BootstrapableGraph;
+use massa_ledger::{FinalLedger, FinalLedgerBootstrapState};
 use massa_logging::massa_trace;
 use massa_models::Version;
 use massa_network::{BootstrapPeers, NetworkCommandSender};
@@ -18,10 +18,12 @@ use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_signature::{PrivateKey, PublicKey};
 use massa_time::MassaTime;
 use messages::BootstrapMessage;
+use parking_lot::RwLock;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
 use settings::BootstrapSettings;
 use std::collections::{hash_map, HashMap};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::{convert::TryInto, net::IpAddr};
 use tokio::time::Instant;
 use tokio::{sync::mpsc, task::JoinHandle, time::sleep};
@@ -49,8 +51,8 @@ pub struct GlobalBootstrapState {
     /// list of network peers
     pub peers: Option<BootstrapPeers>,
 
-    /// state of the execution state
-    pub execution: Option<BootstrapExecutionState>,
+    /// state of the final ledger
+    pub final_ledger: Option<FinalLedgerBootstrapState>,
 }
 
 /// Gets the state from a bootstrap server (internal private function)
@@ -181,18 +183,18 @@ async fn get_state_internal(
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
 
-    // Fourth, get execution state
+    // Fourth, get final ledger
     // client.next() is not cancel-safe but we drop the whole client object if cancelled => it's OK
-    let execution = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
+    let final_ledger = match tokio::time::timeout(cfg.read_timeout.into(), client.next()).await {
         Err(_) => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::TimedOut,
-                "bootstrap state read timed out",
+                "final ledger bootstrap state read timed out",
             )
             .into())
         }
         Ok(Err(e)) => return Err(e),
-        Ok(Ok(BootstrapMessage::ExecutionState { execution_state })) => execution_state,
+        Ok(Ok(BootstrapMessage::FinalLedgerState { ledger_state })) => ledger_state,
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
 
@@ -203,7 +205,7 @@ async fn get_state_internal(
         graph: Some(graph),
         compensation_millis,
         peers: Some(peers),
-        execution: Some(execution),
+        final_ledger: Some(final_ledger),
     })
 }
 
@@ -274,7 +276,7 @@ impl BootstrapManager {
 pub async fn start_bootstrap_server(
     consensus_command_sender: ConsensusCommandSender,
     network_command_sender: NetworkCommandSender,
-    execution_command_sender: ExecutionCommandSender,
+    final_ledger: Arc<RwLock<FinalLedger>>,
     bootstrap_settings: &'static BootstrapSettings,
     establisher: Establisher,
     private_key: PrivateKey,
@@ -288,7 +290,7 @@ pub async fn start_bootstrap_server(
             BootstrapServer {
                 consensus_command_sender,
                 network_command_sender,
-                execution_command_sender,
+                final_ledger,
                 establisher,
                 manager_rx,
                 bind,
@@ -313,7 +315,7 @@ pub async fn start_bootstrap_server(
 struct BootstrapServer {
     consensus_command_sender: ConsensusCommandSender,
     network_command_sender: NetworkCommandSender,
-    execution_command_sender: ExecutionCommandSender,
+    final_ledger: Arc<RwLock<FinalLedger>>,
     establisher: Establisher,
     manager_rx: mpsc::Receiver<()>,
     bind: SocketAddr,
@@ -335,7 +337,7 @@ impl BootstrapServer {
             ExportProofOfStake,
             BootstrapableGraph,
             BootstrapPeers,
-            BootstrapExecutionState,
+            FinalLedgerBootstrapState,
         )> = None;
         let cache_timer = sleep(cache_timeout);
         let per_ip_min_interval = self.bootstrap_settings.per_ip_min_interval.to_duration();
@@ -409,14 +411,10 @@ impl BootstrapServer {
                         // This is done to ensure that the execution bootstrap state is older than the consensus state.
                         // If the consensus state snapshot is older than the execution state snapshot,
                         //   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.
-                        let get_peers = self.network_command_sender.get_bootstrap_peers();
-                        let get_pos_graph = self.consensus_command_sender.get_bootstrap_state();
-                        let execution_state = self.execution_command_sender.get_bootstrap_state();
-                        let (res_peers, res_execution) = tokio::join!(get_peers, execution_state);
-                        let peer_boot = res_peers?;
-                        let execution_state = res_execution?;
-                        let (pos_boot, graph_boot) = get_pos_graph.await?;
-                        bootstrap_data = Some((pos_boot, graph_boot, peer_boot, execution_state));
+                        let peer_boot = self.network_command_sender.get_bootstrap_peers().await?;
+                        let res_ledger = self.final_ledger.read().get_bootstrap_state();
+                        let (pos_boot, graph_boot) = self.consensus_command_sender.get_bootstrap_state().await?;
+                        bootstrap_data = Some((pos_boot, graph_boot, peer_boot, res_ledger));
                         cache_timer.set(sleep(cache_timeout));
                     }
                     massa_trace!("bootstrap.lib.run.select.accept.cache_available", {});
@@ -451,7 +449,7 @@ async fn manage_bootstrap(
     data_pos: ExportProofOfStake,
     data_graph: BootstrapableGraph,
     data_peers: BootstrapPeers,
-    data_execution: BootstrapExecutionState,
+    ledger_state: FinalLedgerBootstrapState,
     private_key: PrivateKey,
     compensation_millis: i64,
     version: Version,
@@ -501,13 +499,11 @@ async fn manage_bootstrap(
     )
     .await?;
 
-    // Fourth, send execution state
+    // Fourth, send ledger state
     send_state_timeout(
         write_timeout,
-        server.send(messages::BootstrapMessage::ExecutionState {
-            execution_state: data_execution,
-        }),
-        "bootstrap execution state send timed out",
+        server.send(messages::BootstrapMessage::FinalLedgerState { ledger_state }),
+        "bootstrap ledger state send timed out",
     )
     .await
 }

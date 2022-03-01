@@ -12,12 +12,14 @@ use massa_consensus_exports::{
     ConsensusEventReceiver, ConsensusManager,
 };
 use massa_consensus_worker::start_consensus_controller;
-use massa_execution::{ExecutionConfigs, ExecutionManager};
-
+use massa_execution_exports::{ExecutionConfig, ExecutionManager};
+use massa_execution_worker::start_execution_worker;
+use massa_ledger::{FinalLedger, LedgerConfig};
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
-        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, VERSION,
+        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, T0,
+        THREAD_COUNT, VERSION,
     },
     init_serialization_context, SerializationContext,
 };
@@ -26,7 +28,8 @@ use massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use massa_protocol_exports::ProtocolManager;
 use massa_protocol_worker::start_protocol_controller;
 use massa_time::MassaTime;
-use std::process;
+use parking_lot::RwLock;
+use std::{process, sync::Arc};
 use tokio::signal;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
@@ -42,7 +45,7 @@ async fn launch() -> (
     NetworkCommandSender,
     Option<BootstrapManager>,
     ConsensusManager,
-    ExecutionManager,
+    Box<dyn ExecutionManager>,
     PoolManager,
     ProtocolManager,
     NetworkManager,
@@ -117,17 +120,29 @@ async fn launch() -> (
     .await
     .expect("could not start pool controller");
 
-    let execution_config = ExecutionConfigs {
-        settings: SETTINGS.execution.clone(),
-        clock_compensation: bootstrap_state.compensation_millis,
-        ..Default::default()
+    // init ledger
+    let ledger_config = LedgerConfig {
+        initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
+        final_history_length: SETTINGS.ledger.final_history_length,
+        thread_count: THREAD_COUNT,
     };
+    let final_ledger = Arc::new(RwLock::new(match bootstrap_state.final_ledger {
+        Some(l) => FinalLedger::from_bootstrap_state(ledger_config, l),
+        None => FinalLedger::new(ledger_config).expect("could not init final ledger"),
+    }));
 
-    // launch execution controller
-    let (execution_command_sender, execution_event_receiver, execution_manager) =
-        massa_execution::start_controller(execution_config, bootstrap_state.execution)
-            .await
-            .expect("could not start execution controller");
+    // launch execution module
+    let execution_config = ExecutionConfig {
+        max_final_events: SETTINGS.execution.max_final_events,
+        readonly_queue_length: SETTINGS.execution.readonly_queue_length,
+        cursor_delay: SETTINGS.execution.cursor_delay,
+        clock_compensation: bootstrap_state.compensation_millis,
+        thread_count: THREAD_COUNT,
+        t0: T0,
+        genesis_timestamp: *GENESIS_TIMESTAMP,
+    };
+    let (execution_manager, execution_controller) =
+        start_execution_worker(execution_config, final_ledger.clone());
 
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
     // launch consensus controller
@@ -135,8 +150,7 @@ async fn launch() -> (
         start_consensus_controller(
             consensus_config.clone(),
             ConsensusChannels {
-                execution_command_sender: execution_command_sender.clone(),
-                execution_event_receiver,
+                execution_controller: execution_controller.clone(),
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
                 pool_command_sender: pool_command_sender.clone(),
@@ -152,7 +166,7 @@ async fn launch() -> (
     let bootstrap_manager = start_bootstrap_server(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
-        execution_command_sender.clone(),
+        final_ledger.clone(),
         &SETTINGS.bootstrap,
         massa_bootstrap::Establisher::new(),
         private_key,
@@ -166,7 +180,7 @@ async fn launch() -> (
     let (api_private, api_private_stop_rx) = API::<Private>::new(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
-        execution_command_sender.clone(),
+        execution_controller.clone(),
         &SETTINGS.api,
         consensus_config.clone(),
     );
@@ -175,7 +189,7 @@ async fn launch() -> (
     // spawn public API
     let api_public = API::<Public>::new(
         consensus_command_sender.clone(),
-        execution_command_sender,
+        execution_controller.clone(),
         &SETTINGS.api,
         consensus_config,
         pool_command_sender.clone(),
@@ -207,7 +221,7 @@ async fn launch() -> (
 struct Managers {
     bootstrap_manager: Option<BootstrapManager>,
     consensus_manager: ConsensusManager,
-    execution_manager: ExecutionManager,
+    execution_manager: Box<dyn ExecutionManager>,
     pool_manager: PoolManager,
     protocol_manager: ProtocolManager,
     network_manager: NetworkManager,
@@ -218,7 +232,7 @@ async fn stop(
     Managers {
         bootstrap_manager,
         consensus_manager,
-        execution_manager,
+        mut execution_manager,
         pool_manager,
         protocol_manager,
         network_manager,
@@ -241,16 +255,13 @@ async fn stop(
     api_private_handle.stop();
 
     // stop consensus controller
-    let (protocol_event_receiver, _execution_event_receiver) = consensus_manager
+    let protocol_event_receiver = consensus_manager
         .stop(consensus_event_receiver)
         .await
         .expect("consensus shutdown failed");
 
     // Stop execution controller.
-    execution_manager
-        .stop()
-        .await
-        .expect("Failed to shutdown execution.");
+    execution_manager.stop();
 
     // stop pool controller
     let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
@@ -266,6 +277,8 @@ async fn stop(
         .stop(network_event_receiver)
         .await
         .expect("network shutdown failed");
+
+    // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
 }
 
 /// To instrument `massa-node` with `tokio-console` run

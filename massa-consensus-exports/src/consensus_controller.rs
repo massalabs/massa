@@ -1,6 +1,4 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-use massa_execution::ExecutionEventReceiver;
-
 use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Status};
 use massa_models::{
     address::AddressState, api::EndorsementInfo, Endorsement, EndorsementId, OperationId,
@@ -483,8 +481,7 @@ impl ConsensusEventReceiver {
 }
 
 pub struct ConsensusManager {
-    pub join_handle:
-        JoinHandle<Result<(ProtocolEventReceiver, ExecutionEventReceiver), ConsensusError>>,
+    pub join_handle: JoinHandle<Result<ProtocolEventReceiver, ConsensusError>>,
 
     pub manager_tx: mpsc::Sender<ConsensusManagementCommand>,
 }
@@ -493,12 +490,12 @@ impl ConsensusManager {
     pub async fn stop(
         self,
         consensus_event_receiver: ConsensusEventReceiver,
-    ) -> Result<(ProtocolEventReceiver, ExecutionEventReceiver), ConsensusError> {
+    ) -> Result<ProtocolEventReceiver, ConsensusError> {
         massa_trace!("consensus.consensus_controller.stop", {});
         drop(self.manager_tx);
         let _remaining_events = consensus_event_receiver.drain().await;
-        let (protocol_event_receiver, execution_event_receiver) = self.join_handle.await??;
+        let protocol_event_receiver = self.join_handle.await??;
 
-        Ok((protocol_event_receiver, execution_event_receiver))
+        Ok(protocol_event_receiver)
     }
 }

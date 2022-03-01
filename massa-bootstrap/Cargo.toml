@@ -15,11 +15,12 @@ rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-tokio = { version = "1.15", features = ["full"] }
-tracing = "0.1"
-# custom modules
+parking_lot = "0.12"
+tokio = { version = "1.11", features = ["full"] }
+tracing = "0.1"# custom modules
 massa_consensus_exports = { path = "../massa-consensus-exports" }
-massa_execution = { path = "../massa-execution" }
+massa_ledger = { path = "../massa-ledger" }
+# custom modules
 massa_graph = { path = "../massa-graph" }
 massa_hash = { path = "../massa-hash" }
 massa_logging = { path = "../massa-logging" }
@@ -33,6 +34,8 @@ massa_time = { path = "../massa-time" }
 bitvec = { version = "0.22", features = ["serde"] }
 pretty_assertions = "1.0"
 serial_test = "0.5"
+massa_ledger = { path = "../massa-ledger", features=["testing"] }
+
 
 [features]
-instrument = ["tokio/tracing", "massa_consensus_exports/instrument", "massa_execution/instrument", "massa_graph/instrument", "massa_models/instrument", "massa_network/instrument", "massa_proof_of_stake_exports/instrument", "massa_time/instrument"]
+instrument = ["tokio/tracing", "massa_consensus_exports/instrument", "massa_graph/instrument", "massa_models/instrument", "massa_network/instrument", "massa_proof_of_stake_exports/instrument", "massa_time/instrument"]

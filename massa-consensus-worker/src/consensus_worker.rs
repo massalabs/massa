@@ -6,7 +6,6 @@ use massa_consensus_exports::{
     settings::ConsensusWorkerChannels,
     ConsensusConfig,
 };
-use massa_execution::ExecutionEventReceiver;
 use massa_graph::{BlockGraph, BlockGraphExport};
 use massa_hash::hash::Hash;
 use massa_models::address::AddressState;
@@ -145,24 +144,18 @@ impl ConsensusWorker {
         // notify execution module of current blockclique and final blocks
         // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
         // because the two modules run concurrently and out of sync
-        channels
-            .execution_command_sender
-            .update_blockclique(
-                block_db.clone_all_final_blocks(),
-                /* TODO DISABLED TEMPORARILY https://github.com/massalabs/massa/issues/2101
-                block_db
-                    .get_blockclique()
-                    .into_iter()
-                    .filter_map(|block_id| {
-                        block_db
-                            .get_active_block(&block_id)
-                            .map(|a_block| (block_id, a_block.block.clone()))
-                    })
-                    .collect(),
-                */
-                Map::default(),
-            )
-            .await?;
+        channels.execution_controller.update_blockclique_status(
+            block_db.clone_all_final_blocks(),
+            block_db
+                .get_blockclique()
+                .into_iter()
+                .filter_map(|block_id| {
+                    block_db
+                        .get_active_block(&block_id)
+                        .map(|a_block| (block_id, a_block.block.clone()))
+                })
+                .collect(),
+        );
 
         Ok(ConsensusWorker {
             genesis_public_key,
@@ -187,7 +180,7 @@ impl ConsensusWorker {
 
     /// Consensus work is managed here.
     /// It's mostly a tokio::select within a loop.
-    pub async fn run_loop(mut self) -> Result<(ProtocolEventReceiver, ExecutionEventReceiver)> {
+    pub async fn run_loop(mut self) -> Result<ProtocolEventReceiver> {
         // signal initial state to pool
         if let Some(previous_slot) = self.previous_slot {
             self.channels
@@ -277,10 +270,7 @@ impl ConsensusWorker {
             }
         }
         // end loop
-        Ok((
-            self.channels.protocol_event_receiver,
-            self.channels.execution_event_receiver,
-        ))
+        Ok(self.channels.protocol_event_receiver)
     }
 
     async fn slot_tick(&mut self, next_slot_timer: &mut std::pin::Pin<&mut Sleep>) -> Result<()> {
@@ -1218,9 +1208,8 @@ impl ConsensusWorker {
                 })
                 .collect();
             self.channels
-                .execution_command_sender
-                .update_blockclique(finalized_blocks, blockclique)
-                .await?;
+                .execution_controller
+                .update_blockclique_status(finalized_blocks, blockclique);
         }
 
         // Process new final blocks

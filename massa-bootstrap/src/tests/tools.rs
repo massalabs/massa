@@ -1,15 +1,14 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::settings::BootstrapSettings;
-
 use super::mock_establisher::Duplex;
+use crate::settings::BootstrapSettings;
 use bitvec::prelude::*;
 use massa_consensus_exports::commands::ConsensusCommand;
-use massa_execution::{BootstrapExecutionState, ExecutionCommand, SCELedger, SCELedgerEntry};
 use massa_graph::{
     export_active_block::ExportActiveBlock, ledger::LedgerSubset, BootstrapableGraph,
 };
 use massa_hash::hash::Hash;
+use massa_ledger::{test_exports::make_bootstrap_state, FinalLedgerBootstrapState, LedgerEntry};
 use massa_models::{
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
@@ -23,13 +22,58 @@ use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
 };
 use massa_time::MassaTime;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use rand::Rng;
 use std::str::FromStr;
+use std::{
+    collections::BTreeMap,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+};
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::{sync::mpsc::Receiver, time::sleep};
 
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
+
+/// generates a small random number of bytes
+fn get_some_random_bytes() -> Vec<u8> {
+    let mut rng = rand::thread_rng();
+    (0usize..rng.gen_range(0..10))
+        .map(|_| rand::random::<u8>())
+        .collect()
+}
+
+/// generates a random ledger entry
+fn get_random_ledger_entry() -> LedgerEntry {
+    let mut rng = rand::thread_rng();
+    let parallel_balance = Amount::from_raw(rng.gen::<u64>());
+    let bytecode: Vec<u8> = get_some_random_bytes();
+    let mut datastore = BTreeMap::new();
+    for _ in 0usize..rng.gen_range(0..10) {
+        let key = Hash::compute_from(&get_some_random_bytes());
+        let value = get_some_random_bytes();
+        datastore.insert(key, value);
+    }
+    LedgerEntry {
+        parallel_balance,
+        bytecode,
+        datastore,
+    }
+}
+
+/// generates a rendom bootstrap state for a final ledger
+pub fn get_random_ledger_bootstrap_state(thread_count: u8) -> FinalLedgerBootstrapState {
+    let mut rng = rand::thread_rng();
+
+    let mut sorted_ledger = BTreeMap::new();
+    for _ in 0usize..rng.gen_range(0..10) {
+        sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
+    }
+
+    make_bootstrap_state(
+        Slot::new(rng.gen::<u64>(), rng.gen_range(0..thread_count)),
+        sorted_ledger,
+    )
+}
 
 pub fn get_dummy_block_id(s: &str) -> BlockId {
     BlockId(Hash::compute_from(s.as_bytes()))
@@ -110,27 +154,6 @@ where
             cmd = consensus_command_receiver.recv() => match cmd {
                 Some(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
                 _ => panic!("network event channel died")
-            },
-            _ = &mut timer => return None
-        }
-    }
-}
-
-pub async fn wait_execution_command<F, T>(
-    execution_command_receiver: &mut Receiver<ExecutionCommand>,
-    timeout: MassaTime,
-    filter_map: F,
-) -> Option<T>
-where
-    F: Fn(ExecutionCommand) -> Option<T>,
-{
-    let timer = sleep(timeout.into());
-    tokio::pin!(timer);
-    loop {
-        tokio::select! {
-            cmd = execution_command_receiver.recv() => match cmd {
-                Some(orig_evt) => if let Some(res_evt) = filter_map(orig_evt) { return Some(res_evt); },
-                _ => panic!("execution event channel died")
             },
             _ = &mut timer => return None
         }
@@ -289,96 +312,6 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
             itm1.is_blockclique, itm2.is_blockclique,
             "is_blockclique mistmatch"
         );
-    }
-}
-
-/// generates a sample BootstrapExecutionState with a few ledger entries:
-///
-/// * final_slot: (period 14, thread 1)
-/// * final_ledger:
-///   * (random address 1):
-///     * balance: 129
-///     * opt_module: None
-///     * data:
-///       * hash(bytes("key_testA")): bytes("test1_data")
-///       * hash(bytes("key_testB")): bytes("test2_data")
-///       * hash(bytes("key_testC")): bytes("test3_data")
-///   * (random address 2):
-///     * balance: 878
-///     * opt_module: Some(bytes("bytecodebytecode"))
-///     * data:
-///       * hash(bytes("key_testD")): bytes("test4_data")
-///       * hash(bytes("key_testE")): bytes("test5_data")
-pub fn get_execution_state() -> BootstrapExecutionState {
-    BootstrapExecutionState {
-        final_slot: Slot::new(14, 1),
-        final_ledger: SCELedger(
-            vec![
-                (
-                    get_random_address(),
-                    SCELedgerEntry {
-                        balance: Amount::from_str("129").unwrap(),
-                        opt_module: None,
-                        data: vec![
-                            (
-                                massa_hash::hash::Hash::compute_from("key_testA".as_bytes()),
-                                "test1_data".into(),
-                            ),
-                            (
-                                massa_hash::hash::Hash::compute_from("key_testB".as_bytes()),
-                                "test2_data".into(),
-                            ),
-                            (
-                                massa_hash::hash::Hash::compute_from("key_testC".as_bytes()),
-                                "test3_data".into(),
-                            ),
-                        ]
-                        .into_iter()
-                        .collect(),
-                    },
-                ),
-                (
-                    get_random_address(),
-                    SCELedgerEntry {
-                        balance: Amount::from_str("878").unwrap(),
-                        opt_module: Some("bytecodebytecode".into()),
-                        data: vec![
-                            (
-                                massa_hash::hash::Hash::compute_from("key_testD".as_bytes()),
-                                "test4_data".into(),
-                            ),
-                            (
-                                massa_hash::hash::Hash::compute_from("key_testE".as_bytes()),
-                                "test5_data".into(),
-                            ),
-                        ]
-                        .into_iter()
-                        .collect(),
-                    },
-                ),
-            ]
-            .into_iter()
-            .collect(),
-        ),
-    }
-}
-
-pub fn assert_eq_exec(v1: &BootstrapExecutionState, v2: &BootstrapExecutionState) {
-    assert_eq!(v1.final_slot, v2.final_slot, "final slot mismatch");
-    assert_eq!(
-        v1.final_ledger.0.len(),
-        v2.final_ledger.0.len(),
-        "ledger len mismatch"
-    );
-    for k in v1.final_ledger.0.keys() {
-        let itm1 = v1.final_ledger.0.get(k).unwrap();
-        let itm2 = v2.final_ledger.0.get(k).expect("ledger key mismatch");
-        assert_eq!(itm1.balance, itm2.balance, "ledger balance mismatch");
-        assert_eq!(
-            itm1.opt_module, itm2.opt_module,
-            "ledger opt_module mismatch"
-        );
-        assert_eq!(itm1.data, itm2.data, "ledger data mismatch");
     }
 }
 
