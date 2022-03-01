@@ -116,6 +116,9 @@ pub struct MockEstablisher {
 }
 
 impl MockEstablisher {
+    pub fn new() -> Self {
+        unreachable!("place holder")
+    }
     pub async fn get_listener(&mut self, _addr: SocketAddr) -> io::Result<MockListener> {
         Ok(MockListener {
             connection_listener_rx: self

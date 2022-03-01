@@ -30,6 +30,7 @@ pretty_assertions = "1.0"
 serial_test = "0.5.1"
 tempfile = "3.2"
 massa_models = { path = "../massa-models", features = ["testing"] }
+massa_network_exports = { path = "../massa-network-exports", features = ["testing"] }
 
 [features]
 instrument = ["tokio/tracing", "massa_models/instrument", "massa_time/instrument", "massa_network_exports/instrument"]

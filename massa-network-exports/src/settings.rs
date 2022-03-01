@@ -57,7 +57,7 @@ pub struct NetworkSettings {
     pub max_in_connection_overflow: usize,
 }
 
-#[cfg(test)]
+#[cfg(feature = "testing")]
 pub mod tests {
     use crate::{test_exports::tools::get_temp_private_key_file, NetworkSettings};
     use massa_models::constants::BASE_NETWORK_CONTROLLER_IP;

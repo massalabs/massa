@@ -1,43 +1,43 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 use massa_time::MassaTime;
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 use std::{io, net::SocketAddr};
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 use tokio::{
     net::{TcpListener, TcpStream},
     time::timeout,
 };
 
-#[cfg(test)]
+#[cfg(feature = "testing")]
 pub type ReadHalf = super::test_exports::mock_establisher::ReadHalf;
-#[cfg(test)]
+#[cfg(feature = "testing")]
 pub type WriteHalf = super::test_exports::mock_establisher::WriteHalf;
-#[cfg(test)]
+#[cfg(feature = "testing")]
 pub type Listener = super::test_exports::mock_establisher::MockListener;
-#[cfg(test)]
+#[cfg(feature = "testing")]
 pub type Connector = super::test_exports::mock_establisher::MockConnector;
-#[cfg(test)]
+#[cfg(feature = "testing")]
 pub type Establisher = super::test_exports::mock_establisher::MockEstablisher;
 
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 pub type ReadHalf = tokio::net::tcp::OwnedReadHalf;
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 pub type WriteHalf = tokio::net::tcp::OwnedWriteHalf;
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 pub type Listener = DefaultListener;
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 pub type Connector = DefaultConnector;
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 pub type Establisher = DefaultEstablisher;
 
 /// The listener we are using
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 #[derive(Debug)]
 pub struct DefaultListener(TcpListener);
 
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 impl DefaultListener {
     /// Accepts a new incoming connection from this listener.
     pub async fn accept(&mut self) -> io::Result<(ReadHalf, WriteHalf, SocketAddr)> {
@@ -48,11 +48,11 @@ impl DefaultListener {
 }
 
 /// Initiates a connection with given timeout in millis
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 #[derive(Debug)]
 pub struct DefaultConnector(MassaTime);
 
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 impl DefaultConnector {
     /// Tries to connect to addr
     ///
@@ -71,11 +71,11 @@ impl DefaultConnector {
 }
 
 /// Establishes a connection
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 #[derive(Debug)]
 pub struct DefaultEstablisher;
 
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 impl DefaultEstablisher {
     /// Creates an Establisher.
     pub fn new() -> Self {
@@ -102,7 +102,7 @@ impl DefaultEstablisher {
     }
 }
 
-#[cfg(not(test))]
+#[cfg(not(feature = "testing"))]
 impl Default for DefaultEstablisher {
     fn default() -> Self {
         Self::new()

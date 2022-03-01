@@ -15,8 +15,5 @@ mod network_controller;
 mod peers;
 pub mod settings;
 
-#[cfg(test)]
+#[cfg(feature = "testing")]
 pub mod test_exports;
-
-#[cfg(test)]
-pub use settings::tests;

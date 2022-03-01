@@ -8,7 +8,7 @@ mod tests {
 
     use super::*;
     use massa_network_exports::{
-        tests, NetworkConnectionErrorType, NetworkError, NetworkSettings, PeerInfo,
+        NetworkConnectionErrorType, NetworkError, NetworkSettings, PeerInfo,
     };
     use serial_test::serial;
     use tokio::sync::watch;
