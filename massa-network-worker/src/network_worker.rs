@@ -2,9 +2,7 @@
 
 //! The network worker actually does the job of managing connections
 use super::{
-    handshake_worker::HandshakeReturnType,
-    node_worker::{NodeCommand, NodeEvent, NodeEventType, NodeWorker},
-    peer_info_database::*,
+    handshake_worker::HandshakeReturnType, node_worker::NodeWorker, peer_info_database::*,
 };
 use crate::{
     binders::{ReadBinder, WriteBinder},
@@ -14,10 +12,12 @@ use crate::{
 };
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_logging::massa_trace;
-use massa_models::{
-    composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, stats::NetworkStats,
-    with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError, OperationId,
-    SerializeCompact, SerializeVarInt, Version,
+use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
+use massa_network_exports::{
+    ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener,
+    NetworkCommand, NetworkConnectionErrorType, NetworkError, NetworkEvent,
+    NetworkManagementCommand, NetworkSettings, NodeCommand, NodeEvent, NodeEventType, ReadHalf,
+    WriteHalf,
 };
 use massa_signature::{derive_public_key, PrivateKey};
 use std::{
@@ -27,164 +27,6 @@ use std::{
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tracing::{debug, trace, warn};
-
-/// Commands that the worker can execute
-#[derive(Debug)]
-pub enum NetworkCommand {
-    /// Ask for a block from a node.
-    AskForBlocks {
-        list: HashMap<NodeId, Vec<BlockId>>,
-    },
-    /// Send that block to node.
-    SendBlock {
-        node: NodeId,
-        block: Block,
-    },
-    /// Send a header to a node.
-    SendBlockHeader {
-        node: NodeId,
-        header: BlockHeader,
-    },
-    // (PeerInfo, Vec <(NodeId, bool)>) peer info + list of associated Id nodes in connexion out (true)
-    GetPeers(oneshot::Sender<Peers>),
-    GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
-    Ban(NodeId),
-    BanIp(Vec<IpAddr>),
-    Unban(Vec<IpAddr>),
-    BlockNotFound {
-        node: NodeId,
-        block_id: BlockId,
-    },
-    SendOperations {
-        node: NodeId,
-        operations: HashMap<OperationId, Option<Operation>>,
-    },
-    SendEndorsements {
-        node: NodeId,
-        endorsements: Vec<Endorsement>,
-    },
-    NodeSignMessage {
-        msg: Vec<u8>,
-        response_tx: oneshot::Sender<PubkeySig>,
-    },
-    GetStats {
-        response_tx: oneshot::Sender<NetworkStats>,
-    },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Peer {
-    pub peer_info: PeerInfo,
-    pub active_nodes: Vec<(NodeId, bool)>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Peers {
-    pub our_node_id: NodeId,
-    pub peers: HashMap<IpAddr, Peer>,
-}
-
-#[derive(Debug)]
-pub enum NetworkEvent {
-    NewConnection(NodeId),
-    ConnectionClosed(NodeId),
-    /// A block was received
-    ReceivedBlock {
-        node: NodeId,
-        block: Block,
-    },
-    /// A block header was received
-    ReceivedBlockHeader {
-        source_node_id: NodeId,
-        header: BlockHeader,
-    },
-    /// Someone ask for block with given header hash.
-    AskedForBlocks {
-        node: NodeId,
-        list: Vec<BlockId>,
-    },
-    /// That node does not have this block
-    BlockNotFound {
-        node: NodeId,
-        block_id: BlockId,
-    },
-    /// Receive previously asked Operation
-    ReceivedOperations {
-        node: NodeId,
-        operations: HashMap<OperationId, Option<Operation>>,
-    },
-    /// Receive a batch of operation ids by someone
-    OperationsBatch {
-        node: NodeId,
-        operations_id: Vec<OperationId>,
-    },
-    /// Someone ask for operations.
-    AskedForOperations {
-        node: NodeId,
-        list: Vec<OperationId>,
-    },
-    ReceivedEndorsements {
-        node: NodeId,
-        endorsements: Vec<Endorsement>,
-    },
-}
-
-#[derive(Debug)]
-pub enum NetworkManagementCommand {}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BootstrapPeers(pub Vec<IpAddr>);
-
-impl SerializeCompact for BootstrapPeers {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-
-        // peers
-        let peers_count: u32 = self.0.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many peers blocks in BootstrapPeers: {}", err))
-        })?;
-        let max_peer_list_length =
-            with_serialization_context(|context| context.max_advertise_length);
-        if peers_count > max_peer_list_length {
-            return Err(ModelsError::SerializeError(format!(
-                "too many peers for serialization context in BootstrapPeers: {}",
-                peers_count
-            )));
-        }
-        res.extend(peers_count.to_varint_bytes());
-        for peer in self.0.iter() {
-            res.extend(peer.to_bytes_compact()?);
-        }
-
-        Ok(res)
-    }
-}
-
-impl DeserializeCompact for BootstrapPeers {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
-        let mut cursor = 0usize;
-
-        // peers
-        let (peers_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        let max_peer_list_length =
-            with_serialization_context(|context| context.max_advertise_length);
-        if peers_count > max_peer_list_length {
-            return Err(ModelsError::DeserializeError(format!(
-                "too many peers for deserialization context in BootstrapPeers: {}",
-                peers_count
-            )));
-        }
-        cursor += delta;
-        let mut peers: Vec<IpAddr> = Vec::with_capacity(peers_count as usize);
-        for _ in 0..(peers_count as usize) {
-            let (ip, delta) = IpAddr::from_bytes_compact(&buffer[cursor..])?;
-            cursor += delta;
-            peers.push(ip);
-        }
-
-        Ok((BootstrapPeers(peers), cursor))
-    }
-}
 
 /// Real job is done by network worker
 pub struct NetworkWorker {
@@ -649,11 +491,18 @@ impl NetworkWorker {
     /// # Arguments
     /// * cmd : command to process.
     /// * peer_info_db: Database with peer information.
-    /// * active_connections: hashmap linking connection id to ipAddr to whether connection is outgoing (true)
+    /// * active_connections: hashmap linking connection id to ipAddr to
+    ///   whether connection is outgoing (true)
     /// * event_tx: channel to send network events out.
     ///
     /// # Command implementation
-    /// The network commands are root to functions in `network_cmd_impl`
+    /// Some of the commands are just forwarded to the NodeWorker that manage
+    /// the real connection between nodes. Some other commands has an impact on
+    /// the current worker.
+    ///
+    /// Whatever the behavior of the command, we better have to look at
+    /// `network_cmd_impl.rs` where the commands are implemented.
+    ///
     /// ex: NetworkCommand::AskForBlocks => on_ask_bfor_block_cmd(...)
     async fn manage_network_command(&mut self, cmd: NetworkCommand) -> Result<(), NetworkError> {
         use crate::network_cmd_impl::*;
@@ -663,7 +512,7 @@ impl NetworkWorker {
             NetworkCommand::SendBlockHeader { node, header } => {
                 on_send_block_header_cmd(self, node, header).await?
             }
-            NetworkCommand::AskForBlocks { list } => on_ask_bfor_block_cmd(self, list).await,
+            NetworkCommand::AskForBlocks { list } => on_ask_for_block_cmd(self, list).await,
             NetworkCommand::SendBlock { node, block } => {
                 on_send_block_cmd(self, node, block).await?
             }
@@ -675,7 +524,13 @@ impl NetworkWorker {
                 on_block_not_found_cmd(self, node, block_id).await
             }
             NetworkCommand::SendOperations { node, operations } => {
-                on_send_operation_cmd(self, node, operations).await
+                on_send_operations_cmd(self, node, operations).await
+            }
+            NetworkCommand::SendOperationBatch { batches } => {
+                on_send_operation_batches_cmd(self, batches).await
+            }
+            NetworkCommand::AskForOperations { wishlist } => {
+                on_ask_for_operations_cmd(self, wishlist).await
             }
             NetworkCommand::SendEndorsements { node, endorsements } => {
                 on_send_endorsements_cmd(self, node, endorsements).await
@@ -913,6 +768,12 @@ impl NetworkWorker {
             }
             NodeEvent(node, NodeEventType::ReceivedEndorsements(endorsements)) => {
                 event_impl::on_received_endorsements(self, node, endorsements).await
+            }
+            NodeEvent(node, NodeEventType::ReceivedOperationBatch(operation_ids)) => {
+                event_impl::on_received_operations_batch(self, node, operation_ids).await
+            }
+            NodeEvent(node, NodeEventType::ReceivedAskForOperations(operation_ids)) => {
+                event_impl::on_received_ask_for_operations(self, node, operation_ids).await
             }
         }
         Ok(())
