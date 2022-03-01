@@ -1499,6 +1499,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa-network-exports"
+version = "0.1.0"
+
+[[package]]
 name = "massa-node"
 version = "0.1.0"
 dependencies = [
