@@ -647,7 +647,7 @@ pub async fn consensus_pool_test<F, V>(
     let stop_sinks = Arc::new(Mutex::new(false));
     let stop_sinks_clone = stop_sinks.clone();
     let execution_sink = std::thread::spawn(move || {
-        while *stop_sinks_clone.lock().unwrap() == true {
+        while *stop_sinks_clone.lock().unwrap() == false {
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
@@ -719,7 +719,7 @@ where
     let stop_sinks = Arc::new(Mutex::new(false));
     let stop_sinks_clone = stop_sinks.clone();
     let execution_sink = std::thread::spawn(move || {
-        while *stop_sinks_clone.lock().unwrap() == true {
+        while *stop_sinks_clone.lock().unwrap() == false {
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
