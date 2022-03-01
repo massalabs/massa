@@ -166,17 +166,6 @@
 <span id="161">161</span>
 <span id="162">162</span>
 <span id="163">163</span>
-<span id="164">164</span>
-<span id="165">165</span>
-<span id="166">166</span>
-<span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
-<span id="171">171</span>
-<span id="172">172</span>
-<span id="173">173</span>
-<span id="174">174</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError</span>;
@@ -184,7 +173,7 @@
 <span class="kw">use</span> <span class="ident">jsonrpc_core::BoxFuture</span>;
 <span class="kw">use</span> <span class="ident">jsonrpc_http_server::tokio::sync::mpsc</span>;
 <span class="kw">use</span> <span class="ident">massa_consensus_exports</span>::{<span class="ident">ConsensusCommandSender</span>, <span class="ident">ConsensusConfig</span>};
-<span class="kw">use</span> <span class="ident">massa_execution::ExecutionCommandSender</span>;
+<span class="kw">use</span> <span class="ident">massa_execution_exports::ExecutionController</span>;
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
     <span class="ident">APISettings</span>, <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">EventFilter</span>, <span class="ident">NodeStatus</span>,
     <span class="ident">OperationInfo</span>, <span class="ident">ReadOnlyExecution</span>, <span class="ident">TimeInterval</span>,
@@ -203,7 +192,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
         <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
-        <span class="ident">execution_command_sender</span>: <span class="ident">ExecutionCommandSender</span>,
+        <span class="ident">execution_controller</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>,
         <span class="ident">api_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">APISettings</span>,
         <span class="ident">consensus_settings</span>: <span class="ident">ConsensusConfig</span>,
     ) -&gt; (<span class="self">Self</span>, <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span>()<span class="op">&gt;</span>) {
@@ -212,7 +201,7 @@
             <span class="ident">API</span>(<span class="ident">Private</span> {
                 <span class="ident">consensus_command_sender</span>,
                 <span class="ident">network_command_sender</span>,
-                <span class="ident">execution_command_sender</span>,
+                <span class="ident">execution_controller</span>,
                 <span class="ident">consensus_config</span>: <span class="ident">consensus_settings</span>,
                 <span class="ident">api_settings</span>,
                 <span class="ident">stop_node_channel</span>,
@@ -255,20 +244,9 @@
 
     <span class="kw">fn</span> <span class="ident">execute_read_only_request</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">ReadOnlyExecution</span> {
-            <span class="ident">max_gas</span>,
-            <span class="ident">simulated_gas_price</span>,
-            <span class="ident">bytecode</span>,
-            <span class="ident">address</span>,
-        }: <span class="ident">ReadOnlyExecution</span>,
-    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">cmd_sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">execution_command_sender</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">closure</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> <span class="op">|</span><span class="op">|</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">cmd_sender</span>
-                .<span class="ident">execute_read_only_request</span>(<span class="ident">max_gas</span>, <span class="ident">simulated_gas_price</span>, <span class="ident">bytecode</span>, <span class="ident">address</span>)
-                .<span class="kw">await</span><span class="question-mark">?</span>)
-        };
-        <span class="ident">Box::pin</span>(<span class="ident">closure</span>())
+        <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ReadOnlyExecution</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="ident"><span class="kw">crate</span>::wrong_api</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span><span class="op">&gt;</span><span class="op">&gt;</span>()
     }
 
     <span class="kw">fn</span> <span class="ident">remove_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {

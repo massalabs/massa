@@ -132,7 +132,6 @@
 <span id="127">127</span>
 <span id="128">128</span>
 <span id="129">129</span>
-<span id="130">130</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">massa_consensus_exports</span>::{
     <span class="ident">commands</span>::{<span class="ident">ConsensusCommand</span>, <span class="ident">ConsensusManagementCommand</span>},
     <span class="ident">error</span>::{<span class="ident">ConsensusError</span>, <span class="ident">ConsensusResult</span> <span class="kw">as</span> <span class="prelude-ty">Result</span>},
@@ -228,8 +227,7 @@
             <span class="ident">ConsensusWorkerChannels</span> {
                 <span class="ident">protocol_command_sender</span>: <span class="ident">channels</span>.<span class="ident">protocol_command_sender</span>,
                 <span class="ident">protocol_event_receiver</span>: <span class="ident">channels</span>.<span class="ident">protocol_event_receiver</span>,
-                <span class="ident">execution_event_receiver</span>: <span class="ident">channels</span>.<span class="ident">execution_event_receiver</span>,
-                <span class="ident">execution_command_sender</span>: <span class="ident">channels</span>.<span class="ident">execution_command_sender</span>,
+                <span class="ident">execution_controller</span>: <span class="ident">channels</span>.<span class="ident">execution_controller</span>,
                 <span class="ident">pool_command_sender</span>: <span class="ident">channels</span>.<span class="ident">pool_command_sender</span>,
                 <span class="ident">controller_command_rx</span>: <span class="ident">command_rx</span>,
                 <span class="ident">controller_event_tx</span>: <span class="ident">event_tx</span>,

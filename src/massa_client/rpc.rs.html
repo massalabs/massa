@@ -209,6 +209,8 @@
 <span id="204">204</span>
 <span id="205">205</span>
 <span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::SETTINGS</span>;
@@ -328,12 +330,14 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">read_only_execution</span>: <span class="ident">ReadOnlyExecution</span>,
     ) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">call_method</span>(
+        <span class="self">self</span>.<span class="ident">call_method</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ReadOnlyExecution</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span><span class="op">&gt;</span><span class="op">&gt;</span>(
             <span class="string">&quot;execute_read_only_request&quot;</span>,
-            <span class="string">&quot;ExecuteReadOnlyResponse&quot;</span>,
-            <span class="ident">read_only_execution</span>,
+            <span class="string">&quot;Vec&lt;ExecuteReadOnlyResponse&gt;&quot;</span>,
+            <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="ident">read_only_execution</span>]],
         )
-        .<span class="kw">await</span>
+        .<span class="kw">await</span><span class="question-mark">?</span>
+        .<span class="ident">pop</span>()
+        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">RpcError::Client</span>(<span class="string">&quot;missing return value on execute_read_only_request&quot;</span>.<span class="ident">into</span>()))
     }
 
     <span class="comment">////////////////</span>

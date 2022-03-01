@@ -372,6 +372,19 @@
 <span id="367">367</span>
 <span id="368">368</span>
 <span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
@@ -386,12 +399,14 @@
     <span class="ident">ConsensusEventReceiver</span>, <span class="ident">ConsensusManager</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_consensus_worker::start_consensus_controller</span>;
-<span class="kw">use</span> <span class="ident">massa_execution</span>::{<span class="ident">ExecutionConfigs</span>, <span class="ident">ExecutionManager</span>};
-
+<span class="kw">use</span> <span class="ident">massa_execution_exports</span>::{<span class="ident">ExecutionConfig</span>, <span class="ident">ExecutionManager</span>};
+<span class="kw">use</span> <span class="ident">massa_execution_worker::start_execution_worker</span>;
+<span class="kw">use</span> <span class="ident">massa_ledger</span>::{<span class="ident">FinalLedger</span>, <span class="ident">LedgerConfig</span>};
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">constants</span>::{
-        <span class="ident">END_TIMESTAMP</span>, <span class="ident">GENESIS_TIMESTAMP</span>, <span class="ident">MAX_GAS_PER_BLOCK</span>, <span class="ident">OPERATION_VALIDITY_PERIODS</span>, <span class="ident">VERSION</span>,
+        <span class="ident">END_TIMESTAMP</span>, <span class="ident">GENESIS_TIMESTAMP</span>, <span class="ident">MAX_GAS_PER_BLOCK</span>, <span class="ident">OPERATION_VALIDITY_PERIODS</span>, <span class="ident">T0</span>,
+        <span class="ident">THREAD_COUNT</span>, <span class="ident">VERSION</span>,
     },
     <span class="ident">init_serialization_context</span>, <span class="ident">SerializationContext</span>,
 };
@@ -400,7 +415,8 @@
 <span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolManager</span>;
 <span class="kw">use</span> <span class="ident">massa_protocol_worker::start_protocol_controller</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">std::process</span>;
+<span class="kw">use</span> <span class="ident">parking_lot::RwLock</span>;
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">process</span>, <span class="ident">sync::Arc</span>};
 <span class="kw">use</span> <span class="ident">tokio::signal</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>;
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">warn</span>};
@@ -416,7 +432,7 @@
     <span class="ident">NetworkCommandSender</span>,
     <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BootstrapManager</span><span class="op">&gt;</span>,
     <span class="ident">ConsensusManager</span>,
-    <span class="ident">ExecutionManager</span>,
+    <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionManager</span><span class="op">&gt;</span>,
     <span class="ident">PoolManager</span>,
     <span class="ident">ProtocolManager</span>,
     <span class="ident">NetworkManager</span>,
@@ -491,17 +507,29 @@
     .<span class="kw">await</span>
     .<span class="ident">expect</span>(<span class="string">&quot;could not start pool controller&quot;</span>);
 
-    <span class="kw">let</span> <span class="ident">execution_config</span> <span class="op">=</span> <span class="ident">ExecutionConfigs</span> {
-        <span class="ident">settings</span>: <span class="ident">SETTINGS</span>.<span class="ident">execution</span>.<span class="ident">clone</span>(),
-        <span class="ident">clock_compensation</span>: <span class="ident">bootstrap_state</span>.<span class="ident">compensation_millis</span>,
-        ..<span class="ident">Default::default</span>()
+    <span class="comment">// init ledger</span>
+    <span class="kw">let</span> <span class="ident">ledger_config</span> <span class="op">=</span> <span class="ident">LedgerConfig</span> {
+        <span class="ident">initial_sce_ledger_path</span>: <span class="ident">SETTINGS</span>.<span class="ident">ledger</span>.<span class="ident">initial_sce_ledger_path</span>.<span class="ident">clone</span>(),
+        <span class="ident">final_history_length</span>: <span class="ident">SETTINGS</span>.<span class="ident">ledger</span>.<span class="ident">final_history_length</span>,
+        <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
     };
+    <span class="kw">let</span> <span class="ident">final_ledger</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="kw">match</span> <span class="ident">bootstrap_state</span>.<span class="ident">final_ledger</span> {
+        <span class="prelude-val">Some</span>(<span class="ident">l</span>) =&gt; <span class="ident">FinalLedger::from_bootstrap_state</span>(<span class="ident">ledger_config</span>, <span class="ident">l</span>),
+        <span class="prelude-val">None</span> =&gt; <span class="ident">FinalLedger::new</span>(<span class="ident">ledger_config</span>).<span class="ident">expect</span>(<span class="string">&quot;could not init final ledger&quot;</span>),
+    }));
 
-    <span class="comment">// launch execution controller</span>
-    <span class="kw">let</span> (<span class="ident">execution_command_sender</span>, <span class="ident">execution_event_receiver</span>, <span class="ident">execution_manager</span>) <span class="op">=</span>
-        <span class="ident">massa_execution::start_controller</span>(<span class="ident">execution_config</span>, <span class="ident">bootstrap_state</span>.<span class="ident">execution</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">expect</span>(<span class="string">&quot;could not start execution controller&quot;</span>);
+    <span class="comment">// launch execution module</span>
+    <span class="kw">let</span> <span class="ident">execution_config</span> <span class="op">=</span> <span class="ident">ExecutionConfig</span> {
+        <span class="ident">max_final_events</span>: <span class="ident">SETTINGS</span>.<span class="ident">execution</span>.<span class="ident">max_final_events</span>,
+        <span class="ident">readonly_queue_length</span>: <span class="ident">SETTINGS</span>.<span class="ident">execution</span>.<span class="ident">readonly_queue_length</span>,
+        <span class="ident">cursor_delay</span>: <span class="ident">SETTINGS</span>.<span class="ident">execution</span>.<span class="ident">cursor_delay</span>,
+        <span class="ident">clock_compensation</span>: <span class="ident">bootstrap_state</span>.<span class="ident">compensation_millis</span>,
+        <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
+        <span class="ident">t0</span>: <span class="ident">T0</span>,
+        <span class="ident">genesis_timestamp</span>: <span class="kw-2">*</span><span class="ident">GENESIS_TIMESTAMP</span>,
+    };
+    <span class="kw">let</span> (<span class="ident">execution_manager</span>, <span class="ident">execution_controller</span>) <span class="op">=</span>
+        <span class="ident">start_execution_worker</span>(<span class="ident">execution_config</span>, <span class="ident">final_ledger</span>.<span class="ident">clone</span>());
 
     <span class="kw">let</span> <span class="ident">consensus_config</span> <span class="op">=</span> <span class="ident">ConsensusConfig::from</span>(<span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">consensus</span>);
     <span class="comment">// launch consensus controller</span>
@@ -509,8 +537,7 @@
         <span class="ident">start_consensus_controller</span>(
             <span class="ident">consensus_config</span>.<span class="ident">clone</span>(),
             <span class="ident">ConsensusChannels</span> {
-                <span class="ident">execution_command_sender</span>: <span class="ident">execution_command_sender</span>.<span class="ident">clone</span>(),
-                <span class="ident">execution_event_receiver</span>,
+                <span class="ident">execution_controller</span>: <span class="ident">execution_controller</span>.<span class="ident">clone</span>(),
                 <span class="ident">protocol_command_sender</span>: <span class="ident">protocol_command_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">protocol_event_receiver</span>,
                 <span class="ident">pool_command_sender</span>: <span class="ident">pool_command_sender</span>.<span class="ident">clone</span>(),
@@ -526,7 +553,7 @@
     <span class="kw">let</span> <span class="ident">bootstrap_manager</span> <span class="op">=</span> <span class="ident">start_bootstrap_server</span>(
         <span class="ident">consensus_command_sender</span>.<span class="ident">clone</span>(),
         <span class="ident">network_command_sender</span>.<span class="ident">clone</span>(),
-        <span class="ident">execution_command_sender</span>.<span class="ident">clone</span>(),
+        <span class="ident">final_ledger</span>.<span class="ident">clone</span>(),
         <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">bootstrap</span>,
         <span class="ident">massa_bootstrap::Establisher::new</span>(),
         <span class="ident">private_key</span>,
@@ -540,7 +567,7 @@
     <span class="kw">let</span> (<span class="ident">api_private</span>, <span class="ident">api_private_stop_rx</span>) <span class="op">=</span> <span class="ident">API</span>::<span class="op">&lt;</span><span class="ident">Private</span><span class="op">&gt;</span><span class="ident">::new</span>(
         <span class="ident">consensus_command_sender</span>.<span class="ident">clone</span>(),
         <span class="ident">network_command_sender</span>.<span class="ident">clone</span>(),
-        <span class="ident">execution_command_sender</span>.<span class="ident">clone</span>(),
+        <span class="ident">execution_controller</span>.<span class="ident">clone</span>(),
         <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">api</span>,
         <span class="ident">consensus_config</span>.<span class="ident">clone</span>(),
     );
@@ -549,7 +576,7 @@
     <span class="comment">// spawn public API</span>
     <span class="kw">let</span> <span class="ident">api_public</span> <span class="op">=</span> <span class="ident">API</span>::<span class="op">&lt;</span><span class="ident">Public</span><span class="op">&gt;</span><span class="ident">::new</span>(
         <span class="ident">consensus_command_sender</span>.<span class="ident">clone</span>(),
-        <span class="ident">execution_command_sender</span>,
+        <span class="ident">execution_controller</span>.<span class="ident">clone</span>(),
         <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">api</span>,
         <span class="ident">consensus_config</span>,
         <span class="ident">pool_command_sender</span>.<span class="ident">clone</span>(),
@@ -581,7 +608,7 @@
 <span class="kw">struct</span> <span class="ident">Managers</span> {
     <span class="ident">bootstrap_manager</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BootstrapManager</span><span class="op">&gt;</span>,
     <span class="ident">consensus_manager</span>: <span class="ident">ConsensusManager</span>,
-    <span class="ident">execution_manager</span>: <span class="ident">ExecutionManager</span>,
+    <span class="ident">execution_manager</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionManager</span><span class="op">&gt;</span>,
     <span class="ident">pool_manager</span>: <span class="ident">PoolManager</span>,
     <span class="ident">protocol_manager</span>: <span class="ident">ProtocolManager</span>,
     <span class="ident">network_manager</span>: <span class="ident">NetworkManager</span>,
@@ -592,7 +619,7 @@
     <span class="ident">Managers</span> {
         <span class="ident">bootstrap_manager</span>,
         <span class="ident">consensus_manager</span>,
-        <span class="ident">execution_manager</span>,
+        <span class="kw-2">mut</span> <span class="ident">execution_manager</span>,
         <span class="ident">pool_manager</span>,
         <span class="ident">protocol_manager</span>,
         <span class="ident">network_manager</span>,
@@ -615,16 +642,13 @@
     <span class="ident">api_private_handle</span>.<span class="ident">stop</span>();
 
     <span class="comment">// stop consensus controller</span>
-    <span class="kw">let</span> (<span class="ident">protocol_event_receiver</span>, <span class="ident">_execution_event_receiver</span>) <span class="op">=</span> <span class="ident">consensus_manager</span>
+    <span class="kw">let</span> <span class="ident">protocol_event_receiver</span> <span class="op">=</span> <span class="ident">consensus_manager</span>
         .<span class="ident">stop</span>(<span class="ident">consensus_event_receiver</span>)
         .<span class="kw">await</span>
         .<span class="ident">expect</span>(<span class="string">&quot;consensus shutdown failed&quot;</span>);
 
     <span class="comment">// Stop execution controller.</span>
-    <span class="ident">execution_manager</span>
-        .<span class="ident">stop</span>()
-        .<span class="kw">await</span>
-        .<span class="ident">expect</span>(<span class="string">&quot;Failed to shutdown execution.&quot;</span>);
+    <span class="ident">execution_manager</span>.<span class="ident">stop</span>();
 
     <span class="comment">// stop pool controller</span>
     <span class="kw">let</span> <span class="ident">protocol_pool_event_receiver</span> <span class="op">=</span> <span class="ident">pool_manager</span>.<span class="ident">stop</span>().<span class="kw">await</span>.<span class="ident">expect</span>(<span class="string">&quot;pool shutdown failed&quot;</span>);
@@ -640,6 +664,8 @@
         .<span class="ident">stop</span>(<span class="ident">network_event_receiver</span>)
         .<span class="kw">await</span>
         .<span class="ident">expect</span>(<span class="string">&quot;network shutdown failed&quot;</span>);
+
+    <span class="comment">// note that FinalLedger gets destroyed as soon as its Arc count goes to zero</span>
 }
 
 <span class="doccomment">/// To instrument `massa-node` with `tokio-console` run</span>

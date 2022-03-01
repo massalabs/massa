@@ -1,0 +1,54 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="General description"><meta name="keywords" content="rust, rustlang, rust-lang, massa_ledger"><title>massa_ledger - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../dark.css" disabled><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../storage.js"></script><script src="../crates.js"></script><script defer src="../main.js"></script>
+    <noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../massa_ledger/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../massa_ledger/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"><a href="#">Crate massa_ledger</a></h2><div class="sidebar-elems"><div class="block"><ul><li class="version">Version 0.1.0</li><li><a id="all-types" href="all.html">All Items</a></li></div></ul><section><div class="block"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></div></section><div id="sidebar-vars" data-name="massa_ledger" data-ty="mod" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../massa_ledger/index.html"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+    <h1 class="fqn"><span class="in-band">Crate <a class="mod" href="#">massa_ledger</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../src/massa_ledger/lib.rs.html#3-67">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="general-description"><a href="#general-description">General description</a></h2>
+<p>This crate implements a ledger matching addresses to balances, executable bytecode and data.
+It also provides tools to manipulate ledger entries.</p>
+<p>FinalLedger representing a ledger at a given slot that was executed as final
+(see the massa-execution-worker crate for details on execution).
+Only the execution worker writes into the final ledger.</p>
+<h2 id="a-note-on-parallel-vs-sequential-balance"><a href="#a-note-on-parallel-vs-sequential-balance">A note on parallel vs sequential balance</a></h2>
+<p>The distinctions between the parallel and the sequential balance of a ledger entry are the following:</p>
+<ul>
+<li>the parallel balance can be credited or spent in any slot</li>
+<li>the sequential balance can be credited in any slot but only spent in slots form the address’ thread</li>
+<li>block produers are credited fees from the sequential balance,
+and they can ensure that this balance will be available for their block simply
+by looking for sequential balance spendings within the block’s thread.</li>
+</ul>
+<h2 id="architecture"><a href="#architecture">Architecture</a></h2><h3 id="ledgerrs"><a href="#ledgerrs">ledger.rs</a></h3>
+<p>Defines the FinalLedger that matches an address to a LedgerEntry (see ledger_entry.rs),
+and can be manipulated using LedgerChanges (see ledger_changes.rs).
+The FinalLedger is bootstrapped using tooling available in bootstrap.rs</p>
+<h3 id="ledger_entryrs"><a href="#ledger_entryrs">ledger_entry.rs</a></h3>
+<p>Represents an entry in the ledger for a given address.
+It contains balances, executable bytecode and an arbitrary datastore.</p>
+<h3 id="ledger_changesrs"><a href="#ledger_changesrs">ledger_changes.rs</a></h3>
+<p>Represents a list of changes to ledger entries that
+can be modified, combined or applied to the final ledger.</p>
+<h3 id="bootstraprs"><a href="#bootstraprs">bootstrap.rs</a></h3>
+<p>Provides serializable strucutres and tools for bootstrapping the final ledger.</p>
+<h3 id="test-exports"><a href="#test-exports">Test exports</a></h3>
+<p>When the crate feature <code>testing</code> is enabled, tooling useful for testing purposes is exported.
+See test_exports/mod.rs for details.</p>
+</div></details><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.FinalLedger.html" title="massa_ledger::FinalLedger struct">FinalLedger</a></div><div class="item-right docblock-short"><p>Represents a final ledger associating addresses to their balances, bytecode and data.
+The final ledger is also attached to a final slot, can be boostrapped and allows others to bootstrap.
+The ledger size can be very high: it can exceed 1TB.
+To allow for storage on disk, the ledger uses trees and has <code>O(log(N))</code> access, insertion and deletion complexity.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.FinalLedgerBootstrapState.html" title="massa_ledger::FinalLedgerBootstrapState struct">FinalLedgerBootstrapState</a></div><div class="item-right docblock-short"><p>Represents a snapshot of the ledger state,
+which is enough to fully bootstrap a FinalLedger</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.LedgerChanges.html" title="massa_ledger::LedgerChanges struct">LedgerChanges</a></div><div class="item-right docblock-short"><p>represents a list of changes to multiple ledger entries</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.LedgerConfig.html" title="massa_ledger::LedgerConfig struct">LedgerConfig</a></div><div class="item-right docblock-short"><p>Ledger configuration</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.LedgerEntry.html" title="massa_ledger::LedgerEntry struct">LedgerEntry</a></div><div class="item-right docblock-short"><p>Structure defining an entry associated to an address in the FinalLedger</p>
+</div></div></div><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.LedgerError.html" title="massa_ledger::LedgerError enum">LedgerError</a></div><div class="item-right docblock-short"></div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.SetOrDelete.html" title="massa_ledger::SetOrDelete enum">SetOrDelete</a></div><div class="item-right docblock-short"><p>Enum representing a set/delete change on a value T</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.SetOrKeep.html" title="massa_ledger::SetOrKeep enum">SetOrKeep</a></div><div class="item-right docblock-short"><p>represents a set/keep change</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.SetUpdateOrDelete.html" title="massa_ledger::SetUpdateOrDelete enum">SetUpdateOrDelete</a></div><div class="item-right docblock-short"><p>Enum representing set/update/delete change on a value T</p>
+</div></div></div><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.Applicable.html" title="massa_ledger::Applicable trait">Applicable</a></div><div class="item-right docblock-short"><p>Trait marking a structure that supports another one (V) being applied to it</p>
+</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="massa_ledger" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (4ce374923 2022-02-28)" ></div>
+</body></html>

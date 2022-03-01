@@ -43,12 +43,29 @@
 <span id="38">38</span>
 <span id="39">39</span>
 <span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! Build here the default node settings from the config file toml</span>
+<span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
+
 <span class="kw">use</span> <span class="ident">massa_bootstrap::settings::BootstrapSettings</span>;
 <span class="kw">use</span> <span class="ident">massa_consensus_exports::ConsensusSettings</span>;
-<span class="kw">use</span> <span class="ident">massa_execution::ExecutionSettings</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">api::APISettings</span>,
     <span class="ident">constants</span>::{<span class="ident">build_massa_settings</span>, <span class="ident">OPERATION_VALIDITY_PERIODS</span>, <span class="ident">THREAD_COUNT</span>},
@@ -56,6 +73,7 @@
 <span class="kw">use</span> <span class="ident">massa_network::NetworkSettings</span>;
 <span class="kw">use</span> <span class="ident">massa_pool</span>::{<span class="ident">PoolConfig</span>, <span class="ident">PoolSettings</span>};
 <span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolSettings</span>;
+<span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
 
 <span class="macro">lazy_static::lazy_static!</span> {
@@ -67,9 +85,22 @@
     };
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LoggingSettings</span> {
     <span class="kw">pub</span> <span class="ident">level</span>: <span class="ident">usize</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExecutionSettings</span> {
+    <span class="kw">pub</span> <span class="ident">max_final_events</span>: <span class="ident">usize</span>,
+    <span class="kw">pub</span> <span class="ident">readonly_queue_length</span>: <span class="ident">usize</span>,
+    <span class="kw">pub</span> <span class="ident">cursor_delay</span>: <span class="ident">MassaTime</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerSettings</span> {
+    <span class="kw">pub</span> <span class="ident">initial_sce_ledger_path</span>: <span class="ident">PathBuf</span>,
+    <span class="kw">pub</span> <span class="ident">final_history_length</span>: <span class="ident">usize</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
@@ -82,6 +113,7 @@
     <span class="kw">pub</span> <span class="ident">bootstrap</span>: <span class="ident">BootstrapSettings</span>,
     <span class="kw">pub</span> <span class="ident">pool</span>: <span class="ident">PoolSettings</span>,
     <span class="kw">pub</span> <span class="ident">execution</span>: <span class="ident">ExecutionSettings</span>,
+    <span class="kw">pub</span> <span class="ident">ledger</span>: <span class="ident">LedgerSettings</span>,
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (4ce374923 2022-02-28)" ></div>

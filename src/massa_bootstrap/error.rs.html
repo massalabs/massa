@@ -49,8 +49,8 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::BootstrapMessage</span>;
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
 <span class="kw">use</span> <span class="ident">massa_consensus_exports::error::ConsensusError</span>;
-<span class="kw">use</span> <span class="ident">massa_execution::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::MassaHashError</span>;
+<span class="kw">use</span> <span class="ident">massa_ledger::LedgerError</span>;
 <span class="kw">use</span> <span class="ident">massa_network::NetworkError</span>;
 <span class="kw">use</span> <span class="ident">massa_time::TimeError</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
@@ -76,8 +76,8 @@
     <span class="ident">ConsensusError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ConsensusError</span>),
     <span class="doccomment">/// network error: {0}</span>
     <span class="ident">NetworkError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">NetworkError</span>),
-    <span class="doccomment">/// execution error: {0}</span>
-    <span class="ident">ExecutionError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExecutionError</span>),
+    <span class="doccomment">/// ledger error: {0}</span>
+    <span class="ident">LedgerError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LedgerError</span>),
     <span class="doccomment">/// join error: {0}</span>
     <span class="ident">JoinError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">tokio::task::JoinError</span>),
     <span class="doccomment">/// missing private key file</span>

@@ -1,0 +1,174 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../../massa_execution_worker/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1"> 1</span>
+<span id="2"> 2</span>
+<span id="3"> 3</span>
+<span id="4"> 4</span>
+<span id="5"> 5</span>
+<span id="6"> 6</span>
+<span id="7"> 7</span>
+<span id="8"> 8</span>
+<span id="9"> 9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+</pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+
+<span class="doccomment">//! # General description</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! The execution worker launches a persistent thread allowing the execution</span>
+<span class="doccomment">//! of operations that can contain executable bytecode and managing interactions with the ledger.</span>
+<span class="doccomment">//! When the worker is launched, a ExecutionManager and a ExecutionController are returned.</span>
+<span class="doccomment">//! ExecutionManager allows stopping the worker,</span>
+<span class="doccomment">//! and ExecutionController is the clonable structure through which users interact with the worker.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! The worker is fed through the ExecutionController with information about blockclique changes and newly finalized blocks</span>
+<span class="doccomment">//! and will execute the operations in those blocks, as well as pending asynchronous operations on empty slots.</span>
+<span class="doccomment">//! The worker can also query the current state of the ledger, and simulate operations in a read-only context.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! The execution worker has shared read access to the final ledger,</span>
+<span class="doccomment">//! and must be the only module with runtime write access to the final ledger.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! # A note on finality</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! The operations contained in a final slot are ready to be executed as final</span>
+<span class="doccomment">//! only once all the previous slots are final and their operations are executed as final or ready to be so.</span>
+<span class="doccomment">//! This ensures the sequentiality of the final executions of operations,</span>
+<span class="doccomment">//! thus ensuring that writes to the final ledger are irreversible.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Slots are called &quot;active&quot; if they have not been executed as final, and are not ready to be executed as final.</span>
+<span class="doccomment">//! Active slots can therefore be final slots, or slots containing blocks from the blockclique, or empty (miss) slots.</span>
+<span class="doccomment">//! Active slots can be executed in a speculative way: their execution might need to be reverted</span>
+<span class="doccomment">//! as new blocks finalize or arrive, causing changes to them or to active slots before them.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Miss slots are executed as well because they can contain implicit and async operations.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! # Architecture</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! This crate is meant to be included only at the binary level to launch the worker,</span>
+<span class="doccomment">//! not by the lib crates that will interact with it.</span>
+<span class="doccomment">//! It depends on the massa-execution-exports crate that contains all the publicly exposed elements</span>
+<span class="doccomment">//! and throuh which users will actually interact with the worker.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## worker.rs</span>
+<span class="doccomment">//! This module runs the main loop of the worker thread.</span>
+<span class="doccomment">//! It contains the logic to process incoming blockclique change notifications and read-only execution requests.</span>
+<span class="doccomment">//! It sequences the blocks according to their slot number into queues,</span>
+<span class="doccomment">//! and requests the execution of active and final slots to execution.rs.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## controller.rs</span>
+<span class="doccomment">//! Implements ExecutionManager and ExecutionController</span>
+<span class="doccomment">//! that serve as interfaces for users to interact with the worker in worker.rs.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## execution.rs</span>
+<span class="doccomment">//! Contains the machinery to execute final and non-final slots,</span>
+<span class="doccomment">//! and track the state and results of those executions.</span>
+<span class="doccomment">//! This module initializes and holds a reference to the interface from interface_impl.rs</span>
+<span class="doccomment">//! that allows the crate to provide execution state access</span>
+<span class="doccomment">//! to the virtual machine runtime (massa-sc-runtime crate).</span>
+<span class="doccomment">//! It also serves as an access point to the current execution state and speculative ledger</span>
+<span class="doccomment">//! as defined in speculative_ledger.rs.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## speculative_ledger.rs</span>
+<span class="doccomment">//! A speculative (non-final) ledger that supports cancelling already-executed operations</span>
+<span class="doccomment">//! in the case of some blockclique changes.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## request_queue.rs</span>
+<span class="doccomment">//! This module contains the implementation of a generic finite-size execution request queue.</span>
+<span class="doccomment">//! It handles requests that come with an MPSC to send back the result of their execution once it&#39;s done.</span>
+<span class="doccomment">//!</span>
+
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">map_first_last</span>)]</span>
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">unzip_option</span>)]</span>
+
+<span class="kw">mod</span> <span class="ident">context</span>;
+<span class="kw">mod</span> <span class="ident">controller</span>;
+<span class="kw">mod</span> <span class="ident">execution</span>;
+<span class="kw">mod</span> <span class="ident">interface_impl</span>;
+<span class="kw">mod</span> <span class="ident">request_queue</span>;
+<span class="kw">mod</span> <span class="ident">speculative_ledger</span>;
+<span class="kw">mod</span> <span class="ident">worker</span>;
+
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">worker::start_execution_worker</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">mod</span> <span class="ident">tests</span>;
+</code></pre></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (4ce374923 2022-02-28)" ></div>
+</body></html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Overview"><meta name="keywords" content="rust, rustlang, rust-lang, massa_execution_exports"><title>massa_execution_exports - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../dark.css" disabled><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../storage.js"></script><script src="../crates.js"></script><script defer src="../main.js"></script>
+    <noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../massa_execution_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../massa_execution_exports/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"><a href="#">Crate massa_execution_exports</a></h2><div class="sidebar-elems"><div class="block"><ul><li class="version">Version 0.1.0</li><li><a id="all-types" href="all.html">All Items</a></li></div></ul><section><div class="block"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></div></section><div id="sidebar-vars" data-name="massa_execution_exports" data-ty="mod" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../massa_execution_exports/index.html"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+    <h1 class="fqn"><span class="in-band">Crate <a class="mod" href="#">massa_execution_exports</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../src/massa_execution_exports/lib.rs.html#3-58">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="overview"><a href="#overview">Overview</a></h2>
+<p>This crate provides all the facilities to interact with a running execution worker (massa-execution-worker crate)
+that is in charge of executing operations in a virtual machine,
+and applying the effects of the execution to a ledger.</p>
+<h2 id="usage"><a href="#usage">Usage</a></h2>
+<p>When an execution worker is launched to run in a separate thread for the whole duration of the process,
+an instance of ExecutionManager is returned (see the documentation of start_execution_worker in massa-execution-worker),
+as well as an instance of ExecutionController.</p>
+<p>The non-clonable ExecutionManager allows stopping the execution worker thread.</p>
+<p>The clonable ExecutionController allows sending updates on the latest blockclique changes to the execution worker
+for it to keep track of them and execute the operations present in blocks.
+It also allows various read-only queries such as executing bytecode
+while ignoring all the changes it would cause to the consensus state (read-only execution),
+or reading the state at the output of the executed blockclique blocks.</p>
+<h2 id="architecture"><a href="#architecture">Architecture</a></h2><h3 id="configrs"><a href="#configrs">config.rs</a></h3>
+<p>Contains configuration parameters for the execution system.</p>
+<h3 id="controller_traitsrs"><a href="#controller_traitsrs">controller_traits.rs</a></h3>
+<p>Defines the ExecutionManager and ExecutionController traits for interacting with the execution worker.</p>
+<h3 id="erorrsrs"><a href="#erorrsrs">erorrs.rs</a></h3>
+<p>Defines error types for the crate.</p>
+<h3 id="event_storers"><a href="#event_storers">event_store.rs</a></h3>
+<p>Defines an indexed, finite-size storage system for execution events.</p>
+<h3 id="typesrs"><a href="#typesrs">types.rs</a></h3>
+<p>Defines useful shared structures.</p>
+<h3 id="test-exports"><a href="#test-exports">Test exports</a></h3>
+<p>When the crate feature <code>testing</code> is enabled, tooling useful for testing purposes is exported.
+See test_exports/mod.rs for details.</p>
+</div></details><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.EventStore.html" title="massa_execution_exports::EventStore struct">EventStore</a></div><div class="item-right docblock-short"><p>Keep all events you need with some useful indexes</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.ExecutionConfig.html" title="massa_execution_exports::ExecutionConfig struct">ExecutionConfig</a></div><div class="item-right docblock-short"><p>Executio module configuration</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.ExecutionOutput.html" title="massa_execution_exports::ExecutionOutput struct">ExecutionOutput</a></div><div class="item-right docblock-short"><p>structure describing the output of a single execution</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.ExecutionStackElement.html" title="massa_execution_exports::ExecutionStackElement struct">ExecutionStackElement</a></div><div class="item-right docblock-short"><p>Structure describing an element of the execution stack.
+Every time a function is called from bytecode,
+a new ExecutionStackElement is pushed at the top of the execution stack
+to represent the local execution context of the called function,
+instead of the caller’s which should lie just below in the stack.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.ReadOnlyExecutionRequest.html" title="massa_execution_exports::ReadOnlyExecutionRequest struct">ReadOnlyExecutionRequest</a></div><div class="item-right docblock-short"><p>structure describing a read-only execution request</p>
+</div></div></div><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.ExecutionError.html" title="massa_execution_exports::ExecutionError enum">ExecutionError</a></div><div class="item-right docblock-short"><p>Errors of the execution component.</p>
+</div></div></div><h2 id="traits" class="small-section-header"><a href="#traits">Traits</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.ExecutionController.html" title="massa_execution_exports::ExecutionController trait">ExecutionController</a></div><div class="item-right docblock-short"><p>interface that communicates with the execution worker thread</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="trait" href="trait.ExecutionManager.html" title="massa_execution_exports::ExecutionManager trait">ExecutionManager</a></div><div class="item-right docblock-short"><p>Execution manager used to stop the execution thread</p>
+</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (4ce374923 2022-02-28)" ></div>
+</body></html>

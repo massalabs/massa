@@ -218,7 +218,7 @@
 <span class="kw">use</span> <span class="ident">jsonrpc_derive::rpc</span>;
 <span class="kw">use</span> <span class="ident">jsonrpc_http_server</span>::{<span class="ident">CloseHandle</span>, <span class="ident">ServerBuilder</span>};
 <span class="kw">use</span> <span class="ident">massa_consensus_exports</span>::{<span class="ident">ConsensusCommandSender</span>, <span class="ident">ConsensusConfig</span>};
-<span class="kw">use</span> <span class="ident">massa_execution::ExecutionCommandSender</span>;
+<span class="kw">use</span> <span class="ident">massa_execution_exports::ExecutionController</span>;
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
     <span class="ident">APISettings</span>, <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">EventFilter</span>, <span class="ident">NodeStatus</span>,
     <span class="ident">OperationInfo</span>, <span class="ident">ReadOnlyExecution</span>, <span class="ident">TimeInterval</span>,
@@ -246,7 +246,7 @@
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Public</span> {
     <span class="kw">pub</span> <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
-    <span class="kw">pub</span> <span class="ident">execution_command_sender</span>: <span class="ident">ExecutionCommandSender</span>,
+    <span class="kw">pub</span> <span class="ident">execution_controller</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">pool_command_sender</span>: <span class="ident">PoolCommandSender</span>,
     <span class="kw">pub</span> <span class="ident">consensus_config</span>: <span class="ident">ConsensusConfig</span>,
     <span class="kw">pub</span> <span class="ident">api_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">APISettings</span>,
@@ -260,7 +260,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Private</span> {
     <span class="kw">pub</span> <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
     <span class="kw">pub</span> <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
-    <span class="ident">execution_command_sender</span>: <span class="ident">ExecutionCommandSender</span>,
+    <span class="kw">pub</span> <span class="ident">execution_controller</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">consensus_config</span>: <span class="ident">ConsensusConfig</span>,
     <span class="kw">pub</span> <span class="ident">api_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">APISettings</span>,
     <span class="kw">pub</span> <span class="ident">stop_node_channel</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
@@ -326,8 +326,8 @@
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;execute_read_only_request&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">execute_read_only_request</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw">_</span>: <span class="ident">ReadOnlyExecution</span>,
-    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+        <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ReadOnlyExecution</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// Remove a vec of addresses used to stake.</span>
     <span class="doccomment">/// No confirmation to expect.</span>

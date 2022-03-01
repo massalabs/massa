@@ -504,12 +504,7 @@
 <span id="499">499</span>
 <span id="500">500</span>
 <span id="501">501</span>
-<span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="kw">use</span> <span class="ident">massa_execution::ExecutionEventReceiver</span>;
-
 <span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">BlockGraphExport</span>, <span class="ident">BootstrapableGraph</span>, <span class="ident">ExportBlockStatus</span>, <span class="ident">Status</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">address::AddressState</span>, <span class="ident">api::EndorsementInfo</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>,
@@ -992,8 +987,7 @@
 }
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusManager</span> {
-    <span class="kw">pub</span> <span class="ident">join_handle</span>:
-        <span class="ident">JoinHandle</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">ProtocolEventReceiver</span>, <span class="ident">ExecutionEventReceiver</span>), <span class="ident">ConsensusError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">join_handle</span>: <span class="ident">JoinHandle</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProtocolEventReceiver</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="kw">pub</span> <span class="ident">manager_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ConsensusManagementCommand</span><span class="op">&gt;</span>,
 }
@@ -1002,13 +996,13 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop</span>(
         <span class="self">self</span>,
         <span class="ident">consensus_event_receiver</span>: <span class="ident">ConsensusEventReceiver</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">ProtocolEventReceiver</span>, <span class="ident">ExecutionEventReceiver</span>), <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProtocolEventReceiver</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_controller.stop&quot;</span>, {});
         <span class="ident">drop</span>(<span class="self">self</span>.<span class="ident">manager_tx</span>);
         <span class="kw">let</span> <span class="ident">_remaining_events</span> <span class="op">=</span> <span class="ident">consensus_event_receiver</span>.<span class="ident">drain</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> (<span class="ident">protocol_event_receiver</span>, <span class="ident">execution_event_receiver</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">join_handle</span>.<span class="kw">await</span><span class="question-mark">?</span><span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">protocol_event_receiver</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">join_handle</span>.<span class="kw">await</span><span class="question-mark">?</span><span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>((<span class="ident">protocol_event_receiver</span>, <span class="ident">execution_event_receiver</span>))
+        <span class="prelude-val">Ok</span>(<span class="ident">protocol_event_receiver</span>)
     }
 }
 </code></pre></div>

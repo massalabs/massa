@@ -649,9 +649,6 @@
 <span id="644">644</span>
 <span id="645">645</span>
 <span id="646">646</span>
-<span id="647">647</span>
-<span id="648">648</span>
-<span id="649">649</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::assertions_on_constants</span>)]</span>
 <span class="doccomment">//! Definition &amp; Implementation of the consensus settings</span>
@@ -698,7 +695,7 @@
 <span class="doccomment">//! In unit test your allowed to use the `testing` feature flag that will</span>
 <span class="doccomment">//! use the default values from `/node_configuration/default_testing.rs` in the</span>
 <span class="doccomment">//! `massa-models` crate sources.</span>
-<span class="kw">use</span> <span class="ident">massa_execution</span>::{<span class="ident">ExecutionCommandSender</span>, <span class="ident">ExecutionEventReceiver</span>};
+<span class="kw">use</span> <span class="ident">massa_execution_exports::ExecutionController</span>;
 <span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">settings::GraphConfig</span>, <span class="ident">LedgerConfig</span>};
 <span class="kw">use</span> <span class="ident">massa_models::Amount</span>;
 <span class="kw">use</span> <span class="ident">massa_pool::PoolCommandSender</span>;
@@ -957,10 +954,8 @@
     <span class="kw">pub</span> <span class="ident">protocol_command_sender</span>: <span class="ident">ProtocolCommandSender</span>,
     <span class="doccomment">/// Associated protocol event listener.</span>
     <span class="kw">pub</span> <span class="ident">protocol_event_receiver</span>: <span class="ident">ProtocolEventReceiver</span>,
-    <span class="doccomment">/// Associated execution event listener.</span>
-    <span class="kw">pub</span> <span class="ident">execution_event_receiver</span>: <span class="ident">ExecutionEventReceiver</span>,
     <span class="doccomment">/// Execution command sender.</span>
-    <span class="kw">pub</span> <span class="ident">execution_command_sender</span>: <span class="ident">ExecutionCommandSender</span>,
+    <span class="kw">pub</span> <span class="ident">execution_controller</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Associated Pool command sender.</span>
     <span class="kw">pub</span> <span class="ident">pool_command_sender</span>: <span class="ident">PoolCommandSender</span>,
     <span class="doccomment">/// Channel receiving consensus commands.</span>
@@ -974,8 +969,7 @@
 <span class="doccomment">/// Public channels associated to the consensus module.</span>
 <span class="doccomment">/// Execution &amp; Protocol Sender/Receiver</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusChannels</span> {
-    <span class="kw">pub</span> <span class="ident">execution_command_sender</span>: <span class="ident">ExecutionCommandSender</span>,
-    <span class="kw">pub</span> <span class="ident">execution_event_receiver</span>: <span class="ident">ExecutionEventReceiver</span>,
+    <span class="kw">pub</span> <span class="ident">execution_controller</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">protocol_command_sender</span>: <span class="ident">ProtocolCommandSender</span>,
     <span class="kw">pub</span> <span class="ident">protocol_event_receiver</span>: <span class="ident">ProtocolEventReceiver</span>,
     <span class="kw">pub</span> <span class="ident">pool_command_sender</span>: <span class="ident">PoolCommandSender</span>,
