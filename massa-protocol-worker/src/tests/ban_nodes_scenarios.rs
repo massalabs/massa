@@ -3,7 +3,7 @@
 use super::tools::protocol_test;
 use massa_models::prehash::{Map, Set};
 use massa_models::{BlockId, Slot};
-use massa_network::NetworkCommand;
+use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::ProtocolEvent;
 use massa_protocol_exports::ProtocolPoolEvent;

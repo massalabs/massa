@@ -11,15 +11,15 @@ use tokio::{
 };
 
 #[cfg(test)]
-pub type ReadHalf = super::tests::mock_establisher::ReadHalf;
+pub type ReadHalf = super::test_exports::mock_establisher::ReadHalf;
 #[cfg(test)]
-pub type WriteHalf = super::tests::mock_establisher::WriteHalf;
+pub type WriteHalf = super::test_exports::mock_establisher::WriteHalf;
 #[cfg(test)]
-pub type Listener = super::tests::mock_establisher::MockListener;
+pub type Listener = super::test_exports::mock_establisher::MockListener;
 #[cfg(test)]
-pub type Connector = super::tests::mock_establisher::MockConnector;
+pub type Connector = super::test_exports::mock_establisher::MockConnector;
 #[cfg(test)]
-pub type Establisher = super::tests::mock_establisher::MockEstablisher;
+pub type Establisher = super::test_exports::mock_establisher::MockEstablisher;
 
 #[cfg(not(test))]
 pub type ReadHalf = tokio::net::tcp::OwnedReadHalf;

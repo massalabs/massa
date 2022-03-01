@@ -20,7 +20,7 @@ use crate::{
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
 use massa_execution::{ExecutionCommand, ExecutionCommandSender};
 use massa_models::Version;
-use massa_network::{NetworkCommand, NetworkCommandSender};
+use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;
 use serial_test::serial;

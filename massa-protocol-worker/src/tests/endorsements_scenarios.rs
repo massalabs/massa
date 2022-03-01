@@ -5,7 +5,7 @@
 use super::tools::protocol_test;
 use massa_models::prehash::Map;
 use massa_models::{Address, Slot};
-use massa_network::NetworkCommand;
+use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{ProtocolEvent, ProtocolPoolEvent};
 use serial_test::serial;

@@ -2,186 +2,35 @@
 
 //! The network worker actually does the job of managing connections
 use super::{
-    common::{ConnectionClosureReason, ConnectionId},
-    establisher::{Establisher, Listener, ReadHalf, WriteHalf},
     handshake_worker::HandshakeReturnType,
     node_worker::{NodeCommand, NodeEvent, NodeEventType, NodeWorker},
     peer_info_database::*,
 };
 use crate::{
     binders::{ReadBinder, WriteBinder},
-    error::{HandshakeErrorType, NetworkConnectionErrorType, NetworkError},
     handshake_worker::HandshakeWorker,
     messages::Message,
-    settings::NetworkSettings,
 };
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
-    composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, stats::NetworkStats,
-    with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt, Version,
+    composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, stats::NetworkStats, Version,
 };
-use massa_models::{Block, BlockHeader, BlockId, Endorsement, Operation};
+use massa_network_exports::{
+    BootstrapPeers, ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType,
+    Listener, NetworkCommand, NetworkConnectionErrorType, NetworkError, NetworkEvent,
+    NetworkManagementCommand, NetworkSettings, Peer, Peers, ReadHalf, WriteHalf,
+};
 use massa_signature::{derive_public_key, sign, PrivateKey};
-use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, HashMap, HashSet},
-    convert::TryInto,
     net::{IpAddr, SocketAddr},
 };
+use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::SendTimeoutError;
-use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tracing::{debug, trace, warn};
-
-/// Commands that the worker can execute
-#[derive(Debug)]
-pub enum NetworkCommand {
-    /// Ask for a block from a node.
-    AskForBlocks {
-        list: HashMap<NodeId, Vec<BlockId>>,
-    },
-    /// Send that block to node.
-    SendBlock {
-        node: NodeId,
-        block: Block,
-    },
-    /// Send a header to a node.
-    SendBlockHeader {
-        node: NodeId,
-        header: BlockHeader,
-    },
-    // (PeerInfo, Vec <(NodeId, bool)>) peer info + list of associated Id nodes in connexion out (true)
-    GetPeers(oneshot::Sender<Peers>),
-    GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
-    Ban(NodeId),
-    BanIp(Vec<IpAddr>),
-    Unban(Vec<IpAddr>),
-    BlockNotFound {
-        node: NodeId,
-        block_id: BlockId,
-    },
-    SendOperations {
-        node: NodeId,
-        operations: Vec<Operation>,
-    },
-    SendEndorsements {
-        node: NodeId,
-        endorsements: Vec<Endorsement>,
-    },
-    NodeSignMessage {
-        msg: Vec<u8>,
-        response_tx: oneshot::Sender<PubkeySig>,
-    },
-    GetStats {
-        response_tx: oneshot::Sender<NetworkStats>,
-    },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Peer {
-    pub peer_info: PeerInfo,
-    pub active_nodes: Vec<(NodeId, bool)>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Peers {
-    pub our_node_id: NodeId,
-    pub peers: HashMap<IpAddr, Peer>,
-}
-
-#[derive(Debug)]
-pub enum NetworkEvent {
-    NewConnection(NodeId),
-    ConnectionClosed(NodeId),
-    /// A block was received
-    ReceivedBlock {
-        node: NodeId,
-        block: Block,
-    },
-    /// A block header was received
-    ReceivedBlockHeader {
-        source_node_id: NodeId,
-        header: BlockHeader,
-    },
-    /// Someone ask for block with given header hash.
-    AskedForBlocks {
-        node: NodeId,
-        list: Vec<BlockId>,
-    },
-    /// That node does not have this block
-    BlockNotFound {
-        node: NodeId,
-        block_id: BlockId,
-    },
-    ReceivedOperations {
-        node: NodeId,
-        operations: Vec<Operation>,
-    },
-    ReceivedEndorsements {
-        node: NodeId,
-        endorsements: Vec<Endorsement>,
-    },
-}
-
-#[derive(Debug)]
-pub enum NetworkManagementCommand {}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BootstrapPeers(pub Vec<IpAddr>);
-
-impl SerializeCompact for BootstrapPeers {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-
-        // peers
-        let peers_count: u32 = self.0.len().try_into().map_err(|err| {
-            ModelsError::SerializeError(format!("too many peers blocks in BootstrapPeers: {}", err))
-        })?;
-        let max_peer_list_length =
-            with_serialization_context(|context| context.max_advertise_length);
-        if peers_count > max_peer_list_length {
-            return Err(ModelsError::SerializeError(format!(
-                "too many peers for serialization context in BootstrapPeers: {}",
-                peers_count
-            )));
-        }
-        res.extend(peers_count.to_varint_bytes());
-        for peer in self.0.iter() {
-            res.extend(peer.to_bytes_compact()?);
-        }
-
-        Ok(res)
-    }
-}
-
-impl DeserializeCompact for BootstrapPeers {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
-        let mut cursor = 0usize;
-
-        // peers
-        let (peers_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
-        let max_peer_list_length =
-            with_serialization_context(|context| context.max_advertise_length);
-        if peers_count > max_peer_list_length {
-            return Err(ModelsError::DeserializeError(format!(
-                "too many peers for deserialization context in BootstrapPeers: {}",
-                peers_count
-            )));
-        }
-        cursor += delta;
-        let mut peers: Vec<IpAddr> = Vec::with_capacity(peers_count as usize);
-        for _ in 0..(peers_count as usize) {
-            let (ip, delta) = IpAddr::from_bytes_compact(&buffer[cursor..])?;
-            cursor += delta;
-            peers.push(ip);
-        }
-
-        Ok((BootstrapPeers(peers), cursor))
-    }
-}
 
 /// Real job is done by network worker
 pub struct NetworkWorker {

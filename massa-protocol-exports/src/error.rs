@@ -3,8 +3,8 @@
 use crate::ProtocolEvent;
 use displaydoc::Display;
 use massa_models::ModelsError;
-use massa_network::ConnectionId;
-use massa_network::NetworkError;
+use massa_network_exports::ConnectionId;
+use massa_network_exports::NetworkError;
 use std::net::IpAddr;
 use thiserror::Error;
 

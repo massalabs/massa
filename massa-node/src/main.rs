@@ -21,7 +21,8 @@ use massa_models::{
     },
     init_serialization_context, SerializationContext,
 };
-use massa_network::{start_network_controller, Establisher, NetworkCommandSender, NetworkManager};
+use massa_network_exports::{Establisher, NetworkCommandSender, NetworkManager};
+use massa_network_worker::start_network_controller;
 use massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use massa_protocol_exports::ProtocolManager;
 use massa_protocol_worker::start_protocol_controller;

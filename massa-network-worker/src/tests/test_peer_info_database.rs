@@ -1,18 +1,15 @@
-use crate::PeerInfo;
-
 use massa_time::MassaTime;
 use std::collections::HashMap;
 use std::net::IpAddr;
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        error::NetworkConnectionErrorType,
-        peer_info_database::{cleanup_peers, PeerInfoDatabase},
-        NetworkError, NetworkSettings,
-    };
+    use crate::peer_info_database::{cleanup_peers, PeerInfoDatabase};
 
     use super::*;
+    use massa_network_exports::{
+        tests, NetworkConnectionErrorType, NetworkError, NetworkSettings, PeerInfo,
+    };
     use serial_test::serial;
     use tokio::sync::watch;
 

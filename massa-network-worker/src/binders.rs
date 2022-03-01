@@ -2,12 +2,11 @@
 
 //! Flexbuffer layer between raw data and our objects.
 use super::messages::Message;
-use crate::error::NetworkError;
-use crate::establisher::{ReadHalf, WriteHalf};
 use massa_models::{
     with_serialization_context, DeserializeCompact, DeserializeMinBEInt, SerializeCompact,
     SerializeMinBEInt,
 };
+use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 

@@ -13,7 +13,7 @@ use massa_execution::{BootstrapExecutionState, ExecutionCommandSender};
 use massa_graph::BootstrapableGraph;
 use massa_logging::massa_trace;
 use massa_models::Version;
-use massa_network::{BootstrapPeers, NetworkCommandSender};
+use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_signature::{PrivateKey, PublicKey};
 use massa_time::MassaTime;

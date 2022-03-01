@@ -21,7 +21,7 @@ use massa_models::operation::{Operation, OperationId};
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
 use massa_models::{Address, BlockId, EndorsementId, Version};
-use massa_network::{NetworkCommandSender, NetworkSettings};
+use massa_network_exports::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
 use massa_signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};

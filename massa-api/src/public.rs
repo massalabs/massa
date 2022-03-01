@@ -21,7 +21,7 @@ use massa_models::{
     timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
     Address, BlockId, CompactConfig, EndorsementId, Operation, OperationId, Slot, Version,
 };
-use massa_network::{NetworkCommandSender, NetworkSettings};
+use massa_network_exports::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;

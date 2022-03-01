@@ -5,7 +5,7 @@
 use super::tools::protocol_test;
 use massa_models::prehash::{Map, Set};
 use massa_models::BlockId;
-use massa_network::NetworkCommand;
+use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{
     tests::tools::{create_and_connect_nodes, create_block, wait_protocol_event},

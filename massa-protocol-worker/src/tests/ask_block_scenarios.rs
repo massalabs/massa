@@ -3,7 +3,7 @@
 use super::tools::protocol_test;
 use massa_models::prehash::Set;
 use massa_models::BlockId;
-use massa_network::NetworkCommand;
+use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::tests::tools::{asked_list, assert_hash_asked_to_node};
 use massa_protocol_exports::ProtocolEvent;

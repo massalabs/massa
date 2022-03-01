@@ -10,7 +10,7 @@ members = [
   "massa-hash",
   "massa-logging",
   "massa-models",
-  "massa-network",
+  "massa-network-worker",
   "massa-network-exports",
   "massa-node",
   "massa-pool",

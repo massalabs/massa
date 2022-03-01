@@ -11,7 +11,7 @@ use massa_models::{
     Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, SerializeCompact, Slot,
 };
 use massa_models::{Endorsement, EndorsementContent, Operation, OperationContent, OperationType};
-use massa_network::NetworkCommand;
+use massa_network_exports::NetworkCommand;
 use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey,
 };

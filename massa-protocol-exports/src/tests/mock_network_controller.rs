@@ -2,7 +2,9 @@
 
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId};
 use massa_models::{Block, BlockHeader, BlockId, Endorsement, Operation};
-use massa_network::{NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
+use massa_network_exports::{
+    NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
+};
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
 
