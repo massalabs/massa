@@ -301,7 +301,7 @@ async fn main() {
             _ => LevelFilter::ERROR,
         })
         .with_filter(filter_fn(|metadata| {
-            metadata.target().starts_with("massa:") // ignore non-massa logs
+            metadata.target().starts_with("massa") // ignore non-massa logs
         }));
     // build a `Subscriber` by combining layers with a `tracing_subscriber::Registry`:
     tracing_subscriber::registry()
