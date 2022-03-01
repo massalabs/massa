@@ -834,9 +834,6 @@
 <span id="829">829</span>
 <span id="830">830</span>
 <span id="831">831</span>
-<span id="832">832</span>
-<span id="833">833</span>
-<span id="834">834</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
@@ -1002,17 +999,14 @@
 
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
-        <span class="ident">props</span>(
-            <span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;SenderAddress PathToBytecode MaxGas GasPrice Coins Fee&quot;</span>,
-            <span class="ident">todo</span> <span class="op">=</span> <span class="string">&quot;[unstable] &quot;</span>
-        ),
+        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;SenderAddress PathToBytecode MaxGas GasPrice Coins Fee&quot;</span>,),
         <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;create and send an operation containing byte code&quot;</span>
     )]</span>
     <span class="ident">send_smart_contract</span>,
 
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
-        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;PathToBytecode MaxGas GasPrice Address&quot;</span>, <span class="ident">todo</span> <span class="op">=</span> <span class="string">&quot;[unstable] &quot;</span>),
+        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;PathToBytecode MaxGas GasPrice Address&quot;</span>,),
         <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;execute byte code, address is optionnal. Nothing is really executed on chain&quot;</span>
     )]</span>
     <span class="ident">read_only_smart_contract</span>,
@@ -1672,5 +1666,5 @@
     <span class="prelude-val">Ok</span>(<span class="ident">tokio::fs::read</span>(<span class="ident">filename</span>).<span class="kw">await</span><span class="question-mark">?</span>)
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (532d3cda9 2022-02-23)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (4ce374923 2022-02-28)" ></div>
 </body></html>
