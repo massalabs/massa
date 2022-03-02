@@ -900,7 +900,7 @@
             .<span class="ident">last_active_slot</span>
             .<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>)
             .<span class="ident">expect</span>(<span class="string">&quot;active slot overflow in VM&quot;</span>);
-        <span class="kw">let</span> <span class="ident">next_timestmap</span> <span class="op">=</span> <span class="ident">get_block_slot_timestamp</span>(
+        <span class="kw">let</span> <span class="ident">next_timestamp</span> <span class="op">=</span> <span class="ident">get_block_slot_timestamp</span>(
             <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>,
             <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">t0</span>,
             <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">genesis_timestamp</span>,
@@ -914,7 +914,7 @@
             .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">cursor_delay</span>);
 
         <span class="comment">// compute the time difference, saturating down to zero</span>
-        <span class="ident">next_timestmap</span>.<span class="ident">saturating_sub</span>(<span class="ident">end_time</span>)
+        <span class="ident">next_timestamp</span>.<span class="ident">saturating_sub</span>(<span class="ident">end_time</span>)
     }
 
     <span class="doccomment">/// Tells the execution state about the new sequence of active slots.</span>
@@ -929,7 +929,7 @@
 
         <span class="comment">// tells the execution state to truncate its execution output history</span>
         <span class="comment">// given the new list of active slots</span>
-        <span class="ident">exec_state</span>.<span class="ident">truncate_history</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">active_slots</span>);
+        <span class="ident">exec_state</span>.<span class="ident">truncate_history</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">active_slots</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ready_final_slots</span>);
     }
 
     <span class="doccomment">/// Append incoming read-only requests to the relevant queue,</span>
@@ -1136,5 +1136,5 @@
     (<span class="ident">Box::new</span>(<span class="ident">manager</span>), <span class="ident">Box::new</span>(<span class="ident">controller</span>))
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (4ce374923 2022-02-28)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (f0c4da499 2022-03-01)" ></div>
 </body></html>
