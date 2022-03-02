@@ -216,8 +216,8 @@ impl EventStore {
 
     /// get vec of event for given slot range (start included, end excluded)
     /// Get events optionnally filtered by:
-    /// * start slot
-    /// * end slot
+    /// * start slot (default Slot(0,0))
+    /// * end slot   (default Slot(0,0))
     /// * emitter address
     /// * original caller address
     /// * operation id
@@ -234,7 +234,7 @@ impl EventStore {
             .iter()
             // filter on slots
             .filter_map(|(slot, ids)| {
-                if slot >= &start && slot < &end {
+                if slot >= &start && slot <= &end {
                     Some(ids)
                 } else {
                     None

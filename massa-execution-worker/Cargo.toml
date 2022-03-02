@@ -15,6 +15,7 @@ rand_xoshiro = "0.6"
 parking_lot = "0.12"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+tempfile = "3.2"
 thiserror = "1.0"
 tokio = { version = "1.15", features = ["full"] }
 tracing = "0.1"
@@ -30,7 +31,9 @@ massa_ledger = { path = "../massa-ledger" }
 [dev-dependencies]
 pretty_assertions = "1.0"
 serial_test = "0.5"
-tempfile = "3.2"
 
 # custom modules with testing enabled
-massa_execution_exports = { path = "../massa-execution-exports", features = ["testing"] }
+massa_execution_exports = { path = "../massa-execution-exports", features = [
+    "testing",
+] }
+massa_ledger = { path = "../massa-ledger", features = ["testing"] }

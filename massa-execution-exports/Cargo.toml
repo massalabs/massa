@@ -17,6 +17,7 @@ tracing = { version = "0.1", features = [
     "release_max_level_debug",
 ] }
 # custom modules
+massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }
 massa_time = { path = "../massa-time" }
 massa_ledger = { path = "../massa-ledger" }
@@ -26,4 +27,4 @@ pretty_assertions = "1.0"
 serial_test = "0.5"
 
 [features]
-testing = []
+testing = ["massa_ledger/testing", "massa_models/testing"]
