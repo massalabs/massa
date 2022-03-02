@@ -154,7 +154,11 @@ impl ExecutionState {
     /// # Arguments
     /// * active_slots: A HashMap mapping each active slot to a block or None if the slot is a miss
     /// * ready_final_slots:  A HashMap mapping each ready-to-execute final slot to a block or None if the slot is a miss
-    pub fn truncate_history(&mut self, active_slots: &HashMap<Slot, Option<(BlockId, Block)>>, ready_final_slots: &HashMap<Slot, Option<(BlockId, Block)>>) {
+    pub fn truncate_history(
+        &mut self,
+        active_slots: &HashMap<Slot, Option<(BlockId, Block)>>,
+        ready_final_slots: &HashMap<Slot, Option<(BlockId, Block)>>,
+    ) {
         // find mismatch point (included)
         let mut truncate_at = None;
         // iterate over the output history, in chronological order
