@@ -42,6 +42,7 @@ pub mod prehash;
 pub mod rolls;
 mod serialization;
 mod serialization_context;
+mod signed;
 pub mod slot;
 pub mod stats;
 pub mod timeslots;
