@@ -415,28 +415,48 @@ impl Endpoints for API<Public> {
         let pool_command_sender = self.0.pool_command_sender.clone();
         let compensation_millis = self.0.compensation_millis;
 
-        // todo make better use of SCE ledger info
-
         // map SCE ledger info and check for address length
         let sce_ledger_info = if addresses.len() as u64 > api_cfg.max_arguments {
             Err(ApiError::TooManyArguments("too many arguments".into()))
         } else {
             // get SCE ledger info
-            let mut sce_ledger_info: Map<Address, SCELedgerInfo> =
+            let mut sce_ledger_info: Map<Address, (SCELedgerInfo, SCELedgerInfo)> =
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
             for addr in &addresses {
                 let active_entry = match self
                     .0
                     .execution_controller
                     .get_final_and_active_ledger_entry(addr)
-                    .1
                 {
-                    None => continue,
-                    Some(v) => SCELedgerInfo {
-                        balance: v.parallel_balance,
-                        module: Some(v.bytecode),
-                        datastore: v.datastore.into_iter().collect(),
-                    },
+                    (None, None) => continue,
+                    (None, Some(candidate)) => (
+                        SCELedgerInfo::default(),
+                        SCELedgerInfo {
+                            balance: candidate.parallel_balance,
+                            module: candidate.bytecode,
+                            datastore: candidate.datastore.into_iter().collect(),
+                        },
+                    ),
+                    (Some(final_entry), None) => (
+                        SCELedgerInfo {
+                            balance: final_entry.parallel_balance,
+                            module: final_entry.bytecode,
+                            datastore: final_entry.datastore.into_iter().collect(),
+                        },
+                        SCELedgerInfo::default(),
+                    ),
+                    (Some(final_entry), Some(candidate)) => (
+                        SCELedgerInfo {
+                            balance: final_entry.parallel_balance,
+                            module: final_entry.bytecode,
+                            datastore: final_entry.datastore.into_iter().collect(),
+                        },
+                        SCELedgerInfo {
+                            balance: candidate.parallel_balance,
+                            module: candidate.bytecode,
+                            datastore: candidate.datastore.into_iter().collect(),
+                        },
+                    ),
                 };
                 sce_ledger_info.insert(*addr, active_entry);
             }
@@ -522,6 +542,7 @@ impl Endpoints for API<Public> {
             // compile everything per address
             for address in addresses.into_iter() {
                 let state = states.remove(&address).ok_or(ApiError::NotFound)?;
+                let sce = sce_ledger_info.get(&address).cloned().unwrap_or_default();
                 res.push(AddressInfo {
                     address,
                     thread: address.get_thread(cfg.thread_count),
@@ -552,7 +573,8 @@ impl Endpoints for API<Public> {
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
                     production_stats: state.production_stats,
-                    sce_ledger_info: sce_ledger_info.get(&address).cloned().unwrap_or_default(),
+                    final_sce_ledger_info: sce.0,
+                    candidate_sce_ledger_info: sce.1,
                 })
             }
             Ok(res)
