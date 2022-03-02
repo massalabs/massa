@@ -329,7 +329,7 @@ impl ExecutionThread {
             .last_active_slot
             .get_next_slot(self.config.thread_count)
             .expect("active slot overflow in VM");
-        let next_timestmap = get_block_slot_timestamp(
+        let next_timestamp = get_block_slot_timestamp(
             self.config.thread_count,
             self.config.t0,
             self.config.genesis_timestamp,
@@ -343,7 +343,7 @@ impl ExecutionThread {
             .saturating_sub(self.config.cursor_delay);
 
         // compute the time difference, saturating down to zero
-        next_timestmap.saturating_sub(end_time)
+        next_timestamp.saturating_sub(end_time)
     }
 
     /// Tells the execution state about the new sequence of active slots.
