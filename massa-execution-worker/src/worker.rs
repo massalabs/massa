@@ -13,10 +13,11 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
+use massa_models::storage::Storage;
 use massa_models::BlockId;
 use massa_models::{
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
-    Block, Slot,
+    Slot,
 };
 use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
@@ -30,22 +31,24 @@ pub(crate) struct ExecutionThread {
     input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     // Map of final slots not executed yet but ready for execution
     // See lib.rs for an explanation on final execution ordering.
-    ready_final_slots: HashMap<Slot, Option<(BlockId, Block)>>,
+    ready_final_slots: HashMap<Slot, Option<BlockId>>,
     // Highest final slot that is ready to be executed
     last_ready_final_slot: Slot,
     // Map of final blocks that are not yet ready to be executed
     // See lib.rs for an explanation on final execution ordering.
-    pending_final_blocks: HashMap<Slot, (BlockId, Block)>,
+    pending_final_blocks: HashMap<Slot, BlockId>,
     // Current blockclique, indexed by slot number
-    blockclique: HashMap<Slot, (BlockId, Block)>,
+    blockclique: HashMap<Slot, BlockId>,
     // Map of all active slots
-    active_slots: HashMap<Slot, Option<(BlockId, Block)>>,
+    active_slots: HashMap<Slot, Option<BlockId>>,
     // Highest active slot
     last_active_slot: Slot,
     // Execution state (see execution.rs) to which execution requests are sent
     execution_state: Arc<RwLock<ExecutionState>>,
     /// queue for readonly execution requests and response mpscs to send back their outputs
     readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
+    /// Shared storage
+    storage: Storage,
 }
 
 impl ExecutionThread {
@@ -60,6 +63,7 @@ impl ExecutionThread {
         config: ExecutionConfig,
         input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
         execution_state: Arc<RwLock<ExecutionState>>,
+        storage: Storage,
     ) -> Self {
         // get the latest executed final slot, at the output of which the final ledger is attached
         let final_cursor = execution_state.read().final_cursor;
@@ -76,6 +80,7 @@ impl ExecutionThread {
             readonly_requests: RequestQueue::new(config.readonly_queue_length),
             config,
             execution_state,
+            storage,
         }
     }
 
@@ -84,7 +89,7 @@ impl ExecutionThread {
     ///
     /// # Arguments
     /// * new_final_blocks: a map of newly finalized blocks
-    fn update_final_slots(&mut self, new_final_blocks: HashMap<Slot, (BlockId, Block)>) {
+    fn update_final_slots(&mut self, new_final_blocks: HashMap<Slot, BlockId>) {
         // if there are no new final blocks, exit and do nothing
         if new_final_blocks.is_empty() {
             return;
@@ -111,10 +116,10 @@ impl ExecutionThread {
                 .expect("final slot overflow in VM");
 
             // try to remove that slot out of pending_final_blocks
-            if let Some((block_id, block)) = self.pending_final_blocks.remove(&slot) {
+            if let Some(block_id) = self.pending_final_blocks.remove(&slot) {
                 // pending final block found at slot:
                 // add block to the ready_final_slots list of final slots ready for execution
-                self.ready_final_slots.insert(slot, Some((block_id, block)));
+                self.ready_final_slots.insert(slot, Some(block_id));
                 self.last_ready_final_slot = slot;
                 // continue the loop
                 continue;
@@ -179,7 +184,7 @@ impl ExecutionThread {
     ///
     /// Arguments:
     /// * new_blockclique: optionally provide a new blockclique
-    fn update_active_slots(&mut self, new_blockclique: Option<HashMap<Slot, (BlockId, Block)>>) {
+    fn update_active_slots(&mut self, new_blockclique: Option<HashMap<Slot, BlockId>>) {
         // Update the current blockclique if it has changed
         if let Some(blockclique) = new_blockclique {
             self.blockclique = blockclique;
@@ -207,17 +212,15 @@ impl ExecutionThread {
                 .get_next_slot(self.config.thread_count)
                 .expect("active slot overflow in VM");
             // look for a block at that slot among the ones that are final but not ready for final execution yet
-            if let Some((block_id, block)) = self.pending_final_blocks.get(&slot) {
+            if let Some(block_id) = self.pending_final_blocks.get(&slot) {
                 // A block at that slot was found in pending_final_blocks.
                 // Add it to the sequence of active slots.
-                self.active_slots
-                    .insert(slot, Some((*block_id, block.clone())));
+                self.active_slots.insert(slot, Some(*block_id));
                 self.last_active_slot = slot;
-            } else if let Some((block_id, block)) = self.blockclique.get(&slot) {
+            } else if let Some(block_id) = self.blockclique.get(&slot) {
                 // A block at that slot was found in the current blockclique.
                 // Add it to the sequence of active slots.
-                self.active_slots
-                    .insert(slot, Some((*block_id, block.clone())));
+                self.active_slots.insert(slot, Some(*block_id));
                 self.last_active_slot = slot;
             } else {
                 // No block was found at that slot: it's a miss
@@ -253,8 +256,7 @@ impl ExecutionThread {
 
         // check if the final slot is cached at the front of the speculative execution history
         if let Some(exec_out) = exec_state.active_history.pop_front() {
-            if exec_out.slot == slot
-                && exec_out.block_id == exec_target.as_ref().map(|(b_id, _)| *b_id)
+            if exec_out.slot == slot && exec_out.block_id == exec_target.as_ref().map(|b_id| *b_id)
             {
                 // speculative execution front result matches what we want to compute
 
@@ -270,7 +272,13 @@ impl ExecutionThread {
         exec_state.clear_history();
 
         // execute slot
-        let exec_out = exec_state.execute_slot(slot, exec_target);
+        let exec_out = if let Some(exec_target) = exec_target {
+            let block = self.storage.retrieve_block(&exec_target).unwrap();
+            let stored_block = block.read();
+            exec_state.execute_slot(slot, Some((exec_target, &stored_block.block)))
+        } else {
+            exec_state.execute_slot(slot, None)
+        };
 
         // apply execution output to final state
         exec_state.apply_final_execution_output(exec_out);
@@ -307,12 +315,17 @@ impl ExecutionThread {
 
         // choose the execution target
         let exec_target = match self.active_slots.get(&slot) {
-            Some(b) => b.clone(), //TODO get rid of that clone on storage refactorig https://github.com/massalabs/massa/issues/2178
-            None => return false,
+            Some(Some(b_id)) => b_id.clone(),
+            _ => return false,
         };
 
-        // execute the slot
-        let exec_out = exec_state.execute_slot(slot, exec_target);
+        let exec_out = {
+            let block = self.storage.retrieve_block(&exec_target).unwrap();
+            let stored_block = block.read();
+
+            // execute the slot
+            exec_state.execute_slot(slot, Some((exec_target, &stored_block.block)))
+        };
 
         // apply execution output to active state
         exec_state.apply_active_execution_output(exec_out);
@@ -530,6 +543,7 @@ impl ExecutionThread {
 pub fn start_execution_worker(
     config: ExecutionConfig,
     final_state: Arc<RwLock<FinalState>>,
+    storage: Storage,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     // create an execution state
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
@@ -552,7 +566,7 @@ pub fn start_execution_worker(
     // launch the execution thread
     let input_data_clone = input_data.clone();
     let thread_handle = std::thread::spawn(move || {
-        ExecutionThread::new(config, input_data_clone, execution_state).main_loop();
+        ExecutionThread::new(config, input_data_clone, execution_state, storage).main_loop();
     });
 
     // create a manager

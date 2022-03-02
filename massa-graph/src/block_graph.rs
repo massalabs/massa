@@ -35,7 +35,7 @@ use serde::{Deserialize, Serialize};
 use std::mem;
 use std::{collections::HashSet, usize};
 use std::{
-    collections::{hash_map, BTreeSet, VecDeque},
+    collections::{hash_map, BTreeSet, HashMap, VecDeque},
     convert::TryFrom,
 };
 use tracing::{debug, error, info, warn};
@@ -3685,15 +3685,13 @@ impl BlockGraph {
     /// This is used when initializing Execution from Consensus.
     /// Since the Execution bootstrap snapshot is older than the Consensus snapshot,
     /// we might need to signal older final blocks for Execution to catch up.
-    pub fn clone_all_final_blocks(&self) -> Map<BlockId, Block> {
+    pub fn get_all_final_blocks(&self) -> HashMap<Slot, BlockId> {
         self.active_index
             .iter()
             .filter_map(|b_id| {
                 if let Some(a_b) = self.get_active_block(b_id) {
                     if a_b.is_final {
-                        let block = self.storage.retrieve_block(b_id).unwrap();
-                        let stored_block = block.read();
-                        return Some((*b_id, stored_block.block.clone()));
+                        return Some((a_b.slot.clone(), b_id.clone()));
                     }
                 }
                 None

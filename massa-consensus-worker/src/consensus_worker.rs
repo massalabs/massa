@@ -147,8 +147,18 @@ impl ConsensusWorker {
         // notify execution module of current blockclique and final blocks
         // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
         // because the two modules run concurrently and out of sync
-
-        // TODO: use shared-storage.
+        channels.execution_controller.update_blockclique_status(
+            block_db.get_all_final_blocks(),
+            block_db
+                .get_blockclique()
+                .into_iter()
+                .filter_map(|block_id| {
+                    block_db
+                        .get_active_block(&block_id)
+                        .map(|a_block| (a_block.slot.clone(), block_id))
+                })
+                .collect(),
+        );
 
         Ok(ConsensusWorker {
             genesis_public_key,
@@ -1180,10 +1190,32 @@ impl ConsensusWorker {
         // get blockclique
         let blockclique_set = self.block_db.get_blockclique();
 
-        // notify Execution
-        {
-            // TODO: use shared storage.
-        }
+        // notify execution
+        self.channels
+            .execution_controller
+            .update_blockclique_status(
+                new_final_block_ids
+                    .clone()
+                    .into_iter()
+                    .filter_map(|b_id| {
+                        if let Some(a_b) = self.block_db.get_active_block(&b_id) {
+                            if a_b.is_final {
+                                return Some((a_b.slot.clone(), b_id));
+                            }
+                        }
+                        None
+                    })
+                    .collect(),
+                blockclique_set
+                    .clone()
+                    .into_iter()
+                    .filter_map(|block_id| {
+                        self.block_db
+                            .get_active_block(&block_id)
+                            .map(|a_block| (a_block.slot.clone(), block_id))
+                    })
+                    .collect(),
+            );
 
         // Process new final blocks
         let mut new_final_ops: Map<OperationId, (u64, u8)> = Map::default();
