@@ -59,6 +59,12 @@
 <span id="54">54</span>
 <span id="55">55</span>
 <span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! Build here the default node settings from the config file toml</span>
@@ -114,6 +120,12 @@
     <span class="kw">pub</span> <span class="ident">pool</span>: <span class="ident">PoolSettings</span>,
     <span class="kw">pub</span> <span class="ident">execution</span>: <span class="ident">ExecutionSettings</span>,
     <span class="kw">pub</span> <span class="ident">ledger</span>: <span class="ident">LedgerSettings</span>,
+}
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="attribute">#[<span class="ident">test</span>]</span>
+<span class="kw">fn</span> <span class="ident">test_load_node_config</span>() {
+    <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">SETTINGS</span>;
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (f0c4da499 2022-03-01)" ></div>
