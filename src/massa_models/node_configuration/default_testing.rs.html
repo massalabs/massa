@@ -138,16 +138,6 @@
 <span id="133">133</span>
 <span id="134">134</span>
 <span id="135">135</span>
-<span id="136">136</span>
-<span id="137">137</span>
-<span id="138">138</span>
-<span id="139">139</span>
-<span id="140">140</span>
-<span id="141">141</span>
-<span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALISE DIVERS CONFIGURATIONS STRUCTURES</span>
 <span class="doccomment">//! Same as default constants but in testing mode. You can access to them with</span>
 <span class="doccomment">//! the `testing` feature activated.</span>
@@ -192,23 +182,13 @@
     };
 
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">END_TIMESTAMP</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) <span class="op">|</span><span class="op">|</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>) {
-        <span class="prelude-val">None</span>
-    } <span class="kw">else</span> {
-        <span class="prelude-val">Some</span>(<span class="number">1646078400000</span>.<span class="ident">into</span>())
-    };
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">END_TIMESTAMP</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
     <span class="comment">// Be carefull:</span>
     <span class="comment">// The `GENESIS_TIMESTAMP` shouldn&#39;t be used as it in test because if you start the full test</span>
     <span class="comment">// process, the first use is effectivelly `MassaTime::now().unwrap()` but will be outdated for</span>
     <span class="comment">// the latest test. That&#39;s the reason why we choose to reset it each time we get a ConsensusConfig.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">POS_MISS_RATE_DEACTIVATION_THRESHOLD</span>: <span class="ident">Ratio</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Ratio::new</span>(<span class="number">1</span>, <span class="number">1</span>);
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">VERSION</span>: <span class="ident">Version</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) {
-        <span class="string">&quot;SAND.0.0&quot;</span>
-    } <span class="kw">else</span> {
-        <span class="string">&quot;TEST.7.0&quot;</span>
-    }
-    .<span class="ident">parse</span>()
-    .<span class="ident">unwrap</span>();
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">VERSION</span>: <span class="ident">Version</span> <span class="op">=</span> <span class="string">&quot;DEVE.0.0&quot;</span>.<span class="ident">parse</span>().<span class="ident">unwrap</span>();
 }
 
 <span class="doccomment">/// Size of the random bytes array used for the bootstrap, safe to import</span>

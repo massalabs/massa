@@ -64,6 +64,20 @@
 <span id="59">59</span>
 <span id="60">60</span>
 <span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Main node config and all that stuf is here</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Introduction</span>
@@ -96,6 +110,20 @@
 <span class="doccomment">//! use massa_models::constants::default_testing::*;</span>
 <span class="doccomment">//! ```</span>
 <span class="doccomment">//!</span>
+<span class="doccomment">//! # Note about rooting</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! |T|S| not(T) or S | T and not(S)</span>
+<span class="doccomment">//! |0|0| 1           | 0</span>
+<span class="doccomment">//! |1|0| 0           | 1</span>
+<span class="doccomment">//! |0|1| 1           | 0</span>
+<span class="doccomment">//! |1|1| 1           | 0</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! #[cfg(any(not(feature = &quot;testing&quot;), feature = &quot;sandbox&quot;))]</span>
+<span class="doccomment">//! On `cargo run --release` or `cargo run --features sandbox`</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! #[cfg(all(feature = &quot;testing&quot;, not(feature = &quot;sandbox&quot;)))]</span>
+<span class="doccomment">//! On `cargo run` or `cargo test`</span>
+<span class="doccomment">//!</span>
 
 <span class="comment">// **************************************************************</span>
 <span class="comment">// Note:</span>
@@ -114,9 +142,9 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">default</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">default_testing</span>;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>), <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">default</span>::<span class="kw-2">*</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>, <span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)))]</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">default_testing</span>::<span class="kw-2">*</span>;
 
 <span class="kw">mod</span> <span class="ident">compact_config</span>;
