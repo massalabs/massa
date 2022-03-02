@@ -2,6 +2,7 @@
 
 use massa_consensus_exports::tools;
 use massa_consensus_exports::{settings::ConsensusChannels, ConsensusConfig};
+use massa_execution_exports::test_exports::MockExecutionController;
 use massa_models::{Address, Amount, BlockId, Slot};
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
@@ -26,8 +27,6 @@ use crate::{
 };
 use massa_models::ledger_models::LedgerData;
 use massa_models::prehash::Set;
-
-use super::mock_execution_controller::MockExecutionController;
 
 #[tokio::test]
 #[serial]
@@ -503,8 +502,7 @@ async fn test_roll_block_creation() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
-    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
-        MockExecutionController::new();
+    let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
 
     let init_time: MassaTime = 1000.into();
     cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(init_time);
@@ -514,8 +512,7 @@ async fn test_roll_block_creation() {
         start_consensus_controller(
             cfg.clone(),
             ConsensusChannels {
-                execution_command_sender,
-                execution_event_receiver,
+                execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
                 pool_command_sender,
@@ -786,16 +783,15 @@ async fn test_roll_deactivation() {
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new();
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
-    let (mut _execution_controller, execution_command_sender, execution_event_receiver) =
-        MockExecutionController::new();
+    let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
+
     cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
             cfg.clone(),
             ConsensusChannels {
-                execution_command_sender,
-                execution_event_receiver,
+                execution_controller,
                 protocol_command_sender: protocol_command_sender.clone(),
                 protocol_event_receiver,
                 pool_command_sender,

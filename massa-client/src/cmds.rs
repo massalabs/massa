@@ -758,7 +758,7 @@ impl Command {
                 };
                 let bytecode = get_file_as_byte_vec(&path).await?;
                 match client
-                    .private
+                    .public
                     .execute_read_only_request(ReadOnlyExecution {
                         max_gas,
                         simulated_gas_price,

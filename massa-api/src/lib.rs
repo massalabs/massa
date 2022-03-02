@@ -8,7 +8,7 @@ use jsonrpc_core::{BoxFuture, IoHandler, Value};
 use jsonrpc_derive::rpc;
 use jsonrpc_http_server::{CloseHandle, ServerBuilder};
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
-use massa_execution::ExecutionCommandSender;
+use massa_execution_exports::ExecutionController;
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus,
     OperationInfo, ReadOnlyExecution, TimeInterval,
@@ -36,7 +36,7 @@ mod public;
 
 pub struct Public {
     pub consensus_command_sender: ConsensusCommandSender,
-    pub execution_command_sender: ExecutionCommandSender,
+    pub execution_controller: Box<dyn ExecutionController>,
     pub pool_command_sender: PoolCommandSender,
     pub consensus_config: ConsensusConfig,
     pub api_settings: &'static APISettings,
@@ -50,7 +50,7 @@ pub struct Public {
 pub struct Private {
     pub consensus_command_sender: ConsensusCommandSender,
     pub network_command_sender: NetworkCommandSender,
-    execution_command_sender: ExecutionCommandSender,
+    pub execution_controller: Box<dyn ExecutionController>,
     pub consensus_config: ConsensusConfig,
     pub api_settings: &'static APISettings,
     pub stop_node_channel: mpsc::Sender<()>,
@@ -116,8 +116,8 @@ pub trait Endpoints {
     #[rpc(name = "execute_read_only_request")]
     fn execute_read_only_request(
         &self,
-        _: ReadOnlyExecution,
-    ) -> BoxFuture<Result<ExecuteReadOnlyResponse, ApiError>>;
+        _: Vec<ReadOnlyExecution>,
+    ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>>;
 
     /// Remove a vec of addresses used to stake.
     /// No confirmation to expect.

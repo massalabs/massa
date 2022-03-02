@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_execution::BootstrapExecutionState;
 use massa_graph::BootstrapableGraph;
+use massa_ledger::FinalLedgerBootstrapState;
 use massa_models::{
     DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Version,
 };
@@ -34,9 +34,9 @@ pub enum BootstrapMessage {
         graph: BootstrapableGraph,
     },
     /// Execution state
-    ExecutionState {
-        /// execution state
-        execution_state: BootstrapExecutionState,
+    FinalLedgerState {
+        /// ledger state
+        ledger_state: FinalLedgerBootstrapState,
     },
 }
 
@@ -46,7 +46,7 @@ enum MessageTypeId {
     BootstrapTime = 0u32,
     Peers = 1u32,
     ConsensusState = 2u32,
-    ExecutionState = 3u32,
+    FinalLedgerState = 3u32,
 }
 
 impl SerializeCompact for BootstrapMessage {
@@ -70,9 +70,9 @@ impl SerializeCompact for BootstrapMessage {
                 res.extend(&pos.to_bytes_compact()?);
                 res.extend(&graph.to_bytes_compact()?);
             }
-            BootstrapMessage::ExecutionState { execution_state } => {
-                res.extend(u32::from(MessageTypeId::ExecutionState).to_varint_bytes());
-                res.extend(&execution_state.to_bytes_compact()?);
+            BootstrapMessage::FinalLedgerState { ledger_state } => {
+                res.extend(u32::from(MessageTypeId::FinalLedgerState).to_varint_bytes());
+                res.extend(&ledger_state.to_bytes_compact()?);
             }
         }
         Ok(res)
@@ -116,12 +116,12 @@ impl DeserializeCompact for BootstrapMessage {
 
                 BootstrapMessage::ConsensusState { pos, graph }
             }
-            MessageTypeId::ExecutionState => {
-                let (execution_state, delta) =
-                    BootstrapExecutionState::from_bytes_compact(&buffer[cursor..])?;
+            MessageTypeId::FinalLedgerState => {
+                let (ledger_state, delta) =
+                    FinalLedgerBootstrapState::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
-                BootstrapMessage::ExecutionState { execution_state }
+                BootstrapMessage::FinalLedgerState { ledger_state }
             }
         };
         Ok((res, cursor))
