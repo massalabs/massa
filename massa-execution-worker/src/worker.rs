@@ -358,7 +358,7 @@ impl ExecutionThread {
 
         // tells the execution state to truncate its execution output history
         // given the new list of active slots
-        exec_state.truncate_history(&self.active_slots);
+        exec_state.truncate_history(&self.active_slots, &self.ready_final_slots);
     }
 
     /// Append incoming read-only requests to the relevant queue,
