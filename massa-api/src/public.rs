@@ -413,61 +413,16 @@ impl Endpoints for API<Public> {
         let cfg = self.0.consensus_config.clone();
         let api_cfg = self.0.api_settings;
         let pool_command_sender = self.0.pool_command_sender.clone();
+        let execution_controller = self.0.execution_controller.clone();
         let compensation_millis = self.0.compensation_millis;
 
-        // map SCE ledger info and check for address length
-        let sce_ledger_info = if addresses.len() as u64 > api_cfg.max_arguments {
-            Err(ApiError::TooManyArguments("too many arguments".into()))
-        } else {
-            // get SCE ledger info
-            let mut sce_ledger_info: Map<Address, (SCELedgerInfo, SCELedgerInfo)> =
-                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
-            for addr in &addresses {
-                let active_entry = match self
-                    .0
-                    .execution_controller
-                    .get_final_and_active_ledger_entry(addr)
-                {
-                    (None, None) => continue,
-                    (None, Some(candidate)) => (
-                        SCELedgerInfo::default(),
-                        SCELedgerInfo {
-                            balance: candidate.parallel_balance,
-                            module: candidate.bytecode,
-                            datastore: candidate.datastore.into_iter().collect(),
-                        },
-                    ),
-                    (Some(final_entry), None) => (
-                        SCELedgerInfo {
-                            balance: final_entry.parallel_balance,
-                            module: final_entry.bytecode,
-                            datastore: final_entry.datastore.into_iter().collect(),
-                        },
-                        SCELedgerInfo::default(),
-                    ),
-                    (Some(final_entry), Some(candidate)) => (
-                        SCELedgerInfo {
-                            balance: final_entry.parallel_balance,
-                            module: final_entry.bytecode,
-                            datastore: final_entry.datastore.into_iter().collect(),
-                        },
-                        SCELedgerInfo {
-                            balance: candidate.parallel_balance,
-                            module: candidate.bytecode,
-                            datastore: candidate.datastore.into_iter().collect(),
-                        },
-                    ),
-                };
-                sce_ledger_info.insert(*addr, active_entry);
-            }
-            Ok(sce_ledger_info)
-        };
-
         let closure = async move || {
-            let sce_ledger_info = sce_ledger_info?;
-
             let mut res = Vec::with_capacity(addresses.len());
 
+            // check for address length
+            if addresses.len() as u64 > api_cfg.max_arguments {
+                return Err(ApiError::TooManyArguments("too many arguments".into()));
+            }
             // next draws info
             let now = MassaTime::compensated_now(compensation_millis)?;
             let current_slot = get_latest_block_slot_at_timestamp(
@@ -499,17 +454,23 @@ impl Endpoints for API<Public> {
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
             let mut endorsements: Map<Address, Set<EndorsementId>> =
                 Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
+            let mut final_sce_ledger_info: Map<Address, SCELedgerInfo> =
+                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
+            let mut candidate_sce_ledger_info: Map<Address, SCELedgerInfo> =
+                Map::with_capacity_and_hasher(addresses.len(), BuildMap::default());
 
             let mut concurrent_getters = FuturesUnordered::new();
             for &address in addresses.iter() {
                 let mut pool_cmd_snd = pool_command_sender.clone();
                 let cmd_snd = cmd_sender.clone();
+                let exec_snd = execution_controller.clone();
                 concurrent_getters.push(async move {
                     let blocks = cmd_snd
                         .get_block_ids_by_creator(address)
                         .await?
                         .into_keys()
                         .collect::<Set<BlockId>>();
+
                     let get_pool_ops = pool_cmd_snd.get_operations_involving_address(address);
                     let get_consensus_ops = cmd_snd.get_operations_involving_address(address);
                     let (get_pool_ops, get_consensus_ops) =
@@ -519,30 +480,80 @@ impl Endpoints for API<Public> {
                         .chain(get_consensus_ops?.into_keys())
                         .collect();
 
-                        let get_pool_eds = pool_cmd_snd.get_endorsements_by_address(address);
-                        let get_consensus_eds = cmd_snd.get_endorsements_by_address(address);
-                        let (get_pool_eds, get_consensus_eds) =
-                            tokio::join!(get_pool_eds, get_consensus_eds);
-                        let gathered_ed: Set<EndorsementId> = get_pool_eds?
-                            .into_keys()
-                            .chain(get_consensus_eds?.into_keys())
-                            .collect();
-                    Result::<(Address, Set<BlockId>, Set<OperationId>, Set<EndorsementId>), ApiError>::Ok((
-                        address, blocks, gathered, gathered_ed
+                    let get_pool_eds = pool_cmd_snd.get_endorsements_by_address(address);
+                    let get_consensus_eds = cmd_snd.get_endorsements_by_address(address);
+                    let (get_pool_eds, get_consensus_eds) =
+                        tokio::join!(get_pool_eds, get_consensus_eds);
+                    let gathered_ed: Set<EndorsementId> = get_pool_eds?
+                        .into_keys()
+                        .chain(get_consensus_eds?.into_keys())
+                        .collect();
+
+                    let (final_sce, candidate_sce) =
+                        match exec_snd.get_final_and_active_ledger_entry(&address) {
+                            (None, None) => (SCELedgerInfo::default(), SCELedgerInfo::default()),
+                            (None, Some(candidate)) => (
+                                SCELedgerInfo::default(),
+                                SCELedgerInfo {
+                                    balance: candidate.parallel_balance,
+                                    module: candidate.bytecode,
+                                    datastore: candidate.datastore.into_iter().collect(),
+                                },
+                            ),
+                            (Some(final_entry), None) => (
+                                SCELedgerInfo {
+                                    balance: final_entry.parallel_balance,
+                                    module: final_entry.bytecode,
+                                    datastore: final_entry.datastore.into_iter().collect(),
+                                },
+                                SCELedgerInfo::default(),
+                            ),
+                            (Some(final_entry), Some(candidate)) => (
+                                SCELedgerInfo {
+                                    balance: final_entry.parallel_balance,
+                                    module: final_entry.bytecode,
+                                    datastore: final_entry.datastore.into_iter().collect(),
+                                },
+                                SCELedgerInfo {
+                                    balance: candidate.parallel_balance,
+                                    module: candidate.bytecode,
+                                    datastore: candidate.datastore.into_iter().collect(),
+                                },
+                            ),
+                        };
+
+                    Result::<
+                        (
+                            Address,
+                            Set<BlockId>,
+                            Set<OperationId>,
+                            Set<EndorsementId>,
+                            SCELedgerInfo,
+                            SCELedgerInfo,
+                        ),
+                        ApiError,
+                    >::Ok((
+                        address,
+                        blocks,
+                        gathered,
+                        gathered_ed,
+                        final_sce,
+                        candidate_sce,
                     ))
                 });
             }
             while let Some(res) = concurrent_getters.next().await {
-                let (a, bl_set, op_set, ed_set) = res?;
+                let (a, bl_set, op_set, ed_set, final_sce, candidate_sce) = res?;
                 operations.insert(a, op_set);
                 blocks.insert(a, bl_set);
                 endorsements.insert(a, ed_set);
+                final_sce_ledger_info.insert(a, final_sce);
+                candidate_sce_ledger_info.insert(a, candidate_sce);
             }
 
             // compile everything per address
             for address in addresses.into_iter() {
                 let state = states.remove(&address).ok_or(ApiError::NotFound)?;
-                let sce = sce_ledger_info.get(&address).cloned().unwrap_or_default();
                 res.push(AddressInfo {
                     address,
                     thread: address.get_thread(cfg.thread_count),
@@ -573,8 +584,12 @@ impl Endpoints for API<Public> {
                         .remove(&address)
                         .ok_or(ApiError::NotFound)?,
                     production_stats: state.production_stats,
-                    final_sce_ledger_info: sce.0,
-                    candidate_sce_ledger_info: sce.1,
+                    final_sce_ledger_info: final_sce_ledger_info
+                        .remove(&address)
+                        .ok_or(ApiError::NotFound)?,
+                    candidate_sce_ledger_info: candidate_sce_ledger_info
+                        .remove(&address)
+                        .ok_or(ApiError::NotFound)?,
                 })
             }
             Ok(res)
