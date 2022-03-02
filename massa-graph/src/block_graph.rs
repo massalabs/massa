@@ -11,18 +11,18 @@ use crate::{
 };
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::clique::Clique;
-use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::{
     active_block::ActiveBlock,
     api::EndorsementInfo,
     rolls::{RollCounts, RollUpdate, RollUpdates},
 };
+use massa_models::{clique::Clique, signed::Signable};
+use massa_models::{ledger_models::LedgerChange, signed::Signed};
 use massa_models::{
-    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
-    Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
-    OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
+    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId,
+    Operation, OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
+    OperationSearchResultStatus, Slot,
 };
 use massa_proof_of_stake_exports::{
     error::ProofOfStakeError, OperationRollInterface, ProofOfStake,
@@ -39,7 +39,7 @@ use tracing::{debug, error, info, warn};
 
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
-    Header(BlockHeader),
+    Header(Signed<BlockHeader, BlockId>),
     Block(
         Block,
         Map<OperationId, (usize, u64)>,
@@ -115,7 +115,7 @@ enum BlockStatus {
     /// The block was discarded and is kept to avoid reprocessing it
     Discarded {
         /// Just the header of that block
-        header: BlockHeader,
+        header: Signed<BlockHeader, BlockId>,
         /// why it was discarded
         reason: DiscardReason,
         /// Used to limit and sort the number of blocks/headers wainting for dependencies
@@ -157,7 +157,7 @@ impl<'a> From<&'a BlockStatus> for ExportBlockStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportCompiledBlock {
     /// Header of the corresponding block.
-    pub header: BlockHeader,
+    pub header: Signed<BlockHeader, BlockId>,
     /// For (i, set) in children,
     /// set contains the headers' hashes
     /// of blocks referencing exported block as a parent,
@@ -250,7 +250,7 @@ pub struct BlockGraphExport {
     /// Map of active blocks, were blocks are in their exported version.
     pub active_blocks: Map<BlockId, ExportCompiledBlock>,
     /// Finite cache of discarded blocks, in exported version.
-    pub discarded_blocks: Map<BlockId, (DiscardReason, BlockHeader)>,
+    pub discarded_blocks: Map<BlockId, (DiscardReason, Signed<BlockHeader, BlockId>)>,
     /// Best parents hashe in each thread.
     pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
@@ -399,15 +399,15 @@ enum BlockOperationsCheckOutcome {
 pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> Result<(BlockId, Block)> {
     let private_key = cfg.genesis_key;
     let public_key = derive_public_key(&private_key);
-    let (header_hash, header) = BlockHeader::new_signed(
-        &private_key,
-        BlockHeaderContent {
+    let (header_hash, header) = Signed::new_signed(
+        BlockHeader {
             creator: public_key,
             slot: Slot::new(0, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
         },
+        &private_key,
     )?;
 
     Ok((
@@ -589,7 +589,7 @@ impl BlockGraph {
     pub fn block_state_try_apply_op(
         &self,
         state_accu: &mut BlockStateAccumulator,
-        header: &BlockHeader,
+        header: &Signed<BlockHeader, BlockId>,
         operation: &Operation,
         pos: &mut ProofOfStake,
     ) -> Result<()> {
@@ -627,7 +627,7 @@ impl BlockGraph {
     pub fn block_state_sync_rolls(
         &self,
         accu: &mut BlockStateAccumulator,
-        header: &BlockHeader,
+        header: &Signed<BlockHeader, BlockId>,
         pos: &ProofOfStake,
         involved_addrs: &Set<Address>,
     ) -> Result<()> {
@@ -657,7 +657,7 @@ impl BlockGraph {
     pub fn block_state_try_apply(
         &self,
         accu: &mut BlockStateAccumulator,
-        header: &BlockHeader,
+        header: &Signed<BlockHeader, BlockId>,
         mut opt_ledger_changes: Option<LedgerChanges>,
         opt_roll_updates: Option<RollUpdates>,
         pos: &mut ProofOfStake,
@@ -839,7 +839,7 @@ impl BlockGraph {
     /// initializes a block state accumulator from a block header
     pub fn block_state_accumulator_init(
         &self,
-        header: &BlockHeader,
+        header: &Signed<BlockHeader, BlockId>,
         pos: &mut ProofOfStake,
     ) -> Result<BlockStateAccumulator> {
         let block_thread = header.content.slot.thread;
@@ -1151,7 +1151,7 @@ impl BlockGraph {
                             op: active_block.block.operations[*idx].clone(),
                             in_pool: false,
                             in_blocks: vec![(
-                                active_block.block.header.compute_block_id()?,
+                                active_block.block.header.content.compute_id()?,
                                 (*idx, active_block.is_final),
                             )]
                             .into_iter()
@@ -1261,7 +1261,7 @@ impl BlockGraph {
     pub fn incoming_header(
         &mut self,
         block_id: BlockId,
-        header: BlockHeader,
+        header: Signed<BlockHeader, BlockId>,
         pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<()> {
@@ -1841,7 +1841,7 @@ impl BlockGraph {
     fn check_header(
         &self,
         block_id: &BlockId,
-        header: &BlockHeader,
+        header: &Signed<BlockHeader, BlockId>,
         pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<HeaderCheckOutcome> {
@@ -2170,7 +2170,7 @@ impl BlockGraph {
     /// * endorsed slot is parent_in_own_thread slot
     fn check_endorsements(
         &self,
-        header: &BlockHeader,
+        header: &Signed<BlockHeader, BlockId>,
         pos: &mut ProofOfStake,
         parent_in_own_thread: &ActiveBlock,
     ) -> Result<EndorsementsCheckOutcome> {

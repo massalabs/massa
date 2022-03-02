@@ -4,6 +4,7 @@
 
 use super::tools::protocol_test;
 use massa_models::prehash::Map;
+use massa_models::signed::Signable;
 use massa_models::{Address, Slot};
 use massa_network::NetworkCommand;
 use massa_protocol_exports::tests::tools;
@@ -304,7 +305,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 Slot::new(1, thread),
                 vec![endorsement.clone()],
             );
-            let block_id = block.header.compute_block_id().unwrap();
+            let block_id = block.header.content.compute_id().unwrap();
 
             network_controller
                 .send_ask_for_block(nodes[0].id, vec![block_id])
@@ -336,7 +337,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             {
                 Some(NetworkCommand::SendBlock { node, block }) => {
                     assert_eq!(node, nodes[0].id);
-                    assert_eq!(block.header.compute_block_id().unwrap(), block_id);
+                    assert_eq!(block.header.content.compute_id().unwrap(), block_id);
                 }
                 Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),
@@ -409,7 +410,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 Slot::new(1, thread),
                 vec![endorsement.clone()],
             );
-            let block_id = block.header.compute_block_id().unwrap();
+            let block_id = block.header.content.compute_id().unwrap();
 
             network_controller
                 .send_ask_for_block(nodes[0].id, vec![block_id])
@@ -446,7 +447,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             {
                 Some(NetworkCommand::SendBlock { node, block }) => {
                     assert_eq!(node, nodes[0].id);
-                    assert_eq!(block.header.compute_block_id().unwrap(), block_id);
+                    assert_eq!(block.header.content.compute_id().unwrap(), block_id);
                 }
                 Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),

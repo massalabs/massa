@@ -19,11 +19,12 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
-    composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, stats::NetworkStats,
-    with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt, Version,
+    composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, signed::Signed,
+    stats::NetworkStats, with_serialization_context, DeserializeCompact, DeserializeVarInt,
+    ModelsError, SerializeCompact, SerializeVarInt, Version,
 };
-use massa_models::{Block, BlockHeader, BlockId, Endorsement, Operation};
+use massa_models::{signed::Signable, BlockHeader};
+use massa_models::{Block, BlockId, Endorsement, Operation};
 use massa_signature::{derive_public_key, sign, PrivateKey};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -51,7 +52,7 @@ pub enum NetworkCommand {
     /// Send a header to a node.
     SendBlockHeader {
         node: NodeId,
-        header: BlockHeader,
+        header: Signed<BlockHeader, BlockId>,
     },
     // (PeerInfo, Vec <(NodeId, bool)>) peer info + list of associated Id nodes in connexion out (true)
     GetPeers(oneshot::Sender<Peers>),
@@ -104,7 +105,7 @@ pub enum NetworkEvent {
     /// A block header was received
     ReceivedBlockHeader {
         source_node_id: NodeId,
-        header: BlockHeader,
+        header: Signed<BlockHeader, BlockId>,
     },
     /// Someone ask for block with given header hash.
     AskedForBlocks {
@@ -737,7 +738,7 @@ impl NetworkWorker {
                 self.ban_connection_ids(ban_connection_ids).await
             }
             NetworkCommand::SendBlockHeader { node, header } => {
-                massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id": header.compute_block_id()?, "header": header, "node": node});
+                massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id":header.content.compute_id()?, "header": header, "node": node});
                 self.forward_message_to_node_or_resend_close_event(
                     &node,
                     NodeCommand::SendBlockHeader(header),
@@ -1139,7 +1140,7 @@ impl NetworkWorker {
             NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data)) => {
                 massa_trace!(
                     "network_worker.on_node_event receive NetworkEvent::ReceivedBlock",
-                    {"block_id": data.header.compute_block_id()?, "block": data, "node": from_node_id}
+                    {"block_id": data.header.content.compute_id()?, "block": data, "node": from_node_id}
                 );
                 let _ = self
                     .send_network_event(NetworkEvent::ReceivedBlock {

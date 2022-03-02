@@ -3,6 +3,7 @@
 use massa_models::{
     array_from_slice,
     constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
+    signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
     Endorsement, ModelsError, Operation, SerializeCompact, SerializeVarInt, Version,
 };
@@ -32,7 +33,7 @@ pub enum Message {
     /// Whole block structure.
     Block(Block),
     /// Block header
-    BlockHeader(BlockHeader),
+    BlockHeader(Signed<BlockHeader, BlockId>),
     /// Message asking the peer for a block.
     AskForBlocks(Vec<BlockId>),
     /// Message asking the peer for its advertisable peers list.
@@ -197,7 +198,8 @@ impl DeserializeCompact for Message {
                 Message::Block(block)
             }
             MessageTypeId::BlockHeader => {
-                let (header, delta) = BlockHeader::from_bytes_compact(&buffer[cursor..])?;
+                let (header, delta) =
+                    Signed::<BlockHeader, BlockId>::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
                 Message::BlockHeader(header)
             }

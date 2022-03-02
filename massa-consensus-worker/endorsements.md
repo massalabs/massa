@@ -7,7 +7,7 @@ Endorsements are included in a block's header. They are created by randomly sele
 With that mechanism it becomes harder to gain control of the network (you now have to control `endorsement_count + 1` draw to gain control over one block) and to reward stakers more frequently.
 
 ```ignore
-pub struct BlockHeaderContent {
+pub struct BlockHeader {
     pub endorsements: Vec<Endorsement>,
     ..
 }

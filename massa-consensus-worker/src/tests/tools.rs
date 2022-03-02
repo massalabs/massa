@@ -13,14 +13,16 @@ use massa_execution_exports::test_exports::MockExecutionController;
 use massa_graph::{export_active_block::ExportActiveBlock, BlockGraphExport, BootstrapableGraph};
 use massa_hash::hash::Hash;
 use massa_models::{
-    prehash::Set, Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
-    EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,
+    prehash::Set,
+    signed::{Signable, Signed},
+    Address, Amount, Block, BlockHeader, BlockId, Endorsement, EndorsementContent,
+    Operation, OperationContent, OperationType, SerializeCompact, Slot,
 };
 use massa_pool::PoolCommand;
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::{
-    derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
+    derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey,
 };
 use massa_time::MassaTime;
 use std::{collections::HashSet, future::Future};
@@ -313,7 +315,7 @@ pub async fn propagate_block(
     valid: bool,
     timeout_ms: u64,
 ) -> BlockId {
-    let block_hash = block.header.compute_block_id().unwrap();
+    let block_hash = block.header.content.compute_id().unwrap();
     protocol_controller.receive_block(block).await;
     if valid {
         // see if the block is propagated.
@@ -487,15 +489,15 @@ pub fn create_block_with_merkle_root(
     creator: PrivateKey,
 ) -> (BlockId, Block, PrivateKey) {
     let public_key = derive_public_key(&creator);
-    let (hash, header) = BlockHeader::new_signed(
-        &creator,
-        BlockHeaderContent {
+    let (hash, header) = Signed::new_signed(
+        BlockHeader {
             creator: public_key,
             slot,
             parents: best_parents,
             operation_merkle_root,
             endorsements: Vec::new(),
         },
+        &creator,
     )
     .unwrap();
 
@@ -535,29 +537,26 @@ pub fn get_export_active_test_block(
     is_final: bool,
 ) -> (ExportActiveBlock, BlockId) {
     let block = Block {
-        header: BlockHeader {
-            content: BlockHeaderContent{
+        header: Signed::new_signed(
+            BlockHeader {
                 creator,
-                operation_merkle_root: Hash::compute_from(&operations.iter().flat_map(|op|{
-                    op
-                        .get_operation_id()
-                        .unwrap()
-                        .to_bytes()
-                    })
-                    .collect::<Vec<_>>()[..]),
-                parents: parents.iter()
-                    .map(|(id,_)| *id)
-                    .collect(),
+                operation_merkle_root: Hash::compute_from(
+                    &operations
+                        .iter()
+                        .flat_map(|op| op.get_operation_id().unwrap().to_bytes())
+                        .collect::<Vec<_>>()[..],
+                ),
+                parents: parents.iter().map(|(id, _)| *id).collect(),
                 slot,
                 endorsements: Vec::new(),
             },
-            signature: Signature::from_bs58_check(
-                "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
-            ).unwrap()
-        },
+            &generate_random_private_key(),
+        )
+        .unwrap()
+        .1,
         operations: operations.clone(),
     };
-    let id = block.header.compute_block_id().unwrap();
+    let id = block.header.content.compute_id().unwrap();
     (
         ExportActiveBlock {
             parents,
@@ -588,15 +587,15 @@ pub fn create_block_with_operations(
         })[..],
     );
 
-    let (hash, header) = BlockHeader::new_signed(
-        &creator,
-        BlockHeaderContent {
+    let (hash, header) = Signed::new_signed(
+        BlockHeader {
             creator: public_key,
             slot,
             parents: best_parents.clone(),
             operation_merkle_root,
             endorsements: Vec::new(),
         },
+        &creator,
     )
     .unwrap();
 

@@ -13,8 +13,9 @@ use massa_models::{
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     rolls::{RollCounts, RollUpdate, RollUpdates},
-    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact,
-    Endorsement, EndorsementContent, Operation, OperationContent, SerializeCompact, Slot,
+    signed::Signed,
+    Address, Amount, Block, BlockHeader, BlockId, DeserializeCompact, Endorsement,
+    EndorsementContent, Operation, OperationContent, SerializeCompact, Slot,
 };
 use massa_network::{BootstrapPeers, NetworkCommand};
 use massa_proof_of_stake_exports::{ExportProofOfStake, ThreadCycleState};
@@ -373,8 +374,8 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
 
     let block1 = ExportActiveBlock {
         block: Block {
-            header: BlockHeader {
-                content: BlockHeaderContent {
+            header: Signed::new_signed(
+                BlockHeader {
                     creator: get_random_public_key(),
                     slot: Slot::new(1, 1),
                     parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
@@ -400,8 +401,10 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                         },
                     ],
                 },
-                signature: get_dummy_signature("dummy_sig_1"),
-            },
+                &generate_random_private_key(),
+            )
+            .unwrap()
+            .1,
             operations: vec![
                 Operation {
                     content: OperationContent {

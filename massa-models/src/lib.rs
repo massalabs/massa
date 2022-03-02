@@ -5,7 +5,7 @@ extern crate lazy_static;
 
 pub use address::Address;
 pub use amount::Amount;
-pub use block::{Block, BlockHeader, BlockHeaderContent, BlockId};
+pub use block::{Block, BlockHeader, BlockId};
 pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
     StakersCycleProductionStats,
@@ -42,7 +42,7 @@ pub mod prehash;
 pub mod rolls;
 mod serialization;
 mod serialization_context;
-mod signed;
+pub mod signed;
 pub mod slot;
 pub mod stats;
 pub mod timeslots;

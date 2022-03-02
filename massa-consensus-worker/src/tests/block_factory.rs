@@ -5,7 +5,10 @@ use super::{
     tools::{validate_notpropagate_block, validate_propagate_block},
 };
 use massa_hash::hash::Hash;
-use massa_models::{Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement, Operation, Slot};
+use massa_models::{
+    signed::{Signable, Signed},
+    Block, BlockHeader, BlockId, Endorsement, Operation, Slot,
+};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 
 pub struct BlockFactory {
@@ -34,9 +37,8 @@ impl BlockFactory {
 
     pub async fn create_and_receive_block(&mut self, valid: bool) -> (BlockId, Block) {
         let public_key = derive_public_key(&self.creator_priv_key);
-        let (hash, header) = BlockHeader::new_signed(
-            &self.creator_priv_key,
-            BlockHeaderContent {
+        let (hash, header) = Signed::new_signed(
+            BlockHeader {
                 creator: public_key,
                 slot: self.slot,
                 parents: self.best_parents.clone(),
@@ -49,6 +51,7 @@ impl BlockFactory {
                 ),
                 endorsements: self.endorsements.clone(),
             },
+            &self.creator_priv_key,
         )
         .unwrap();
 
@@ -68,9 +71,9 @@ impl BlockFactory {
         (hash, block)
     }
 
-    pub fn sign_header(&self, header: BlockHeaderContent) -> Block {
+    pub fn sign_header(&self, header: BlockHeader) -> Block {
         let _public_key = derive_public_key(&self.creator_priv_key);
-        let (_hash, header) = BlockHeader::new_signed(&self.creator_priv_key, header).unwrap();
+        let (_hash, header) = Signed::new_signed(header, &self.creator_priv_key).unwrap();
 
         Block {
             header,
@@ -79,7 +82,7 @@ impl BlockFactory {
     }
 
     pub async fn receieve_block(&mut self, valid: bool, block: Block) {
-        let hash = block.header.compute_block_id().unwrap();
+        let hash = block.header.content.compute_id().unwrap();
         self.protocol_controller.receive_block(block.clone()).await;
         if valid {
             // Assert that the block is propagated.

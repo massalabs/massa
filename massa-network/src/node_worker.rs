@@ -13,6 +13,7 @@ use massa_models::{
         NODE_SEND_CHANNEL_SIZE,
     },
     node::NodeId,
+    signed::{Signable, Signed},
     Block, BlockHeader, BlockId, Endorsement, Operation,
 };
 use std::net::IpAddr;
@@ -33,7 +34,7 @@ pub enum NodeCommand {
     /// Send that block to node.
     SendBlock(Block),
     /// Send the header of a block to a node.
-    SendBlockHeader(BlockHeader),
+    SendBlockHeader(Signed<BlockHeader, BlockId>),
     /// Ask for a block from that node.
     AskForBlocks(Vec<BlockId>),
     /// Close the node worker.
@@ -56,7 +57,7 @@ pub enum NodeEventType {
     /// Node we are connected to sent block
     ReceivedBlock(Block),
     /// Node we are connected to sent block header
-    ReceivedBlockHeader(BlockHeader),
+    ReceivedBlockHeader(Signed<BlockHeader, BlockId>),
     /// Node we are connected to asks for a block.
     ReceivedAskForBlocks(Vec<BlockId>),
     /// Didn't found given block,
@@ -258,14 +259,14 @@ impl NodeWorker {
                             Message::Block(block) => {
                                 massa_trace!(
                                     "node_worker.run_loop. receive Message::Block",
-                                    {"block_id": block.header.compute_block_id()?, "block": block, "node": self.node_id}
+                                    {"block_id": block.header.content.compute_id()?, "block": block, "node": self.node_id}
                                 );
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))).await;
                             },
                             Message::BlockHeader(header) => {
                                 massa_trace!(
                                     "node_worker.run_loop. receive Message::BlockHeader",
-                                    {"block_id": header.compute_block_id()?, "header": header, "node": self.node_id}
+                                    {"block_id":header.content.compute_id()?, "header": header, "node": self.node_id}
                                 );
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlockHeader(header))).await;
                             },
@@ -323,13 +324,13 @@ impl NodeWorker {
                             }
                         },
                         Some(NodeCommand::SendBlockHeader(header)) => {
-                            massa_trace!("node_worker.run_loop. send Message::BlockHeader", {"hash": header.compute_block_id()?, "header": header, "node": self.node_id});
+                            massa_trace!("node_worker.run_loop. send Message::BlockHeader", {"hash": header.content.compute_id()?, "header": header, "node": self.node_id});
                             if self.try_send_to_node(&writer_command_tx, Message::BlockHeader(header)).is_err() {
                                 break;
                             }
                         },
                         Some(NodeCommand::SendBlock(block)) => {
-                            massa_trace!("node_worker.run_loop. send Message::Block", {"hash": block.header.compute_block_id()?, "block": block, "node": self.node_id});
+                            massa_trace!("node_worker.run_loop. send Message::Block", {"hash": block.header.content.compute_id()?, "block": block, "node": self.node_id});
                             if self.try_send_to_node(&writer_command_tx, Message::Block(block)).is_err() {
                                 break;
                             }

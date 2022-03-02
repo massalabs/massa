@@ -2,6 +2,7 @@
 
 use crate::constants::{BLOCK_ID_SIZE_BYTES, SLOT_KEY_SIZE};
 use crate::prehash::{Map, PreHashed, Set};
+use crate::signed::{Id, Signable, Signed};
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
     DeserializeMinBEInt, DeserializeVarInt, Endorsement, EndorsementId, ModelsError, Operation,
@@ -9,10 +10,7 @@ use crate::{
 };
 use massa_hash::hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
-use massa_signature::{
-    sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
-    SIGNATURE_SIZE_BYTES,
-};
+use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::Formatter;
@@ -24,6 +22,11 @@ const BLOCK_ID_STRING_PREFIX: &str = "BLO";
 pub struct BlockId(pub Hash);
 
 impl PreHashed for BlockId {}
+impl Id for BlockId {
+    fn new(hash: Hash) -> Self {
+        BlockId(hash)
+    }
+}
 
 impl std::fmt::Display for BlockId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -94,7 +97,7 @@ impl BlockId {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
-    pub header: BlockHeader,
+    pub header: Signed<BlockHeader, BlockId>,
     pub operations: Vec<Operation>,
 }
 
@@ -192,7 +195,7 @@ impl std::fmt::Display for Block {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BlockHeaderContent {
+pub struct BlockHeader {
     pub creator: PublicKey,
     pub slot: Slot,
     pub parents: Vec<BlockId>,
@@ -200,7 +203,18 @@ pub struct BlockHeaderContent {
     pub endorsements: Vec<Endorsement>,
 }
 
-impl std::fmt::Display for BlockHeaderContent {
+impl Signable<BlockId> for BlockHeader {
+    fn get_signature_message(&self) -> Result<Hash, ModelsError> {
+        let hash = self.compute_hash()?;
+        let mut res = [0u8; SLOT_KEY_SIZE + BLOCK_ID_SIZE_BYTES];
+        res[..SLOT_KEY_SIZE].copy_from_slice(&self.slot.to_bytes_key());
+        res[SLOT_KEY_SIZE..].copy_from_slice(&hash.to_bytes());
+        // rehash for safety
+        Ok(Hash::compute_from(&res))
+    }
+}
+
+impl std::fmt::Display for BlockHeader {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let pk = self.creator.to_string();
         writeln!(f, "\tCreator: {}", pk)?;
@@ -243,12 +257,6 @@ impl std::fmt::Display for BlockHeaderContent {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BlockHeader {
-    pub content: BlockHeaderContent,
-    pub signature: Signature,
-}
-
 /// Checks performed:
 /// - Validity of header.
 /// - Number of operations.
@@ -277,14 +285,6 @@ impl SerializeCompact for Block {
     }
 }
 
-impl std::fmt::Display for BlockHeader {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Signature: {}", self.signature)?;
-        writeln!(f, "{}", self.content)?;
-        Ok(())
-    }
-}
-
 /// Checks performed:
 /// - Validity of header.
 /// - Size of block.
@@ -299,7 +299,8 @@ impl DeserializeCompact for Block {
         });
 
         // header
-        let (header, delta) = BlockHeader::from_bytes_compact(&buffer[cursor..])?;
+        let (header, delta) =
+            Signed::<BlockHeader, BlockId>::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
         if cursor > (max_block_size as usize) {
             return Err(ModelsError::DeserializeError("block is too large".into()));
@@ -327,103 +328,6 @@ impl DeserializeCompact for Block {
 }
 
 impl BlockHeader {
-    /// Verify the signature of the header
-    pub fn check_signature(&self) -> Result<(), ModelsError> {
-        let hash = self.content.compute_hash()?;
-        self.verify_signature(&hash)?;
-        Ok(())
-    }
-
-    /// Generate the block id without verifying the integrity of the it,
-    /// used only in tests and logging.
-    pub fn compute_block_id(&self) -> Result<BlockId, ModelsError> {
-        Ok(BlockId(Hash::compute_from(&self.to_bytes_compact()?)))
-    }
-
-    // Hash([slot, hash])
-    fn get_signature_message(slot: &Slot, hash: &Hash) -> Hash {
-        let mut res = [0u8; SLOT_KEY_SIZE + BLOCK_ID_SIZE_BYTES];
-        res[..SLOT_KEY_SIZE].copy_from_slice(&slot.to_bytes_key());
-        res[SLOT_KEY_SIZE..].copy_from_slice(&hash.to_bytes());
-        // rehash for safety
-        Hash::compute_from(&res)
-    }
-
-    // check if a [slot, hash] pair was signed by a public_key
-    pub fn verify_slot_hash_signature(
-        slot: &Slot,
-        hash: &Hash,
-        signature: &Signature,
-        public_key: &PublicKey,
-    ) -> Result<(), ModelsError> {
-        verify_signature(
-            &BlockHeader::get_signature_message(slot, hash),
-            signature,
-            public_key,
-        )
-        .map_err(|err| err.into())
-    }
-
-    pub fn new_signed(
-        private_key: &PrivateKey,
-        content: BlockHeaderContent,
-    ) -> Result<(BlockId, Self), ModelsError> {
-        let hash = content.compute_hash()?;
-        let signature = sign(
-            &BlockHeader::get_signature_message(&content.slot, &hash),
-            private_key,
-        )?;
-        let header = BlockHeader { content, signature };
-        let block_id = header.compute_block_id()?;
-        Ok((block_id, header))
-    }
-
-    pub fn verify_signature(&self, hash: &Hash) -> Result<(), ModelsError> {
-        BlockHeader::verify_slot_hash_signature(
-            &self.content.slot,
-            hash,
-            &self.signature,
-            &self.content.creator,
-        )
-    }
-}
-
-/// Checks performed:
-/// - Content.
-impl SerializeCompact for BlockHeader {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-
-        // signed content
-        res.extend(self.content.to_bytes_compact()?);
-
-        // signature
-        res.extend(&self.signature.to_bytes());
-
-        Ok(res)
-    }
-}
-
-/// Checks performed:
-/// - Content
-/// - Signature.
-impl DeserializeCompact for BlockHeader {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let mut cursor = 0usize;
-
-        // signed content
-        let (content, delta) = BlockHeaderContent::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-
-        // signature
-        let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-        cursor += SIGNATURE_SIZE_BYTES;
-
-        Ok((BlockHeader { content, signature }, cursor))
-    }
-}
-
-impl BlockHeaderContent {
     pub fn compute_hash(&self) -> Result<Hash, ModelsError> {
         Ok(Hash::compute_from(&self.to_bytes_compact()?))
     }
@@ -433,7 +337,7 @@ impl BlockHeaderContent {
 /// - Validity of slot.
 /// - Valid length of included endorsements.
 /// - Validity of included endorsements.
-impl SerializeCompact for BlockHeaderContent {
+impl SerializeCompact for BlockHeader {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
@@ -474,7 +378,7 @@ impl SerializeCompact for BlockHeaderContent {
 /// - Presence of parent.
 /// - Valid length of included endorsements.
 /// - Validity of included endorsements.
-impl DeserializeCompact for BlockHeaderContent {
+impl DeserializeCompact for BlockHeader {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
@@ -502,7 +406,7 @@ impl DeserializeCompact for BlockHeaderContent {
             Vec::new()
         } else {
             return Err(ModelsError::SerializeError(
-                "BlockHeaderContent from_bytes_compact bad has parents flags.".into(),
+                "BlockHeader from_bytes_compact bad has parents flags.".into(),
             ));
         };
 
@@ -526,7 +430,7 @@ impl DeserializeCompact for BlockHeaderContent {
         }
 
         Ok((
-            BlockHeaderContent {
+            BlockHeader {
                 creator,
                 slot,
                 parents,
@@ -542,7 +446,7 @@ impl DeserializeCompact for BlockHeaderContent {
 mod test {
     use super::*;
     use crate::EndorsementContent;
-    use massa_signature::{derive_public_key, generate_random_private_key};
+    use massa_signature::{derive_public_key, generate_random_private_key, sign};
     use serial_test::serial;
 
     #[test]
@@ -571,9 +475,8 @@ mod test {
         let public_key = derive_public_key(&private_key);
 
         // create block header
-        let (orig_id, orig_header) = BlockHeader::new_signed(
-            &private_key,
-            BlockHeaderContent {
+        let (orig_id, orig_header) = Signed::new_signed(
+            BlockHeader {
                 creator: public_key,
                 slot: Slot::new(1, 2),
                 parents: vec![
@@ -605,6 +508,7 @@ mod test {
                     },
                 ],
             },
+            &private_key,
         )
         .unwrap();
 
@@ -622,8 +526,8 @@ mod test {
         assert_eq!(orig_bytes.len(), res_size);
 
         // check equality
-        let res_id = res_block.header.compute_block_id().unwrap();
-        let generated_res_id = res_block.header.compute_block_id().unwrap();
+        let res_id = res_block.header.content.compute_id().unwrap();
+        let generated_res_id = res_block.header.content.compute_id().unwrap();
         assert_eq!(orig_id, res_id);
         assert_eq!(orig_id, generated_res_id);
         assert_eq!(res_block.header.signature, orig_block.header.signature);

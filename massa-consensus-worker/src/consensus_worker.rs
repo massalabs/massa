@@ -8,15 +8,15 @@ use massa_consensus_exports::{
 };
 use massa_graph::{BlockGraph, BlockGraphExport};
 use massa_hash::hash::Hash;
-use massa_models::address::AddressState;
 use massa_models::api::{LedgerInfo, RollsInfo};
 use massa_models::ledger_models::LedgerData;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use massa_models::{address::AddressCycleProductionStats, stats::ConsensusStats, OperationId};
+use massa_models::{address::AddressState, signed::Signed};
 use massa_models::{
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement, EndorsementContent,
-    EndorsementId, Operation, OperationSearchResult, OperationType, SerializeCompact, Slot,
+    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementContent, EndorsementId,
+    Operation, OperationSearchResult, OperationType, SerializeCompact, Slot,
 };
 use massa_proof_of_stake_exports::{error::ProofOfStakeError, ExportProofOfStake, ProofOfStake};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
@@ -443,15 +443,15 @@ impl ConsensusWorker {
         });
 
         // create empty block
-        let (_block_id, header) = BlockHeader::new_signed(
-            creator_private_key,
-            BlockHeaderContent {
+        let (_block_id, header) = Signed::new_signed(
+            BlockHeader {
                 creator: *creator_public_key,
                 slot: cur_slot,
                 parents: parents.iter().map(|(b, _p)| *b).collect(),
                 operation_merkle_root: Hash::compute_from(&Vec::new()[..]),
                 endorsements: endorsements.clone(),
             },
+            creator_private_key,
         )?;
         let block = Block {
             header,
@@ -579,15 +579,15 @@ impl ConsensusWorker {
         }
 
         // compile resulting block
-        let (block_id, header) = BlockHeader::new_signed(
-            creator_private_key,
-            BlockHeaderContent {
+        let (block_id, header) = Signed::new_signed(
+            BlockHeader {
                 creator: *creator_public_key,
                 slot: cur_slot,
                 parents: parents.iter().map(|(b, _p)| *b).collect(),
                 operation_merkle_root: Hash::compute_from(&total_hash),
                 endorsements,
             },
+            creator_private_key,
         )?;
         let block = Block { header, operations };
 

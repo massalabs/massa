@@ -5,8 +5,9 @@ use massa_consensus_exports::{tools::*, ConsensusConfig};
 use massa_graph::ledger::LedgerSubset;
 use massa_hash::hash::Hash;
 use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
+use massa_models::signed::Signed;
 use massa_models::{ledger_models::LedgerData, EndorsementId, OperationType};
-use massa_models::{Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot};
+use massa_models::{Address, Amount, Block, BlockHeader, Slot};
 use massa_models::{Endorsement, SerializeCompact};
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
@@ -694,15 +695,15 @@ async fn test_block_filling() {
             }
 
             // create empty block
-            let (_block_id, header) = BlockHeader::new_signed(
-                &priv_a,
-                BlockHeaderContent {
+            let (_block_id, header) = Signed::new_signed(
+                BlockHeader {
                     creator: block.header.content.creator,
                     slot: block.header.content.slot,
                     parents: block.header.content.parents.clone(),
                     operation_merkle_root: Hash::compute_from(&Vec::new()[..]),
                     endorsements: eds.iter().map(|(_e_id, endo)| endo.clone()).collect(),
                 },
+                &priv_a,
             )
             .unwrap();
             let empty = Block {

@@ -7,6 +7,7 @@ use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
     prehash::{BuildMap, Map, Set},
+    signed::{Signable, Signed},
     Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
     OperationType,
 };
@@ -937,7 +938,7 @@ impl ProtocolWorker {
     /// - Block matches that of the block.
     async fn note_header_from_node(
         &mut self,
-        header: &BlockHeader,
+        header: &Signed<BlockHeader, BlockId>,
         source_node_id: &NodeId,
     ) -> Result<Option<(BlockId, Map<EndorsementId, u32>, bool)>, ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
@@ -958,7 +959,7 @@ impl ProtocolWorker {
         }
 
         // compute ID
-        let block_id = match header.compute_block_id() {
+        let block_id = match header.content.compute_id() {
             Ok(id) => id,
             Err(err) => {
                 massa_trace!("protocol.protocol_worker.check_header.err_id", { "header": header, "err": format!("{}", err)});
@@ -1020,7 +1021,7 @@ impl ProtocolWorker {
         }
 
         // check header signature
-        if let Err(err) = header.check_signature() {
+        if let Err(err) = header.verify_signature(&header.content.creator) {
             massa_trace!("protocol.protocol_worker.check_header.err_signature", { "header": header, "err": format!("{}", err)});
             return Ok(None);
         };

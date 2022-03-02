@@ -7,9 +7,8 @@ use crate::{
 };
 use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
-use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, SerializeCompact, Slot,
-};
+use massa_models::signed::{Signable, Signed};
+use massa_models::{Address, Amount, Block, BlockHeader, BlockId, SerializeCompact, Slot};
 use massa_models::{Endorsement, EndorsementContent, Operation, OperationContent, OperationType};
 use massa_network::NetworkCommand;
 use massa_signature::{
@@ -49,9 +48,8 @@ pub async fn create_and_connect_nodes(
 /// without paying attention to consensus related things
 /// like slot, parents, and merkle root.
 pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
-    let (_, header) = BlockHeader::new_signed(
-        private_key,
-        BlockHeaderContent {
+    let (_, header) = Signed::new_signed(
+        BlockHeader {
             creator: *public_key,
             slot: Slot::new(1, 0),
             parents: vec![
@@ -61,6 +59,7 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
         },
+        private_key,
     )
     .unwrap();
 
@@ -81,9 +80,8 @@ pub fn create_block_with_operations(
             [acc, v.get_operation_id().unwrap().to_bytes().to_vec()].concat()
         })[..],
     );
-    let (_, header) = BlockHeader::new_signed(
-        private_key,
-        BlockHeaderContent {
+    let (_, header) = Signed::new_signed(
+        BlockHeader {
             creator: *public_key,
             slot,
             parents: vec![
@@ -93,6 +91,7 @@ pub fn create_block_with_operations(
             operation_merkle_root,
             endorsements: Vec::new(),
         },
+        private_key,
     )
     .unwrap();
 
@@ -105,9 +104,8 @@ pub fn create_block_with_endorsements(
     slot: Slot,
     endorsements: Vec<Endorsement>,
 ) -> Block {
-    let (_, header) = BlockHeader::new_signed(
-        private_key,
-        BlockHeaderContent {
+    let (_, header) = Signed::new_signed(
+        BlockHeader {
             creator: *public_key,
             slot,
             parents: vec![
@@ -117,6 +115,7 @@ pub fn create_block_with_endorsements(
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements,
         },
+        private_key,
     )
     .unwrap();
 
@@ -133,7 +132,7 @@ pub async fn send_and_propagate_block(
     source_node_id: NodeId,
     protocol_event_receiver: &mut ProtocolEventReceiver,
 ) {
-    let expected_hash = block.header.compute_block_id().unwrap();
+    let expected_hash = block.header.content.compute_id().unwrap();
 
     // Send block to protocol.
     network_controller.send_block(source_node_id, block).await;
