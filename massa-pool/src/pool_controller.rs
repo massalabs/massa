@@ -75,7 +75,7 @@ pub struct PoolCommandSender(pub mpsc::Sender<PoolCommand>);
 impl PoolCommandSender {
     pub async fn add_operations(
         &mut self,
-        operations: Map<OperationId, Operation>,
+        operations: Map<OperationId, Signed<Operation, OperationId>>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.add_operations", { "ops": operations });
         let res = self
@@ -148,12 +148,12 @@ impl PoolCommandSender {
         exclude: Set<OperationId>,
         batch_size: usize,
         max_size: u64,
-    ) -> Result<Vec<(OperationId, Operation, u64)>, PoolError> {
+    ) -> Result<Vec<(OperationId, Signed<Operation, OperationId>, u64)>, PoolError> {
         massa_trace!("pool.command_sender.get_operation_batch", {
             "target_slot": target_slot
         });
 
-        let (response_tx, response_rx) = oneshot::channel::<Vec<(OperationId, Operation, u64)>>();
+        let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(PoolCommand::GetOperationBatch {
                 target_slot,
@@ -207,7 +207,7 @@ impl PoolCommandSender {
     pub async fn get_operations(
         &mut self,
         operation_ids: Set<OperationId>,
-    ) -> Result<Map<OperationId, Operation>, PoolError> {
+    ) -> Result<Map<OperationId, Signed<Operation, OperationId>>, PoolError> {
         massa_trace!("pool.command_sender.get_operations", {
             "operation_ids": operation_ids
         });

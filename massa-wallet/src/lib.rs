@@ -6,9 +6,8 @@ use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::composite::PubkeySig;
 use massa_models::prehash::{Map, Set};
-use massa_models::Operation;
-use massa_models::OperationContent;
-use massa_models::SerializeCompact;
+use massa_models::signed::Signed;
+use massa_models::{Operation, OperationId};
 use massa_signature::{derive_public_key, sign, PrivateKey, PublicKey};
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
@@ -117,15 +116,13 @@ impl Wallet {
 
     pub fn create_operation(
         &self,
-        content: OperationContent,
+        content: Operation,
         address: Address,
-    ) -> Result<Operation, WalletError> {
-        let hash = Hash::compute_from(&content.to_bytes_compact()?);
+    ) -> Result<Signed<Operation, OperationId>, WalletError> {
         let sender_priv = self
             .find_associated_private_key(address)
             .ok_or(WalletError::MissingKeyError(address))?;
-        let signature = sign(&hash, sender_priv)?;
-        Ok(Operation { content, signature })
+        Ok(Signed::new_signed(content, sender_priv).unwrap().1)
     }
 }
 

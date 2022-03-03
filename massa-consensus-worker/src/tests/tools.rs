@@ -16,14 +16,12 @@ use massa_models::{
     prehash::Set,
     signed::{Signable, Signed},
     Address, Amount, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation,
-    OperationContent, OperationType, SerializeCompact, Slot,
+    OperationId, OperationType, SerializeCompact, Slot,
 };
 use massa_pool::PoolCommand;
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_protocol_exports::ProtocolCommand;
-use massa_signature::{
-    derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey,
-};
+use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
 use std::{collections::HashSet, future::Future};
 use std::{
@@ -334,22 +332,20 @@ pub fn create_roll_transaction(
     buy: bool,
     expire_period: u64,
     fee: u64,
-) -> Operation {
+) -> Signed<Operation, OperationId> {
     let op = if buy {
         OperationType::RollBuy { roll_count }
     } else {
         OperationType::RollSell { roll_count }
     };
 
-    let content = OperationContent {
+    let content = Operation {
         sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-    let signature = sign(&hash, &priv_key).unwrap();
-    Operation { content, signature }
+    Signed::new_signed(content, &priv_key).unwrap().1
 }
 
 pub async fn wait_pool_slot(
@@ -380,21 +376,19 @@ pub fn create_transaction(
     amount: u64,
     expire_period: u64,
     fee: u64,
-) -> Operation {
+) -> Signed<Operation, OperationId> {
     let op = OperationType::Transaction {
         recipient_address,
         amount: Amount::from_str(&amount.to_string()).unwrap(),
     };
 
-    let content = OperationContent {
+    let content = Operation {
         sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-    let signature = sign(&hash, &priv_key).unwrap();
-    Operation { content, signature }
+    Signed::new_signed(content, &priv_key).unwrap().1
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -407,7 +401,7 @@ pub fn create_executesc(
     max_gas: u64,
     coins: u64,
     gas_price: u64,
-) -> Operation {
+) -> Signed<Operation, OperationId> {
     let op = OperationType::ExecuteSC {
         data,
         max_gas,
@@ -415,15 +409,13 @@ pub fn create_executesc(
         gas_price: Amount::from_str(&gas_price.to_string()).unwrap(),
     };
 
-    let content = OperationContent {
+    let content = Operation {
         sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-    let signature = sign(&hash, &priv_key).unwrap();
-    Operation { content, signature }
+    Signed::new_signed(content, &priv_key).unwrap().1
 }
 
 pub fn create_roll_buy(
@@ -431,18 +423,16 @@ pub fn create_roll_buy(
     roll_count: u64,
     expire_period: u64,
     fee: u64,
-) -> Operation {
+) -> Signed<Operation, OperationId> {
     let op = OperationType::RollBuy { roll_count };
     let sender_public_key = derive_public_key(&priv_key);
-    let content = OperationContent {
+    let content = Operation {
         sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-    let signature = sign(&hash, &priv_key).unwrap();
-    Operation { content, signature }
+    Signed::new_signed(content, &priv_key).unwrap().1
 }
 
 pub fn create_roll_sell(
@@ -450,18 +440,16 @@ pub fn create_roll_sell(
     roll_count: u64,
     expire_period: u64,
     fee: u64,
-) -> Operation {
+) -> Signed<Operation, OperationId> {
     let op = OperationType::RollSell { roll_count };
     let sender_public_key = derive_public_key(&priv_key);
-    let content = OperationContent {
+    let content = Operation {
         sender_public_key,
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         expire_period,
         op,
     };
-    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-    let signature = sign(&hash, &priv_key).unwrap();
-    Operation { content, signature }
+    Signed::new_signed(content, &priv_key).unwrap().1
 }
 
 // returns hash and resulting discarded blocks
@@ -530,7 +518,7 @@ pub fn create_endorsement(
 pub fn get_export_active_test_block(
     creator: PublicKey,
     parents: Vec<(BlockId, u64)>,
-    operations: Vec<Operation>,
+    operations: Vec<Signed<Operation, OperationId>>,
     slot: Slot,
     is_final: bool,
 ) -> (ExportActiveBlock, BlockId) {
@@ -541,7 +529,7 @@ pub fn get_export_active_test_block(
                 operation_merkle_root: Hash::compute_from(
                     &operations
                         .iter()
-                        .flat_map(|op| op.get_operation_id().unwrap().to_bytes())
+                        .flat_map(|op| op.content.compute_id().unwrap().to_bytes())
                         .collect::<Vec<_>>()[..],
                 ),
                 parents: parents.iter().map(|(id, _)| *id).collect(),
@@ -575,7 +563,7 @@ pub fn create_block_with_operations(
     slot: Slot,
     best_parents: &Vec<BlockId>,
     creator: PrivateKey,
-    operations: Vec<Operation>,
+    operations: Vec<Signed<Operation, OperationId>>,
 ) -> (BlockId, Block, PrivateKey) {
     let public_key = derive_public_key(&creator);
 

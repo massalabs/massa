@@ -2,6 +2,7 @@
 
 use crate::{settings::PoolConfig, PoolError};
 use massa_models::prehash::{Map, Set};
+use massa_models::signed::Signed;
 use massa_models::{
     Address, Operation, OperationId, OperationSearchResult, OperationSearchResultStatus,
     OperationType, SerializeCompact, Slot,
@@ -37,13 +38,13 @@ impl OperationIndex {
 }
 
 struct WrappedOperation {
-    op: Operation,
+    op: Signed<Operation, OperationId>,
     byte_count: u64,
     thread: u8,
 }
 
 impl WrappedOperation {
-    fn new(op: Operation, thread_count: u8) -> Result<Self, PoolError> {
+    fn new(op: Signed<Operation, OperationId>, thread_count: u8) -> Result<Self, PoolError> {
         Ok(WrappedOperation {
             byte_count: op.to_bytes_compact()?.len() as u64,
             thread: Address::from_public_key(&op.content.sender_public_key)
@@ -105,7 +106,7 @@ impl OperationPool {
     ///
     pub fn add_operations(
         &mut self,
-        operations: Map<OperationId, Operation>,
+        operations: Map<OperationId, Signed<Operation, OperationId>>,
     ) -> Result<Set<OperationId>, PoolError> {
         let mut newly_added = Set::<OperationId>::default();
 
@@ -137,6 +138,7 @@ impl OperationPool {
 
                 let validity_start_period = *wrapped_op
                     .op
+                    .content
                     .get_validity_range(self.cfg.operation_validity_periods)
                     .start();
 
@@ -167,7 +169,7 @@ impl OperationPool {
 
             // insert
             let interest = (std::cmp::Reverse(wrapped_op.get_fee_density()), op_id);
-            let addrs = wrapped_op.op.get_ledger_involved_addresses()?;
+            let addrs = wrapped_op.op.content.get_ledger_involved_addresses()?;
 
             self.ops_by_thread_and_interest[wrapped_op.thread as usize].insert(interest);
             self.ops.insert(op_id, wrapped_op);
@@ -190,7 +192,7 @@ impl OperationPool {
                     .unwrap(); // will not panic because of the while condition. complexity = log or better
                 if let Some(removed_op) = self.ops.remove(&removed_id) {
                     // complexity: const
-                    let addrs = removed_op.op.get_ledger_involved_addresses()?;
+                    let addrs = removed_op.op.content.get_ledger_involved_addresses()?;
                     for addr in addrs {
                         self.ops_by_address
                             .remove_op_for_address(&addr, &removed_id);
@@ -211,7 +213,7 @@ impl OperationPool {
             if let Some(wrapped) = self.ops.remove(id) {
                 self.ops_by_thread_and_interest[wrapped.thread as usize]
                     .remove(&(std::cmp::Reverse(wrapped.get_fee_density()), *id));
-                let addrs = wrapped.op.get_ledger_involved_addresses()?;
+                let addrs = wrapped.op.content.get_ledger_involved_addresses()?;
                 for addr in addrs {
                     self.ops_by_address.remove_op_for_address(&addr, id);
                 }
@@ -268,7 +270,7 @@ impl OperationPool {
                 self.ops_by_thread_and_interest[wrapped_op.thread as usize].remove(&interest);
                 // complexity: log
 
-                let addrs = wrapped_op.op.get_ledger_involved_addresses()?;
+                let addrs = wrapped_op.op.content.get_ledger_involved_addresses()?;
                 for addr in addrs {
                     self.ops_by_address.remove_op_for_address(&addr, &op_id);
                 }
@@ -285,7 +287,7 @@ impl OperationPool {
         exclude: Set<OperationId>,
         batch_size: usize,
         max_size: u64,
-    ) -> Result<Vec<(OperationId, Operation, u64)>, PoolError> {
+    ) -> Result<Vec<(OperationId, Signed<Operation, OperationId>, u64)>, PoolError> {
         self.ops_by_thread_and_interest[block_slot.thread as usize]
             .iter()
             .filter_map(|(_rentability, id)| {
@@ -293,10 +295,10 @@ impl OperationPool {
                     return None;
                 }
                 if let Some(w_op) = self.ops.get(id) {
-                    if !w_op.op.get_validity_range(self.cfg.operation_validity_periods)
+                    if !w_op.op.content.get_validity_range(self.cfg.operation_validity_periods)
                         .contains(&block_slot.period) || w_op.byte_count > max_size {
-                            massa_trace!("pool get_operation_batch not added to batch w_op.op.get_validity_range incorrect not added", {
-                                "range": w_op.op.get_validity_range(self.cfg.operation_validity_periods),
+                            massa_trace!("pool get_operation_batch not added to batch w_op.op.content.get_validity_range incorrect not added", {
+                                "range": w_op.op.content.get_validity_range(self.cfg.operation_validity_periods),
                                 "block_slot.period": block_slot.period
                             });
                         return None;
@@ -312,7 +314,10 @@ impl OperationPool {
             .collect()
     }
 
-    pub fn get_operations(&self, operation_ids: &Set<OperationId>) -> Map<OperationId, Operation> {
+    pub fn get_operations(
+        &self,
+        operation_ids: &Set<OperationId>,
+    ) -> Map<OperationId, Signed<Operation, OperationId>> {
         operation_ids
             .iter()
             .filter_map(|op_id| self.ops.get(op_id).map(|w_op| (*op_id, w_op.op.clone())))

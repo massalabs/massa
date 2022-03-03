@@ -8,15 +8,18 @@ use massa_consensus_exports::{
 };
 use massa_graph::{BlockGraph, BlockGraphExport};
 use massa_hash::hash::Hash;
-use massa_models::api::{LedgerInfo, RollsInfo};
 use massa_models::ledger_models::LedgerData;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use massa_models::{address::AddressCycleProductionStats, stats::ConsensusStats, OperationId};
 use massa_models::{address::AddressState, signed::Signed};
 use massa_models::{
-    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation,
-    OperationSearchResult, OperationType, SerializeCompact, Slot,
+    api::{LedgerInfo, RollsInfo},
+    Operation,
+};
+use massa_models::{
+    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, OperationSearchResult,
+    OperationType, SerializeCompact, Slot,
 };
 use massa_proof_of_stake_exports::{error::ProofOfStakeError, ExportProofOfStake, ProofOfStake};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
@@ -505,7 +508,7 @@ impl ConsensusWorker {
 
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
-        let mut operations: Vec<Operation> = Vec::new();
+        let mut operations: Vec<Signed<Operation, OperationId>> = Vec::new();
         let mut operation_set: Map<OperationId, (usize, u64)> = Map::default(); // (index, validity end period)
         let mut finished = remaining_block_space == 0
             || remaining_operation_count == 0

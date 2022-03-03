@@ -21,10 +21,11 @@ use massa_logging::massa_trace;
 use massa_models::{
     composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, signed::Signed,
     stats::NetworkStats, with_serialization_context, DeserializeCompact, DeserializeVarInt,
-    Endorsement, EndorsementId, ModelsError, SerializeCompact, SerializeVarInt, Version,
+    Endorsement, EndorsementId, ModelsError, Operation, OperationId, SerializeCompact,
+    SerializeVarInt, Version,
 };
 use massa_models::{signed::Signable, BlockHeader};
-use massa_models::{Block, BlockId, Operation};
+use massa_models::{Block, BlockId};
 use massa_signature::{derive_public_key, sign, PrivateKey};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -66,7 +67,7 @@ pub enum NetworkCommand {
     },
     SendOperations {
         node: NodeId,
-        operations: Vec<Operation>,
+        operations: Vec<Signed<Operation, OperationId>>,
     },
     SendEndorsements {
         node: NodeId,
@@ -119,7 +120,7 @@ pub enum NetworkEvent {
     },
     ReceivedOperations {
         node: NodeId,
-        operations: Vec<Operation>,
+        operations: Vec<Signed<Operation, OperationId>>,
     },
     ReceivedEndorsements {
         node: NodeId,

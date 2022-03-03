@@ -3,6 +3,7 @@
 use massa_consensus_exports::tools;
 use massa_consensus_exports::{settings::ConsensusChannels, ConsensusConfig};
 use massa_execution_exports::test_exports::MockExecutionController;
+use massa_models::signed::Signable;
 use massa_models::{Address, Amount, BlockId, Slot};
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
@@ -567,7 +568,7 @@ async fn test_roll_block_creation() {
                 assert_eq!(target_slot, Slot::new(1, 0));
                 response_tx
                     .send(vec![(
-                        rb_a2_r1.clone().get_operation_id().unwrap(),
+                        rb_a2_r1.clone().content.compute_id().unwrap(),
                         rb_a2_r1.clone(),
                         10,
                     )])
@@ -598,8 +599,8 @@ async fn test_roll_block_creation() {
     assert_eq!(block.header.content.slot, Slot::new(1, 0));
     assert_eq!(block.operations.len(), 1);
     assert_eq!(
-        block.operations[0].get_operation_id().unwrap(),
-        rb_a2_r1.clone().get_operation_id().unwrap()
+        block.operations[0].content.compute_id().unwrap(),
+        rb_a2_r1.clone().content.compute_id().unwrap()
     );
 
     let addr_state = consensus_command_sender
@@ -673,7 +674,7 @@ async fn test_roll_block_creation() {
                 assert_eq!(target_slot, Slot::new(2, 0));
                 response_tx
                     .send(vec![(
-                        rs_a2_r1.clone().get_operation_id().unwrap(),
+                        rs_a2_r1.clone().content.compute_id().unwrap(),
                         rs_a2_r1.clone(),
                         10,
                     )])
@@ -704,8 +705,8 @@ async fn test_roll_block_creation() {
     assert_eq!(block.header.content.slot, Slot::new(2, 0));
     assert_eq!(block.operations.len(), 1);
     assert_eq!(
-        block.operations[0].get_operation_id().unwrap(),
-        rs_a2_r1.clone().get_operation_id().unwrap()
+        block.operations[0].content.compute_id().unwrap(),
+        rs_a2_r1.clone().content.compute_id().unwrap()
     );
 
     let addr_state = consensus_command_sender

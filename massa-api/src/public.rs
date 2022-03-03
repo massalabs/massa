@@ -11,6 +11,8 @@ use massa_execution_exports::{
 use massa_graph::{DiscardReason, ExportBlockStatus};
 use massa_models::api::SCELedgerInfo;
 use massa_models::execution::ReadOnlyResult;
+use massa_models::signed::Signed;
+use massa_models::Operation;
 use massa_models::{
     api::{
         APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
@@ -23,7 +25,7 @@ use massa_models::{
     output_event::SCOutputEvent,
     prehash::{BuildMap, Map, Set},
     timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
-    Address, BlockId, CompactConfig, EndorsementId, Operation, OperationId, Slot, Version,
+    Address, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
 use massa_network::{NetworkCommandSender, NetworkSettings};
 use massa_pool::PoolCommandSender;
@@ -562,7 +564,7 @@ impl Endpoints for API<Public> {
 
     fn send_operations(
         &self,
-        ops: Vec<Operation>,
+        ops: Vec<Signed<Operation, OperationId>>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
         let api_cfg = self.0.api_settings;

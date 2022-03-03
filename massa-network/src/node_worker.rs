@@ -14,7 +14,7 @@ use massa_models::{
     },
     node::NodeId,
     signed::{Signable, Signed},
-    Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation,
+    Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
 };
 use std::net::IpAddr;
 use tokio::{
@@ -42,7 +42,7 @@ pub enum NodeCommand {
     /// Block not found
     BlockNotFound(BlockId),
     /// Operation
-    SendOperations(Vec<Operation>),
+    SendOperations(Vec<Signed<Operation, OperationId>>),
     /// Endorsements
     SendEndorsements(Vec<Signed<Endorsement, EndorsementId>>),
 }
@@ -63,7 +63,7 @@ pub enum NodeEventType {
     /// Didn't found given block,
     BlockNotFound(BlockId),
     /// Operation
-    ReceivedOperations(Vec<Operation>),
+    ReceivedOperations(Vec<Signed<Operation, OperationId>>),
     /// Operation
     ReceivedEndorsements(Vec<Signed<Endorsement, EndorsementId>>),
 }

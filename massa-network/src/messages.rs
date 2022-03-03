@@ -5,7 +5,8 @@ use massa_models::{
     constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
     signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
-    Endorsement, EndorsementId, ModelsError, Operation, SerializeCompact, SerializeVarInt, Version,
+    Endorsement, EndorsementId, ModelsError, Operation, OperationId, SerializeCompact,
+    SerializeVarInt, Version,
 };
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -46,7 +47,7 @@ pub enum Message {
     /// Block not found
     BlockNotFound(BlockId),
     /// Operations
-    Operations(Vec<Operation>),
+    Operations(Vec<Signed<Operation, OperationId>>),
     /// Endorsements
     Endorsements(Vec<Signed<Endorsement, EndorsementId>>),
 }
@@ -242,9 +243,11 @@ impl DeserializeCompact for Message {
                     u32::from_varint_bytes_bounded(&buffer[cursor..], max_operations_per_message)?;
                 cursor += delta;
                 // operations
-                let mut ops: Vec<Operation> = Vec::with_capacity(length as usize);
+                let mut ops: Vec<Signed<Operation, OperationId>> =
+                    Vec::with_capacity(length as usize);
                 for _ in 0..length {
-                    let (op, delta) = Operation::from_bytes_compact(&buffer[cursor..])?;
+                    let (op, delta) =
+                        Signed::<Operation, OperationId>::from_bytes_compact(&buffer[cursor..])?;
                     cursor += delta;
                     ops.push(op);
                 }

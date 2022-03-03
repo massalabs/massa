@@ -286,7 +286,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
             let op_ids = ref_block
                 .operations
                 .iter()
-                .map(|op| op.get_operation_id().unwrap())
+                .map(|op| op.content.compute_id().unwrap())
                 .collect();
             let endo_ids = ref_block
                 .header

@@ -299,7 +299,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let thread = address.get_thread(serialization_context.thread_count);
 
             let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
-            let operation_id = operation.get_operation_id().unwrap();
+            let operation_id = operation.content.compute_id().unwrap();
 
             let block = tools::create_block_with_operations(
                 &nodes[0].private_key,
@@ -368,7 +368,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .await
             {
                 Some(NetworkCommand::SendOperations { node, operations }) => {
-                    let id = operations[0].get_operation_id().unwrap();
+                    let id = operations[0].content.compute_id().unwrap();
                     assert_eq!(id, operation_id);
                     assert_eq!(nodes[0].id, node);
                     panic!("Unexpected propagated of operation.");
@@ -409,7 +409,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let thread = address.get_thread(serialization_context.thread_count);
 
             let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
-            let operation_id = operation.get_operation_id().unwrap();
+            let operation_id = operation.content.compute_id().unwrap();
 
             let block = tools::create_block_with_operations(
                 &nodes[0].private_key,
@@ -477,7 +477,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .await
             {
                 Some(NetworkCommand::SendOperations { node, operations }) => {
-                    let id = operations[0].get_operation_id().unwrap();
+                    let id = operations[0].content.compute_id().unwrap();
                     assert_eq!(id, operation_id);
                     assert_eq!(nodes[0].id, node);
                     panic!("Unexpected propagated of operation.");
@@ -518,7 +518,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let thread = address.get_thread(serialization_context.thread_count);
 
             let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
-            let operation_id = operation.get_operation_id().unwrap();
+            let operation_id = operation.content.compute_id().unwrap();
 
             let block = tools::create_block_with_operations(
                 &nodes[0].private_key,
@@ -566,7 +566,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .await
             {
                 Some(NetworkCommand::SendOperations { node, operations }) => {
-                    let id = operations[0].get_operation_id().unwrap();
+                    let id = operations[0].content.compute_id().unwrap();
                     assert_eq!(id, operation_id);
                     assert_eq!(nodes[0].id, node);
                     panic!("Unexpected propagated of operation.");
@@ -609,7 +609,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             let operation = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
 
             let operation_2 = tools::create_operation_with_expire_period(&nodes[0].private_key, 1);
-            let operation_id_2 = operation_2.get_operation_id().unwrap();
+            let operation_id_2 = operation_2.content.compute_id().unwrap();
 
             let mut block = tools::create_block_with_operations(
                 &nodes[0].private_key,
@@ -663,7 +663,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .await
             {
                 Some(NetworkCommand::SendOperations { node, operations }) => {
-                    let id = operations[0].get_operation_id().unwrap();
+                    let id = operations[0].content.compute_id().unwrap();
                     assert_eq!(id, operation_id_2);
                     assert_eq!(nodes[0].id, node);
                 }

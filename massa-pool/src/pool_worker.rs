@@ -17,7 +17,7 @@ use tracing::warn;
 /// Commands that can be processed by pool.
 #[derive(Debug)]
 pub enum PoolCommand {
-    AddOperations(Map<OperationId, Operation>),
+    AddOperations(Map<OperationId, Signed<Operation, OperationId>>),
     UpdateCurrentSlot(Slot),
     UpdateLatestFinalPeriods(Vec<u64>),
     GetOperationBatch {
@@ -25,11 +25,11 @@ pub enum PoolCommand {
         exclude: Set<OperationId>,
         batch_size: usize,
         max_size: u64,
-        response_tx: oneshot::Sender<Vec<(OperationId, Operation, u64)>>,
+        response_tx: oneshot::Sender<Vec<(OperationId, Signed<Operation, OperationId>, u64)>>,
     },
     GetOperations {
         operation_ids: Set<OperationId>,
-        response_tx: oneshot::Sender<Map<OperationId, Operation>>,
+        response_tx: oneshot::Sender<Map<OperationId, Signed<Operation, OperationId>>>,
     },
     GetRecentOperations {
         address: Address,

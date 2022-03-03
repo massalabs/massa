@@ -15,13 +15,13 @@ use massa_models::{
     active_block::ActiveBlock,
     api::EndorsementInfo,
     rolls::{RollCounts, RollUpdate, RollUpdates},
+    Operation,
 };
 use massa_models::{clique::Clique, signed::Signable};
 use massa_models::{ledger_models::LedgerChange, signed::Signed};
 use massa_models::{
-    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockId, EndorsementId, Operation,
-    OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
-    OperationSearchResultStatus, Slot,
+    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockId, EndorsementId, OperationId,
+    OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
 };
 use massa_models::{
     prehash::{BuildMap, Map, Set},
@@ -593,15 +593,15 @@ impl BlockGraph {
         &self,
         state_accu: &mut BlockStateAccumulator,
         header: &Signed<BlockHeader, BlockId>,
-        operation: &Operation,
+        operation: &Signed<Operation, OperationId>,
         pos: &mut ProofOfStake,
     ) -> Result<()> {
         let block_creator_address = Address::from_public_key(&header.content.creator);
 
         // get roll updates
-        let op_roll_updates = operation.get_roll_updates()?;
+        let op_roll_updates = operation.content.get_roll_updates()?;
         // get ledger changes (includes fee distribution)
-        let op_ledger_changes = operation.get_ledger_changes(
+        let op_ledger_changes = operation.content.get_ledger_changes(
             block_creator_address,
             state_accu.endorsers_addresses.clone(),
             state_accu.same_thread_parent_creator,
@@ -2318,6 +2318,7 @@ impl BlockGraph {
                 .get_thread(self.cfg.thread_count);
 
             let op_start_validity_period = *operation
+                .content
                 .get_validity_range(self.cfg.operation_validity_periods)
                 .start();
 

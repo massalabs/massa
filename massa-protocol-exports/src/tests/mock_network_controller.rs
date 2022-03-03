@@ -2,7 +2,9 @@
 
 use massa_models::signed::Signed;
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId};
-use massa_models::{Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation};
+use massa_models::{
+    Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
+};
 use massa_network::{NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
@@ -82,7 +84,11 @@ impl MockNetworkController {
             .expect("Couldn't send block to protocol.");
     }
 
-    pub async fn send_operations(&mut self, source_node_id: NodeId, operations: Vec<Operation>) {
+    pub async fn send_operations(
+        &mut self,
+        source_node_id: NodeId,
+        operations: Vec<Signed<Operation, OperationId>>,
+    ) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedOperations {
                 node: source_node_id,

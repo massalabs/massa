@@ -1,12 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::fmt::Display;
-
-use super::operation::Operation;
 use crate::prehash::Map;
-use crate::{Address, BlockId};
+use crate::signed::Signed;
+use crate::{Address, BlockId, Operation, OperationId};
 use massa_signature::{PublicKey, Signature};
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OperationSearchResultBlockStatus {
@@ -27,7 +26,7 @@ pub enum OperationSearchResultStatus {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OperationSearchResult {
-    pub op: Operation,
+    pub op: Signed<Operation, OperationId>,
     pub in_pool: bool,
     pub in_blocks: Map<BlockId, (usize, bool)>, // index, is_final
     pub status: OperationSearchResultStatus,

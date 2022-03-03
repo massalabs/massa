@@ -4,10 +4,12 @@ use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
 use massa_graph::{ledger::LedgerSubset, BootstrapableGraph};
+use massa_models::signed::{Signable, Signed};
 use massa_models::{
-    clique::Clique, ledger_models::LedgerData, Amount, BlockId, Operation, OperationSearchResult,
+    clique::Clique, ledger_models::LedgerData, Amount, BlockId, OperationSearchResult,
     OperationSearchResultStatus, Slot,
 };
+use massa_models::{Operation, OperationId};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
 use serial_test::serial;
@@ -78,7 +80,7 @@ async fn test_get_operation() {
             let ops = consensus_command_sender
                 .get_operations(
                     ops.iter()
-                        .map(|op| op.get_operation_id().unwrap())
+                        .map(|op| op.content.compute_id().unwrap())
                         .collect(),
                 )
                 .await
@@ -87,7 +89,7 @@ async fn test_get_operation() {
             let mut expected = HashMap::new();
 
             expected.insert(
-                op2.get_operation_id().unwrap(),
+                op2.content.compute_id().unwrap(),
                 OperationSearchResult {
                     status: OperationSearchResultStatus::Pending,
                     op: op2,
@@ -96,7 +98,7 @@ async fn test_get_operation() {
                 },
             );
             expected.insert(
-                op3.get_operation_id().unwrap(),
+                op3.content.compute_id().unwrap(),
                 OperationSearchResult {
                     status: OperationSearchResultStatus::Pending,
                     op: op3,
@@ -125,8 +127,8 @@ async fn test_get_operation() {
                     ..
                 } = expected.get(id).unwrap();
                 assert_eq!(
-                    op.get_operation_id().unwrap(),
-                    ex_op.get_operation_id().unwrap()
+                    op.content.compute_id().unwrap(),
+                    ex_op.content.compute_id().unwrap()
                 );
                 assert_eq!(in_pool, ex_pool);
                 assert_eq!(in_blocks.len(), ex_blocks.len());
@@ -148,7 +150,7 @@ async fn test_get_operation() {
 
 fn get_bootgraph(
     creator: PublicKey,
-    operations: Vec<Operation>,
+    operations: Vec<Signed<Operation, OperationId>>,
     ledger: LedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
     let (genesis_0, g0_id) =

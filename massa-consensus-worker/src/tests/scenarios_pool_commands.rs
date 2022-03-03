@@ -6,7 +6,8 @@ use massa_consensus_exports::ConsensusConfig;
 use massa_graph::{ledger::LedgerSubset, BootstrapableGraph};
 use massa_models::clique::Clique;
 use massa_models::ledger_models::LedgerData;
-use massa_models::{Amount, BlockId, Operation, Slot};
+use massa_models::signed::{Signable, Signed};
+use massa_models::{Amount, BlockId, Operation, OperationId, Slot};
 use massa_pool::PoolCommand;
 use massa_signature::{generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
@@ -220,8 +221,11 @@ async fn test_new_final_ops() {
                 .wait_command(300.into(), new_final_ops_filter)
                 .await;
             if let Some(finals) = final_ops {
-                assert!(finals.contains_key(&op.get_operation_id().unwrap()));
-                assert_eq!(finals.get(&op.get_operation_id().unwrap()), Some(&(10, 0)))
+                assert!(finals.contains_key(&op.content.compute_id().unwrap()));
+                assert_eq!(
+                    finals.get(&op.content.compute_id().unwrap()),
+                    Some(&(10, 0))
+                )
             } else {
                 panic!("no final ops")
             }
@@ -301,7 +305,7 @@ async fn test_max_attempts_get_operations() {
                 // Send a full batch back.
                 response_tx
                     .send(vec![(
-                        op.clone().get_operation_id().unwrap(),
+                        op.clone().content.compute_id().unwrap(),
                         op.clone(),
                         10,
                     )])
@@ -386,7 +390,7 @@ async fn test_max_batch_size_get_operations() {
             // Send a non-full batch back.
             response_tx
                 .send(vec![(
-                    op.clone().get_operation_id().unwrap(),
+                    op.clone().content.compute_id().unwrap(),
                     op.clone(),
                     10,
                 )])
@@ -419,7 +423,7 @@ async fn test_max_batch_size_get_operations() {
 
 fn get_bootgraph(
     creator: PublicKey,
-    operation: Operation,
+    operation: Signed<Operation, OperationId>,
     ledger: LedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
     let (genesis_0, g0_id) =

@@ -15,7 +15,7 @@ use massa_models::{
     rolls::{RollCounts, RollUpdate, RollUpdates},
     signed::Signed,
     Address, Amount, Block, BlockHeader, BlockId, DeserializeCompact, Endorsement, Operation,
-    OperationContent, SerializeCompact, Slot,
+    SerializeCompact, Slot,
 };
 use massa_network::{BootstrapPeers, NetworkCommand};
 use massa_proof_of_stake_exports::{ExportProofOfStake, ThreadCycleState};
@@ -410,8 +410,8 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
             .unwrap()
             .1,
             operations: vec![
-                Operation {
-                    content: OperationContent {
+                Signed::new_signed(
+                    Operation {
                         sender_public_key: get_random_public_key(),
                         fee: Amount::from_str("1524878").unwrap(),
                         expire_period: 5787899,
@@ -420,19 +420,23 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                             amount: Amount::from_str("1259787").unwrap(),
                         },
                     },
-                    signature: get_dummy_signature("dummy_sig_2"),
-                },
-                Operation {
-                    content: OperationContent {
+                    &generate_random_private_key(),
+                )
+                .unwrap()
+                .1,
+                Signed::new_signed(
+                    Operation {
                         sender_public_key: get_random_public_key(),
                         fee: Amount::from_str("878763222").unwrap(),
                         expire_period: 4557887,
                         op: massa_models::OperationType::RollBuy { roll_count: 45544 },
                     },
-                    signature: get_dummy_signature("dummy_sig_3"),
-                },
-                Operation {
-                    content: OperationContent {
+                    &generate_random_private_key(),
+                )
+                .unwrap()
+                .1,
+                Signed::new_signed(
+                    Operation {
                         sender_public_key: get_random_public_key(),
                         fee: Amount::from_str("4545").unwrap(),
                         expire_period: 452524,
@@ -440,8 +444,10 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                             roll_count: 4888787,
                         },
                     },
-                    signature: get_dummy_signature("dummy_sig_4"),
-                },
+                    &generate_random_private_key(),
+                )
+                .unwrap()
+                .1,
             ],
         },
         parents: vec![

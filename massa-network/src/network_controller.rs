@@ -15,7 +15,7 @@ use massa_logging::massa_trace;
 use massa_models::{
     composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, signed::Signed,
     stats::NetworkStats, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation,
-    Version,
+    OperationId, Version,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use std::{
@@ -274,7 +274,7 @@ impl NetworkCommandSender {
     pub async fn send_operations(
         &self,
         node: NodeId,
-        operations: Vec<Operation>,
+        operations: Vec<Signed<Operation, OperationId>>,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendOperations { node, operations })

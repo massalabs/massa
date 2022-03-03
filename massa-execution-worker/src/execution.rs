@@ -16,6 +16,7 @@ use massa_execution_exports::{
 };
 use massa_ledger::{Applicable, FinalLedger, LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_models::output_event::SCOutputEvent;
+use massa_models::signed::{Signable, Signed};
 use massa_models::{Address, BlockId, Operation, OperationId, OperationType};
 use massa_models::{Block, Slot};
 use massa_sc_runtime::Interface;
@@ -231,7 +232,7 @@ impl ExecutionState {
     /// * block_creator_addr: address of the block creator
     pub fn execute_operation(
         &self,
-        operation: &Operation,
+        operation: &Signed<Operation, OperationId>,
         block_creator_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process ExecuteSC operations only, ignore other types of operations
@@ -253,7 +254,8 @@ impl ExecutionState {
         // https://github.com/massalabs/massa/issues/1121
         // https://github.com/massalabs/massa/issues/2264
         let operation_id = operation
-            .get_operation_id()
+            .content
+            .compute_id()
             .expect("could not compute operation ID");
 
         // prepare the current slot context for executing the operation

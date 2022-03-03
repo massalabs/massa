@@ -660,7 +660,7 @@ impl ProtocolWorker {
                     { "operations": ops }
                 );
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_ops: Map<OperationId, Operation> = ops
+                    let new_ops: Map<OperationId, Signed<Operation, OperationId>> = ops
                         .iter()
                         .filter(|(id, _)| !node_info.knows_op(*id))
                         .map(|(k, v)| (*k, v.clone()))
@@ -1163,6 +1163,7 @@ impl ProtocolWorker {
         for op in block.operations.iter() {
             // check validity period
             if !(op
+                .content
                 .get_validity_range(self.operation_validity_periods)
                 .contains(&block.header.content.slot.period))
             {
@@ -1221,7 +1222,7 @@ impl ProtocolWorker {
     /// - Valid signature
     async fn note_operations_from_node(
         &mut self,
-        operations: Vec<Operation>,
+        operations: Vec<Signed<Operation, OperationId>>,
         source_node_id: &NodeId,
         propagate: bool,
     ) -> Result<(Vec<OperationId>, Map<OperationId, (usize, u64)>, bool, u64), ProtocolError> {
@@ -1233,7 +1234,7 @@ impl ProtocolWorker {
         let mut new_operations = Map::with_capacity_and_hasher(length, BuildMap::default());
         let mut received_ids = Map::with_capacity_and_hasher(length, BuildMap::default());
         for (idx, operation) in operations.into_iter().enumerate() {
-            let operation_id = operation.get_operation_id()?;
+            let operation_id = operation.content.compute_id()?;
             seen_ops.push(operation_id);
 
             // Note: we always want to update the node's view of known operations,
@@ -1254,7 +1255,7 @@ impl ProtocolWorker {
             // Check operation signature only if not already checked.
             if self.checked_operations.insert(operation_id) {
                 // check signature
-                operation.verify_signature()?;
+                operation.verify_signature(&operation.content.sender_public_key)?;
                 new_operations.insert(operation_id, operation);
             };
         }

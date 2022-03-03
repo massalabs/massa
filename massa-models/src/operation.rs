@@ -2,6 +2,7 @@
 
 use crate::constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
 use crate::prehash::{PreHashed, Set};
+use crate::signed::{Id, Signable, Signed};
 use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
@@ -9,9 +10,7 @@ use crate::{
     Address, Amount, ModelsError,
 };
 use massa_hash::hash::Hash;
-use massa_signature::{
-    verify_signature, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES,
-};
+use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -75,6 +74,11 @@ impl FromStr for OperationId {
 }
 
 impl PreHashed for OperationId {}
+impl Id for OperationId {
+    fn new(hash: Hash) -> Self {
+        OperationId(hash)
+    }
+}
 
 impl OperationId {
     pub fn to_bytes(&self) -> [u8; OPERATION_ID_SIZE_BYTES] {
@@ -107,50 +111,56 @@ enum OperationTypeId {
     ExecuteSC = 3,
 }
 
+// #[derive(Debug, Clone, Serialize, Deserialize)]
+// pub struct Operation {
+//     pub content: Operation,
+//     pub signature: Signature,
+// }
+
+// impl std::fmt::Display for Operation {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+//         writeln!(
+//             f,
+//             "Id: {}",
+//             match self.content.compute_id() {
+//                 Ok(id) => format!("{}", id),
+//                 Err(e) => format!("error computing id: {}", e),
+//             }
+//         )?;
+//         writeln!(f, "Signature: {}", self.signature)?;
+//         let addr = Address::from_public_key(&self.content.sender_public_key);
+//         let amount = self.content.fee.to_string();
+//         writeln!(
+//             f,
+//             "sender: {}     fee: {}     expire_period: {}",
+//             addr, amount, self.content.expire_period,
+//         )?;
+//         writeln!(f, "{}", self.content.op)?;
+//         Ok(())
+//     }
+// }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Operation {
-    pub content: OperationContent,
-    pub signature: Signature,
-}
-
-impl std::fmt::Display for Operation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "Id: {}",
-            match self.get_operation_id() {
-                Ok(id) => format!("{}", id),
-                Err(e) => format!("error computing id: {}", e),
-            }
-        )?;
-        writeln!(f, "Signature: {}", self.signature)?;
-        let addr = Address::from_public_key(&self.content.sender_public_key);
-        let amount = self.content.fee.to_string();
-        writeln!(
-            f,
-            "sender: {}     fee: {}     expire_period: {}",
-            addr, amount, self.content.expire_period,
-        )?;
-        writeln!(f, "{}", self.content.op)?;
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OperationContent {
     pub sender_public_key: PublicKey,
     pub fee: Amount,
     pub expire_period: u64,
     pub op: OperationType,
 }
 
-impl std::fmt::Display for OperationContent {
+impl std::fmt::Display for Operation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Sender public key: {}", self.sender_public_key)?;
         writeln!(f, "Fee: {}", self.fee)?;
         writeln!(f, "Expire period: {}", self.expire_period)?;
         writeln!(f, "Operation type: {}", self.op)?;
         Ok(())
+    }
+}
+
+impl Signable<OperationId> for Operation {
+    fn get_signature_message(&self) -> Result<Hash, ModelsError> {
+        Ok(Hash::compute_from(&self.to_bytes_compact()?))
     }
 }
 
@@ -366,7 +376,7 @@ impl DeserializeCompact for OperationType {
 /// Checks performed:
 /// - Validity of the fee.
 /// - Validity of the operation type.
-impl SerializeCompact for OperationContent {
+impl SerializeCompact for Operation {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
@@ -391,7 +401,7 @@ impl SerializeCompact for OperationContent {
 /// - Validity of the expire period.
 /// - Validity of the sender public key.
 /// - Validity of the operation type.
-impl DeserializeCompact for OperationContent {
+impl DeserializeCompact for Operation {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
@@ -412,7 +422,7 @@ impl DeserializeCompact for OperationContent {
         cursor += delta;
 
         Ok((
-            OperationContent {
+            Operation {
                 fee,
                 expire_period,
                 sender_public_key,
@@ -423,40 +433,25 @@ impl DeserializeCompact for OperationContent {
     }
 }
 
-impl Operation {
+impl Signed<Operation, OperationId> {
     /// Verifies the signature and integrity of the operation and computes operation ID
     pub fn verify_integrity(&self) -> Result<OperationId, ModelsError> {
-        self.verify_signature()?;
-        self.get_operation_id()
+        self.verify_signature(&self.content.sender_public_key)?;
+        self.content.compute_id()
     }
+}
 
-    pub fn verify_signature(&self) -> Result<(), ModelsError> {
-        let content_hash = Hash::compute_from(&self.content.to_bytes_compact()?);
-        verify_signature(
-            &content_hash,
-            &self.signature,
-            &self.content.sender_public_key,
-        )?;
-        Ok(())
-    }
-
-    pub fn get_operation_id(&self) -> Result<OperationId, ModelsError> {
-        Ok(OperationId(Hash::compute_from(&self.to_bytes_compact()?)))
-    }
-
+impl Operation {
     pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
-        let start = self
-            .content
-            .expire_period
-            .saturating_sub(operation_validity_period);
-        start..=self.content.expire_period
+        let start = self.expire_period.saturating_sub(operation_validity_period);
+        start..=self.expire_period
     }
 
     pub fn get_ledger_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut res = Set::<Address>::default();
-        let emitter_address = Address::from_public_key(&self.content.sender_public_key);
+        let emitter_address = Address::from_public_key(&self.sender_public_key);
         res.insert(emitter_address);
-        match self.content.op {
+        match self.op {
             OperationType::Transaction {
                 recipient_address, ..
             } => {
@@ -471,13 +466,13 @@ impl Operation {
 
     pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut res = Set::<Address>::default();
-        match self.content.op {
+        match self.op {
             OperationType::Transaction { .. } => {}
             OperationType::RollBuy { .. } => {
-                res.insert(Address::from_public_key(&self.content.sender_public_key));
+                res.insert(Address::from_public_key(&self.sender_public_key));
             }
             OperationType::RollSell { .. } => {
-                res.insert(Address::from_public_key(&self.content.sender_public_key));
+                res.insert(Address::from_public_key(&self.sender_public_key));
             }
             OperationType::ExecuteSC { .. } => {}
         }
@@ -485,47 +480,10 @@ impl Operation {
     }
 }
 
-/// Checks performed:
-/// - Content.
-impl SerializeCompact for Operation {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
-
-        // content
-        res.extend(self.content.to_bytes_compact()?);
-
-        // signature
-        res.extend(&self.signature.to_bytes());
-
-        Ok(res)
-    }
-}
-
-/// Checks performed:
-/// - Content.
-/// - Signature.
-impl DeserializeCompact for Operation {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let mut cursor = 0;
-
-        // content
-        let (content, delta) = OperationContent::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
-
-        // signature
-        let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-        cursor += SIGNATURE_SIZE_BYTES;
-
-        let res = Operation { content, signature };
-
-        Ok((res, cursor))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use massa_signature::{derive_public_key, generate_random_private_key, sign};
+    use massa_signature::{derive_public_key, generate_random_private_key};
     use serial_test::serial;
 
     #[test]
@@ -545,7 +503,7 @@ mod tests {
         let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
-        let content = OperationContent {
+        let content = Operation {
             fee: Amount::from_str("20").unwrap(),
             sender_public_key: sender_pub,
             op,
@@ -553,19 +511,16 @@ mod tests {
         };
 
         let ser_content = content.to_bytes_compact().unwrap();
-        let (res_content, _) = OperationContent::from_bytes_compact(&ser_content).unwrap();
+        let (res_content, _) = Operation::from_bytes_compact(&ser_content).unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
 
-        let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-        let signature = sign(&hash, &sender_priv).unwrap();
-
-        let op = Operation { content, signature };
+        let op = Signed::new_signed(content, &sender_priv).unwrap().1;
 
         let ser_op = op.to_bytes_compact().unwrap();
-        let (res_op, _) = Operation::from_bytes_compact(&ser_op).unwrap();
+        let (res_op, _) = Signed::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
-        assert_eq!(op.get_validity_range(10), 40..=50);
+        assert_eq!(op.content.get_validity_range(10), 40..=50);
     }
 
     #[test]
@@ -584,7 +539,7 @@ mod tests {
         let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
         assert_eq!(format!("{}", res_type), format!("{}", op));
 
-        let content = OperationContent {
+        let content = Operation {
             fee: Amount::from_str("20").unwrap(),
             sender_public_key: sender_pub,
             op,
@@ -592,18 +547,15 @@ mod tests {
         };
 
         let ser_content = content.to_bytes_compact().unwrap();
-        let (res_content, _) = OperationContent::from_bytes_compact(&ser_content).unwrap();
+        let (res_content, _) = Operation::from_bytes_compact(&ser_content).unwrap();
         assert_eq!(format!("{}", res_content), format!("{}", content));
 
-        let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-        let signature = sign(&hash, &sender_priv).unwrap();
-
-        let op = Operation { content, signature };
+        let op = Signed::new_signed(content, &sender_priv).unwrap().1;
 
         let ser_op = op.to_bytes_compact().unwrap();
-        let (res_op, _) = Operation::from_bytes_compact(&ser_op).unwrap();
+        let (res_op, _) = Signed::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
         assert_eq!(format!("{}", res_op), format!("{}", op));
 
-        assert_eq!(op.get_validity_range(10), 40..=50);
+        assert_eq!(op.content.get_validity_range(10), 40..=50);
     }
 }

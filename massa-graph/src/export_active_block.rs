@@ -55,7 +55,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             .operations
             .iter()
             .enumerate()
-            .map(|(idx, op)| match op.get_operation_id() {
+            .map(|(idx, op)| match op.content.compute_id() {
                 Ok(id) => Ok((id, (idx, op.content.expire_period))),
                 Err(e) => Err(e),
             })

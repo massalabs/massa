@@ -37,7 +37,7 @@ pub enum ProtocolEvent {
 pub enum ProtocolPoolEvent {
     /// Operations were received
     ReceivedOperations {
-        operations: Map<OperationId, Operation>,
+        operations: Map<OperationId, Signed<Operation, OperationId>>,
         propagate: bool, // whether or not to propagate operations
     },
     /// Endorsements were received
@@ -70,7 +70,7 @@ pub enum ProtocolCommand {
     /// The response to a ProtocolEvent::GetBlocks.
     GetBlocksResults(BlocksResults),
     /// Propagate operations
-    PropagateOperations(Map<OperationId, Operation>),
+    PropagateOperations(Map<OperationId, Signed<Operation, OperationId>>),
     /// Propagate endorsements
     PropagateEndorsements(Map<EndorsementId, Signed<Endorsement, EndorsementId>>),
 }
@@ -158,7 +158,7 @@ impl ProtocolCommandSender {
 
     pub async fn propagate_operations(
         &mut self,
-        operations: Map<OperationId, Operation>,
+        operations: Map<OperationId, Signed<Operation, OperationId>>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
             "operations": operations

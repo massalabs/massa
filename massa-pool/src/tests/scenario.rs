@@ -4,12 +4,10 @@ use super::{settings::POOL_CONFIG, tools::get_transaction};
 use crate::tests::tools::create_executesc;
 use crate::tests::tools::{self, get_transaction_with_addresses, pool_test};
 use massa_models::prehash::{Map, Set};
-use massa_models::signed::Signable;
-use massa_models::Address;
-use massa_models::Operation;
-use massa_models::OperationId;
-use massa_models::SerializeCompact;
+use massa_models::signed::{Signable, Signed};
 use massa_models::Slot;
+use massa_models::{Address, SerializeCompact};
+use massa_models::{Operation, OperationId};
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::{derive_public_key, generate_random_private_key};
 use serial_test::serial;
@@ -521,9 +519,9 @@ async fn test_get_involved_operations() {
             let (op1, _) = get_transaction_with_addresses(1, 1, pubkey_a, priv_a, pubkey_b);
             let (op2, _) = get_transaction_with_addresses(2, 10, pubkey_b, priv_b, pubkey_b);
             let (op3, _) = get_transaction_with_addresses(3, 100, pubkey_a, priv_a, pubkey_a);
-            let op1_id = op1.get_operation_id().unwrap();
-            let op2_id = op2.get_operation_id().unwrap();
-            let op3_id = op3.get_operation_id().unwrap();
+            let op1_id = op1.content.compute_id().unwrap();
+            let op2_id = op2.content.compute_id().unwrap();
+            let op3_id = op3.content.compute_id().unwrap();
             let mut ops = Map::default();
             for (op, id) in vec![op1, op2, op3]
                 .into_iter()
@@ -665,10 +663,10 @@ async fn test_new_final_ops() {
                 _ => None,
             };
 
-            let mut ops: Vec<(OperationId, Operation)> = Vec::new();
+            let mut ops: Vec<(OperationId, Signed<Operation, OperationId>)> = Vec::new();
             for i in 0..10 {
                 let (op, _) = get_transaction_with_addresses(8, i, pubkey_a, priv_a, pubkey_b);
-                ops.push((op.get_operation_id().unwrap(), op));
+                ops.push((op.content.compute_id().unwrap(), op));
             }
 
             // Add ops to pool

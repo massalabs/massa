@@ -98,16 +98,21 @@ impl BlockId {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
     pub header: Signed<BlockHeader, BlockId>,
-    pub operations: Vec<Operation>,
+    pub operations: Vec<Signed<Operation, OperationId>>,
 }
 
 impl Block {
-    pub fn contains_operation(&self, op: &Operation) -> Result<bool, ModelsError> {
-        let op_id = op.get_operation_id()?;
-        Ok(self
-            .operations
-            .iter()
-            .any(|o| o.get_operation_id().map(|id| id == op_id).unwrap_or(false)))
+    pub fn contains_operation(
+        &self,
+        op: Signed<Operation, OperationId>,
+    ) -> Result<bool, ModelsError> {
+        let op_id = op.content.compute_id()?;
+        Ok(self.operations.iter().any(|o| {
+            o.content
+                .compute_id()
+                .map(|id| id == op_id)
+                .unwrap_or(false)
+        }))
     }
 
     pub fn bytes_count(&self) -> Result<u64, ModelsError> {
@@ -118,7 +123,7 @@ impl Block {
     pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut roll_involved_addrs = Set::<Address>::default();
         for op in self.operations.iter() {
-            roll_involved_addrs.extend(op.get_roll_involved_addresses()?);
+            roll_involved_addrs.extend(op.content.get_roll_involved_addresses()?);
         }
         Ok(roll_involved_addrs)
     }
@@ -134,7 +139,7 @@ impl Block {
             .iter()
             .try_for_each::<_, Result<(), ModelsError>>(|(op_id, (op_idx, _op_expiry))| {
                 let op = &self.operations[*op_idx];
-                let addrs = op.get_ledger_involved_addresses().map_err(|err| {
+                let addrs = op.content.get_ledger_involved_addresses().map_err(|err| {
                     ModelsError::DeserializeError(format!(
                         "could not get involved addresses: {}",
                         err
@@ -313,9 +318,11 @@ impl DeserializeCompact for Block {
         if cursor > (max_block_size as usize) {
             return Err(ModelsError::DeserializeError("block is too large".into()));
         }
-        let mut operations: Vec<Operation> = Vec::with_capacity(operation_count as usize);
+        let mut operations: Vec<Signed<Operation, OperationId>> =
+            Vec::with_capacity(operation_count as usize);
         for _ in 0..(operation_count as usize) {
-            let (operation, delta) = Operation::from_bytes_compact(&buffer[cursor..])?;
+            let (operation, delta) =
+                Signed::<Operation, OperationId>::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
             if cursor > (max_block_size as usize) {
                 return Err(ModelsError::DeserializeError("block is too large".into()));

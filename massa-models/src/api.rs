@@ -8,9 +8,9 @@ use crate::prehash::Set;
 use crate::signed::Signed;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
 use crate::Endorsement;
+use crate::Operation;
 use crate::{
-    Address, Amount, Block, BlockId, CompactConfig, EndorsementId, Operation, OperationId, Slot,
-    Version,
+    Address, Amount, Block, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
 use massa_hash::hash::Hash;
 use massa_time::MassaTime;
@@ -75,7 +75,7 @@ pub struct OperationInfo {
     pub in_pool: bool,
     pub in_blocks: Vec<BlockId>,
     pub is_final: bool,
-    pub operation: Operation,
+    pub operation: Signed<Operation, OperationId>,
 }
 
 impl OperationInfo {

@@ -9,13 +9,11 @@ use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::{Signable, Signed};
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockId, EndorsementId, SerializeCompact, Slot,
+    Address, Amount, Block, BlockHeader, BlockId, EndorsementId, OperationId, Slot,
 };
-use massa_models::{Endorsement, Operation, OperationContent, OperationType};
+use massa_models::{Endorsement, Operation, OperationType};
 use massa_network::NetworkCommand;
-use massa_signature::{
-    derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey,
-};
+use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
 use std::collections::HashMap;
 use tokio::time::sleep;
@@ -75,11 +73,11 @@ pub fn create_block_with_operations(
     private_key: &PrivateKey,
     public_key: &PublicKey,
     slot: Slot,
-    operations: Vec<Operation>,
+    operations: Vec<Signed<Operation, OperationId>>,
 ) -> Block {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
-            [acc, v.get_operation_id().unwrap().to_bytes().to_vec()].concat()
+            [acc, v.content.compute_id().unwrap().to_bytes().to_vec()].concat()
         })[..],
     );
     let (_, header) = Signed::new_signed(
@@ -179,7 +177,7 @@ pub fn create_endorsement() -> Signed<Endorsement, EndorsementId> {
 pub fn create_operation_with_expire_period(
     sender_priv: &PrivateKey,
     expire_period: u64,
-) -> Operation {
+) -> Signed<Operation, OperationId> {
     let sender_pub = derive_public_key(sender_priv);
 
     let recv_priv = generate_random_private_key();
@@ -189,16 +187,13 @@ pub fn create_operation_with_expire_period(
         recipient_address: Address::from_public_key(&recv_pub),
         amount: Amount::default(),
     };
-    let content = OperationContent {
+    let content = Operation {
         fee: Amount::default(),
         op,
         sender_public_key: sender_pub,
         expire_period,
     };
-    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-    let signature = sign(&hash, sender_priv).unwrap();
-
-    Operation { content, signature }
+    Signed::new_signed(content, sender_priv).unwrap().1
 }
 
 lazy_static::lazy_static! {

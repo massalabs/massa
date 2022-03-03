@@ -1,10 +1,9 @@
-use massa_hash::hash::Hash;
 use massa_models::{
     prehash::{Map, Set},
-    Address, Amount, Operation, OperationContent, OperationId, OperationType, SerializeCompact,
-    Slot,
+    signed::Signed,
+    Address, Amount, Operation, OperationId, OperationType, SerializeCompact, Slot,
 };
-use massa_signature::{derive_public_key, generate_random_private_key, sign};
+use massa_signature::{derive_public_key, generate_random_private_key};
 use serial_test::serial;
 use std::str::FromStr;
 
@@ -12,7 +11,7 @@ use crate::operation_pool::OperationPool;
 
 use super::settings::POOL_CONFIG;
 
-fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
+fn get_transaction(expire_period: u64, fee: u64) -> (Signed<Operation, OperationId>, u8) {
     let sender_priv = generate_random_private_key();
     let sender_pub = derive_public_key(&sender_priv);
 
@@ -23,17 +22,14 @@ fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
         recipient_address: Address::from_public_key(&recv_pub),
         amount: Amount::default(),
     };
-    let content = OperationContent {
+    let content = Operation {
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         op,
         sender_public_key: sender_pub,
         expire_period,
     };
-    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-    let signature = sign(&hash, &sender_priv).unwrap();
-
     (
-        Operation { content, signature },
+        Signed::new_signed(content, &sender_priv).unwrap().1,
         Address::from_public_key(&sender_pub).get_thread(2),
     )
 }

@@ -422,9 +422,9 @@ async fn test_order_of_inclusion() {
                     PoolCommand::GetOperationBatch { response_tx, .. } => {
                         response_tx
                             .send(vec![
-                                (op3.get_operation_id().unwrap(), op3.clone(), 50),
-                                (op2.get_operation_id().unwrap(), op2.clone(), 50),
-                                (op1.get_operation_id().unwrap(), op1.clone(), 50),
+                                (op3.content.compute_id().unwrap(), op3.clone(), 50),
+                                (op2.content.compute_id().unwrap(), op2.clone(), 50),
+                                (op1.content.compute_id().unwrap(), op1.clone(), 50),
                             ])
                             .unwrap();
                         Some(())
@@ -477,8 +477,8 @@ async fn test_order_of_inclusion() {
             assert_eq!(block.operations.len(), 2);
             for i in 0..2 {
                 assert_eq!(
-                    expected[i].get_operation_id().unwrap(),
-                    res[i].get_operation_id().unwrap()
+                    expected[i].content.compute_id().unwrap(),
+                    res[i].content.compute_id().unwrap()
                 );
             }
             (
@@ -638,7 +638,9 @@ async fn test_block_filling() {
                         response_tx
                             .send(
                                 ops.iter()
-                                    .map(|op| (op.get_operation_id().unwrap(), op.clone(), op_size))
+                                    .map(|op| {
+                                        (op.content.compute_id().unwrap(), op.clone(), op_size)
+                                    })
                                     .collect(),
                             )
                             .unwrap();
