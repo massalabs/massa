@@ -201,14 +201,14 @@
             .<span class="ident">unwrap</span>()
             .<span class="ident">saturating_add</span>(<span class="ident">MassaTime::from</span>(<span class="number">1000</span> <span class="op">*</span> <span class="number">60</span> <span class="op">*</span> <span class="number">3</span>))
     } <span class="kw">else</span> {
-        <span class="number">1643918400000</span>.<span class="ident">into</span>()
+        <span class="number">1646334000000</span>.<span class="ident">into</span>()
     };
 
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">END_TIMESTAMP</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) {
         <span class="prelude-val">None</span>
     } <span class="kw">else</span> {
-        <span class="prelude-val">Some</span>(<span class="number">1646078400000</span>.<span class="ident">into</span>())
+        <span class="prelude-val">Some</span>(<span class="number">1648764000000</span>.<span class="ident">into</span>())
     };
     <span class="doccomment">/// Private_key to sign genesis blocks.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_KEY</span>: <span class="ident">PrivateKey</span> <span class="op">=</span> <span class="string">&quot;SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S&quot;</span>
@@ -220,7 +220,7 @@
         <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) {
             <span class="string">&quot;SAND.0.0&quot;</span>
         } <span class="kw">else</span> {
-            <span class="string">&quot;TEST.7.0&quot;</span>
+            <span class="string">&quot;TEST.8.0&quot;</span>
         }
         .<span class="ident">parse</span>()
         .<span class="ident">unwrap</span>()
@@ -242,9 +242,9 @@
 <span class="doccomment">/// Threshold for fitness.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DELTA_F0</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">640</span>;
 <span class="doccomment">/// Maximum number of operations per block</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATIONS_PER_BLOCK</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">102400</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATIONS_PER_BLOCK</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">204800</span>;
 <span class="doccomment">/// Maximum block size in bytes</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BLOCK_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">102400</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BLOCK_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">204800</span>;
 <span class="doccomment">/// Maximum operation validity period count</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPERATION_VALIDITY_PERIODS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
 <span class="doccomment">/// cycle duration in periods</span>
