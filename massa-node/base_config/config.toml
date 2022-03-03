@@ -44,7 +44,7 @@
     # max number of batches of pool operations to scan when generating a block
     max_operations_fill_attempts = 102400
     # size of a pool operation batch for block creation
-    operation_batch_size = 1024
+    operation_batch_size = 2048
 
     # path to the ledger file
     ledger_path = "storage/ledger"
@@ -189,4 +189,4 @@
     # max number of endorsements kept
     max_endorsement_count = 10000
     # max number of items returned per query
-    max_item_return_count = 500
+    max_item_return_count = 100
