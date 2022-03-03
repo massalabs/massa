@@ -458,9 +458,6 @@ impl PeerInfoDatabase {
             if let Some(peer) = self.peers.get_mut(&ip) {
                 update_happened = update_happened || peer.banned;
                 peer.banned = false;
-            } else {
-                // todo insert ip ?
-                continue;
             }
         }
         self.update()?;
