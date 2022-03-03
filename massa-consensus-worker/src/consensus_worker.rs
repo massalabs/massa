@@ -580,6 +580,13 @@ impl ConsensusWorker {
             },
         )?;
         let block = Block { header, operations };
+        let serialized_block = block.to_bytes_compact()?;
+
+        // Add to shared storage
+        // TODO: remove clone, in https://github.com/massalabs/massa/pull/2304
+        self.block_db
+            .storage
+            .store_block(block_id.clone(), block.clone(), serialized_block);
 
         massa_trace!("create block", { "block": block });
         info!(

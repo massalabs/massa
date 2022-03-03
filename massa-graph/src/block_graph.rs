@@ -294,7 +294,7 @@ pub struct BlockGraph {
     /// ledger
     ledger: Ledger,
     /// Shared storage,
-    storage: Storage,
+    pub storage: Storage,
 }
 
 /// Possible output of a header check
