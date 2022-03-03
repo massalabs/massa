@@ -14,7 +14,7 @@ use massa_models::{
     },
     node::NodeId,
     signed::{Signable, Signed},
-    Block, BlockHeader, BlockId, Endorsement, Operation,
+    Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation,
 };
 use std::net::IpAddr;
 use tokio::{
@@ -44,7 +44,7 @@ pub enum NodeCommand {
     /// Operation
     SendOperations(Vec<Operation>),
     /// Endorsements
-    SendEndorsements(Vec<Endorsement>),
+    SendEndorsements(Vec<Signed<Endorsement, EndorsementId>>),
 }
 
 /// Event types that node worker can emit
@@ -65,7 +65,7 @@ pub enum NodeEventType {
     /// Operation
     ReceivedOperations(Vec<Operation>),
     /// Operation
-    ReceivedEndorsements(Vec<Endorsement>),
+    ReceivedEndorsements(Vec<Signed<Endorsement, EndorsementId>>),
 }
 
 /// Events node worker can emit.

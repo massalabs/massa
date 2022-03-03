@@ -4,6 +4,7 @@ use super::{settings::POOL_CONFIG, tools::get_transaction};
 use crate::tests::tools::create_executesc;
 use crate::tests::tools::{self, get_transaction_with_addresses, pool_test};
 use massa_models::prehash::{Map, Set};
+use massa_models::signed::Signable;
 use massa_models::Address;
 use massa_models::Operation;
 use massa_models::OperationId;
@@ -393,7 +394,7 @@ async fn test_pool_propagate_newly_added_endorsements() {
             let target_slot = Slot::new(10, 0);
             let endorsement = tools::create_endorsement(target_slot);
             let mut endorsements = Map::default();
-            let id = endorsement.compute_endorsement_id().unwrap();
+            let id = endorsement.content.compute_id().unwrap();
             endorsements.insert(id, endorsement.clone());
 
             protocol_controller
@@ -434,7 +435,7 @@ async fn test_pool_propagate_newly_added_endorsements() {
                 .await
                 .unwrap();
             assert_eq!(res.len(), 1);
-            assert_eq!(res[0].0, endorsement.compute_endorsement_id().unwrap());
+            assert_eq!(res[0].0, endorsement.content.compute_id().unwrap());
             (protocol_controller, pool_command_sender, pool_manager)
         },
     )
@@ -454,7 +455,7 @@ async fn test_pool_add_old_endorsements() {
 
             let endorsement = tools::create_endorsement(Slot::new(1, 0));
             let mut endorsements = Map::default();
-            let id = endorsement.compute_endorsement_id().unwrap();
+            let id = endorsement.content.compute_id().unwrap();
             endorsements.insert(id, endorsement.clone());
 
             pool_command_sender

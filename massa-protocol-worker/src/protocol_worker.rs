@@ -8,8 +8,8 @@ use massa_models::{
     node::NodeId,
     prehash::{BuildMap, Map, Set},
     signed::{Signable, Signed},
-    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
-    OperationType,
+    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation,
+    OperationId, OperationType,
 };
 use massa_network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
@@ -683,7 +683,10 @@ impl ProtocolWorker {
                     { "endorsements": endorsements }
                 );
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_endorsements: Map<EndorsementId, Endorsement> = endorsements
+                    let new_endorsements: Map<
+                        EndorsementId,
+                        Signed<Endorsement, EndorsementId>,
+                    > = endorsements
                         .iter()
                         .filter(|(id, _)| !node_info.knows_endorsement(*id))
                         .map(|(k, v)| (*k, v.clone()))
@@ -1292,7 +1295,7 @@ impl ProtocolWorker {
     /// - Valid signature.
     async fn note_endorsements_from_node(
         &mut self,
-        endorsements: Vec<Endorsement>,
+        endorsements: Vec<Signed<Endorsement, EndorsementId>>,
         source_node_id: &NodeId,
         propagate: bool,
     ) -> Result<(Map<EndorsementId, u32>, bool), ProtocolError> {
@@ -1303,7 +1306,7 @@ impl ProtocolWorker {
         let mut new_endorsements = Map::with_capacity_and_hasher(length, BuildMap::default());
         let mut endorsement_ids = Map::default();
         for endorsement in endorsements.into_iter() {
-            let endorsement_id = endorsement.compute_endorsement_id()?;
+            let endorsement_id = endorsement.content.compute_id()?;
             if endorsement_ids
                 .insert(endorsement_id, endorsement.content.index)
                 .is_some()
@@ -1312,7 +1315,7 @@ impl ProtocolWorker {
             }
             // check endorsement signature if not already checked
             if self.checked_endorsements.insert(endorsement_id) {
-                endorsement.verify_signature()?;
+                endorsement.verify_signature(&endorsement.content.sender_public_key)?;
                 new_endorsements.insert(endorsement_id, endorsement);
             }
         }

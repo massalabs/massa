@@ -5,7 +5,7 @@ use massa_models::{
     constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
     signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
-    Endorsement, ModelsError, Operation, SerializeCompact, SerializeVarInt, Version,
+    Endorsement, EndorsementId, ModelsError, Operation, SerializeCompact, SerializeVarInt, Version,
 };
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -48,7 +48,7 @@ pub enum Message {
     /// Operations
     Operations(Vec<Operation>),
     /// Endorsements
-    Endorsements(Vec<Endorsement>),
+    Endorsements(Vec<Signed<Endorsement, EndorsementId>>),
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
@@ -258,9 +258,12 @@ impl DeserializeCompact for Message {
                 )?;
                 cursor += delta;
                 // operations
-                let mut endorsements: Vec<Endorsement> = Vec::with_capacity(length as usize);
+                let mut endorsements = Vec::with_capacity(length as usize);
                 for _ in 0..length {
-                    let (endorsement, delta) = Endorsement::from_bytes_compact(&buffer[cursor..])?;
+                    let (endorsement, delta) =
+                        Signed::<Endorsement, EndorsementId>::from_bytes_compact(
+                            &buffer[cursor..],
+                        )?;
                     cursor += delta;
                     endorsements.push(endorsement);
                 }

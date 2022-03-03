@@ -31,7 +31,7 @@ async fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
             // 1. Create an endorsement
             let endorsement = tools::create_endorsement();
 
-            let expected_endorsement_id = endorsement.compute_endorsement_id().unwrap();
+            let expected_endorsement_id = endorsement.content.compute_id().unwrap();
 
             // 3. Send endorsement to protocol.
             network_controller
@@ -156,7 +156,7 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
                 _ => panic!("Unexpected or no protocol pool event."),
             };
 
-            let expected_endorsement_id = endorsement.compute_endorsement_id().unwrap();
+            let expected_endorsement_id = endorsement.content.compute_id().unwrap();
 
             let mut ends = Map::default();
             ends.insert(expected_endorsement_id, endorsement);
@@ -174,7 +174,7 @@ async fn test_protocol_propagates_endorsements_to_active_nodes() {
                     .await
                 {
                     Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
-                        let id = endorsements[0].compute_endorsement_id().unwrap();
+                        let id = endorsements[0].content.compute_id().unwrap();
                         assert_eq!(id, expected_endorsement_id);
                         assert_eq!(nodes[1].id, node);
                         break;
@@ -236,7 +236,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // wait for things to settle
             tokio::time::sleep(Duration::from_millis(250)).await;
 
-            let expected_endorsement_id = endorsement.compute_endorsement_id().unwrap();
+            let expected_endorsement_id = endorsement.content.compute_id().unwrap();
 
             // send the endorsement to protocol
             // it should propagate it to nodes that don't know about it
@@ -256,7 +256,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                     .await
                 {
                     Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
-                        let id = endorsements[0].compute_endorsement_id().unwrap();
+                        let id = endorsements[0].content.compute_id().unwrap();
                         assert_eq!(id, expected_endorsement_id);
                         assert_eq!(new_nodes[0].id, node);
                         break;
@@ -297,7 +297,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let thread = address.get_thread(serialization_context.thread_count);
 
             let endorsement = tools::create_endorsement();
-            let endorsement_id = endorsement.compute_endorsement_id().unwrap();
+            let endorsement_id = endorsement.content.compute_id().unwrap();
 
             let block = tools::create_block_with_endorsements(
                 &nodes[0].private_key,
@@ -361,7 +361,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 .await
             {
                 Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
-                    let id = endorsements[0].compute_endorsement_id().unwrap();
+                    let id = endorsements[0].content.compute_id().unwrap();
                     assert_eq!(id, endorsement_id);
                     assert_eq!(nodes[0].id, node);
                     panic!("Unexpected propagated of endorsement.");
@@ -402,7 +402,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let thread = address.get_thread(serialization_context.thread_count);
 
             let endorsement = tools::create_endorsement();
-            let endorsement_id = endorsement.compute_endorsement_id().unwrap();
+            let endorsement_id = endorsement.content.compute_id().unwrap();
 
             let block = tools::create_block_with_endorsements(
                 &nodes[0].private_key,
@@ -471,7 +471,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 .await
             {
                 Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
-                    let id = endorsements[0].compute_endorsement_id().unwrap();
+                    let id = endorsements[0].content.compute_id().unwrap();
                     assert_eq!(id, endorsement_id);
                     assert_eq!(nodes[0].id, node);
                     panic!("Unexpected propagated of endorsement.");
@@ -512,7 +512,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             let thread = address.get_thread(serialization_context.thread_count);
 
             let endorsement = tools::create_endorsement();
-            let endorsement_id = endorsement.compute_endorsement_id().unwrap();
+            let endorsement_id = endorsement.content.compute_id().unwrap();
 
             let block = tools::create_block_with_endorsements(
                 &nodes[0].private_key,
@@ -560,7 +560,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 .await
             {
                 Some(NetworkCommand::SendEndorsements { node, endorsements }) => {
-                    let id = endorsements[0].compute_endorsement_id().unwrap();
+                    let id = endorsements[0].content.compute_id().unwrap();
                     assert_eq!(id, endorsement_id);
                     assert_eq!(nodes[0].id, node);
                     panic!("Unexpected propagated of endorsement.");
@@ -611,7 +611,7 @@ async fn test_protocol_does_not_propagates_endorsements_when_receiving_those_ins
                 .send_header(creator_node.id, block.header.clone())
                 .await;
 
-            let expected_endorsement_id = endorsement.compute_endorsement_id().unwrap();
+            let expected_endorsement_id = endorsement.content.compute_id().unwrap();
 
             // 5. Check that the endorsements included in the header are not propagated.
             loop {
@@ -626,7 +626,7 @@ async fn test_protocol_does_not_propagates_endorsements_when_receiving_those_ins
                         node: _node,
                         endorsements,
                     }) => {
-                        let id = endorsements[0].compute_endorsement_id().unwrap();
+                        let id = endorsements[0].content.compute_id().unwrap();
                         assert_eq!(id, expected_endorsement_id);
                         panic!("Unexpected propagation of endorsement received inside header.")
                     }

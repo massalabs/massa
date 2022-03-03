@@ -42,7 +42,7 @@ pub enum ProtocolPoolEvent {
     },
     /// Endorsements were received
     ReceivedEndorsements {
-        endorsements: Map<EndorsementId, Endorsement>,
+        endorsements: Map<EndorsementId, Signed<Endorsement, EndorsementId>>,
         propagate: bool, // whether or not to propagate endorsements
     },
 }
@@ -72,7 +72,7 @@ pub enum ProtocolCommand {
     /// Propagate operations
     PropagateOperations(Map<OperationId, Operation>),
     /// Propagate endorsements
-    PropagateEndorsements(Map<EndorsementId, Endorsement>),
+    PropagateEndorsements(Map<EndorsementId, Signed<Endorsement, EndorsementId>>),
 }
 
 #[derive(Debug, Serialize)]
@@ -175,7 +175,7 @@ impl ProtocolCommandSender {
 
     pub async fn propagate_endorsements(
         &mut self,
-        endorsements: Map<EndorsementId, Endorsement>,
+        endorsements: Map<EndorsementId, Signed<Endorsement, EndorsementId>>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_endorsements", {
             "endorsements": endorsements

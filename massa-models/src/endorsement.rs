@@ -2,6 +2,7 @@
 
 use crate::constants::{BLOCK_ID_SIZE_BYTES, ENDORSEMENT_ID_SIZE_BYTES};
 use crate::prehash::PreHashed;
+use crate::signed::{Id, Signable};
 use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
@@ -9,10 +10,7 @@ use crate::{
     with_serialization_context, BlockId, ModelsError, Slot,
 };
 use massa_hash::hash::Hash;
-use massa_signature::{
-    sign, verify_signature, PrivateKey, PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES,
-    SIGNATURE_SIZE_BYTES,
-};
+use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 
@@ -21,6 +19,11 @@ const ENDORSEMENT_ID_STRING_PREFIX: &str = "END";
 pub struct EndorsementId(Hash);
 
 impl PreHashed for EndorsementId {}
+impl Id for EndorsementId {
+    fn new(hash: Hash) -> Self {
+        EndorsementId(hash)
+    }
+}
 
 impl std::fmt::Display for EndorsementId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -82,103 +85,102 @@ impl EndorsementId {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Endorsement {
-    pub content: EndorsementContent,
-    pub signature: Signature,
-}
+// #[derive(Debug, Clone, Serialize, Deserialize)]
+// pub struct Endorsement {
+//     pub content: Endorsement,
+//     pub signature: Signature,
+// }
 
 impl Display for Endorsement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
             "Endorsed block: {} at slot {}",
-            self.content.endorsed_block, self.content.slot
+            self.endorsed_block, self.slot
         )?;
-        writeln!(f, "Index: {}", self.content.index)?;
+        writeln!(f, "Index: {}", self.index)?;
         writeln!(
             f,
             "Endorsement creator public key: {}",
-            self.content.sender_public_key
+            self.sender_public_key
         )?;
-        writeln!(f, "Signature: {}", self.signature)?;
         Ok(())
     }
 }
 
-impl EndorsementContent {
+impl Endorsement {
     pub fn compute_hash(&self) -> Result<Hash, ModelsError> {
         Ok(Hash::compute_from(&self.to_bytes_compact()?))
     }
 }
 
-impl Endorsement {
-    /// Verify the signature and integrity of the endorsement and computes ID
-    pub fn verify_signature(&self) -> Result<(), ModelsError> {
-        let content_hash = Hash::compute_from(&self.content.to_bytes_compact()?);
-        verify_signature(
-            &content_hash,
-            &self.signature,
-            &self.content.sender_public_key,
-        )?;
-        Ok(())
-    }
+// impl Endorsement {
+//     /// Verify the signature and integrity of the endorsement and computes ID
+//     pub fn verify_signature(&self) -> Result<(), ModelsError> {
+//         let content_hash = Hash::compute_from(&self.content.to_bytes_compact()?);
+//         verify_signature(
+//             &content_hash,
+//             &self.signature,
+//             &self.content.sender_public_key,
+//         )?;
+//         Ok(())
+//     }
 
-    pub fn new_signed(
-        private_key: &PrivateKey,
-        content: EndorsementContent,
-    ) -> Result<(EndorsementId, Self), ModelsError> {
-        let content_hash = content.compute_hash()?;
-        let signature = sign(&content_hash, private_key)?;
-        let endorsement = Endorsement { content, signature };
-        let e_id = endorsement.compute_endorsement_id()?;
-        Ok((e_id, endorsement))
-    }
+//     pub fn new_signed(
+//         private_key: &PrivateKey,
+//         content: Endorsement,
+//     ) -> Result<(EndorsementId, Self), ModelsError> {
+//         let content_hash = content.compute_hash()?;
+//         let signature = sign(&content_hash, private_key)?;
+//         let endorsement = Endorsement { content, signature };
+//         let e_id = endorsement.compute_id()?;
+//         Ok((e_id, endorsement))
+//     }
 
-    pub fn compute_endorsement_id(&self) -> Result<EndorsementId, ModelsError> {
-        Ok(EndorsementId(Hash::compute_from(&self.to_bytes_compact()?)))
-    }
-}
+//     pub fn compute_endorsement_id(&self) -> Result<EndorsementId, ModelsError> {
+//         Ok(EndorsementId(Hash::compute_from(&self.to_bytes_compact()?)))
+//     }
+// }
 
-/// Checks performed:
-/// - Validity of the content.
-impl SerializeCompact for Endorsement {
-    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-        let mut res: Vec<u8> = Vec::new();
+// /// Checks performed:
+// /// - Validity of the content.
+// impl SerializeCompact for Endorsement {
+//     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
+//         let mut res: Vec<u8> = Vec::new();
 
-        // content
-        res.extend(self.content.to_bytes_compact()?);
+//         // content
+//         res.extend(self.content.to_bytes_compact()?);
 
-        // signature
-        res.extend(&self.signature.to_bytes());
+//         // signature
+//         res.extend(&self.signature.to_bytes());
 
-        Ok(res)
-    }
-}
+//         Ok(res)
+//     }
+// }
 
-/// Checks performed:
-/// - Validity of the content.
-/// - Validity of the signature.
-impl DeserializeCompact for Endorsement {
-    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-        let mut cursor = 0;
+// /// Checks performed:
+// /// - Validity of the content.
+// /// - Validity of the signature.
+// impl DeserializeCompact for Endorsement {
+//     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+//         let mut cursor = 0;
 
-        // content
-        let (content, delta) = EndorsementContent::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
+//         // content
+//         let (content, delta) = Endorsement::from_bytes_compact(&buffer[cursor..])?;
+//         cursor += delta;
 
-        // signature
-        let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-        cursor += SIGNATURE_SIZE_BYTES;
+//         // signature
+//         let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+//         cursor += SIGNATURE_SIZE_BYTES;
 
-        let res = Endorsement { content, signature };
+//         let res = Endorsement { content, signature };
 
-        Ok((res, cursor))
-    }
-}
+//         Ok((res, cursor))
+//     }
+// }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EndorsementContent {
+pub struct Endorsement {
     /// Public key of the endorser.
     pub sender_public_key: PublicKey,
     /// slot of endorsed block
@@ -189,9 +191,15 @@ pub struct EndorsementContent {
     pub endorsed_block: BlockId,
 }
 
+impl Signable<EndorsementId> for Endorsement {
+    fn get_signature_message(&self) -> Result<Hash, ModelsError> {
+        self.compute_hash()
+    }
+}
+
 /// Checks performed:
 /// - Validity of the slot.
-impl SerializeCompact for EndorsementContent {
+impl SerializeCompact for Endorsement {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         let mut res: Vec<u8> = Vec::new();
 
@@ -216,7 +224,7 @@ impl SerializeCompact for EndorsementContent {
 /// - Validity of the slot.
 /// - Validity of the endorsement index.
 /// - Validity of the endorsed block id.
-impl DeserializeCompact for EndorsementContent {
+impl DeserializeCompact for Endorsement {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let max_block_endorsements =
             with_serialization_context(|context| context.endorsement_count);
@@ -247,7 +255,7 @@ impl DeserializeCompact for EndorsementContent {
         cursor += BLOCK_ID_SIZE_BYTES;
 
         Ok((
-            EndorsementContent {
+            Endorsement {
                 sender_public_key,
                 slot,
                 index,
@@ -260,6 +268,8 @@ impl DeserializeCompact for EndorsementContent {
 
 #[cfg(test)]
 mod tests {
+    use crate::signed::Signed;
+
     use super::*;
     use massa_signature::{derive_public_key, generate_random_private_key};
     use serial_test::serial;
@@ -290,24 +300,21 @@ mod tests {
         let sender_priv = generate_random_private_key();
         let sender_public_key = derive_public_key(&sender_priv);
 
-        let content = EndorsementContent {
+        let content = Endorsement {
             sender_public_key,
             slot: Slot::new(10, 1),
             index: 0,
             endorsed_block: BlockId(Hash::compute_from("blk".as_bytes())),
         };
-        let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-        let signature = sign(&hash, &sender_priv).unwrap();
-        let endorsement = Endorsement {
-            content: content.clone(),
-            signature,
-        };
+        let endorsement = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
 
         let ser_content = content.to_bytes_compact().unwrap();
-        let (res_content, _) = EndorsementContent::from_bytes_compact(&ser_content).unwrap();
+        let (res_content, _) = Endorsement::from_bytes_compact(&ser_content).unwrap();
         assert_eq!(format!("{:?}", res_content), format!("{:?}", content));
         let ser_endorsement = endorsement.to_bytes_compact().unwrap();
-        let (res_endorsement, _) = Endorsement::from_bytes_compact(&ser_endorsement).unwrap();
+        let (res_endorsement, _) =
+            Signed::<Endorsement, EndorsementId>::from_bytes_compact(&ser_endorsement)
+                .unwrap();
         assert_eq!(
             format!("{:?}", res_endorsement),
             format!("{:?}", endorsement)

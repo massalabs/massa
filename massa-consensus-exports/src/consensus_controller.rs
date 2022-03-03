@@ -1,11 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Status};
-use massa_models::{
-    address::AddressState, api::EndorsementInfo, Endorsement, EndorsementId, OperationId,
-};
+use massa_models::signed::Signed;
+use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_models::{
-    Address, Block, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats,
+    Address, Block, BlockId, Endorsement, OperationSearchResult, Slot,
+    StakersCycleProductionStats,
 };
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_protocol_exports::ProtocolEventReceiver;
@@ -407,7 +407,7 @@ impl ConsensusCommandSender {
     pub async fn get_endorsements_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, Endorsement>, ConsensusError> {
+    ) -> Result<Map<EndorsementId, Signed<Endorsement, EndorsementId>>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!(
             "consensus.consensus_controller.get_endorsements_by_address",

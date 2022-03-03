@@ -5,7 +5,7 @@ use massa_consensus_exports::{tools::*, ConsensusConfig};
 use massa_graph::ledger::LedgerSubset;
 use massa_hash::hash::Hash;
 use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
-use massa_models::signed::Signed;
+use massa_models::signed::{Signable, Signed};
 use massa_models::{ledger_models::LedgerData, EndorsementId, OperationType};
 use massa_models::{Address, Amount, Block, BlockHeader, Slot};
 use massa_models::{Endorsement, SerializeCompact};
@@ -610,7 +610,10 @@ async fn test_block_filling() {
                     } => {
                         assert_eq!(Slot::new(1, 0), target_slot);
                         assert_eq!(parent, prev_blocks[0]);
-                        let mut eds: Vec<(EndorsementId, Endorsement)> = Vec::new();
+                        let mut eds: Vec<(
+                            EndorsementId,
+                            Signed<Endorsement, EndorsementId>,
+                        )> = Vec::new();
                         for (index, creator) in creators.iter().enumerate() {
                             let ed = if *creator == address_a {
                                 create_endorsement(priv_a, target_slot, parent, index as u32)
@@ -619,7 +622,7 @@ async fn test_block_filling() {
                             } else {
                                 panic!("invalid endorser choice");
                             };
-                            eds.push((ed.compute_endorsement_id().unwrap(), ed));
+                            eds.push((ed.content.compute_id().unwrap(), ed));
                         }
                         response_tx.send(eds.clone()).unwrap();
                         Some(eds)
@@ -690,8 +693,8 @@ async fn test_block_filling() {
             for (e_found, (e_expected_id, e_expected)) in
                 block.header.content.endorsements.iter().zip(eds.iter())
             {
-                assert_eq!(e_found.compute_endorsement_id().unwrap(), *e_expected_id);
-                assert_eq!(e_expected.compute_endorsement_id().unwrap(), *e_expected_id);
+                assert_eq!(e_found.content.compute_id().unwrap(), *e_expected_id);
+                assert_eq!(e_expected.content.compute_id().unwrap(), *e_expected_id);
             }
 
             // create empty block

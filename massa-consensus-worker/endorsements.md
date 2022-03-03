@@ -19,11 +19,11 @@ An endorsement is defined as follows:
 
 ```ignore
 pub struct Endorsement {
-    pub content: EndorsementContent,
+    pub content: Endorsement,
     pub signature: Signature,
 }
 
-pub struct EndorsementContent {
+pub struct Endorsement {
     /// Public key of the endorser.
     pub sender_public_key: PublicKey,
     /// slot of endorsed block (= parent in the same thread) (can be different that previous slot in the same thread)

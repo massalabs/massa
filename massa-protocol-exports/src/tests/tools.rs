@@ -8,8 +8,10 @@ use crate::{
 use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::{Signable, Signed};
-use massa_models::{Address, Amount, Block, BlockHeader, BlockId, SerializeCompact, Slot};
-use massa_models::{Endorsement, EndorsementContent, Operation, OperationContent, OperationType};
+use massa_models::{
+    Address, Amount, Block, BlockHeader, BlockId, EndorsementId, SerializeCompact, Slot,
+};
+use massa_models::{Endorsement, Operation, OperationContent, OperationType};
 use massa_network::NetworkCommand;
 use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey,
@@ -102,7 +104,7 @@ pub fn create_block_with_endorsements(
     private_key: &PrivateKey,
     public_key: &PublicKey,
     slot: Slot,
-    endorsements: Vec<Endorsement>,
+    endorsements: Vec<Signed<Endorsement, EndorsementId>>,
 ) -> Block {
     let (_, header) = Signed::new_signed(
         BlockHeader {
@@ -160,19 +162,17 @@ pub async fn send_and_propagate_block(
 
 /// Creates an endorsement for use in protocol tests,
 /// without paying attention to consensus related things.
-pub fn create_endorsement() -> Endorsement {
+pub fn create_endorsement() -> Signed<Endorsement, EndorsementId> {
     let sender_priv = generate_random_private_key();
     let sender_public_key = derive_public_key(&sender_priv);
 
-    let content = EndorsementContent {
+    let content = Endorsement {
         sender_public_key,
         slot: Slot::new(10, 1),
         index: 0,
         endorsed_block: BlockId(Hash::compute_from(&[])),
     };
-    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-    let signature = sign(&hash, &sender_priv).unwrap();
-    Endorsement { content, signature }
+    Signed::new_signed(content, &sender_priv).unwrap().1
 }
 
 // Create an operation, from a specific sender, and with a specific expire period.

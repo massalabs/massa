@@ -5,10 +5,12 @@ use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
 use crate::prehash::Map;
 use crate::prehash::Set;
+use crate::signed::Signed;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
+use crate::Endorsement;
 use crate::{
-    Address, Amount, Block, BlockId, CompactConfig, Endorsement, EndorsementId, Operation,
-    OperationId, Slot, Version,
+    Address, Amount, Block, BlockId, CompactConfig, EndorsementId, Operation, OperationId, Slot,
+    Version,
 };
 use massa_hash::hash::Hash;
 use massa_time::MassaTime;
@@ -283,7 +285,7 @@ pub struct EndorsementInfo {
     pub in_pool: bool,
     pub in_blocks: Vec<BlockId>,
     pub is_final: bool,
-    pub endorsement: Endorsement,
+    pub endorsement: Signed<Endorsement, EndorsementId>,
 }
 
 impl std::fmt::Display for EndorsementInfo {

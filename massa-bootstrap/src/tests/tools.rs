@@ -15,7 +15,7 @@ use massa_models::{
     rolls::{RollCounts, RollUpdate, RollUpdates},
     signed::Signed,
     Address, Amount, Block, BlockHeader, BlockId, DeserializeCompact, Endorsement,
-    EndorsementContent, Operation, OperationContent, SerializeCompact, Slot,
+    Operation, OperationContent, SerializeCompact, Slot,
 };
 use massa_network::{BootstrapPeers, NetworkCommand};
 use massa_proof_of_stake_exports::{ExportProofOfStake, ThreadCycleState};
@@ -381,24 +381,28 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                     parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
                     operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
                     endorsements: vec![
-                        Endorsement {
-                            content: EndorsementContent {
+                        Signed::new_signed(
+                            Endorsement {
                                 sender_public_key: get_random_public_key(),
                                 slot: Slot::new(1, 0),
                                 index: 1,
                                 endorsed_block: get_dummy_block_id("p1"),
                             },
-                            signature: get_dummy_signature("dummy_sig_0"),
-                        },
-                        Endorsement {
-                            content: EndorsementContent {
+                            &generate_random_private_key(),
+                        )
+                        .unwrap()
+                        .1,
+                        Signed::new_signed(
+                            Endorsement {
                                 sender_public_key: get_random_public_key(),
                                 slot: Slot::new(4, 1),
                                 index: 3,
                                 endorsed_block: get_dummy_block_id("p1"),
                             },
-                            signature: get_dummy_signature("dummy_sig_00"),
-                        },
+                            &generate_random_private_key(),
+                        )
+                        .unwrap()
+                        .1,
                     ],
                 },
                 &generate_random_private_key(),

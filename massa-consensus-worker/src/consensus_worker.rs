@@ -15,8 +15,8 @@ use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at
 use massa_models::{address::AddressCycleProductionStats, stats::ConsensusStats, OperationId};
 use massa_models::{address::AddressState, signed::Signed};
 use massa_models::{
-    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementContent, EndorsementId,
-    Operation, OperationSearchResult, OperationType, SerializeCompact, Slot,
+    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation,
+    OperationSearchResult, OperationType, SerializeCompact, Slot,
 };
 use massa_proof_of_stake_exports::{error::ProofOfStakeError, ExportProofOfStake, ProofOfStake};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
@@ -1365,13 +1365,13 @@ pub fn create_endorsement(
     private_key: &PrivateKey,
     index: u32,
     endorsed_block: BlockId,
-) -> Result<(EndorsementId, Endorsement)> {
-    let content = EndorsementContent {
+) -> Result<(EndorsementId, Signed<Endorsement, EndorsementId>)> {
+    let content = Endorsement {
         sender_public_key,
         slot,
         index,
         endorsed_block,
     };
-    let (e_id, endorsement) = Endorsement::new_signed(private_key, content)?;
+    let (e_id, endorsement) = Signed::new_signed(content, private_key)?;
     Ok((e_id, endorsement))
 }

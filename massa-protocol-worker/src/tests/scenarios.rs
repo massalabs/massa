@@ -293,7 +293,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                 .content
                 .endorsements
                 .iter()
-                .map(|endo| endo.compute_endorsement_id().unwrap())
+                .map(|endo| endo.content.compute_id().unwrap())
                 .collect();
             protocol_command_sender
                 .integrated_block(ref_hash, ref_block, op_ids, endo_ids)

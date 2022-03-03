@@ -5,6 +5,7 @@ use massa_models::{
     ledger_models::{LedgerChange, LedgerChanges},
     prehash::{BuildMap, Map, Set},
     rolls::{RollUpdate, RollUpdates},
+    signed::Signable,
     *,
 };
 use serde::{Deserialize, Serialize};
@@ -66,7 +67,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             .content
             .endorsements
             .iter()
-            .map(|endo| Ok((endo.compute_endorsement_id()?, endo.content.index)))
+            .map(|endo| Ok((endo.content.compute_id()?, endo.content.index)))
             .collect::<Result<_>>()?;
 
         let addresses_to_operations = a_block.block.involved_addresses(&operation_set)?;

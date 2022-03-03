@@ -166,10 +166,10 @@ impl Block {
             .try_for_each::<_, Result<(), ModelsError>>(|e| {
                 let address = Address::from_public_key(&e.content.sender_public_key);
                 if let Some(old) = res.get_mut(&address) {
-                    old.insert(e.compute_endorsement_id()?);
+                    old.insert(e.content.compute_id()?);
                 } else {
                     let mut set = Set::<EndorsementId>::default();
-                    set.insert(e.compute_endorsement_id()?);
+                    set.insert(e.content.compute_id()?);
                     res.insert(address, set);
                 }
                 Ok(())
@@ -200,7 +200,7 @@ pub struct BlockHeader {
     pub slot: Slot,
     pub parents: Vec<BlockId>,
     pub operation_merkle_root: Hash, // all operations hash
-    pub endorsements: Vec<Endorsement>,
+    pub endorsements: Vec<Signed<Endorsement, EndorsementId>>,
 }
 
 impl Signable<BlockId> for BlockHeader {
@@ -238,7 +238,7 @@ impl std::fmt::Display for BlockHeader {
             writeln!(
                 f,
                 "\t\tId: {}",
-                ed.compute_endorsement_id().map_err(|_| std::fmt::Error)?
+                ed.content.compute_id().map_err(|_| std::fmt::Error)?
             )?;
             writeln!(f, "\t\tIndex: {}", ed.content.index)?;
             writeln!(f, "\t\tEndorsed slot: {}", ed.content.slot)?;
@@ -422,9 +422,10 @@ impl DeserializeCompact for BlockHeader {
             u32::from_varint_bytes_bounded(&buffer[cursor..], max_block_endorsements)?;
         cursor += delta;
 
-        let mut endorsements: Vec<Endorsement> = Vec::with_capacity(endorsement_count as usize);
+        let mut endorsements = Vec::with_capacity(endorsement_count as usize);
         for _ in 0..endorsement_count {
-            let (endorsement, delta) = Endorsement::from_bytes_compact(&buffer[cursor..])?;
+            let (endorsement, delta) =
+                Signed::<Endorsement, EndorsementId>::from_bytes_compact(&buffer[cursor..])?;
             cursor += delta;
             endorsements.push(endorsement);
         }
@@ -445,8 +446,8 @@ impl DeserializeCompact for BlockHeader {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::EndorsementContent;
-    use massa_signature::{derive_public_key, generate_random_private_key, sign};
+    use crate::Endorsement;
+    use massa_signature::{derive_public_key, generate_random_private_key};
     use serial_test::serial;
 
     #[test]
@@ -486,26 +487,28 @@ mod test {
                 ],
                 operation_merkle_root: Hash::compute_from("mno".as_bytes()),
                 endorsements: vec![
-                    Endorsement {
-                        content: EndorsementContent {
+                    Signed::new_signed(
+                        Endorsement {
                             sender_public_key: public_key,
                             slot: Slot::new(1, 1),
                             index: 1,
                             endorsed_block: BlockId(Hash::compute_from("blk1".as_bytes())),
                         },
-                        signature: sign(&Hash::compute_from("dta".as_bytes()), &private_key)
-                            .unwrap(),
-                    },
-                    Endorsement {
-                        content: EndorsementContent {
+                        &private_key,
+                    )
+                    .unwrap()
+                    .1,
+                    Signed::new_signed(
+                        Endorsement {
                             sender_public_key: public_key,
                             slot: Slot::new(4, 0),
                             index: 3,
                             endorsed_block: BlockId(Hash::compute_from("blk2".as_bytes())),
                         },
-                        signature: sign(&Hash::compute_from("dat".as_bytes()), &private_key)
-                            .unwrap(),
-                    },
+                        &private_key,
+                    )
+                    .unwrap()
+                    .1,
                 ],
             },
             &private_key,

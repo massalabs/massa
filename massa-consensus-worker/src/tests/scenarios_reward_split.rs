@@ -5,10 +5,8 @@ use massa_consensus_exports::ConsensusConfig;
 
 use massa_hash::hash::Hash;
 use massa_models::ledger_models::LedgerData;
-use massa_models::{
-    Address, Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot,
-};
-use massa_signature::sign;
+use massa_models::signed::Signed;
+use massa_models::{Address, Amount, BlockId, Endorsement, SerializeCompact, Slot};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -134,54 +132,45 @@ async fn test_reward_split() {
                 .iter()
                 .position(|&addr| addr == Address::from_public_key(&slot_two_pub_key))
                 .unwrap() as u32;
-            let content = EndorsementContent {
+            let content = Endorsement {
                 sender_public_key: slot_two_pub_key,
                 slot: Slot::new(1, 0),
                 index,
                 endorsed_block: b1_id,
             };
-            let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-            let signature = sign(&hash, &slot_two_priv_key).unwrap();
-            let ed_1 = Endorsement {
-                content: content.clone(),
-                signature,
-            };
+            let ed_1 = Signed::new_signed(content.clone(), &slot_two_priv_key)
+                .unwrap()
+                .1;
 
             // Creator of first block endorses the first.
             let index = slot_one_endorsements_addrs
                 .iter()
                 .position(|&addr| addr == Address::from_public_key(&slot_one_pub_key))
                 .unwrap() as u32;
-            let content = EndorsementContent {
+            let content = Endorsement {
                 sender_public_key: slot_one_pub_key,
                 slot: Slot::new(1, 0),
                 index,
                 endorsed_block: b1_id,
             };
-            let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-            let signature = sign(&hash, &slot_one_priv_key).unwrap();
-            let ed_2 = Endorsement {
-                content: content.clone(),
-                signature,
-            };
+            let ed_2 = Signed::new_signed(content.clone(), &slot_one_priv_key)
+                .unwrap()
+                .1;
 
             // Creator of second block endorses the first, again.
             let index = slot_one_endorsements_addrs
                 .iter()
                 .position(|&addr| addr == Address::from_public_key(&slot_two_pub_key))
                 .unwrap() as u32;
-            let content = EndorsementContent {
+            let content = Endorsement {
                 sender_public_key: slot_two_pub_key,
                 slot: Slot::new(1, 0),
                 index,
                 endorsed_block: b1_id,
             };
-            let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-            let signature = sign(&hash, &slot_two_priv_key).unwrap();
-            let ed_3 = Endorsement {
-                content: content.clone(),
-                signature,
-            };
+            let ed_3 = Signed::new_signed(content.clone(), &slot_two_priv_key)
+                .unwrap()
+                .1;
 
             // Add endorsements to block.
             b2.header.content.endorsements = vec![ed_1, ed_2, ed_3];

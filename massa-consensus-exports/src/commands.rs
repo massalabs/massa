@@ -2,12 +2,12 @@
 
 //! Contains definitions of commands used by the controller
 use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Status};
-use massa_models::{
-    address::AddressState, api::EndorsementInfo, Endorsement, EndorsementId, OperationId,
-};
+use massa_models::signed::Signed;
+use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_models::{
-    Address, Block, BlockId, OperationSearchResult, Slot, StakersCycleProductionStats,
+    Address, Block, BlockId, Endorsement, OperationSearchResult, Slot,
+    StakersCycleProductionStats,
 };
 
 use massa_proof_of_stake_exports::ExportProofOfStake;
@@ -73,7 +73,7 @@ pub enum ConsensusCommand {
     },
     GetEndorsementsByAddress {
         address: Address,
-        response_tx: oneshot::Sender<Map<EndorsementId, Endorsement>>,
+        response_tx: oneshot::Sender<Map<EndorsementId, Signed<Endorsement, EndorsementId>>>,
     },
     GetEndorsementsById {
         endorsements: Set<EndorsementId>,

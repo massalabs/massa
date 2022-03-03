@@ -11,7 +11,6 @@ use crate::{
 };
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::{
     active_block::ActiveBlock,
     api::EndorsementInfo,
@@ -20,9 +19,13 @@ use massa_models::{
 use massa_models::{clique::Clique, signed::Signable};
 use massa_models::{ledger_models::LedgerChange, signed::Signed};
 use massa_models::{
-    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId,
-    Operation, OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
+    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockId, EndorsementId, Operation,
+    OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
     OperationSearchResultStatus, Slot,
+};
+use massa_models::{
+    prehash::{BuildMap, Map, Set},
+    Endorsement,
 };
 use massa_proof_of_stake_exports::{
     error::ProofOfStakeError, OperationRollInterface, ProofOfStake,
@@ -3613,13 +3616,13 @@ impl BlockGraph {
     pub fn get_endorsement_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, Endorsement>> {
-        let mut res: Map<EndorsementId, Endorsement> = Default::default();
+    ) -> Result<Map<EndorsementId, Signed<Endorsement, EndorsementId>>> {
+        let mut res: Map<EndorsementId, Signed<Endorsement, EndorsementId>> = Default::default();
         for b_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(ab)) = self.block_statuses.get(b_id) {
                 if let Some(eds) = ab.addresses_to_endorsements.get(&address) {
                     for e in ab.block.header.content.endorsements.iter() {
-                        let id = e.compute_endorsement_id()?;
+                        let id = e.content.compute_id()?;
                         if eds.contains(&id) {
                             res.insert(id, e.clone());
                         }
@@ -3646,7 +3649,7 @@ impl BlockGraph {
                     .is_empty()
                 {
                     for e in ab.block.header.content.endorsements.iter() {
-                        let id = e.compute_endorsement_id()?;
+                        let id = e.content.compute_id()?;
                         if endorsements.contains(&id) {
                             res.entry(id)
                                 .and_modify(|EndorsementInfo { in_blocks, .. }| {

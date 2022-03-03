@@ -2,10 +2,11 @@
 
 use crate::{settings::PoolConfig, PoolError};
 use massa_models::prehash::{Map, Set};
-use massa_models::{Address, BlockId, Endorsement, EndorsementContent, EndorsementId, Slot};
+use massa_models::signed::Signed;
+use massa_models::{Address, BlockId, Endorsement, EndorsementId, Slot};
 
 pub struct EndorsementPool {
-    endorsements: Map<EndorsementId, Endorsement>,
+    endorsements: Map<EndorsementId, Signed<Endorsement, EndorsementId>>,
     latest_final_periods: Vec<u64>,
     current_slot: Option<Slot>,
     cfg: &'static PoolConfig,
@@ -29,8 +30,8 @@ impl EndorsementPool {
     pub fn update_latest_final_periods(&mut self, periods: Vec<u64>) {
         self.endorsements.retain(
             |_,
-             Endorsement {
-                 content: EndorsementContent { slot, .. },
+             Signed {
+                 content: Endorsement { slot, .. },
                  ..
              }| slot.period >= periods[slot.thread as usize],
         );
@@ -44,22 +45,25 @@ impl EndorsementPool {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
-    ) -> Result<Vec<(EndorsementId, Endorsement)>, PoolError> {
-        let mut candidates = self
-            .endorsements
-            .iter()
-            .filter_map(|(endo_id, endorsement)| {
-                let creator = Address::from_public_key(&endorsement.content.sender_public_key);
-                if endorsement.content.endorsed_block == parent
-                    && endorsement.content.slot == target_slot
-                    && creators.get(endorsement.content.index as usize) == Some(&creator)
-                {
-                    Some(Ok((*endo_id, endorsement.clone())))
-                } else {
-                    None
-                }
-            })
-            .collect::<Result<Vec<(EndorsementId, Endorsement)>, PoolError>>()?;
+    ) -> Result<Vec<(EndorsementId, Signed<Endorsement, EndorsementId>)>, PoolError> {
+        let mut candidates =
+            self.endorsements
+                .iter()
+                .filter_map(|(endo_id, endorsement)| {
+                    let creator = Address::from_public_key(&endorsement.content.sender_public_key);
+                    if endorsement.content.endorsed_block == parent
+                        && endorsement.content.slot == target_slot
+                        && creators.get(endorsement.content.index as usize) == Some(&creator)
+                    {
+                        Some(Ok((*endo_id, endorsement.clone())))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Result<
+                    Vec<(EndorsementId, Signed<Endorsement, EndorsementId>)>,
+                    PoolError,
+                >>()?;
         candidates.sort_unstable_by_key(|(_e_id, endo)| endo.content.index);
         candidates.dedup_by_key(|(_e_id, endo)| endo.content.index);
         Ok(candidates)
@@ -69,7 +73,7 @@ impl EndorsementPool {
     /// Prunes the pool if there are too many endorsements
     pub fn add_endorsements(
         &mut self,
-        endorsements: Map<EndorsementId, Endorsement>,
+        endorsements: Map<EndorsementId, Signed<Endorsement, EndorsementId>>,
     ) -> Result<Set<EndorsementId>, PoolError> {
         let mut newly_added = Set::<EndorsementId>::default();
         for (endorsement_id, endorsement) in endorsements.into_iter() {
@@ -149,7 +153,7 @@ impl EndorsementPool {
     pub fn get_endorsement_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, Endorsement>, PoolError> {
+    ) -> Result<Map<EndorsementId, Signed<Endorsement, EndorsementId>>, PoolError> {
         let mut res = Map::default();
         for (id, ed) in self.endorsements.iter() {
             if Address::from_public_key(&ed.content.sender_public_key) == address {
@@ -162,7 +166,7 @@ impl EndorsementPool {
     pub fn get_endorsement_by_id(
         &self,
         endorsements: Set<EndorsementId>,
-    ) -> Map<EndorsementId, Endorsement> {
+    ) -> Map<EndorsementId, Signed<Endorsement, EndorsementId>> {
         self.endorsements
             .iter()
             .filter_map(|(id, ed)| {

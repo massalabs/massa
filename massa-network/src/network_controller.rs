@@ -14,7 +14,8 @@ use crate::{
 use massa_logging::massa_trace;
 use massa_models::{
     composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, signed::Signed,
-    stats::NetworkStats, Block, BlockHeader, BlockId, Endorsement, Operation, Version,
+    stats::NetworkStats, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation,
+    Version,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use std::{
@@ -287,7 +288,7 @@ impl NetworkCommandSender {
     pub async fn send_endorsements(
         &self,
         node: NodeId,
-        endorsements: Vec<Endorsement>,
+        endorsements: Vec<Signed<Endorsement, EndorsementId>>,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendEndorsements { node, endorsements })

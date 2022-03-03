@@ -15,7 +15,7 @@ use massa_hash::hash::Hash;
 use massa_models::{
     prehash::Set,
     signed::{Signable, Signed},
-    Address, Amount, Block, BlockHeader, BlockId, Endorsement, EndorsementContent, Operation,
+    Address, Amount, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation,
     OperationContent, OperationType, SerializeCompact, Slot,
 };
 use massa_pool::PoolCommand;
@@ -515,18 +515,16 @@ pub fn create_endorsement(
     slot: Slot,
     endorsed_block: BlockId,
     index: u32,
-) -> Endorsement {
+) -> Signed<Endorsement, EndorsementId> {
     let sender_public_key = derive_public_key(&sender_priv);
 
-    let content = EndorsementContent {
+    let content = Endorsement {
         sender_public_key,
         slot,
         index,
         endorsed_block,
     };
-    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-    let signature = sign(&hash, &sender_priv).unwrap();
-    Endorsement { content, signature }
+    Signed::new_signed(content, &sender_priv).unwrap().1
 }
 
 pub fn get_export_active_test_block(
