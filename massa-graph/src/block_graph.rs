@@ -3594,6 +3594,8 @@ impl BlockGraph {
 
     /// prune and return final blocks, return discarded final blocks
     pub fn prune(&mut self) -> Result<Map<BlockId, ActiveBlock>> {
+        // TODO: prune shared storage.
+        
         let before = self.max_cliques.len();
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
         let discarded_finals = self.prune_active()?;
