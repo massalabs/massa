@@ -85,12 +85,6 @@ impl EndorsementId {
     }
 }
 
-// #[derive(Debug, Clone, Serialize, Deserialize)]
-// pub struct Endorsement {
-//     pub content: Endorsement,
-//     pub signature: Signature,
-// }
-
 impl Display for Endorsement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(
@@ -108,77 +102,6 @@ impl Display for Endorsement {
     }
 }
 
-impl Endorsement {
-    pub fn compute_hash(&self) -> Result<Hash, ModelsError> {
-        Ok(Hash::compute_from(&self.to_bytes_compact()?))
-    }
-}
-
-// impl Endorsement {
-//     /// Verify the signature and integrity of the endorsement and computes ID
-//     pub fn verify_signature(&self) -> Result<(), ModelsError> {
-//         let content_hash = Hash::compute_from(&self.content.to_bytes_compact()?);
-//         verify_signature(
-//             &content_hash,
-//             &self.signature,
-//             &self.content.sender_public_key,
-//         )?;
-//         Ok(())
-//     }
-
-//     pub fn new_signed(
-//         private_key: &PrivateKey,
-//         content: Endorsement,
-//     ) -> Result<(EndorsementId, Self), ModelsError> {
-//         let content_hash = content.compute_hash()?;
-//         let signature = sign(&content_hash, private_key)?;
-//         let endorsement = Endorsement { content, signature };
-//         let e_id = endorsement.compute_id()?;
-//         Ok((e_id, endorsement))
-//     }
-
-//     pub fn compute_endorsement_id(&self) -> Result<EndorsementId, ModelsError> {
-//         Ok(EndorsementId(Hash::compute_from(&self.to_bytes_compact()?)))
-//     }
-// }
-
-// /// Checks performed:
-// /// - Validity of the content.
-// impl SerializeCompact for Endorsement {
-//     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
-//         let mut res: Vec<u8> = Vec::new();
-
-//         // content
-//         res.extend(self.content.to_bytes_compact()?);
-
-//         // signature
-//         res.extend(&self.signature.to_bytes());
-
-//         Ok(res)
-//     }
-// }
-
-// /// Checks performed:
-// /// - Validity of the content.
-// /// - Validity of the signature.
-// impl DeserializeCompact for Endorsement {
-//     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
-//         let mut cursor = 0;
-
-//         // content
-//         let (content, delta) = Endorsement::from_bytes_compact(&buffer[cursor..])?;
-//         cursor += delta;
-
-//         // signature
-//         let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-//         cursor += SIGNATURE_SIZE_BYTES;
-
-//         let res = Endorsement { content, signature };
-
-//         Ok((res, cursor))
-//     }
-// }
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Endorsement {
     /// Public key of the endorser.
@@ -193,7 +116,7 @@ pub struct Endorsement {
 
 impl Signable<EndorsementId> for Endorsement {
     fn get_signature_message(&self) -> Result<Hash, ModelsError> {
-        self.compute_hash()
+        Ok(Hash::compute_from(&self.to_bytes_compact()?))
     }
 }
 
