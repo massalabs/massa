@@ -12,8 +12,8 @@ use massa_models::{
     prehash::{Map, Set},
     signed::Signed,
     stats::PoolStats,
-    Address, BlockId, Endorsement, EndorsementId, Operation, OperationId,
-    OperationSearchResult, Slot,
+    Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
+    Slot,
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use tokio::{

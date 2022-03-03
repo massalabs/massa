@@ -7,8 +7,8 @@ use massa_models::prehash::{Map, Set};
 use massa_models::signed::Signed;
 use massa_models::stats::PoolStats;
 use massa_models::{
-    Address, BlockId, Endorsement, EndorsementId, Operation, OperationId,
-    OperationSearchResult, Slot,
+    Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
+    Slot,
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver};
 use tokio::sync::{mpsc, oneshot};
@@ -40,8 +40,7 @@ pub enum PoolCommand {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
-        response_tx:
-            oneshot::Sender<Vec<(EndorsementId, Signed<Endorsement, EndorsementId>)>>,
+        response_tx: oneshot::Sender<Vec<(EndorsementId, Signed<Endorsement, EndorsementId>)>>,
     },
     AddEndorsements(Map<EndorsementId, Signed<Endorsement, EndorsementId>>),
     GetStats(oneshot::Sender<PoolStats>),

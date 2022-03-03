@@ -4,8 +4,7 @@ use massa_models::signed::Signed;
 use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_models::{
-    Address, Block, BlockId, Endorsement, OperationSearchResult, Slot,
-    StakersCycleProductionStats,
+    Address, Block, BlockId, Endorsement, OperationSearchResult, Slot, StakersCycleProductionStats,
 };
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_protocol_exports::ProtocolEventReceiver;

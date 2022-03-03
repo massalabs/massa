@@ -313,8 +313,7 @@ mod tests {
         assert_eq!(format!("{:?}", res_content), format!("{:?}", content));
         let ser_endorsement = endorsement.to_bytes_compact().unwrap();
         let (res_endorsement, _) =
-            Signed::<Endorsement, EndorsementId>::from_bytes_compact(&ser_endorsement)
-                .unwrap();
+            Signed::<Endorsement, EndorsementId>::from_bytes_compact(&ser_endorsement).unwrap();
         assert_eq!(
             format!("{:?}", res_endorsement),
             format!("{:?}", endorsement)

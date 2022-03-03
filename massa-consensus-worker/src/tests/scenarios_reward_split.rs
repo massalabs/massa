@@ -2,11 +2,9 @@
 
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
-
-use massa_hash::hash::Hash;
 use massa_models::ledger_models::LedgerData;
 use massa_models::signed::Signed;
-use massa_models::{Address, Amount, BlockId, Endorsement, SerializeCompact, Slot};
+use massa_models::{Address, Amount, BlockId, Endorsement, Slot};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;

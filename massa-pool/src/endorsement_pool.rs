@@ -46,24 +46,22 @@ impl EndorsementPool {
         parent: BlockId,
         creators: Vec<Address>,
     ) -> Result<Vec<(EndorsementId, Signed<Endorsement, EndorsementId>)>, PoolError> {
-        let mut candidates =
-            self.endorsements
-                .iter()
-                .filter_map(|(endo_id, endorsement)| {
-                    let creator = Address::from_public_key(&endorsement.content.sender_public_key);
-                    if endorsement.content.endorsed_block == parent
-                        && endorsement.content.slot == target_slot
-                        && creators.get(endorsement.content.index as usize) == Some(&creator)
-                    {
-                        Some(Ok((*endo_id, endorsement.clone())))
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Result<
-                    Vec<(EndorsementId, Signed<Endorsement, EndorsementId>)>,
-                    PoolError,
-                >>()?;
+        let mut candidates = self
+            .endorsements
+            .iter()
+            .filter_map(|(endo_id, endorsement)| {
+                let creator = Address::from_public_key(&endorsement.content.sender_public_key);
+                if endorsement.content.endorsed_block == parent
+                    && endorsement.content.slot == target_slot
+                    && creators.get(endorsement.content.index as usize) == Some(&creator)
+                {
+                    Some(Ok((*endo_id, endorsement.clone())))
+                } else {
+                    None
+                }
+            })
+            .collect::<Result<Vec<(EndorsementId, Signed<Endorsement, EndorsementId>)>, PoolError>>(
+            )?;
         candidates.sort_unstable_by_key(|(_e_id, endo)| endo.content.index);
         candidates.dedup_by_key(|(_e_id, endo)| endo.content.index);
         Ok(candidates)

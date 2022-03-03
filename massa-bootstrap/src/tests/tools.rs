@@ -14,8 +14,8 @@ use massa_models::{
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     rolls::{RollCounts, RollUpdate, RollUpdates},
     signed::Signed,
-    Address, Amount, Block, BlockHeader, BlockId, DeserializeCompact, Endorsement,
-    Operation, OperationContent, SerializeCompact, Slot,
+    Address, Amount, Block, BlockHeader, BlockId, DeserializeCompact, Endorsement, Operation,
+    OperationContent, SerializeCompact, Slot,
 };
 use massa_network::{BootstrapPeers, NetworkCommand};
 use massa_proof_of_stake_exports::{ExportProofOfStake, ThreadCycleState};

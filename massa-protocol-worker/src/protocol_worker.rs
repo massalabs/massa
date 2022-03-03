@@ -8,8 +8,8 @@ use massa_models::{
     node::NodeId,
     prehash::{BuildMap, Map, Set},
     signed::{Signable, Signed},
-    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation,
-    OperationId, OperationType,
+    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
+    OperationType,
 };
 use massa_network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
@@ -683,14 +683,12 @@ impl ProtocolWorker {
                     { "endorsements": endorsements }
                 );
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_endorsements: Map<
-                        EndorsementId,
-                        Signed<Endorsement, EndorsementId>,
-                    > = endorsements
-                        .iter()
-                        .filter(|(id, _)| !node_info.knows_endorsement(*id))
-                        .map(|(k, v)| (*k, v.clone()))
-                        .collect();
+                    let new_endorsements: Map<EndorsementId, Signed<Endorsement, EndorsementId>> =
+                        endorsements
+                            .iter()
+                            .filter(|(id, _)| !node_info.knows_endorsement(*id))
+                            .map(|(k, v)| (*k, v.clone()))
+                            .collect();
                     node_info.insert_known_endorsements(
                         new_endorsements.keys().copied().collect(),
                         self.protocol_settings.max_known_endorsements_size,

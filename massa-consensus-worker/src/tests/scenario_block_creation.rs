@@ -610,10 +610,8 @@ async fn test_block_filling() {
                     } => {
                         assert_eq!(Slot::new(1, 0), target_slot);
                         assert_eq!(parent, prev_blocks[0]);
-                        let mut eds: Vec<(
-                            EndorsementId,
-                            Signed<Endorsement, EndorsementId>,
-                        )> = Vec::new();
+                        let mut eds: Vec<(EndorsementId, Signed<Endorsement, EndorsementId>)> =
+                            Vec::new();
                         for (index, creator) in creators.iter().enumerate() {
                             let ed = if *creator == address_a {
                                 create_endorsement(priv_a, target_slot, parent, index as u32)
