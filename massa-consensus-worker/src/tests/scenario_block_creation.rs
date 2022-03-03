@@ -37,7 +37,7 @@ async fn test_genesis_block_creation() {
     let mut cfg = ConsensusConfig {
         genesis_timestamp: MassaTime::now()
             .unwrap()
-            .saturating_sub(MassTime::from(30000)),
+            .saturating_sub(MassaTime::from(30000)),
         ..ConsensusConfig::default_with_staking_keys_and_ledger(&[priv_1, priv_2], &ledger)
     };
     // init roll count
