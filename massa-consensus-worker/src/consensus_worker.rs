@@ -1113,7 +1113,7 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_protocol_event.get_blocks",
                     { "list": list }
                 );
-                // TODO: use shared storage.
+                // TODO: remove, see https://github.com/massalabs/massa/issues/2299
             }
         }
         Ok(())
