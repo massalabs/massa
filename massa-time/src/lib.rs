@@ -1,17 +1,17 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 mod error;
-use chrono::{self, DateTime, NaiveDateTime, Utc};
 pub use error::TimeError;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use std::{
     convert::{TryFrom, TryInto},
     str::FromStr,
 };
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 use tokio::time::Instant;
-
-use serde::{Deserialize, Serialize};
 
 /// Time structure used every where.
 /// Millis since 01/01/1970.
@@ -201,7 +201,7 @@ impl MassaTime {
             Instant::now(),
         );
         cur_instant
-            .checked_add(self.to_duration())
+            .checked_add(self.to_duration().into())
             .ok_or(TimeError::TimeOverflowError)?
             .checked_sub(cur_timestamp.to_duration())
             .ok_or(TimeError::TimeOverflowError)
@@ -338,16 +338,12 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let massa_time : MassaTime = MassaTime::from(0);
-    /// assert_eq!(massa_time.to_utc_string(), "1970-01-01 00:00:00 UTC")
+    /// let massa_time : MassaTime = MassaTime::from(1640995200);
+    /// assert_eq!(massa_time.to_utc_string(), "2022-01-01T00:00:00Z")
     /// ```
     pub fn to_utc_string(self) -> String {
-        let naive = NaiveDateTime::from_timestamp(
-            (self.to_millis() / 1000) as i64,
-            ((self.to_millis() % 1000) * 1_000_000) as u32,
-        );
-        let datetime: DateTime<Utc> = DateTime::from_utc(naive, Utc);
-        format!("{}", datetime)
+        let naive = OffsetDateTime::from_unix_timestamp(self.to_millis() as i64).unwrap();
+        format!("{}", naive.format(&Rfc3339).unwrap())
     }
 
     /// ```
@@ -360,17 +356,17 @@ impl MassaTime {
     /// assert_eq!(secs, 6);
     /// ```
     pub fn days_hours_mins_secs(&self) -> Result<(i64, i64, i64, i64), TimeError> {
-        let time = chrono::Duration::from_std(self.to_duration())
+        let time: time::Duration = time::Duration::try_from(self.to_duration())
             .map_err(|_| TimeError::TimeOverflowError)?;
-        let days = time.num_days();
-        let hours = (time - chrono::Duration::days(days)).num_hours();
+        let days = time.whole_days();
+        let hours = (time - time::Duration::days(days)).whole_hours();
         let mins =
-            (time - chrono::Duration::days(days) - chrono::Duration::hours(hours)).num_minutes();
+            (time - time::Duration::days(days) - time::Duration::hours(hours)).whole_minutes();
         let secs = (time
-            - chrono::Duration::days(days)
-            - chrono::Duration::hours(hours)
-            - chrono::Duration::minutes(mins))
-        .num_seconds();
+            - time::Duration::days(days)
+            - time::Duration::hours(hours)
+            - time::Duration::minutes(mins))
+        .whole_seconds();
         Ok((days, hours, mins, secs))
     }
 }
