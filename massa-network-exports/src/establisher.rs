@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 #[cfg(feature = "testing")]
-pub mod types {
+mod types {
     use crate::test_exports::mock_establisher;
 
     pub type ReadHalf = mock_establisher::ReadHalf;
@@ -9,7 +9,7 @@ pub mod types {
     pub type Establisher = mock_establisher::MockEstablisher;
 }
 #[cfg(not(feature = "testing"))]
-pub mod types {
+mod types {
     use massa_time::MassaTime;
     use std::{io, net::SocketAddr};
     use tokio::{
