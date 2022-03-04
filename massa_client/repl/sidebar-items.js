@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["run",""]],"macro":[["massa_fancy_ascii_art_logo",""]],"struct":[["CommandCompletion",""],["CommandHistory",""]],"trait":[["Output",""]]});
+initSidebarItems({"fn":[["expand_path",""],["run",""]],"macro":[["massa_fancy_ascii_art_logo",""]],"struct":[["CommandCompletion",""],["CommandHistory",""]],"trait":[["Output",""]]});
