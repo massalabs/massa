@@ -2,7 +2,7 @@
 
 #![feature(str_split_whitespace_as_str)]
 
-use crate::rpc::Client;
+use massa_sdk::Client;
 use crate::settings::SETTINGS;
 use anyhow::Result;
 use atty::Stream;
@@ -16,7 +16,6 @@ use structopt::StructOpt;
 
 mod cmds;
 mod repl;
-mod rpc;
 mod settings;
 mod utils;
 

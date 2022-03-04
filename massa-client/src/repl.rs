@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::cmds::{Command, ExtendedWallet};
-use crate::rpc::Client;
+use massa_sdk::Client;
 use crate::settings::SETTINGS;
 use crate::utils::longest_common_prefix;
 use console::style;

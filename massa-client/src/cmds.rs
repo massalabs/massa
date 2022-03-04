@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::repl::Output;
-use crate::rpc::Client;
+use massa_sdk::Client;
 use anyhow::{anyhow, bail, Result};
 use console::style;
 use massa_models::api::ReadOnlyExecution;

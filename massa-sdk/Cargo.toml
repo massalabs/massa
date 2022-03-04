@@ -1,0 +1,13 @@
+[package]
+name = "massa_sdk"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+jsonrpc-core-client = { version = "18.0", features = ["http", "tls"] }
+tokio = { version = "1.15", features = ["full"] }
+massa_models = { path = "../massa-models" }
+massa_signature = { path = "../massa-signature" }
+massa_time = { path = "../massa-time" }
+massa_wallet = { path = "../massa-wallet" }
+serde = { version = "1.0", features = ["derive"] }
