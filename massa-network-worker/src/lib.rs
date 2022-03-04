@@ -6,6 +6,10 @@
 
 //! Manages a connection with a node
 
+use crate::{
+    network_worker::{NetworkWorker, NetworkWorkerChannels},
+    peer_info_database::PeerInfoDatabase,
+};
 use massa_logging::massa_trace;
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
 use massa_network_exports::{
@@ -16,16 +20,12 @@ use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
-use crate::{
-    network_worker::{NetworkWorker, NetworkWorkerChannels},
-    peer_info_database::PeerInfoDatabase,
-};
-
 //pub use establisher::Establisher;
 mod binders;
-
 mod handshake_worker;
 mod messages;
+mod network_cmd_impl;
+mod network_event;
 mod network_worker;
 mod node_worker;
 mod peer_info_database;
