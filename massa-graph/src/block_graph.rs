@@ -3564,6 +3564,10 @@ impl BlockGraph {
             self.block_statuses.remove(block_id);
             self.waiting_for_slot_index.remove(block_id);
         });
+
+        // Prune shared storage
+        let ids: Vec<BlockId> = slot_waiting.into_iter().map(|(_, id)| id).collect();
+        self.storage.remove_blocks(&ids);
     }
 
     fn prune_discarded(&mut self) -> Result<()> {
@@ -3585,17 +3589,18 @@ impl BlockGraph {
             .collect();
         discard_hashes.sort_unstable();
         discard_hashes.truncate(self.discarded_index.len() - self.cfg.max_discarded_blocks);
-        for (_, block_id) in discard_hashes.into_iter() {
-            self.block_statuses.remove(&block_id);
-            self.discarded_index.remove(&block_id);
+        for (_, block_id) in discard_hashes.iter() {
+            self.block_statuses.remove(block_id);
+            self.discarded_index.remove(block_id);
         }
+        // Prune shared storage
+        let ids: Vec<BlockId> = discard_hashes.into_iter().map(|(_, id)| id).collect();
+        self.storage.remove_blocks(&ids);
         Ok(())
     }
 
     /// prune and return final blocks, return discarded final blocks
     pub fn prune(&mut self) -> Result<Map<BlockId, ActiveBlock>> {
-        // TODO: prune shared storage.
-        
         let before = self.max_cliques.len();
         // Step 1: discard final blocks that are not useful to the graph anymore and return them
         let discarded_finals = self.prune_active()?;

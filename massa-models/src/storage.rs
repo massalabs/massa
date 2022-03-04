@@ -29,4 +29,11 @@ impl Storage {
         }
         None
     }
+
+    pub fn remove_blocks(&self, block_ids: &[BlockId]) {
+        let mut blocks = self.blocks.write();
+        for id in block_ids {
+            blocks.remove(&id);
+        }
+    }
 }
