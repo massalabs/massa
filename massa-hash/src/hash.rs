@@ -5,7 +5,7 @@ use crate::settings::HASH_SIZE_BYTES;
 use blake3;
 use std::{convert::TryInto, str::FromStr};
 
-#[derive(Eq, PartialEq, Copy, Clone, Hash)]
+#[derive(PartialOrd, Ord, Eq, PartialEq, Copy, Clone, Hash)]
 pub struct Hash(blake3::Hash);
 
 impl std::fmt::Display for Hash {
