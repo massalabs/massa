@@ -1498,7 +1498,6 @@ dependencies = [
  "erased-serde",
  "futures 0.3.21",
  "glob",
- "jsonrpc-core-client",
  "lazy_static",
  "massa_models",
  "massa_sdk",
@@ -1967,8 +1966,6 @@ dependencies = [
  "jsonrpc-core-client",
  "massa_models",
  "massa_signature",
- "massa_time",
- "massa_wallet",
  "serde 1.0.136",
  "tokio",
 ]

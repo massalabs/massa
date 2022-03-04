@@ -16,7 +16,6 @@ directories = "4.0"
 erased-serde = "0.3"
 futures = "0.3"
 glob = "0.3.0"
-jsonrpc-core-client = { version = "18.0", features = ["http", "tls"] }
 lazy_static = "1.4"
 paw = "1.0"
 rev_lines = "0.2"
