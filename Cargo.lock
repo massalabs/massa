@@ -1016,6 +1016,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78cc372d058dcf6d5ecd98510e7fbc9e5aec4d21de70f65fea8fecebcd881bd4"
 
 [[package]]
+name = "glob"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
+
+[[package]]
 name = "globset"
 version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1491,6 +1497,7 @@ dependencies = [
  "directories",
  "erased-serde",
  "futures 0.3.21",
+ "glob",
  "jsonrpc-core-client",
  "lazy_static",
  "massa_models",
@@ -1505,6 +1512,7 @@ dependencies = [
  "structopt",
  "strum",
  "strum_macros",
+ "tilde-expand",
  "tokio",
  "toml_edit",
 ]
@@ -3474,6 +3482,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5516c27b78311c50bf42c071425c560ac799b11c30b31f87e3081965fe5e0180"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "tilde-expand"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ab1f382b10dd7ff9926b5c33374bc4011b27c82ee890c741aef2bd3fa0d10ba"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
