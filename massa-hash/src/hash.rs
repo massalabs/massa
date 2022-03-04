@@ -2,11 +2,11 @@
 
 use crate::error::MassaHashError;
 use crate::settings::HASH_SIZE_BYTES;
-use bitcoin_hashes;
+use blake3;
 use std::{convert::TryInto, str::FromStr};
 
-#[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
-pub struct Hash(bitcoin_hashes::sha256::Hash);
+#[derive(Eq, PartialEq, Copy, Clone, Hash)]
+pub struct Hash(blake3::Hash);
 
 impl std::fmt::Display for Hash {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -29,8 +29,7 @@ impl Hash {
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// ```
     pub fn compute_from(data: &[u8]) -> Self {
-        use bitcoin_hashes::Hash;
-        Hash(bitcoin_hashes::sha256::Hash::hash(data))
+        Hash(blake3::hash(data))
     }
 
     /// Serialize a Hash using bs58 encoding with checksum.
@@ -54,8 +53,10 @@ impl Hash {
     /// let serialized = hash.to_bytes();
     /// ```
     pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
-        use bitcoin_hashes::Hash;
-        *self.0.as_inner()
+        // this should return &[u8; HASH_SIZE_BYTES]
+        // leaving this return type for now because it
+        // has many occurences in the code
+        *self.0.as_bytes()
     }
 
     /// Convert into bytes.
@@ -67,8 +68,7 @@ impl Hash {
     /// let serialized = hash.into_bytes();
     /// ```
     pub fn into_bytes(self) -> [u8; HASH_SIZE_BYTES] {
-        use bitcoin_hashes::Hash;
-        self.0.into_inner()
+        *self.0.as_bytes()
     }
 
     /// Deserialize using bs58 encoding with checksum.
@@ -105,11 +105,9 @@ impl Hash {
     /// let deserialized: Hash = Hash::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<Hash, MassaHashError> {
-        use bitcoin_hashes::Hash;
-        Ok(Hash(
-            bitcoin_hashes::sha256::Hash::from_slice(&data[..])
-                .map_err(|err| MassaHashError::ParsingError(format!("{}", err)))?,
-        ))
+        Ok(Hash(blake3::Hash::from_hex(&data[..]).map_err(|err| {
+            MassaHashError::ParsingError(format!("{}", err))
+        })?))
     }
 }
 
