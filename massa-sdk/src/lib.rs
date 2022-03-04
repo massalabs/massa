@@ -21,7 +21,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn new(ip: IpAddr, public_port: u16, private_port: u16, ) -> Client {
+    pub async fn new(ip: IpAddr, public_port: u16, private_port: u16) -> Client {
         let public_socket_addr = SocketAddr::new(ip, public_port);
         let private_socket_addr = SocketAddr::new(ip, private_port);
         let public_url = format!("http://{}", public_socket_addr);
@@ -33,9 +33,9 @@ impl Client {
     }
 }
 
-pub struct RpcClient{
+pub struct RpcClient {
     client: TypedClient,
-    timeout: u64
+    timeout: u64,
 }
 
 /// This is required by `jsonrpc_core_client::transports::http::connect`
@@ -43,7 +43,7 @@ impl From<RpcChannel> for RpcClient {
     fn from(channel: RpcChannel) -> Self {
         RpcClient {
             client: channel.into(),
-            timeout: 10000
+            timeout: 10000,
         }
     }
 }
@@ -64,9 +64,12 @@ impl RpcClient {
         returns: &str,
         args: T,
     ) -> RpcResult<R> {
-        tokio::time::timeout(tokio::time::Duration::from_millis(self.timeout), self.client.call_method(method, returns, args))
-            .await
-            .map_err(|e| RpcError::Client(format!("timeout during {}: {}", method, e)))?
+        tokio::time::timeout(
+            tokio::time::Duration::from_millis(self.timeout),
+            self.client.call_method(method, returns, args),
+        )
+        .await
+        .map_err(|e| RpcError::Client(format!("timeout during {}: {}", method, e)))?
     }
 
     /// Gracefully stop the node.
@@ -83,10 +86,7 @@ impl RpcClient {
 
     /// Add a vec of new private keys for the node to use to stake.
     /// No confirmation to expect.
-    pub async fn add_staking_private_keys(
-        &self,
-        private_keys: Vec<PrivateKey>,
-    ) -> RpcResult<()> {
+    pub async fn add_staking_private_keys(&self, private_keys: Vec<PrivateKey>) -> RpcResult<()> {
         self.call_method("add_staking_private_keys", "()", vec![private_keys])
             .await
     }
@@ -191,10 +191,7 @@ impl RpcClient {
             .await
     }
 
-    pub async fn get_addresses(
-        &self,
-        addresses: Vec<Address>,
-    ) -> RpcResult<Vec<AddressInfo>> {
+    pub async fn get_addresses(&self, addresses: Vec<Address>) -> RpcResult<Vec<AddressInfo>> {
         self.call_method("get_addresses", "Vec<AddressInfo>", vec![addresses])
             .await
     }
@@ -202,10 +199,7 @@ impl RpcClient {
     // User (interaction with the node)
 
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
-    pub async fn send_operations(
-        &self,
-        operations: Vec<Operation>,
-    ) -> RpcResult<Vec<OperationId>> {
+    pub async fn send_operations(&self, operations: Vec<Operation>) -> RpcResult<Vec<OperationId>> {
         self.call_method("send_operations", "Vec<OperationId>", vec![operations])
             .await
     }

@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::cmds::{Command, ExtendedWallet};
-use massa_sdk::Client;
 use crate::settings::SETTINGS;
 use crate::utils::longest_common_prefix;
 use console::style;
@@ -13,6 +12,7 @@ use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::prehash::Set;
 use massa_models::{Address, OperationId};
+use massa_sdk::Client;
 use massa_wallet::Wallet;
 use rev_lines::RevLines;
 use std::collections::VecDeque;

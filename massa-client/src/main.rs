@@ -2,12 +2,12 @@
 
 #![feature(str_split_whitespace_as_str)]
 
-use massa_sdk::Client;
 use crate::settings::SETTINGS;
 use anyhow::Result;
 use atty::Stream;
 use cmds::Command;
 use console::style;
+use massa_sdk::Client;
 use massa_wallet::Wallet;
 use serde::Serialize;
 use std::net::IpAddr;
