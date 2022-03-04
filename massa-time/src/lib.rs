@@ -201,7 +201,7 @@ impl MassaTime {
             Instant::now(),
         );
         cur_instant
-            .checked_add(self.to_duration().into())
+            .checked_add(self.to_duration())
             .ok_or(TimeError::TimeOverflowError)?
             .checked_sub(cur_timestamp.to_duration())
             .ok_or(TimeError::TimeOverflowError)
