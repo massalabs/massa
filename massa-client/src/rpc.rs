@@ -127,10 +127,6 @@ impl RpcClient {
         .ok_or_else(|| RpcError::Client("missing return value on execute_read_only_request".into()))
     }
 
-    ////////////////
-    // public-api //
-    ////////////////
-
     // Explorer (aggregated stats)
 
     /// summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count

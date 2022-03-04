@@ -80,13 +80,17 @@ async fn main(args: Args) -> Result<()> {
     let client = Client::new(address, public_port, private_port).await;
     if atty::is(Stream::Stdout) && args.command == Command::help && !args.json {
         // Interactive mode
-        repl::run(&client, &mut wallet).await;
+        repl::run((&client, &mut wallet)).await;
     } else {
         // Non-Interactive mode
-        match args
-            .command
-            .run(&client, &mut wallet, &args.parameters, args.json)
-            .await
+        match crate::cmds::run(
+            args.command,
+            &client,
+            &mut wallet,
+            &args.parameters,
+            args.json,
+        )
+        .await
         {
             Ok(output) => {
                 if args.json {
