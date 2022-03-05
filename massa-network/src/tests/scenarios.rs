@@ -17,6 +17,7 @@ use crate::{
     binders::{ReadBinder, WriteBinder},
     ConnectionId, NetworkSettings,
 };
+use enum_map::enum_map;
 use massa_hash::{self, hash::Hash};
 use massa_models::node::NodeId;
 use massa_models::{BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
@@ -102,12 +103,25 @@ async fn test_multiple_connections_to_controller() {
     // test config
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&[]);
-    let network_conf = NetworkSettings {
-        standard_peers_config: PeerTypeConnectionConfig {
+    let peer_types_config = enum_map! {
+        PeerType::Bootstrap => PeerTypeConnectionConfig {
+            target_out_connections: 1,
+            max_out_attempts: 1,
+            max_in_connections: 1,
+        },
+        PeerType::WhiteListed => PeerTypeConnectionConfig {
+            target_out_connections: 3,
+            max_out_attempts: 2,
             max_in_connections: 2,
+        },
+        PeerType::Standard => PeerTypeConnectionConfig {
             target_out_connections: 0,
             max_out_attempts: 0,
-        },
+            max_in_connections: 2,
+        }
+    };
+    let network_conf = NetworkSettings {
+        peer_types_config,
         max_in_connections_per_ip: 1,
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
@@ -637,13 +651,25 @@ async fn test_block_not_found() {
         active_in_connections: 0,
         banned: false,
     }]);
-
-    let network_conf = NetworkSettings {
-        bootstrap_peers_config: PeerTypeConnectionConfig {
-            max_in_connections: 1,
+    let peer_types_config = enum_map! {
+        PeerType::Bootstrap => PeerTypeConnectionConfig {
             target_out_connections: 1,
             max_out_attempts: 1,
+            max_in_connections: 1,
         },
+        PeerType::WhiteListed => PeerTypeConnectionConfig {
+            target_out_connections: 3,
+            max_out_attempts: 2,
+            max_in_connections: 2,
+        },
+        PeerType::Standard => PeerTypeConnectionConfig {
+            target_out_connections: 0,
+            max_out_attempts: 0,
+            max_in_connections: 2,
+        }
+    };
+    let network_conf = NetworkSettings {
+        peer_types_config,
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
@@ -829,13 +855,25 @@ async fn test_retry_connection_closed() {
         active_in_connections: 0,
         banned: false,
     }]);
-
-    let network_conf = NetworkSettings {
-        bootstrap_peers_config: PeerTypeConnectionConfig {
-            max_in_connections: 1,
+    let peer_types_config = enum_map! {
+        PeerType::Bootstrap => PeerTypeConnectionConfig {
             target_out_connections: 1,
             max_out_attempts: 1,
+            max_in_connections: 1,
         },
+        PeerType::WhiteListed => PeerTypeConnectionConfig {
+            target_out_connections: 3,
+            max_out_attempts: 2,
+            max_in_connections: 2,
+        },
+        PeerType::Standard => PeerTypeConnectionConfig {
+            target_out_connections: 0,
+            max_out_attempts: 0,
+            max_in_connections: 2,
+        }
+    };
+    let network_conf = NetworkSettings {
+        peer_types_config,
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
@@ -933,13 +971,25 @@ async fn test_operation_messages() {
         active_in_connections: 0,
         banned: false,
     }]);
-
-    let network_conf = NetworkSettings {
-        bootstrap_peers_config: PeerTypeConnectionConfig {
-            max_in_connections: 1,
+    let peer_types_config = enum_map! {
+        PeerType::Bootstrap => PeerTypeConnectionConfig {
             target_out_connections: 1,
             max_out_attempts: 1,
+            max_in_connections: 1,
         },
+        PeerType::WhiteListed => PeerTypeConnectionConfig {
+            target_out_connections: 3,
+            max_out_attempts: 2,
+            max_in_connections: 2,
+        },
+        PeerType::Standard => PeerTypeConnectionConfig {
+            target_out_connections: 0,
+            max_out_attempts: 0,
+            max_in_connections: 2,
+        }
+    };
+    let network_conf = NetworkSettings {
+        peer_types_config,
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
@@ -1060,13 +1110,25 @@ async fn test_endorsements_messages() {
         active_in_connections: 0,
         banned: false,
     }]);
-
-    let network_conf = NetworkSettings {
-        bootstrap_peers_config: PeerTypeConnectionConfig {
-            max_in_connections: 1,
+    let peer_types_config = enum_map! {
+        PeerType::Bootstrap => PeerTypeConnectionConfig {
             target_out_connections: 1,
             max_out_attempts: 1,
+            max_in_connections: 1,
         },
+        PeerType::WhiteListed => PeerTypeConnectionConfig {
+            target_out_connections: 3,
+            max_out_attempts: 2,
+            max_in_connections: 2,
+        },
+        PeerType::Standard => PeerTypeConnectionConfig {
+            target_out_connections: 0,
+            max_out_attempts: 0,
+            max_in_connections: 2,
+        }
+    };
+    let network_conf = NetworkSettings {
+        peer_types_config,
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 

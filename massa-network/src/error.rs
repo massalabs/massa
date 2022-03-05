@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::ConnectionId;
+use crate::{peer_info_database::PeerType, ConnectionId};
 use displaydoc::Display;
 use massa_models::ModelsError;
 use std::net::IpAddr;
@@ -78,6 +78,8 @@ pub enum NetworkConnectionErrorType {
     CloseConnectionWithNoConnectionToClose(IpAddr),
     /// Peer info not found for address: {0}
     PeerInfoNotFoundError(IpAddr),
+    /// Peer info not found for address: {0}
+    PeerTypeNotFoundError(PeerType),
     /// Too many connection attempt: {0}
     TooManyConnectionAttempts(IpAddr),
     /// Too many connection failure: {0}

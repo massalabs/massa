@@ -3,6 +3,8 @@
 #![feature(async_closure)]
 #![feature(drain_filter)]
 #![feature(ip)]
+#![feature(is_some_with)]
+#![feature(half_open_range_patterns)]
 
 //! Manages a connection with a node
 pub use common::{ConnectionClosureReason, ConnectionId};
