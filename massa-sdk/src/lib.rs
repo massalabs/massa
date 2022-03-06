@@ -142,14 +142,14 @@ impl RpcClient {
         self.call_method("get_status", "NodeStatus", ()).await
     }
 
-    pub async fn _get_cliques(&self) -> RpcResult<Vec<Clique>> {
+    pub(crate) async fn _get_cliques(&self) -> RpcResult<Vec<Clique>> {
         self.call_method("get_cliques", "Vec<Clique>", ()).await
     }
 
     // Debug (specific information)
 
     /// Returns the active stakers and their roll counts for the current cycle.
-    pub async fn _get_stakers(&self) -> RpcResult<Map<Address, u64>> {
+    pub(crate) async fn _get_stakers(&self) -> RpcResult<Map<Address, u64>> {
         self.call_method("get_stakers", "Map<Address, u64>", ())
             .await
     }
@@ -183,7 +183,7 @@ impl RpcClient {
 
     /// Get the block graph within the specified time interval.
     /// Optional parameters: from <time_start> (included) and to <time_end> (excluded) millisecond timestamp
-    pub async fn _get_graph_interval(
+    pub(crate) async fn _get_graph_interval(
         &self,
         time_interval: TimeInterval,
     ) -> RpcResult<Vec<BlockSummary>> {
