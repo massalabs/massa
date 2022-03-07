@@ -324,7 +324,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Integrate the block,
             // this should note the node as knowning about the endorsement.
             protocol_command_sender
-                .integrated_block(block_id, block, Default::default(), vec![endorsement_id])
+                .integrated_block(block_id, Default::default(), vec![endorsement_id])
                 .await
                 .unwrap();
 
@@ -431,10 +431,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
             // Send the block as search results.
             let mut results = Map::default();
-            results.insert(
-                block_id,
-                Some((block.clone(), None, Some(vec![endorsement_id]))),
-            );
+            results.insert(block_id, Some((None, Some(vec![endorsement_id]))));
 
             protocol_command_sender
                 .send_get_blocks_results(results)
