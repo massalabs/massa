@@ -3,10 +3,22 @@
 use crate::error::MassaHashError;
 use crate::settings::HASH_SIZE_BYTES;
 use blake3;
-use std::{convert::TryInto, str::FromStr};
+use std::{convert::TryInto, str::FromStr, cmp::Ordering};
 
-#[derive(PartialOrd, Ord, Eq, PartialEq, Copy, Clone, Hash)]
+#[derive(Eq, PartialEq, Copy, Clone, Hash)]
 pub struct Hash(blake3::Hash);
+
+impl PartialOrd for Hash {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.0.as_bytes().partial_cmp(other.0.as_bytes())
+    }
+}
+
+impl Ord for Hash {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.as_bytes().cmp(other.0.as_bytes())
+    }
+}
 
 impl std::fmt::Display for Hash {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
