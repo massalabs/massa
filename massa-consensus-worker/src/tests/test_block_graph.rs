@@ -13,7 +13,7 @@ use massa_models::{
     Address, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact, SerializeCompact,
     Slot,
 };
-use massa_models::{Amount, Endorsement, EndorsementContent};
+use massa_models::{storage::Storage, Amount, Endorsement, EndorsementContent};
 use massa_signature::{PublicKey, Signature};
 use serial_test::serial;
 use std::str::FromStr;
@@ -425,8 +425,8 @@ pub async fn test_get_ledger_at_parents() {
             .collect(),
         ),
     };
-
-    let block_graph = BlockGraph::new(GraphConfig::from(&cfg), Some(export_graph))
+    let storage: Storage = Default::default();
+    let block_graph = BlockGraph::new(GraphConfig::from(&cfg), Some(export_graph), storage)
         .await
         .unwrap();
 
@@ -595,7 +595,8 @@ fn test_bootsrapable_graph_serialize_compact() {
 async fn test_clique_calculation() {
     let ledger_file = generate_ledger_file(&Map::default());
     let cfg = ConsensusConfig::from(ledger_file.path());
-    let mut block_graph = BlockGraph::new(GraphConfig::from(&cfg), None)
+    let storage: Storage = Default::default();
+    let mut block_graph = BlockGraph::new(GraphConfig::from(&cfg), None, storage)
         .await
         .unwrap();
     let hashes: Vec<BlockId> = vec![

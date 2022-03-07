@@ -1,5 +1,6 @@
 use crate::start_protocol_controller;
 use futures::Future;
+use massa_models::storage::Storage;
 use massa_protocol_exports::{
     tests::mock_network_controller::MockNetworkController, ProtocolCommandSender,
     ProtocolEventReceiver, ProtocolManager, ProtocolPoolEventReceiver, ProtocolSettings,
@@ -26,7 +27,7 @@ where
 {
     let (network_controller, network_command_sender, network_event_receiver) =
         MockNetworkController::new();
-
+    let storage: Storage = Default::default();
     // start protocol controller
     let (
         protocol_command_sender,
@@ -39,6 +40,7 @@ where
         10,
         network_command_sender,
         network_event_receiver,
+        storage,
     )
     .await
     .expect("could not start protocol controller");

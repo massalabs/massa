@@ -13,8 +13,9 @@ use massa_execution_exports::test_exports::MockExecutionController;
 use massa_graph::{export_active_block::ExportActiveBlock, BlockGraphExport, BootstrapableGraph};
 use massa_hash::hash::Hash;
 use massa_models::{
-    prehash::Set, Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, Endorsement,
-    EndorsementContent, Operation, OperationContent, OperationType, SerializeCompact, Slot,
+    prehash::Set, storage::Storage, Address, Amount, Block, BlockHeader, BlockHeaderContent,
+    BlockId, Endorsement, EndorsementContent, Operation, OperationContent, OperationType,
+    SerializeCompact, Slot,
 };
 use massa_pool::PoolCommand;
 use massa_proof_of_stake_exports::ExportProofOfStake;
@@ -651,7 +652,7 @@ pub async fn consensus_pool_test<F, V>(
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-
+    let storage: Storage = Default::default();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -664,6 +665,7 @@ pub async fn consensus_pool_test<F, V>(
             },
             boot_pos,
             boot_graph,
+            storage,
             0,
         )
         .await
@@ -724,7 +726,7 @@ where
         }
     });
     let pool_sink = PoolCommandSink::new(pool_controller).await;
-
+    let storage: Storage = Default::default();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -737,6 +739,7 @@ where
             },
             None,
             None,
+            storage,
             0,
         )
         .await
