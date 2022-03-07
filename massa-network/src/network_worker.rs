@@ -739,7 +739,7 @@ impl NetworkWorker {
                 self.ban_connection_ids(ban_connection_ids).await
             }
             NetworkCommand::SendBlockHeader { node, header } => {
-                massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id":header.content.compute_id()?, "header": header, "node": node});
+                massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id": header.content.compute_id()?, "header": header, "node": node});
                 self.forward_message_to_node_or_resend_close_event(
                     &node,
                     NodeCommand::SendBlockHeader(header),
