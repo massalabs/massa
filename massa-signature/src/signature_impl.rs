@@ -2,11 +2,11 @@
 
 use massa_hash::hash::Hash;
 use massa_hash::MassaHashError;
-use secp256k1::{Message, Secp256k1};
+use secp256k1::{Message, Secp256k1, schnorr};
 use std::{convert::TryInto, str::FromStr};
 
 pub const PRIVATE_KEY_SIZE_BYTES: usize = 32;
-pub const PUBLIC_KEY_SIZE_BYTES: usize = 33;
+pub const PUBLIC_KEY_SIZE_BYTES: usize = 32;
 pub const SIGNATURE_SIZE_BYTES: usize = 64;
 const PRIVATE_KEY_STRING_PREFIX: &str = "PRI";
 const PUBLIC_KEY_STRING_PREFIX: &str = "PUB";
@@ -245,7 +245,7 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
 /// by the corresponding PublicKey.
 /// Generated from the PrivateKey using SignatureEngine
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct PublicKey(secp256k1::PublicKey);
+pub struct PublicKey(secp256k1::XOnlyPublicKey);
 
 impl std::fmt::Display for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -343,7 +343,7 @@ impl PublicKey {
             .into_vec()
             .map_err(|err| {
                 MassaHashError::ParsingError(format!(
-                    "public key bs58_check parsing error: {}",
+                    "[HERE] public key bs58_check parsing error: {}",
                     err
                 ))
             })
@@ -370,7 +370,7 @@ impl PublicKey {
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8; PUBLIC_KEY_SIZE_BYTES]) -> Result<PublicKey, MassaHashError> {
-        secp256k1::PublicKey::from_slice(&data[..])
+        secp256k1::XOnlyPublicKey::from_slice(&data[..])
             .map(PublicKey)
             .map_err(|err| {
                 MassaHashError::ParsingError(format!("public key bytes parsing error: {}", err))
@@ -479,7 +479,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
 
 /// Signature generated from a message and a privateKey.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Signature(secp256k1::Signature);
+pub struct Signature(schnorr::Signature);
 
 impl std::fmt::Display for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -545,7 +545,7 @@ impl Signature {
     /// let serialized = signature.to_bytes();
     /// ```
     pub fn to_bytes(&self) -> [u8; SIGNATURE_SIZE_BYTES] {
-        self.0.serialize_compact()
+        *self.0.as_ref()
     }
 
     /// Serialize a Signature into bytes.
@@ -562,7 +562,7 @@ impl Signature {
     /// let serialized = signature.into_bytes();
     /// ```
     pub fn into_bytes(self) -> [u8; SIGNATURE_SIZE_BYTES] {
-        self.0.serialize_compact()
+        *self.0.as_ref()
     }
 
     /// Deserialize a Signature using bs58 encoding with checksum.
@@ -611,7 +611,7 @@ impl Signature {
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8; SIGNATURE_SIZE_BYTES]) -> Result<Signature, MassaHashError> {
-        secp256k1::Signature::from_compact(&data[..])
+        schnorr::Signature::from_slice(&data[..])
             .map(Signature)
             .map_err(|err| {
                 MassaHashError::ParsingError(format!("signature bytes parsing error: {}", err))
