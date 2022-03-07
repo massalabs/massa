@@ -2,7 +2,7 @@
 
 use crate::constants::{BLOCK_ID_SIZE_BYTES, ENDORSEMENT_ID_SIZE_BYTES};
 use crate::prehash::PreHashed;
-use crate::signed::{Id, Signable};
+use crate::signed::{Id, Signable, Signed};
 use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
@@ -115,6 +115,8 @@ pub struct Endorsement {
 }
 
 impl Signable<EndorsementId> for Endorsement {}
+
+pub type SignedEndorsement = Signed<Endorsement, EndorsementId>;
 
 /// Checks performed:
 /// - Validity of the slot.

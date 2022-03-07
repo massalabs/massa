@@ -3,10 +3,10 @@
 use crate::{settings::PoolConfig, PoolError};
 use massa_models::prehash::{Map, Set};
 use massa_models::signed::Signed;
-use massa_models::{Address, BlockId, Endorsement, EndorsementId, Slot};
+use massa_models::{Address, BlockId, Endorsement, EndorsementId, SignedEndorsement, Slot};
 
 pub struct EndorsementPool {
-    endorsements: Map<EndorsementId, Signed<Endorsement, EndorsementId>>,
+    endorsements: Map<EndorsementId, SignedEndorsement>,
     latest_final_periods: Vec<u64>,
     current_slot: Option<Slot>,
     cfg: &'static PoolConfig,
@@ -45,7 +45,7 @@ impl EndorsementPool {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
-    ) -> Result<Vec<(EndorsementId, Signed<Endorsement, EndorsementId>)>, PoolError> {
+    ) -> Result<Vec<(EndorsementId, SignedEndorsement)>, PoolError> {
         let mut candidates = self
             .endorsements
             .iter()
@@ -60,8 +60,7 @@ impl EndorsementPool {
                     None
                 }
             })
-            .collect::<Result<Vec<(EndorsementId, Signed<Endorsement, EndorsementId>)>, PoolError>>(
-            )?;
+            .collect::<Result<Vec<(EndorsementId, SignedEndorsement)>, PoolError>>()?;
         candidates.sort_unstable_by_key(|(_e_id, endo)| endo.content.index);
         candidates.dedup_by_key(|(_e_id, endo)| endo.content.index);
         Ok(candidates)
@@ -71,7 +70,7 @@ impl EndorsementPool {
     /// Prunes the pool if there are too many endorsements
     pub fn add_endorsements(
         &mut self,
-        endorsements: Map<EndorsementId, Signed<Endorsement, EndorsementId>>,
+        endorsements: Map<EndorsementId, SignedEndorsement>,
     ) -> Result<Set<EndorsementId>, PoolError> {
         let mut newly_added = Set::<EndorsementId>::default();
         for (endorsement_id, endorsement) in endorsements.into_iter() {
@@ -151,7 +150,7 @@ impl EndorsementPool {
     pub fn get_endorsement_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, Signed<Endorsement, EndorsementId>>, PoolError> {
+    ) -> Result<Map<EndorsementId, SignedEndorsement>, PoolError> {
         let mut res = Map::default();
         for (id, ed) in self.endorsements.iter() {
             if Address::from_public_key(&ed.content.sender_public_key) == address {
@@ -164,7 +163,7 @@ impl EndorsementPool {
     pub fn get_endorsement_by_id(
         &self,
         endorsements: Set<EndorsementId>,
-    ) -> Map<EndorsementId, Signed<Endorsement, EndorsementId>> {
+    ) -> Map<EndorsementId, SignedEndorsement> {
         self.endorsements
             .iter()
             .filter_map(|(id, ed)| {

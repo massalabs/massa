@@ -6,7 +6,7 @@ use massa_models::{
     signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
     Endorsement, EndorsementId, ModelsError, Operation, OperationId, SerializeCompact,
-    SerializeVarInt, SignedHeader, SignedOperation, Version,
+    SerializeVarInt, SignedEndorsement, SignedHeader, SignedOperation, Version,
 };
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -49,7 +49,7 @@ pub enum Message {
     /// Operations
     Operations(Vec<SignedOperation>),
     /// Endorsements
-    Endorsements(Vec<Signed<Endorsement, EndorsementId>>),
+    Endorsements(Vec<SignedEndorsement>),
 }
 
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]

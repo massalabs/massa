@@ -6,7 +6,8 @@ use crate::signed::{Id, Signable, Signed};
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
     DeserializeMinBEInt, DeserializeVarInt, Endorsement, EndorsementId, ModelsError, Operation,
-    OperationId, SerializeCompact, SerializeMinBEInt, SerializeVarInt, SignedOperation, Slot,
+    OperationId, SerializeCompact, SerializeMinBEInt, SerializeVarInt, SignedEndorsement,
+    SignedOperation, Slot,
 };
 use massa_hash::hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
@@ -202,7 +203,7 @@ pub struct BlockHeader {
     pub slot: Slot,
     pub parents: Vec<BlockId>,
     pub operation_merkle_root: Hash, // all operations hash
-    pub endorsements: Vec<Signed<Endorsement, EndorsementId>>,
+    pub endorsements: Vec<SignedEndorsement>,
 }
 
 impl Signable<BlockId> for BlockHeader {

@@ -7,7 +7,7 @@ use super::{
 use massa_hash::hash::Hash;
 use massa_models::{
     signed::{Signable, Signed},
-    Block, BlockHeader, BlockId, Endorsement, EndorsementId, SignedOperation, Slot,
+    Block, BlockHeader, BlockId, SignedEndorsement, SignedOperation, Slot,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 
@@ -15,7 +15,7 @@ pub struct BlockFactory {
     pub best_parents: Vec<BlockId>,
     pub creator_priv_key: PrivateKey,
     pub slot: Slot,
-    pub endorsements: Vec<Signed<Endorsement, EndorsementId>>,
+    pub endorsements: Vec<SignedEndorsement>,
     pub operations: Vec<SignedOperation>,
     pub protocol_controller: MockProtocolController,
 }

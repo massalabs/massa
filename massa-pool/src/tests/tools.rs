@@ -5,8 +5,8 @@ use crate::{pool_controller, settings::PoolConfig, PoolCommandSender, PoolManage
 use futures::Future;
 use massa_hash::hash::Hash;
 use massa_models::{
-    signed::Signed, Address, Amount, BlockId, Endorsement, EndorsementId, Operation, OperationType,
-    SignedOperation, Slot,
+    signed::Signed, Address, Amount, BlockId, Endorsement, Operation, OperationType,
+    SignedEndorsement, SignedOperation, Slot,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use std::str::FromStr;
@@ -57,7 +57,7 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
 }
 
 /// Creates an endorsement for use in pool tests.
-pub fn create_endorsement(slot: Slot) -> Signed<Endorsement, EndorsementId> {
+pub fn create_endorsement(slot: Slot) -> SignedEndorsement {
     let sender_priv = generate_random_private_key();
     let sender_public_key = derive_public_key(&sender_priv);
 

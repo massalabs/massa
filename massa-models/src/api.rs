@@ -5,9 +5,8 @@ use crate::ledger_models::LedgerData;
 use crate::node::NodeId;
 use crate::prehash::Map;
 use crate::prehash::Set;
-use crate::signed::Signed;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
-use crate::Endorsement;
+use crate::SignedEndorsement;
 use crate::SignedOperation;
 use crate::{
     Address, Amount, Block, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
@@ -285,7 +284,7 @@ pub struct EndorsementInfo {
     pub in_pool: bool,
     pub in_blocks: Vec<BlockId>,
     pub is_final: bool,
-    pub endorsement: Signed<Endorsement, EndorsementId>,
+    pub endorsement: SignedEndorsement,
 }
 
 impl std::fmt::Display for EndorsementInfo {

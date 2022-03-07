@@ -4,9 +4,9 @@ use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
 use massa_models::prehash::{Map, Set};
-use massa_models::signed::Signed;
+
 use massa_models::{
-    Block, BlockId, Endorsement, EndorsementId, OperationId, SignedHeader, SignedOperation,
+    Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
 };
 use massa_network::NetworkEventReceiver;
 use serde::Serialize;
@@ -42,7 +42,7 @@ pub enum ProtocolPoolEvent {
     },
     /// Endorsements were received
     ReceivedEndorsements {
-        endorsements: Map<EndorsementId, Signed<Endorsement, EndorsementId>>,
+        endorsements: Map<EndorsementId, SignedEndorsement>,
         propagate: bool, // whether or not to propagate endorsements
     },
 }
@@ -72,7 +72,7 @@ pub enum ProtocolCommand {
     /// Propagate operations
     PropagateOperations(Map<OperationId, SignedOperation>),
     /// Propagate endorsements
-    PropagateEndorsements(Map<EndorsementId, Signed<Endorsement, EndorsementId>>),
+    PropagateEndorsements(Map<EndorsementId, SignedEndorsement>),
 }
 
 #[derive(Debug, Serialize)]
@@ -175,7 +175,7 @@ impl ProtocolCommandSender {
 
     pub async fn propagate_endorsements(
         &mut self,
-        endorsements: Map<EndorsementId, Signed<Endorsement, EndorsementId>>,
+        endorsements: Map<EndorsementId, SignedEndorsement>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_endorsements", {
             "endorsements": endorsements

@@ -9,7 +9,7 @@ use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::{Signable, Signed};
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockId, EndorsementId, SignedOperation, Slot,
+    Address, Amount, Block, BlockHeader, BlockId, SignedEndorsement, SignedOperation, Slot,
 };
 use massa_models::{Endorsement, Operation, OperationType};
 use massa_network::NetworkCommand;
@@ -102,7 +102,7 @@ pub fn create_block_with_endorsements(
     private_key: &PrivateKey,
     public_key: &PublicKey,
     slot: Slot,
-    endorsements: Vec<Signed<Endorsement, EndorsementId>>,
+    endorsements: Vec<SignedEndorsement>,
 ) -> Block {
     let (_, header) = Signed::new_signed(
         BlockHeader {
@@ -160,7 +160,7 @@ pub async fn send_and_propagate_block(
 
 /// Creates an endorsement for use in protocol tests,
 /// without paying attention to consensus related things.
-pub fn create_endorsement() -> Signed<Endorsement, EndorsementId> {
+pub fn create_endorsement() -> SignedEndorsement {
     let sender_priv = generate_random_private_key();
     let sender_public_key = derive_public_key(&sender_priv);
 

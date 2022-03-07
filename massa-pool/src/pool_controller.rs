@@ -10,9 +10,8 @@ use massa_logging::massa_trace;
 use massa_models::{
     constants::CHANNEL_SIZE,
     prehash::{Map, Set},
-    signed::Signed,
     stats::PoolStats,
-    Address, BlockId, Endorsement, EndorsementId, OperationId, OperationSearchResult,
+    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, SignedEndorsement,
     SignedOperation, Slot,
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEventReceiver};
@@ -180,7 +179,7 @@ impl PoolCommandSender {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
-    ) -> Result<Vec<(EndorsementId, Signed<Endorsement, EndorsementId>)>, PoolError> {
+    ) -> Result<Vec<(EndorsementId, SignedEndorsement)>, PoolError> {
         massa_trace!("pool.command_sender.get_endorsements", {
             "target_slot": target_slot
         });
@@ -260,7 +259,7 @@ impl PoolCommandSender {
 
     pub async fn add_endorsements(
         &mut self,
-        endorsements: Map<EndorsementId, Signed<Endorsement, EndorsementId>>,
+        endorsements: Map<EndorsementId, SignedEndorsement>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.add_endorsements", {
             "endorsements": endorsements
@@ -276,7 +275,7 @@ impl PoolCommandSender {
     pub async fn get_endorsements_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, Signed<Endorsement, EndorsementId>>, PoolError> {
+    ) -> Result<Map<EndorsementId, SignedEndorsement>, PoolError> {
         massa_trace!("pool.command_sender.get_endorsements_by_address", {
             "address": address
         });
@@ -303,7 +302,7 @@ impl PoolCommandSender {
     pub async fn get_endorsements_by_id(
         &self,
         endorsements: Set<EndorsementId>,
-    ) -> Result<Map<EndorsementId, Signed<Endorsement, EndorsementId>>, PoolError> {
+    ) -> Result<Map<EndorsementId, SignedEndorsement>, PoolError> {
         massa_trace!("pool.command_sender.get_endorsements_by_id", {
             "endorsements": endorsements
         });

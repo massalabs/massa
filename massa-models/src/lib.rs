@@ -10,7 +10,7 @@ pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
     StakersCycleProductionStats,
 };
-pub use endorsement::{Endorsement, EndorsementId};
+pub use endorsement::{Endorsement, EndorsementId, SignedEndorsement};
 pub use error::ModelsError;
 pub use operation::{Operation, OperationId, OperationType, SignedOperation};
 pub use serialization::{
