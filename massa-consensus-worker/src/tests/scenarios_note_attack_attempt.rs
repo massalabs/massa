@@ -11,7 +11,7 @@ use massa_execution_exports::test_exports::MockExecutionController;
 
 use massa_consensus_exports::settings::ConsensusChannels;
 use massa_hash::hash::Hash;
-use massa_models::{BlockId, Slot};
+use massa_models::{storage::Storage, BlockId, Slot};
 use massa_signature::{generate_random_private_key, PrivateKey};
 use serial_test::serial;
 
@@ -31,7 +31,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
-
+    let storage: Storage = Default::default();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -44,6 +44,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
             },
             None,
             None,
+            storage,
             0,
         )
         .await
@@ -96,7 +97,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
-
+    let storage: Storage = Default::default();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -109,6 +110,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
             },
             None,
             None,
+            storage,
             0,
         )
         .await
