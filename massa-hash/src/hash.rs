@@ -105,9 +105,7 @@ impl Hash {
     /// let deserialized: Hash = Hash::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<Hash, MassaHashError> {
-        Ok(Hash(blake3::Hash::from_hex(&data[..]).map_err(|err| {
-            MassaHashError::ParsingError(format!("{}", err))
-        })?))
+        Ok(Hash(blake3::Hash::from(*data)))
     }
 }
 
