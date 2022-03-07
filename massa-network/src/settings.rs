@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::peer_info_database::PeerType;
+use enum_map::EnumMap;
 use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::{IpAddr, SocketAddr};
@@ -25,12 +27,8 @@ pub struct NetworkSettings {
     pub peers_file: std::path::PathBuf,
     /// Path to the file containing our private_key
     pub private_key_file: std::path::PathBuf,
-    /// Config for bootstrap connections.
-    pub bootstrap_peers_config: PeerTypeConnectionConfig,
-    /// Config for whitelist peers.
-    pub whitelist_peers_config: PeerTypeConnectionConfig,
-    /// Config for standard peers.
-    pub standard_peers_config: PeerTypeConnectionConfig,
+    /// Config for PeerType connections
+    pub peer_types_config: EnumMap<PeerType, PeerTypeConnectionConfig>,
     /// Limit on the number of in connections per ip.
     pub max_in_connections_per_ip: usize,
     /// Limit on the number of idle peers we remember.
@@ -55,7 +53,7 @@ pub struct NetworkSettings {
 
 /// Connection config for a peer type
 /// Limit the current connections for a given peer type as a whole
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Default)]
 pub struct PeerTypeConnectionConfig {
     /// max number of incomming connection
     pub max_in_connections: usize,
@@ -67,7 +65,8 @@ pub struct PeerTypeConnectionConfig {
 
 #[cfg(test)]
 mod tests {
-    use crate::NetworkSettings;
+    use crate::{peer_info_database::PeerType, NetworkSettings};
+    use enum_map::enum_map;
     use massa_models::constants::*;
     use massa_time::MassaTime;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -76,6 +75,23 @@ mod tests {
 
     impl Default for NetworkSettings {
         fn default() -> Self {
+            let peer_types_config = enum_map! {
+                PeerType::Bootstrap => PeerTypeConnectionConfig {
+                    target_out_connections: 1,
+                    max_out_attempts: 1,
+                    max_in_connections: 1,
+                },
+                PeerType::WhiteListed => PeerTypeConnectionConfig {
+                    target_out_connections: 3,
+                    max_out_attempts: 2,
+                    max_in_connections: 2,
+                },
+                PeerType::Standard => PeerTypeConnectionConfig {
+                    target_out_connections: 10,
+                    max_out_attempts: 5,
+                    max_in_connections: 15,
+                }
+            };
             NetworkSettings {
                 bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
                 routable_ip: Some(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))),
@@ -95,21 +111,7 @@ mod tests {
                 initial_peers_file: std::path::PathBuf::new(),
                 peer_list_send_timeout: MassaTime::from(500),
                 max_in_connection_overflow: 2,
-                bootstrap_peers_config: PeerTypeConnectionConfig {
-                    target_out_connections: 1,
-                    max_out_attempts: 1,
-                    max_in_connections: 1,
-                },
-                whitelist_peers_config: PeerTypeConnectionConfig {
-                    max_in_connections: 3,
-                    target_out_connections: 2,
-                    max_out_attempts: 2,
-                },
-                standard_peers_config: PeerTypeConnectionConfig {
-                    target_out_connections: 10,
-                    max_in_connections: 5,
-                    max_out_attempts: 15,
-                },
+                peer_types_config,
             }
         }
     }
@@ -128,6 +130,23 @@ mod tests {
                 endorsement_count: 8,
                 ..massa_models::SerializationContext::default()
             });
+            let peer_types_config = enum_map! {
+                PeerType::Bootstrap => PeerTypeConnectionConfig {
+                    target_out_connections: 1,
+                    max_out_attempts: 1,
+                    max_in_connections: 1,
+                },
+                PeerType::WhiteListed => PeerTypeConnectionConfig {
+                    target_out_connections: 3,
+                    max_out_attempts: 2,
+                    max_in_connections: 2,
+                },
+                PeerType::Standard => PeerTypeConnectionConfig {
+                    target_out_connections: 10,
+                    max_out_attempts: 5,
+                    max_in_connections: 15,
+                }
+            };
             Self {
                 bind: format!("0.0.0.0:{}", port).parse().unwrap(),
                 routable_ip: Some(BASE_NETWORK_CONTROLLER_IP),
@@ -149,21 +168,7 @@ mod tests {
                 initial_peers_file: peers_file.to_path_buf(),
                 peer_list_send_timeout: MassaTime::from(50),
                 max_in_connection_overflow: 10,
-                bootstrap_peers_config: PeerTypeConnectionConfig {
-                    target_out_connections: 1,
-                    max_out_attempts: 1,
-                    max_in_connections: 1,
-                },
-                whitelist_peers_config: PeerTypeConnectionConfig {
-                    max_in_connections: 3,
-                    target_out_connections: 2,
-                    max_out_attempts: 2,
-                },
-                standard_peers_config: PeerTypeConnectionConfig {
-                    target_out_connections: 10,
-                    max_in_connections: 5,
-                    max_out_attempts: 15,
-                },
+                peer_types_config,
             }
         }
     }

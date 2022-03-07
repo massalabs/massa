@@ -2,6 +2,8 @@
 
 use crate::error::{NetworkConnectionErrorType, NetworkError};
 use crate::settings::{NetworkSettings, PeerTypeConnectionConfig};
+use displaydoc::Display;
+use enum_map::{Enum, EnumMap};
 use itertools::Itertools;
 use massa_logging::massa_trace;
 use massa_models::constants::MAX_ADVERTISE_LENGTH;
@@ -18,15 +20,18 @@ use tracing::{trace, warn};
 /// Peer categories.
 /// There is a defined number af slots for each category.
 /// Order matters: less prioritized peer type first
-#[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Display, Enum,
+)]
 pub enum PeerType {
     /// Just a peer
     Standard,
     /// Connection from these nodes are always accepted
     WhiteListed,
-    /// if the peer is in bootstrap servers list
-    /// for now it is decoupled from the real bootstrap sever list, it's just parsed
-    /// TODO: https://github.com/massalabs/massa/issues/2320
+    /** if the peer is in bootstrap servers list
+    for now it is decoupled from the real bootstrap sever list, it's just parsed
+    TODO: https://github.com/massalabs/massa/issues/2320
+    */
     Bootstrap,
 }
 
@@ -159,12 +164,8 @@ pub struct PeerInfoDatabase {
     pub(crate) saver_join_handle: JoinHandle<()>,
     /// Monitor changed peers.
     pub(crate) saver_watch_tx: watch::Sender<HashMap<IpAddr, PeerInfo>>,
-    /// Whitelist peers connection count
-    pub(crate) whitelist_connection_count: ConnectionCount,
-    /// Bootstrap peers connection count
-    pub(crate) bootstrap_connection_count: ConnectionCount,
-    /// Standard peers connection count
-    pub(crate) standard_connection_count: ConnectionCount,
+    /// Connections count for each PeerType
+    pub(crate) peer_types_connection_count: EnumMap<PeerType, ConnectionCount>,
     /// Every wakeup_interval we try to establish a connection with known inactive peers
     pub(crate) wakeup_interval: MassaTime,
     /// Clock compensation.
@@ -359,9 +360,7 @@ impl PeerInfoDatabase {
             saver_watch_tx,
             wakeup_interval,
             clock_compensation,
-            whitelist_connection_count: Default::default(),
-            bootstrap_connection_count: Default::default(),
-            standard_connection_count: Default::default(),
+            peer_types_connection_count: EnumMap::default(),
         })
     }
 
@@ -385,9 +384,11 @@ impl PeerInfoDatabase {
     /// todo https://github.com/massalabs/massa/issues/2319
     #[inline]
     pub fn get_in_connection_count(&self) -> u64 {
-        (self.bootstrap_connection_count.active_in_connections
-            + self.whitelist_connection_count.active_in_connections
-            + self.standard_connection_count.active_in_connections) as u64
+        self.peer_types_connection_count
+            .values()
+            .fold(0, |acc, connection_count| {
+                acc + (connection_count.active_in_connections as u64)
+            })
     }
 
     /// total out connections count, considering all peer types
@@ -395,9 +396,11 @@ impl PeerInfoDatabase {
     /// todo https://github.com/massalabs/massa/issues/2319
     #[inline]
     pub fn get_out_connection_count(&self) -> u64 {
-        (self.bootstrap_connection_count.active_out_connections
-            + self.whitelist_connection_count.active_out_connections
-            + self.standard_connection_count.active_out_connections) as u64
+        self.peer_types_connection_count
+            .values()
+            .fold(0, |acc, connection_count| {
+                acc + (connection_count.active_out_connections as u64)
+            })
     }
 
     ///////////////////////
@@ -475,36 +478,31 @@ impl PeerInfoDatabase {
         if !ip.is_global() {
             return Err(NetworkError::InvalidIpError(*ip));
         }
-        let mut update_happened = false;
-        let peer_type = {
-            let peer = self.peers.entry(*ip).or_insert_with(|| {
-                update_happened = true;
-                PeerInfo::new(*ip, false)
-            });
-            peer.active_out_connection_attempts += 1;
-            peer.peer_type
-        };
-
-        if let Err(e) = self.update_global_active_out_connection_attempt_count(
-            peer_type,
-            true,
-            NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
-        ) {
-            //roll back
-            let p = self
-                .peers
-                .get_mut(ip)
-                .ok_or(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-                ))?;
-            p.active_out_connection_attempts -= 1;
-            return Err(e);
-        }
-        if update_happened {
-            self.update()?
-        }
-
-        Ok(())
+        let peer_type = if let Some(peer) = self.peers.get(ip) {
+            if self.can_try_new_out_connection(peer.peer_type) {
+                // Can unwrap because we checked above that there is a peer.
+                let peer = self.peers.get_mut(ip).unwrap();
+                peer.active_out_connection_attempts += 1;
+                Ok(peer.peer_type)
+            } else {
+                Err(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
+                ))
+            }
+        } else {
+            if self.can_try_new_out_connection(Default::default()) {
+                let mut peer = PeerInfo::new(*ip, false);
+                peer.active_out_connection_attempts += 1;
+                self.peers.insert(*ip, peer);
+                Ok(peer.peer_type)
+            } else {
+                Err(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
+                ))
+            }
+        }?;
+        self.increase_global_active_out_connection_attempt_count(peer_type, ip)?;
+        self.update()
     }
 
     /// Sets the peer status as alive.
@@ -571,16 +569,23 @@ impl PeerInfoDatabase {
     /// * ip : ip address of the considered peer.
     pub fn out_connection_closed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         let peer_type = {
+            let peer = self.peers.get(ip).ok_or({
+                NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                )
+            })?;
+            if peer.active_out_connections == 0
+                || !self.can_remove_active_out_connection_count(peer.peer_type)
+            {
+                return Err(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
+                ));
+            }
             let peer = self.peers.get_mut(ip).ok_or({
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
                 )
             })?;
-            if peer.active_out_connections == 0 {
-                return Err(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
-                ));
-            }
             peer.active_out_connections -= 1;
             let peer_type = peer.peer_type;
             if !peer.is_active() && peer.peer_type == Default::default() {
@@ -589,22 +594,7 @@ impl PeerInfoDatabase {
             }
             peer_type
         };
-
-        if let Err(e) = self.update_global_active_out_connection_count(
-            peer_type,
-            false,
-            NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
-        ) {
-            //roll back
-            let p = self
-                .peers
-                .get_mut(ip)
-                .ok_or(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-                ))?;
-            p.active_out_connections += 1;
-            return Err(e);
-        }
+        self.decrease_global_active_out_connection_count(peer_type, ip)?;
         Ok(())
     }
 
@@ -617,16 +607,23 @@ impl PeerInfoDatabase {
     /// * ip : ip address of the considered peer.
     pub fn in_connection_closed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         let peer_type = {
+            let peer = self.peers.get(ip).ok_or({
+                NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                )
+            })?;
+            if peer.active_in_connections == 0
+                || !self.can_decrease_global_active_in_connection_count(peer.peer_type)
+            {
+                return Err(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
+                ));
+            }
             let peer = self.peers.get_mut(ip).ok_or({
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
                 )
             })?;
-            if peer.active_in_connections == 0 {
-                return Err(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
-                ));
-            }
             peer.active_in_connections -= 1;
             let peer_type = peer.peer_type;
             if !peer.is_active() && peer.peer_type == PeerType::Standard {
@@ -636,21 +633,7 @@ impl PeerInfoDatabase {
             peer_type
         };
 
-        if let Err(e) = self.update_global_active_in_connection_count(
-            peer_type,
-            false,
-            NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
-        ) {
-            //roll back
-            let p = self
-                .peers
-                .get_mut(ip)
-                .ok_or(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-                ))?;
-            p.active_in_connections += 1;
-            return Err(e);
-        }
+        self.decrease_global_active_in_connection_count(peer_type, ip)?;
         Ok(())
     }
 
@@ -679,23 +662,26 @@ impl PeerInfoDatabase {
             return Ok(false);
         }
 
-        self.update_global_active_out_connection_attempt_count(
-            peer_type,
-            false,
-            NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
-        )?;
+        self.decrease_global_active_out_connection_attempt_count(peer_type, ip)?;
 
         let peer_type = {
+            let peer = self.peers.get(ip).ok_or({
+                NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                )
+            })?;
+            if peer.active_out_connection_attempts == 0
+                || !self.can_remove_new_out_connection_attempt(peer_type)
+            {
+                return Err(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
+                ));
+            }
             let peer = self.peers.get_mut(ip).ok_or({
                 NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
                 )
             })?;
-            if peer.active_out_connection_attempts == 0 {
-                return Err(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
-                ));
-            }
             peer.active_out_connection_attempts -= 1;
             peer.advertised = true; // we just connected to it. Assume advertised.
 
@@ -710,32 +696,7 @@ impl PeerInfoDatabase {
             peer.active_out_connections += 1;
             peer.peer_type
         };
-
-        if let Err(e) = self.update_global_active_out_connection_count(
-            peer_type,
-            true,
-            NetworkConnectionErrorType::UnexpectedError,
-        ) {
-            //roll back
-            let peer_type = {
-                let p = self
-                    .peers
-                    .get_mut(ip)
-                    .ok_or(NetworkError::PeerConnectionError(
-                        NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-                    ))?;
-                p.active_out_connections -= 1;
-                p.active_out_connection_attempts += 1;
-                p.peer_type
-            };
-            self.update_global_active_out_connection_attempt_count(
-                peer_type,
-                true,
-                NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
-            )?;
-            return Err(e);
-        }
-
+        self.increase_global_active_out_connection_count(peer_type)?;
         self.request_dump()?;
         Ok(true)
     }
@@ -748,16 +709,22 @@ impl PeerInfoDatabase {
     /// * ip : ip address of the considered peer.
     pub fn out_connection_attempt_failed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         let peer_type = {
-            let peer = self.peers.get_mut(ip).ok_or({
-                NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-                )
-            })?;
-            if peer.active_out_connection_attempts == 0 {
+            let peer = self.peers.get(ip).ok_or(NetworkError::PeerConnectionError(
+                NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+            ))?;
+            if peer.active_out_connection_attempts == 0
+                || !self.can_remove_new_out_connection_attempt(peer.peer_type)
+            {
                 return Err(NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::TooManyConnectionFailure(*ip),
                 ));
             }
+            let peer = self
+                .peers
+                .get_mut(ip)
+                .ok_or(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                ))?;
             peer.active_out_connection_attempts -= 1;
             peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
             let pt = peer.peer_type;
@@ -766,21 +733,7 @@ impl PeerInfoDatabase {
             }
             pt
         };
-        if let Err(e) = self.update_global_active_out_connection_attempt_count(
-            peer_type,
-            false,
-            NetworkConnectionErrorType::TooManyConnectionFailure(*ip),
-        ) {
-            //roll back
-            let p = self
-                .peers
-                .get_mut(ip)
-                .ok_or(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-                ))?;
-            p.active_out_connection_attempts += 1;
-            return Err(e);
-        }
+        self.decrease_global_active_out_connection_attempt_count(peer_type, ip)?;
         self.request_dump()
     }
 
@@ -849,22 +802,7 @@ impl PeerInfoDatabase {
             peer.peer_type
         };
 
-        if let Err(e) = self.update_global_active_in_connection_count(
-            peer_type,
-            true,
-            NetworkConnectionErrorType::UnexpectedError,
-        ) {
-            //roll back
-            let p = self
-                .peers
-                .get_mut(ip)
-                .ok_or(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-                ))?;
-            p.active_in_connections -= 1;
-            return Err(e);
-        }
-
+        self.increase_global_active_in_connection_count(peer_type)?;
         self.request_dump()?;
         Ok(())
     }
@@ -876,24 +814,21 @@ impl PeerInfoDatabase {
     /// Sorts peers by ( last_failure, rev(last_success) )
     /// and returns as many peers as there are available slots to attempt outgoing connections to.
     pub fn get_out_connection_candidate_ips(&self) -> Result<Vec<IpAddr>, NetworkError> {
-        Ok([
-            self.get_out_connection_candidate_ips_for_type(
-                PeerType::Bootstrap,
-                &self.bootstrap_connection_count,
-                &self.network_settings.bootstrap_peers_config,
-            )?,
-            self.get_out_connection_candidate_ips_for_type(
-                PeerType::WhiteListed,
-                &self.whitelist_connection_count,
-                &self.network_settings.whitelist_peers_config,
-            )?,
-            self.get_out_connection_candidate_ips_for_type(
-                PeerType::Standard,
-                &self.standard_connection_count,
-                &self.network_settings.standard_peers_config,
-            )?,
-        ]
-        .concat())
+        let mut connections = vec![];
+        let mut peer_types: Vec<PeerType> = self
+            .peer_types_connection_count
+            .iter()
+            .map(|(peer_type, _)| peer_type)
+            .collect();
+        peer_types.sort();
+        for &peer_type in peer_types.iter() {
+            connections.append(&mut self.get_out_connection_candidate_ips_for_type(
+                peer_type,
+                &self.peer_types_connection_count[peer_type],
+                &self.network_settings.peer_types_config[peer_type],
+            )?);
+        }
+        Ok(connections)
     }
 
     /// returns Hashmap of ipAddrs -> Peerinfo
@@ -927,75 +862,19 @@ impl PeerInfoDatabase {
     //////////////////////////////
 
     fn get_available_out_connection_attempts_for_peer_type(&self, peer_type: PeerType) -> usize {
-        match peer_type {
-            PeerType::Bootstrap => self
-                .bootstrap_connection_count
-                .get_available_out_connection_attempts(
-                    &self.network_settings.bootstrap_peers_config,
-                ),
-            PeerType::WhiteListed => self
-                .whitelist_connection_count
-                .get_available_out_connection_attempts(
-                    &self.network_settings.whitelist_peers_config,
-                ),
-            PeerType::Standard => self
-                .standard_connection_count
-                .get_available_out_connection_attempts(
-                    &self.network_settings.standard_peers_config,
-                ),
-        }
+        self.peer_types_connection_count[peer_type].get_available_out_connection_attempts(
+            &self.network_settings.peer_types_config[peer_type],
+        )
     }
 
     fn is_target_out_connection_count_reached(&self, peer_type: PeerType) -> bool {
-        match peer_type {
-            PeerType::Bootstrap => {
-                self.bootstrap_connection_count.active_out_connections
-                    >= self
-                        .network_settings
-                        .bootstrap_peers_config
-                        .target_out_connections
-            }
-            PeerType::WhiteListed => {
-                self.whitelist_connection_count.active_out_connections
-                    >= self
-                        .network_settings
-                        .whitelist_peers_config
-                        .target_out_connections
-            }
-            PeerType::Standard => {
-                self.standard_connection_count.active_out_connections
-                    >= self
-                        .network_settings
-                        .standard_peers_config
-                        .target_out_connections
-            }
-        }
+        self.peer_types_connection_count[peer_type].active_out_connections
+            >= self.network_settings.peer_types_config[peer_type].target_out_connections
     }
 
     fn is_max_in_connection_count_reached(&self, peer_type: PeerType) -> bool {
-        match peer_type {
-            PeerType::Bootstrap => {
-                self.bootstrap_connection_count.active_in_connections
-                    >= self
-                        .network_settings
-                        .bootstrap_peers_config
-                        .max_in_connections
-            }
-            PeerType::WhiteListed => {
-                self.whitelist_connection_count.active_in_connections
-                    >= self
-                        .network_settings
-                        .whitelist_peers_config
-                        .max_in_connections
-            }
-            PeerType::Standard => {
-                self.standard_connection_count.active_in_connections
-                    >= self
-                        .network_settings
-                        .standard_peers_config
-                        .max_in_connections
-            }
-        }
+        self.peer_types_connection_count[peer_type].active_in_connections
+            >= self.network_settings.peer_types_config[peer_type].max_in_connections
     }
 
     /// Get ips we want to connect to for a given peer type
@@ -1029,110 +908,91 @@ impl PeerInfoDatabase {
         Some(self.peers.get(ip)?.peer_type)
     }
 
-    /// similar to update_global_active_out_connection_count and update_global_active_in_connection_count
-    /// todo https://github.com/massalabs/massa/issues/2319
-    fn update_global_active_out_connection_attempt_count(
+    fn can_try_new_out_connection(&self, peer_type: PeerType) -> bool {
+        self.get_available_out_connection_attempts_for_peer_type(peer_type) != 0
+    }
+
+    fn can_remove_new_out_connection_attempt(&self, peer_type: PeerType) -> bool {
+        self.get_global_active_out_connection_attempt_count(peer_type) != 0
+    }
+
+    fn increase_global_active_out_connection_attempt_count(
         &mut self,
         peer_type: PeerType,
-        increase: bool,
-        reason: NetworkConnectionErrorType,
+        ip: &IpAddr,
     ) -> Result<(), NetworkError> {
-        if !increase && self.get_global_active_out_connection_attempt_count(peer_type) == 0 {
-            return Err(NetworkError::PeerConnectionError(reason));
+        if !self.can_try_new_out_connection(peer_type) {
+            return Err(NetworkError::PeerConnectionError(
+                NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
+            ));
         }
-        if increase && self.get_available_out_connection_attempts_for_peer_type(peer_type) == 0 {
-            return Err(NetworkError::PeerConnectionError(reason));
-        }
-        let delta: isize = if increase { 1 } else { -1 };
-        match peer_type {
-            PeerType::Bootstrap => {
-                self.bootstrap_connection_count
-                    .active_out_connection_attempts = (self
-                    .bootstrap_connection_count
-                    .active_out_connection_attempts
-                    as isize
-                    + delta) as usize
-            }
-            PeerType::WhiteListed => {
-                self.whitelist_connection_count
-                    .active_out_connection_attempts = (self
-                    .whitelist_connection_count
-                    .active_out_connection_attempts
-                    as isize
-                    + delta) as usize
-            }
-            PeerType::Standard => {
-                self.standard_connection_count
-                    .active_out_connection_attempts = (self
-                    .standard_connection_count
-                    .active_out_connection_attempts
-                    as isize
-                    + delta) as usize
-            }
-        }
+        self.peer_types_connection_count[peer_type].active_out_connection_attempts += 1;
         Ok(())
     }
 
-    /// similar to update_global_active_out_connection_attempt_count and update_global_active_in_connection_count
-    /// todo https://github.com/massalabs/massa/issues/2319
-    fn update_global_active_out_connection_count(
+    fn decrease_global_active_out_connection_attempt_count(
         &mut self,
         peer_type: PeerType,
-        increase: bool,
-        reason: NetworkConnectionErrorType,
+        ip: &IpAddr,
     ) -> Result<(), NetworkError> {
-        if !increase && self.get_global_active_out_connection_count(peer_type) == 0 {
-            return Err(NetworkError::PeerConnectionError(reason));
+        if !self.can_remove_new_out_connection_attempt(peer_type) {
+            return Err(NetworkError::PeerConnectionError(
+                NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
+            ));
         }
-        let delta: isize = if increase { 1 } else { -1 };
-        match peer_type {
-            PeerType::Bootstrap => {
-                self.bootstrap_connection_count.active_out_connections =
-                    (self.bootstrap_connection_count.active_out_connections as isize + delta)
-                        as usize
-            }
-            PeerType::WhiteListed => {
-                self.whitelist_connection_count.active_out_connections =
-                    (self.whitelist_connection_count.active_out_connections as isize + delta)
-                        as usize
-            }
-            PeerType::Standard => {
-                self.standard_connection_count.active_out_connections =
-                    (self.standard_connection_count.active_out_connections as isize + delta)
-                        as usize
-            }
-        }
+        self.peer_types_connection_count[peer_type].active_out_connection_attempts -= 1;
         Ok(())
     }
 
-    /// similar to update_global_active_out_connection_count and update_global_active_out_connection_attempt_count
-    /// todo https://github.com/massalabs/massa/issues/2319
-    fn update_global_active_in_connection_count(
+    fn can_remove_active_out_connection_count(&self, peer_type: PeerType) -> bool {
+        self.get_global_active_out_connection_count(peer_type) != 0
+    }
+
+    fn decrease_global_active_out_connection_count(
         &mut self,
         peer_type: PeerType,
-        increase: bool,
-        reason: NetworkConnectionErrorType,
+        ip: &IpAddr,
     ) -> Result<(), NetworkError> {
-        if !increase && self.get_global_active_in_connection_count(peer_type) == 0 {
-            return Err(NetworkError::PeerConnectionError(reason));
+        if !self.can_remove_active_out_connection_count(peer_type) {
+            return Err(NetworkError::PeerConnectionError(
+                NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
+            ));
         }
-        let delta: isize = if increase { 1 } else { -1 };
-        match peer_type {
-            PeerType::Bootstrap => {
-                self.bootstrap_connection_count.active_in_connections =
-                    (self.bootstrap_connection_count.active_in_connections as isize + delta)
-                        as usize
-            }
-            PeerType::WhiteListed => {
-                self.whitelist_connection_count.active_in_connections =
-                    (self.whitelist_connection_count.active_in_connections as isize + delta)
-                        as usize
-            }
-            PeerType::Standard => {
-                self.standard_connection_count.active_in_connections =
-                    (self.standard_connection_count.active_in_connections as isize + delta) as usize
-            }
+        self.peer_types_connection_count[peer_type].active_out_connections -= 1;
+        Ok(())
+    }
+
+    fn increase_global_active_out_connection_count(
+        &mut self,
+        peer_type: PeerType,
+    ) -> Result<(), NetworkError> {
+        self.peer_types_connection_count[peer_type].active_out_connections += 1;
+        Ok(())
+    }
+
+    fn can_decrease_global_active_in_connection_count(&self, peer_type: PeerType) -> bool {
+        self.get_global_active_in_connection_count(peer_type) != 0
+    }
+
+    fn decrease_global_active_in_connection_count(
+        &mut self,
+        peer_type: PeerType,
+        ip: &IpAddr,
+    ) -> Result<(), NetworkError> {
+        if !self.can_decrease_global_active_in_connection_count(peer_type) {
+            return Err(NetworkError::PeerConnectionError(
+                NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
+            ));
         }
+        self.peer_types_connection_count[peer_type].active_in_connections -= 1;
+        Ok(())
+    }
+
+    fn increase_global_active_in_connection_count(
+        &mut self,
+        peer_type: PeerType,
+    ) -> Result<(), NetworkError> {
+        self.peer_types_connection_count[peer_type].active_in_connections += 1;
         Ok(())
     }
 
@@ -1140,41 +1000,20 @@ impl PeerInfoDatabase {
     /// todo https://github.com/massalabs/massa/issues/2319
     #[inline]
     fn get_global_active_out_connection_attempt_count(&self, peer_type: PeerType) -> usize {
-        match peer_type {
-            PeerType::Bootstrap => {
-                self.bootstrap_connection_count
-                    .active_out_connection_attempts
-            }
-            PeerType::WhiteListed => {
-                self.whitelist_connection_count
-                    .active_out_connection_attempts
-            }
-            PeerType::Standard => {
-                self.standard_connection_count
-                    .active_out_connection_attempts
-            }
-        }
+        self.peer_types_connection_count[peer_type].active_out_connection_attempts
     }
 
     /// similar to get_global_active_out_connection_attempt_count and get_global_active_in_connection_count
     /// todo https://github.com/massalabs/massa/issues/2319
     #[inline]
     fn get_global_active_out_connection_count(&self, peer_type: PeerType) -> usize {
-        match peer_type {
-            PeerType::Bootstrap => self.bootstrap_connection_count.active_out_connections,
-            PeerType::WhiteListed => self.whitelist_connection_count.active_out_connections,
-            PeerType::Standard => self.standard_connection_count.active_out_connections,
-        }
+        self.peer_types_connection_count[peer_type].active_out_connections
     }
 
     /// similar to get_global_active_out_connection_count and get_global_active_out_connection_attempt_count
     /// todo https://github.com/massalabs/massa/issues/2319
     #[inline]
     fn get_global_active_in_connection_count(&self, peer_type: PeerType) -> usize {
-        match peer_type {
-            PeerType::Bootstrap => self.bootstrap_connection_count.active_in_connections,
-            PeerType::WhiteListed => self.whitelist_connection_count.active_in_connections,
-            PeerType::Standard => self.standard_connection_count.active_in_connections,
-        }
+        self.peer_types_connection_count[peer_type].active_in_connections
     }
 }

@@ -4,6 +4,7 @@ use crate::{
     settings::PeerTypeConnectionConfig,
     NetworkError, NetworkSettings, PeerInfo,
 };
+use enum_map::enum_map;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::{collections::HashMap, net::IpAddr};
@@ -12,12 +13,19 @@ use tokio::sync::watch;
 #[tokio::test]
 #[serial]
 async fn test_try_new_in_connection_in_connection_closed() {
-    let network_settings = NetworkSettings {
-        standard_peers_config: PeerTypeConnectionConfig {
-            target_out_connections: 5,
-            max_in_connections: 5,
-            max_out_attempts: 5,
+    let peer_types_config = enum_map! {
+        PeerType::Standard => {
+            PeerTypeConnectionConfig {
+                target_out_connections: 5,
+                max_in_connections: 5,
+                max_out_attempts: 5,
+            }
         },
+        PeerType::Bootstrap => Default::default(),
+        PeerType::WhiteListed => Default::default()
+    };
+    let network_settings = NetworkSettings {
+        peer_types_config,
         ..Default::default()
     };
     let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
@@ -46,9 +54,7 @@ async fn test_try_new_in_connection_in_connection_closed() {
         saver_watch_tx,
         wakeup_interval,
         clock_compensation: 0,
-        whitelist_connection_count: Default::default(),
-        bootstrap_connection_count: Default::default(),
-        standard_connection_count: Default::default(),
+        peer_types_connection_count: Default::default(),
     };
 
     // test with no connection attempt before
@@ -110,12 +116,19 @@ async fn test_try_new_in_connection_in_connection_closed() {
 #[tokio::test]
 #[serial]
 async fn test_out_connection_attempt_failed() {
-    let network_settings = NetworkSettings {
-        standard_peers_config: PeerTypeConnectionConfig {
-            target_out_connections: 5,
-            max_in_connections: 5,
-            max_out_attempts: 5,
+    let peer_types_config = enum_map! {
+        PeerType::Standard => {
+            PeerTypeConnectionConfig {
+                target_out_connections: 5,
+                max_in_connections: 5,
+                max_out_attempts: 5,
+            }
         },
+        PeerType::Bootstrap => Default::default(),
+        PeerType::WhiteListed => Default::default()
+    };
+    let network_settings = NetworkSettings {
+        peer_types_config,
         ..Default::default()
     };
     let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
@@ -142,9 +155,7 @@ async fn test_out_connection_attempt_failed() {
         peers,
         saver_join_handle,
         saver_watch_tx,
-        whitelist_connection_count: Default::default(),
-        bootstrap_connection_count: Default::default(),
-        standard_connection_count: Default::default(),
+        peer_types_connection_count: Default::default(),
         wakeup_interval,
         clock_compensation: 0,
     };
@@ -208,12 +219,19 @@ async fn test_out_connection_attempt_failed() {
 #[tokio::test]
 #[serial]
 async fn test_try_out_connection_attempt_success() {
-    let network_settings = NetworkSettings {
-        standard_peers_config: PeerTypeConnectionConfig {
-            target_out_connections: 5,
-            max_in_connections: 5,
-            max_out_attempts: 5,
+    let peer_types_config = enum_map! {
+        PeerType::Standard => {
+            PeerTypeConnectionConfig {
+                target_out_connections: 5,
+                max_in_connections: 5,
+                max_out_attempts: 5,
+            }
         },
+        PeerType::Bootstrap => Default::default(),
+        PeerType::WhiteListed => Default::default()
+    };
+    let network_settings = NetworkSettings {
+        peer_types_config,
         ..Default::default()
     };
     let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
@@ -240,9 +258,7 @@ async fn test_try_out_connection_attempt_success() {
         peers,
         saver_join_handle,
         saver_watch_tx,
-        whitelist_connection_count: Default::default(),
-        bootstrap_connection_count: Default::default(),
-        standard_connection_count: Default::default(),
+        peer_types_connection_count: Default::default(),
         wakeup_interval,
         clock_compensation: 0,
     };
@@ -302,12 +318,19 @@ async fn test_try_out_connection_attempt_success() {
 #[tokio::test]
 #[serial]
 async fn test_new_out_connection_closed() {
-    let network_settings = NetworkSettings {
-        standard_peers_config: PeerTypeConnectionConfig {
-            target_out_connections: 5,
-            max_in_connections: 5,
-            max_out_attempts: 5,
+    let peer_types_config = enum_map! {
+        PeerType::Standard => {
+            PeerTypeConnectionConfig {
+                target_out_connections: 5,
+                max_in_connections: 5,
+                max_out_attempts: 5,
+            }
         },
+        PeerType::Bootstrap => Default::default(),
+        PeerType::WhiteListed => Default::default()
+    };
+    let network_settings = NetworkSettings {
+        peer_types_config,
         ..Default::default()
     };
     let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
@@ -327,9 +350,7 @@ async fn test_new_out_connection_closed() {
         peers,
         saver_join_handle,
         saver_watch_tx,
-        whitelist_connection_count: Default::default(),
-        bootstrap_connection_count: Default::default(),
-        standard_connection_count: Default::default(),
+        peer_types_connection_count: Default::default(),
         wakeup_interval,
         clock_compensation: 0,
     };
@@ -379,12 +400,19 @@ async fn test_new_out_connection_closed() {
 #[tokio::test]
 #[serial]
 async fn test_new_out_connection_attempt() {
-    let network_settings = NetworkSettings {
-        standard_peers_config: PeerTypeConnectionConfig {
-            target_out_connections: 5,
-            max_in_connections: 5,
-            max_out_attempts: 5,
+    let peer_types_config = enum_map! {
+        PeerType::Standard => {
+            PeerTypeConnectionConfig {
+                target_out_connections: 5,
+                max_in_connections: 5,
+                max_out_attempts: 5,
+            }
         },
+        PeerType::Bootstrap => Default::default(),
+        PeerType::WhiteListed => Default::default()
+    };
+    let network_settings = NetworkSettings {
+        peer_types_config,
         ..Default::default()
     };
     let mut peers: HashMap<IpAddr, PeerInfo> = HashMap::new();
@@ -403,9 +431,7 @@ async fn test_new_out_connection_attempt() {
         peers,
         saver_join_handle,
         saver_watch_tx,
-        whitelist_connection_count: Default::default(),
-        bootstrap_connection_count: Default::default(),
-        standard_connection_count: Default::default(),
+        peer_types_connection_count: Default::default(),
         wakeup_interval,
         clock_compensation: 0,
     };
@@ -492,9 +518,7 @@ async fn test_get_advertisable_peer_ips() {
         peers,
         saver_join_handle,
         saver_watch_tx,
-        whitelist_connection_count: Default::default(),
-        bootstrap_connection_count: Default::default(),
-        standard_connection_count: Default::default(),
+        peer_types_connection_count: Default::default(),
         wakeup_interval,
         clock_compensation: 0,
     };
@@ -606,9 +630,7 @@ async fn test_get_out_connection_candidate_ips() {
         peers,
         saver_join_handle,
         saver_watch_tx,
-        whitelist_connection_count: Default::default(),
-        bootstrap_connection_count: Default::default(),
-        standard_connection_count: Default::default(),
+        peer_types_connection_count: Default::default(),
         wakeup_interval,
         clock_compensation: 0,
     };
@@ -838,9 +860,7 @@ impl From<u32> for PeerInfoDatabase {
             peers,
             saver_join_handle,
             saver_watch_tx,
-            whitelist_connection_count: Default::default(),
-            bootstrap_connection_count: Default::default(),
-            standard_connection_count: Default::default(),
+            peer_types_connection_count: Default::default(),
             wakeup_interval,
             clock_compensation: 0,
         }
