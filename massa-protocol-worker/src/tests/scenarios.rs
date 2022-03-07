@@ -178,9 +178,8 @@ async fn test_protocol_sends_blocks_when_asked_for() {
                     .wait_command(1000.into(), send_block_or_header_cmd_filter)
                     .await
                 {
-                    Some(NetworkCommand::SendBlock { node, block }) => {
-                        let hash = block.header.compute_block_id().unwrap();
-                        assert_eq!(expected_hash, hash);
+                    Some(NetworkCommand::SendBlock { node, block_id }) => {
+                        assert_eq!(block_id, expected_hash);
                         assert!(expecting_block.remove(&node));
                     }
                     Some(NetworkCommand::SendBlockHeader { .. }) => {
@@ -319,15 +318,13 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                     })
                     .await
                 {
-                    Some(NetworkCommand::SendBlockHeader { node, header }) => {
+                    Some(NetworkCommand::SendBlockHeader { node, block_id }) => {
                         assert!(expected_headers.remove(&node));
-                        let sent_header_hash = header.compute_block_id().unwrap();
-                        assert_eq!(sent_header_hash, ref_hash);
+                        assert_eq!(block_id, ref_hash);
                     }
-                    Some(NetworkCommand::SendBlock { node, block }) => {
+                    Some(NetworkCommand::SendBlock { node, block_id }) => {
                         assert!(expected_full_blocks.remove(&node));
-                        let sent_header_hash = block.header.compute_block_id().unwrap();
-                        assert_eq!(sent_header_hash, ref_hash);
+                        assert_eq!(block_id, ref_hash);
                     }
                     _ => panic!("Unexpected or no network command."),
                 };
@@ -385,7 +382,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
                 )
                 .await
                 {
-                    Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block_id,
+                    Some(ProtocolEvent::ReceivedBlock { block, .. }) => block,
                     _ => panic!("Unexpected or no protocol event."),
                 };
             assert_eq!(expected_hash, hash);

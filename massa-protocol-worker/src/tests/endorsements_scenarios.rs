@@ -334,9 +334,12 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 })
                 .await
             {
-                Some(NetworkCommand::SendBlock { node, block }) => {
+                Some(NetworkCommand::SendBlock {
+                    node,
+                    block_id: sent_block_id,
+                }) => {
                     assert_eq!(node, nodes[0].id);
-                    assert_eq!(block.header.compute_block_id().unwrap(), block_id);
+                    assert_eq!(sent_block_id, block_id);
                 }
                 Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),
@@ -444,9 +447,12 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 })
                 .await
             {
-                Some(NetworkCommand::SendBlock { node, block }) => {
+                Some(NetworkCommand::SendBlock {
+                    node,
+                    block_id: sent_block_id,
+                }) => {
                     assert_eq!(node, nodes[0].id);
-                    assert_eq!(block.header.compute_block_id().unwrap(), block_id);
+                    assert_eq!(sent_block_id, block_id);
                 }
                 Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),

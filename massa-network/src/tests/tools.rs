@@ -307,7 +307,7 @@ pub async fn incoming_message_drain_start(
 
 pub async fn advertise_peers_in_connection(write_binder: &mut WriteBinder, peer_list: Vec<IpAddr>) {
     write_binder
-        .send(&Message::PeerList(peer_list).to_bytes_compact()?)
+        .send(&Message::PeerList(peer_list).to_bytes_compact().unwrap())
         .await
         .expect("could not send peer list");
 }

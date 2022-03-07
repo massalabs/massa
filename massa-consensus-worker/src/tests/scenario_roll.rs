@@ -506,7 +506,7 @@ async fn test_roll_block_creation() {
 
     let init_time: MassaTime = 1000.into();
     cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(init_time);
-
+    let storage: Storage = Default::default();
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
@@ -519,6 +519,7 @@ async fn test_roll_block_creation() {
             },
             None,
             None,
+            storage,
             0,
         )
         .await
