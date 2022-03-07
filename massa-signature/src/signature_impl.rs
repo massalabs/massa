@@ -738,9 +738,9 @@ impl SignatureEngine {
     /// let public_key = derive_public_key(&private_key);
     /// ```
     fn derive_public_key(&self, private_key: &PrivateKey) -> PublicKey {
-        PublicKey(secp256k1::key::PublicKey::from_secret_key(
-            &self.0,
-            &private_key.0,
+        // NOTE: save this as keypair
+        PublicKey(secp256k1::XOnlyPublicKey::from_keypair(
+            &secp256k1::KeyPair::from_secret_key(&self.0, private_key.0),
         ))
     }
 
@@ -759,7 +759,8 @@ impl SignatureEngine {
     /// ```
     fn sign(&self, hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaHashError> {
         let message = Message::from_slice(&hash.to_bytes())?;
-        Ok(Signature(self.0.sign(&message, &private_key.0)))
+        // NOTE: save this as keypair
+        Ok(Signature(self.0.sign_schnorr(&message, &secp256k1::KeyPair::from_secret_key(&self.0, private_key.0))))
     }
 
     /// Checks if the Signature associated with data bytes
@@ -783,7 +784,7 @@ impl SignatureEngine {
         public_key: &PublicKey,
     ) -> Result<(), MassaHashError> {
         let message = Message::from_slice(&hash.to_bytes())?;
-        Ok(self.0.verify(&message, &signature.0, &public_key.0)?)
+        Ok(self.0.verify_schnorr( &signature.0, &message, &public_key.0)?)
     }
 }
 
@@ -791,7 +792,7 @@ impl SignatureEngine {
 pub fn generate_random_private_key() -> PrivateKey {
     use secp256k1::rand::rngs::OsRng;
     let mut rng = OsRng::new().expect("OsRng");
-    PrivateKey(secp256k1::key::SecretKey::new(&mut rng))
+    PrivateKey(secp256k1::SecretKey::new(&mut rng))
 }
 
 pub fn derive_public_key(private_key: &PrivateKey) -> PublicKey {

@@ -1823,13 +1823,12 @@ dependencies = [
 name = "massa_hash"
 version = "0.1.0"
 dependencies = [
- "bitcoin_hashes",
  "blake3",
  "bs58",
  "displaydoc",
  "pretty_assertions",
  "rand 0.8.5",
- "secp256k1 0.20.3",
+ "secp256k1",
  "serde 1.0.136",
  "serde_json",
  "serial_test",
@@ -2026,7 +2025,7 @@ dependencies = [
  "massa_hash",
  "pretty_assertions",
  "rand 0.8.5",
- "secp256k1 0.21.3",
+ "secp256k1",
  "serde 1.0.136",
  "serde_json",
  "serial_test",
@@ -3162,16 +3161,6 @@ name = "seahash"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c107b6f4780854c8b126e228ea8869f4d7b71260f962fefb57b996b8959ba6b"
-
-[[package]]
-name = "secp256k1"
-version = "0.20.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97d03ceae636d0fed5bae6a7f4f664354c5f4fcedf6eef053fef17e49f837d0a"
-dependencies = [
- "rand 0.6.5",
- "secp256k1-sys",
-]
 
 [[package]]
 name = "secp256k1"
