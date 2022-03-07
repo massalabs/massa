@@ -6,7 +6,7 @@ use massa_models::{
     signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
     Endorsement, EndorsementId, ModelsError, Operation, OperationId, SerializeCompact,
-    SerializeVarInt, Version,
+    SerializeVarInt, SignedHeader, Version,
 };
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -34,7 +34,7 @@ pub enum Message {
     /// Whole block structure.
     Block(Block),
     /// Block header
-    BlockHeader(Signed<BlockHeader, BlockId>),
+    BlockHeader(SignedHeader),
     /// Message asking the peer for a block.
     AskForBlocks(Vec<BlockId>),
     /// Message asking the peer for its advertisable peers list.

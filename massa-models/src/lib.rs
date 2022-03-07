@@ -5,7 +5,7 @@ extern crate lazy_static;
 
 pub use address::Address;
 pub use amount::Amount;
-pub use block::{Block, BlockHeader, BlockId};
+pub use block::{Block, BlockHeader, BlockId, SignedHeader};
 pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
     StakersCycleProductionStats,

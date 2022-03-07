@@ -97,7 +97,7 @@ impl BlockId {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
-    pub header: Signed<BlockHeader, BlockId>,
+    pub header: SignedHeader,
     pub operations: Vec<Signed<Operation, OperationId>>,
 }
 
@@ -218,6 +218,8 @@ impl Signable<BlockId> for BlockHeader {
         Ok(Hash::compute_from(&res))
     }
 }
+
+pub type SignedHeader = Signed<BlockHeader, BlockId>;
 
 impl std::fmt::Display for BlockHeader {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

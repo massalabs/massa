@@ -3,7 +3,7 @@
 use massa_models::signed::Signed;
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId};
 use massa_models::{
-    Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
+    Block, BlockId, Endorsement, EndorsementId, Operation, OperationId, SignedHeader,
 };
 use massa_network::{NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_time::MassaTime;
@@ -60,11 +60,7 @@ impl MockNetworkController {
             .expect("Couldn't connect node to protocol.");
     }
 
-    pub async fn send_header(
-        &mut self,
-        source_node_id: NodeId,
-        header: Signed<BlockHeader, BlockId>,
-    ) {
+    pub async fn send_header(&mut self, source_node_id: NodeId, header: SignedHeader) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedBlockHeader {
                 source_node_id,

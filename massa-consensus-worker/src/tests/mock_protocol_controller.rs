@@ -1,10 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{
-    constants::CHANNEL_SIZE,
-    signed::{Signable, Signed},
-    Block, BlockHeader, BlockId,
-};
+use massa_models::{constants::CHANNEL_SIZE, signed::Signable, Block, BlockId, SignedHeader};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
@@ -62,7 +58,7 @@ impl MockProtocolController {
             .expect("could not send protocol event");
     }
 
-    pub async fn receive_header(&mut self, header: Signed<BlockHeader, BlockId>) {
+    pub async fn receive_header(&mut self, header: SignedHeader) {
         let block_id = header.content.compute_id().unwrap();
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlockHeader { block_id, header })

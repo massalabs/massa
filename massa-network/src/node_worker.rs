@@ -14,7 +14,7 @@ use massa_models::{
     },
     node::NodeId,
     signed::{Signable, Signed},
-    Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
+    Block, BlockId, Endorsement, EndorsementId, Operation, OperationId, SignedHeader,
 };
 use std::net::IpAddr;
 use tokio::{
@@ -34,7 +34,7 @@ pub enum NodeCommand {
     /// Send that block to node.
     SendBlock(Block),
     /// Send the header of a block to a node.
-    SendBlockHeader(Signed<BlockHeader, BlockId>),
+    SendBlockHeader(SignedHeader),
     /// Ask for a block from that node.
     AskForBlocks(Vec<BlockId>),
     /// Close the node worker.
@@ -57,7 +57,7 @@ pub enum NodeEventType {
     /// Node we are connected to sent block
     ReceivedBlock(Block),
     /// Node we are connected to sent block header
-    ReceivedBlockHeader(Signed<BlockHeader, BlockId>),
+    ReceivedBlockHeader(SignedHeader),
     /// Node we are connected to asks for a block.
     ReceivedAskForBlocks(Vec<BlockId>),
     /// Didn't found given block,

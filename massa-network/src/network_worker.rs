@@ -18,13 +18,13 @@ use crate::{
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
+use massa_models::signed::Signable;
 use massa_models::{
     composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, signed::Signed,
     stats::NetworkStats, with_serialization_context, DeserializeCompact, DeserializeVarInt,
     Endorsement, EndorsementId, ModelsError, Operation, OperationId, SerializeCompact,
-    SerializeVarInt, Version,
+    SerializeVarInt, SignedHeader, Version,
 };
-use massa_models::{signed::Signable, BlockHeader};
 use massa_models::{Block, BlockId};
 use massa_signature::{derive_public_key, sign, PrivateKey};
 use serde::{Deserialize, Serialize};
@@ -53,7 +53,7 @@ pub enum NetworkCommand {
     /// Send a header to a node.
     SendBlockHeader {
         node: NodeId,
-        header: Signed<BlockHeader, BlockId>,
+        header: SignedHeader,
     },
     // (PeerInfo, Vec <(NodeId, bool)>) peer info + list of associated Id nodes in connexion out (true)
     GetPeers(oneshot::Sender<Peers>),
@@ -106,7 +106,7 @@ pub enum NetworkEvent {
     /// A block header was received
     ReceivedBlockHeader {
         source_node_id: NodeId,
-        header: Signed<BlockHeader, BlockId>,
+        header: SignedHeader,
     },
     /// Someone ask for block with given header hash.
     AskedForBlocks {

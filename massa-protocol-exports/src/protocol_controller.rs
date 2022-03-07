@@ -6,7 +6,7 @@ use massa_logging::massa_trace;
 use massa_models::prehash::{Map, Set};
 use massa_models::signed::Signed;
 use massa_models::{
-    Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
+    Block, BlockId, Endorsement, EndorsementId, Operation, OperationId, SignedHeader,
 };
 use massa_network::NetworkEventReceiver;
 use serde::Serialize;
@@ -27,7 +27,7 @@ pub enum ProtocolEvent {
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader {
         block_id: BlockId,
-        header: Signed<BlockHeader, BlockId>,
+        header: SignedHeader,
     },
     /// Ask for a list of blocks from consensus.
     GetBlocks(Vec<BlockId>),

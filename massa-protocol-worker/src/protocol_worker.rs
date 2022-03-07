@@ -8,8 +8,8 @@ use massa_models::{
     node::NodeId,
     prehash::{BuildMap, Map, Set},
     signed::{Signable, Signed},
-    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
-    OperationType,
+    Address, Block, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationType,
+    SignedHeader,
 };
 use massa_network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
@@ -939,7 +939,7 @@ impl ProtocolWorker {
     /// - Block matches that of the block.
     async fn note_header_from_node(
         &mut self,
-        header: &Signed<BlockHeader, BlockId>,
+        header: &SignedHeader,
         source_node_id: &NodeId,
     ) -> Result<Option<(BlockId, Map<EndorsementId, u32>, bool)>, ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });

@@ -15,7 +15,7 @@ use massa_models::{
     active_block::ActiveBlock,
     api::EndorsementInfo,
     rolls::{RollCounts, RollUpdate, RollUpdates},
-    Operation,
+    Operation, SignedHeader,
 };
 use massa_models::{clique::Clique, signed::Signable};
 use massa_models::{ledger_models::LedgerChange, signed::Signed};
@@ -42,7 +42,7 @@ use tracing::{debug, error, info, warn};
 
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
-    Header(Signed<BlockHeader, BlockId>),
+    Header(SignedHeader),
     Block(
         Block,
         Map<OperationId, (usize, u64)>,
@@ -118,7 +118,7 @@ enum BlockStatus {
     /// The block was discarded and is kept to avoid reprocessing it
     Discarded {
         /// Just the header of that block
-        header: Signed<BlockHeader, BlockId>,
+        header: SignedHeader,
         /// why it was discarded
         reason: DiscardReason,
         /// Used to limit and sort the number of blocks/headers wainting for dependencies
@@ -160,7 +160,7 @@ impl<'a> From<&'a BlockStatus> for ExportBlockStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportCompiledBlock {
     /// Header of the corresponding block.
-    pub header: Signed<BlockHeader, BlockId>,
+    pub header: SignedHeader,
     /// For (i, set) in children,
     /// set contains the headers' hashes
     /// of blocks referencing exported block as a parent,
@@ -253,7 +253,7 @@ pub struct BlockGraphExport {
     /// Map of active blocks, were blocks are in their exported version.
     pub active_blocks: Map<BlockId, ExportCompiledBlock>,
     /// Finite cache of discarded blocks, in exported version.
-    pub discarded_blocks: Map<BlockId, (DiscardReason, Signed<BlockHeader, BlockId>)>,
+    pub discarded_blocks: Map<BlockId, (DiscardReason, SignedHeader)>,
     /// Best parents hashe in each thread.
     pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
@@ -592,7 +592,7 @@ impl BlockGraph {
     pub fn block_state_try_apply_op(
         &self,
         state_accu: &mut BlockStateAccumulator,
-        header: &Signed<BlockHeader, BlockId>,
+        header: &SignedHeader,
         operation: &Signed<Operation, OperationId>,
         pos: &mut ProofOfStake,
     ) -> Result<()> {
@@ -630,7 +630,7 @@ impl BlockGraph {
     pub fn block_state_sync_rolls(
         &self,
         accu: &mut BlockStateAccumulator,
-        header: &Signed<BlockHeader, BlockId>,
+        header: &SignedHeader,
         pos: &ProofOfStake,
         involved_addrs: &Set<Address>,
     ) -> Result<()> {
@@ -660,7 +660,7 @@ impl BlockGraph {
     pub fn block_state_try_apply(
         &self,
         accu: &mut BlockStateAccumulator,
-        header: &Signed<BlockHeader, BlockId>,
+        header: &SignedHeader,
         mut opt_ledger_changes: Option<LedgerChanges>,
         opt_roll_updates: Option<RollUpdates>,
         pos: &mut ProofOfStake,
@@ -842,7 +842,7 @@ impl BlockGraph {
     /// initializes a block state accumulator from a block header
     pub fn block_state_accumulator_init(
         &self,
-        header: &Signed<BlockHeader, BlockId>,
+        header: &SignedHeader,
         pos: &mut ProofOfStake,
     ) -> Result<BlockStateAccumulator> {
         let block_thread = header.content.slot.thread;
@@ -1264,7 +1264,7 @@ impl BlockGraph {
     pub fn incoming_header(
         &mut self,
         block_id: BlockId,
-        header: Signed<BlockHeader, BlockId>,
+        header: SignedHeader,
         pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<()> {
@@ -1844,7 +1844,7 @@ impl BlockGraph {
     fn check_header(
         &self,
         block_id: &BlockId,
-        header: &Signed<BlockHeader, BlockId>,
+        header: &SignedHeader,
         pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<HeaderCheckOutcome> {
@@ -2173,7 +2173,7 @@ impl BlockGraph {
     /// * endorsed slot is parent_in_own_thread slot
     fn check_endorsements(
         &self,
-        header: &Signed<BlockHeader, BlockId>,
+        header: &SignedHeader,
         pos: &mut ProofOfStake,
         parent_in_own_thread: &ActiveBlock,
     ) -> Result<EndorsementsCheckOutcome> {
