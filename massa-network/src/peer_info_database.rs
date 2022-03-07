@@ -696,7 +696,7 @@ impl PeerInfoDatabase {
             peer.active_out_connections += 1;
             peer.peer_type
         };
-        self.increase_global_active_out_connection_count(peer_type, ip)?;
+        self.increase_global_active_out_connection_count(peer_type)?;
         self.request_dump()?;
         Ok(true)
     }
@@ -802,7 +802,7 @@ impl PeerInfoDatabase {
             peer.peer_type
         };
 
-        self.increase_global_active_in_connection_count(peer_type, ip)?;
+        self.increase_global_active_in_connection_count(peer_type)?;
         self.request_dump()?;
         Ok(())
     }
@@ -815,10 +815,16 @@ impl PeerInfoDatabase {
     /// and returns as many peers as there are available slots to attempt outgoing connections to.
     pub fn get_out_connection_candidate_ips(&self) -> Result<Vec<IpAddr>, NetworkError> {
         let mut connections = vec![];
-        for (peer_type, connection_count) in self.peer_types_connection_count.iter() {
+        let mut peer_types: Vec<PeerType> = self
+            .peer_types_connection_count
+            .iter()
+            .map(|(peer_type, _)| peer_type)
+            .collect();
+        peer_types.sort();
+        for &peer_type in peer_types.iter() {
             connections.append(&mut self.get_out_connection_candidate_ips_for_type(
                 peer_type,
-                connection_count,
+                &self.peer_types_connection_count[peer_type],
                 &self.network_settings.peer_types_config[peer_type],
             )?);
         }
@@ -959,7 +965,6 @@ impl PeerInfoDatabase {
     fn increase_global_active_out_connection_count(
         &mut self,
         peer_type: PeerType,
-        _ip: &IpAddr,
     ) -> Result<(), NetworkError> {
         self.peer_types_connection_count[peer_type].active_out_connections += 1;
         Ok(())
@@ -986,7 +991,6 @@ impl PeerInfoDatabase {
     fn increase_global_active_in_connection_count(
         &mut self,
         peer_type: PeerType,
-        _ip: &IpAddr,
     ) -> Result<(), NetworkError> {
         self.peer_types_connection_count[peer_type].active_in_connections += 1;
         Ok(())
