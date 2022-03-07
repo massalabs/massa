@@ -12,6 +12,7 @@ pub use error::ProtocolError;
 pub use protocol_controller::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
+    BlocksResults
 };
 pub use settings::ProtocolSettings;
 

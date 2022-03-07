@@ -7,7 +7,7 @@ use massa_models::prehash::{Map, Set};
 use massa_models::{self, Address, Amount, OperationId, Slot};
 use massa_network::NetworkCommand;
 use massa_protocol_exports::tests::tools;
-use massa_protocol_exports::{ProtocolEvent, ProtocolPoolEvent};
+use massa_protocol_exports::{BlocksResults, ProtocolEvent, ProtocolPoolEvent};
 use serial_test::serial;
 use std::str::FromStr;
 use std::time::Duration;
@@ -327,7 +327,6 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             protocol_command_sender
                 .integrated_block(
                     block_id,
-                    block,
                     vec![operation_id].into_iter().collect(),
                     Default::default(),
                 )
@@ -436,10 +435,10 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             .await;
 
             // Send the block as search results.
-            let mut results = Map::default();
+            let mut results: BlocksResults = Map::default();
             let mut ops = Set::<OperationId>::default();
             ops.insert(operation_id);
-            results.insert(block_id, Some((block.clone(), Some(ops), None)));
+            results.insert(block_id, Some((Some(ops), None)));
 
             protocol_command_sender
                 .send_get_blocks_results(results)

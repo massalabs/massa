@@ -71,7 +71,7 @@ impl MockNetworkController {
         self.network_event_tx
             .send(NetworkEvent::ReceivedBlock {
                 node: source_node_id,
-                block,
+                block: block.header.compute_block_id().unwrap(),
             })
             .await
             .expect("Couldn't send block to protocol.");
