@@ -343,7 +343,7 @@ impl MassaTime {
     /// ```
     pub fn to_utc_string(self) -> String {
         let naive = OffsetDateTime::from_unix_timestamp(self.to_millis() as i64).unwrap();
-        format!("{}", naive.format(&Rfc3339).unwrap())
+        naive.format(&Rfc3339).unwrap().to_string()
     }
 
     /// ```
