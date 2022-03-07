@@ -17,6 +17,7 @@ use massa_hash::{self, hash::Hash};
 use massa_models::{
     node::NodeId,
     signed::{Signable, Signed},
+    storage::Storage
 };
 use massa_models::{BlockId, Endorsement, Slot};
 use massa_network_exports::settings::PeerTypeConnectionConfig;
@@ -74,6 +75,8 @@ async fn test_node_worker_shutdown() {
     let private_key = massa_signature::generate_random_private_key();
     let public_key = massa_signature::derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
+    let storage: Storage = Default::default();
+
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
             network_conf,
@@ -82,6 +85,7 @@ async fn test_node_worker_shutdown() {
             writer,
             node_command_rx,
             node_event_tx,
+            storage,
         )
         .run_loop()
         .await
@@ -1105,7 +1109,11 @@ async fn test_endorsements_messages() {
             let endorsement = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
             let ref_id = endorsement.content.compute_id().unwrap();
             conn1_w
-                .send(&Message::Endorsements(vec![endorsement]))
+                .send(
+                    &Message::Endorsements(vec![endorsement])
+                        .to_bytes_compact()
+                        .expect("Failed to serialize endorsements"),
+                )
                 .await
                 .unwrap();
 

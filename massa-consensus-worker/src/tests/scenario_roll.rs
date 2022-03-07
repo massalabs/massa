@@ -4,7 +4,7 @@ use massa_consensus_exports::tools;
 use massa_consensus_exports::{settings::ConsensusChannels, ConsensusConfig};
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_models::signed::Signable;
-use massa_models::{Address, Amount, BlockId, Slot};
+use massa_models::{storage::Storage, Address, Amount, BlockId, Slot};
 use massa_pool::PoolCommand;
 use massa_protocol_exports::ProtocolCommand;
 use massa_time::MassaTime;
@@ -787,6 +787,7 @@ async fn test_roll_deactivation() {
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
 
     cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
+    let storage: Storage = Default::default();
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
@@ -799,6 +800,7 @@ async fn test_roll_deactivation() {
             },
             None,
             None,
+            storage,
             0,
         )
         .await

@@ -17,7 +17,7 @@ use massa_models::{
     signed::{Signable, Signed},
     Address, Amount, Block, BlockHeader, BlockId, Endorsement, Operation, OperationType,
     SerializeCompact, SignedEndorsement, SignedOperation, Slot,
-};
+use massa_models::storage::Storage;
 use massa_pool::PoolCommand;
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_protocol_exports::ProtocolCommand;
@@ -636,7 +636,7 @@ pub async fn consensus_pool_test<F, V>(
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-
+    let storage: Storage = Default::default();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -649,6 +649,7 @@ pub async fn consensus_pool_test<F, V>(
             },
             boot_pos,
             boot_graph,
+            storage,
             0,
         )
         .await
@@ -709,7 +710,7 @@ where
         }
     });
     let pool_sink = PoolCommandSink::new(pool_controller).await;
-
+    let storage: Storage = Default::default();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -722,6 +723,7 @@ where
             },
             None,
             None,
+            storage,
             0,
         )
         .await
