@@ -377,13 +377,8 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
                     .wait_command(1000.into(), send_block_or_header_cmd_filter)
                     .await
                 {
-                    Some(NetworkCommand::SendBlock { node, block }) => {
-                        let hash = block
-                            .header
-                            .content
-                            .compute_id()
-                            .expect("Failed to compute hash.");
-                        assert_eq!(expected_hash, hash);
+                    Some(NetworkCommand::SendBlock { node, block_id }) => {
+                        assert_eq!(expected_hash, block_id);
                         assert!(expecting_block.remove(&node));
                     }
                     Some(NetworkCommand::SendBlockHeader { .. }) => {
