@@ -14,6 +14,7 @@ use massa_consensus_exports::settings::ConsensusChannels;
 use massa_graph::{ledger::Ledger, LedgerConfig};
 use massa_models::ledger_models::LedgerData;
 use massa_models::ledger_models::{LedgerChange, LedgerChanges};
+use massa_models::storage::Storage;
 use massa_models::{Amount, Slot};
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;
@@ -499,7 +500,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
-
+    let storage: Storage = Default::default();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -512,6 +513,7 @@ async fn test_ledger_update_when_a_batch_of_blocks_becomes_final() {
             },
             None,
             None,
+            storage,
             0,
         )
         .await

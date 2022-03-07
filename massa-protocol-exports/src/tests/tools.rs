@@ -144,7 +144,7 @@ pub async fn send_and_propagate_block(
     })
     .await
     {
-        Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => Some(block_id),
+        Some(ProtocolEvent::ReceivedBlock { block, .. }) => Some(block),
         None => None,
         _ => panic!("Unexpected or no protocol event."),
     };

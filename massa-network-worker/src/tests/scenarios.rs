@@ -692,7 +692,11 @@ async fn test_block_not_found() {
             // Send ask for block message from connected peer
             let wanted_hash = get_dummy_block_id("default_val");
             conn1_w
-                .send(&Message::AskForBlocks(vec![wanted_hash]))
+                .send(
+                    &Message::AskForBlocks(vec![wanted_hash])
+                        .to_bytes_compact()
+                        .unwrap(),
+                )
                 .await
                 .unwrap();
 
@@ -786,12 +790,16 @@ async fn test_block_not_found() {
             let wanted_hash3 = get_dummy_block_id("default_val3");
             let wanted_hash4 = get_dummy_block_id("default_val4");
             conn1_w
-                .send(&Message::AskForBlocks(vec![
-                    wanted_hash1,
-                    wanted_hash2,
-                    wanted_hash3,
-                    wanted_hash4,
-                ]))
+                .send(
+                    &Message::AskForBlocks(vec![
+                        wanted_hash1,
+                        wanted_hash2,
+                        wanted_hash3,
+                        wanted_hash4,
+                    ])
+                    .to_bytes_compact()
+                    .unwrap(),
+                )
                 .await
                 .unwrap();
             // assert it is sent to protocol
@@ -979,7 +987,11 @@ async fn test_operation_messages() {
             let (transaction, _) = get_transaction(50, 10);
             let ref_id = transaction.verify_integrity().unwrap();
             conn1_w
-                .send(&Message::Operations(vec![transaction.clone()]))
+                .send(
+                    &Message::Operations(vec![transaction.clone()])
+                        .to_bytes_compact()
+                        .unwrap(),
+                )
                 .await
                 .unwrap();
 
