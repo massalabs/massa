@@ -5,8 +5,8 @@ use crate::{pool_controller, settings::PoolConfig, PoolCommandSender, PoolManage
 use futures::Future;
 use massa_hash::hash::Hash;
 use massa_models::{
-    signed::Signed, Address, Amount, BlockId, Endorsement, EndorsementId, Operation, OperationId,
-    OperationType, Slot,
+    signed::Signed, Address, Amount, BlockId, Endorsement, EndorsementId, Operation, OperationType,
+    SignedOperation, Slot,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use std::str::FromStr;
@@ -33,7 +33,7 @@ where
     pool_manager.stop().await.unwrap();
 }
 
-pub fn get_transaction(expire_period: u64, fee: u64) -> (Signed<Operation, OperationId>, u8) {
+pub fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
     let sender_priv = generate_random_private_key();
     let sender_pub = derive_public_key(&sender_priv);
 
@@ -76,7 +76,7 @@ pub fn get_transaction_with_addresses(
     sender_pub: PublicKey,
     sender_priv: PrivateKey,
     recv_pub: PublicKey,
-) -> (Signed<Operation, OperationId>, u8) {
+) -> (SignedOperation, u8) {
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_pub),
         amount: Amount::default(),
@@ -98,7 +98,7 @@ pub fn create_executesc(
     fee: u64,
     max_gas: u64,
     gas_price: u64,
-) -> (Signed<Operation, OperationId>, u8) {
+) -> (SignedOperation, u8) {
     let priv_key = generate_random_private_key();
     let sender_public_key = derive_public_key(&priv_key);
 

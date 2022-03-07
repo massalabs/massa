@@ -6,7 +6,7 @@ use massa_logging::massa_trace;
 use massa_models::prehash::{Map, Set};
 use massa_models::signed::Signed;
 use massa_models::{
-    Block, BlockId, Endorsement, EndorsementId, Operation, OperationId, SignedHeader,
+    Block, BlockId, Endorsement, EndorsementId, OperationId, SignedHeader, SignedOperation,
 };
 use massa_network::NetworkEventReceiver;
 use serde::Serialize;
@@ -37,7 +37,7 @@ pub enum ProtocolEvent {
 pub enum ProtocolPoolEvent {
     /// Operations were received
     ReceivedOperations {
-        operations: Map<OperationId, Signed<Operation, OperationId>>,
+        operations: Map<OperationId, SignedOperation>,
         propagate: bool, // whether or not to propagate operations
     },
     /// Endorsements were received
@@ -70,7 +70,7 @@ pub enum ProtocolCommand {
     /// The response to a ProtocolEvent::GetBlocks.
     GetBlocksResults(BlocksResults),
     /// Propagate operations
-    PropagateOperations(Map<OperationId, Signed<Operation, OperationId>>),
+    PropagateOperations(Map<OperationId, SignedOperation>),
     /// Propagate endorsements
     PropagateEndorsements(Map<EndorsementId, Signed<Endorsement, EndorsementId>>),
 }
@@ -158,7 +158,7 @@ impl ProtocolCommandSender {
 
     pub async fn propagate_operations(
         &mut self,
-        operations: Map<OperationId, Signed<Operation, OperationId>>,
+        operations: Map<OperationId, SignedOperation>,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
             "operations": operations

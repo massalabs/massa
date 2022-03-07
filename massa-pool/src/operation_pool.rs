@@ -2,10 +2,9 @@
 
 use crate::{settings::PoolConfig, PoolError};
 use massa_models::prehash::{Map, Set};
-use massa_models::signed::Signed;
 use massa_models::{
-    Address, Operation, OperationId, OperationSearchResult, OperationSearchResultStatus,
-    OperationType, SerializeCompact, Slot,
+    Address, OperationId, OperationSearchResult, OperationSearchResultStatus, OperationType,
+    SerializeCompact, SignedOperation, Slot,
 };
 use num::rational::Ratio;
 use std::{collections::BTreeSet, usize};
@@ -38,13 +37,13 @@ impl OperationIndex {
 }
 
 struct WrappedOperation {
-    op: Signed<Operation, OperationId>,
+    op: SignedOperation,
     byte_count: u64,
     thread: u8,
 }
 
 impl WrappedOperation {
-    fn new(op: Signed<Operation, OperationId>, thread_count: u8) -> Result<Self, PoolError> {
+    fn new(op: SignedOperation, thread_count: u8) -> Result<Self, PoolError> {
         Ok(WrappedOperation {
             byte_count: op.to_bytes_compact()?.len() as u64,
             thread: Address::from_public_key(&op.content.sender_public_key)
@@ -106,7 +105,7 @@ impl OperationPool {
     ///
     pub fn add_operations(
         &mut self,
-        operations: Map<OperationId, Signed<Operation, OperationId>>,
+        operations: Map<OperationId, SignedOperation>,
     ) -> Result<Set<OperationId>, PoolError> {
         let mut newly_added = Set::<OperationId>::default();
 
@@ -287,7 +286,7 @@ impl OperationPool {
         exclude: Set<OperationId>,
         batch_size: usize,
         max_size: u64,
-    ) -> Result<Vec<(OperationId, Signed<Operation, OperationId>, u64)>, PoolError> {
+    ) -> Result<Vec<(OperationId, SignedOperation, u64)>, PoolError> {
         self.ops_by_thread_and_interest[block_slot.thread as usize]
             .iter()
             .filter_map(|(_rentability, id)| {
@@ -317,7 +316,7 @@ impl OperationPool {
     pub fn get_operations(
         &self,
         operation_ids: &Set<OperationId>,
-    ) -> Map<OperationId, Signed<Operation, OperationId>> {
+    ) -> Map<OperationId, SignedOperation> {
         operation_ids
             .iter()
             .filter_map(|op_id| self.ops.get(op_id).map(|w_op| (*op_id, w_op.op.clone())))

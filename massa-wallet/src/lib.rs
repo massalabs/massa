@@ -7,7 +7,7 @@ use massa_models::amount::Amount;
 use massa_models::composite::PubkeySig;
 use massa_models::prehash::{Map, Set};
 use massa_models::signed::Signed;
-use massa_models::{Operation, OperationId};
+use massa_models::{Operation, SignedOperation};
 use massa_signature::{derive_public_key, sign, PrivateKey, PublicKey};
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
@@ -118,7 +118,7 @@ impl Wallet {
         &self,
         content: Operation,
         address: Address,
-    ) -> Result<Signed<Operation, OperationId>, WalletError> {
+    ) -> Result<SignedOperation, WalletError> {
         let sender_priv = self
             .find_associated_private_key(address)
             .ok_or(WalletError::MissingKeyError(address))?;

@@ -1,7 +1,8 @@
 use massa_models::{
     prehash::{Map, Set},
     signed::Signed,
-    Address, Amount, Operation, OperationId, OperationType, SerializeCompact, Slot,
+    Address, Amount, Operation, OperationId, OperationType, SerializeCompact, SignedOperation,
+    Slot,
 };
 use massa_signature::{derive_public_key, generate_random_private_key};
 use serial_test::serial;
@@ -11,7 +12,7 @@ use crate::operation_pool::OperationPool;
 
 use super::settings::POOL_CONFIG;
 
-fn get_transaction(expire_period: u64, fee: u64) -> (Signed<Operation, OperationId>, u8) {
+fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
     let sender_priv = generate_random_private_key();
     let sender_pub = derive_public_key(&sender_priv);
 

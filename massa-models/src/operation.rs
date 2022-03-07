@@ -160,6 +160,8 @@ impl std::fmt::Display for Operation {
 
 impl Signable<OperationId> for Operation {}
 
+pub type SignedOperation = Signed<Operation, OperationId>;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OperationType {
     Transaction {
@@ -429,7 +431,7 @@ impl DeserializeCompact for Operation {
     }
 }
 
-impl Signed<Operation, OperationId> {
+impl SignedOperation {
     /// Verifies the signature and integrity of the operation and computes operation ID
     pub fn verify_integrity(&self) -> Result<OperationId, ModelsError> {
         self.verify_signature(&self.content.sender_public_key)?;

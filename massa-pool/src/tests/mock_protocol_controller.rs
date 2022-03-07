@@ -3,7 +3,7 @@
 use massa_models::prehash::Map;
 use massa_models::signed::Signed;
 use massa_models::{constants::CHANNEL_SIZE, EndorsementId, OperationId};
-use massa_models::{Endorsement, Operation};
+use massa_models::{Endorsement, SignedOperation};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
@@ -47,10 +47,7 @@ impl MockProtocolController {
         }
     }
 
-    pub async fn received_operations(
-        &mut self,
-        operations: Map<OperationId, Signed<Operation, OperationId>>,
-    ) {
+    pub async fn received_operations(&mut self, operations: Map<OperationId, SignedOperation>) {
         self.pool_event_tx
             .send(ProtocolPoolEvent::ReceivedOperations {
                 operations,

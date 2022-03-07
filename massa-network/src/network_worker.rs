@@ -18,13 +18,13 @@ use crate::{
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::signed::Signable;
 use massa_models::{
     composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, signed::Signed,
     stats::NetworkStats, with_serialization_context, DeserializeCompact, DeserializeVarInt,
-    Endorsement, EndorsementId, ModelsError, Operation, OperationId, SerializeCompact,
-    SerializeVarInt, SignedHeader, Version,
+    Endorsement, EndorsementId, ModelsError, SerializeCompact, SerializeVarInt, SignedHeader,
+    Version,
 };
+use massa_models::{signed::Signable, SignedOperation};
 use massa_models::{Block, BlockId};
 use massa_signature::{derive_public_key, sign, PrivateKey};
 use serde::{Deserialize, Serialize};
@@ -67,7 +67,7 @@ pub enum NetworkCommand {
     },
     SendOperations {
         node: NodeId,
-        operations: Vec<Signed<Operation, OperationId>>,
+        operations: Vec<SignedOperation>,
     },
     SendEndorsements {
         node: NodeId,
@@ -120,7 +120,7 @@ pub enum NetworkEvent {
     },
     ReceivedOperations {
         node: NodeId,
-        operations: Vec<Signed<Operation, OperationId>>,
+        operations: Vec<SignedOperation>,
     },
     ReceivedEndorsements {
         node: NodeId,

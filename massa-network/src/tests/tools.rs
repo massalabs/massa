@@ -15,7 +15,7 @@ use crate::{NetworkSettings, PeerInfo};
 use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::Signed;
-use massa_models::{Address, Amount, BlockId, Operation, OperationId, OperationType, Version};
+use massa_models::{Address, Amount, BlockId, Operation, OperationType, SignedOperation, Version};
 use massa_signature::{derive_public_key, generate_random_private_key};
 use massa_time::MassaTime;
 use std::str::FromStr;
@@ -318,7 +318,7 @@ pub async fn incoming_message_drain_stop(
     join_handle.await.expect("could not join message drain")
 }
 
-pub fn get_transaction(expire_period: u64, fee: u64) -> (Signed<Operation, OperationId>, u8) {
+pub fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
     let sender_priv = generate_random_private_key();
     let sender_pub = derive_public_key(&sender_priv);
 

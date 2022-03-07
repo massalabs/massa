@@ -4,10 +4,10 @@ use super::{settings::POOL_CONFIG, tools::get_transaction};
 use crate::tests::tools::create_executesc;
 use crate::tests::tools::{self, get_transaction_with_addresses, pool_test};
 use massa_models::prehash::{Map, Set};
-use massa_models::signed::{Signable, Signed};
-use massa_models::Slot;
+use massa_models::signed::Signable;
+use massa_models::OperationId;
 use massa_models::{Address, SerializeCompact};
-use massa_models::{Operation, OperationId};
+use massa_models::{SignedOperation, Slot};
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::{derive_public_key, generate_random_private_key};
 use serial_test::serial;
@@ -663,7 +663,7 @@ async fn test_new_final_ops() {
                 _ => None,
             };
 
-            let mut ops: Vec<(OperationId, Signed<Operation, OperationId>)> = Vec::new();
+            let mut ops: Vec<(OperationId, SignedOperation)> = Vec::new();
             for i in 0..10 {
                 let (op, _) = get_transaction_with_addresses(8, i, pubkey_a, priv_a, pubkey_b);
                 ops.push((op.content.compute_id().unwrap(), op));

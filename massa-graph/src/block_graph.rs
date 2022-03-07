@@ -15,7 +15,7 @@ use massa_models::{
     active_block::ActiveBlock,
     api::EndorsementInfo,
     rolls::{RollCounts, RollUpdate, RollUpdates},
-    Operation, SignedHeader,
+    SignedHeader, SignedOperation,
 };
 use massa_models::{clique::Clique, signed::Signable};
 use massa_models::{ledger_models::LedgerChange, signed::Signed};
@@ -593,7 +593,7 @@ impl BlockGraph {
         &self,
         state_accu: &mut BlockStateAccumulator,
         header: &SignedHeader,
-        operation: &Signed<Operation, OperationId>,
+        operation: &SignedOperation,
         pos: &mut ProofOfStake,
     ) -> Result<()> {
         let block_creator_address = Address::from_public_key(&header.content.creator);

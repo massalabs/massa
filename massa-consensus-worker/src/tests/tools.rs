@@ -16,7 +16,7 @@ use massa_models::{
     prehash::Set,
     signed::{Signable, Signed},
     Address, Amount, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation,
-    OperationId, OperationType, SerializeCompact, Slot,
+    OperationType, SerializeCompact, SignedOperation, Slot,
 };
 use massa_pool::PoolCommand;
 use massa_proof_of_stake_exports::ExportProofOfStake;
@@ -332,7 +332,7 @@ pub fn create_roll_transaction(
     buy: bool,
     expire_period: u64,
     fee: u64,
-) -> Signed<Operation, OperationId> {
+) -> SignedOperation {
     let op = if buy {
         OperationType::RollBuy { roll_count }
     } else {
@@ -376,7 +376,7 @@ pub fn create_transaction(
     amount: u64,
     expire_period: u64,
     fee: u64,
-) -> Signed<Operation, OperationId> {
+) -> SignedOperation {
     let op = OperationType::Transaction {
         recipient_address,
         amount: Amount::from_str(&amount.to_string()).unwrap(),
@@ -401,7 +401,7 @@ pub fn create_executesc(
     max_gas: u64,
     coins: u64,
     gas_price: u64,
-) -> Signed<Operation, OperationId> {
+) -> SignedOperation {
     let op = OperationType::ExecuteSC {
         data,
         max_gas,
@@ -423,7 +423,7 @@ pub fn create_roll_buy(
     roll_count: u64,
     expire_period: u64,
     fee: u64,
-) -> Signed<Operation, OperationId> {
+) -> SignedOperation {
     let op = OperationType::RollBuy { roll_count };
     let sender_public_key = derive_public_key(&priv_key);
     let content = Operation {
@@ -440,7 +440,7 @@ pub fn create_roll_sell(
     roll_count: u64,
     expire_period: u64,
     fee: u64,
-) -> Signed<Operation, OperationId> {
+) -> SignedOperation {
     let op = OperationType::RollSell { roll_count };
     let sender_public_key = derive_public_key(&priv_key);
     let content = Operation {
@@ -518,7 +518,7 @@ pub fn create_endorsement(
 pub fn get_export_active_test_block(
     creator: PublicKey,
     parents: Vec<(BlockId, u64)>,
-    operations: Vec<Signed<Operation, OperationId>>,
+    operations: Vec<SignedOperation>,
     slot: Slot,
     is_final: bool,
 ) -> (ExportActiveBlock, BlockId) {
@@ -563,7 +563,7 @@ pub fn create_block_with_operations(
     slot: Slot,
     best_parents: &Vec<BlockId>,
     creator: PrivateKey,
-    operations: Vec<Signed<Operation, OperationId>>,
+    operations: Vec<SignedOperation>,
 ) -> (BlockId, Block, PrivateKey) {
     let public_key = derive_public_key(&creator);
 

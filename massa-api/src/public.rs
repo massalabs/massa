@@ -11,8 +11,8 @@ use massa_execution_exports::{
 use massa_graph::{DiscardReason, ExportBlockStatus};
 use massa_models::api::SCELedgerInfo;
 use massa_models::execution::ReadOnlyResult;
-use massa_models::signed::Signed;
-use massa_models::Operation;
+use massa_models::SignedOperation;
+
 use massa_models::{
     api::{
         APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
@@ -564,7 +564,7 @@ impl Endpoints for API<Public> {
 
     fn send_operations(
         &self,
-        ops: Vec<Signed<Operation, OperationId>>,
+        ops: Vec<SignedOperation>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
         let api_cfg = self.0.api_settings;

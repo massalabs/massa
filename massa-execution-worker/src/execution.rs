@@ -16,8 +16,8 @@ use massa_execution_exports::{
 };
 use massa_ledger::{Applicable, FinalLedger, LedgerChanges, LedgerEntry, SetUpdateOrDelete};
 use massa_models::output_event::SCOutputEvent;
-use massa_models::signed::{Signable, Signed};
-use massa_models::{Address, BlockId, Operation, OperationId, OperationType};
+use massa_models::signed::Signable;
+use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
 use massa_models::{Block, Slot};
 use massa_sc_runtime::Interface;
 use parking_lot::{Mutex, RwLock};
@@ -232,7 +232,7 @@ impl ExecutionState {
     /// * block_creator_addr: address of the block creator
     pub fn execute_operation(
         &self,
-        operation: &Signed<Operation, OperationId>,
+        operation: &SignedOperation,
         block_creator_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process ExecuteSC operations only, ignore other types of operations

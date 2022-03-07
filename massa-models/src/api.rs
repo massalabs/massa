@@ -8,7 +8,7 @@ use crate::prehash::Set;
 use crate::signed::Signed;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
 use crate::Endorsement;
-use crate::Operation;
+use crate::SignedOperation;
 use crate::{
     Address, Amount, Block, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
@@ -75,7 +75,7 @@ pub struct OperationInfo {
     pub in_pool: bool,
     pub in_blocks: Vec<BlockId>,
     pub is_final: bool,
-    pub operation: Signed<Operation, OperationId>,
+    pub operation: SignedOperation,
 }
 
 impl OperationInfo {

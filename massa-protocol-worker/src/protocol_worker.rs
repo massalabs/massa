@@ -8,8 +8,8 @@ use massa_models::{
     node::NodeId,
     prehash::{BuildMap, Map, Set},
     signed::{Signable, Signed},
-    Address, Block, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationType,
-    SignedHeader,
+    Address, Block, BlockId, Endorsement, EndorsementId, OperationId, OperationType, SignedHeader,
+    SignedOperation,
 };
 use massa_network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
@@ -660,7 +660,7 @@ impl ProtocolWorker {
                     { "operations": ops }
                 );
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_ops: Map<OperationId, Signed<Operation, OperationId>> = ops
+                    let new_ops: Map<OperationId, SignedOperation> = ops
                         .iter()
                         .filter(|(id, _)| !node_info.knows_op(*id))
                         .map(|(k, v)| (*k, v.clone()))
@@ -1222,7 +1222,7 @@ impl ProtocolWorker {
     /// - Valid signature
     async fn note_operations_from_node(
         &mut self,
-        operations: Vec<Signed<Operation, OperationId>>,
+        operations: Vec<SignedOperation>,
         source_node_id: &NodeId,
         propagate: bool,
     ) -> Result<(Vec<OperationId>, Map<OperationId, (usize, u64)>, bool, u64), ProtocolError> {

@@ -9,7 +9,7 @@ use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::{Signable, Signed};
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockId, EndorsementId, OperationId, Slot,
+    Address, Amount, Block, BlockHeader, BlockId, EndorsementId, SignedOperation, Slot,
 };
 use massa_models::{Endorsement, Operation, OperationType};
 use massa_network::NetworkCommand;
@@ -73,7 +73,7 @@ pub fn create_block_with_operations(
     private_key: &PrivateKey,
     public_key: &PublicKey,
     slot: Slot,
-    operations: Vec<Signed<Operation, OperationId>>,
+    operations: Vec<SignedOperation>,
 ) -> Block {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
@@ -177,7 +177,7 @@ pub fn create_endorsement() -> Signed<Endorsement, EndorsementId> {
 pub fn create_operation_with_expire_period(
     sender_priv: &PrivateKey,
     expire_period: u64,
-) -> Signed<Operation, OperationId> {
+) -> SignedOperation {
     let sender_pub = derive_public_key(sender_priv);
 
     let recv_priv = generate_random_private_key();

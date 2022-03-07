@@ -15,8 +15,7 @@ use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
-use massa_models::signed::Signed;
-use massa_models::{Address, BlockId, EndorsementId, Operation, OperationId};
+use massa_models::{Address, BlockId, EndorsementId, OperationId, SignedOperation};
 use massa_network::NetworkCommandSender;
 use massa_signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
@@ -153,7 +152,7 @@ impl Endpoints for API<Private> {
 
     fn send_operations(
         &self,
-        _: Vec<Signed<Operation, OperationId>>,
+        _: Vec<SignedOperation>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>> {
         crate::wrong_api::<Vec<OperationId>>()
     }

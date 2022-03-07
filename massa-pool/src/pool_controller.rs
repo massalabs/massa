@@ -12,8 +12,8 @@ use massa_models::{
     prehash::{Map, Set},
     signed::Signed,
     stats::PoolStats,
-    Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
-    Slot,
+    Address, BlockId, Endorsement, EndorsementId, OperationId, OperationSearchResult,
+    SignedOperation, Slot,
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use tokio::{
@@ -75,7 +75,7 @@ pub struct PoolCommandSender(pub mpsc::Sender<PoolCommand>);
 impl PoolCommandSender {
     pub async fn add_operations(
         &mut self,
-        operations: Map<OperationId, Signed<Operation, OperationId>>,
+        operations: Map<OperationId, SignedOperation>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.add_operations", { "ops": operations });
         let res = self
@@ -148,7 +148,7 @@ impl PoolCommandSender {
         exclude: Set<OperationId>,
         batch_size: usize,
         max_size: u64,
-    ) -> Result<Vec<(OperationId, Signed<Operation, OperationId>, u64)>, PoolError> {
+    ) -> Result<Vec<(OperationId, SignedOperation, u64)>, PoolError> {
         massa_trace!("pool.command_sender.get_operation_batch", {
             "target_slot": target_slot
         });
@@ -207,7 +207,7 @@ impl PoolCommandSender {
     pub async fn get_operations(
         &mut self,
         operation_ids: Set<OperationId>,
-    ) -> Result<Map<OperationId, Signed<Operation, OperationId>>, PoolError> {
+    ) -> Result<Map<OperationId, SignedOperation>, PoolError> {
         massa_trace!("pool.command_sender.get_operations", {
             "operation_ids": operation_ids
         });

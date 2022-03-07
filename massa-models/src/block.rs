@@ -6,7 +6,7 @@ use crate::signed::{Id, Signable, Signed};
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
     DeserializeMinBEInt, DeserializeVarInt, Endorsement, EndorsementId, ModelsError, Operation,
-    OperationId, SerializeCompact, SerializeMinBEInt, SerializeVarInt, Slot,
+    OperationId, SerializeCompact, SerializeMinBEInt, SerializeVarInt, SignedOperation, Slot,
 };
 use massa_hash::hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
@@ -98,14 +98,11 @@ impl BlockId {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
     pub header: SignedHeader,
-    pub operations: Vec<Signed<Operation, OperationId>>,
+    pub operations: Vec<SignedOperation>,
 }
 
 impl Block {
-    pub fn contains_operation(
-        &self,
-        op: Signed<Operation, OperationId>,
-    ) -> Result<bool, ModelsError> {
+    pub fn contains_operation(&self, op: SignedOperation) -> Result<bool, ModelsError> {
         let op_id = op.content.compute_id()?;
         Ok(self.operations.iter().any(|o| {
             o.content
@@ -320,8 +317,7 @@ impl DeserializeCompact for Block {
         if cursor > (max_block_size as usize) {
             return Err(ModelsError::DeserializeError("block is too large".into()));
         }
-        let mut operations: Vec<Signed<Operation, OperationId>> =
-            Vec::with_capacity(operation_count as usize);
+        let mut operations: Vec<SignedOperation> = Vec::with_capacity(operation_count as usize);
         for _ in 0..(operation_count as usize) {
             let (operation, delta) =
                 Signed::<Operation, OperationId>::from_bytes_compact(&buffer[cursor..])?;

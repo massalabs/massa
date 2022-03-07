@@ -7,8 +7,8 @@ use massa_models::prehash::{Map, Set};
 use massa_models::signed::Signed;
 use massa_models::stats::PoolStats;
 use massa_models::{
-    Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
-    Slot,
+    Address, BlockId, Endorsement, EndorsementId, OperationId, OperationSearchResult,
+    SignedOperation, Slot,
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEvent, ProtocolPoolEventReceiver};
 use tokio::sync::{mpsc, oneshot};
@@ -17,7 +17,7 @@ use tracing::warn;
 /// Commands that can be processed by pool.
 #[derive(Debug)]
 pub enum PoolCommand {
-    AddOperations(Map<OperationId, Signed<Operation, OperationId>>),
+    AddOperations(Map<OperationId, SignedOperation>),
     UpdateCurrentSlot(Slot),
     UpdateLatestFinalPeriods(Vec<u64>),
     GetOperationBatch {
@@ -25,11 +25,11 @@ pub enum PoolCommand {
         exclude: Set<OperationId>,
         batch_size: usize,
         max_size: u64,
-        response_tx: oneshot::Sender<Vec<(OperationId, Signed<Operation, OperationId>, u64)>>,
+        response_tx: oneshot::Sender<Vec<(OperationId, SignedOperation, u64)>>,
     },
     GetOperations {
         operation_ids: Set<OperationId>,
-        response_tx: oneshot::Sender<Map<OperationId, Signed<Operation, OperationId>>>,
+        response_tx: oneshot::Sender<Map<OperationId, SignedOperation>>,
     },
     GetRecentOperations {
         address: Address,

@@ -4,12 +4,12 @@ use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
 use massa_graph::{ledger::LedgerSubset, BootstrapableGraph};
-use massa_models::signed::{Signable, Signed};
+use massa_models::signed::Signable;
+use massa_models::SignedOperation;
 use massa_models::{
     clique::Clique, ledger_models::LedgerData, Amount, BlockId, OperationSearchResult,
     OperationSearchResultStatus, Slot,
 };
-use massa_models::{Operation, OperationId};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
 use serial_test::serial;
@@ -150,7 +150,7 @@ async fn test_get_operation() {
 
 fn get_bootgraph(
     creator: PublicKey,
-    operations: Vec<Signed<Operation, OperationId>>,
+    operations: Vec<SignedOperation>,
     ledger: LedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
     let (genesis_0, g0_id) =
