@@ -158,11 +158,7 @@ impl std::fmt::Display for Operation {
     }
 }
 
-impl Signable<OperationId> for Operation {
-    fn get_signature_message(&self) -> Result<Hash, ModelsError> {
-        Ok(Hash::compute_from(&self.to_bytes_compact()?))
-    }
-}
+impl Signable<OperationId> for Operation {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OperationType {

@@ -36,7 +36,10 @@ where
     U: Id,
     Self: SerializeCompact,
 {
-    fn get_signature_message(&self) -> Result<Hash, ModelsError>;
+    fn get_signature_message(&self) -> Result<Hash, ModelsError> {
+        Ok(Hash::compute_from(&self.to_bytes_compact()?))
+    }
+
     fn compute_id(&self) -> Result<U, ModelsError> {
         Ok(U::new(Hash::compute_from(&self.to_bytes_compact()?)))
     }

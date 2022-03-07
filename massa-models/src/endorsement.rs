@@ -114,11 +114,7 @@ pub struct Endorsement {
     pub endorsed_block: BlockId,
 }
 
-impl Signable<EndorsementId> for Endorsement {
-    fn get_signature_message(&self) -> Result<Hash, ModelsError> {
-        Ok(Hash::compute_from(&self.to_bytes_compact()?))
-    }
-}
+impl Signable<EndorsementId> for Endorsement {}
 
 /// Checks performed:
 /// - Validity of the slot.
