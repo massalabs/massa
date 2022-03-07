@@ -10,11 +10,10 @@ use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{
     tests::tools::{create_and_connect_nodes, create_block, wait_protocol_event},
-    ProtocolEvent,
+    BlocksResults, ProtocolEvent,
 };
 use serial_test::serial;
 use std::collections::HashSet;
-
 #[tokio::test]
 #[serial]
 async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
@@ -163,8 +162,8 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             }
 
             // 4. Simulate consensus sending block.
-            let mut results = Map::default();
-            results.insert(expected_hash, Some((block, None, None)));
+            let mut results: BlocksResults = Map::default();
+            results.insert(expected_hash, Some((None, None)));
             protocol_command_sender
                 .send_get_blocks_results(results)
                 .await
@@ -295,7 +294,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                 .map(|endo| endo.content.compute_id().unwrap())
                 .collect();
             protocol_command_sender
-                .integrated_block(ref_hash, ref_block, op_ids, endo_ids)
+                .integrated_block(ref_hash, op_ids, endo_ids)
                 .await
                 .expect("Failed to ask for block.");
 

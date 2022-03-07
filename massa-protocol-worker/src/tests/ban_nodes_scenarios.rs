@@ -6,8 +6,7 @@ use massa_models::signed::Signable;
 use massa_models::{BlockId, Slot};
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
-use massa_protocol_exports::ProtocolEvent;
-use massa_protocol_exports::ProtocolPoolEvent;
+use massa_protocol_exports::{BlocksResults, ProtocolEvent, ProtocolPoolEvent};
 use serial_test::serial;
 use std::collections::HashSet;
 use std::time::Duration;
@@ -362,8 +361,8 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
             tools::assert_banned_node(nodes[1].id, &mut network_controller).await;
 
             // 4. Simulate consensus sending block.
-            let mut results = Map::default();
-            results.insert(expected_hash, Some((block, None, None)));
+            let mut results: BlocksResults = Map::default();
+            results.insert(expected_hash, Some((None, None)));
             protocol_command_sender
                 .send_get_blocks_results(results)
                 .await
