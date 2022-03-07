@@ -266,7 +266,7 @@ impl NodeWorker {
                             Message::BlockHeader(header) => {
                                 massa_trace!(
                                     "node_worker.run_loop. receive Message::BlockHeader",
-                                    {"block_id":header.content.compute_id()?, "header": header, "node": self.node_id}
+                                    {"block_id": header.content.compute_id()?, "header": header, "node": self.node_id}
                                 );
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlockHeader(header))).await;
                             },
