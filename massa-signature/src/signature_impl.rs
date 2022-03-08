@@ -343,7 +343,7 @@ impl PublicKey {
             .into_vec()
             .map_err(|err| {
                 MassaHashError::ParsingError(format!(
-                    "[HERE] public key bs58_check parsing error: {}",
+                    "public key bs58_check parsing error: {}",
                     err
                 ))
             })

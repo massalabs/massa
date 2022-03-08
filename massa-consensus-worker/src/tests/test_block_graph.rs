@@ -20,10 +20,11 @@ use std::str::FromStr;
 use tempfile::NamedTempFile;
 
 fn get_export_active_test_block() -> ExportActiveBlock {
+    // add comment that: is a no regressions test / is not a correctness test
     let block = Block {
             header: BlockHeader {
                 content: BlockHeaderContent{
-                    creator: PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
+                    creator: PublicKey::from_bs58_check("2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA").unwrap(),
                     operation_merkle_root: Hash::compute_from(&Vec::new()),
                     parents: vec![
                         get_dummy_block_id("parent1"),
@@ -31,7 +32,7 @@ fn get_export_active_test_block() -> ExportActiveBlock {
                     ],
                     slot: Slot::new(1, 0),
                     endorsements: vec![ Endorsement{content: EndorsementContent{
-                        sender_public_key: PublicKey::from_bs58_check("4vYrPNzUM8PKg2rYPW3ZnXPzy67j9fn5WsGCbnwAnk2Lf7jNHb").unwrap(),
+                        sender_public_key: PublicKey::from_bs58_check("2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA").unwrap(),
                         endorsed_block: get_dummy_block_id("parent1"),
                         index: 0,
                         slot: Slot::new(1, 0),
@@ -130,20 +131,20 @@ pub async fn test_get_ledger_at_parents() {
 
     // define addresses use for the test
     let pubkey_a =
-        PublicKey::from_bs58_check("5UvFn66yoQerrEmikCxDVvhkLvCo9R2hJAYFMh2pZfYUQDMuCE").unwrap();
+        PublicKey::from_bs58_check("4hWNheG3c2Ei6GJz5mQr3bec5GVtd6HP96XZkL6dNnsCyuZVq").unwrap();
     let address_a = Address::from_public_key(&pubkey_a);
     assert_eq!(0, address_a.get_thread(thread_count));
 
     let pubkey_b =
-        PublicKey::from_bs58_check("4uRbkzUvQwW19dD6cxQ9WiYo8BZTPQsmsCbBrFLxMiUYTSbo2p").unwrap();
+        PublicKey::from_bs58_check("2EWucsptjTGWbrFUDH1DYWr9pGzeqwAtA6gJ6qcBc2aFQabUJE").unwrap();
     let address_b = Address::from_public_key(&pubkey_b);
     assert_eq!(1, address_b.get_thread(thread_count));
 
     let address_c =
-        Address::from_bs58_check("2cABaQpb4fgYjGE7z2TnbQ2DePsyh9KwwPbodS7fD9Pft9uS1p").unwrap();
+        Address::from_bs58_check("2qykiDsKHnB18i4q7CNAvoRpWhxETsWKZgSx8obWaDZ88QFhvP").unwrap();
     assert_eq!(1, address_c.get_thread(thread_count));
     let address_d =
-        Address::from_bs58_check("21bU2xruH7bFzfcUhJ6SGjnLmC9cMt1kxzqFr11eV58uj7Ui8h").unwrap();
+        Address::from_bs58_check("2qeRyUDUXjdzdafpkiHWMCLuXTs8jbzgqiq7BpoFCSLqNUgojv").unwrap();
     assert_eq!(1, address_d.get_thread(thread_count));
 
     let graph_cfg = GraphConfig::from(&cfg);
