@@ -42,7 +42,10 @@ async fn test_operations_check() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -146,7 +149,10 @@ async fn test_execution_check() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await

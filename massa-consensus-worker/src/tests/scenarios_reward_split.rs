@@ -44,7 +44,10 @@ async fn test_reward_split() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             // Check initial balances.
             let addresses_state = consensus_command_sender
                 .get_addresses_info(vec![address_a, address_b].into_iter().collect())
