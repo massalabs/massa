@@ -326,7 +326,7 @@ async fn test_interleaving_block_creation_with_reception() {
                                 ));
                                 let stored_block = block.read();
                                 if stored_block.block.header.content.slot == cur_slot {
-                                    Some((stored_block.block.header, block_id))
+                                    Some((stored_block.block.header.clone(), block_id))
                                 } else {
                                     None
                                 }
@@ -486,7 +486,7 @@ async fn test_order_of_inclusion() {
                             .retrieve_block(&block_id)
                             .expect(&format!("Block id : {} not found in storage", block_id));
                         let stored_block = block.read();
-                        Some((block_id, stored_block.block))
+                        Some((block_id, stored_block.block.clone()))
                     }
                     _ => None,
                 })
@@ -601,7 +601,7 @@ async fn test_block_filling() {
                                 .retrieve_block(&block_id)
                                 .expect(&format!("Block id : {} not found in storage", block_id));
                             let stored_block = block.read();
-                            Some((block_id, stored_block.block))
+                            Some((block_id, stored_block.block.clone()))
                         }
                         _ => None,
                     })
@@ -703,7 +703,7 @@ async fn test_block_filling() {
                             .retrieve_block(&block_id)
                             .expect(&format!("Block id : {} not found in storage", block_id));
                         let stored_block = block.read();
-                        Some((block_id, stored_block.block))
+                        Some((block_id, stored_block.block.clone()))
                     }
                     _ => None,
                 })

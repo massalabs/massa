@@ -371,85 +371,80 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         ],
     };
 
+    let block = Block {
+        header: BlockHeader {
+            content: BlockHeaderContent {
+                creator: get_random_public_key(),
+                slot: Slot::new(1, 1),
+                parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
+                operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
+                endorsements: vec![
+                    Endorsement {
+                        content: EndorsementContent {
+                            sender_public_key: get_random_public_key(),
+                            slot: Slot::new(1, 0),
+                            index: 1,
+                            endorsed_block: get_dummy_block_id("p1"),
+                        },
+                        signature: get_dummy_signature("dummy_sig_0"),
+                    },
+                    Endorsement {
+                        content: EndorsementContent {
+                            sender_public_key: get_random_public_key(),
+                            slot: Slot::new(4, 1),
+                            index: 3,
+                            endorsed_block: get_dummy_block_id("p1"),
+                        },
+                        signature: get_dummy_signature("dummy_sig_00"),
+                    },
+                ],
+            },
+            signature: get_dummy_signature("dummy_sig_1"),
+        },
+        operations: vec![
+            Operation {
+                content: OperationContent {
+                    sender_public_key: get_random_public_key(),
+                    fee: Amount::from_str("1524878").unwrap(),
+                    expire_period: 5787899,
+                    op: massa_models::OperationType::Transaction {
+                        recipient_address: get_random_address(),
+                        amount: Amount::from_str("1259787").unwrap(),
+                    },
+                },
+                signature: get_dummy_signature("dummy_sig_2"),
+            },
+            Operation {
+                content: OperationContent {
+                    sender_public_key: get_random_public_key(),
+                    fee: Amount::from_str("878763222").unwrap(),
+                    expire_period: 4557887,
+                    op: massa_models::OperationType::RollBuy { roll_count: 45544 },
+                },
+                signature: get_dummy_signature("dummy_sig_3"),
+            },
+            Operation {
+                content: OperationContent {
+                    sender_public_key: get_random_public_key(),
+                    fee: Amount::from_str("4545").unwrap(),
+                    expire_period: 452524,
+                    op: massa_models::OperationType::RollSell {
+                        roll_count: 4888787,
+                    },
+                },
+                signature: get_dummy_signature("dummy_sig_4"),
+            },
+        ],
+    };
+
+    let block_id = block
+        .header
+        .compute_block_id()
+        .expect("Fail to compute block id");
+
     //TODO: We currently lost information. Need to use shared storage
     let block1 = ExportActiveBlock {
-        block: Block {
-            header: Signed::new_signed(
-                BlockHeader {
-                    creator: get_random_public_key(),
-                    slot: Slot::new(1, 1),
-                    parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
-                    operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
-                    endorsements: vec![
-                        Signed::new_signed(
-                            Endorsement {
-                                sender_public_key: get_random_public_key(),
-                                slot: Slot::new(1, 0),
-                                index: 1,
-                                endorsed_block: get_dummy_block_id("p1"),
-                            },
-                            &generate_random_private_key(),
-                        )
-                        .unwrap()
-                        .1,
-                        Signed::new_signed(
-                            Endorsement {
-                                sender_public_key: get_random_public_key(),
-                                slot: Slot::new(4, 1),
-                                index: 3,
-                                endorsed_block: get_dummy_block_id("p1"),
-                            },
-                            &generate_random_private_key(),
-                        )
-                        .unwrap()
-                        .1,
-                    ],
-                },
-                &generate_random_private_key(),
-            )
-            .unwrap()
-            .1,
-            operations: vec![
-                Signed::new_signed(
-                    Operation {
-                        sender_public_key: get_random_public_key(),
-                        fee: Amount::from_str("1524878").unwrap(),
-                        expire_period: 5787899,
-                        op: massa_models::OperationType::Transaction {
-                            recipient_address: get_random_address(),
-                            amount: Amount::from_str("1259787").unwrap(),
-                        },
-                    },
-                    &generate_random_private_key(),
-                )
-                .unwrap()
-                .1,
-                Signed::new_signed(
-                    Operation {
-                        sender_public_key: get_random_public_key(),
-                        fee: Amount::from_str("878763222").unwrap(),
-                        expire_period: 4557887,
-                        op: massa_models::OperationType::RollBuy { roll_count: 45544 },
-                    },
-                    &generate_random_private_key(),
-                )
-                .unwrap()
-                .1,
-                Signed::new_signed(
-                    Operation {
-                        sender_public_key: get_random_public_key(),
-                        fee: Amount::from_str("4545").unwrap(),
-                        expire_period: 452524,
-                        op: massa_models::OperationType::RollSell {
-                            roll_count: 4888787,
-                        },
-                    },
-                    &generate_random_private_key(),
-                )
-                .unwrap()
-                .1,
-            ],
-        },
+        block: block_id,
         parents: vec![
             (get_dummy_block_id("b1"), 4777),
             (get_dummy_block_id("b2"), 8870),
