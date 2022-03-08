@@ -9,6 +9,7 @@ use massa_logging::massa_trace;
 use massa_models::constants::MAX_ADVERTISE_LENGTH;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::path::Path;
@@ -40,8 +41,8 @@ mod test {
     #[test]
     fn test_order() {
         use crate::peer_info_database::PeerType;
-        assert!(PeerType::Bootstrap >= PeerType::WhiteListed);
-        assert!(PeerType::WhiteListed >= PeerType::Standard);
+        assert!(PeerType::Bootstrap > PeerType::WhiteListed);
+        assert!(PeerType::WhiteListed > PeerType::Standard);
     }
 }
 
@@ -820,8 +821,8 @@ impl PeerInfoDatabase {
             .iter()
             .map(|(peer_type, _)| peer_type)
             .collect();
-        peer_types.sort();
-        for &peer_type in peer_types.iter() {
+        peer_types.sort_by_key(|&peer_type| Reverse(peer_type));
+            for &peer_type in peer_types.iter() {
             connections.append(&mut self.get_out_connection_candidate_ips_for_type(
                 peer_type,
                 &self.peer_types_connection_count[peer_type],
