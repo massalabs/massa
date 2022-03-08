@@ -431,13 +431,13 @@ fn get_bootgraph(
     operation: SignedOperation,
     ledger: LedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
-    let (genesis_0, g0_id) =
+    let (genesis_0_block, genesis_0) =
         get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 0), true);
-    let (genesis_1, g1_id) =
+    let (genesis_1_block, genesis_1) =
         get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 1), true);
-    let (p1t0, p1t0_id) = get_export_active_test_block(
+    let (p1t0_block, p1t0) = get_export_active_test_block(
         creator,
-        vec![(g0_id, 0), (g1_id, 0)],
+        vec![(genesis_0.block, 0), (genesis_1.block, 0)],
         vec![operation],
         Slot::new(1, 0),
         false,
@@ -445,31 +445,37 @@ fn get_bootgraph(
     (
         BootstrapableGraph {
             /// Map of active blocks, where blocks are in their exported version.
-            active_blocks: vec![(g0_id, genesis_0), (g1_id, genesis_1), (p1t0_id, p1t0)]
-                .into_iter()
-                .collect(),
+            active_blocks: vec![
+                (genesis_0.block, genesis_0),
+                (genesis_1.block, genesis_1),
+                (p1t0.block, p1t0),
+            ]
+            .into_iter()
+            .collect(),
             /// Best parents hash in each thread.
-            best_parents: vec![(p1t0_id, 1), (g1_id, 0)],
+            best_parents: vec![(p1t0.block, 1), (genesis_1.block, 0)],
             /// Latest final period and block hash in each thread.
-            latest_final_blocks_periods: vec![(g0_id, 0u64), (g1_id, 0u64)],
+            latest_final_blocks_periods: vec![(genesis_0.block, 0u64), (genesis_1.block, 0u64)],
             /// Head of the incompatibility graph.
             gi_head: vec![
-                (g0_id, Default::default()),
-                (p1t0_id, Default::default()),
-                (g1_id, Default::default()),
+                (genesis_0.block, Default::default()),
+                (p1t0.block, Default::default()),
+                (genesis_1.block, Default::default()),
             ]
             .into_iter()
             .collect(),
 
             /// List of maximal cliques of compatible blocks.
             max_cliques: vec![Clique {
-                block_ids: vec![g0_id, p1t0_id, g1_id].into_iter().collect(),
+                block_ids: vec![genesis_0.block, p1t0.block, genesis_1.block]
+                    .into_iter()
+                    .collect(),
                 fitness: 1111,
                 is_blockclique: true,
             }],
             ledger,
         },
-        p1t0_id,
-        g1_id,
+        p1t0.block,
+        genesis_1.block,
     )
 }

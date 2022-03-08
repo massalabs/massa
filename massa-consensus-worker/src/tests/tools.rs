@@ -521,7 +521,7 @@ pub fn get_export_active_test_block(
     operations: Vec<SignedOperation>,
     slot: Slot,
     is_final: bool,
-) -> (ExportActiveBlock, BlockId) {
+) -> (Block, ExportActiveBlock) {
     let block = Block {
         header: Signed::new_signed(
             BlockHeader {
@@ -544,17 +544,17 @@ pub fn get_export_active_test_block(
     };
     let id = block.header.content.compute_id().unwrap();
     (
+        block,
         ExportActiveBlock {
             parents,
             dependencies: Default::default(),
-            block,
+            block: id,
             children: vec![Default::default(), Default::default()],
             is_final,
             block_ledger_changes: Default::default(),
             roll_updates: Default::default(),
             production_events: vec![],
         },
-        id,
     )
 }
 
