@@ -93,8 +93,7 @@ pub async fn start_consensus_controller(
             ConsensusWorkerChannels {
                 protocol_command_sender: channels.protocol_command_sender,
                 protocol_event_receiver: channels.protocol_event_receiver,
-                execution_event_receiver: channels.execution_event_receiver,
-                execution_command_sender: channels.execution_command_sender,
+                execution_controller: channels.execution_controller,
                 pool_command_sender: channels.pool_command_sender,
                 controller_command_rx: command_rx,
                 controller_event_tx: event_tx,

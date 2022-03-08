@@ -30,6 +30,20 @@
 //! use massa_models::constants::default_testing::*;
 //! ```
 //!
+//! # Note about rooting
+//!
+//! |T|S| not(T) or S | T and not(S)
+//! |0|0| 1           | 0
+//! |1|0| 0           | 1
+//! |0|1| 1           | 0
+//! |1|1| 1           | 0
+//!
+//! #[cfg(any(not(feature = "testing"), feature = "sandbox"))]
+//! On `cargo run --release` or `cargo run --features sandbox`
+//!
+//! #[cfg(all(feature = "testing", not(feature = "sandbox")))]
+//! On `cargo run` or `cargo test`
+//!
 
 // **************************************************************
 // Note:
@@ -48,9 +62,9 @@
 pub mod default;
 pub mod default_testing;
 
-#[cfg(not(feature = "testing"))]
+#[cfg(any(not(feature = "testing"), feature = "sandbox"))]
 pub use default::*;
-#[cfg(feature = "testing")]
+#[cfg(all(feature = "testing", not(feature = "sandbox")))]
 pub use default_testing::*;
 
 mod compact_config;

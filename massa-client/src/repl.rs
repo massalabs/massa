@@ -7,6 +7,7 @@ use crate::utils::longest_common_prefix;
 use console::style;
 use dialoguer::{theme::ColorfulTheme, Completion, History, Input};
 use erased_serde::{Serialize, Serializer};
+use glob::glob;
 use massa_models::api::{AddressInfo, BlockInfo, EndorsementInfo, NodeStatus, OperationInfo};
 use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
@@ -16,6 +17,7 @@ use massa_wallet::Wallet;
 use rev_lines::RevLines;
 use std::collections::VecDeque;
 use std::io::Error;
+use std::str;
 use std::{
     fs::File,
     fs::OpenOptions,
@@ -23,6 +25,8 @@ use std::{
 };
 use strum::IntoEnumIterator;
 use strum::ParseError;
+#[cfg(not(windows))]
+use tilde_expand::tilde_expand;
 
 macro_rules! massa_fancy_ascii_art_logo {
     () => {
@@ -132,24 +136,58 @@ impl Default for CommandCompletion {
     }
 }
 
+#[cfg(not(windows))]
+fn expand_path(partial_path: &str) -> Vec<u8> {
+    tilde_expand(partial_path.as_bytes())
+}
+
+#[cfg(windows)]
+fn expand_path(partial_path: &str) -> Vec<u8> {
+    partial_path.as_bytes().to_vec()
+}
+
 impl Completion for CommandCompletion {
     /// Simple completion implementation based on substring
     fn get(&self, input: &str) -> Option<String> {
         let input = input.to_string();
-        let suggestions: Vec<&str> = self
-            .options
-            .iter()
-            .filter(|s| s.len() >= input.len() && input == s[..input.len()])
-            .map(|s| &s[..])
-            .collect();
-        if !suggestions.is_empty() {
-            println!();
-            for suggestion in &suggestions {
-                println!("{}", style(suggestion).dim());
+        if input.contains(' ') {
+            let mut args: Vec<&str> = input.split(' ').collect();
+            let mut default_path = "./";
+            let path_to_complete = args.last_mut().unwrap_or(&mut default_path);
+            let expanded_path = expand_path(path_to_complete);
+            *path_to_complete = str::from_utf8(&expanded_path).unwrap_or(path_to_complete);
+            if let Ok(paths) = glob(&(path_to_complete.to_owned() + "*")) {
+                let suggestions: Vec<String> = paths
+                    .filter_map(|x| x.map(|path| path.display().to_string()).ok())
+                    .collect();
+                if !suggestions.is_empty() {
+                    println!();
+                    for path in &suggestions {
+                        println!("{}", style(path).dim())
+                    }
+                    *path_to_complete =
+                        longest_common_prefix(suggestions.iter().map(|s| &s[..]).collect());
+                }
+                Some(args.join(" "))
+            } else {
+                Some(args.join(" "))
             }
-            Some(String::from(longest_common_prefix(suggestions)))
         } else {
-            None
+            let suggestions: Vec<&str> = self
+                .options
+                .iter()
+                .filter(|s| s.len() >= input.len() && input == s[..input.len()])
+                .map(|s| &s[..])
+                .collect();
+            if !suggestions.is_empty() {
+                println!();
+                for suggestion in &suggestions {
+                    println!("{}", style(suggestion).dim());
+                }
+                Some(String::from(longest_common_prefix(suggestions)))
+            } else {
+                None
+            }
         }
     }
 }

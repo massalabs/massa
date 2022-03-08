@@ -5,7 +5,7 @@ use crate::{Endpoints, Private, RpcServer, StopHandle, API};
 use jsonrpc_core::BoxFuture;
 use jsonrpc_http_server::tokio::sync::mpsc;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
-use massa_execution::ExecutionCommandSender;
+use massa_execution_exports::ExecutionController;
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus,
     OperationInfo, ReadOnlyExecution, TimeInterval,
@@ -24,7 +24,7 @@ impl API<Private> {
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         network_command_sender: NetworkCommandSender,
-        execution_command_sender: ExecutionCommandSender,
+        execution_controller: Box<dyn ExecutionController>,
         api_settings: &'static APISettings,
         consensus_settings: ConsensusConfig,
     ) -> (Self, mpsc::Receiver<()>) {
@@ -33,7 +33,7 @@ impl API<Private> {
             API(Private {
                 consensus_command_sender,
                 network_command_sender,
-                execution_command_sender,
+                execution_controller,
                 consensus_config: consensus_settings,
                 api_settings,
                 stop_node_channel,
@@ -76,20 +76,9 @@ impl Endpoints for API<Private> {
 
     fn execute_read_only_request(
         &self,
-        ReadOnlyExecution {
-            max_gas,
-            simulated_gas_price,
-            bytecode,
-            address,
-        }: ReadOnlyExecution,
-    ) -> BoxFuture<Result<ExecuteReadOnlyResponse, ApiError>> {
-        let cmd_sender = self.0.execution_command_sender.clone();
-        let closure = async move || {
-            Ok(cmd_sender
-                .execute_read_only_request(max_gas, simulated_gas_price, bytecode, address)
-                .await?)
-        };
-        Box::pin(closure())
+        _: Vec<ReadOnlyExecution>,
+    ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
+        crate::wrong_api::<Vec<ExecuteReadOnlyResponse>>()
     }
 
     fn remove_staking_addresses(&self, keys: Vec<Address>) -> BoxFuture<Result<(), ApiError>> {

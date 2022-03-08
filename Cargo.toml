@@ -5,7 +5,8 @@ members = [
   "massa-client",
   "massa-consensus-exports",
   "massa-consensus-worker",
-  "massa-execution",
+  "massa-execution-exports",
+  "massa-execution-worker",
   "massa-graph",
   "massa-hash",
   "massa-logging",
@@ -19,6 +20,7 @@ members = [
   "massa-signature",
   "massa-time",
   "massa-wallet",
+  "massa-ledger"
 ]
 resolver = "2"
 
