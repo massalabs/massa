@@ -534,7 +534,7 @@ pub fn get_export_active_test_block(
     operations: Vec<Operation>,
     slot: Slot,
     is_final: bool,
-) -> (ExportActiveBlock, BlockId) {
+) -> (Block, ExportActiveBlock) {
     let block = Block {
         header: BlockHeader {
             content: BlockHeaderContent{
@@ -560,17 +560,17 @@ pub fn get_export_active_test_block(
     };
     let id = block.header.compute_block_id().unwrap();
     (
+        block,
         ExportActiveBlock {
             parents,
             dependencies: Default::default(),
-            block,
+            block: id,
             children: vec![Default::default(), Default::default()],
             is_final,
             block_ledger_changes: Default::default(),
             roll_updates: Default::default(),
             production_events: vec![],
         },
-        id,
     )
 }
 

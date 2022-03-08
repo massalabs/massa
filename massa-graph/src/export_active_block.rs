@@ -5,8 +5,8 @@ use massa_models::{
     ledger_models::{LedgerChange, LedgerChanges},
     prehash::{BuildMap, Map, Set},
     rolls::{RollUpdate, RollUpdates},
-    *,
     storage::Storage,
+    *,
 };
 use serde::{Deserialize, Serialize};
 
@@ -34,8 +34,10 @@ pub struct ExportActiveBlock {
 }
 
 impl ExportActiveBlock {
-    fn to_active_block(a_block: ExportActiveBlock, storage: Storage) -> Result<ActiveBlock, GraphError> {
-        let block = storage.retrieve_block(&a_block.block).ok_or(GraphError::MissingBlock)?;
+    pub fn to_active_block(&self, storage: Storage) -> Result<ActiveBlock, GraphError> {
+        let block = storage
+            .retrieve_block(&self.block)
+            .ok_or(GraphError::MissingBlock)?;
         let stored_block = block.read();
         let operation_set = stored_block
             .block
@@ -58,23 +60,24 @@ impl ExportActiveBlock {
             .collect::<Result<_>>()?;
 
         let addresses_to_operations = stored_block.block.involved_addresses(&operation_set)?;
-        let addresses_to_endorsements =
-            stored_block.block.addresses_to_endorsements(&endorsement_ids)?;
+        let addresses_to_endorsements = stored_block
+            .block
+            .addresses_to_endorsements(&endorsement_ids)?;
         Ok(ActiveBlock {
             creator_address: Address::from_public_key(&stored_block.block.header.content.creator),
             //TODO: Unwrap
             block: stored_block.block.header.compute_block_id().unwrap(),
-            parents: a_block.parents,
-            children: a_block.children,
-            dependencies: a_block.dependencies,
+            parents: self.parents.clone(),
+            children: self.children.clone(),
+            dependencies: self.dependencies.clone(),
             descendants: Default::default(), // will be computed once the full graph is available
-            is_final: a_block.is_final,
-            block_ledger_changes: a_block.block_ledger_changes,
+            is_final: self.is_final.clone(),
+            block_ledger_changes: self.block_ledger_changes.clone(),
             operation_set,
             endorsement_ids,
             addresses_to_operations,
-            roll_updates: a_block.roll_updates,
-            production_events: a_block.production_events,
+            roll_updates: self.roll_updates.clone(),
+            production_events: self.production_events.clone(),
             addresses_to_endorsements,
             slot: stored_block.block.header.content.slot,
         })
