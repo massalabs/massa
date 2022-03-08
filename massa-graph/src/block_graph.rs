@@ -471,7 +471,9 @@ impl BlockGraph {
                     .active_blocks
                     .into_iter()
                     .map(|(b_id, block_export)| {
-                        let operation_set = block_export
+                        let block = storage.retrieve_block(&block_export.block).unwrap();
+                        let stored_block = block.read();
+                        let operation_set = stored_block
                             .block
                             .operations
                             .iter()
@@ -482,7 +484,7 @@ impl BlockGraph {
                             })
                             .collect::<Result<_, _>>()?;
 
-                        let endorsement_ids = block_export
+                        let endorsement_ids = stored_block
                             .block
                             .header
                             .content
@@ -492,13 +494,13 @@ impl BlockGraph {
                             .collect::<Result<_>>()?;
 
                         let addresses_to_operations =
-                            block_export.block.involved_addresses(&operation_set)?;
-                        let addresses_to_endorsements = block_export
+                        stored_block.block.involved_addresses(&operation_set)?;
+                        let addresses_to_endorsements = stored_block
                             .block
                             .addresses_to_endorsements(&endorsement_ids)?;
                         let active_block = ActiveBlock {
                             creator_address: Address::from_public_key(
-                                &block_export.block.header.content.creator,
+                                &stored_block.block.header.content.creator,
                             ),
                             block: b_id,
                             parents: block_export.parents,
@@ -513,7 +515,7 @@ impl BlockGraph {
                             roll_updates: block_export.roll_updates,
                             production_events: block_export.production_events,
                             addresses_to_endorsements,
-                            slot: block_export.block.header.content.slot,
+                            slot: stored_block.block.header.content.slot,
                         };
                         Ok((b_id, BlockStatus::Active(Box::new(active_block))))
                     })
@@ -599,12 +601,10 @@ impl BlockGraph {
             Map::with_capacity_and_hasher(required_active_blocks.len(), BuildMap::default());
         for b_id in required_active_blocks {
             if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(&b_id) {
-                let block = self.storage.retrieve_block(&b_id).unwrap();
-                let stored_block = block.read().block.clone();
                 active_blocks.insert(
                     b_id,
                     ExportActiveBlock {
-                        block: stored_block,
+                        block: b_id,
                         parents: a_block.parents.clone(),
                         children: a_block.children.clone(),
                         dependencies: a_block.dependencies.clone(),
