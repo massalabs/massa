@@ -433,7 +433,7 @@ fn get_bootgraph(
         get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 1), true);
     let (p1t0_block, p1t0) = get_export_active_test_block(
         creator,
-        vec![(genesis_0.block, 0), (genesis_1.block, 0)],
+        vec![(genesis_0.block.clone(), 0), (genesis_1.block.clone(), 0)],
         vec![operation],
         Slot::new(1, 0),
         false,
@@ -442,36 +442,43 @@ fn get_bootgraph(
         BootstrapableGraph {
             /// Map of active blocks, where blocks are in their exported version.
             active_blocks: vec![
-                (genesis_0.block, genesis_0),
-                (genesis_1.block, genesis_1),
-                (p1t0.block, p1t0),
+                (genesis_0.block.clone(), genesis_0.clone()),
+                (genesis_1.block.clone(), genesis_1.clone()),
+                (p1t0.block.clone(), p1t0.clone()),
             ]
             .into_iter()
             .collect(),
             /// Best parents hash in each thread.
-            best_parents: vec![(p1t0.block, 1), (genesis_1.block, 0)],
+            best_parents: vec![(p1t0.block.clone(), 1), (genesis_1.block.clone(), 0)],
             /// Latest final period and block hash in each thread.
-            latest_final_blocks_periods: vec![(genesis_0.block, 0u64), (genesis_1.block, 0u64)],
+            latest_final_blocks_periods: vec![
+                (genesis_0.block.clone(), 0u64),
+                (genesis_1.block.clone(), 0u64),
+            ],
             /// Head of the incompatibility graph.
             gi_head: vec![
-                (genesis_0.block, Default::default()),
-                (p1t0.block, Default::default()),
-                (genesis_1.block, Default::default()),
+                (genesis_0.block.clone(), Default::default()),
+                (p1t0.block.clone(), Default::default()),
+                (genesis_1.block.clone(), Default::default()),
             ]
             .into_iter()
             .collect(),
 
             /// List of maximal cliques of compatible blocks.
             max_cliques: vec![Clique {
-                block_ids: vec![genesis_0.block, p1t0.block, genesis_1.block]
-                    .into_iter()
-                    .collect(),
+                block_ids: vec![
+                    genesis_0.block.clone(),
+                    p1t0.block.clone(),
+                    genesis_1.block.clone(),
+                ]
+                .into_iter()
+                .collect(),
                 fitness: 1111,
                 is_blockclique: true,
             }],
             ledger,
         },
-        p1t0.block,
-        genesis_1.block,
+        p1t0.block.clone(),
+        genesis_1.block.clone(),
     )
 }

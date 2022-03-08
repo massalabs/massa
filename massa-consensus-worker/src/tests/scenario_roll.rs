@@ -520,7 +520,7 @@ async fn test_roll_block_creation() {
             },
             None,
             None,
-            storage,
+            storage.clone(),
             0,
         )
         .await
@@ -593,7 +593,7 @@ async fn test_roll_block_creation() {
                     .retrieve_block(&block_id)
                     .expect(&format!("Block id : {} not found in storage", block_id));
                 let stored_block = block.read();
-                Some((block_id, stored_block.block))
+                Some((block_id, stored_block.block.clone()))
             }
             _ => None,
         })
@@ -660,7 +660,7 @@ async fn test_roll_block_creation() {
                     .retrieve_block(&block_id)
                     .expect(&format!("Block id : {} not found in storage", block_id));
                 let stored_block = block.read();
-                Some((block_id, stored_block.block))
+                Some((block_id, stored_block.block.clone()))
             }
             _ => None,
         })
@@ -707,7 +707,7 @@ async fn test_roll_block_creation() {
                     .retrieve_block(&block_id)
                     .expect(&format!("Block id : {} not found in storage", block_id));
                 let stored_block = block.read();
-                Some((block_id, stored_block.block))
+                Some((block_id, stored_block.block.clone()))
             }
             _ => None,
         })

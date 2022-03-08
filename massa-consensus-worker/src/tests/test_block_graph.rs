@@ -45,7 +45,10 @@ fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
             },
             operations: vec![]
         };
-
+    let block_id = block
+        .header
+        .compute_block_id()
+        .expect("Fail to compute block id");
     (
         block,
         ExportActiveBlock {
@@ -60,10 +63,7 @@ fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
             ]
             .into_iter()
             .collect(),
-            block: block
-                .header
-                .compute_block_id()
-                .expect("Fail to compute block id"),
+            block: block_id,
             children: vec![vec![
                 (get_dummy_block_id("child11"), 31),
                 (get_dummy_block_id("child11"), 31),
@@ -122,11 +122,8 @@ pub async fn test_get_ledger_at_parents() {
         .header
         .compute_block_id()
         .expect("Fail to calculate block id");
-    storage.store_block(
-        block_id,
-        block,
-        block.to_bytes_compact().expect("Fail to serialize block"),
-    );
+    let block_serialized = block.to_bytes_compact().expect("Fail to serialize block");
+    storage.store_block(block_id, block, block_serialized);
     let active_block: ActiveBlock =
         export_active_block
             .to_active_block(storage.clone())
@@ -198,7 +195,7 @@ pub async fn test_get_ledger_at_parents() {
             active_block.block
         ));
         let stored_block = block_locked.read();
-        stored_block.block
+        stored_block.block.clone()
     };
     // update ledger with initial content.
     //   Thread 0  [at the output of block p0t0]:
@@ -246,13 +243,10 @@ pub async fn test_get_ledger_at_parents() {
         .header
         .compute_block_id()
         .expect("Fail to calculate block id");
-    storage.store_block(
-        block_id,
-        block_p1t0,
-        block_p1t0
-            .to_bytes_compact()
-            .expect("Fail to serialize block"),
-    );
+    let block_serialized = block_p1t0
+        .to_bytes_compact()
+        .expect("Fail to serialize block");
+    storage.store_block(block_id, block_p1t0, block_serialized);
 
     // block p1t1 [FINAL]: creator B, parents [p0t0, p0t1], operations:
     //   B -> A : 128, fee 64
@@ -291,13 +285,10 @@ pub async fn test_get_ledger_at_parents() {
         .header
         .compute_block_id()
         .expect("Fail to calculate block id");
-    storage.store_block(
-        block_id,
-        block_p1t1,
-        block_p1t1
-            .to_bytes_compact()
-            .expect("Fail to serialize block"),
-    );
+    let block_serialized = block_p1t1
+        .to_bytes_compact()
+        .expect("Fail to serialize block");
+    storage.store_block(block_id, block_p1t1, block_serialized);
 
     // block p2t0 [NON-FINAL]: creator A, parents [p1t0, p0t1], operations:
     //   A -> A : 512, fee 1024
@@ -328,13 +319,10 @@ pub async fn test_get_ledger_at_parents() {
         .header
         .compute_block_id()
         .expect("Fail to calculate block id");
-    storage.store_block(
-        block_id,
-        block_p2t0,
-        block_p2t0
-            .to_bytes_compact()
-            .expect("Fail to serialize block"),
-    );
+    let block_serialized = block_p2t0
+        .to_bytes_compact()
+        .expect("Fail to serialize block");
+    storage.store_block(block_id, block_p2t0, block_serialized);
 
     // block p2t1 [FINAL]: creator B, parents [p1t0, p1t1] operations:
     //   B -> A : 10, fee 1
@@ -375,13 +363,10 @@ pub async fn test_get_ledger_at_parents() {
         .header
         .compute_block_id()
         .expect("Fail to calculate block id");
-    storage.store_block(
-        block_id,
-        block_p2t1,
-        block_p2t1
-            .to_bytes_compact()
-            .expect("Fail to serialize block"),
-    );
+    let block_serialized = block_p2t1
+        .to_bytes_compact()
+        .expect("Fail to serialize block");
+    storage.store_block(block_id, block_p2t1, block_serialized);
 
     // block p3t0 [NON-FINAL]: creator A, parents [p2t0, p1t1] operations:
     //   A -> C : 2048, fee 4096
@@ -417,18 +402,14 @@ pub async fn test_get_ledger_at_parents() {
     let mut block_p3t0 = block.clone();
     block_p3t0.header.content.creator = pubkey_a;
     block_p3t0.header.content.slot = Slot::new(3, 0);
-
     let block_id = block_p3t0
         .header
         .compute_block_id()
         .expect("Fail to calculate block id");
-    storage.store_block(
-        block_id,
-        block_p3t0,
-        block_p3t0
-            .to_bytes_compact()
-            .expect("Fail to serialize block"),
-    );
+    let block_serialized = block_p3t0
+        .to_bytes_compact()
+        .expect("Fail to serialize block");
+    storage.store_block(block_id, block_p3t0, block_serialized);
 
     // block p3t1 [NON-FINAL]: creator B, parents [p2t0, p2t1] operations:
     //   B -> A : 100, fee 10
@@ -463,19 +444,16 @@ pub async fn test_get_ledger_at_parents() {
 
     let mut block_p3t1 = block.clone();
     block_p3t1.header.content.creator = pubkey_b;
-    block_p3t0.header.content.slot = Slot::new(3, 1);
+    block_p3t1.header.content.slot = Slot::new(3, 1);
 
     let block_id = block_p3t1
         .header
         .compute_block_id()
         .expect("Fail to calculate block id");
-    storage.store_block(
-        block_id,
-        block_p3t1,
-        block_p3t1
-            .to_bytes_compact()
-            .expect("Fail to serialize block"),
-    );
+    let block_serialized = block_p3t1
+        .to_bytes_compact()
+        .expect("Fail to serialize block");
+    storage.store_block(block_id, block_p3t1, block_serialized);
 
     let export_graph = BootstrapableGraph {
         /// Map of active blocks, were blocks are in their exported version.
@@ -624,7 +602,11 @@ fn test_bootsrapable_graph_serialize_compact() {
         ..Default::default()
     });
 
+    //let storage: Storage = Default::default();
+
     let (block, active_block) = get_export_active_test_block();
+
+    //storage.store_block(block.header.compute_block_id().expect("Fail to calculate block id."), block, block.to_bytes_compact().expect("Fail to serialize block"));
 
     println!("{:?}", block);
     let b1_id = get_dummy_block_id("active11");
@@ -690,8 +672,8 @@ fn test_bootsrapable_graph_serialize_compact() {
 
     assert_eq!(bytes.len(), cursor);
     assert_eq!(
-        graph.active_blocks[&b1_id].block.header.signature,
-        new_graph.active_blocks[&b1_id].block.header.signature
+        graph.active_blocks[&b1_id].block,
+        new_graph.active_blocks[&b1_id].block
     );
     assert_eq!(graph.best_parents[0], new_graph.best_parents[0]);
     assert_eq!(graph.best_parents[1], new_graph.best_parents[1]);
