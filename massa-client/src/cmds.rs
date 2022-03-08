@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::repl::Output;
-use crate::rpc::Client;
 use anyhow::{anyhow, bail, Result};
 use console::style;
 use massa_models::api::ReadOnlyExecution;
@@ -11,6 +10,7 @@ use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{
     Address, Amount, BlockId, EndorsementId, OperationContent, OperationId, OperationType, Slot,
 };
+use massa_sdk::Client;
 use massa_signature::{generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
 use massa_wallet::{Wallet, WalletError};

@@ -610,11 +610,11 @@ dependencies = [
 
 [[package]]
 name = "dialoguer"
-version = "0.9.0"
-source = "git+https://github.com/yvan-sraka/dialoguer.git?branch=completion-feature#e25c3868ec88f76e84c41edd433a793b3cd146b4"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "349d6b4fabcd9e97e1df1ae15395ac7e49fb144946a0d453959dc2696273b9da"
 dependencies = [
  "console",
- "lazy_static",
  "tempfile",
  "zeroize",
 ]
@@ -1498,9 +1498,9 @@ dependencies = [
  "erased-serde",
  "futures 0.3.21",
  "glob",
- "jsonrpc-core-client",
  "lazy_static",
  "massa_models",
+ "massa_sdk",
  "massa_signature",
  "massa_time",
  "massa_wallet",
@@ -1957,6 +1957,17 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "massa_sdk"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core-client",
+ "massa_models",
+ "massa_signature",
+ "serde 1.0.136",
+ "tokio",
 ]
 
 [[package]]
