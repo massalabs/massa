@@ -82,14 +82,14 @@ mod tests {
                     max_in_connections: 1,
                 },
                 PeerType::WhiteListed => PeerTypeConnectionConfig {
-                    target_out_connections: 3,
+                    target_out_connections: 2,
                     max_out_attempts: 2,
-                    max_in_connections: 2,
+                    max_in_connections: 3,
                 },
                 PeerType::Standard => PeerTypeConnectionConfig {
                     target_out_connections: 10,
-                    max_out_attempts: 5,
-                    max_in_connections: 15,
+                    max_out_attempts: 15,
+                    max_in_connections: 5,
                 }
             };
             NetworkSettings {

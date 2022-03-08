@@ -227,8 +227,16 @@ async fn test_try_out_connection_attempt_success() {
                 max_out_attempts: 5,
             }
         },
-        PeerType::Bootstrap => Default::default(),
-        PeerType::WhiteListed => Default::default()
+        PeerType::Bootstrap => PeerTypeConnectionConfig {
+            target_out_connections: 1,
+            max_out_attempts: 1,
+            max_in_connections: 1,
+        },
+        PeerType::WhiteListed => PeerTypeConnectionConfig {
+            target_out_connections: 2,
+            max_out_attempts: 2,
+            max_in_connections: 3,
+        },
     };
     let network_settings = NetworkSettings {
         peer_types_config,
@@ -304,7 +312,7 @@ async fn test_try_out_connection_attempt_success() {
     {
         assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)), ip_err);
     } else {
-        panic!("PeerInfoNotFoundError error not return");
+        panic!("TooManyConnectionAttempts error not return");
     }
 
     db.new_out_connection_attempt(&IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 12)))

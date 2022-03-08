@@ -671,9 +671,7 @@ impl PeerInfoDatabase {
                     NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
                 )
             })?;
-            if peer.active_out_connection_attempts == 0
-                || !self.can_remove_new_out_connection_attempt(peer_type)
-            {
+            if peer.active_out_connection_attempts == 0 {
                 return Err(NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
                 ));
@@ -822,7 +820,7 @@ impl PeerInfoDatabase {
             .map(|(peer_type, _)| peer_type)
             .collect();
         peer_types.sort_by_key(|&peer_type| Reverse(peer_type));
-            for &peer_type in peer_types.iter() {
+        for &peer_type in peer_types.iter() {
             connections.append(&mut self.get_out_connection_candidate_ips_for_type(
                 peer_type,
                 &self.peer_types_connection_count[peer_type],

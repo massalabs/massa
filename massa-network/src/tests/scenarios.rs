@@ -42,9 +42,9 @@ fn default_testing_peer_type_enum_map() -> EnumMap<PeerType, PeerTypeConnectionC
             max_in_connections: 1,
         },
         PeerType::WhiteListed => PeerTypeConnectionConfig {
-            target_out_connections: 3,
+            target_out_connections: 2,
             max_out_attempts: 2,
-            max_in_connections: 2,
+            max_in_connections: 3,
         },
         PeerType::Standard => PeerTypeConnectionConfig {
             target_out_connections: 0,
