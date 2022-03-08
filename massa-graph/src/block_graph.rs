@@ -494,7 +494,7 @@ impl BlockGraph {
                             .collect::<Result<_>>()?;
 
                         let addresses_to_operations =
-                        stored_block.block.involved_addresses(&operation_set)?;
+                            stored_block.block.involved_addresses(&operation_set)?;
                         let addresses_to_endorsements = stored_block
                             .block
                             .addresses_to_endorsements(&endorsement_ids)?;

@@ -19,8 +19,7 @@ use serial_test::serial;
 use std::str::FromStr;
 use tempfile::NamedTempFile;
 
-fn get_export_active_test_block() -> ExportActiveBlock {
-    let pk = generate_random_private_key();
+fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
     let block = Block {
         header: Signed::new_signed(
             BlockHeader {
@@ -55,59 +54,65 @@ fn get_export_active_test_block() -> ExportActiveBlock {
         operations: vec![],
     };
 
-    ExportActiveBlock {
-        parents: vec![
-            (get_dummy_block_id("parent11"), 23),
-            (get_dummy_block_id("parent12"), 24),
-        ],
-        dependencies: vec![
-            get_dummy_block_id("dep11"),
-            get_dummy_block_id("dep12"),
-            get_dummy_block_id("dep13"),
-        ]
-        .into_iter()
-        .collect(),
+    (
         block,
-        children: vec![vec![
-            (get_dummy_block_id("child11"), 31),
-            (get_dummy_block_id("child11"), 31),
-        ]
-        .into_iter()
-        .collect()],
-        is_final: true,
-        block_ledger_changes: LedgerChanges(
-            vec![
-                (
-                    Address::from_bytes(&Hash::compute_from("addr01".as_bytes()).into_bytes())
-                        .unwrap(),
-                    LedgerChange {
-                        balance_delta: Amount::from_str("1").unwrap(),
-                        balance_increment: true, // whether to increment or decrement balance of delta
-                    },
-                ),
-                (
-                    Address::from_bytes(&Hash::compute_from("addr02".as_bytes()).into_bytes())
-                        .unwrap(),
-                    LedgerChange {
-                        balance_delta: Amount::from_str("2").unwrap(),
-                        balance_increment: false, // whether to increment or decrement balance of delta
-                    },
-                ),
-                (
-                    Address::from_bytes(&Hash::compute_from("addr11".as_bytes()).into_bytes())
-                        .unwrap(),
-                    LedgerChange {
-                        balance_delta: Amount::from_str("3").unwrap(),
-                        balance_increment: false, // whether to increment or decrement balance of delta
-                    },
-                ),
+        ExportActiveBlock {
+            parents: vec![
+                (get_dummy_block_id("parent11"), 23),
+                (get_dummy_block_id("parent12"), 24),
+            ],
+            dependencies: vec![
+                get_dummy_block_id("dep11"),
+                get_dummy_block_id("dep12"),
+                get_dummy_block_id("dep13"),
             ]
             .into_iter()
             .collect(),
-        ),
-        roll_updates: Default::default(),
-        production_events: vec![],
-    }
+            block: block
+                .header
+                .compute_block_id()
+                .expect("Fail to compute block id"),
+            children: vec![vec![
+                (get_dummy_block_id("child11"), 31),
+                (get_dummy_block_id("child11"), 31),
+            ]
+            .into_iter()
+            .collect()],
+            is_final: true,
+            block_ledger_changes: LedgerChanges(
+                vec![
+                    (
+                        Address::from_bytes(&Hash::compute_from("addr01".as_bytes()).into_bytes())
+                            .unwrap(),
+                        LedgerChange {
+                            balance_delta: Amount::from_str("1").unwrap(),
+                            balance_increment: true, // whether to increment or decrement balance of delta
+                        },
+                    ),
+                    (
+                        Address::from_bytes(&Hash::compute_from("addr02".as_bytes()).into_bytes())
+                            .unwrap(),
+                        LedgerChange {
+                            balance_delta: Amount::from_str("2").unwrap(),
+                            balance_increment: false, // whether to increment or decrement balance of delta
+                        },
+                    ),
+                    (
+                        Address::from_bytes(&Hash::compute_from("addr11".as_bytes()).into_bytes())
+                            .unwrap(),
+                        LedgerChange {
+                            balance_delta: Amount::from_str("3").unwrap(),
+                            balance_increment: false, // whether to increment or decrement balance of delta
+                        },
+                    ),
+                ]
+                .into_iter()
+                .collect(),
+            ),
+            roll_updates: Default::default(),
+            production_events: vec![],
+        },
+    )
 }
 
 #[tokio::test]
@@ -120,24 +125,23 @@ pub async fn test_get_ledger_at_parents() {
     // .unwrap();
     let thread_count: u8 = 2;
     let storage: Storage = Default::default();
-    let export_active_block: ExportActiveBlock = get_export_active_test_block();
-    let block_id = export_active_block
-        .block
+    let (block, export_active_block): (Block, ExportActiveBlock) = get_export_active_test_block();
+    let block_id = block
         .header
         .compute_block_id()
         .expect("Fail to calculate block id");
     storage.store_block(
         block_id,
-        export_active_block.block,
-        export_active_block
-            .block
-            .to_bytes_compact()
-            .expect("Fail to serialize block"),
+        block,
+        block.to_bytes_compact().expect("Fail to serialize block"),
     );
-    let active_block: ActiveBlock = export_active_block.try_into().expect(&format!(
-        "Fail to convert block (id: {}) from ExportActiveBlock to ActiveBlock",
-        block_id
-    ));
+    let active_block: ActiveBlock =
+        export_active_block
+            .to_active_block(storage.clone())
+            .expect(&format!(
+                "Fail to convert block (id: {}) from ExportActiveBlock to ActiveBlock",
+                block_id
+            ));
     let ledger_file = generate_ledger_file(&Map::default());
     let mut cfg = ConsensusConfig::from(ledger_file.path());
     cfg.thread_count = thread_count;
@@ -177,7 +181,7 @@ pub async fn test_get_ledger_at_parents() {
     let (hash_genesist0, block_genesist0) = create_genesis_block(&graph_cfg, 0).unwrap();
     let (hash_genesist1, block_genesist1) = create_genesis_block(&graph_cfg, 1).unwrap();
     let export_genesist0 = ExportActiveBlock {
-        block: block_genesist0,
+        block: hash_genesist0,
         parents: vec![],  // one (hash, period) per thread ( if not genesis )
         children: vec![], // one HashMap<hash, period> per thread (blocks that need to be kept)
         dependencies: Default::default(), // dependencies required for validity check
@@ -187,7 +191,7 @@ pub async fn test_get_ledger_at_parents() {
         production_events: vec![],
     };
     let export_genesist1 = ExportActiveBlock {
-        block: block_genesist1,
+        block: hash_genesist0,
         parents: vec![],  // one (hash, period) per thread ( if not genesis )
         children: vec![], // one HashMap<hash, period> per thread (blocks that need to be kept)
         dependencies: Default::default(), // dependencies required for validity check
@@ -628,12 +632,9 @@ fn test_bootsrapable_graph_serialize_compact() {
         ..Default::default()
     });
 
-    let active_block = get_export_active_test_block();
+    let (block, active_block) = get_export_active_test_block();
 
-    let bytes = active_block.block.to_bytes_compact().unwrap();
-    let new_block = Block::from_bytes_compact(&bytes).unwrap();
-
-    println!("{:?}", new_block);
+    println!("{:?}", block);
     let b1_id = get_dummy_block_id("active11");
     let graph = BootstrapableGraph {
         /// Map of active blocks, were blocks are in their exported version.
