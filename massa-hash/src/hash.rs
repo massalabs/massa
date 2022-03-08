@@ -3,7 +3,7 @@
 use crate::error::MassaHashError;
 use crate::settings::HASH_SIZE_BYTES;
 use blake3;
-use std::{convert::TryInto, str::FromStr, cmp::Ordering};
+use std::{cmp::Ordering, convert::TryInto, str::FromStr};
 
 #[derive(Eq, PartialEq, Copy, Clone, Hash)]
 pub struct Hash(blake3::Hash);
@@ -248,8 +248,8 @@ mod tests {
         let data = "abc".as_bytes();
         let hash = Hash::compute_from(data);
         let hash_ref: [u8; HASH_SIZE_BYTES] = [
-            186, 120, 22, 191, 143, 1, 207, 234, 65, 65, 64, 222, 93, 174, 34, 35, 176, 3, 97, 163,
-            150, 23, 122, 156, 180, 16, 255, 97, 242, 0, 21, 173,
+            100, 55, 179, 172, 56, 70, 81, 51, 255, 182, 59, 117, 39, 58, 141, 181, 72, 197, 88,
+            70, 93, 121, 219, 3, 253, 53, 156, 108, 213, 189, 157, 133,
         ];
         assert_eq!(hash.to_bytes(), hash_ref);
     }
