@@ -6,6 +6,7 @@ use massa_models::{
     prehash::{BuildMap, Map, Set},
     rolls::{RollUpdate, RollUpdates},
     *,
+    storage::Storage,
 };
 use serde::{Deserialize, Serialize};
 
@@ -14,7 +15,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportActiveBlock {
     /// The id of the block.
-    pub block: Block,
+    pub block: BlockId,
     /// one (block id, period) per thread ( if not genesis )
     pub parents: Vec<(BlockId, u64)>,
     /// one HashMap<Block id, period> per thread (blocks that need to be kept)
@@ -32,9 +33,11 @@ pub struct ExportActiveBlock {
     pub production_events: Vec<(u64, Address, bool)>,
 }
 
-impl TryFrom<ExportActiveBlock> for ActiveBlock {
-    fn try_from(a_block: ExportActiveBlock) -> Result<ActiveBlock> {
-        let operation_set = a_block
+impl ExportActiveBlock {
+    fn to_active_block(a_block: ExportActiveBlock, storage: Storage) -> Result<ActiveBlock, GraphError> {
+        let block = storage.retrieve_block(&a_block.block).ok_or(GraphError::MissingBlock)?;
+        let stored_block = block.read();
+        let operation_set = stored_block
             .block
             .operations
             .iter()
@@ -45,7 +48,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             })
             .collect::<Result<_, _>>()?;
 
-        let endorsement_ids = a_block
+        let endorsement_ids = stored_block
             .block
             .header
             .content
@@ -54,13 +57,13 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             .map(|endo| Ok((endo.compute_endorsement_id()?, endo.content.index)))
             .collect::<Result<_>>()?;
 
-        let addresses_to_operations = a_block.block.involved_addresses(&operation_set)?;
+        let addresses_to_operations = stored_block.block.involved_addresses(&operation_set)?;
         let addresses_to_endorsements =
-            a_block.block.addresses_to_endorsements(&endorsement_ids)?;
+            stored_block.block.addresses_to_endorsements(&endorsement_ids)?;
         Ok(ActiveBlock {
-            creator_address: Address::from_public_key(&a_block.block.header.content.creator),
+            creator_address: Address::from_public_key(&stored_block.block.header.content.creator),
             //TODO: Unwrap
-            block: a_block.block.header.compute_block_id().unwrap(),
+            block: stored_block.block.header.compute_block_id().unwrap(),
             parents: a_block.parents,
             children: a_block.children,
             dependencies: a_block.dependencies,
@@ -73,11 +76,24 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             roll_updates: a_block.roll_updates,
             production_events: a_block.production_events,
             addresses_to_endorsements,
-            slot: a_block.block.header.content.slot,
+            slot: stored_block.block.header.content.slot,
         })
     }
+}
 
-    type Error = GraphError;
+impl From<&ActiveBlock> for ExportActiveBlock {
+    fn from(a_block: &ActiveBlock) -> Self {
+        ExportActiveBlock {
+            block: a_block.block.clone(),
+            parents: a_block.parents.clone(),
+            children: a_block.children.clone(),
+            dependencies: a_block.dependencies.clone(),
+            is_final: a_block.is_final,
+            block_ledger_changes: a_block.block_ledger_changes.clone(),
+            roll_updates: a_block.roll_updates.clone(),
+            production_events: a_block.production_events.clone(),
+        }
+    }
 }
 
 impl SerializeCompact for ExportActiveBlock {
@@ -92,7 +108,7 @@ impl SerializeCompact for ExportActiveBlock {
         }
 
         // block
-        res.extend(self.block.to_bytes_compact()?);
+        res.extend(self.block.0.to_bytes());
 
         // parents (note: there should be none if slot period=0)
         if self.parents.is_empty() {
@@ -199,8 +215,8 @@ impl DeserializeCompact for ExportActiveBlock {
         let is_final = is_final_u8 != 0;
 
         // block
-        let (block, delta) = Block::from_bytes_compact(&buffer[cursor..])?;
-        cursor += delta;
+        let block = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        cursor += BLOCK_ID_SIZE_BYTES;
 
         // parents
         let has_parents = u8_from_slice(&buffer[cursor..])?;
