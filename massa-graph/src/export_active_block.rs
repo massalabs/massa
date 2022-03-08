@@ -32,6 +32,54 @@ pub struct ExportActiveBlock {
     pub production_events: Vec<(u64, Address, bool)>,
 }
 
+impl TryFrom<ExportActiveBlock> for ActiveBlock {
+    fn try_from(a_block: ExportActiveBlock) -> Result<ActiveBlock> {
+        let operation_set = a_block
+            .block
+            .operations
+            .iter()
+            .enumerate()
+            .map(|(idx, op)| match op.get_operation_id() {
+                Ok(id) => Ok((id, (idx, op.content.expire_period))),
+                Err(e) => Err(e),
+            })
+            .collect::<Result<_, _>>()?;
+
+        let endorsement_ids = a_block
+            .block
+            .header
+            .content
+            .endorsements
+            .iter()
+            .map(|endo| Ok((endo.compute_endorsement_id()?, endo.content.index)))
+            .collect::<Result<_>>()?;
+
+        let addresses_to_operations = a_block.block.involved_addresses(&operation_set)?;
+        let addresses_to_endorsements =
+            a_block.block.addresses_to_endorsements(&endorsement_ids)?;
+        Ok(ActiveBlock {
+            creator_address: Address::from_public_key(&a_block.block.header.content.creator),
+            //TODO: Unwrap
+            block: a_block.block.header.compute_block_id().unwrap(),
+            parents: a_block.parents,
+            children: a_block.children,
+            dependencies: a_block.dependencies,
+            descendants: Default::default(), // will be computed once the full graph is available
+            is_final: a_block.is_final,
+            block_ledger_changes: a_block.block_ledger_changes,
+            operation_set,
+            endorsement_ids,
+            addresses_to_operations,
+            roll_updates: a_block.roll_updates,
+            production_events: a_block.production_events,
+            addresses_to_endorsements,
+            slot: a_block.block.header.content.slot,
+        })
+    }
+
+    type Error = GraphError;
+}
+
 impl SerializeCompact for ExportActiveBlock {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
