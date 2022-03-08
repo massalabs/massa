@@ -44,7 +44,10 @@ async fn test_endorsement_check() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let draws: HashMap<_, _> = consensus_command_sender
                 .get_selection_draws(Slot::new(1, 0), Slot::new(2, 0))
                 .await

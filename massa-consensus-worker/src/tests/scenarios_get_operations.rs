@@ -74,7 +74,8 @@ async fn test_get_operation() {
         async move |pool_controller,
                     protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    storage| {
             let ops = consensus_command_sender
                 .get_operations(
                     ops.iter()

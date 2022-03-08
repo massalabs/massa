@@ -20,7 +20,10 @@ async fn test_old_stale_not_propagated_and_discarded() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -73,7 +76,10 @@ async fn test_block_not_processed_multiple_times() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -123,7 +129,10 @@ async fn test_queuing() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -173,7 +182,10 @@ async fn test_double_staking_does_not_propagate() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await

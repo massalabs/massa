@@ -32,7 +32,8 @@ async fn test_update_current_slot_cmd_notification() {
         async move |mut pool_controller,
                     protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    storage| {
             let slot_notification_filter = |cmd| match cmd {
                 massa_pool::PoolCommand::UpdateCurrentSlot(slot) => {
                     Some((slot, MassaTime::now().unwrap()))
@@ -105,7 +106,8 @@ async fn test_update_latest_final_block_cmd_notification() {
         async move |mut pool_controller,
                     protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    storage| {
             // UpdateLatestFinalPeriods pool command filter
             let update_final_notification_filter = |cmd| match cmd {
                 massa_pool::PoolCommand::UpdateLatestFinalPeriods(periods) => Some(periods),
@@ -176,7 +178,8 @@ async fn test_new_final_ops() {
         async move |mut pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    storage| {
             p1 = create_and_test_block(
                 &mut protocol_controller,
                 &cfg,
@@ -267,7 +270,8 @@ async fn test_max_attempts_get_operations() {
         async move |mut pool_controller,
                     protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    storage| {
             // Test that consensus keeps trying to fill the block,
             // until the max number of attempts has been reached.
             let mut attempts = 0;
@@ -362,7 +366,8 @@ async fn test_max_batch_size_get_operations() {
         async move |mut pool_controller,
                     protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    storage| {
             // Test that consensus stops trying to fill the block,
             // once a non-full batch has been received.
             let get_operations_batch_filter = |cmd| match cmd {
