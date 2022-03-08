@@ -140,23 +140,10 @@
     # that send a list of peers
     max_in_connection_overflow = 100
 
-    [network.bootstrap_peers_config]
-        target_out_connections= 1
-        max_out_attempts= 1
-        max_in_connections= 1
-
-
-    [network.whitelist_peers_config]
-        target_out_connections= 3
-        max_out_attempts= 2
-        max_in_connections= 2
-
-
-    [network.standard_peers_config]
-        target_out_connections= 15
-        max_out_attempts= 10
-        max_in_connections= 5
-
+    [network.peer_types_config]
+    Standard = { target_out_connections = 15, max_out_attempts = 10, max_in_connections = 5}
+    Bootstrap = { target_out_connections = 1, max_out_attempts = 1, max_in_connections = 1}
+    WhiteListed = { target_out_connections = 3, max_out_attempts = 2, max_in_connections = 2}
 
 [bootstrap]
     # list of bootstrap (ip, node id)
