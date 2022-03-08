@@ -19,7 +19,10 @@ async fn test_pruning_of_discarded_blocks() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -72,7 +75,10 @@ async fn test_pruning_of_awaiting_slot_blocks() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -124,7 +130,10 @@ async fn test_pruning_of_awaiting_dependencies_blocks_with_discarded_dependency(
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await

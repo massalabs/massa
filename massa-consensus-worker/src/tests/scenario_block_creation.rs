@@ -56,7 +56,10 @@ async fn test_genesis_block_creation() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let _genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -131,7 +134,10 @@ async fn test_block_creation_with_draw() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -196,9 +202,13 @@ async fn test_block_creation_with_draw() {
                 // wait block propagation
                 let block_creator = protocol_controller
                     .wait_command(3500.into(), |cmd| match cmd {
-                        ProtocolCommand::IntegratedBlock { block, .. } => {
-                            if block.header.content.slot == cur_slot {
-                                Some(block.header.content.creator)
+                        ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                            let block = storage
+                                .retrieve_block(&block_id)
+                                .expect(&format!("Block id : {} not found in storage", block_id));
+                            let stored_block = block.read();
+                            if stored_block.block.header.content.slot == cur_slot {
+                                Some(stored_block.block.header.content.creator)
                             } else {
                                 None
                             }
@@ -269,7 +279,10 @@ async fn test_interleaving_block_creation_with_reception() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let mut parents = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -306,11 +319,14 @@ async fn test_interleaving_block_creation_with_reception() {
                     // wait block propagation
                     let (header, id) = protocol_controller
                         .wait_command(cfg.t0.saturating_add(300.into()), |cmd| match cmd {
-                            ProtocolCommand::IntegratedBlock {
-                                block, block_id, ..
-                            } => {
-                                if block.header.content.slot == cur_slot {
-                                    Some((block.header, block_id))
+                            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                                let block = storage.retrieve_block(&block_id).expect(&format!(
+                                    "Block id : {} not found in storage",
+                                    block_id
+                                ));
+                                let stored_block = block.read();
+                                if stored_block.block.header.content.slot == cur_slot {
+                                    Some((stored_block.block.header, block_id))
                                 } else {
                                     None
                                 }
@@ -395,7 +411,8 @@ async fn test_order_of_inclusion() {
         async move |mut pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    storage| {
             // wait for first slot
             pool_controller
                 .wait_command(
@@ -464,9 +481,13 @@ async fn test_order_of_inclusion() {
             // wait for block
             let (_block_id, block) = protocol_controller
                 .wait_command(300.into(), |cmd| match cmd {
-                    ProtocolCommand::IntegratedBlock {
-                        block_id, block, ..
-                    } => Some((block_id, block)),
+                    ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                        let block = storage
+                            .retrieve_block(&block_id)
+                            .expect(&format!("Block id : {} not found in storage", block_id));
+                        let stored_block = block.read();
+                        Some((block_id, stored_block.block))
+                    }
                     _ => None,
                 })
                 .await
@@ -541,7 +562,8 @@ async fn test_block_filling() {
         async move |mut pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    storage| {
             let op_size = 10;
 
             // wait for slot
@@ -574,9 +596,13 @@ async fn test_block_filling() {
                 // wait for block
                 let (block_id, block) = protocol_controller
                     .wait_command(500.into(), |cmd| match cmd {
-                        ProtocolCommand::IntegratedBlock {
-                            block_id, block, ..
-                        } => Some((block_id, block)),
+                        ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                            let block = storage
+                                .retrieve_block(&block_id)
+                                .expect(&format!("Block id : {} not found in storage", block_id));
+                            let stored_block = block.read();
+                            Some((block_id, stored_block.block))
+                        }
                         _ => None,
                     })
                     .await
@@ -672,9 +698,13 @@ async fn test_block_filling() {
             // wait for block
             let (_block_id, block) = protocol_controller
                 .wait_command(500.into(), |cmd| match cmd {
-                    ProtocolCommand::IntegratedBlock {
-                        block_id, block, ..
-                    } => Some((block_id, block)),
+                    ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                        let block = storage
+                            .retrieve_block(&block_id)
+                            .expect(&format!("Block id : {} not found in storage", block_id));
+                        let stored_block = block.read();
+                        Some((block_id, stored_block.block))
+                    }
                     _ => None,
                 })
                 .await

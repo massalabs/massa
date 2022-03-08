@@ -22,7 +22,10 @@ async fn test_consensus_asks_for_block() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -65,7 +68,10 @@ async fn test_consensus_does_not_ask_for_block() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let start_slot = 3;
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)

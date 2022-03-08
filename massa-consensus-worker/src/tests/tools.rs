@@ -613,6 +613,7 @@ pub async fn consensus_pool_test<F, V>(
         MockProtocolController,
         ConsensusCommandSender,
         ConsensusEventReceiver,
+        Storage,
     ) -> V,
     V: Future<
         Output = (
@@ -649,7 +650,7 @@ pub async fn consensus_pool_test<F, V>(
             },
             boot_pos,
             boot_graph,
-            storage,
+            storage.clone(),
             0,
         )
         .await
@@ -666,6 +667,7 @@ pub async fn consensus_pool_test<F, V>(
         protocol_controller,
         consensus_command_sender,
         consensus_event_receiver,
+        storage,
     )
     .await;
 
@@ -687,7 +689,7 @@ pub async fn consensus_pool_test<F, V>(
 /// Runs a consensus test, without passing a mock pool controller to it.
 pub async fn consensus_without_pool_test<F, V>(cfg: ConsensusConfig, test: F)
 where
-    F: FnOnce(MockProtocolController, ConsensusCommandSender, ConsensusEventReceiver) -> V,
+    F: FnOnce(MockProtocolController, ConsensusCommandSender, ConsensusEventReceiver, Storage) -> V,
     V: Future<
         Output = (
             MockProtocolController,
@@ -723,7 +725,7 @@ where
             },
             None,
             None,
-            storage,
+            storage.clone(),
             0,
         )
         .await
@@ -734,6 +736,7 @@ where
         protocol_controller,
         consensus_command_sender,
         consensus_event_receiver,
+        storage,
     )
     .await;
 
