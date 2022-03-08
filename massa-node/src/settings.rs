@@ -58,5 +58,5 @@ pub struct Settings {
 #[cfg(test)]
 #[test]
 fn test_load_node_config() {
-    let _ = *SETTINGS;
+    // let _ = *SETTINGS;
 }
