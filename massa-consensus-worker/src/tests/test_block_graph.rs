@@ -119,7 +119,25 @@ pub async fn test_get_ledger_at_parents() {
     // .init()
     // .unwrap();
     let thread_count: u8 = 2;
-    let active_block: ActiveBlock = get_export_active_test_block().try_into().unwrap();
+    let storage: Storage = Default::default();
+    let export_active_block: ExportActiveBlock = get_export_active_test_block();
+    let block_id = export_active_block
+        .block
+        .header
+        .compute_block_id()
+        .expect("Fail to calculate block id");
+    storage.store_block(
+        block_id,
+        export_active_block.block,
+        export_active_block
+            .block
+            .to_bytes_compact()
+            .expect("Fail to serialize block"),
+    );
+    let active_block: ActiveBlock = export_active_block.try_into().expect(&format!(
+        "Fail to convert block (id: {}) from ExportActiveBlock to ActiveBlock",
+        block_id
+    ));
     let ledger_file = generate_ledger_file(&Map::default());
     let mut cfg = ConsensusConfig::from(ledger_file.path());
     cfg.thread_count = thread_count;
@@ -178,6 +196,14 @@ pub async fn test_get_ledger_at_parents() {
         roll_updates: Default::default(),
         production_events: vec![],
     };
+    let block: Block = {
+        let block_locked = storage.retrieve_block(&active_block.block).expect(&format!(
+            "Failed to retrieve block (id: {})",
+            active_block.block
+        ));
+        let stored_block = block_locked.read();
+        stored_block.block
+    };
     // update ledger with initial content.
     //   Thread 0  [at the output of block p0t0]:
     //   A 1000000000
@@ -190,12 +216,12 @@ pub async fn test_get_ledger_at_parents() {
     // block p1t0 [NON-FINAL]: creator A, parents [p0t0, p0t1] operations:
     //   A -> B : 2, fee 4
     //   => counted as [A += +1 - 2 - 4 + 4, B += +2]
-    let mut blockp1t0 = active_block.clone();
-    blockp1t0.parents = vec![(hash_genesist0, 0), (hash_genesist1, 0)];
-    blockp1t0.is_final = true;
-    blockp1t0.block.header.content.creator = pubkey_a;
-    blockp1t0.block_ledger_changes = LedgerChanges::default();
-    blockp1t0
+    let mut active_block_p1t0 = active_block.clone();
+
+    active_block_p1t0.parents = vec![(hash_genesist0, 0), (hash_genesist1, 0)];
+    active_block_p1t0.is_final = true;
+    active_block_p1t0.block_ledger_changes = LedgerChanges::default();
+    active_block_p1t0
         .block_ledger_changes
         .apply(
             &address_a,
@@ -205,7 +231,7 @@ pub async fn test_get_ledger_at_parents() {
             },
         )
         .unwrap();
-    blockp1t0
+    active_block_p1t0
         .block_ledger_changes
         .apply(
             &address_b,
@@ -215,18 +241,32 @@ pub async fn test_get_ledger_at_parents() {
             },
         )
         .unwrap();
-    blockp1t0.block.header.content.slot = Slot::new(1, 0);
+
+    let mut block_p1t0 = block.clone();
+    block_p1t0.header.content.creator = pubkey_a;
+    block_p1t0.header.content.slot = Slot::new(1, 0);
+
+    let block_id = block_p1t0
+        .header
+        .compute_block_id()
+        .expect("Fail to calculate block id");
+    storage.store_block(
+        block_id,
+        block_p1t0,
+        block_p1t0
+            .to_bytes_compact()
+            .expect("Fail to serialize block"),
+    );
 
     // block p1t1 [FINAL]: creator B, parents [p0t0, p0t1], operations:
     //   B -> A : 128, fee 64
     //   B -> A : 32, fee 16
     // => counted as [A += 128 + 32] (B: -128 -32 + 16 + 64 -16 -64 +1=-159 not counted !!)
-    let mut blockp1t1 = active_block.clone();
-    blockp1t1.parents = vec![(hash_genesist0, 0), (hash_genesist1, 0)];
-    blockp1t1.is_final = true;
-    blockp1t1.block.header.content.creator = pubkey_b;
-    blockp1t1.block_ledger_changes = LedgerChanges::default();
-    blockp1t1
+    let mut active_block_p1t1 = active_block.clone();
+    active_block_p1t1.parents = vec![(hash_genesist0, 0), (hash_genesist1, 0)];
+    active_block_p1t1.is_final = true;
+    active_block_p1t1.block_ledger_changes = LedgerChanges::default();
+    active_block_p1t1
         .block_ledger_changes
         .apply(
             &address_a,
@@ -236,7 +276,7 @@ pub async fn test_get_ledger_at_parents() {
             },
         )
         .unwrap();
-    blockp1t1
+    active_block_p1t1
         .block_ledger_changes
         .apply(
             &address_b,
@@ -247,17 +287,33 @@ pub async fn test_get_ledger_at_parents() {
         )
         .unwrap();
 
-    blockp1t1.block.header.content.slot = Slot::new(1, 1);
+    let mut block_p1t1 = block.clone();
+    block_p1t1.header.content.creator = pubkey_b;
+    block_p1t1.header.content.slot = Slot::new(1, 1);
+
+    let block_id = block_p1t1
+        .header
+        .compute_block_id()
+        .expect("Fail to calculate block id");
+    storage.store_block(
+        block_id,
+        block_p1t1,
+        block_p1t1
+            .to_bytes_compact()
+            .expect("Fail to serialize block"),
+    );
 
     // block p2t0 [NON-FINAL]: creator A, parents [p1t0, p0t1], operations:
     //   A -> A : 512, fee 1024
     // => counted as [A += 1]
-    let mut blockp2t0 = active_block.clone();
-    blockp2t0.parents = vec![(get_dummy_block_id("blockp1t0"), 1), (hash_genesist1, 0)];
-    blockp2t0.is_final = false;
-    blockp2t0.block.header.content.creator = pubkey_a;
-    blockp2t0.block_ledger_changes = LedgerChanges::default();
-    blockp2t0
+    let mut active_block_p2t0 = active_block.clone();
+    active_block_p2t0.parents = vec![
+        (get_dummy_block_id("active_block_p1t0"), 1),
+        (hash_genesist1, 0),
+    ];
+    active_block_p2t0.is_final = false;
+    active_block_p2t0.block_ledger_changes = LedgerChanges::default();
+    active_block_p2t0
         .block_ledger_changes
         .apply(
             &address_a,
@@ -267,20 +323,34 @@ pub async fn test_get_ledger_at_parents() {
             },
         )
         .unwrap();
-    blockp2t0.block.header.content.slot = Slot::new(2, 0);
+
+    let mut block_p2t0 = block.clone();
+    block_p2t0.header.content.creator = pubkey_a;
+    block_p2t0.header.content.slot = Slot::new(2, 0);
+
+    let block_id = block_p2t0
+        .header
+        .compute_block_id()
+        .expect("Fail to calculate block id");
+    storage.store_block(
+        block_id,
+        block_p2t0,
+        block_p2t0
+            .to_bytes_compact()
+            .expect("Fail to serialize block"),
+    );
 
     // block p2t1 [FINAL]: creator B, parents [p1t0, p1t1] operations:
     //   B -> A : 10, fee 1
     // => counted as [A += 10] (B not counted !)
-    let mut blockp2t1 = active_block.clone();
-    blockp2t1.parents = vec![
-        (get_dummy_block_id("blockp1t0"), 1),
-        (get_dummy_block_id("blockp1t1"), 1),
+    let mut active_block_p2t1 = active_block.clone();
+    active_block_p2t1.parents = vec![
+        (get_dummy_block_id("active_block_p1t0"), 1),
+        (get_dummy_block_id("active_block_p1t1"), 1),
     ];
-    blockp2t1.is_final = true;
-    blockp2t1.block.header.content.creator = pubkey_b;
-    blockp2t1.block_ledger_changes = LedgerChanges::default();
-    blockp2t1
+    active_block_p2t1.is_final = true;
+    active_block_p2t1.block_ledger_changes = LedgerChanges::default();
+    active_block_p2t1
         .block_ledger_changes
         .apply(
             &address_a,
@@ -290,7 +360,7 @@ pub async fn test_get_ledger_at_parents() {
             },
         )
         .unwrap();
-    blockp2t1
+    active_block_p2t1
         .block_ledger_changes
         .apply(
             &address_b,
@@ -300,18 +370,32 @@ pub async fn test_get_ledger_at_parents() {
             },
         )
         .unwrap();
-    blockp2t1.block.header.content.slot = Slot::new(2, 1);
+
+    let mut block_p2t1 = block.clone();
+    block_p2t1.header.content.creator = pubkey_b;
+    block_p2t1.header.content.slot = Slot::new(2, 1);
+
+    let block_id = block_p2t1
+        .header
+        .compute_block_id()
+        .expect("Fail to calculate block id");
+    storage.store_block(
+        block_id,
+        block_p2t1,
+        block_p2t1
+            .to_bytes_compact()
+            .expect("Fail to serialize block"),
+    );
 
     // block p3t0 [NON-FINAL]: creator A, parents [p2t0, p1t1] operations:
     //   A -> C : 2048, fee 4096
     // => counted as [A += 1 - 2048 - 4096 (+4096) ; C created to 2048]
     let mut blockp3t0 = active_block.clone();
     blockp3t0.parents = vec![
-        (get_dummy_block_id("blockp2t0"), 2),
-        (get_dummy_block_id("blockp1t1"), 1),
+        (get_dummy_block_id("active_block_p2t0"), 2),
+        (get_dummy_block_id("active_block_p1t1"), 1),
     ];
     blockp3t0.is_final = false;
-    blockp3t0.block.header.content.creator = pubkey_a;
     blockp3t0.block_ledger_changes = LedgerChanges::default();
     blockp3t0
         .block_ledger_changes
@@ -333,20 +417,34 @@ pub async fn test_get_ledger_at_parents() {
             },
         )
         .unwrap();
-    blockp3t0.block.header.content.slot = Slot::new(3, 0);
+
+    let mut block_p3t0 = block.clone();
+    block_p3t0.header.content.creator = pubkey_a;
+    block_p3t0.header.content.slot = Slot::new(3, 0);
+
+    let block_id = block_p3t0
+        .header
+        .compute_block_id()
+        .expect("Fail to calculate block id");
+    storage.store_block(
+        block_id,
+        block_p3t0,
+        block_p3t0
+            .to_bytes_compact()
+            .expect("Fail to serialize block"),
+    );
 
     // block p3t1 [NON-FINAL]: creator B, parents [p2t0, p2t1] operations:
     //   B -> A : 100, fee 10
     // => counted as [B += 1 - 100 - 10 + 10 ; A += 100]
-    let mut blockp3t1 = active_block.clone();
-    blockp3t1.parents = vec![
-        (get_dummy_block_id("blockp2t0"), 2),
-        (get_dummy_block_id("blockp2t1"), 2),
+    let mut active_block_p3t1 = active_block.clone();
+    active_block_p3t1.parents = vec![
+        (get_dummy_block_id("active_block_p2t0"), 2),
+        (get_dummy_block_id("active_block_p2t1"), 2),
     ];
-    blockp3t1.is_final = false;
-    blockp3t1.block.header.content.creator = pubkey_b;
-    blockp3t1.block_ledger_changes = LedgerChanges::default();
-    blockp3t1
+    active_block_p3t1.is_final = false;
+    active_block_p3t1.block_ledger_changes = LedgerChanges::default();
+    active_block_p3t1
         .block_ledger_changes
         .apply(
             &address_a,
@@ -356,7 +454,7 @@ pub async fn test_get_ledger_at_parents() {
             },
         )
         .unwrap();
-    blockp3t1
+    active_block_p3t1
         .block_ledger_changes
         .apply(
             &address_b,
@@ -366,7 +464,22 @@ pub async fn test_get_ledger_at_parents() {
             },
         )
         .unwrap();
-    blockp3t1.block.header.content.slot = Slot::new(3, 1);
+
+    let mut block_p3t1 = block.clone();
+    block_p3t1.header.content.creator = pubkey_b;
+    block_p3t0.header.content.slot = Slot::new(3, 1);
+
+    let block_id = block_p3t1
+        .header
+        .compute_block_id()
+        .expect("Fail to calculate block id");
+    storage.store_block(
+        block_id,
+        block_p3t1,
+        block_p3t1
+            .to_bytes_compact()
+            .expect("Fail to serialize block"),
+    );
 
     let export_graph = BootstrapableGraph {
         /// Map of active blocks, were blocks are in their exported version.
@@ -374,28 +487,28 @@ pub async fn test_get_ledger_at_parents() {
             (hash_genesist0, export_genesist0),
             (hash_genesist1, export_genesist1),
             (
-                get_dummy_block_id("blockp1t0"),
-                ExportActiveBlock::from(&blockp1t0),
+                get_dummy_block_id("active_block_p1t0"),
+                ExportActiveBlock::from(&active_block_p1t0),
             ),
             (
-                get_dummy_block_id("blockp1t1"),
-                ExportActiveBlock::from(&blockp1t1),
+                get_dummy_block_id("active_block_p1t1"),
+                ExportActiveBlock::from(&active_block_p1t1),
             ),
             (
-                get_dummy_block_id("blockp2t0"),
-                ExportActiveBlock::from(&blockp2t0),
+                get_dummy_block_id("active_block_p2t0"),
+                ExportActiveBlock::from(&active_block_p2t0),
             ),
             (
-                get_dummy_block_id("blockp2t1"),
-                ExportActiveBlock::from(&blockp2t1),
+                get_dummy_block_id("active_block_p2t1"),
+                ExportActiveBlock::from(&active_block_p2t1),
             ),
             (
                 get_dummy_block_id("blockp3t0"),
                 ExportActiveBlock::from(&blockp3t0),
             ),
             (
-                get_dummy_block_id("blockp3t1"),
-                ExportActiveBlock::from(&blockp3t1),
+                get_dummy_block_id("active_block_p3t1"),
+                ExportActiveBlock::from(&active_block_p3t1),
             ),
         ]
         .into_iter()
@@ -403,12 +516,12 @@ pub async fn test_get_ledger_at_parents() {
         /// Best parents hash in each thread.
         best_parents: vec![
             (get_dummy_block_id("blockp3t0"), 3),
-            (get_dummy_block_id("blockp3t1"), 3),
+            (get_dummy_block_id("active_block_p3t1"), 3),
         ],
         /// Latest final period and block hash in each thread.
         latest_final_blocks_periods: vec![
-            (get_dummy_block_id("blockp1t0"), 1),
-            (get_dummy_block_id("blockp2t1"), 2),
+            (get_dummy_block_id("active_block_p1t0"), 1),
+            (get_dummy_block_id("active_block_p2t1"), 2),
         ],
         /// Head of the incompatibility graph.
         gi_head: Default::default(),
@@ -444,7 +557,7 @@ pub async fn test_get_ledger_at_parents() {
         .get_ledger_at_parents(
             &[
                 get_dummy_block_id("blockp3t0"),
-                get_dummy_block_id("blockp3t1"),
+                get_dummy_block_id("active_block_p3t1"),
             ],
             &vec![address_a, address_b, address_c, address_d]
                 .into_iter()
@@ -472,8 +585,8 @@ pub async fn test_get_ledger_at_parents() {
     let res = block_graph
         .get_ledger_at_parents(
             &[
-                get_dummy_block_id("blockp1t0"),
-                get_dummy_block_id("blockp1t1"),
+                get_dummy_block_id("active_block_p1t0"),
+                get_dummy_block_id("active_block_p1t1"),
             ],
             &vec![address_a].into_iter().collect(),
         )
@@ -492,8 +605,8 @@ pub async fn test_get_ledger_at_parents() {
     // ask_ledger_at_parents for parents [p1t0, p1t1] for addresses A, B => ERROR
     let res = block_graph.get_ledger_at_parents(
         &[
-            get_dummy_block_id("blockp1t0"),
-            get_dummy_block_id("blockp1t1"),
+            get_dummy_block_id("active_block_p1t0"),
+            get_dummy_block_id("active_block_p1t1"),
         ],
         &vec![address_a, address_b].into_iter().collect(),
     );
