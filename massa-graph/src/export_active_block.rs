@@ -5,7 +5,7 @@ use massa_models::{
     ledger_models::{LedgerChange, LedgerChanges},
     prehash::{BuildMap, Map, Set},
     rolls::{RollUpdate, RollUpdates},
-    signed::Signable,
+    storage::Storage,
     *,
 };
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 /// Fields that can be easily recomputed were left out
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportActiveBlock {
-    /// The id of the block.
+    /// The block.
     pub block: Block,
     /// one (block id, period) per thread ( if not genesis )
     pub parents: Vec<(BlockId, u64)>,
@@ -32,25 +32,6 @@ pub struct ExportActiveBlock {
     /// list of (period, address, did_create) for all block/endorsement creation events
     pub production_events: Vec<(u64, Address, bool)>,
 }
-
-<<<<<<< HEAD
-impl From<&ActiveBlock> for ExportActiveBlock {
-    fn from(a_block: &ActiveBlock) -> Self {
-        ExportActiveBlock {
-            block: a_block.block.clone(),
-            parents: a_block.parents.clone(),
-            children: a_block.children.clone(),
-            dependencies: a_block.dependencies.clone(),
-            is_final: a_block.is_final,
-            block_ledger_changes: a_block.block_ledger_changes.clone(),
-            roll_updates: a_block.roll_updates.clone(),
-            production_events: a_block.production_events.clone(),
-        }
-    }
-}
-
-=======
->>>>>>> a455a8e9 (Change edition of active block in tests.)
 impl TryFrom<ExportActiveBlock> for ActiveBlock {
     fn try_from(a_block: ExportActiveBlock) -> Result<ActiveBlock> {
         let operation_set = a_block
@@ -58,11 +39,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             .operations
             .iter()
             .enumerate()
-<<<<<<< HEAD
-            .map(|(idx, op)| match op.content.compute_id() {
-=======
             .map(|(idx, op)| match op.get_operation_id() {
->>>>>>> a455a8e9 (Change edition of active block in tests.)
                 Ok(id) => Ok((id, (idx, op.content.expire_period))),
                 Err(e) => Err(e),
             })
@@ -74,11 +51,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             .content
             .endorsements
             .iter()
-<<<<<<< HEAD
-            .map(|endo| Ok((endo.content.compute_id()?, endo.content.index)))
-=======
             .map(|endo| Ok((endo.compute_endorsement_id()?, endo.content.index)))
->>>>>>> a455a8e9 (Change edition of active block in tests.)
             .collect::<Result<_>>()?;
 
         let addresses_to_operations = a_block.block.involved_addresses(&operation_set)?;
@@ -86,32 +59,43 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             a_block.block.addresses_to_endorsements(&endorsement_ids)?;
         Ok(ActiveBlock {
             creator_address: Address::from_public_key(&a_block.block.header.content.creator),
-<<<<<<< HEAD
-            block: a_block.block,
-=======
             //TODO: Unwrap
-            block: a_block.block.header.compute_block_id().unwrap(),
->>>>>>> a455a8e9 (Change edition of active block in tests.)
-            parents: a_block.parents,
-            children: a_block.children,
-            dependencies: a_block.dependencies,
+            block_id: a_block.block.header.compute_block_id().unwrap(),
+            parents: a_block.parents.clone(),
+            children: a_block.children.clone(),
+            dependencies: a_block.dependencies.clone(),
             descendants: Default::default(), // will be computed once the full graph is available
-            is_final: a_block.is_final,
-            block_ledger_changes: a_block.block_ledger_changes,
+            is_final: a_block.is_final.clone(),
+            block_ledger_changes: a_block.block_ledger_changes.clone(),
             operation_set,
             endorsement_ids,
             addresses_to_operations,
-            roll_updates: a_block.roll_updates,
-            production_events: a_block.production_events,
+            roll_updates: a_block.roll_updates.clone(),
+            production_events: a_block.production_events.clone(),
             addresses_to_endorsements,
-<<<<<<< HEAD
-=======
             slot: a_block.block.header.content.slot,
->>>>>>> a455a8e9 (Change edition of active block in tests.)
         })
     }
-
     type Error = GraphError;
+}
+
+impl ExportActiveBlock {
+    pub fn try_from_active_block(a_block: &ActiveBlock, storage: Storage) -> Result<Self> {
+        let block = storage
+            .retrieve_block(&a_block.block_id)
+            .ok_or(GraphError::MissingBlock)?;
+        let stored_block = block.read();
+        Ok(ExportActiveBlock {
+            block: stored_block.block.clone(),
+            parents: a_block.parents.clone(),
+            children: a_block.children.clone(),
+            dependencies: a_block.dependencies.clone(),
+            is_final: a_block.is_final,
+            block_ledger_changes: a_block.block_ledger_changes.clone(),
+            roll_updates: a_block.roll_updates.clone(),
+            production_events: a_block.production_events.clone(),
+        })
+    }
 }
 
 impl SerializeCompact for ExportActiveBlock {
