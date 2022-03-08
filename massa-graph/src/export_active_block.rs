@@ -33,6 +33,7 @@ pub struct ExportActiveBlock {
     pub production_events: Vec<(u64, Address, bool)>,
 }
 
+<<<<<<< HEAD
 impl From<&ActiveBlock> for ExportActiveBlock {
     fn from(a_block: &ActiveBlock) -> Self {
         ExportActiveBlock {
@@ -48,6 +49,8 @@ impl From<&ActiveBlock> for ExportActiveBlock {
     }
 }
 
+=======
+>>>>>>> a455a8e9 (Change edition of active block in tests.)
 impl TryFrom<ExportActiveBlock> for ActiveBlock {
     fn try_from(a_block: ExportActiveBlock) -> Result<ActiveBlock> {
         let operation_set = a_block
@@ -55,7 +58,11 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             .operations
             .iter()
             .enumerate()
+<<<<<<< HEAD
             .map(|(idx, op)| match op.content.compute_id() {
+=======
+            .map(|(idx, op)| match op.get_operation_id() {
+>>>>>>> a455a8e9 (Change edition of active block in tests.)
                 Ok(id) => Ok((id, (idx, op.content.expire_period))),
                 Err(e) => Err(e),
             })
@@ -67,7 +74,11 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             .content
             .endorsements
             .iter()
+<<<<<<< HEAD
             .map(|endo| Ok((endo.content.compute_id()?, endo.content.index)))
+=======
+            .map(|endo| Ok((endo.compute_endorsement_id()?, endo.content.index)))
+>>>>>>> a455a8e9 (Change edition of active block in tests.)
             .collect::<Result<_>>()?;
 
         let addresses_to_operations = a_block.block.involved_addresses(&operation_set)?;
@@ -75,7 +86,12 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             a_block.block.addresses_to_endorsements(&endorsement_ids)?;
         Ok(ActiveBlock {
             creator_address: Address::from_public_key(&a_block.block.header.content.creator),
+<<<<<<< HEAD
             block: a_block.block,
+=======
+            //TODO: Unwrap
+            block: a_block.block.header.compute_block_id().unwrap(),
+>>>>>>> a455a8e9 (Change edition of active block in tests.)
             parents: a_block.parents,
             children: a_block.children,
             dependencies: a_block.dependencies,
@@ -88,6 +104,10 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             roll_updates: a_block.roll_updates,
             production_events: a_block.production_events,
             addresses_to_endorsements,
+<<<<<<< HEAD
+=======
+            slot: a_block.block.header.content.slot,
+>>>>>>> a455a8e9 (Change edition of active block in tests.)
         })
     }
 
