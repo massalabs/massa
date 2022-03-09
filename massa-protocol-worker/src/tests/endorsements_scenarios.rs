@@ -8,7 +8,7 @@ use massa_models::signed::Signable;
 use massa_models::{Address, Slot};
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
-use massa_protocol_exports::{ProtocolEvent, ProtocolPoolEvent};
+use massa_protocol_exports::{BlocksResults, ProtocolEvent, ProtocolPoolEvent};
 use serial_test::serial;
 use std::time::Duration;
 
@@ -324,7 +324,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Integrate the block,
             // this should note the node as knowning about the endorsement.
             protocol_command_sender
-                .integrated_block(block_id, Default::default(), vec![endorsement_id])
+                .integrated_block(block_id, block, Default::default(), vec![endorsement_id])
                 .await
                 .unwrap();
 
@@ -335,12 +335,15 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 })
                 .await
             {
-                Some(NetworkCommand::SendBlock {
-                    node,
-                    block_id: sent_block_id,
-                }) => {
+                Some(NetworkCommand::SendBlock { node, block }) => {
                     assert_eq!(node, nodes[0].id);
-                    assert_eq!(sent_block_id, block_id);
+                    assert_eq!(
+                        block
+                            .header
+                            .compute_block_id()
+                            .expect("Fail to get block id."),
+                        block_id
+                    );
                 }
                 Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),
@@ -430,8 +433,8 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             .await;
 
             // Send the block as search results.
-            let mut results = Map::default();
-            results.insert(block_id, Some((None, Some(vec![endorsement_id]))));
+            let mut results: BlocksResults = Map::default();
+            results.insert(block_id, Some((block, None, Some(vec![endorsement_id]))));
 
             protocol_command_sender
                 .send_get_blocks_results(results)
@@ -445,12 +448,15 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 })
                 .await
             {
-                Some(NetworkCommand::SendBlock {
-                    node,
-                    block_id: sent_block_id,
-                }) => {
+                Some(NetworkCommand::SendBlock { node, block }) => {
                     assert_eq!(node, nodes[0].id);
-                    assert_eq!(sent_block_id, block_id);
+                    assert_eq!(
+                        block
+                            .header
+                            .compute_block_id()
+                            .expect("Fail to get block id"),
+                        block_id
+                    );
                 }
                 Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),

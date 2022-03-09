@@ -85,7 +85,6 @@ async fn test_node_worker_shutdown() {
             writer,
             node_command_rx,
             node_event_tx,
-            storage,
         )
         .run_loop()
         .await
@@ -692,11 +691,7 @@ async fn test_block_not_found() {
             // Send ask for block message from connected peer
             let wanted_hash = get_dummy_block_id("default_val");
             conn1_w
-                .send(
-                    &Message::AskForBlocks(vec![wanted_hash])
-                        .to_bytes_compact()
-                        .unwrap(),
-                )
+                .send(&Message::AskForBlocks(vec![wanted_hash]))
                 .await
                 .unwrap();
 
@@ -790,16 +785,12 @@ async fn test_block_not_found() {
             let wanted_hash3 = get_dummy_block_id("default_val3");
             let wanted_hash4 = get_dummy_block_id("default_val4");
             conn1_w
-                .send(
-                    &Message::AskForBlocks(vec![
-                        wanted_hash1,
-                        wanted_hash2,
-                        wanted_hash3,
-                        wanted_hash4,
-                    ])
-                    .to_bytes_compact()
-                    .unwrap(),
-                )
+                .send(&Message::AskForBlocks(vec![
+                    wanted_hash1,
+                    wanted_hash2,
+                    wanted_hash3,
+                    wanted_hash4,
+                ]))
                 .await
                 .unwrap();
             // assert it is sent to protocol
@@ -987,11 +978,7 @@ async fn test_operation_messages() {
             let (transaction, _) = get_transaction(50, 10);
             let ref_id = transaction.verify_integrity().unwrap();
             conn1_w
-                .send(
-                    &Message::Operations(vec![transaction.clone()])
-                        .to_bytes_compact()
-                        .unwrap(),
-                )
+                .send(&Message::Operations(vec![transaction.clone()]))
                 .await
                 .unwrap();
 
@@ -1121,11 +1108,7 @@ async fn test_endorsements_messages() {
             let endorsement = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
             let ref_id = endorsement.content.compute_id().unwrap();
             conn1_w
-                .send(
-                    &Message::Endorsements(vec![endorsement])
-                        .to_bytes_compact()
-                        .expect("Failed to serialize endorsements"),
-                )
+                .send(&Message::Endorsements(vec![endorsement]))
                 .await
                 .unwrap();
 
