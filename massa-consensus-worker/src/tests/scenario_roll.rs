@@ -483,6 +483,7 @@ async fn test_roll_block_creation() {
         t0: 500.into(),
         ..Default::default()
     };
+    let storage: Storage = Default::default();
     // define addresses use for the test
     // addresses 1 and 2 both in thread 0
     let (_, priv_1, _) = random_address_on_thread(0, cfg.thread_count).into();
@@ -501,7 +502,7 @@ async fn test_roll_block_creation() {
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(storage.clone());
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
 
@@ -776,6 +777,7 @@ async fn test_roll_deactivation() {
         pos_miss_rate_deactivation_threshold: Ratio::new(50, 100),
         ..Default::default()
     };
+    let storage: Storage = Default::default();
 
     // setup addresses
     let (address_a0, privkey_a0, _) = random_address_on_thread(0, cfg.thread_count).into();
@@ -795,7 +797,7 @@ async fn test_roll_deactivation() {
 
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(storage.clone());
     let (mut pool_controller, pool_command_sender) = MockPoolController::new();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
 

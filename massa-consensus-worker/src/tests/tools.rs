@@ -640,9 +640,10 @@ pub async fn consensus_pool_test<F, V>(
         ),
     >,
 {
+    let storage: Storage = Default::default();
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(storage.clone());
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
@@ -653,7 +654,6 @@ pub async fn consensus_pool_test<F, V>(
             let _ = execution_rx.recv_timeout(Duration::from_millis(500));
         }
     });
-    let storage: Storage = Default::default();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -714,9 +714,10 @@ where
         ),
     >,
 {
+    let storage: Storage = Default::default();
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(storage.clone());
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     // for now, execution_rx is ignored: cique updates to Execution pile up and are discarded
     let (execution_controller, execution_rx) = MockExecutionController::new_with_receiver();
@@ -728,7 +729,6 @@ where
         }
     });
     let pool_sink = PoolCommandSink::new(pool_controller).await;
-    let storage: Storage = Default::default();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
