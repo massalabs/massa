@@ -65,9 +65,8 @@ impl Hash {
     /// let serialized = hash.to_bytes();
     /// ```
     pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
-        // this should return &[u8; HASH_SIZE_BYTES]
-        // leaving this return type for now because it
-        // has many occurences in the code
+        // note: this should return &[u8; HASH_SIZE_BYTES]
+        // leaving this return type for now because it has many occurences in the code
         *self.0.as_bytes()
     }
 
