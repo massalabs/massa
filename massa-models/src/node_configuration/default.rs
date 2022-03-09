@@ -41,14 +41,14 @@ lazy_static::lazy_static! {
             .unwrap()
             .saturating_add(MassaTime::from(1000 * 60 * 3))
     } else {
-        1643918400000.into()
+        1646334000000.into()
     };
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(1646078400000.into())
+        Some(1648764000000.into())
     };
     /// Private_key to sign genesis blocks.
     pub static ref GENESIS_KEY: PrivateKey = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
@@ -60,7 +60,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.7.0"
+            "TEST.8.0"
         }
         .parse()
         .unwrap()
@@ -82,9 +82,9 @@ pub const ENDORSEMENT_COUNT: u32 = 9;
 /// Threshold for fitness.
 pub const DELTA_F0: u64 = 640;
 /// Maximum number of operations per block
-pub const MAX_OPERATIONS_PER_BLOCK: u32 = 102400;
+pub const MAX_OPERATIONS_PER_BLOCK: u32 = 204800;
 /// Maximum block size in bytes
-pub const MAX_BLOCK_SIZE: u32 = 102400;
+pub const MAX_BLOCK_SIZE: u32 = 204800;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods

@@ -152,15 +152,21 @@ impl ExecutionState {
     /// Slots after that point will need to be (re-executed) to account for the new sequence.
     ///
     /// # Arguments
-    /// * active_slots: A HashMap mapping each slot to a block or None if the slot is a miss
-    pub fn truncate_history(&mut self, active_slots: &HashMap<Slot, Option<(BlockId, Block)>>) {
+    /// * active_slots: A HashMap mapping each active slot to a block or None if the slot is a miss
+    /// * ready_final_slots:  A HashMap mapping each ready-to-execute final slot to a block or None if the slot is a miss
+    pub fn truncate_history(
+        &mut self,
+        active_slots: &HashMap<Slot, Option<(BlockId, Block)>>,
+        ready_final_slots: &HashMap<Slot, Option<(BlockId, Block)>>,
+    ) {
         // find mismatch point (included)
         let mut truncate_at = None;
         // iterate over the output history, in chronological order
         for (hist_index, exec_output) in self.active_history.iter().enumerate() {
-            // try to find the corresponding slot in active_slots
+            // try to find the corresponding slot in active_slots or ready_final_slots
             let found_block_id = active_slots
                 .get(&exec_output.slot)
+                .or_else(|| ready_final_slots.get(&exec_output.slot))
                 .map(|opt_b| opt_b.as_ref().map(|(b_id, _b)| *b_id));
             if found_block_id == Some(exec_output.block_id) {
                 // the slot number and block ID still match. Continue scanning
