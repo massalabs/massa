@@ -594,16 +594,20 @@ impl BlockGraph {
         }
     }
 
-    pub fn export_bootstrap_graph(&self) -> Result<BootstrapableGraph> {
+    pub fn export_bootstrap_graph(&self, storage: Storage) -> Result<BootstrapableGraph> {
         let required_active_blocks = self.list_required_active_blocks()?;
         let mut active_blocks: Map<BlockId, ExportActiveBlock> =
             Map::with_capacity_and_hasher(required_active_blocks.len(), BuildMap::default());
         for b_id in required_active_blocks {
             if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(&b_id) {
+                let block = storage
+                    .retrieve_block(&a_block.block)
+                    .ok_or(GraphError::MissingBlock)?;
+                let stored_block = block.read();
                 active_blocks.insert(
                     b_id,
                     ExportActiveBlock {
-                        block: b_id,
+                        block: stored_block.block.clone(),
                         parents: a_block.parents.clone(),
                         children: a_block.children.clone(),
                         dependencies: a_block.dependencies.clone(),
