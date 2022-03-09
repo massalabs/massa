@@ -5,8 +5,8 @@ use crate::{
     NetworkEvent, Peers,
 };
 use massa_models::{
-    composite::PubkeySig,  node::NodeId, stats::NetworkStats, Block,
-    BlockId, SignedEndorsement, SignedHeader, SignedOperation,
+    composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId, SignedEndorsement,
+    SignedHeader, SignedOperation,
 };
 use std::{
     collections::{HashMap, VecDeque},
