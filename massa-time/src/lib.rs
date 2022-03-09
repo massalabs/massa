@@ -342,7 +342,7 @@ impl MassaTime {
     /// assert_eq!(massa_time.to_utc_string(), "2022-01-01T00:00:00Z")
     /// ```
     pub fn to_utc_string(self) -> String {
-        let naive = OffsetDateTime::from_unix_timestamp(self.to_millis() as i64).unwrap();
+        let naive = OffsetDateTime::from_unix_timestamp((self.to_millis() / 1000) as i64).unwrap();
         naive.format(&Rfc3339).unwrap()
     }
 
