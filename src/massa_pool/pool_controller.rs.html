@@ -358,8 +358,8 @@
     <span class="ident">constants::CHANNEL_SIZE</span>,
     <span class="ident">prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>},
     <span class="ident">stats::PoolStats</span>,
-    <span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span>,
-    <span class="ident">Slot</span>,
+    <span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">SignedEndorsement</span>,
+    <span class="ident">SignedOperation</span>, <span class="ident">Slot</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{<span class="ident">ProtocolCommandSender</span>, <span class="ident">ProtocolPoolEventReceiver</span>};
 <span class="kw">use</span> <span class="ident">tokio</span>::{
@@ -421,7 +421,7 @@
 <span class="kw">impl</span> <span class="ident">PoolCommandSender</span> {
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_operations</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">Operation</span><span class="op">&gt;</span>,
+        <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">SignedOperation</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.add_operations&quot;</span>, { <span class="string">&quot;ops&quot;</span>: <span class="ident">operations</span> });
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
@@ -494,12 +494,12 @@
         <span class="ident">exclude</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
         <span class="ident">batch_size</span>: <span class="ident">usize</span>,
         <span class="ident">max_size</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">OperationId</span>, <span class="ident">Operation</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">OperationId</span>, <span class="ident">SignedOperation</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.get_operation_batch&quot;</span>, {
             <span class="string">&quot;target_slot&quot;</span>: <span class="ident">target_slot</span>
         });
 
-        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">OperationId</span>, <span class="ident">Operation</span>, <span class="ident">u64</span>)<span class="op">&gt;</span><span class="op">&gt;</span>();
+        <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">PoolCommand::GetOperationBatch</span> {
                 <span class="ident">target_slot</span>,
@@ -526,7 +526,7 @@
         <span class="ident">target_slot</span>: <span class="ident">Slot</span>,
         <span class="ident">parent</span>: <span class="ident">BlockId</span>,
         <span class="ident">creators</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span>)<span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span>)<span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.get_endorsements&quot;</span>, {
             <span class="string">&quot;target_slot&quot;</span>: <span class="ident">target_slot</span>
         });
@@ -553,7 +553,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_operations</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">operation_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">Operation</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">SignedOperation</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.get_operations&quot;</span>, {
             <span class="string">&quot;operation_ids&quot;</span>: <span class="ident">operation_ids</span>
         });
@@ -606,7 +606,7 @@
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_endorsements</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span>,
+        <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.add_endorsements&quot;</span>, {
             <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>
@@ -622,7 +622,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_endorsements_by_address</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">address</span>: <span class="ident">Address</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.get_endorsements_by_address&quot;</span>, {
             <span class="string">&quot;address&quot;</span>: <span class="ident">address</span>
         });
@@ -649,7 +649,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_endorsements_by_id</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.get_endorsements_by_id&quot;</span>, {
             <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>
         });
@@ -688,5 +688,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03918badd 2022-03-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
 </body></html>

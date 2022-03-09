@@ -56,6 +56,7 @@
 <span id="51">51</span>
 <span id="52">52</span>
 <span id="53">53</span>
+<span id="54">54</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
@@ -63,14 +64,14 @@
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">address::Address</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">amount::Amount</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">block</span>::{<span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockHeaderContent</span>, <span class="ident">BlockId</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">block</span>::{<span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">SignedHeader</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">composite</span>::{
     <span class="ident">OperationSearchResult</span>, <span class="ident">OperationSearchResultBlockStatus</span>, <span class="ident">OperationSearchResultStatus</span>,
     <span class="ident">StakersCycleProductionStats</span>,
 };
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">endorsement</span>::{<span class="ident">Endorsement</span>, <span class="ident">EndorsementContent</span>, <span class="ident">EndorsementId</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">endorsement</span>::{<span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::ModelsError</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">operation</span>::{<span class="ident">Operation</span>, <span class="ident">OperationContent</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">operation</span>::{<span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>, <span class="ident">SignedOperation</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">serialization</span>::{
     <span class="ident">array_from_slice</span>, <span class="ident">u8_from_slice</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeMinBEInt</span>, <span class="ident">DeserializeVarInt</span>,
     <span class="ident">SerializeCompact</span>, <span class="ident">SerializeMinBEInt</span>, <span class="ident">SerializeVarInt</span>,
@@ -100,6 +101,7 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">rolls</span>;
 <span class="kw">mod</span> <span class="ident">serialization</span>;
 <span class="kw">mod</span> <span class="ident">serialization_context</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">signed</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">slot</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">stats</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">timeslots</span>;
@@ -110,5 +112,5 @@
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::node_configuration</span>::<span class="kw-2">*</span>;
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03918badd 2022-03-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
 </body></html>

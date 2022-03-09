@@ -844,7 +844,7 @@
 <span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
 <span class="kw">use</span> <span class="ident">massa_models::timeslots::get_current_latest_block_slot</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationContent</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>, <span class="ident">Slot</span>,
+    <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>, <span class="ident">Slot</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_sdk::Client</span>;
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">generate_random_private_key</span>, <span class="ident">PrivateKey</span>, <span class="ident">PublicKey</span>};
@@ -1637,7 +1637,7 @@
     };
 
     <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">create_operation</span>(
-        <span class="ident">OperationContent</span> {
+        <span class="ident">Operation</span> {
             <span class="ident">sender_public_key</span>,
             <span class="ident">fee</span>,
             <span class="ident">expire_period</span>,
@@ -1666,5 +1666,5 @@
     <span class="prelude-val">Ok</span>(<span class="ident">tokio::fs::read</span>(<span class="ident">filename</span>).<span class="kw">await</span><span class="question-mark">?</span>)
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03918badd 2022-03-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
 </body></html>

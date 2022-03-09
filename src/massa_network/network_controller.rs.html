@@ -373,7 +373,7 @@
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">composite::PubkeySig</span>, <span class="ident">constants::CHANNEL_SIZE</span>, <span class="ident">node::NodeId</span>, <span class="ident">stats::NetworkStats</span>, <span class="ident">Block</span>,
-    <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">Operation</span>, <span class="ident">Version</span>,
+    <span class="ident">BlockId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>, <span class="ident">SignedOperation</span>, <span class="ident">Version</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>, <span class="ident">PrivateKey</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{
@@ -563,7 +563,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_block_header</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">header</span>: <span class="ident">BlockHeader</span>,
+        <span class="ident">header</span>: <span class="ident">SignedHeader</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">NetworkCommand::SendBlockHeader</span> { <span class="ident">node</span>, <span class="ident">header</span> })
@@ -632,7 +632,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_operations</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Operation</span><span class="op">&gt;</span>,
+        <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedOperation</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">NetworkCommand::SendOperations</span> { <span class="ident">node</span>, <span class="ident">operations</span> })
@@ -646,7 +646,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_endorsements</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span>,
+        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedEndorsement</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">NetworkCommand::SendEndorsements</span> { <span class="ident">node</span>, <span class="ident">endorsements</span> })
@@ -712,5 +712,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03918badd 2022-03-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
 </body></html>

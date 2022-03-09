@@ -208,6 +208,9 @@
 <span id="203">203</span>
 <span id="204">204</span>
 <span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
@@ -227,10 +230,10 @@
 <span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
 <span class="kw">use</span> <span class="ident">massa_models::execution::ExecuteReadOnlyResponse</span>;
 <span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
-<span class="kw">use</span> <span class="ident">massa_models::operation</span>::{<span class="ident">Operation</span>, <span class="ident">OperationId</span>};
+<span class="kw">use</span> <span class="ident">massa_models::operation::OperationId</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">Version</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">SignedOperation</span>, <span class="ident">Version</span>};
 <span class="kw">use</span> <span class="ident">massa_network</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkSettings</span>};
 <span class="kw">use</span> <span class="ident">massa_pool::PoolCommandSender</span>;
 <span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
@@ -390,7 +393,10 @@
 
     <span class="doccomment">/// Adds operations to pool. Returns operations that were ok and sent to pool.</span>
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;send_operations&quot;</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">send_operations</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Operation</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">send_operations</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedOperation</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// Get events optionnally filtered by:</span>
     <span class="doccomment">/// * start slot</span>
@@ -414,5 +420,5 @@
     <span class="comment">// TODO: jsonrpc_client_transports::RawClient::call_method ... see #1182</span>
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03918badd 2022-03-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
 </body></html>

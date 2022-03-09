@@ -1228,6 +1228,7 @@
 <span id="1223">1223</span>
 <span id="1224">1224</span>
 <span id="1225">1225</span>
+<span id="1226">1226</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! The network worker actually does the job of managing connections</span>
@@ -1251,9 +1252,10 @@
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">composite::PubkeySig</span>, <span class="ident">constants::CHANNEL_SIZE</span>, <span class="ident">node::NodeId</span>, <span class="ident">stats::NetworkStats</span>,
     <span class="ident">with_serialization_context</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>,
-    <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">Version</span>,
+    <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>, <span class="ident">Version</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">Operation</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">signed::Signable</span>, <span class="ident">SignedOperation</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Block</span>, <span class="ident">BlockId</span>};
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">sign</span>, <span class="ident">PrivateKey</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{
@@ -1281,7 +1283,7 @@
     <span class="doccomment">/// Send a header to a node.</span>
     <span class="ident">SendBlockHeader</span> {
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">header</span>: <span class="ident">BlockHeader</span>,
+        <span class="ident">header</span>: <span class="ident">SignedHeader</span>,
     },
     <span class="comment">// (PeerInfo, Vec &lt;(NodeId, bool)&gt;) peer info + list of associated Id nodes in connexion out (true)</span>
     <span class="ident">GetPeers</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Peers</span><span class="op">&gt;</span>),
@@ -1295,11 +1297,11 @@
     },
     <span class="ident">SendOperations</span> {
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Operation</span><span class="op">&gt;</span>,
+        <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedOperation</span><span class="op">&gt;</span>,
     },
     <span class="ident">SendEndorsements</span> {
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span>,
+        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedEndorsement</span><span class="op">&gt;</span>,
     },
     <span class="ident">NodeSignMessage</span> {
         <span class="ident">msg</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
@@ -1334,7 +1336,7 @@
     <span class="doccomment">/// A block header was received</span>
     <span class="ident">ReceivedBlockHeader</span> {
         <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>,
-        <span class="ident">header</span>: <span class="ident">BlockHeader</span>,
+        <span class="ident">header</span>: <span class="ident">SignedHeader</span>,
     },
     <span class="doccomment">/// Someone ask for block with given header hash.</span>
     <span class="ident">AskedForBlocks</span> {
@@ -1348,11 +1350,11 @@
     },
     <span class="ident">ReceivedOperations</span> {
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Operation</span><span class="op">&gt;</span>,
+        <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedOperation</span><span class="op">&gt;</span>,
     },
     <span class="ident">ReceivedEndorsements</span> {
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span>,
+        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedEndorsement</span><span class="op">&gt;</span>,
     },
 }
 
@@ -1967,7 +1969,7 @@
                 <span class="self">self</span>.<span class="ident">ban_connection_ids</span>(<span class="ident">ban_connection_ids</span>).<span class="kw">await</span>
             }
             <span class="ident">NetworkCommand::SendBlockHeader</span> { <span class="ident">node</span>, <span class="ident">header</span> } =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;network_worker.manage_network_command send NodeCommand::SendBlockHeader&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: <span class="ident">header</span>.<span class="ident">compute_block_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;node&quot;</span>: <span class="ident">node</span>});
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;network_worker.manage_network_command send NodeCommand::SendBlockHeader&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: <span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;node&quot;</span>: <span class="ident">node</span>});
                 <span class="self">self</span>.<span class="ident">forward_message_to_node_or_resend_close_event</span>(
                     <span class="kw-2">&amp;</span><span class="ident">node</span>,
                     <span class="ident">NodeCommand::SendBlockHeader</span>(<span class="ident">header</span>),
@@ -2369,7 +2371,7 @@
             <span class="ident">NodeEvent</span>(<span class="ident">from_node_id</span>, <span class="ident">NodeEventType::ReceivedBlock</span>(<span class="ident">data</span>)) =&gt; {
                 <span class="macro">massa_trace!</span>(
                     <span class="string">&quot;network_worker.on_node_event receive NetworkEvent::ReceivedBlock&quot;</span>,
-                    {<span class="string">&quot;block_id&quot;</span>: <span class="ident">data</span>.<span class="ident">header</span>.<span class="ident">compute_block_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">data</span>, <span class="string">&quot;node&quot;</span>: <span class="ident">from_node_id</span>}
+                    {<span class="string">&quot;block_id&quot;</span>: <span class="ident">data</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">data</span>, <span class="string">&quot;node&quot;</span>: <span class="ident">from_node_id</span>}
                 );
                 <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>
                     .<span class="ident">send_network_event</span>(<span class="ident">NetworkEvent::ReceivedBlock</span> {
@@ -2454,5 +2456,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03918badd 2022-03-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
 </body></html>

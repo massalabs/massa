@@ -90,11 +90,11 @@
 <span class="kw">impl</span> <span class="ident">OperationRollInterface</span> <span class="kw">for</span> <span class="ident">Operation</span> {
     <span class="kw">fn</span> <span class="ident">get_roll_updates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RollUpdates</span>, <span class="ident">ProofOfStakeError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">RollUpdates::default</span>();
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">content</span>.<span class="ident">op</span> {
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">op</span> {
             <span class="ident">OperationType::Transaction</span> { .. } =&gt; {}
             <span class="ident">OperationType::RollBuy</span> { <span class="ident">roll_count</span> } =&gt; {
                 <span class="ident">res</span>.<span class="ident">apply</span>(
-                    <span class="kw-2">&amp;</span><span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content</span>.<span class="ident">sender_public_key</span>),
+                    <span class="kw-2">&amp;</span><span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">sender_public_key</span>),
                     <span class="kw-2">&amp;</span><span class="ident">RollUpdate</span> {
                         <span class="ident">roll_purchases</span>: <span class="ident">roll_count</span>,
                         <span class="ident">roll_sales</span>: <span class="number">0</span>,
@@ -103,7 +103,7 @@
             }
             <span class="ident">OperationType::RollSell</span> { <span class="ident">roll_count</span> } =&gt; {
                 <span class="ident">res</span>.<span class="ident">apply</span>(
-                    <span class="kw-2">&amp;</span><span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content</span>.<span class="ident">sender_public_key</span>),
+                    <span class="kw-2">&amp;</span><span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">sender_public_key</span>),
                     <span class="kw-2">&amp;</span><span class="ident">RollUpdate</span> {
                         <span class="ident">roll_purchases</span>: <span class="number">0</span>,
                         <span class="ident">roll_sales</span>: <span class="ident">roll_count</span>,
@@ -116,5 +116,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03918badd 2022-03-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
 </body></html>

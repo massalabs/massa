@@ -503,15 +503,13 @@
 <span id="498">498</span>
 <span id="499">499</span>
 <span id="500">500</span>
-<span id="501">501</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">BlockGraphExport</span>, <span class="ident">BootstrapableGraph</span>, <span class="ident">ExportBlockStatus</span>, <span class="ident">Status</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">address::AddressState</span>, <span class="ident">api::EndorsementInfo</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>,
-};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">address::AddressState</span>, <span class="ident">api::EndorsementInfo</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">clique::Clique</span>, <span class="ident">stats::ConsensusStats</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">Slot</span>, <span class="ident">StakersCycleProductionStats</span>,
+    <span class="ident">Address</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">Slot</span>,
+    <span class="ident">StakersCycleProductionStats</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports::ExportProofOfStake</span>;
 <span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolEventReceiver</span>;
@@ -913,7 +911,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_endorsements_by_address</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">address</span>: <span class="ident">Address</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
         <span class="macro">massa_trace!</span>(
             <span class="string">&quot;consensus.consensus_controller.get_endorsements_by_address&quot;</span>,
@@ -1006,5 +1004,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03918badd 2022-03-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
 </body></html>

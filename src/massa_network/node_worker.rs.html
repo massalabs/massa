@@ -423,6 +423,7 @@
 <span id="418">418</span>
 <span id="419">419</span>
 <span id="420">420</span>
+<span id="421">421</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
@@ -438,7 +439,8 @@
         <span class="ident">NODE_SEND_CHANNEL_SIZE</span>,
     },
     <span class="ident">node::NodeId</span>,
-    <span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">Operation</span>,
+    <span class="ident">signed::Signable</span>,
+    <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>, <span class="ident">SignedOperation</span>,
 };
 <span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
 <span class="kw">use</span> <span class="ident">tokio</span>::{
@@ -458,7 +460,7 @@
     <span class="doccomment">/// Send that block to node.</span>
     <span class="ident">SendBlock</span>(<span class="ident">Block</span>),
     <span class="doccomment">/// Send the header of a block to a node.</span>
-    <span class="ident">SendBlockHeader</span>(<span class="ident">BlockHeader</span>),
+    <span class="ident">SendBlockHeader</span>(<span class="ident">SignedHeader</span>),
     <span class="doccomment">/// Ask for a block from that node.</span>
     <span class="ident">AskForBlocks</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Close the node worker.</span>
@@ -466,9 +468,9 @@
     <span class="doccomment">/// Block not found</span>
     <span class="ident">BlockNotFound</span>(<span class="ident">BlockId</span>),
     <span class="doccomment">/// Operation</span>
-    <span class="ident">SendOperations</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Operation</span><span class="op">&gt;</span>),
+    <span class="ident">SendOperations</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedOperation</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Endorsements</span>
-    <span class="ident">SendEndorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span>),
+    <span class="ident">SendEndorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedEndorsement</span><span class="op">&gt;</span>),
 }
 
 <span class="doccomment">/// Event types that node worker can emit</span>
@@ -481,15 +483,15 @@
     <span class="doccomment">/// Node we are connected to sent block</span>
     <span class="ident">ReceivedBlock</span>(<span class="ident">Block</span>),
     <span class="doccomment">/// Node we are connected to sent block header</span>
-    <span class="ident">ReceivedBlockHeader</span>(<span class="ident">BlockHeader</span>),
+    <span class="ident">ReceivedBlockHeader</span>(<span class="ident">SignedHeader</span>),
     <span class="doccomment">/// Node we are connected to asks for a block.</span>
     <span class="ident">ReceivedAskForBlocks</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Didn&#39;t found given block,</span>
     <span class="ident">BlockNotFound</span>(<span class="ident">BlockId</span>),
     <span class="doccomment">/// Operation</span>
-    <span class="ident">ReceivedOperations</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Operation</span><span class="op">&gt;</span>),
+    <span class="ident">ReceivedOperations</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedOperation</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Operation</span>
-    <span class="ident">ReceivedEndorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span>),
+    <span class="ident">ReceivedEndorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedEndorsement</span><span class="op">&gt;</span>),
 }
 
 <span class="doccomment">/// Events node worker can emit.</span>
@@ -683,14 +685,14 @@
                             <span class="ident">Message::Block</span>(<span class="ident">block</span>) =&gt; {
                                 <span class="macro">massa_trace!</span>(
                                     <span class="string">&quot;node_worker.run_loop. receive Message::Block&quot;</span>,
-                                    {<span class="string">&quot;block_id&quot;</span>: <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">compute_block_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">block</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>}
+                                    {<span class="string">&quot;block_id&quot;</span>: <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">block</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>}
                                 );
                                 <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedBlock</span>(<span class="ident">block</span>))).<span class="kw">await</span>;
                             },
                             <span class="ident">Message::BlockHeader</span>(<span class="ident">header</span>) =&gt; {
                                 <span class="macro">massa_trace!</span>(
                                     <span class="string">&quot;node_worker.run_loop. receive Message::BlockHeader&quot;</span>,
-                                    {<span class="string">&quot;block_id&quot;</span>: <span class="ident">header</span>.<span class="ident">compute_block_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>}
+                                    {<span class="string">&quot;block_id&quot;</span>: <span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>}
                                 );
                                 <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedBlockHeader</span>(<span class="ident">header</span>))).<span class="kw">await</span>;
                             },
@@ -748,13 +750,13 @@
                             }
                         },
                         <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendBlockHeader</span>(<span class="ident">header</span>)) =&gt; {
-                            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::BlockHeader&quot;</span>, {<span class="string">&quot;hash&quot;</span>: <span class="ident">header</span>.<span class="ident">compute_block_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>});
+                            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::BlockHeader&quot;</span>, {<span class="string">&quot;hash&quot;</span>: <span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>});
                             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::BlockHeader</span>(<span class="ident">header</span>)).<span class="ident">is_err</span>() {
                                 <span class="kw">break</span>;
                             }
                         },
                         <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendBlock</span>(<span class="ident">block</span>)) =&gt; {
-                            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::Block&quot;</span>, {<span class="string">&quot;hash&quot;</span>: <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">compute_block_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">block</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>});
+                            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::Block&quot;</span>, {<span class="string">&quot;hash&quot;</span>: <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">block</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>});
                             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::Block</span>(<span class="ident">block</span>)).<span class="ident">is_err</span>() {
                                 <span class="kw">break</span>;
                             }
@@ -844,5 +846,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03918badd 2022-03-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
 </body></html>

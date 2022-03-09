@@ -8,7 +8,7 @@
 <p>Endorsements are included in a block’s header. They are created by randomly selected endorsers chosen among the stakers (including the block creator) to endorse the block’s parent in the same thread. The block’s total fee and reward are split between the block creator, the endorsers, and the creator of the endorsed block.</p>
 <p>With that mechanism it becomes harder to gain control of the network (you now have to control <code>endorsement_count + 1</code> draw to gain control over one block) and to reward stakers more frequently.</p>
 
-<div class='information'><div class='tooltip ignore'>ⓘ</div></div><div class="example-wrap"><pre class="rust rust-example-rendered ignore"><code><span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockHeaderContent</span> {
+<div class='information'><div class='tooltip ignore'>ⓘ</div></div><div class="example-wrap"><pre class="rust rust-example-rendered ignore"><code><span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockHeader</span> {
     <span class="kw">pub</span> <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span>,
     ..
 }</code></pre></div>
@@ -16,11 +16,11 @@
 <p>An endorsement is defined as follows:</p>
 
 <div class='information'><div class='tooltip ignore'>ⓘ</div></div><div class="example-wrap"><pre class="rust rust-example-rendered ignore"><code><span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Endorsement</span> {
-    <span class="kw">pub</span> <span class="ident">content</span>: <span class="ident">EndorsementContent</span>,
+    <span class="kw">pub</span> <span class="ident">content</span>: <span class="ident">Endorsement</span>,
     <span class="kw">pub</span> <span class="ident">signature</span>: <span class="ident">Signature</span>,
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EndorsementContent</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Endorsement</span> {
     <span class="doccomment">/// Public key of the endorser.</span>
     <span class="kw">pub</span> <span class="ident">sender_public_key</span>: <span class="ident">PublicKey</span>,
     <span class="doccomment">/// slot of endorsed block (= parent in the same thread) (can be different that previous slot in the same thread)</span>
@@ -109,5 +109,5 @@ Here we will use two digits precision.</p>
 <p>The fitness of a block is <code>(1 + number_of_included_endorsements)</code></p>
 </div></details><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2>
 <div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.start_consensus_controller.html" title="massa_consensus_worker::start_consensus_controller fn">start_consensus_controller</a></div><div class="item-right docblock-short"><p>Creates a new consensus controller.</p>
-</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03918badd 2022-03-07)" ></div>
+</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
 </body></html>

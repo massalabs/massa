@@ -283,14 +283,16 @@
 <span id="278">278</span>
 <span id="279">279</span>
 <span id="280">280</span>
+<span id="281">281</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ProtocolError</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
+
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationId</span>,
+    <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>, <span class="ident">SignedOperation</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_network::NetworkEventReceiver</span>;
 <span class="kw">use</span> <span class="ident">serde::Serialize</span>;
@@ -311,7 +313,7 @@
     <span class="doccomment">/// A block header with a valid signature has been received.</span>
     <span class="ident">ReceivedBlockHeader</span> {
         <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-        <span class="ident">header</span>: <span class="ident">BlockHeader</span>,
+        <span class="ident">header</span>: <span class="ident">SignedHeader</span>,
     },
     <span class="doccomment">/// Ask for a list of blocks from consensus.</span>
     <span class="ident">GetBlocks</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
@@ -321,12 +323,12 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProtocolPoolEvent</span> {
     <span class="doccomment">/// Operations were received</span>
     <span class="ident">ReceivedOperations</span> {
-        <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">Operation</span><span class="op">&gt;</span>,
+        <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">SignedOperation</span><span class="op">&gt;</span>,
         <span class="ident">propagate</span>: <span class="ident">bool</span>, <span class="comment">// whether or not to propagate operations</span>
     },
     <span class="doccomment">/// Endorsements were received</span>
     <span class="ident">ReceivedEndorsements</span> {
-        <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span>,
+        <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span>,
         <span class="ident">propagate</span>: <span class="ident">bool</span>, <span class="comment">// whether or not to propagate endorsements</span>
     },
 }
@@ -354,9 +356,9 @@
     <span class="doccomment">/// The response to a ProtocolEvent::GetBlocks.</span>
     <span class="ident">GetBlocksResults</span>(<span class="ident">BlocksResults</span>),
     <span class="doccomment">/// Propagate operations</span>
-    <span class="ident">PropagateOperations</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">Operation</span><span class="op">&gt;</span>),
+    <span class="ident">PropagateOperations</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">SignedOperation</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Propagate endorsements</span>
-    <span class="ident">PropagateEndorsements</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span>),
+    <span class="ident">PropagateEndorsements</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span>),
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
@@ -442,7 +444,7 @@
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">propagate_operations</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">Operation</span><span class="op">&gt;</span>,
+        <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">SignedOperation</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.propagate_operations&quot;</span>, {
             <span class="string">&quot;operations&quot;</span>: <span class="ident">operations</span>
@@ -459,7 +461,7 @@
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">propagate_endorsements</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span>,
+        <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.propagate_endorsements&quot;</span>, {
             <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>
@@ -564,5 +566,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03918badd 2022-03-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
 </body></html>

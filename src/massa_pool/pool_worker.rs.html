@@ -339,8 +339,8 @@
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models::stats::PoolStats</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>, <span class="ident">Operation</span>, <span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span>,
-    <span class="ident">Slot</span>,
+    <span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">SignedEndorsement</span>,
+    <span class="ident">SignedOperation</span>, <span class="ident">Slot</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{<span class="ident">ProtocolCommandSender</span>, <span class="ident">ProtocolPoolEvent</span>, <span class="ident">ProtocolPoolEventReceiver</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">mpsc</span>, <span class="ident">oneshot</span>};
@@ -349,7 +349,7 @@
 <span class="doccomment">/// Commands that can be processed by pool.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PoolCommand</span> {
-    <span class="ident">AddOperations</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">Operation</span><span class="op">&gt;</span>),
+    <span class="ident">AddOperations</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">SignedOperation</span><span class="op">&gt;</span>),
     <span class="ident">UpdateCurrentSlot</span>(<span class="ident">Slot</span>),
     <span class="ident">UpdateLatestFinalPeriods</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>),
     <span class="ident">GetOperationBatch</span> {
@@ -357,11 +357,11 @@
         <span class="ident">exclude</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
         <span class="ident">batch_size</span>: <span class="ident">usize</span>,
         <span class="ident">max_size</span>: <span class="ident">u64</span>,
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">OperationId</span>, <span class="ident">Operation</span>, <span class="ident">u64</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">OperationId</span>, <span class="ident">SignedOperation</span>, <span class="ident">u64</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="ident">GetOperations</span> {
         <span class="ident">operation_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">Operation</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">SignedOperation</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="ident">GetRecentOperations</span> {
         <span class="ident">address</span>: <span class="ident">Address</span>,
@@ -372,17 +372,17 @@
         <span class="ident">target_slot</span>: <span class="ident">Slot</span>,
         <span class="ident">parent</span>: <span class="ident">BlockId</span>,
         <span class="ident">creators</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
     },
-    <span class="ident">AddEndorsements</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span>),
+    <span class="ident">AddEndorsements</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span>),
     <span class="ident">GetStats</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">PoolStats</span><span class="op">&gt;</span>),
     <span class="ident">GetEndorsementsByAddress</span> {
         <span class="ident">address</span>: <span class="ident">Address</span>,
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="ident">GetEndorsementsById</span> {
         <span class="ident">endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">Endorsement</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
 }
 
@@ -660,5 +660,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03918badd 2022-03-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
 </body></html>

@@ -126,10 +126,14 @@
 <span id="121">121</span>
 <span id="122">122</span>
 <span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">constants::CHANNEL_SIZE</span>, <span class="ident">node::NodeId</span>};
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">Operation</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>, <span class="ident">SignedOperation</span>};
 <span class="kw">use</span> <span class="ident">massa_network</span>::{<span class="ident">NetworkCommand</span>, <span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkEvent</span>, <span class="ident">NetworkEventReceiver</span>};
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">tokio</span>::{<span class="ident">sync::mpsc</span>, <span class="ident">time::sleep</span>};
@@ -185,7 +189,7 @@
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t connect node to protocol.&quot;</span>);
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_header</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>, <span class="ident">header</span>: <span class="ident">BlockHeader</span>) {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_header</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>, <span class="ident">header</span>: <span class="ident">SignedHeader</span>) {
         <span class="self">self</span>.<span class="ident">network_event_tx</span>
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceivedBlockHeader</span> {
                 <span class="ident">source_node_id</span>,
@@ -205,7 +209,11 @@
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t send block to protocol.&quot;</span>);
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_operations</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>, <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Operation</span><span class="op">&gt;</span>) {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_operations</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>,
+        <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedOperation</span><span class="op">&gt;</span>,
+    ) {
         <span class="self">self</span>.<span class="ident">network_event_tx</span>
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceivedOperations</span> {
                 <span class="ident">node</span>: <span class="ident">source_node_id</span>,
@@ -218,7 +226,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_endorsements</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>,
-        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Endorsement</span><span class="op">&gt;</span>,
+        <span class="ident">endorsements</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedEndorsement</span><span class="op">&gt;</span>,
     ) {
         <span class="self">self</span>.<span class="ident">network_event_tx</span>
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceivedEndorsements</span> {
@@ -250,5 +258,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03918badd 2022-03-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
 </body></html>
