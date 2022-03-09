@@ -427,8 +427,6 @@ impl BlockGraph {
             let (block_id, block) = create_genesis_block(&cfg, thread).map_err(|err| {
                 GraphError::GenesisCreationError(format!("genesis error {}", err))
             })?;
-            let serialized_block = block.to_bytes_compact()?;
-            storage.store_block(block_id, block.clone(), serialized_block);
             genesis_block_ids.push(block_id);
             block_statuses.insert(
                 block_id,
@@ -473,9 +471,7 @@ impl BlockGraph {
                     .active_blocks
                     .into_iter()
                     .map(|(b_id, block_export)| {
-                        let block = storage.retrieve_block(&block_export.block).unwrap();
-                        let stored_block = block.read();
-                        let operation_set = stored_block
+                        let operation_set = block_export
                             .block
                             .operations
                             .iter()
@@ -486,7 +482,7 @@ impl BlockGraph {
                             })
                             .collect::<Result<_, _>>()?;
 
-                        let endorsement_ids = stored_block
+                        let endorsement_ids = block_export
                             .block
                             .header
                             .content
@@ -496,13 +492,13 @@ impl BlockGraph {
                             .collect::<Result<_>>()?;
 
                         let addresses_to_operations =
-                            stored_block.block.involved_addresses(&operation_set)?;
-                        let addresses_to_endorsements = stored_block
+                            block_export.block.involved_addresses(&operation_set)?;
+                        let addresses_to_endorsements = block_export
                             .block
                             .addresses_to_endorsements(&endorsement_ids)?;
                         let active_block = ActiveBlock {
                             creator_address: Address::from_public_key(
-                                &stored_block.block.header.content.creator,
+                                &block_export.block.header.content.creator,
                             ),
                             block: b_id,
                             parents: block_export.parents,
@@ -517,7 +513,7 @@ impl BlockGraph {
                             roll_updates: block_export.roll_updates,
                             production_events: block_export.production_events,
                             addresses_to_endorsements,
-                            slot: stored_block.block.header.content.slot,
+                            slot: block_export.block.header.content.slot,
                         };
                         Ok((b_id, BlockStatus::Active(Box::new(active_block))))
                     })
