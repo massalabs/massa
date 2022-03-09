@@ -16,7 +16,10 @@ use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::time::sleep_until;
-
+use test_log::test;
+use tracing_subscriber::filter::{filter_fn, LevelFilter};
+use tracing_subscriber::prelude::*;
+use tracing::{log::trace, debug};
 use super::tools::{create_executesc, random_address_on_thread};
 
 #[tokio::test]
@@ -77,6 +80,12 @@ async fn test_genesis_block_creation() {
 #[tokio::test]
 #[serial]
 async fn test_block_creation_with_draw() {
+    #[cfg(feature = "instrument")]
+    let tracing_layer = console_subscriber::spawn();
+    #[cfg(not(feature = "instrument"))]
+    let tracing_layer = tracing_subscriber::fmt().with_max_level(LevelFilter::TRACE).init();
+    debug!("Level = {}", LevelFilter::current());
+    trace!("test");
     let thread_count = 2;
     // define addresses use for the test
     // addresses a and b both in thread 0
@@ -128,7 +137,6 @@ async fn test_block_creation_with_draw() {
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
     let operation_fee = 0;
-
     tools::consensus_without_pool_test(
         cfg.clone(),
         async move |mut protocol_controller,
@@ -141,7 +149,8 @@ async fn test_block_creation_with_draw() {
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            // initial block: addr2 buys 1 roll
+                debug!("before plz");
+                // initial block: addr2 buys 1 roll
             let op1 = create_roll_transaction(priv_2, pubkey_2, 1, true, 10, operation_fee);
             let (initial_block_id, block, _) = tools::create_block_with_operations(
                 &cfg,
@@ -151,7 +160,9 @@ async fn test_block_creation_with_draw() {
                 vec![op1],
             );
             let serialized_block = block.to_bytes_compact().expect("Fail to serialize block");
-            storage.store_block(initial_block_id, block, serialized_block);
+            debug!("debugtestaurelien");
+            trace!("tracetestaurelien");
+            storage.store_block(initial_block_id, block.clone(), serialized_block);
             tools::propagate_block(&mut protocol_controller, block, true, 1000).await;
 
             // make cycle 0 final/finished by sending enough blocks in each thread in cycle 1
