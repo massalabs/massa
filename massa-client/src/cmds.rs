@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::repl::Output;
 use crate::rpc::Client;
@@ -177,17 +177,14 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(
-            args = "SenderAddress PathToBytecode MaxGas GasPrice Coins Fee",
-            todo = "[unstable] "
-        ),
+        props(args = "SenderAddress PathToBytecode MaxGas GasPrice Coins Fee",),
         message = "create and send an operation containing byte code"
     )]
     send_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "PathToBytecode MaxGas GasPrice Address", todo = "[unstable] "),
+        props(args = "PathToBytecode MaxGas GasPrice Address",),
         message = "execute byte code, address is optionnal. Nothing is really executed on chain"
     )]
     read_only_smart_contract,
@@ -775,7 +772,7 @@ impl Command {
                 };
                 let bytecode = get_file_as_byte_vec(&path).await?;
                 match client
-                    .private
+                    .public
                     .execute_read_only_request(ReadOnlyExecution {
                         max_gas,
                         simulated_gas_price,

@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::{
     serialization::{
@@ -40,6 +40,22 @@ impl std::fmt::Display for Slot {
 impl Slot {
     pub fn new(period: u64, thread: u8) -> Slot {
         Slot { period, thread }
+    }
+
+    /// returns the minimal slot
+    pub const fn min() -> Slot {
+        Slot {
+            period: 0,
+            thread: 0,
+        }
+    }
+
+    /// returns the maximal slot
+    pub const fn max() -> Slot {
+        Slot {
+            period: u64::MAX,
+            thread: u8::MAX,
+        }
     }
 
     pub fn get_first_bit(&self) -> bool {

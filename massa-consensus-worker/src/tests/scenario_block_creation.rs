@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::tests::tools::{self, create_endorsement, create_roll_transaction, create_transaction};
 use massa_consensus_exports::{tools::*, ConsensusConfig};
@@ -35,7 +35,9 @@ async fn test_genesis_block_creation() {
         LedgerData::new(Amount::from_str("1000").unwrap()),
     );
     let mut cfg = ConsensusConfig {
-        genesis_timestamp: MassaTime::from_str("1633301290000").unwrap(),
+        genesis_timestamp: MassaTime::now()
+            .unwrap()
+            .saturating_sub(MassaTime::from(30000)),
         ..ConsensusConfig::default_with_staking_keys_and_ledger(&[priv_1, priv_2], &ledger)
     };
     // init roll count

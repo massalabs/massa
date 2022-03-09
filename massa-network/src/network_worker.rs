@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! The network worker actually does the job of managing connections
 use super::{
@@ -452,10 +452,11 @@ impl NetworkWorker {
         for (_, (_, node_tx)) in self.active_nodes.drain() {
             // close opened connection.
             trace!("before sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop");
-            node_tx
+            // send a close command to every node
+            // note that we ignore any error here because nodes might have closed by themselves just before
+            let _ = node_tx
                 .send(NodeCommand::Close(ConnectionClosureReason::Normal))
-                .await
-                .map_err(|_| NetworkError::ChannelError("node close command send failed".into()))?;
+                .await;
             trace!("after sending  NodeCommand::Close(ConnectionClosureReason::Normal) from node_tx in network_worker run_loop");
         }
         // drain incoming node events
@@ -879,7 +880,7 @@ impl NetworkWorker {
                     warn!("network: could not send NodeSignMessage response upstream");
                 }
             }
-            NetworkCommand::Unban(ip) => self.peer_info_db.unban(ip).await?,
+            NetworkCommand::Unban(ip) => self.peer_info_db.unban(ip)?,
             NetworkCommand::GetStats { response_tx } => {
                 let res = NetworkStats {
                     in_connection_count: self.peer_info_db.get_in_connection_count(),

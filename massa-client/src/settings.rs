@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! Build here the default client settings from the config file toml
 use massa_models::constants::build_massa_settings;
@@ -23,4 +23,10 @@ pub struct DefaultNode {
     pub ip: IpAddr,
     pub private_port: u16,
     pub public_port: u16,
+}
+
+#[cfg(test)]
+#[test]
+fn test_load_client_config() {
+    let _ = *SETTINGS;
 }

@@ -42,23 +42,13 @@ lazy_static::lazy_static! {
     };
 
     /// TESTNET: time when the blockclique is ended.
-    pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
-        None
-    } else {
-        Some(1646078400000.into())
-    };
+    pub static ref END_TIMESTAMP: Option<MassaTime> = None;
     // Be carefull:
     // The `GENESIS_TIMESTAMP` shouldn't be used as it in test because if you start the full test
     // process, the first use is effectivelly `MassaTime::now().unwrap()` but will be outdated for
     // the latest test. That's the reason why we choose to reset it each time we get a ConsensusConfig.
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(1, 1);
-    pub static ref VERSION: Version = if cfg!(feature = "sandbox") {
-        "SAND.0.0"
-    } else {
-        "TEST.7.0"
-    }
-    .parse()
-    .unwrap();
+    pub static ref VERSION: Version = "DEVE.0.0".parse().unwrap();
 }
 
 /// Size of the random bytes array used for the bootstrap, safe to import

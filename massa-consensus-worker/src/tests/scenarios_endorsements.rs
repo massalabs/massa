@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_hash::hash::Hash;
 use massa_models::{Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};

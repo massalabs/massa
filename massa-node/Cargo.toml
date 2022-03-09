@@ -9,27 +9,27 @@ build = "../build.rs"
 
 [dependencies]
 config = "0.11"
+console-subscriber = "0.1.1"
 directories = "4.0"
 futures = "0.3"
 lazy_static = "1.4.0"
+parking_lot = "0.12"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.11", features = ["full"] }
+tokio = { version = "1.15", features = ["full"] }
 tokio-util = { version = "0.6", features = ["codec"] }
-tracing = { version = "0.1", features = [
-    "max_level_debug",
-    "release_max_level_debug",
-] }
+tracing = "0.1"
 tracing-subscriber = "0.3"
 # custom modules
-
 massa_api = { path = "../massa-api" }
 massa_bootstrap = { path = "../massa-bootstrap" }
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_graph = { path = "../massa-graph" }
 massa_consensus_worker = { path = "../massa-consensus-worker" }
-massa_execution = { path = "../massa-execution" }
+massa_execution_exports = { path = "../massa-execution-exports" }
+massa_execution_worker = { path = "../massa-execution-worker" }
 massa_logging = { path = "../massa-logging" }
+massa_ledger = { path = "../massa-ledger" }
 massa_models = { path = "../massa-models" }
 massa_network = { path = "../massa-network" }
 massa_pool = { path = "../massa-pool" }
@@ -44,4 +44,9 @@ serial_test = "0.5"
 [features]
 # nightly = ["beta"]
 beta = []
-sandbox = ["massa_models/sandbox"]
+instrument = ["tokio/tracing", "massa_api/instrument", "massa_bootstrap/instrument", "massa_consensus_exports/instrument", "massa_consensus_worker/instrument", "massa_network/instrument", "massa_pool/instrument", "massa_protocol_exports/instrument", "massa_protocol_worker/instrument"]
+sandbox = ["massa_consensus_exports/sandbox", "massa_consensus_worker/sandbox", "massa_models/sandbox"]
+
+[build]
+rustflags = ["--cfg", "tokio_unstable"]
+

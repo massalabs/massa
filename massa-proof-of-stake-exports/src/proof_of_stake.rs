@@ -12,7 +12,7 @@ use massa_signature::derive_public_key;
 use num::rational::Ratio;
 use rand::{distributions::Uniform, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256PlusPlus;
-use tracing::log::warn;
+use tracing::warn;
 
 use crate::{
     error::POSResult, error::ProofOfStakeError, export_pos::ExportProofOfStake,
