@@ -1,6 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{constants::CHANNEL_SIZE, signed::Signable, Block, BlockId, SignedHeader};
+use massa_models::{
+    constants::CHANNEL_SIZE, storage::Storage, signed::Signable, Block, BlockHeader, BlockId, SerializeCompact,  SignedHeader
+};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
@@ -10,10 +12,11 @@ use tokio::{sync::mpsc, time::sleep};
 pub struct MockProtocolController {
     protocol_command_rx: mpsc::Receiver<ProtocolCommand>,
     protocol_event_tx: mpsc::Sender<ProtocolEvent>,
+    storage: Storage,
 }
 
 impl MockProtocolController {
-    pub fn new() -> (Self, ProtocolCommandSender, ProtocolEventReceiver) {
+    pub fn new(storage: Storage) -> (Self, ProtocolCommandSender, ProtocolEventReceiver) {
         let (protocol_command_tx, protocol_command_rx) =
             mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
         let (protocol_event_tx, protocol_event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
@@ -21,6 +24,7 @@ impl MockProtocolController {
             MockProtocolController {
                 protocol_event_tx,
                 protocol_command_rx,
+                storage,
             },
             ProtocolCommandSender(protocol_command_tx),
             ProtocolEventReceiver(protocol_event_rx),
@@ -46,7 +50,10 @@ impl MockProtocolController {
 
     // Note: if you care about the operation set, use another method.
     pub async fn receive_block(&mut self, block: Block) {
-        let block_id = block.header.content.compute_id().unwrap();
+        let block_id = block.header.compute_id().unwrap();
+        let serialize_block = block.to_bytes_compact().expect("Fail to serialize block.");
+        self.storage
+            .store_block(block_id, block.clone(), serialize_block);
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlock {
                 block_id,

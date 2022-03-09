@@ -25,9 +25,11 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
+    let storage: Storage = Default::default();
+
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(storage.clone());
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
@@ -91,9 +93,11 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
+    let storage: Storage = Default::default();
+
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(storage.clone());
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
