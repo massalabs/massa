@@ -758,7 +758,6 @@ impl SignatureEngine {
     /// ```
     fn sign(&self, hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaHashError> {
         let message = Message::from_slice(&hash.to_bytes())?;
-        // NOTE: save this as keypair
         Ok(Signature(self.0.sign_schnorr(&message, &secp256k1::KeyPair::from_secret_key(&self.0, private_key.0))))
     }
 
