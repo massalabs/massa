@@ -19,8 +19,9 @@ use serial_test::serial;
 use std::str::FromStr;
 use tempfile::NamedTempFile;
 
+// the data input to create the public keys was generated using the same crate (secp256k1)
+// a test using this function is a regression test not an implementation test
 fn get_export_active_test_block() -> ExportActiveBlock {
-    // add comment that: is a no regressions test / is not a correctness test
     let block = Block {
             header: BlockHeader {
                 content: BlockHeaderContent{
@@ -131,7 +132,7 @@ pub async fn test_get_ledger_at_parents() {
 
     // define addresses use for the test
     let pubkey_a =
-        PublicKey::from_bs58_check("4hWNheG3c2Ei6GJz5mQr3bec5GVtd6HP96XZkL6dNnsCyuZVq").unwrap();
+        PublicKey::from_bs58_check("2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA").unwrap();
     let address_a = Address::from_public_key(&pubkey_a);
     assert_eq!(0, address_a.get_thread(thread_count));
 
