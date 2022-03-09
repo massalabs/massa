@@ -738,7 +738,6 @@ impl SignatureEngine {
     /// let public_key = derive_public_key(&private_key);
     /// ```
     fn derive_public_key(&self, private_key: &PrivateKey) -> PublicKey {
-        // NOTE: save this as keypair
         PublicKey(secp256k1::XOnlyPublicKey::from_keypair(
             &secp256k1::KeyPair::from_secret_key(&self.0, private_key.0),
         ))

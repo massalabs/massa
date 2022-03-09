@@ -132,20 +132,20 @@ pub async fn test_get_ledger_at_parents() {
 
     // define addresses use for the test
     let pubkey_a =
-        PublicKey::from_bs58_check("2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA").unwrap();
+        PublicKey::from_bs58_check("2Bnffv4cGZ5XVAYdV4kiC5L9Vu3f3NSyssJJswdfXYB93iJQrj").unwrap();
     let address_a = Address::from_public_key(&pubkey_a);
     assert_eq!(0, address_a.get_thread(thread_count));
 
     let pubkey_b =
-        PublicKey::from_bs58_check("2EWucsptjTGWbrFUDH1DYWr9pGzeqwAtA6gJ6qcBc2aFQabUJE").unwrap();
+        PublicKey::from_bs58_check("2DTtxCs9xGeX9kZgc8BjosCmCxkKQuxx1a7KTxWxm68sgAh1pt").unwrap();
     let address_b = Address::from_public_key(&pubkey_b);
     assert_eq!(1, address_b.get_thread(thread_count));
 
     let address_c =
-        Address::from_bs58_check("2qykiDsKHnB18i4q7CNAvoRpWhxETsWKZgSx8obWaDZ88QFhvP").unwrap();
+        Address::from_bs58_check("2cABaQpb4fgYjGE7z2TnbQ2DePsyh9KwwPbodS7fD9Pft9uS1p").unwrap();
     assert_eq!(1, address_c.get_thread(thread_count));
     let address_d =
-        Address::from_bs58_check("2qeRyUDUXjdzdafpkiHWMCLuXTs8jbzgqiq7BpoFCSLqNUgojv").unwrap();
+        Address::from_bs58_check("21bU2xruH7bFzfcUhJ6SGjnLmC9cMt1kxzqFr11eV58uj7Ui8h").unwrap();
     assert_eq!(1, address_d.get_thread(thread_count));
 
     let graph_cfg = GraphConfig::from(&cfg);

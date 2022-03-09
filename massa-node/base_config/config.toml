@@ -153,10 +153,10 @@
 [bootstrap]
     # list of bootstrap (ip, node id)
     bootstrap_list = [
-        ["149.202.86.103:31245", "2EWucsptjTGWbrFUDH1DYWr9pGzeqwAtA6gJ6qcBc2aFQabUJE"],
-        ["149.202.89.125:31245", "2qykiDsKHnB18i4q7CNAvoRpWhxETsWKZgSx8obWaDZ88QFhvP"],
-        ["158.69.120.215:31245", "2qeRyUDUXjdzdafpkiHWMCLuXTs8jbzgqiq7BpoFCSLqNUgojv"],
-        ["158.69.23.120:31245", "2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA"]
+        ["149.202.86.103:31245", "WvX1SP1zTDLW98c5zForHEfxdx2BAkvNxUzdxx2hiyRcuahni"],
+        ["149.202.89.125:31245", "61qMyPDjnKpmcZ3kBmVxmJtY5ifQ1WnTgUsByTcsJrq4SVsEg"],
+        ["158.69.120.215:31245", "itgsbvBEXxiEztcnxjx1TYyGH838vhxK8UnBfeeSrfQxzTSY8"],
+        ["158.69.23.120:31245", "kABUaBC21B6fZUvbiuqDx7Q6qrirr1iANBghZuxTxFTdtk8tA"]
     ]
     # [optionnal] port on which to listen for incoming bootstrap requests
     bind = "[::]:31245"
