@@ -338,7 +338,7 @@ impl MassaTime {
 
     /// ```
     /// # use massa_time::*;
-    /// let massa_time : MassaTime = MassaTime::from(1640995200);
+    /// let massa_time : MassaTime = MassaTime::from(1_640_995_200_000);
     /// assert_eq!(massa_time.to_utc_string(), "2022-01-01T00:00:00Z")
     /// ```
     pub fn to_utc_string(self) -> String {
