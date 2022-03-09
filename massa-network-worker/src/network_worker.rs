@@ -16,10 +16,10 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use massa_logging::massa_trace;
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
 use massa_network_exports::{
-    ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener,
-    NetworkCommand, NetworkConnectionErrorType, NetworkError, NetworkEvent,
-    NetworkManagementCommand, NetworkSettings, ReadHalf, WriteHalf,
+    ConnectionClosureReason, ConnectionId, Establisher, Listener, NetworkCommand, NetworkError,
+    NetworkEvent, NetworkManagementCommand, NetworkSettings, ReadHalf, WriteHalf,
 };
+use massa_network_exports::{HandshakeErrorType, NetworkConnectionErrorType};
 use massa_signature::{derive_public_key, PrivateKey};
 use std::{
     collections::{hash_map, HashMap, HashSet},

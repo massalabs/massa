@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId};
-use massa_models::{Block, BlockHeader, BlockId, Endorsement, Operation};
+use massa_models::{Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation};
 use massa_network_exports::{
     NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
 };
@@ -59,7 +59,7 @@ impl MockNetworkController {
             .expect("Couldn't connect node to protocol.");
     }
 
-    pub async fn send_header(&mut self, source_node_id: NodeId, header: BlockHeader) {
+    pub async fn send_header(&mut self, source_node_id: NodeId, header: SignedHeader) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedBlockHeader {
                 source_node_id,
@@ -79,7 +79,11 @@ impl MockNetworkController {
             .expect("Couldn't send block to protocol.");
     }
 
-    pub async fn send_operations(&mut self, source_node_id: NodeId, operations: Vec<Operation>) {
+    pub async fn send_operations(
+        &mut self,
+        source_node_id: NodeId,
+        operations: Vec<SignedOperation>,
+    ) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedOperations {
                 node: source_node_id,
@@ -92,7 +96,7 @@ impl MockNetworkController {
     pub async fn send_endorsements(
         &mut self,
         source_node_id: NodeId,
-        endorsements: Vec<Endorsement>,
+        endorsements: Vec<SignedEndorsement>,
     ) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedEndorsements {

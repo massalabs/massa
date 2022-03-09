@@ -29,11 +29,11 @@ pub trait OperationRollInterface {
 impl OperationRollInterface for Operation {
     fn get_roll_updates(&self) -> Result<RollUpdates, ProofOfStakeError> {
         let mut res = RollUpdates::default();
-        match self.content.op {
+        match self.op {
             OperationType::Transaction { .. } => {}
             OperationType::RollBuy { roll_count } => {
                 res.apply(
-                    &Address::from_public_key(&self.content.sender_public_key),
+                    &Address::from_public_key(&self.sender_public_key),
                     &RollUpdate {
                         roll_purchases: roll_count,
                         roll_sales: 0,
@@ -42,7 +42,7 @@ impl OperationRollInterface for Operation {
             }
             OperationType::RollSell { roll_count } => {
                 res.apply(
-                    &Address::from_public_key(&self.content.sender_public_key),
+                    &Address::from_public_key(&self.sender_public_key),
                     &RollUpdate {
                         roll_purchases: 0,
                         roll_sales: roll_count,

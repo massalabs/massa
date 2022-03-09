@@ -11,8 +11,8 @@ use massa_models::{
     constants::CHANNEL_SIZE,
     prehash::{Map, Set},
     stats::PoolStats,
-    Address, BlockId, Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
-    Slot,
+    Address, BlockId, EndorsementId, OperationId, OperationSearchResult, SignedEndorsement,
+    SignedOperation, Slot,
 };
 use massa_protocol_exports::{ProtocolCommandSender, ProtocolPoolEventReceiver};
 use tokio::{
@@ -74,7 +74,7 @@ pub struct PoolCommandSender(pub mpsc::Sender<PoolCommand>);
 impl PoolCommandSender {
     pub async fn add_operations(
         &mut self,
-        operations: Map<OperationId, Operation>,
+        operations: Map<OperationId, SignedOperation>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.add_operations", { "ops": operations });
         let res = self
@@ -147,12 +147,12 @@ impl PoolCommandSender {
         exclude: Set<OperationId>,
         batch_size: usize,
         max_size: u64,
-    ) -> Result<Vec<(OperationId, Operation, u64)>, PoolError> {
+    ) -> Result<Vec<(OperationId, SignedOperation, u64)>, PoolError> {
         massa_trace!("pool.command_sender.get_operation_batch", {
             "target_slot": target_slot
         });
 
-        let (response_tx, response_rx) = oneshot::channel::<Vec<(OperationId, Operation, u64)>>();
+        let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(PoolCommand::GetOperationBatch {
                 target_slot,
@@ -179,7 +179,7 @@ impl PoolCommandSender {
         target_slot: Slot,
         parent: BlockId,
         creators: Vec<Address>,
-    ) -> Result<Vec<(EndorsementId, Endorsement)>, PoolError> {
+    ) -> Result<Vec<(EndorsementId, SignedEndorsement)>, PoolError> {
         massa_trace!("pool.command_sender.get_endorsements", {
             "target_slot": target_slot
         });
@@ -206,7 +206,7 @@ impl PoolCommandSender {
     pub async fn get_operations(
         &mut self,
         operation_ids: Set<OperationId>,
-    ) -> Result<Map<OperationId, Operation>, PoolError> {
+    ) -> Result<Map<OperationId, SignedOperation>, PoolError> {
         massa_trace!("pool.command_sender.get_operations", {
             "operation_ids": operation_ids
         });
@@ -259,7 +259,7 @@ impl PoolCommandSender {
 
     pub async fn add_endorsements(
         &mut self,
-        endorsements: Map<EndorsementId, Endorsement>,
+        endorsements: Map<EndorsementId, SignedEndorsement>,
     ) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.add_endorsements", {
             "endorsements": endorsements
@@ -275,7 +275,7 @@ impl PoolCommandSender {
     pub async fn get_endorsements_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, Endorsement>, PoolError> {
+    ) -> Result<Map<EndorsementId, SignedEndorsement>, PoolError> {
         massa_trace!("pool.command_sender.get_endorsements_by_address", {
             "address": address
         });
@@ -302,7 +302,7 @@ impl PoolCommandSender {
     pub async fn get_endorsements_by_id(
         &self,
         endorsements: Set<EndorsementId>,
-    ) -> Result<Map<EndorsementId, Endorsement>, PoolError> {
+    ) -> Result<Map<EndorsementId, SignedEndorsement>, PoolError> {
         massa_trace!("pool.command_sender.get_endorsements_by_id", {
             "endorsements": endorsements
         });

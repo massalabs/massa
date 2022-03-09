@@ -1,5 +1,4 @@
 use crate::node_worker::{NodeCommand, NodeEvent};
-
 use massa_models::node::NodeId;
 use massa_network_exports::{ConnectionId, NetworkError, NetworkEvent};
 use std::time::Duration;
@@ -81,7 +80,10 @@ impl EventSender {
 pub mod event_impl {
     use crate::{network_worker::NetworkWorker, node_worker::NodeCommand};
     use massa_logging::massa_trace;
-    use massa_models::{node::NodeId, Block, BlockHeader, BlockId, Endorsement, Operation};
+    use massa_models::signed::Signable;
+    use massa_models::{
+        node::NodeId, Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation,
+    };
     use massa_network_exports::{NetworkError, NetworkEvent};
     use std::net::IpAddr;
     use tracing::{debug, info};
@@ -113,7 +115,7 @@ pub mod event_impl {
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlock",
-            {"block_id": block.header.compute_block_id()?, "block": block, "node": from}
+            {"block_id": block.header.content.compute_id()?, "block": block, "node": from}
         );
         if let Err(err) = worker
             .event
@@ -142,7 +144,7 @@ pub mod event_impl {
     pub async fn on_received_block_header(
         worker: &mut NetworkWorker,
         from: NodeId,
-        header: BlockHeader,
+        header: SignedHeader,
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlockHeader",
@@ -206,7 +208,7 @@ pub mod event_impl {
     pub async fn on_received_operations(
         worker: &mut NetworkWorker,
         from: NodeId,
-        operations: Vec<Operation>,
+        operations: Vec<SignedOperation>,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",
@@ -227,7 +229,7 @@ pub mod event_impl {
     pub async fn on_received_endorsements(
         worker: &mut NetworkWorker,
         from: NodeId,
-        endorsements: Vec<Endorsement>,
+        endorsements: Vec<SignedEndorsement>,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedEndorsements",

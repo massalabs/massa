@@ -1,12 +1,11 @@
 use std::{collections::HashMap, net::IpAddr};
 
-use massa_models::{
-    composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockHeader, BlockId,
-    Endorsement, Operation,
-};
-use tokio::sync::oneshot;
-
 use crate::{BootstrapPeers, Peers};
+use massa_models::SignedEndorsement;
+use massa_models::SignedHeader;
+use massa_models::SignedOperation;
+use massa_models::{composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId};
+use tokio::sync::oneshot;
 
 /// Commands that the worker can execute
 #[derive(Debug)]
@@ -23,9 +22,9 @@ pub enum NetworkCommand {
     /// Send a header to a node.
     SendBlockHeader {
         node: NodeId,
-        header: BlockHeader,
+        header: SignedHeader,
     },
-    // (PeerInfo, Vec <(NodeId, bool)>) peer info + list of associated Id nodes in connexion out (true)
+    // (PeerInfo, Vec <(NodeId, bool)>) peer info + list of associated Id nodes in connection out (true)
     GetPeers(oneshot::Sender<Peers>),
     GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
     Ban(NodeId),
@@ -37,11 +36,11 @@ pub enum NetworkCommand {
     },
     SendOperations {
         node: NodeId,
-        operations: Vec<Operation>,
+        operations: Vec<SignedOperation>,
     },
     SendEndorsements {
         node: NodeId,
-        endorsements: Vec<Endorsement>,
+        endorsements: Vec<SignedEndorsement>,
     },
     NodeSignMessage {
         msg: Vec<u8>,
@@ -64,7 +63,7 @@ pub enum NetworkEvent {
     /// A block header was received
     ReceivedBlockHeader {
         source_node_id: NodeId,
-        header: BlockHeader,
+        header: SignedHeader,
     },
     /// Someone ask for block with given header hash.
     AskedForBlocks {
@@ -78,11 +77,11 @@ pub enum NetworkEvent {
     },
     ReceivedOperations {
         node: NodeId,
-        operations: Vec<Operation>,
+        operations: Vec<SignedOperation>,
     },
     ReceivedEndorsements {
         node: NodeId,
-        endorsements: Vec<Endorsement>,
+        endorsements: Vec<SignedEndorsement>,
     },
 }
 

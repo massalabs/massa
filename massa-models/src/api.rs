@@ -6,9 +6,10 @@ use crate::node::NodeId;
 use crate::prehash::Map;
 use crate::prehash::Set;
 use crate::stats::{ConsensusStats, NetworkStats, PoolStats};
+use crate::SignedEndorsement;
+use crate::SignedOperation;
 use crate::{
-    Address, Amount, Block, BlockId, CompactConfig, Endorsement, EndorsementId, Operation,
-    OperationId, Slot, Version,
+    Address, Amount, Block, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
 use massa_hash::hash::Hash;
 use massa_time::MassaTime;
@@ -73,7 +74,7 @@ pub struct OperationInfo {
     pub in_pool: bool,
     pub in_blocks: Vec<BlockId>,
     pub is_final: bool,
-    pub operation: Operation,
+    pub operation: SignedOperation,
 }
 
 impl OperationInfo {
@@ -283,7 +284,7 @@ pub struct EndorsementInfo {
     pub in_pool: bool,
     pub in_blocks: Vec<BlockId>,
     pub is_final: bool,
-    pub endorsement: Endorsement,
+    pub endorsement: SignedEndorsement,
 }
 
 impl std::fmt::Display for EndorsementInfo {

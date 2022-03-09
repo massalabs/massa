@@ -22,9 +22,10 @@
 use crate::{network_worker::NetworkWorker, node_worker::NodeCommand};
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
+use massa_models::signed::Signable;
 use massa_models::{
-    composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockHeader, BlockId,
-    Endorsement, Operation,
+    composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId, SignedEndorsement,
+    SignedHeader, SignedOperation,
 };
 use massa_network_exports::{
     BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, Peer, Peers,
@@ -174,9 +175,9 @@ pub async fn on_ban_cmd(worker: &mut NetworkWorker, node: NodeId) -> Result<(), 
 pub async fn on_send_block_header_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
-    header: BlockHeader,
+    header: SignedHeader,
 ) -> Result<(), NetworkError> {
-    massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id": header.compute_block_id()?, "header": header, "node": node});
+    massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id": header.content.compute_id()?, "header": header, "node": node});
     worker
         .event
         .forward(
@@ -265,7 +266,7 @@ pub async fn on_block_not_found_cmd(worker: &mut NetworkWorker, node: NodeId, bl
 pub async fn on_send_operation_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
-    operations: Vec<Operation>,
+    operations: Vec<SignedOperation>,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendOperations",
@@ -284,7 +285,7 @@ pub async fn on_send_operation_cmd(
 pub async fn on_send_endorsements_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
-    endorsements: Vec<Endorsement>,
+    endorsements: Vec<SignedEndorsement>,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendEndorsements",
