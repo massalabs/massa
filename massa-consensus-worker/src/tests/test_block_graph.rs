@@ -54,7 +54,7 @@ fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
         .compute_block_id()
         .expect("Fail to compute block id");
     (
-        block,
+        block.clone(),
         ExportActiveBlock {
             parents: vec![
                 (get_dummy_block_id("parent11"), 23),
@@ -67,7 +67,7 @@ fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
             ]
             .into_iter()
             .collect(),
-            block: block_id,
+            block,
             children: vec![vec![
                 (get_dummy_block_id("child11"), 31),
                 (get_dummy_block_id("child11"), 31),
@@ -128,13 +128,10 @@ pub async fn test_get_ledger_at_parents() {
         .expect("Fail to calculate block id");
     let block_serialized = block.to_bytes_compact().expect("Fail to serialize block");
     storage.store_block(block_id, block, block_serialized);
-    let active_block: ActiveBlock =
-        export_active_block
-            .to_active_block(storage.clone())
-            .expect(&format!(
-                "Fail to convert block (id: {}) from ExportActiveBlock to ActiveBlock",
-                block_id
-            ));
+    let active_block: ActiveBlock = ActiveBlock::try_from(export_active_block).expect(&format!(
+        "Fail to convert block (id: {}) from ExportActiveBlock to ActiveBlock",
+        block_id
+    ));
     let ledger_file = generate_ledger_file(&Map::default());
     let mut cfg = ConsensusConfig::from(ledger_file.path());
     cfg.thread_count = thread_count;
@@ -174,7 +171,7 @@ pub async fn test_get_ledger_at_parents() {
     let (hash_genesist0, block_genesist0) = create_genesis_block(&graph_cfg, 0).unwrap();
     let (hash_genesist1, block_genesist1) = create_genesis_block(&graph_cfg, 1).unwrap();
     let export_genesist0 = ExportActiveBlock {
-        block: hash_genesist0,
+        block: block_genesist0,
         parents: vec![],  // one (hash, period) per thread ( if not genesis )
         children: vec![], // one HashMap<hash, period> per thread (blocks that need to be kept)
         dependencies: Default::default(), // dependencies required for validity check
@@ -184,7 +181,7 @@ pub async fn test_get_ledger_at_parents() {
         production_events: vec![],
     };
     let export_genesist1 = ExportActiveBlock {
-        block: hash_genesist0,
+        block: block_genesist1,
         parents: vec![],  // one (hash, period) per thread ( if not genesis )
         children: vec![], // one HashMap<hash, period> per thread (blocks that need to be kept)
         dependencies: Default::default(), // dependencies required for validity check
@@ -466,27 +463,32 @@ pub async fn test_get_ledger_at_parents() {
             (hash_genesist1, export_genesist1),
             (
                 get_dummy_block_id("active_block_p1t0"),
-                ExportActiveBlock::from(&active_block_p1t0),
+                ExportActiveBlock::try_from_active_block(&active_block_p1t0, storage.clone())
+                    .unwrap(),
             ),
             (
                 get_dummy_block_id("active_block_p1t1"),
-                ExportActiveBlock::from(&active_block_p1t1),
+                ExportActiveBlock::try_from_active_block(&active_block_p1t1, storage.clone())
+                    .unwrap(),
             ),
             (
                 get_dummy_block_id("active_block_p2t0"),
-                ExportActiveBlock::from(&active_block_p2t0),
+                ExportActiveBlock::try_from_active_block(&active_block_p2t0, storage.clone())
+                    .unwrap(),
             ),
             (
                 get_dummy_block_id("active_block_p2t1"),
-                ExportActiveBlock::from(&active_block_p2t1),
+                ExportActiveBlock::try_from_active_block(&active_block_p2t1, storage.clone())
+                    .unwrap(),
             ),
             (
                 get_dummy_block_id("blockp3t0"),
-                ExportActiveBlock::from(&blockp3t0),
+                ExportActiveBlock::try_from_active_block(&blockp3t0, storage.clone()).unwrap(),
             ),
             (
                 get_dummy_block_id("active_block_p3t1"),
-                ExportActiveBlock::from(&active_block_p3t1),
+                ExportActiveBlock::try_from_active_block(&active_block_p3t1, storage.clone())
+                    .unwrap(),
             ),
         ]
         .into_iter()
@@ -676,8 +678,14 @@ fn test_bootsrapable_graph_serialize_compact() {
 
     assert_eq!(bytes.len(), cursor);
     assert_eq!(
-        graph.active_blocks[&b1_id].block,
-        new_graph.active_blocks[&b1_id].block
+        graph.active_blocks[&b1_id]
+            .block
+            .to_bytes_compact()
+            .unwrap(),
+        new_graph.active_blocks[&b1_id]
+            .block
+            .to_bytes_compact()
+            .unwrap()
     );
     assert_eq!(graph.best_parents[0], new_graph.best_parents[0]);
     assert_eq!(graph.best_parents[1], new_graph.best_parents[1]);
