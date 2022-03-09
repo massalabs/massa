@@ -153,6 +153,8 @@ async fn test_block_creation_with_draw() {
                 staking_keys[0],
                 vec![op1],
             );
+            let serialized_block = block.to_bytes_compact().expect("Fail to serialize block");
+            storage.store_block(initial_block_id, block, serialized_block);
             tools::propagate_block(&mut protocol_controller, block, true, 1000).await;
 
             // make cycle 0 final/finished by sending enough blocks in each thread in cycle 1
