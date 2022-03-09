@@ -199,7 +199,10 @@ impl RpcClient {
     // User (interaction with the node)
 
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
-    pub async fn send_operations(&self, operations: Vec<SignedOperation>) -> RpcResult<Vec<OperationId>> {
+    pub async fn send_operations(
+        &self,
+        operations: Vec<SignedOperation>,
+    ) -> RpcResult<Vec<OperationId>> {
         self.call_method("send_operations", "Vec<OperationId>", vec![operations])
             .await
     }
