@@ -4,7 +4,7 @@
 //!
 //! If you wish to provide initial peers, fillup the initial_peers.json file
 //! with that kind of objects
-//! ```javascript
+//! ```json
 //! {
 //!     "advertised": true,
 //!     "banned": false,
