@@ -15,10 +15,19 @@
     max_arguments = 128
 
 [execution]
-    # path to the initial smart contract balance ledger
-    initial_sce_ledger_path = "base_config/initial_sce_ledger.json"
     # max number of generated events kept in RAM
     max_final_events = 100
+    # maximum length of the read-only execution requests queue
+    readonly_queue_length = 10
+    # by how many milliseconds shoud the execution lag behind real time
+    # higher values increase speculative execution lag but improve performance
+    cursor_delay = 0
+
+[ledger]
+    # path to the initial smart contract balance ledger
+    initial_sce_ledger_path = "base_config/initial_sce_ledger.json"
+    # length of the changes history. Higher values allow bootstrapping nodes with slower connections
+    final_history_length = 100
 
 [consensus]
     # max number of previously discarded blocks kept in RAM
@@ -30,12 +39,12 @@
     # max number of blocks waiting for dependencies
     max_dependency_blocks = 2048
     # number of final periods that must be kept at all times (increase to more resilience to short network disconnections, high values will increase RAM usage.)
-    force_keep_final_periods = 20
+    force_keep_final_periods = 30
 
     # max number of batches of pool operations to scan when generating a block
     max_operations_fill_attempts = 102400
     # size of a pool operation batch for block creation
-    operation_batch_size = 1024
+    operation_batch_size = 2048
 
     # path to the ledger file
     ledger_path = "storage/ledger"
@@ -124,7 +133,6 @@
     max_send_wait = 500
     # we forget we banned a node after ban_timeout milliseconds
     ban_timeout = 3600000
-
     # Timeout duration when in handshake we respond with a PeerList
     # (on max in connection reached we send a list of peers)
     peer_list_send_timeout = 100
@@ -132,23 +140,10 @@
     # that send a list of peers
     max_in_connection_overflow = 100
 
-    [network.bootstrap_peers_config]
-        target_out= 1
-        max_out_attempts= 1
-        max_in= 1
-
-
-    [network.whitelist_peers_config]
-        target_out= 1
-        max_out_attempts= 1
-        max_in= 1
-
-
-    [network.standard_peers_config]
-        target_out= 15
-        max_out_attempts= 10
-        max_in= 5
-
+    [network.peer_types_config]
+    Standard = { target_out_connections = 15, max_out_attempts = 10, max_in_connections = 5}
+    Bootstrap = { target_out_connections = 1, max_out_attempts = 1, max_in_connections = 1}
+    WhiteListed = { target_out_connections = 3, max_out_attempts = 2, max_in_connections = 2}
 
 [bootstrap]
     # list of bootstrap (ip, node id)
@@ -179,11 +174,11 @@
     # max size of recently bootstrapped IP cache
     ip_list_max_size = 10000
     # refuse consecutive bootstrap attempts from a given IP when the interval between them is lower than per_ip_min_interval milliseconds
-    per_ip_min_interval = 300000
+    per_ip_min_interval = 86400000
 
 [pool]
     # max number of operations kept per thread
-    max_pool_size_per_thread = 100000
+    max_pool_size_per_thread = 25000
     # if an operation is too much in the future it will be ignored
     max_operation_future_validity_start_periods = 100
     # max number of endorsements kept

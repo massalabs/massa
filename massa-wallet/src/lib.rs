@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 pub use error::WalletError;
 use massa_hash::hash::Hash;

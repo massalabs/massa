@@ -1,4 +1,4 @@
-// Copyright (c) 2021 MASSA LABS <info@massa.net>
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::address::AddressCycleProductionStats;
 use crate::ledger_models::LedgerData;
@@ -172,8 +172,8 @@ impl std::fmt::Display for AddressInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
-        writeln!(f, "Parallel balance:\n{}", self.ledger_info)?;
-        writeln!(f, "Sequential balance:\n{}", self.sce_ledger_info)?;
+        writeln!(f, "Sequential balance:\n{}", self.ledger_info)?;
+        writeln!(f, "Parallel balance:\n{}", self.sce_ledger_info)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         writeln!(
             f,

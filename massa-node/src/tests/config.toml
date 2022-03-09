@@ -49,12 +49,7 @@
     connect_timeout = 3000
     wakeup_interval = 5000
     peers_file = "../massa-node/storage/peers.json"
-    target_bootstrap_connections = 1
-    max_out_bootstrap_connection_attempts = 1
-    target_out_nonbootstrap_connections = 10
-    max_in_nonbootstrap_connections = 15
     max_in_connections_per_ip = 5
-    max_out_nonbootstrap_connection_attempts = 10
     max_idle_peers = 10000
     max_banned_peers = 100
     max_advertise_length = 10000
@@ -68,6 +63,11 @@
     max_endorsements_per_message = 1024
     max_send_wait = 500
     ban_timeout = 3600000
+    [network.peer_types_config]
+    Standard = { target_out_connections = 15, max_out_attempts = 10, max_in_connections = 5}
+    Bootstrap = { target_out_connections = 1, max_out_attempts = 1, max_in_connections = 1}
+    WhiteListed = { target_out_connections = 3, max_out_attempts = 2, max_in_connections = 2}
+
 
 [bootstrap]
     bootstrap_list = [
