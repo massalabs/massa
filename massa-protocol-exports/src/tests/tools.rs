@@ -153,6 +153,9 @@ pub async fn send_and_propagate_block(
         assert_eq!(
             expected_hash,
             hash.expect("block not propagated before timeout")
+                .header
+                .compute_block_id()
+                .expect("Fail to serialize a block")
         );
     } else {
         assert!(hash.is_none(), "unexpected protocol event")

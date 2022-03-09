@@ -49,7 +49,8 @@ impl MockProtocolController {
         let block_id = block.header.compute_block_id().unwrap();
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlock {
-                block: block_id,
+                block_id,
+                block,
                 operation_set: Default::default(),
                 endorsement_ids: Default::default(),
             })
