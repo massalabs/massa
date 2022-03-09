@@ -328,6 +328,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             protocol_command_sender
                 .integrated_block(
                     block_id,
+                    block,
                     vec![operation_id].into_iter().collect(),
                     Default::default(),
                 )
@@ -341,12 +342,15 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 })
                 .await
             {
-                Some(NetworkCommand::SendBlock {
-                    node,
-                    block_id: sent_block_id,
-                }) => {
+                Some(NetworkCommand::SendBlock { node, block }) => {
                     assert_eq!(node, nodes[0].id);
-                    assert_eq!(sent_block_id, block_id);
+                    assert_eq!(
+                        block
+                            .header
+                            .compute_block_id()
+                            .expect("Fail to get block id"),
+                        block_id
+                    );
                 }
                 Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),
@@ -436,10 +440,10 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             .await;
 
             // Send the block as search results.
-            let mut results: BlocksResults = Map::default();
+            let mut results = Map::default();
             let mut ops = Set::<OperationId>::default();
             ops.insert(operation_id);
-            results.insert(block_id, Some((Some(ops), None)));
+            results.insert(block_id, Some((block.clone(), Some(ops), None)));
 
             protocol_command_sender
                 .send_get_blocks_results(results)
@@ -453,12 +457,15 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 })
                 .await
             {
-                Some(NetworkCommand::SendBlock {
-                    node,
-                    block_id: sent_block_id,
-                }) => {
+                Some(NetworkCommand::SendBlock { node, block }) => {
                     assert_eq!(node, nodes[0].id);
-                    assert_eq!(sent_block_id, block_id);
+                    assert_eq!(
+                        block
+                            .header
+                            .compute_block_id()
+                            .expect("Fail to get block id"),
+                        block_id
+                    );
                 }
                 Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),
