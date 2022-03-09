@@ -490,17 +490,15 @@ impl PeerInfoDatabase {
                     NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
                 ))
             }
+        } else if self.can_try_new_out_connection(Default::default()) {
+            let mut peer = PeerInfo::new(*ip, false);
+            peer.active_out_connection_attempts += 1;
+            self.peers.insert(*ip, peer);
+            Ok(peer.peer_type)
         } else {
-            if self.can_try_new_out_connection(Default::default()) {
-                let mut peer = PeerInfo::new(*ip, false);
-                peer.active_out_connection_attempts += 1;
-                self.peers.insert(*ip, peer);
-                Ok(peer.peer_type)
-            } else {
-                Err(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
-                ))
-            }
+            Err(NetworkError::PeerConnectionError(
+                NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
+            ))
         }?;
         self.increase_global_active_out_connection_attempt_count(peer_type, ip)?;
         self.update()
