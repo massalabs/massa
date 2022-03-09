@@ -29,7 +29,7 @@ use crate::{
 pub struct ConsensusCommandSender(pub mpsc::Sender<ConsensusCommand>);
 
 impl ConsensusCommandSender {
-    /// Gets all the aviable information on the block graph returning a Blockgraphexport.
+    /// Gets all the available information on the block graph returning a Blockgraphexport.
     ///
     /// # Arguments
     /// * slot_start: optional slot start for slot-based filtering (included).
