@@ -2,6 +2,7 @@
 
 use super::tools::protocol_test;
 use massa_models::prehash::{Map, Set};
+use massa_models::signed::Signable;
 use massa_models::{BlockId, Slot};
 use massa_network::NetworkCommand;
 use massa_protocol_exports::tests::tools;
@@ -249,7 +250,8 @@ async fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_h
             // 3. Check that protocol sent the right header to consensus.
             let expected_hash = block
                 .header
-                .compute_block_id()
+                .content
+                .compute_id()
                 .expect("Failed to compute hash.");
             assert_eq!(expected_hash, received_hash);
 
@@ -320,7 +322,8 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 
             let expected_hash = block
                 .header
-                .compute_block_id()
+                .content
+                .compute_id()
                 .expect("Failed to compute hash.");
 
             // 3. Simulate two nodes asking for a block.
@@ -377,7 +380,8 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
                     Some(NetworkCommand::SendBlock { node, block }) => {
                         let hash = block
                             .header
-                            .compute_block_id()
+                            .content
+                            .compute_id()
                             .expect("Failed to compute hash.");
                         assert_eq!(expected_hash, hash);
                         assert!(expecting_block.remove(&node));
@@ -433,7 +437,8 @@ async fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
 
             let expected_hash = block
                 .header
-                .compute_block_id()
+                .content
+                .compute_id()
                 .expect("Failed to compute hash.");
 
             // Propagate the block via 4 nodes.
@@ -576,7 +581,8 @@ async fn test_protocol_removes_banned_node_on_disconnection() {
             // Check that protocol sent the right header to consensus.
             let expected_hash = block
                 .header
-                .compute_block_id()
+                .content
+                .compute_id()
                 .expect("Failed to compute hash.");
             assert_eq!(expected_hash, received_hash);
             (

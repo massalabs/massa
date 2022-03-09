@@ -10,9 +10,11 @@ use crate::{
     ConnectionClosureReason, ConnectionId, NetworkError, NetworkEvent, NetworkSettings, PeerInfo,
 };
 use massa_hash::{self, hash::Hash};
-use massa_models::node::NodeId;
-use massa_models::{BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
-use massa_signature::sign;
+use massa_models::{
+    node::NodeId,
+    signed::{Signable, Signed},
+};
+use massa_models::{BlockId, Endorsement, Slot};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -1091,19 +1093,14 @@ async fn test_endorsements_messages() {
             let sender_priv = massa_signature::generate_random_private_key();
             let sender_public_key = massa_signature::derive_public_key(&sender_priv);
 
-            let content = EndorsementContent {
+            let content = Endorsement {
                 sender_public_key,
                 slot: Slot::new(10, 1),
                 index: 0,
                 endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-            let signature = sign(&hash, &sender_priv).unwrap();
-            let endorsement = Endorsement {
-                content: content.clone(),
-                signature,
-            };
-            let ref_id = endorsement.compute_endorsement_id().unwrap();
+            let endorsement = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
+            let ref_id = endorsement.content.compute_id().unwrap();
             conn1_w
                 .send(&Message::Endorsements(vec![endorsement]))
                 .await
@@ -1121,7 +1118,7 @@ async fn test_endorsements_messages() {
                 .await
             {
                 assert_eq!(endorsements.len(), 1);
-                let res_id = endorsements[0].compute_endorsement_id().unwrap();
+                let res_id = endorsements[0].content.compute_id().unwrap();
                 assert_eq!(ref_id, res_id);
                 assert_eq!(node, conn1_id);
             } else {
@@ -1131,19 +1128,14 @@ async fn test_endorsements_messages() {
             let sender_priv = massa_signature::generate_random_private_key();
             let sender_public_key = massa_signature::derive_public_key(&sender_priv);
 
-            let content = EndorsementContent {
+            let content = Endorsement {
                 sender_public_key,
                 slot: Slot::new(11, 1),
                 index: 0,
                 endorsed_block: BlockId(Hash::compute_from(&[])),
             };
-            let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-            let signature = massa_signature::sign(&hash, &sender_priv).unwrap();
-            let endorsement = Endorsement {
-                content: content.clone(),
-                signature,
-            };
-            let ref_id = endorsement.compute_endorsement_id().unwrap();
+            let endorsement = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
+            let ref_id = endorsement.content.compute_id().unwrap();
 
             // reply with another endorsement
             network_command_sender
@@ -1159,7 +1151,7 @@ async fn test_endorsements_messages() {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::Endorsements(endorsements) = evt {
                             assert_eq!(endorsements.len(), 1);
-                            let res_id = endorsements[0].compute_endorsement_id().unwrap();
+                            let res_id = endorsements[0].content.compute_id().unwrap();
                             assert_eq!(ref_id, res_id);
                             break;
                         }
