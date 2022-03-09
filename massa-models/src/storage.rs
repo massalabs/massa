@@ -2,6 +2,8 @@ use crate::prehash::Map;
 use crate::{Block, BlockId};
 use parking_lot::RwLock;
 use std::sync::Arc;
+use massa_logging::massa_trace;
+use tracing::debug;
 
 pub struct StoredBlock {
     pub block: Block,
@@ -18,13 +20,16 @@ impl Storage {
         // TODO: first check, and allow for, an already stored header for the block.
         let stored_block = StoredBlock { block, serialized };
         let to_store = Arc::new(RwLock::new(stored_block));
+        debug!("Store block {} in storage", block_id);
         let mut blocks = self.blocks.write();
         blocks.insert(block_id, to_store);
     }
 
     pub fn retrieve_block(&self, block_id: &BlockId) -> Option<Arc<RwLock<StoredBlock>>> {
+        debug!("Try retrieve block {} in storage", block_id);
         let blocks = self.blocks.read();
         if let Some(block) = blocks.get(block_id) {
+            massa_trace!("Successfully retrieved block {} in storage", block_id);
             return Some(Arc::clone(block));
         }
         None
