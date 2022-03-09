@@ -11,7 +11,6 @@ use crate::{
 };
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::clique::Clique;
 use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::storage::Storage;
@@ -20,6 +19,7 @@ use massa_models::{
     api::EndorsementInfo,
     rolls::{RollCounts, RollUpdate, RollUpdates},
 };
+use massa_models::{clique::Clique, SerializeCompact};
 use massa_models::{
     ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
     Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
@@ -427,6 +427,8 @@ impl BlockGraph {
             let (block_id, block) = create_genesis_block(&cfg, thread).map_err(|err| {
                 GraphError::GenesisCreationError(format!("genesis error {}", err))
             })?;
+            let serialized_block = block.to_bytes_compact()?;
+            storage.store_block(block_id, block.clone(), serialized_block);
             genesis_block_ids.push(block_id);
             block_statuses.insert(
                 block_id,
