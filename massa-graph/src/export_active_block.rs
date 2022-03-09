@@ -14,8 +14,8 @@ use serde::{Deserialize, Serialize};
 /// Fields that can be easily recomputed were left out
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportActiveBlock {
-    /// The id of the block.
-    pub block: BlockId,
+    /// The block.
+    pub block: Block,
     /// one (block id, period) per thread ( if not genesis )
     pub parents: Vec<(BlockId, u64)>,
     /// one HashMap<Block id, period> per thread (blocks that need to be kept)
@@ -32,14 +32,9 @@ pub struct ExportActiveBlock {
     /// list of (period, address, did_create) for all block/endorsement creation events
     pub production_events: Vec<(u64, Address, bool)>,
 }
-
-impl ExportActiveBlock {
-    pub fn to_active_block(&self, storage: Storage) -> Result<ActiveBlock, GraphError> {
-        let block = storage
-            .retrieve_block(&self.block)
-            .ok_or(GraphError::MissingBlock)?;
-        let stored_block = block.read();
-        let operation_set = stored_block
+impl TryFrom<ExportActiveBlock> for ActiveBlock {
+    fn try_from(a_block: ExportActiveBlock) -> Result<ActiveBlock> {
+        let operation_set = a_block
             .block
             .operations
             .iter()
@@ -50,7 +45,7 @@ impl ExportActiveBlock {
             })
             .collect::<Result<_, _>>()?;
 
-        let endorsement_ids = stored_block
+        let endorsement_ids = a_block
             .block
             .header
             .content
@@ -59,35 +54,39 @@ impl ExportActiveBlock {
             .map(|endo| Ok((endo.compute_endorsement_id()?, endo.content.index)))
             .collect::<Result<_>>()?;
 
-        let addresses_to_operations = stored_block.block.involved_addresses(&operation_set)?;
-        let addresses_to_endorsements = stored_block
-            .block
-            .addresses_to_endorsements(&endorsement_ids)?;
+        let addresses_to_operations = a_block.block.involved_addresses(&operation_set)?;
+        let addresses_to_endorsements =
+            a_block.block.addresses_to_endorsements(&endorsement_ids)?;
         Ok(ActiveBlock {
-            creator_address: Address::from_public_key(&stored_block.block.header.content.creator),
+            creator_address: Address::from_public_key(&a_block.block.header.content.creator),
             //TODO: Unwrap
-            block: stored_block.block.header.compute_block_id().unwrap(),
-            parents: self.parents.clone(),
-            children: self.children.clone(),
-            dependencies: self.dependencies.clone(),
+            block: a_block.block.header.compute_block_id().unwrap(),
+            parents: a_block.parents.clone(),
+            children: a_block.children.clone(),
+            dependencies: a_block.dependencies.clone(),
             descendants: Default::default(), // will be computed once the full graph is available
-            is_final: self.is_final.clone(),
-            block_ledger_changes: self.block_ledger_changes.clone(),
+            is_final: a_block.is_final.clone(),
+            block_ledger_changes: a_block.block_ledger_changes.clone(),
             operation_set,
             endorsement_ids,
             addresses_to_operations,
-            roll_updates: self.roll_updates.clone(),
-            production_events: self.production_events.clone(),
+            roll_updates: a_block.roll_updates.clone(),
+            production_events: a_block.production_events.clone(),
             addresses_to_endorsements,
-            slot: stored_block.block.header.content.slot,
+            slot: a_block.block.header.content.slot,
         })
     }
+    type Error = GraphError;
 }
 
-impl From<&ActiveBlock> for ExportActiveBlock {
-    fn from(a_block: &ActiveBlock) -> Self {
-        ExportActiveBlock {
-            block: a_block.block.clone(),
+impl ExportActiveBlock {
+    pub fn try_from_active_block(a_block: &ActiveBlock, storage: Storage) -> Result<Self> {
+        let block = storage
+            .retrieve_block(&a_block.block)
+            .ok_or(GraphError::MissingBlock)?;
+        let stored_block = block.read();
+        Ok(ExportActiveBlock {
+            block: stored_block.block.clone(),
             parents: a_block.parents.clone(),
             children: a_block.children.clone(),
             dependencies: a_block.dependencies.clone(),
@@ -95,7 +94,7 @@ impl From<&ActiveBlock> for ExportActiveBlock {
             block_ledger_changes: a_block.block_ledger_changes.clone(),
             roll_updates: a_block.roll_updates.clone(),
             production_events: a_block.production_events.clone(),
-        }
+        })
     }
 }
 
@@ -111,7 +110,7 @@ impl SerializeCompact for ExportActiveBlock {
         }
 
         // block
-        res.extend(self.block.0.to_bytes());
+        res.extend(self.block.to_bytes_compact()?);
 
         // parents (note: there should be none if slot period=0)
         if self.parents.is_empty() {
@@ -218,8 +217,8 @@ impl DeserializeCompact for ExportActiveBlock {
         let is_final = is_final_u8 != 0;
 
         // block
-        let block = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-        cursor += BLOCK_ID_SIZE_BYTES;
+        let (block, delta) = Block::from_bytes_compact(&buffer[cursor..])?;
+        cursor += delta;
 
         // parents
         let has_parents = u8_from_slice(&buffer[cursor..])?;

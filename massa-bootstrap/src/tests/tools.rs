@@ -243,7 +243,11 @@ pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGrap
     );
     for (id1, itm1) in v1.active_blocks.iter() {
         let itm2 = v2.active_blocks.get(id1).unwrap();
-        assert_eq!(itm1.block, itm2.block, "block mismatch");
+        assert_eq!(
+            itm1.block.to_bytes_compact().unwrap(),
+            itm2.block.to_bytes_compact().unwrap(),
+            "block mismatch"
+        );
         assert_eq!(
             itm1.block_ledger_changes.0.len(),
             itm2.block_ledger_changes.0.len(),
@@ -440,7 +444,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
 
     //TODO: We currently lost information. Need to use shared storage
     let block1 = ExportActiveBlock {
-        block: block_id,
+        block: block,
         parents: vec![
             (get_dummy_block_id("b1"), 4777),
             (get_dummy_block_id("b2"), 8870),
