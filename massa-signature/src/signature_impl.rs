@@ -78,7 +78,8 @@ impl PrivateKey {
     /// ```
     pub fn to_bytes(&self) -> [u8; PRIVATE_KEY_SIZE_BYTES] {
         // note: should return a ref to respect conventions
-        self.0.serialize_secret()
+        // but KeyPair has no function to do so
+        self.0.secret_bytes()
     }
 
     /// Serialize a PrivateKey into bytes.
@@ -92,7 +93,7 @@ impl PrivateKey {
     /// let serialized = private_key.into_bytes();
     /// ```
     pub fn into_bytes(self) -> [u8; PRIVATE_KEY_SIZE_BYTES] {
-        self.0.serialize_secret()
+        self.0.secret_bytes()
     }
 
     /// Deserialize a PrivateKey using bs58 encoding with checksum.
