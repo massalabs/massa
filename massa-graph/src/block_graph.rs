@@ -1502,9 +1502,6 @@ impl BlockGraph {
         // list items to reprocess
         let mut reprocess = BTreeSet::new();
 
-        let block = self.storage.retrieve_block(&block_id).unwrap();
-        let stored_block = block.read();
-
         massa_trace!("consensus.block_graph.process", { "block_id": block_id });
         // control all the waiting states and try to get a valid block
         let (
@@ -1643,6 +1640,8 @@ impl BlockGraph {
                 massa_trace!("consensus.block_graph.process.incoming_block", {
                     "block_id": block_id
                 });
+                let block = self.storage.retrieve_block(&block_id).unwrap();
+                let stored_block = block.read();
                 let (_block_id, slot, operation_set, endorsement_ids) =
                     if let Some(BlockStatus::Incoming(HeaderOrBlock::Block(
                         block_id,
@@ -1680,7 +1679,7 @@ impl BlockGraph {
                             "block_id": block_id
                         });
                         (
-                            stored_block,
+                            stored_block.block.clone(),
                             parents_hash_period,
                             dependencies,
                             incompatibilities,
@@ -1832,17 +1831,15 @@ impl BlockGraph {
         };
 
         let valid_block_addresses_to_operations = valid_block
-            .block
             .involved_addresses(&valid_block_operation_set)?;
         let valid_block_addresses_to_endorsements = valid_block
-            .block
             .addresses_to_endorsements(&valid_block_endorsement_ids)?;
 
         // add block to graph
         self.add_block_to_graph(
             block_id,
             valid_block_parents_hash_period,
-            &valid_block.block,
+            &valid_block,
             valid_block_deps,
             valid_block_incomp,
             valid_block_inherited_incomp_count,
