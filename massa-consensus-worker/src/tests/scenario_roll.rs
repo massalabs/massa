@@ -803,7 +803,7 @@ async fn test_roll_deactivation() {
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
 
     cfg.genesis_timestamp = MassaTime::now().unwrap().saturating_add(300.into());
-    let storage: Storage = Default::default();
+
     // launch consensus controller
     let (consensus_command_sender, _consensus_event_receiver, _consensus_manager) =
         start_consensus_controller(
