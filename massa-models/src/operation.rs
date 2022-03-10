@@ -90,9 +90,7 @@ impl OperationId {
     }
 
     pub fn from_bytes(data: &[u8; OPERATION_ID_SIZE_BYTES]) -> Result<OperationId, ModelsError> {
-        Ok(OperationId(
-            Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
-        ))
+        Ok(OperationId(Hash::from_bytes(data)))
     }
 
     pub fn from_bs58_check(data: &str) -> Result<OperationId, ModelsError> {

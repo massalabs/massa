@@ -81,9 +81,7 @@ impl BlockId {
     }
 
     pub fn from_bytes(data: &[u8; BLOCK_ID_SIZE_BYTES]) -> Result<BlockId, ModelsError> {
-        Ok(BlockId(
-            Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
-        ))
+        Ok(BlockId(Hash::from_bytes(data)))
     }
     pub fn from_bs58_check(data: &str) -> Result<BlockId, ModelsError> {
         Ok(BlockId(
@@ -417,7 +415,7 @@ impl DeserializeCompact for BlockHeader {
         };
 
         // operation merkle tree root
-        let operation_merkle_root = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        let operation_merkle_root = Hash::from_bytes(&array_from_slice(&buffer[cursor..])?);
         cursor += HASH_SIZE_BYTES;
 
         let max_block_endorsements =

@@ -97,12 +97,12 @@ impl Hash {
             .with_check(None)
             .into_vec()
             .map_err(|err| MassaHashError::ParsingError(format!("{}", err)))?;
-        Hash::from_bytes(
+        Ok(Hash::from_bytes(
             &decoded_bs58_check
                 .as_slice()
                 .try_into()
                 .map_err(|err| MassaHashError::ParsingError(format!("{}", err)))?,
-        )
+        ))
     }
 
     /// Deserialize a Hash as bytes.
@@ -115,8 +115,8 @@ impl Hash {
     /// let serialized = hash.into_bytes();
     /// let deserialized: Hash = Hash::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Result<Hash, MassaHashError> {
-        Ok(Hash(blake3::Hash::from(*data)))
+    pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Hash {
+        Hash(blake3::Hash::from(*data))
     }
 }
 
@@ -206,7 +206,7 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
                 where
                     E: ::serde::de::Error,
                 {
-                    Hash::from_bytes(v.try_into().map_err(E::custom)?).map_err(E::custom)
+                    Ok(Hash::from_bytes(v.try_into().map_err(E::custom)?))
                 }
             }
 

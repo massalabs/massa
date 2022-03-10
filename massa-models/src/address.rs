@@ -113,9 +113,7 @@ impl Address {
     /// assert_eq!(address, res_addr);
     /// ```
     pub fn from_bytes(data: &[u8; ADDRESS_SIZE_BYTES]) -> Result<Address, ModelsError> {
-        Ok(Address(
-            Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
-        ))
+        Ok(Address(Hash::from_bytes(data)))
     }
 
     /// ## Example

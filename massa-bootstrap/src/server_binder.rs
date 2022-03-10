@@ -45,7 +45,7 @@ impl BootstrapServerBinder {
             let expected_hash = Hash::compute_from(&random_bytes);
             let mut hash_bytes = [0u8; HASH_SIZE_BYTES];
             self.duplex.read_exact(&mut hash_bytes).await?;
-            if Hash::from_bytes(&hash_bytes)? != expected_hash {
+            if Hash::from_bytes(&hash_bytes) != expected_hash {
                 return Err(BootstrapError::GeneralError("wrong handshake hash".into()));
             }
             expected_hash

@@ -74,9 +74,7 @@ impl EndorsementId {
     pub fn from_bytes(
         data: &[u8; ENDORSEMENT_ID_SIZE_BYTES],
     ) -> Result<EndorsementId, ModelsError> {
-        Ok(EndorsementId(
-            Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
-        ))
+        Ok(EndorsementId(Hash::from_bytes(data)))
     }
     pub fn from_bs58_check(data: &str) -> Result<EndorsementId, ModelsError> {
         Ok(EndorsementId(

@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_hash::hash::Hash;
 use crate::error::MassaSignatureError;
+use massa_hash::hash::Hash;
 use secp256k1::{schnorr, Message, SECP256K1};
 use std::{convert::TryInto, str::FromStr};
 
@@ -137,11 +137,16 @@ impl PrivateKey {
     /// let serialized = private_key.to_bytes();
     /// let deserialized: PrivateKey = PrivateKey::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; PRIVATE_KEY_SIZE_BYTES]) -> Result<PrivateKey, MassaSignatureError> {
+    pub fn from_bytes(
+        data: &[u8; PRIVATE_KEY_SIZE_BYTES],
+    ) -> Result<PrivateKey, MassaSignatureError> {
         secp256k1::KeyPair::from_seckey_slice(SECP256K1, &data[..])
             .map(PrivateKey)
             .map_err(|err| {
-                MassaSignatureError::ParsingError(format!("private key bytes parsing error: {}", err))
+                MassaSignatureError::ParsingError(format!(
+                    "private key bytes parsing error: {}",
+                    err
+                ))
             })
     }
 }
@@ -369,11 +374,16 @@ impl PublicKey {
     /// let serialized = public_key.into_bytes();
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; PUBLIC_KEY_SIZE_BYTES]) -> Result<PublicKey, MassaSignatureError> {
+    pub fn from_bytes(
+        data: &[u8; PUBLIC_KEY_SIZE_BYTES],
+    ) -> Result<PublicKey, MassaSignatureError> {
         secp256k1::XOnlyPublicKey::from_slice(&data[..])
             .map(PublicKey)
             .map_err(|err| {
-                MassaSignatureError::ParsingError(format!("public key bytes parsing error: {}", err))
+                MassaSignatureError::ParsingError(format!(
+                    "public key bytes parsing error: {}",
+                    err
+                ))
             })
     }
 }
@@ -584,7 +594,10 @@ impl Signature {
             .with_check(None)
             .into_vec()
             .map_err(|err| {
-                MassaSignatureError::ParsingError(format!("signature bs58_check parsing error: {}", err))
+                MassaSignatureError::ParsingError(format!(
+                    "signature bs58_check parsing error: {}",
+                    err
+                ))
             })
             .and_then(|signature| {
                 Signature::from_bytes(&signature.try_into().map_err(|err| {

@@ -114,9 +114,7 @@ impl SCOutputEventId {
     /// # assert_eq!(event, res_event);
     /// ```
     pub fn from_bytes(data: &[u8; EVENT_ID_SIZE_BYTES]) -> Result<SCOutputEventId, ModelsError> {
-        Ok(SCOutputEventId(
-            Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
-        ))
+        Ok(SCOutputEventId(Hash::from_bytes(data)))
     }
 
     /// ## Example
