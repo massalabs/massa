@@ -7,9 +7,12 @@ use massa_ledger::LedgerEntry;
 use massa_models::{
     output_event::SCOutputEvent, prehash::Map, Address, Block, BlockId, OperationId, Slot,
 };
-use std::sync::{
-    mpsc::{self, Receiver},
-    Arc, Mutex,
+use std::{
+    collections::HashMap,
+    sync::{
+        mpsc::{self, Receiver},
+        Arc, Mutex,
+    },
 };
 
 /// List of possible messages coming from the mock.
@@ -20,8 +23,8 @@ use std::sync::{
 #[derive(Clone)]
 pub enum MockExecutionControllerMessage {
     UpdateBlockcliqueStatus {
-        finalized_blocks: Map<BlockId, Block>,
-        blockclique: Map<BlockId, Block>,
+        finalized_blocks: HashMap<Slot, BlockId>,
+        blockclique: HashMap<Slot, BlockId>,
     },
     GetFilteredScOutputEvent {
         start: Option<Slot>,
@@ -71,8 +74,8 @@ impl MockExecutionController {
 impl ExecutionController for MockExecutionController {
     fn update_blockclique_status(
         &self,
-        finalized_blocks: Map<BlockId, Block>,
-        blockclique: Map<BlockId, Block>,
+        finalized_blocks: HashMap<Slot, BlockId>,
+        blockclique: HashMap<Slot, BlockId>,
     ) {
         self.0
             .lock()

@@ -57,7 +57,6 @@ impl MockProtocolController {
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlock {
                 block_id,
-                block,
                 operation_set: Default::default(),
                 endorsement_ids: Default::default(),
             })
