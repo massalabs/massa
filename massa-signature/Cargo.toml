@@ -11,7 +11,7 @@ bitcoin_hashes = "0.10"
 bs58 = { version = "0.4", features = ["check"] }
 displaydoc = "0.2"
 rand = "0.8"
-secp256k1 = { version = "0.21.3", features = ["rand-std"] }
+secp256k1 = { version = "0.21.3", features = ["rand-std", "global-context"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"

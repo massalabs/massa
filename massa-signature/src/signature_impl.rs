@@ -2,7 +2,7 @@
 
 use massa_hash::hash::Hash;
 use massa_hash::MassaHashError;
-use secp256k1::{schnorr, Message, Secp256k1};
+use secp256k1::{schnorr, Message, SECP256K1};
 use std::{convert::TryInto, str::FromStr};
 
 pub const PRIVATE_KEY_SIZE_BYTES: usize = 32;
@@ -11,9 +11,6 @@ pub const SIGNATURE_SIZE_BYTES: usize = 64;
 const PRIVATE_KEY_STRING_PREFIX: &str = "PRI";
 const PUBLIC_KEY_STRING_PREFIX: &str = "PUB";
 const SIGNATURE_STRING_PREFIX: &str = "SIG";
-
-// Per-thread signature engine, initiated lazily on first per-thread use.
-thread_local!(static SIGNATURE_ENGINE: SignatureEngine = SignatureEngine(Secp256k1::new()));
 
 /// Private Key used to sign messages
 /// Generated using SignatureEngine.
@@ -141,8 +138,7 @@ impl PrivateKey {
     /// let deserialized: PrivateKey = PrivateKey::from_bytes(&serialized).unwrap();
     /// ```
     pub fn from_bytes(data: &[u8; PRIVATE_KEY_SIZE_BYTES]) -> Result<PrivateKey, MassaHashError> {
-        let secp = Secp256k1::new();
-        secp256k1::KeyPair::from_seckey_slice(&secp, &data[..])
+        secp256k1::KeyPair::from_seckey_slice(SECP256K1, &data[..])
             .map(PrivateKey)
             .map_err(|err| {
                 MassaHashError::ParsingError(format!("private key bytes parsing error: {}", err))
@@ -726,95 +722,68 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
     }
 }
 
-/// SignatureEngine manages Key generation,
-/// signing and verification.
-/// It contains the needed context.
-struct SignatureEngine(secp256k1::Secp256k1<secp256k1::All>);
+/// Derives a PublicKey from a PrivateKey.
+///
+/// # Example
+/// ```
+/// # use massa_signature::{derive_public_key, generate_random_private_key};
+/// # use serde::{Deserialize, Serialize};
+/// let private_key = generate_random_private_key();
+/// let public_key = derive_public_key(&private_key);
+/// ```
+pub fn derive_public_key(private_key: &PrivateKey) -> PublicKey {
+    PublicKey(private_key.0.public_key())
+}
 
-impl SignatureEngine {
-    /// Derives a PublicKey from a PrivateKey.
-    ///
-    /// # Example
-    /// ```
-    /// # use massa_signature::{derive_public_key, generate_random_private_key};
-    /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
-    /// let public_key = derive_public_key(&private_key);
-    /// ```
-    fn derive_public_key(&self, private_key: &PrivateKey) -> PublicKey {
-        PublicKey(private_key.0.public_key())
-    }
+/// Returns the Signature produced by signing
+/// data bytes with a PrivateKey.
+///
+/// # Example
+///  ```
+/// # use massa_signature::{derive_public_key, generate_random_private_key, sign, PublicKey};
+/// # use massa_hash::hash::Hash;
+/// # use serde::{Deserialize, Serialize};
+/// let private_key = generate_random_private_key();
+/// let public_key: PublicKey = derive_public_key(&private_key);
+/// let data = Hash::compute_from("Hello World!".as_bytes());
+/// let signature = sign(&data, &private_key).unwrap();
+/// ```
+pub fn sign(hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaHashError> {
+    let message = Message::from_slice(&hash.to_bytes())?;
+    Ok(Signature(SECP256K1.sign_schnorr(&message, &private_key.0)))
+}
 
-    /// Returns the Signature produced by signing
-    /// data bytes with a PrivateKey.
-    ///
-    /// # Example
-    ///  ```
-    /// # use massa_signature::{derive_public_key, generate_random_private_key, sign, PublicKey};
-    /// # use massa_hash::hash::Hash;
-    /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
-    /// let public_key: PublicKey = derive_public_key(&private_key);
-    /// let data = Hash::compute_from("Hello World!".as_bytes());
-    /// let signature = sign(&data, &private_key).unwrap();
-    /// ```
-    fn sign(&self, hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaHashError> {
-        let message = Message::from_slice(&hash.to_bytes())?;
-        Ok(Signature(self.0.sign_schnorr(&message, &private_key.0)))
-    }
-
-    /// Checks if the Signature associated with data bytes
-    /// was produced with the PrivateKey associated to given PublicKey
-    ///
-    /// # Example
-    ///  ```
-    /// # use massa_signature::{derive_public_key, generate_random_private_key, sign, verify_signature, PublicKey};
-    /// # use massa_hash::hash::Hash;
-    /// # use serde::{Deserialize, Serialize};
-    /// let private_key = generate_random_private_key();
-    /// let public_key: PublicKey = derive_public_key(&private_key);
-    /// let data = Hash::compute_from("Hello World!".as_bytes());
-    /// let signature = sign(&data, &private_key).unwrap();
-    /// let verification: bool = verify_signature(&data, &signature, &public_key).is_ok();
-    /// ```
-    fn verify(
-        &self,
-        hash: &Hash,
-        signature: &Signature,
-        public_key: &PublicKey,
-    ) -> Result<(), MassaHashError> {
-        let message = Message::from_slice(&hash.to_bytes())?;
-        Ok(self
-            .0
-            .verify_schnorr(&signature.0, &message, &public_key.0)?)
-    }
+/// Checks if the Signature associated with data bytes
+/// was produced with the PrivateKey associated to given PublicKey
+///
+/// # Example
+///  ```
+/// # use massa_signature::{derive_public_key, generate_random_private_key, sign, verify_signature, PublicKey};
+/// # use massa_hash::hash::Hash;
+/// # use serde::{Deserialize, Serialize};
+/// let private_key = generate_random_private_key();
+/// let public_key: PublicKey = derive_public_key(&private_key);
+/// let data = Hash::compute_from("Hello World!".as_bytes());
+/// let signature = sign(&data, &private_key).unwrap();
+/// let verification: bool = verify_signature(&data, &signature, &public_key).is_ok();
+/// ```
+pub fn verify_signature(
+    hash: &Hash,
+    signature: &Signature,
+    public_key: &PublicKey,
+) -> Result<(), MassaHashError> {
+    let message = Message::from_slice(&hash.to_bytes())?;
+    Ok(SECP256K1.verify_schnorr(&signature.0, &message, &public_key.0)?)
 }
 
 /// Generate a random private key from a RNG.
 pub fn generate_random_private_key() -> PrivateKey {
     use secp256k1::rand::rngs::OsRng;
     let mut rng = OsRng::new().expect("OsRng");
-    let secp = Secp256k1::new();
     PrivateKey(secp256k1::KeyPair::from_secret_key(
-        &secp,
+        SECP256K1,
         secp256k1::SecretKey::new(&mut rng),
     ))
-}
-
-pub fn derive_public_key(private_key: &PrivateKey) -> PublicKey {
-    SIGNATURE_ENGINE.with(|signature_engine| signature_engine.derive_public_key(private_key))
-}
-
-pub fn sign(hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaHashError> {
-    SIGNATURE_ENGINE.with(|signature_engine| signature_engine.sign(hash, private_key))
-}
-
-pub fn verify_signature(
-    hash: &Hash,
-    signature: &Signature,
-    public_key: &PublicKey,
-) -> Result<(), MassaHashError> {
-    SIGNATURE_ENGINE.with(|signature_engine| signature_engine.verify(hash, signature, public_key))
 }
 
 #[cfg(test)]
