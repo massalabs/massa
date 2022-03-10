@@ -17,7 +17,7 @@ pub struct ProtocolSettings {
 
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct KnowledgeViewConfig {
-    max_known: usize,
-    max_wanted: usize,
-    max_asked: usize,
+    pub max_known: usize,
+    pub max_wanted: usize,
+    pub max_asked: usize,
 }

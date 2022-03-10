@@ -323,20 +323,24 @@ impl ProtocolWorker {
                 let now = Instant::now();
                 for (node_id, node_info) in self.active_nodes.iter_mut() {
                     // if we know that a node wants a block we send the full block
-                    if node_info.remove_wanted_block(&block_id) {
-                        node_info.insert_known_blocks(
-                            &[block_id],
+                    if node_info
+                        .block_knowledge
+                        .remove_wanted(&vec![block_id].into_iter())
+                    {
+                        node_info.block_knowledge.insert_known(
+                            &vec![block_id].into_iter(),
                             true,
-                            now,
-                            self.protocol_settings.max_node_known_blocks_size,
+                            Instant::now(),
                         );
-                        node_info.insert_known_endorsements(
-                            endorsement_ids.clone(),
-                            self.protocol_settings.max_known_endorsements_size,
+                        node_info.endorsement_knowledge.insert_known(
+                            &endorsement_ids.iter().copied(),
+                            true,
+                            Instant::now(),
                         );
-                        node_info.insert_known_ops(
-                            operation_ids.clone(),
-                            self.protocol_settings.max_known_ops_size,
+                        node_info.operation_knowledge.insert_known(
+                            &operation_ids.iter().copied(),
+                            true,
+                            Instant::now(),
                         );
                         massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_block", { "node": node_id, "block_id": block_id, "block": block });
                         self.network_command_sender
@@ -349,7 +353,7 @@ impl ProtocolWorker {
                             })?;
                     } else {
                         // node that isn't asking for that block
-                        let cond = node_info.get_known_block(&block_id);
+                        let cond = node_info.block_knowledge.get_known(&block_id);
                         // if we don't know if that node knows that hash or if we know it doesn't
                         if !cond.map_or_else(|| false, |v| v.0) {
                             massa_trace!("protocol.protocol_worker.process_command.integrated_block.send_header", { "node": node_id, "block_id": block_id, "header": block.header });
@@ -381,10 +385,12 @@ impl ProtocolWorker {
                 let to_ban: Vec<NodeId> = self
                     .active_nodes
                     .iter()
-                    .filter_map(|(id, info)| match info.get_known_block(&block_id) {
-                        Some((true, _)) => Some(*id),
-                        _ => None,
-                    })
+                    .filter_map(
+                        |(id, info)| match info.block_knowledge.get_known(&block_id) {
+                            Some((true, _)) => Some(*id),
+                            _ => None,
+                        },
+                    )
                     .collect();
                 for id in to_ban.iter() {
                     massa_trace!("protocol.protocol_worker.process_command.attack_block_detected.ban_node", { "node": id, "block_id": block_id });
@@ -402,27 +408,31 @@ impl ProtocolWorker {
                         Some((block, opt_operation_ids, opt_endorsement_ids)) => {
                             // Send the block once to all nodes who asked for it.
                             for (node_id, node_info) in self.active_nodes.iter_mut() {
-                                if node_info.remove_wanted_block(&block_id) {
-                                    node_info.insert_known_blocks(
-                                        &[block_id],
+                                if node_info
+                                    .block_knowledge
+                                    .remove_wanted(&vec![block_id].into_iter())
+                                {
+                                    node_info.block_knowledge.insert_known(
+                                        &vec![block_id].into_iter(),
                                         true,
                                         Instant::now(),
-                                        self.protocol_settings.max_node_known_blocks_size,
                                     );
                                     if let Some(ref endorsement_ids) = opt_endorsement_ids {
                                         // if endorsement IDs are available from the search, note them
                                         // otherwise, it means that they are not relevant anyways (old final block)
-                                        node_info.insert_known_endorsements(
-                                            endorsement_ids.clone(),
-                                            self.protocol_settings.max_known_endorsements_size,
+                                        node_info.endorsement_knowledge.insert_known(
+                                            &endorsement_ids.iter().copied(),
+                                            true,
+                                            Instant::now(),
                                         );
                                     }
                                     if let Some(ref operation_ids) = opt_operation_ids {
                                         // if operation IDs are available from the search, note them
                                         // otherwise, it means that they are not relevant anyways (old final block)
-                                        node_info.insert_known_ops(
-                                            operation_ids.clone(),
-                                            self.protocol_settings.max_known_ops_size,
+                                        node_info.operation_knowledge.insert_known(
+                                            &operation_ids.into_iter().copied(),
+                                            true,
+                                            Instant::now(),
                                         );
                                     }
                                     massa_trace!("protocol.protocol_worker.process_command.found_block.send_block", { "node": node_id, "block_id": block_id, "block": block });
@@ -447,7 +457,10 @@ impl ProtocolWorker {
                                 { "block_id": block_id }
                             );
                             for (node_id, node_info) in self.active_nodes.iter_mut() {
-                                if node_info.contains_wanted_block_update_timestamp(&block_id) {
+                                if node_info
+                                    .block_knowledge
+                                    .contains_and_update_wanted(&block_id)
+                                {
                                     massa_trace!("protocol.protocol_worker.process_command.block_not_found.notify_node", { "node": node_id, "block_id": block_id });
                                     self.network_command_sender
                                         .block_not_found(*node_id, block_id)
@@ -507,12 +520,13 @@ impl ProtocolWorker {
                 for (node, node_info) in self.active_nodes.iter_mut() {
                     let new_endorsements: Map<EndorsementId, Endorsement> = endorsements
                         .iter()
-                        .filter(|(id, _)| !node_info.knows_endorsement(*id))
+                        .filter(|(id, _)| !node_info.endorsement_knowledge.knows(*id))
                         .map(|(k, v)| (*k, v.clone()))
                         .collect();
-                    node_info.insert_known_endorsements(
-                        new_endorsements.keys().copied().collect(),
-                        self.protocol_settings.max_known_endorsements_size,
+                    node_info.endorsement_knowledge.insert_known(
+                        &new_endorsements.keys().copied(),
+                        true,
+                        Instant::now(),
                     );
                     let to_send = new_endorsements
                         .into_iter()
@@ -536,8 +550,8 @@ impl ProtocolWorker {
         });
         for node_info in self.active_nodes.values_mut() {
             node_info
-                .asked_blocks
-                .retain(|h, _| !remove_hashes.contains(h));
+                .block_knowledge
+                .remove_asked(&remove_hashes.iter().copied());
         }
         self.block_wishlist.retain(|h| !remove_hashes.contains(h));
         Ok(())
@@ -573,7 +587,7 @@ impl ProtocolWorker {
 
             for (node_id, node_info) in self.active_nodes.iter_mut() {
                 // map to remove the borrow on asked_blocks. Otherwise can't call insert_known_blocks
-                let ask_time_opt = node_info.asked_blocks.get(hash).copied();
+                let ask_time_opt = node_info.block_knowledge.get_asked(hash);
                 let (timeout_at_opt, timed_out) = if let Some(ask_time) = ask_time_opt {
                     let t = ask_time
                         .checked_add(self.protocol_settings.ask_block_timeout.into())
@@ -582,7 +596,7 @@ impl ProtocolWorker {
                 } else {
                     (None, false)
                 };
-                let knows_block = node_info.get_known_block(hash);
+                let knows_block = node_info.block_knowledge.get_known(hash);
 
                 // check if the node recently told us it doesn't have the block
                 if let Some((false, info_time)) = knows_block {
@@ -610,13 +624,12 @@ impl ProtocolWorker {
                     }
                     // timed out, supposed to have it
                     (true, Some(timeout_at), Some((true, info_time))) => {
-                        if info_time < &timeout_at {
+                        if info_time < timeout_at {
                             // info less recent than timeout: mark as not having it
-                            node_info.insert_known_blocks(
-                                &[*hash],
+                            node_info.block_knowledge.insert_known(
+                                &vec![*hash].into_iter(),
                                 false,
                                 timeout_at,
-                                self.protocol_settings.max_node_known_blocks_size,
                             );
                             (2u8, ask_time_opt)
                         } else {
@@ -626,24 +639,22 @@ impl ProtocolWorker {
                     }
                     // timed out, supposed to not have it
                     (true, Some(timeout_at), Some((false, info_time))) => {
-                        if info_time < &timeout_at {
+                        if info_time < timeout_at {
                             // info less recent than timeout: update info time
-                            node_info.insert_known_blocks(
-                                &[*hash],
+                            node_info.block_knowledge.insert_known(
+                                &vec![*hash].into_iter(),
                                 false,
                                 timeout_at,
-                                self.protocol_settings.max_node_known_blocks_size,
                             );
                         }
                         (2u8, ask_time_opt)
                     }
                     // timed out but don't know if has it: mark as not having it
                     (true, Some(timeout_at), None) => {
-                        node_info.insert_known_blocks(
-                            &[*hash],
+                        node_info.block_knowledge.insert_known(
+                            &vec![*hash].into_iter(),
                             false,
                             timeout_at,
-                            self.protocol_settings.max_node_known_blocks_size,
                         );
                         (2u8, ask_time_opt)
                     }
@@ -670,14 +681,8 @@ impl ProtocolWorker {
                 (
                     *node_id,
                     node_info
-                        .asked_blocks
-                        .iter()
-                        .filter(|(_h, ask_t)| {
-                            ask_t
-                                .checked_add(self.protocol_settings.ask_block_timeout.into())
-                                .map_or(false, |timeout_t| timeout_t > now)
-                        })
-                        .count(),
+                        .block_knowledge
+                        .active_request_count(self.protocol_settings.ask_block_timeout),
                 )
             })
             .collect();
@@ -701,7 +706,7 @@ impl ProtocolWorker {
                 })
             {
                 let info = self.active_nodes.get_mut(&best_node).unwrap(); // will not panic, already checked
-                info.asked_blocks.insert(hash, now);
+                info.block_knowledge.insert_asked(&vec![hash].into_iter());
                 if let Some(cnt) = active_block_req_count.get_mut(&best_node) {
                     *cnt += 1; // increase the number of actively asked blocks
                 }
@@ -800,26 +805,26 @@ impl ProtocolWorker {
         let now = Instant::now();
         if let Some(block_info) = self.checked_headers.get(&block_id) {
             if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-                node_info.insert_known_blocks(
-                    &header.content.parents,
+                node_info.block_knowledge.insert_known(
+                    &header.content.parents.iter().copied(),
                     true,
-                    now,
-                    self.protocol_settings.max_node_known_blocks_size,
+                    Instant::now(),
                 );
-                node_info.insert_known_blocks(
-                    &[block_id],
+                node_info.block_knowledge.insert_known(
+                    &vec![block_id].into_iter(),
                     true,
-                    now,
-                    self.protocol_settings.max_node_known_blocks_size,
+                    Instant::now(),
                 );
-                node_info.insert_known_endorsements(
-                    block_info.endorsements.keys().copied().collect(),
-                    self.protocol_settings.max_known_endorsements_size,
+                node_info.endorsement_knowledge.insert_known(
+                    &block_info.endorsements.keys().copied(),
+                    true,
+                    Instant::now(),
                 );
                 if let Some(operations) = block_info.operations.as_ref() {
-                    node_info.insert_known_ops(
-                        operations.iter().cloned().collect(),
-                        self.protocol_settings.max_known_ops_size,
+                    node_info.operation_knowledge.insert_known(
+                        &operations.iter().cloned(),
+                        true,
+                        Instant::now(),
                     );
                 }
             }
@@ -892,17 +897,15 @@ impl ProtocolWorker {
         }
 
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_blocks(
-                &header.content.parents,
+            node_info.block_knowledge.insert_known(
+                &header.content.parents.iter().copied(),
                 true,
-                now,
-                self.protocol_settings.max_node_known_blocks_size,
+                Instant::now(),
             );
-            node_info.insert_known_blocks(
-                &[block_id],
+            node_info.block_knowledge.insert_known(
+                &vec![block_id].into_iter(),
                 true,
-                now,
-                self.protocol_settings.max_node_known_blocks_size,
+                Instant::now(),
             );
             massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
             return Ok(Some((block_id, endorsement_ids, true)));
@@ -912,21 +915,32 @@ impl ProtocolWorker {
 
     /// Prune checked_endorsements if it is too large
     fn prune_checked_endorsements(&mut self) {
-        if self.checked_endorsements.len() > self.protocol_settings.max_known_endorsements_size {
+        if self.checked_endorsements.len()
+            > self
+                .protocol_settings
+                .endorsement_knowledge_view_config
+                .max_known
+        {
             self.checked_endorsements.clear();
         }
     }
 
     /// Prune checked operations if it has grown too large.
     fn prune_checked_operations(&mut self) {
-        if self.checked_operations.len() > self.protocol_settings.max_known_ops_size {
+        if self.checked_operations.len()
+            > self
+                .protocol_settings
+                .operation_knowledge_view_config
+                .max_known
+        {
             self.checked_operations.clear();
         }
     }
 
     /// Prune checked_headers if it is too large
     fn prune_checked_headers(&mut self) {
-        if self.checked_headers.len() > self.protocol_settings.max_node_known_blocks_size {
+        if self.checked_headers.len() > self.protocol_settings.block_knowledge_view_config.max_known
+        {
             self.checked_headers.clear();
         }
     }
@@ -1089,9 +1103,10 @@ impl ProtocolWorker {
 
         // add to known ops
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_ops(
-                received_ids.keys().copied().collect(),
-                self.protocol_settings.max_known_ops_size,
+            node_info.operation_knowledge.insert_known(
+                &received_ids.keys().copied(),
+                true,
+                Instant::now(),
             );
         }
 
@@ -1148,9 +1163,10 @@ impl ProtocolWorker {
 
         // add to known endorsements for source node.
         if let Some(node_info) = self.active_nodes.get_mut(source_node_id) {
-            node_info.insert_known_endorsements(
-                endorsement_ids.keys().copied().collect(),
-                self.protocol_settings.max_known_endorsements_size,
+            node_info.endorsement_knowledge.insert_known(
+                &endorsement_ids.keys().copied(),
+                true,
+                Instant::now(),
             );
         }
 
@@ -1231,11 +1247,9 @@ impl ProtocolWorker {
                 massa_trace!("protocol.protocol_worker.on_network_event.asked_for_blocks", { "node": from_node_id, "hashlist": list});
                 if let Some(node_info) = self.active_nodes.get_mut(&from_node_id) {
                     for hash in &list {
-                        node_info.insert_wanted_block(
-                            *hash,
-                            self.protocol_settings.max_node_wanted_blocks_size,
-                            self.protocol_settings.max_node_known_blocks_size,
-                        );
+                        node_info
+                            .block_knowledge
+                            .insert_wanted(&vec![*hash].into_iter());
                     }
                 } else {
                     return Ok(());
@@ -1270,11 +1284,10 @@ impl ProtocolWorker {
             NetworkEvent::BlockNotFound { node, block_id } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.block_not_found", { "node": node, "block_id": block_id});
                 if let Some(info) = self.active_nodes.get_mut(&node) {
-                    info.insert_known_blocks(
-                        &[block_id],
+                    info.block_knowledge.insert_known(
+                        &vec![block_id].into_iter(),
                         false,
                         Instant::now(),
-                        self.protocol_settings.max_node_known_blocks_size,
                     );
                 }
                 self.update_ask_block(block_ask_timer).await?;
