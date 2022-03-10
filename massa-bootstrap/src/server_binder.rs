@@ -72,8 +72,7 @@ impl BootstrapServerBinder {
         // compute signature
         let sig = {
             let mut signed_data = vec![0u8; SIGNATURE_SIZE_BYTES + (msg_len as usize)];
-            signed_data[..SIGNATURE_SIZE_BYTES]
-                .clone_from_slice(self.prev_sig.unwrap().to_bytes());
+            signed_data[..SIGNATURE_SIZE_BYTES].clone_from_slice(self.prev_sig.unwrap().to_bytes());
             signed_data[SIGNATURE_SIZE_BYTES..].clone_from_slice(&msg_bytes);
             sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
         };
