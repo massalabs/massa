@@ -15,15 +15,18 @@
 //! },
 //!
 
-use crate::error::{NetworkConnectionErrorType, NetworkError};
-use crate::settings::{NetworkSettings, PeerTypeConnectionConfig};
-use displaydoc::Display;
-use enum_map::{Enum, EnumMap};
+use enum_map::EnumMap;
 use itertools::Itertools;
 use massa_logging::massa_trace;
 use massa_models::constants::MAX_ADVERTISE_LENGTH;
+use massa_network_exports::settings::PeerTypeConnectionConfig;
+use massa_network_exports::ConnectionCount;
+use massa_network_exports::NetworkConnectionErrorType;
+use massa_network_exports::NetworkError;
+use massa_network_exports::NetworkSettings;
+use massa_network_exports::PeerInfo;
+use massa_network_exports::PeerType;
 use massa_time::MassaTime;
-use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -32,144 +35,6 @@ use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 use tracing::{trace, warn};
-
-/// Peer categories.
-/// There is a defined number af slots for each category.
-/// Order matters: less prioritized peer type first
-#[derive(
-    Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Display, Enum,
-)]
-pub enum PeerType {
-    /// Just a peer
-    Standard,
-    /// Connection from these nodes are always accepted
-    WhiteListed,
-    /** if the peer is in bootstrap servers list
-    for now it is decoupled from the real bootstrap sever list, it's just parsed
-    TODO: https://github.com/massalabs/massa/issues/2320
-    */
-    Bootstrap,
-}
-
-mod test {
-
-    #[test]
-    fn test_order() {
-        use crate::peer_info_database::PeerType;
-        assert!(PeerType::Bootstrap > PeerType::WhiteListed);
-        assert!(PeerType::WhiteListed > PeerType::Standard);
-    }
-}
-
-impl Default for PeerType {
-    fn default() -> Self {
-        PeerType::Standard
-    }
-}
-
-/// All information concerning a peer is here
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
-pub struct PeerInfo {
-    /// Peer ip address.
-    pub ip: IpAddr,
-    /// The category the peer is in affects how it's treated.
-    pub peer_type: PeerType,
-    /// Time in millis when peer was last alive
-    pub last_alive: Option<MassaTime>,
-    /// Time in millis of peer's last failure
-    pub last_failure: Option<MassaTime>,
-    /// Whether peer was promoted through another peer
-    pub advertised: bool,
-    /// peer was banned
-    pub banned: bool,
-    /// Current number of active out connection attempts with that peer.
-    /// Isn't dump into peer file.
-    #[serde(default = "usize::default")]
-    pub active_out_connection_attempts: usize,
-    /// Current number of active out connections with that peer.
-    /// Isn't dump into peer file.
-    #[serde(default = "usize::default")]
-    pub active_out_connections: usize,
-    /// Current number of active in connections with that peer.
-    /// Isn't dump into peer file.
-    #[serde(default = "usize::default")]
-    pub active_in_connections: usize,
-}
-
-impl PeerInfo {
-    /// Returns true if there is at least one connection attempt /
-    /// one active connection in either direction
-    /// with this peer
-    #[inline]
-    pub(crate) fn is_active(&self) -> bool {
-        self.active_out_connection_attempts > 0
-            || self.active_out_connections > 0
-            || self.active_in_connections > 0
-    }
-
-    /// New standard PeerInfo for ipaddr
-    ///
-    /// # Arguments
-    /// * ip: the IP address of the peer
-    /// * advertised: true if this peer was advertised as routable,
-    /// which means that our node can attempt outgoing connections to it
-    pub fn new(ip: IpAddr, advertised: bool) -> PeerInfo {
-        PeerInfo {
-            ip,
-            last_alive: None,
-            last_failure: None,
-            advertised,
-            active_out_connection_attempts: 0,
-            active_out_connections: 0,
-            active_in_connections: 0,
-            peer_type: Default::default(),
-            banned: false,
-        }
-    }
-
-    /// peer is ready to be retried, enough time has elapsed since last failure
-    fn is_peer_ready(&self, wakeup_interval: MassaTime, now: MassaTime) -> bool {
-        if let Some(last_failure) = self.last_failure {
-            if let Some(last_alive) = self.last_alive {
-                if last_alive > last_failure {
-                    return true;
-                }
-            }
-            return now
-                .saturating_sub(last_failure)
-                .saturating_sub(wakeup_interval)
-                > MassaTime::from(0u64);
-        }
-        true
-    }
-}
-
-/// Connection count for a category
-#[derive(Default, Debug)]
-pub(crate) struct ConnectionCount {
-    /// Number of outgoing connections our node is currently trying to establish.
-    /// We might be in the process of establishing a TCP connection or handshaking with the peer.
-    pub(crate) active_out_connection_attempts: usize,
-    /// Number of currently live (TCP connection active, handshake successful) outgoing connections
-    pub(crate) active_out_connections: usize,
-    /// Number of currently live (TCP connection active, handshake successful) incoming connections
-    pub(crate) active_in_connections: usize,
-}
-
-impl ConnectionCount {
-    #[inline]
-    /// Gets available out connection attempts for given connection count and settings
-    fn get_available_out_connection_attempts(&self, cfg: &PeerTypeConnectionConfig) -> usize {
-        std::cmp::min(
-            cfg.target_out_connections
-                .saturating_sub(self.active_out_connection_attempts)
-                .saturating_sub(self.active_out_connections),
-            cfg.max_out_attempts
-                .saturating_sub(self.active_out_connection_attempts),
-        )
-    }
-}
-
 /// Contains all information about every peers we know about.
 pub struct PeerInfoDatabase {
     /// Network configuration.

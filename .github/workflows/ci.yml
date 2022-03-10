@@ -105,7 +105,6 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features
 
   # Full cross-platform tests required by bors to merge on main branch
   full:

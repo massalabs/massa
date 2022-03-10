@@ -1,10 +1,11 @@
 use crate::{
-    error::NetworkConnectionErrorType,
-    peer_info_database::{cleanup_peers, PeerInfoDatabase, PeerType},
-    settings::PeerTypeConnectionConfig,
-    NetworkError, NetworkSettings, PeerInfo,
+    peer_info_database::{cleanup_peers, PeerInfoDatabase},
+    NetworkError, NetworkSettings,
 };
 use enum_map::enum_map;
+use massa_network_exports::{
+    settings::PeerTypeConnectionConfig, NetworkConnectionErrorType, PeerInfo, PeerType,
+};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::{collections::HashMap, net::IpAddr};

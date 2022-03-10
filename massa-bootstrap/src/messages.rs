@@ -5,7 +5,7 @@ use massa_ledger::FinalLedgerBootstrapState;
 use massa_models::{
     DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Version,
 };
-use massa_network::BootstrapPeers;
+use massa_network_exports::BootstrapPeers;
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_time::MassaTime;
 use num_enum::{IntoPrimitive, TryFromPrimitive};

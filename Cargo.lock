@@ -279,19 +279,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "chrono"
-version = "0.4.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "670ad68c9088c2a963aaa298cb369688cf3f9465ce5e2d4ca10e6e0098a1ce73"
-dependencies = [
- "libc",
- "num-integer",
- "num-traits 0.2.14",
- "time",
- "winapi",
-]
-
-[[package]]
 name = "clap"
 version = "2.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -610,11 +597,11 @@ dependencies = [
 
 [[package]]
 name = "dialoguer"
-version = "0.9.0"
-source = "git+https://github.com/yvan-sraka/dialoguer.git?branch=completion-feature#e25c3868ec88f76e84c41edd433a793b3cd146b4"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "349d6b4fabcd9e97e1df1ae15395ac7e49fb144946a0d453959dc2696273b9da"
 dependencies = [
  "console",
- "lazy_static",
  "tempfile",
  "zeroize",
 ]
@@ -1519,9 +1506,9 @@ dependencies = [
  "erased-serde",
  "futures 0.3.21",
  "glob",
- "jsonrpc-core-client",
  "lazy_static",
  "massa_models",
+ "massa_sdk",
  "massa_signature",
  "massa_time",
  "massa_wallet",
@@ -1557,7 +1544,8 @@ dependencies = [
  "massa_ledger",
  "massa_logging",
  "massa_models",
- "massa_network",
+ "massa_network_exports",
+ "massa_network_worker",
  "massa_pool",
  "massa_protocol_exports",
  "massa_protocol_worker",
@@ -1607,7 +1595,7 @@ dependencies = [
  "massa_graph",
  "massa_hash",
  "massa_models",
- "massa_network",
+ "massa_network_exports",
  "massa_pool",
  "massa_protocol_exports",
  "massa_signature",
@@ -1631,7 +1619,7 @@ dependencies = [
  "massa_ledger",
  "massa_logging",
  "massa_models",
- "massa_network",
+ "massa_network_exports",
  "massa_proof_of_stake_exports",
  "massa_signature",
  "massa_time",
@@ -1858,7 +1846,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa_network"
+name = "massa_network_exports"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "enum-map",
+ "massa_hash",
+ "massa_logging",
+ "massa_models",
+ "massa_signature",
+ "massa_time",
+ "serde 1.0.136",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "massa_network_worker"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
@@ -1868,6 +1875,7 @@ dependencies = [
  "massa_hash",
  "massa_logging",
  "massa_models",
+ "massa_network_exports",
  "massa_signature",
  "massa_time",
  "num_enum",
@@ -1939,7 +1947,7 @@ dependencies = [
  "massa_hash",
  "massa_logging",
  "massa_models",
- "massa_network",
+ "massa_network_exports",
  "massa_signature",
  "massa_time",
  "num_enum",
@@ -1965,7 +1973,7 @@ dependencies = [
  "massa_hash",
  "massa_logging",
  "massa_models",
- "massa_network",
+ "massa_network_exports",
  "massa_protocol_exports",
  "massa_signature",
  "massa_time",
@@ -1979,6 +1987,17 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "massa_sdk"
+version = "0.1.0"
+dependencies = [
+ "jsonrpc-core-client",
+ "massa_models",
+ "massa_signature",
+ "serde 1.0.136",
+ "tokio",
 ]
 
 [[package]]
@@ -2002,12 +2021,12 @@ dependencies = [
 name = "massa_time"
 version = "0.1.0"
 dependencies = [
- "chrono",
  "displaydoc",
  "pretty_assertions",
  "serde 1.0.136",
  "serial_test",
  "thiserror",
+ "time",
  "tokio",
 ]
 
@@ -2289,6 +2308,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "num_threads"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97ba99ba6393e2c3734791401b66902d981cb03bf190af674ca69949b6d5fb15"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
@@ -3517,12 +3545,14 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.1.43"
+version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca8a50ef2360fbd1eeb0ecd46795a87a19024eb4b53c5dc916ca1fd95fe62438"
+checksum = "004cbc98f30fa233c61a38bc77e96a9106e65c88f2d3bef182ae952027e5753d"
 dependencies = [
+ "itoa",
  "libc",
- "winapi",
+ "num_threads",
+ "serde 1.0.136",
 ]
 
 [[package]]

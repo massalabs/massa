@@ -1,21 +1,23 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::super::binders::{ReadBinder, WriteBinder};
-use super::mock_establisher::MockEstablisherInterface;
-use super::{mock_establisher, tools};
+use super::tools;
+use crate::handshake_worker::HandshakeWorker;
 use crate::messages::Message;
-use crate::network_controller::{start_network_controller, NetworkCommandSender, NetworkManager};
+use crate::start_network_controller;
 use crate::NetworkError;
+use crate::NetworkEvent;
 use crate::NetworkSettings;
-use crate::PeerInfo;
-use crate::{handshake_worker::HandshakeWorker, ConnectionId};
-use crate::{network_controller::NetworkEventReceiver, NetworkEvent};
+
 use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
-use massa_models::{
-    Address, Amount, BlockId, Operation, OperationContent, OperationType, SerializeCompact, Version,
+use massa_models::signed::Signed;
+use massa_models::{Address, Amount, BlockId, Operation, OperationType, SignedOperation, Version};
+use massa_network_exports::test_exports::mock_establisher::{self, MockEstablisherInterface};
+use massa_network_exports::{
+    ConnectionId, NetworkCommandSender, NetworkEventReceiver, NetworkManager, PeerInfo,
 };
-use massa_signature::{derive_public_key, generate_random_private_key, sign};
+use massa_signature::{derive_public_key, generate_random_private_key};
 use massa_time::MassaTime;
 use std::str::FromStr;
 use std::{
@@ -45,10 +47,7 @@ pub fn generate_peers_file(peer_vec: &[PeerInfo]) -> NamedTempFile {
     peers_file_named
 }
 
-pub fn get_temp_private_key_file() -> NamedTempFile {
-    NamedTempFile::new().expect("cannot create temp file")
-}
-
+#[cfg(test)]
 /// Establish a full alive connection to the controller
 ///
 /// * establishes connection
@@ -317,7 +316,7 @@ pub async fn incoming_message_drain_stop(
     join_handle.await.expect("could not join message drain")
 }
 
-pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
+pub fn get_transaction(expire_period: u64, fee: u64) -> (SignedOperation, u8) {
     let sender_priv = generate_random_private_key();
     let sender_pub = derive_public_key(&sender_priv);
 
@@ -328,17 +327,15 @@ pub fn get_transaction(expire_period: u64, fee: u64) -> (Operation, u8) {
         recipient_address: Address::from_public_key(&recv_pub),
         amount: Amount::default(),
     };
-    let content = OperationContent {
+    let content = Operation {
         fee: Amount::from_str(&fee.to_string()).unwrap(),
         op,
         sender_public_key: sender_pub,
         expire_period,
     };
-    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-    let signature = sign(&hash, &sender_priv).unwrap();
 
     (
-        Operation { content, signature },
+        Signed::new_signed(content, &sender_priv).unwrap().1,
         Address::from_public_key(&sender_pub).get_thread(2),
     )
 }

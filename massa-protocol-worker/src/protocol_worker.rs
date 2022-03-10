@@ -7,10 +7,11 @@ use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
     prehash::{BuildMap, Map, Set},
-    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
-    OperationType,
+    signed::Signable,
+    Address, Block, BlockId, EndorsementId, OperationId, OperationType, SignedEndorsement,
+    SignedHeader, SignedOperation,
 };
-use massa_network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
+use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolError, ProtocolEvent, ProtocolEventReceiver,
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
@@ -659,7 +660,7 @@ impl ProtocolWorker {
                     { "operations": ops }
                 );
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_ops: Map<OperationId, Operation> = ops
+                    let new_ops: Map<OperationId, SignedOperation> = ops
                         .iter()
                         .filter(|(id, _)| !node_info.knows_op(*id))
                         .map(|(k, v)| (*k, v.clone()))
@@ -682,7 +683,7 @@ impl ProtocolWorker {
                     { "endorsements": endorsements }
                 );
                 for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_endorsements: Map<EndorsementId, Endorsement> = endorsements
+                    let new_endorsements: Map<EndorsementId, SignedEndorsement> = endorsements
                         .iter()
                         .filter(|(id, _)| !node_info.knows_endorsement(*id))
                         .map(|(k, v)| (*k, v.clone()))
@@ -937,7 +938,7 @@ impl ProtocolWorker {
     /// - Block matches that of the block.
     async fn note_header_from_node(
         &mut self,
-        header: &BlockHeader,
+        header: &SignedHeader,
         source_node_id: &NodeId,
     ) -> Result<Option<(BlockId, Map<EndorsementId, u32>, bool)>, ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
@@ -958,7 +959,7 @@ impl ProtocolWorker {
         }
 
         // compute ID
-        let block_id = match header.compute_block_id() {
+        let block_id = match header.content.compute_id() {
             Ok(id) => id,
             Err(err) => {
                 massa_trace!("protocol.protocol_worker.check_header.err_id", { "header": header, "err": format!("{}", err)});
@@ -1020,7 +1021,7 @@ impl ProtocolWorker {
         }
 
         // check header signature
-        if let Err(err) = header.check_signature() {
+        if let Err(err) = header.verify_signature(&header.content.creator) {
             massa_trace!("protocol.protocol_worker.check_header.err_signature", { "header": header, "err": format!("{}", err)});
             return Ok(None);
         };
@@ -1161,6 +1162,7 @@ impl ProtocolWorker {
         for op in block.operations.iter() {
             // check validity period
             if !(op
+                .content
                 .get_validity_range(self.operation_validity_periods)
                 .contains(&block.header.content.slot.period))
             {
@@ -1219,7 +1221,7 @@ impl ProtocolWorker {
     /// - Valid signature
     async fn note_operations_from_node(
         &mut self,
-        operations: Vec<Operation>,
+        operations: Vec<SignedOperation>,
         source_node_id: &NodeId,
         propagate: bool,
     ) -> Result<(Vec<OperationId>, Map<OperationId, (usize, u64)>, bool, u64), ProtocolError> {
@@ -1231,7 +1233,7 @@ impl ProtocolWorker {
         let mut new_operations = Map::with_capacity_and_hasher(length, BuildMap::default());
         let mut received_ids = Map::with_capacity_and_hasher(length, BuildMap::default());
         for (idx, operation) in operations.into_iter().enumerate() {
-            let operation_id = operation.get_operation_id()?;
+            let operation_id = operation.content.compute_id()?;
             seen_ops.push(operation_id);
 
             // Note: we always want to update the node's view of known operations,
@@ -1252,7 +1254,7 @@ impl ProtocolWorker {
             // Check operation signature only if not already checked.
             if self.checked_operations.insert(operation_id) {
                 // check signature
-                operation.verify_signature()?;
+                operation.verify_signature(&operation.content.sender_public_key)?;
                 new_operations.insert(operation_id, operation);
             };
         }
@@ -1291,7 +1293,7 @@ impl ProtocolWorker {
     /// - Valid signature.
     async fn note_endorsements_from_node(
         &mut self,
-        endorsements: Vec<Endorsement>,
+        endorsements: Vec<SignedEndorsement>,
         source_node_id: &NodeId,
         propagate: bool,
     ) -> Result<(Map<EndorsementId, u32>, bool), ProtocolError> {
@@ -1302,7 +1304,7 @@ impl ProtocolWorker {
         let mut new_endorsements = Map::with_capacity_and_hasher(length, BuildMap::default());
         let mut endorsement_ids = Map::default();
         for endorsement in endorsements.into_iter() {
-            let endorsement_id = endorsement.compute_endorsement_id()?;
+            let endorsement_id = endorsement.content.compute_id()?;
             if endorsement_ids
                 .insert(endorsement_id, endorsement.content.index)
                 .is_some()
@@ -1311,7 +1313,7 @@ impl ProtocolWorker {
             }
             // check endorsement signature if not already checked
             if self.checked_endorsements.insert(endorsement_id) {
-                endorsement.verify_signature()?;
+                endorsement.verify_signature(&endorsement.content.sender_public_key)?;
                 new_endorsements.insert(endorsement_id, endorsement);
             }
         }

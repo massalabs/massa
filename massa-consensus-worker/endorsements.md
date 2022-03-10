@@ -7,7 +7,7 @@ Endorsements are included in a block's header. They are created by randomly sele
 With that mechanism it becomes harder to gain control of the network (you now have to control `endorsement_count + 1` draw to gain control over one block) and to reward stakers more frequently.
 
 ```ignore
-pub struct BlockHeaderContent {
+pub struct BlockHeader {
     pub endorsements: Vec<Endorsement>,
     ..
 }
@@ -19,11 +19,11 @@ An endorsement is defined as follows:
 
 ```ignore
 pub struct Endorsement {
-    pub content: EndorsementContent,
+    pub content: Endorsement,
     pub signature: Signature,
 }
 
-pub struct EndorsementContent {
+pub struct Endorsement {
     /// Public key of the endorser.
     pub sender_public_key: PublicKey,
     /// slot of endorsed block (= parent in the same thread) (can be different that previous slot in the same thread)
