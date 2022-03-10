@@ -48,7 +48,7 @@ pub struct GlobalBootstrapState {
     /// timestamp correction in milliseconds
     pub compensation_millis: i64,
 
-    /// list of network and bootstrap peers, true if bootstrap
+    /// list of network and bootstrap peers, true if peer in bootstrap list
     pub peers: Vec<(IpAddr, bool)>,
 
     /// state of the final ledger
@@ -216,10 +216,8 @@ async fn get_state_internal(
         pos: Some(pos),
         graph: Some(graph),
         compensation_millis,
-
         peers: peers.0.into_iter().map(|ip| (ip, false)).collect(),
         final_ledger: Some(final_ledger),
-
     })
 }
 
