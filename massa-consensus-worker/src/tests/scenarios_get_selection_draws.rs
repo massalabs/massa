@@ -51,10 +51,7 @@ async fn test_get_selection_draws_high_end_slot() {
     cfg.staking_keys_path = staking_keys_file.path().to_path_buf();
     consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller,
-                    consensus_command_sender,
-                    consensus_event_receiver,
-                    storage| {
+        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let draws = consensus_command_sender
                 .get_selection_draws(Slot::new(1, 0), Slot::new(2, 0))
                 .await;

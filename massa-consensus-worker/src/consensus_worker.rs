@@ -775,7 +775,7 @@ impl ConsensusWorker {
                 let resp = (
                     ExportProofOfStake::from(&self.pos),
                     self.block_db
-                        .export_bootstrap_graph(self.block_db.storage.clone())?,
+                        .export_bootstrap_graph()?,
                 );
                 if response_tx.send(resp).is_err() {
                     warn!("consensus: could not send GetBootstrapState answer");

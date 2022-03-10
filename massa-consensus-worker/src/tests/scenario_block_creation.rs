@@ -54,8 +54,7 @@ async fn test_genesis_block_creation() {
         cfg.clone(),
         async move |protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver,
-                    storage| {
+                    consensus_event_receiver| {
             let _genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -127,7 +126,7 @@ async fn test_block_creation_with_draw() {
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
     let operation_fee = 0;
-    tools::consensus_without_pool_test(
+    tools::consensus_without_pool_test_with_storage(
         cfg.clone(),
         async move |mut protocol_controller,
                     consensus_command_sender,
@@ -148,7 +147,6 @@ async fn test_block_creation_with_draw() {
                 staking_keys[0],
                 vec![op1],
             );
-            let serialized_block = block.to_bytes_compact().expect("Fail to serialize block");
 
             tools::propagate_block(&mut protocol_controller, block, true, 1000).await;
 
@@ -274,7 +272,7 @@ async fn test_interleaving_block_creation_with_reception() {
     let temp_roll_file = generate_roll_counts_file(&roll_counts);
     cfg.initial_rolls_path = temp_roll_file.path().to_path_buf();
 
-    tools::consensus_without_pool_test(
+    tools::consensus_without_pool_test_with_storage(
         cfg.clone(),
         async move |mut protocol_controller,
                     consensus_command_sender,
@@ -401,7 +399,7 @@ async fn test_order_of_inclusion() {
 
     // there is only one node so it should be drawn at every slot
 
-    tools::consensus_pool_test(
+    tools::consensus_pool_test_with_storage(
         cfg.clone(),
         None,
         None,
@@ -552,7 +550,7 @@ async fn test_block_filling() {
         ops.push(create_transaction(priv_a, pubkey_a, address_a, 5, 10, 1))
     }
 
-    tools::consensus_pool_test(
+    tools::consensus_pool_test_with_storage(
         cfg.clone(),
         None,
         None,

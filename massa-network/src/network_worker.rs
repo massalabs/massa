@@ -24,7 +24,7 @@ use massa_models::{
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializeCompact, SerializeVarInt, Version,
 };
-use massa_models::{Block, BlockHeader, BlockId, Endorsement, Operation};
+use massa_models::{BlockHeader, BlockId, Endorsement, Operation};
 use massa_signature::{derive_public_key, sign, PrivateKey};
 use serde::{Deserialize, Serialize};
 use std::{

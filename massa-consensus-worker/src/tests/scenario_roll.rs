@@ -76,8 +76,7 @@ async fn test_roll() {
         async move |mut pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver,
-                    storage| {
+                    consensus_event_receiver| {
             let mut parents: Vec<BlockId> = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await

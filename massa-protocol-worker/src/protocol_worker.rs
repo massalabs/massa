@@ -8,7 +8,7 @@ use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
     prehash::{BuildMap, Map, Set},
-    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
+    Address, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
     OperationType,
 };
 use massa_network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};

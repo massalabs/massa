@@ -598,7 +598,7 @@ impl BlockGraph {
         }
     }
 
-    pub fn export_bootstrap_graph(&self, storage: Storage) -> Result<BootstrapableGraph> {
+    pub fn export_bootstrap_graph(&self) -> Result<BootstrapableGraph> {
         let required_active_blocks = self.list_required_active_blocks()?;
         let mut active_blocks: Map<BlockId, ExportActiveBlock> =
             Map::with_capacity_and_hasher(required_active_blocks.len(), BuildMap::default());
@@ -1094,8 +1094,6 @@ impl BlockGraph {
                 }
             };
             if cur_a_block.is_final {
-                let block = self.storage.retrieve_block(&cur_a_block.block_id).unwrap();
-                let stored_block = block.read();
 
                 // filters out genesis and final blocks
                 // (step 1.1 in pos.md)
@@ -1201,9 +1199,6 @@ impl BlockGraph {
                         operations.into_iter().map(|op| Some(op)).collect()
                     };
                     for op in ops.iter() {
-                        let block = self.storage.retrieve_block(&b_id).unwrap();
-                        let stored_block = block.read();
-
                         let (idx, _) = active_block.operation_set.get(op).ok_or_else(|| {
                             GraphError::ContainerInconsistency(format!("op {} should be here", op))
                         })?;
