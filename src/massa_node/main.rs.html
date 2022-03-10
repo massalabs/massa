@@ -385,6 +385,7 @@
 <span id="380">380</span>
 <span id="381">381</span>
 <span id="382">382</span>
+<span id="383">383</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
@@ -410,7 +411,8 @@
     },
     <span class="ident">init_serialization_context</span>, <span class="ident">SerializationContext</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_network</span>::{<span class="ident">start_network_controller</span>, <span class="ident">Establisher</span>, <span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkManager</span>};
+<span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">Establisher</span>, <span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkManager</span>};
+<span class="kw">use</span> <span class="ident">massa_network_worker::start_network_controller</span>;
 <span class="kw">use</span> <span class="ident">massa_pool</span>::{<span class="ident">start_pool_controller</span>, <span class="ident">PoolCommandSender</span>, <span class="ident">PoolManager</span>};
 <span class="kw">use</span> <span class="ident">massa_protocol_exports::ProtocolManager</span>;
 <span class="kw">use</span> <span class="ident">massa_protocol_worker::start_protocol_controller</span>;
@@ -768,5 +770,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (458262b13 2022-03-09)" ></div>
 </body></html>
