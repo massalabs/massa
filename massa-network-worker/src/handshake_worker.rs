@@ -1,19 +1,20 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! Here are happening handshakes.
+
 use super::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
-};
-use crate::{
-    error::{throw_handshake_error as throw, HandshakeErrorType, NetworkError},
-    ConnectionId, ReadHalf, WriteHalf,
 };
 use futures::future::try_join;
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::node::NodeId;
 use massa_models::Version;
+use massa_network_exports::{
+    throw_handshake_error as throw, ConnectionId, HandshakeErrorType, NetworkError, ReadHalf,
+    WriteHalf,
+};
 use massa_signature::{sign, verify_signature, PrivateKey};
 use massa_time::MassaTime;
 use rand::{rngs::StdRng, RngCore, SeedableRng};

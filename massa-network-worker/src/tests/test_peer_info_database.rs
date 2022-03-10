@@ -1,10 +1,11 @@
 use crate::{
-    error::NetworkConnectionErrorType,
-    peer_info_database::{cleanup_peers, PeerInfoDatabase, PeerType},
-    settings::PeerTypeConnectionConfig,
-    NetworkError, NetworkSettings, PeerInfo,
+    peer_info_database::{cleanup_peers, PeerInfoDatabase},
+    NetworkError, NetworkSettings,
 };
 use enum_map::enum_map;
+use massa_network_exports::{
+    settings::PeerTypeConnectionConfig, NetworkConnectionErrorType, PeerInfo, PeerType,
+};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::{collections::HashMap, net::IpAddr};
@@ -109,7 +110,7 @@ async fn test_try_new_in_connection_in_connection_closed() {
     {
         assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
     } else {
-        panic!("ToManyConnectionAttempt error not return");
+        panic!("TooManyConnectionAttempt error not return");
     }
 }
 

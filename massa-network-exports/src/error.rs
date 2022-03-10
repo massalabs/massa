@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::{peer_info_database::PeerType, ConnectionId};
+use crate::{peers::PeerType, ConnectionId};
 use displaydoc::Display;
 use massa_models::ModelsError;
 use std::net::IpAddr;
@@ -60,6 +60,7 @@ pub enum HandshakeErrorType {
     PeerListReceived(Vec<IpAddr>),
 }
 
+#[macro_export]
 macro_rules! throw_handshake_error {
     ($err:ident) => {
         return Err(NetworkError::HandshakeError(HandshakeErrorType::$err))
@@ -68,7 +69,8 @@ macro_rules! throw_handshake_error {
         return Err(NetworkError::HandshakeError(HandshakeErrorType::$err($e)))
     };
 }
-pub(crate) use throw_handshake_error;
+
+pub use throw_handshake_error;
 
 #[derive(Debug, Error, Display)]
 #[non_exhaustive]
