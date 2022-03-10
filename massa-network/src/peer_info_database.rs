@@ -486,39 +486,25 @@ impl PeerInfoDatabase {
                 PeerType::WhiteListed
             };
 
-            if old_pt != PeerType::WhiteListed {
-                // update global connection counts by peer type
-                let peer = *self.peers.get(&ip).unwrap(); // filled just before
-                if peer.active_out_connection_attempts > 0 {
-                    self.decrease_global_active_out_connection_attempt_count(
-                        old_pt,
-                       &ip,
-                    )?;
-                    self.increase_global_active_out_connection_attempt_count(
-                        PeerType::WhiteListed, &ip
-                        
-                    )?
-                }
-                if peer.active_out_connections > 0 {
-                    self.decrease_global_active_out_connection_count(
-                        old_pt,
-                        &ip,
-                    )?;
-                    self.increase_global_active_out_connection_count(
-                        PeerType::WhiteListed,
-                        
-                    )?
-                }
-                if peer.active_in_connections > 0 {
-                    self.decrease_global_active_in_connection_count(
-                        old_pt,
-                        &ip,
-                    )?;
-                    self.increase_global_active_in_connection_count(
-                        PeerType::WhiteListed,
-                       
-                    )?
-                }
+            if old_pt == PeerType::WhiteListed {
+                continue;
+            }
+            // update global connection counts by peer type
+            let peer = *self.peers.get(&ip).unwrap(); // filled just before
+            if peer.active_out_connection_attempts > 0 {
+                self.decrease_global_active_out_connection_attempt_count(old_pt, &ip)?;
+                self.increase_global_active_out_connection_attempt_count(
+                    PeerType::WhiteListed,
+                    &ip,
+                )?
+            }
+            if peer.active_out_connections > 0 {
+                self.decrease_global_active_out_connection_count(old_pt, &ip)?;
+                self.increase_global_active_out_connection_count(PeerType::WhiteListed)?
+            }
+            if peer.active_in_connections > 0 {
+                self.decrease_global_active_in_connection_count(old_pt, &ip)?;
+                self.increase_global_active_in_connection_count(PeerType::WhiteListed)?
             }
         }
         self.update()
@@ -538,33 +524,19 @@ impl PeerInfoDatabase {
                 // update global connection counts by peer type
                 let peer = *self.peers.get(&ip).unwrap(); // filled just before
                 if peer.active_out_connection_attempts > 0 {
-                    self.decrease_global_active_out_connection_attempt_count(
-                        old_pt,
-                        &ip,
-                    )?;
+                    self.decrease_global_active_out_connection_attempt_count(old_pt, &ip)?;
                     self.increase_global_active_out_connection_attempt_count(
                         Default::default(),
                         &ip,
                     )?
                 }
                 if peer.active_out_connections > 0 {
-                    self.decrease_global_active_out_connection_count(
-                        old_pt,
-                       
-                        &ip,
-                    )?;
-                    self.increase_global_active_out_connection_count(
-                        Default::default(),
-                    )?
+                    self.decrease_global_active_out_connection_count(old_pt, &ip)?;
+                    self.increase_global_active_out_connection_count(Default::default())?
                 }
                 if peer.active_in_connections > 0 {
-                    self.decrease_global_active_in_connection_count(
-                        old_pt,
-                        &ip,
-                    )?;
-                    self.increase_global_active_in_connection_count(
-                        Default::default(),
-                    )?
+                    self.decrease_global_active_in_connection_count(old_pt, &ip)?;
+                    self.increase_global_active_in_connection_count(Default::default())?
                 }
             }
         }
