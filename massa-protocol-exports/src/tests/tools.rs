@@ -231,12 +231,11 @@ pub fn create_protocol_settings() -> ProtocolSettings {
 
     ProtocolSettings {
         ask_block_timeout: 500.into(),
-        max_node_known_blocks_size: 100,
-        max_node_wanted_blocks_size: 100,
         max_simultaneous_ask_blocks_per_node: 10,
         max_send_wait: MassaTime::from(100),
-        max_known_ops_size: 1000,
-        max_known_endorsements_size: 1000,
+        operation_knowledge_view_config: todo!(),
+        endorsement_knowledge_view_config: todo!(),
+        block_knowledge_view_config: todo!(),
     }
 }
 

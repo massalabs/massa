@@ -6,6 +6,7 @@
 
 pub mod protocol_worker;
 pub use protocol_worker::start_protocol_controller;
+mod knowledge_view;
 mod node_info;
 
 #[cfg(test)]

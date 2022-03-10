@@ -12,6 +12,8 @@ use massa_protocol_exports::ProtocolSettings;
 use std::collections::VecDeque;
 use tokio::time::Instant;
 
+use crate::knowledge_view::KnowledgeView;
+
 /// Information about a node we are connected to,
 /// essentially our view of its state.
 ///
@@ -19,57 +21,21 @@ use tokio::time::Instant;
 /// Currently it would only be dropped alongside the rest when the node becomes inactive.
 #[derive(Debug, Clone)]
 pub(crate) struct NodeInfo {
-    /// The blocks the node "knows about",
-    /// defined as the one the node propagated headers to us for.
-    pub known_blocks: Map<BlockId, (bool, Instant)>,
-    /// The blocks the node asked for.
-    pub wanted_blocks: Map<BlockId, Instant>,
-    /// The blocks the node asked for.
-    pub wanted_operations: Set<OperationId>,
-    /// The blocks the node asked for.
-    pub asked_operations: Set<OperationId>,
-    /// Blocks we asked that node for
-    pub asked_blocks: Map<BlockId, Instant>,
     /// Instant when the node was added
     pub connection_instant: Instant,
-    /// all known operations
-    pub known_operations: Set<OperationId>,
-    /// Same as `known_operations` but sorted for a premature optimization :-)
-    pub known_operations_queue: VecDeque<OperationId>,
-    /// all known endorsements
-    pub known_endorsements: Set<EndorsementId>,
-    /// Same as `known_endorsements` but sorted for a premature optimization :-)
-    pub known_endorsements_queue: VecDeque<EndorsementId>,
+    pub operation_knowledge: KnowledgeView<OperationId>,
+    pub block_knowledge: KnowledgeView<BlockId>,
+    pub endorsement_knowledge: KnowledgeView<EndorsementId>,
 }
 
 impl NodeInfo {
     /// Creates empty node info
     pub fn new(pool_settings: &'static ProtocolSettings) -> NodeInfo {
         NodeInfo {
-            known_blocks: Map::with_capacity_and_hasher(
-                pool_settings.max_node_known_blocks_size,
-                BuildMap::default(),
-            ),
-            wanted_blocks: Map::with_capacity_and_hasher(
-                pool_settings.max_node_wanted_blocks_size,
-                BuildMap::default(),
-            ),
-            asked_blocks: Default::default(),
             connection_instant: Instant::now(),
-            known_operations: Set::<OperationId>::with_capacity_and_hasher(
-                pool_settings.max_known_ops_size,
-                BuildMap::default(),
-            ),
-            known_operations_queue: VecDeque::with_capacity(pool_settings.max_known_ops_size),
-            known_endorsements: Set::<EndorsementId>::with_capacity_and_hasher(
-                pool_settings.max_known_endorsements_size,
-                BuildMap::default(),
-            ),
-            known_endorsements_queue: VecDeque::with_capacity(
-                pool_settings.max_known_endorsements_size,
-            ),
-            wanted_operations: todo!("Init that with limits from pool_settings"),
-            asked_operations: todo!("Init that with limits from pool_settings"),
+            operation_knowledge: todo!(),
+            block_knowledge: todo!(),
+            endorsement_knowledge: todo!(),
         }
     }
 

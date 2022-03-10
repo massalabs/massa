@@ -13,6 +13,6 @@ pub use protocol_controller::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
-pub use settings::ProtocolSettings;
+pub use settings::{KnowledgeViewConfig, ProtocolSettings};
 
 pub mod tests;
