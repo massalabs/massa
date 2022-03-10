@@ -14,6 +14,7 @@ use massa_logging::massa_trace;
 use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::storage::Storage;
+use massa_models::SerializeCompact;
 use massa_models::{
     active_block::ActiveBlock,
     api::EndorsementInfo,
@@ -33,7 +34,7 @@ use serde::{Deserialize, Serialize};
 use std::mem;
 use std::{collections::HashSet, usize};
 use std::{
-    collections::{hash_map, BTreeSet, VecDeque},
+    collections::{hash_map, BTreeSet, HashMap, VecDeque},
     convert::TryFrom,
 };
 use tracing::{debug, error, info, warn};
@@ -443,11 +444,15 @@ impl BlockGraph {
                     addresses_to_operations: Map::with_capacity_and_hasher(0, BuildMap::default()),
                     roll_updates: RollUpdates::default(), // no roll updates in genesis blocks
                     production_events: vec![],
-                    block: block_id,
+                    block_id,
                     addresses_to_endorsements: Default::default(),
                     slot: block.header.content.slot,
                 })),
             );
+
+            // Store in shared storage.
+            let serialized = block.to_bytes_compact()?;
+            storage.store_block(block_id, block, serialized);
         }
 
         massa_trace!("consensus.block_graph.new", {});
@@ -500,7 +505,7 @@ impl BlockGraph {
                             creator_address: Address::from_public_key(
                                 &block_export.block.header.content.creator,
                             ),
-                            block: b_id,
+                            block_id: b_id,
                             parents: block_export.parents,
                             children: block_export.children,
                             dependencies: block_export.dependencies,
@@ -599,14 +604,12 @@ impl BlockGraph {
             Map::with_capacity_and_hasher(required_active_blocks.len(), BuildMap::default());
         for b_id in required_active_blocks {
             if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(&b_id) {
-                let block = storage
-                    .retrieve_block(&a_block.block)
-                    .ok_or(GraphError::MissingBlock)?;
-                let stored_block = block.read();
+                let block = self.storage.retrieve_block(&b_id).unwrap();
+                let stored_block = block.read().block.clone();
                 active_blocks.insert(
                     b_id,
                     ExportActiveBlock {
-                        block: stored_block.block.clone(),
+                        block: stored_block,
                         parents: a_block.parents.clone(),
                         children: a_block.children.clone(),
                         dependencies: a_block.dependencies.clone(),
@@ -914,7 +917,7 @@ impl BlockGraph {
             let creator = {
                 let block = self
                     .storage
-                    .retrieve_block(&same_thread_parent.block)
+                    .retrieve_block(&same_thread_parent.block_id)
                     .unwrap();
                 let stored_block = block.read();
                 stored_block.block.header.content.creator
@@ -1091,6 +1094,9 @@ impl BlockGraph {
                 }
             };
             if cur_a_block.is_final {
+                let block = self.storage.retrieve_block(&cur_a_block.block_id).unwrap();
+                let stored_block = block.read();
+
                 // filters out genesis and final blocks
                 // (step 1.1 in pos.md)
                 final_cycle = cur_a_block.slot.get_cycle(self.cfg.periods_per_cycle);
@@ -1195,6 +1201,9 @@ impl BlockGraph {
                         operations.into_iter().map(|op| Some(op)).collect()
                     };
                     for op in ops.iter() {
+                        let block = self.storage.retrieve_block(&b_id).unwrap();
+                        let stored_block = block.read();
+
                         let (idx, _) = active_block.operation_set.get(op).ok_or_else(|| {
                             GraphError::ContainerInconsistency(format!("op {} should be here", op))
                         })?;
@@ -1385,7 +1394,6 @@ impl BlockGraph {
     pub fn incoming_block(
         &mut self,
         block_id: BlockId,
-        block: Block,
         operation_set: Map<OperationId, (usize, u64)>,
         endorsement_ids: Map<EndorsementId, u32>,
         pos: &mut ProofOfStake,
@@ -1395,14 +1403,21 @@ impl BlockGraph {
         if self.genesis_hashes.contains(&block_id) {
             return Ok(());
         }
-        let slot = block.header.content.slot;
-        debug!("received block {} for slot {}", block_id, slot);
-        massa_trace!("consensus.block_graph.incoming_block", {"block_id": block_id, "block": block});
+
+        let slot = {
+            let stored_block = self.storage.retrieve_block(&block_id).unwrap();
+            let stored_block = stored_block.read();
+            let slot = stored_block.block.header.content.slot;
+            debug!("received block {} for slot {}", block_id, slot);
+            massa_trace!("consensus.block_graph.incoming_block", {"block_id": block_id, "block": stored_block.block});
+            slot
+        };
+
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
         match self.block_statuses.entry(block_id) {
             // if absent => add as Incoming, call rec_ack on it
             hash_map::Entry::Vacant(vac) => {
-                to_ack.insert((block.header.content.slot, block_id));
+                to_ack.insert((slot, block_id));
                 vac.insert(BlockStatus::Incoming(HeaderOrBlock::Block(
                     block_id,
                     slot,
@@ -1431,7 +1446,7 @@ impl BlockGraph {
                     // promote to full block and satisfy self-dependency
                     if unsatisfied_dependencies.remove(&block_id) {
                         // a dependency was satisfied: process
-                        to_ack.insert((block.header.content.slot, block_id));
+                        to_ack.insert((slot, block_id));
                     }
                     *header_or_block =
                         HeaderOrBlock::Block(block_id, slot, operation_set, endorsement_ids);
@@ -2174,7 +2189,7 @@ impl BlockGraph {
                 }
 
                 let parent_id = {
-                    let block = self.storage.retrieve_block(&cur_b.block).unwrap();
+                    let block = self.storage.retrieve_block(&cur_b.block_id).unwrap();
                     let stored_block = block.read();
                     stored_block.block.header.content.parents[header.content.slot.thread as usize]
                         .clone()
@@ -2685,7 +2700,7 @@ impl BlockGraph {
                 parents: parents_hash_period.clone(),
                 dependencies: deps,
                 descendants: Set::<BlockId>::default(),
-                block: add_block_id,
+                block_id: add_block_id,
                 children: vec![Default::default(); self.cfg.thread_count as usize],
                 is_final: false,
                 block_ledger_changes,
@@ -2932,7 +2947,7 @@ impl BlockGraph {
                 });
 
                 let (creator, header) = {
-                    let block = self.storage.retrieve_block(&active_block.block).unwrap();
+                    let block = self.storage.retrieve_block(&active_block.block_id).unwrap();
                     let stored_block = block.read();
                     (
                         stored_block.block.header.content.creator,
@@ -3665,15 +3680,13 @@ impl BlockGraph {
     /// This is used when initializing Execution from Consensus.
     /// Since the Execution bootstrap snapshot is older than the Consensus snapshot,
     /// we might need to signal older final blocks for Execution to catch up.
-    pub fn clone_all_final_blocks(&self) -> Map<BlockId, Block> {
+    pub fn get_all_final_blocks(&self) -> HashMap<Slot, BlockId> {
         self.active_index
             .iter()
             .filter_map(|b_id| {
                 if let Some(a_b) = self.get_active_block(b_id) {
                     if a_b.is_final {
-                        let block = self.storage.retrieve_block(b_id).unwrap();
-                        let stored_block = block.read();
-                        return Some((*b_id, stored_block.block.clone()));
+                        return Some((a_b.slot.clone(), b_id.clone()));
                     }
                 }
                 None

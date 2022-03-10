@@ -19,7 +19,6 @@ pub enum ProtocolEvent {
     /// A block with a valid signature has been received.
     ReceivedBlock {
         block_id: BlockId,
-        block: Block,
         operation_set: Map<OperationId, (usize, u64)>, // (index, validity end period)
         endorsement_ids: Map<EndorsementId, u32>,
     },
@@ -46,8 +45,7 @@ pub enum ProtocolPoolEvent {
     },
 }
 
-pub type BlocksResults =
-    Map<BlockId, Option<(Block, Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
+type BlocksResults = Map<BlockId, Option<(Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
 
 /// Commands that protocol worker can process
 #[derive(Debug, Serialize)]
@@ -55,7 +53,6 @@ pub enum ProtocolCommand {
     /// Notify block integration of a given block.
     IntegratedBlock {
         block_id: BlockId,
-        block: Box<Block>,
         operation_ids: Set<OperationId>,
         endorsement_ids: Vec<EndorsementId>,
     },
@@ -88,16 +85,16 @@ impl ProtocolCommandSender {
     pub async fn integrated_block(
         &mut self,
         block_id: BlockId,
-        block: Block,
         operation_ids: Set<OperationId>,
         endorsement_ids: Vec<EndorsementId>,
     ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.command_sender.integrated_block", { "block_id": block_id, "block": block });
+        massa_trace!("protocol.command_sender.integrated_block", {
+            "block_id": block_id
+        });
         let res = self
             .0
             .send(ProtocolCommand::IntegratedBlock {
                 block_id,
-                block: Box::new(block),
                 operation_ids,
                 endorsement_ids,
             })

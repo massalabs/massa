@@ -60,7 +60,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
         Ok(ActiveBlock {
             creator_address: Address::from_public_key(&a_block.block.header.content.creator),
             //TODO: Unwrap
-            block: a_block.block.header.compute_block_id().unwrap(),
+            block_id: a_block.block.header.compute_block_id().unwrap(),
             parents: a_block.parents.clone(),
             children: a_block.children.clone(),
             dependencies: a_block.dependencies.clone(),

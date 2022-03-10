@@ -94,6 +94,7 @@ async fn launch() -> (
             Establisher::new(),
             bootstrap_state.compensation_millis,
             bootstrap_state.peers,
+            shared_storage.clone(),
             *VERSION,
         )
         .await
@@ -111,6 +112,7 @@ async fn launch() -> (
         MAX_GAS_PER_BLOCK,
         network_command_sender.clone(),
         network_event_receiver,
+        shared_storage.clone(),
     )
     .await
     .expect("could not start protocol controller");
@@ -145,8 +147,11 @@ async fn launch() -> (
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
     };
-    let (execution_manager, execution_controller) =
-        start_execution_worker(execution_config, final_ledger.clone());
+    let (execution_manager, execution_controller) = start_execution_worker(
+        execution_config,
+        final_ledger.clone(),
+        shared_storage.clone(),
+    );
 
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
     // launch consensus controller

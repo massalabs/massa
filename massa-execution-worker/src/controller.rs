@@ -11,10 +11,9 @@ use massa_execution_exports::{
 };
 use massa_ledger::LedgerEntry;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::Map;
 use massa_models::Address;
 use massa_models::OperationId;
-use massa_models::{Block, BlockId, Slot};
+use massa_models::{BlockId, Slot};
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -25,9 +24,9 @@ pub(crate) struct ExecutionInputData {
     /// set stop to true to stop the thread
     pub stop: bool,
     /// list of newly finalized blocks, indexed by slot
-    pub finalized_blocks: HashMap<Slot, (BlockId, Block)>,
+    pub finalized_blocks: HashMap<Slot, BlockId>,
     /// new blockclique (if there is a new one), blocks indexed by slot
-    pub new_blockclique: Option<HashMap<Slot, (BlockId, Block)>>,
+    pub new_blockclique: Option<HashMap<Slot, BlockId>>,
     /// queue for readonly execution requests and response mpscs to send back their outputs
     pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
 }
@@ -73,23 +72,13 @@ impl ExecutionController for ExecutionControllerImpl {
     /// * blockclique: new blockclique, replaces the current one in the input
     fn update_blockclique_status(
         &self,
-        finalized_blocks: Map<BlockId, Block>,
-        blockclique: Map<BlockId, Block>,
+        finalized_blocks: HashMap<Slot, BlockId>,
+        new_blockclique: HashMap<Slot, BlockId>,
     ) {
-        // index newly finalized blocks by slot
-        let mapped_finalized_blocks: HashMap<_, _> = finalized_blocks
-            .into_iter()
-            .map(|(b_id, b)| (b.header.content.slot, (b_id, b)))
-            .collect();
-        // index blockclique by slot
-        let mapped_blockclique = blockclique
-            .into_iter()
-            .map(|(b_id, b)| (b.header.content.slot, (b_id, b)))
-            .collect();
         // update input data
         let mut input_data = self.input_data.1.lock();
-        input_data.new_blockclique = Some(mapped_blockclique); // replace blockclique
-        input_data.finalized_blocks.extend(mapped_finalized_blocks); // append finalized blocks
+        input_data.new_blockclique = Some(new_blockclique); // replace blockclique
+        input_data.finalized_blocks.extend(finalized_blocks); // append finalized blocks
         self.input_data.0.notify_one(); // wake up VM loop
     }
 

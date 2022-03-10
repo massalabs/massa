@@ -144,8 +144,18 @@ impl ConsensusWorker {
         // notify execution module of current blockclique and final blocks
         // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
         // because the two modules run concurrently and out of sync
-
-        // TODO: use shared-storage.
+        channels.execution_controller.update_blockclique_status(
+            block_db.get_all_final_blocks(),
+            block_db
+                .get_blockclique()
+                .into_iter()
+                .filter_map(|block_id| {
+                    block_db
+                        .get_active_block(&block_id)
+                        .map(|a_block| (a_block.slot.clone(), block_id))
+                })
+                .collect(),
+        );
 
         Ok(ConsensusWorker {
             genesis_public_key,
@@ -601,7 +611,6 @@ impl ConsensusWorker {
         // add block to db
         self.block_db.incoming_block(
             block_id,
-            block,
             operation_set,
             endorsement_ids,
             &mut self.pos,
@@ -1081,14 +1090,15 @@ impl ConsensusWorker {
         match event {
             ProtocolEvent::ReceivedBlock {
                 block_id,
-                block,
                 operation_set,
                 endorsement_ids,
             } => {
-                massa_trace!("consensus.consensus_worker.process_protocol_event.received_block", { "block_id": block_id, "block": block });
+                massa_trace!(
+                    "consensus.consensus_worker.process_protocol_event.received_block",
+                    { "block_id": block_id }
+                );
                 self.block_db.incoming_block(
                     block_id,
-                    block,
                     operation_set,
                     endorsement_ids,
                     &mut self.pos,
@@ -1111,7 +1121,27 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_protocol_event.get_blocks",
                     { "list": list }
                 );
-                // TODO: remove, see https://github.com/massalabs/massa/issues/2299
+                let mut results = Map::default();
+                for block_hash in list {
+                    if let Some(a_block) = self.block_db.get_active_block(&block_hash) {
+                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_found", { "hash": block_hash});
+                        results.insert(
+                            block_hash,
+                            Some((
+                                Some(a_block.operation_set.keys().copied().collect()),
+                                Some(a_block.endorsement_ids.keys().copied().collect()),
+                            )),
+                        );
+                    } else {
+                        // not found in consensus
+                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensu_not_found", { "hash": block_hash});
+                        results.insert(block_hash, None);
+                    }
+                }
+                self.channels
+                    .protocol_command_sender
+                    .send_get_blocks_results(results)
+                    .await?;
             }
         }
         Ok(())
@@ -1134,7 +1164,10 @@ impl ConsensusWorker {
             massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {
                 "block_id": block_id
             });
-            // TODO: propagate using protocol.
+            self.channels
+                .protocol_command_sender
+                .integrated_block(block_id, op_ids, endo_ids)
+                .await?;
         }
 
         // Notify protocol of attack attempts.
@@ -1154,10 +1187,32 @@ impl ConsensusWorker {
         // get blockclique
         let blockclique_set = self.block_db.get_blockclique();
 
-        // notify Execution
-        {
-            // TODO: use shared storage.
-        }
+        // notify execution
+        self.channels
+            .execution_controller
+            .update_blockclique_status(
+                new_final_block_ids
+                    .clone()
+                    .into_iter()
+                    .filter_map(|b_id| {
+                        if let Some(a_b) = self.block_db.get_active_block(&b_id) {
+                            if a_b.is_final {
+                                return Some((a_b.slot.clone(), b_id));
+                            }
+                        }
+                        None
+                    })
+                    .collect(),
+                blockclique_set
+                    .clone()
+                    .into_iter()
+                    .filter_map(|block_id| {
+                        self.block_db
+                            .get_active_block(&block_id)
+                            .map(|a_block| (a_block.slot.clone(), block_id))
+                    })
+                    .collect(),
+            );
 
         // Process new final blocks
         let mut new_final_ops: Map<OperationId, (u64, u8)> = Map::default();

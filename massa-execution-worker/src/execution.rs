@@ -153,16 +153,14 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * active_slots: A HashMap mapping each slot to a block or None if the slot is a miss
-    pub fn truncate_history(&mut self, active_slots: &HashMap<Slot, Option<(BlockId, Block)>>) {
+    pub fn truncate_history(&mut self, active_slots: &HashMap<Slot, Option<BlockId>>) {
         // find mismatch point (included)
         let mut truncate_at = None;
         // iterate over the output history, in chronological order
         for (hist_index, exec_output) in self.active_history.iter().enumerate() {
             // try to find the corresponding slot in active_slots
-            let found_block_id = active_slots
-                .get(&exec_output.slot)
-                .map(|opt_b| opt_b.as_ref().map(|(b_id, _b)| *b_id));
-            if found_block_id == Some(exec_output.block_id) {
+            let found_block_id = active_slots.get(&exec_output.slot);
+            if found_block_id == Some(&exec_output.block_id) {
                 // the slot number and block ID still match. Continue scanning
                 continue;
             }
@@ -328,7 +326,11 @@ impl ExecutionState {
     ///
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
-    pub fn execute_slot(&self, slot: Slot, opt_block: Option<(BlockId, Block)>) -> ExecutionOutput {
+    pub fn execute_slot(
+        &self,
+        slot: Slot,
+        opt_block: Option<(BlockId, &Block)>,
+    ) -> ExecutionOutput {
         // get optional block ID and creator address
         let (opt_block_id, opt_block_creator_addr) = opt_block
             .as_ref()
