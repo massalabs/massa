@@ -49,7 +49,7 @@ impl BootstrapClientBinder {
             StdRng::from_entropy().fill_bytes(&mut random_bytes);
             self.duplex.write_all(&random_bytes).await?;
             let rand_hash = Hash::compute_from(&random_bytes);
-            self.duplex.write_all(&rand_hash.to_bytes()).await?;
+            self.duplex.write_all(rand_hash.to_bytes()).await?;
             rand_hash
         };
 

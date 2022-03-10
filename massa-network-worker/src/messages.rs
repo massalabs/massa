@@ -104,7 +104,7 @@ impl SerializeCompact for Message {
                 })?;
                 res.extend(list_len.to_varint_bytes());
                 for hash in list {
-                    res.extend(&hash.to_bytes());
+                    res.extend(hash.to_bytes());
                 }
             }
             Message::AskPeerList => {
@@ -119,7 +119,7 @@ impl SerializeCompact for Message {
             }
             Message::BlockNotFound(hash) => {
                 res.extend(u32::from(MessageTypeId::BlockNotFound).to_varint_bytes());
-                res.extend(&hash.to_bytes());
+                res.extend(hash.to_bytes());
             }
             Message::Operations(operations) => {
                 res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());

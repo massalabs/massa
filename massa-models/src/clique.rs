@@ -53,7 +53,7 @@ impl SerializeCompact for Clique {
         })?;
         res.extend(&block_ids_count.to_varint_bytes());
         for b_id in self.block_ids.iter() {
-            res.extend(&b_id.to_bytes());
+            res.extend(b_id.to_bytes());
         }
 
         // fitness

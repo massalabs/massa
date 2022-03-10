@@ -63,7 +63,7 @@ impl FromStr for EndorsementId {
 }
 
 impl EndorsementId {
-    pub fn to_bytes(&self) -> [u8; ENDORSEMENT_ID_SIZE_BYTES] {
+    pub fn to_bytes(&self) -> &[u8; ENDORSEMENT_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
@@ -132,7 +132,7 @@ impl SerializeCompact for Endorsement {
         res.extend(self.index.to_varint_bytes());
 
         // id of endorsed block
-        res.extend(&self.endorsed_block.to_bytes());
+        res.extend(self.endorsed_block.to_bytes());
 
         Ok(res)
     }

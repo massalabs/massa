@@ -115,7 +115,7 @@ impl SerializeCompact for ExportActiveBlock {
             res.push(1);
         }
         for (hash, period) in self.parents.iter() {
-            res.extend(&hash.to_bytes());
+            res.extend(hash.to_bytes());
             res.extend(period.to_varint_bytes());
         }
 
@@ -133,7 +133,7 @@ impl SerializeCompact for ExportActiveBlock {
             })?;
             res.extend(map_count.to_varint_bytes());
             for (hash, period) in map {
-                res.extend(&hash.to_bytes());
+                res.extend(hash.to_bytes());
                 res.extend(period.to_varint_bytes());
             }
         }
@@ -144,7 +144,7 @@ impl SerializeCompact for ExportActiveBlock {
         })?;
         res.extend(dependencies_count.to_varint_bytes());
         for dep in self.dependencies.iter() {
-            res.extend(&dep.to_bytes());
+            res.extend(dep.to_bytes());
         }
 
         // block_ledger_change
@@ -161,7 +161,7 @@ impl SerializeCompact for ExportActiveBlock {
                 })?;
         res.extend(block_ledger_change_count.to_varint_bytes());
         for (addr, change) in self.block_ledger_changes.0.iter() {
-            res.extend(&addr.to_bytes());
+            res.extend(addr.to_bytes());
             res.extend(change.to_bytes_compact()?);
         }
 

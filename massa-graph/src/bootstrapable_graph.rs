@@ -45,19 +45,19 @@ impl SerializeCompact for BootstrapableGraph {
         }
         res.extend(blocks_count.to_varint_bytes());
         for (hash, block) in self.active_blocks.iter() {
-            res.extend(&hash.to_bytes());
+            res.extend(hash.to_bytes());
             res.extend(block.to_bytes_compact()?);
         }
 
         // best_parents
         for (parent_h, parent_period) in self.best_parents.iter() {
-            res.extend(&parent_h.to_bytes());
+            res.extend(parent_h.to_bytes());
             res.extend(&parent_period.to_varint_bytes());
         }
 
         // latest_final_blocks_periods
         for (hash, period) in self.latest_final_blocks_periods.iter() {
-            res.extend(&hash.to_bytes());
+            res.extend(hash.to_bytes());
             res.extend(period.to_varint_bytes());
         }
 
@@ -67,7 +67,7 @@ impl SerializeCompact for BootstrapableGraph {
         })?;
         res.extend(gi_head_count.to_varint_bytes());
         for (gihash, set) in self.gi_head.iter() {
-            res.extend(&gihash.to_bytes());
+            res.extend(gihash.to_bytes());
             let set_count: u32 = set.len().try_into().map_err(|err| {
                 ModelsError::SerializeError(format!(
                     "too many entry in gi_head set in BootstrapableGraph: {}",
@@ -76,7 +76,7 @@ impl SerializeCompact for BootstrapableGraph {
             })?;
             res.extend(set_count.to_varint_bytes());
             for hash in set {
-                res.extend(&hash.to_bytes());
+                res.extend(hash.to_bytes());
             }
         }
 

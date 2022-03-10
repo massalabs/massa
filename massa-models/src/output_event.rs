@@ -81,7 +81,7 @@ impl SCOutputEventId {
     /// # let res_event = SCOutputEventId::from_bytes(&bytes).unwrap();
     /// # assert_eq!(event, res_event);
     /// ```
-    pub fn to_bytes(&self) -> [u8; EVENT_ID_SIZE_BYTES] {
+    pub fn to_bytes(&self) -> &[u8; EVENT_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 

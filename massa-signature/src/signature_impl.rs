@@ -762,7 +762,7 @@ pub fn derive_public_key(private_key: &PrivateKey) -> PublicKey {
 /// let signature = sign(&data, &private_key).unwrap();
 /// ```
 pub fn sign(hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaSignatureError> {
-    let message = Message::from_slice(&hash.to_bytes())?;
+    let message = Message::from_slice(hash.to_bytes())?;
     Ok(Signature(SECP256K1.sign_schnorr(&message, &private_key.0)))
 }
 
@@ -785,7 +785,7 @@ pub fn verify_signature(
     signature: &Signature,
     public_key: &PublicKey,
 ) -> Result<(), MassaSignatureError> {
-    let message = Message::from_slice(&hash.to_bytes())?;
+    let message = Message::from_slice(hash.to_bytes())?;
     Ok(SECP256K1.verify_schnorr(&signature.0, &message, &public_key.0)?)
 }
 

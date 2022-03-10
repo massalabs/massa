@@ -76,7 +76,7 @@ impl Address {
     /// let res_addr = Address::from_bytes(&bytes).unwrap();
     /// assert_eq!(address, res_addr);
     /// ```
-    pub fn to_bytes(&self) -> [u8; ADDRESS_SIZE_BYTES] {
+    pub fn to_bytes(&self) -> &[u8; ADDRESS_SIZE_BYTES] {
         self.0.to_bytes()
     }
 

@@ -64,10 +64,8 @@ impl Hash {
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized = hash.to_bytes();
     /// ```
-    pub fn to_bytes(&self) -> [u8; HASH_SIZE_BYTES] {
-        // note: this should return &[u8; HASH_SIZE_BYTES]
-        // leaving this return type for now because it has many occurences in the code
-        *self.0.as_bytes()
+    pub fn to_bytes(&self) -> &[u8; HASH_SIZE_BYTES] {
+        self.0.as_bytes()
     }
 
     /// Convert into bytes.
@@ -140,7 +138,7 @@ impl ::serde::Serialize for Hash {
         if s.is_human_readable() {
             s.collect_str(&self.to_bs58_check())
         } else {
-            s.serialize_bytes(&self.to_bytes())
+            s.serialize_bytes(self.to_bytes())
         }
     }
 }
@@ -250,6 +248,6 @@ mod tests {
             100, 55, 179, 172, 56, 70, 81, 51, 255, 182, 59, 117, 39, 58, 141, 181, 72, 197, 88,
             70, 93, 121, 219, 3, 253, 53, 156, 108, 213, 189, 157, 133,
         ];
-        assert_eq!(hash.to_bytes(), hash_ref);
+        assert_eq!(hash.into_bytes(), hash_ref);
     }
 }

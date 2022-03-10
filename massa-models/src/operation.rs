@@ -81,7 +81,7 @@ impl Id for OperationId {
 }
 
 impl OperationId {
-    pub fn to_bytes(&self) -> [u8; OPERATION_ID_SIZE_BYTES] {
+    pub fn to_bytes(&self) -> &[u8; OPERATION_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
@@ -231,7 +231,7 @@ impl SerializeCompact for OperationType {
                 res.extend(u32::from(OperationTypeId::Transaction).to_varint_bytes());
 
                 // recipient_address
-                res.extend(&recipient_address.to_bytes());
+                res.extend(recipient_address.to_bytes());
 
                 // amount
                 res.extend(&amount.to_bytes_compact()?);

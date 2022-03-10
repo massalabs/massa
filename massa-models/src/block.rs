@@ -72,7 +72,7 @@ impl FromStr for BlockId {
 }
 
 impl BlockId {
-    pub fn to_bytes(&self) -> [u8; BLOCK_ID_SIZE_BYTES] {
+    pub fn to_bytes(&self) -> &[u8; BLOCK_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
@@ -90,7 +90,7 @@ impl BlockId {
     }
 
     pub fn get_first_bit(&self) -> bool {
-        Hash::compute_from(&self.to_bytes()).to_bytes()[0] >> 7 == 1
+        Hash::compute_from(self.to_bytes()).to_bytes()[0] >> 7 == 1
     }
 }
 
@@ -209,7 +209,7 @@ impl Signable<BlockId> for BlockHeader {
         let hash = self.compute_hash()?;
         let mut res = [0u8; SLOT_KEY_SIZE + BLOCK_ID_SIZE_BYTES];
         res[..SLOT_KEY_SIZE].copy_from_slice(&self.slot.to_bytes_key());
-        res[SLOT_KEY_SIZE..].copy_from_slice(&hash.to_bytes());
+        res[SLOT_KEY_SIZE..].copy_from_slice(hash.to_bytes());
         // rehash for safety
         Ok(Hash::compute_from(&res))
     }
@@ -358,11 +358,11 @@ impl SerializeCompact for BlockHeader {
             res.push(1);
         }
         for parent_h in self.parents.iter() {
-            res.extend(&parent_h.0.to_bytes());
+            res.extend(parent_h.0.to_bytes());
         }
 
         // operations merkle root
-        res.extend(&self.operation_merkle_root.to_bytes());
+        res.extend(self.operation_merkle_root.to_bytes());
 
         // endorsements
         let endorsements_count: u32 = self.endorsements.len().try_into().map_err(|err| {
