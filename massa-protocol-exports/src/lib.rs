@@ -15,4 +15,5 @@ pub use protocol_controller::{
 };
 pub use settings::ProtocolSettings;
 
+#[cfg(test)]
 pub mod tests;

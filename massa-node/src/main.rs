@@ -94,6 +94,7 @@ async fn launch() -> (
             Establisher::new(),
             bootstrap_state.compensation_millis,
             bootstrap_state.peers,
+            shared_storage.clone(),
             *VERSION,
         )
         .await
@@ -111,6 +112,7 @@ async fn launch() -> (
         MAX_GAS_PER_BLOCK,
         network_command_sender.clone(),
         network_event_receiver,
+        shared_storage.clone(),
     )
     .await
     .expect("could not start protocol controller");

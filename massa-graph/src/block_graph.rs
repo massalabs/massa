@@ -1094,6 +1094,9 @@ impl BlockGraph {
                 }
             };
             if cur_a_block.is_final {
+                let block = self.storage.retrieve_block(&cur_a_block.block_id).unwrap();
+                let stored_block = block.read();
+
                 // filters out genesis and final blocks
                 // (step 1.1 in pos.md)
                 final_cycle = cur_a_block.slot.get_cycle(self.cfg.periods_per_cycle);
@@ -1147,7 +1150,6 @@ impl BlockGraph {
                     };
                     // (step 4.1 in pos.md)
                     cur_rolls.apply_updates(&applied_updates)?;
-
                     // (step 4.2 in pos.md)
                     if a_block.slot.get_cycle(self.cfg.periods_per_cycle) == target_cycle {
                         // if the block is in the target cycle, accumulate the roll updates
@@ -1198,6 +1200,9 @@ impl BlockGraph {
                         operations.into_iter().map(|op| Some(op)).collect()
                     };
                     for op in ops.iter() {
+                        let block = self.storage.retrieve_block(&b_id).unwrap();
+                        let stored_block = block.read();
+
                         let (idx, _) = active_block.operation_set.get(op).ok_or_else(|| {
                             GraphError::ContainerInconsistency(format!("op {} should be here", op))
                         })?;
@@ -1388,7 +1393,6 @@ impl BlockGraph {
     pub fn incoming_block(
         &mut self,
         block_id: BlockId,
-        block: Block,
         operation_set: Map<OperationId, (usize, u64)>,
         endorsement_ids: Map<EndorsementId, u32>,
         pos: &mut ProofOfStake,
@@ -1398,14 +1402,21 @@ impl BlockGraph {
         if self.genesis_hashes.contains(&block_id) {
             return Ok(());
         }
-        let slot = block.header.content.slot;
-        debug!("received block {} for slot {}", block_id, slot);
-        massa_trace!("consensus.block_graph.incoming_block", {"block_id": block_id, "block": block});
+
+        let slot = {
+            let stored_block = self.storage.retrieve_block(&block_id).unwrap();
+            let stored_block = stored_block.read();
+            let slot = stored_block.block.header.content.slot;
+            debug!("received block {} for slot {}", block_id, slot);
+            massa_trace!("consensus.block_graph.incoming_block", {"block_id": block_id, "block": stored_block.block});
+            slot
+        };
+
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
         match self.block_statuses.entry(block_id) {
             // if absent => add as Incoming, call rec_ack on it
             hash_map::Entry::Vacant(vac) => {
-                to_ack.insert((block.header.content.slot, block_id));
+                to_ack.insert((slot, block_id));
                 vac.insert(BlockStatus::Incoming(HeaderOrBlock::Block(
                     block_id,
                     slot,
@@ -1434,7 +1445,7 @@ impl BlockGraph {
                     // promote to full block and satisfy self-dependency
                     if unsatisfied_dependencies.remove(&block_id) {
                         // a dependency was satisfied: process
-                        to_ack.insert((block.header.content.slot, block_id));
+                        to_ack.insert((slot, block_id));
                     }
                     *header_or_block =
                         HeaderOrBlock::Block(block_id, slot, operation_set, endorsement_ids);
