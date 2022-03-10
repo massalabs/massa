@@ -12,10 +12,10 @@ const PRIVATE_KEY_STRING_PREFIX: &str = "PRI";
 const PUBLIC_KEY_STRING_PREFIX: &str = "PUB";
 const SIGNATURE_STRING_PREFIX: &str = "SIG";
 
-/// Private Key used to sign messages
+/// Private Key used to sign messages.
 /// Generated using SignatureEngine.
-/// Schnorr signatures require a KeyPair to be signed
-/// The KeyPair is generated when deserializing a private key
+/// Schnorr signatures require a [KeyPair](secp256k1::KeyPair) to be signed.
+/// The [KeyPair](secp256k1::KeyPair) is generated when deserializing a private key.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PrivateKey(secp256k1::KeyPair);
 
