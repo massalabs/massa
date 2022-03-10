@@ -641,6 +641,15 @@ pub async fn consensus_pool_test<F, V>(
     >,
 {
     let storage: Storage = Default::default();
+    if let Some(ref graph) = boot_graph {
+        for (block_id, export_block) in &graph.active_blocks {
+            let serialized_block = export_block
+                .block
+                .to_bytes_compact()
+                .expect("Fail to serialize block");
+            storage.store_block(*block_id, export_block.block.clone(), serialized_block);
+        }
+    }
     // mock protocol & pool
     let (protocol_controller, protocol_command_sender, protocol_event_receiver) =
         MockProtocolController::new(storage.clone());
