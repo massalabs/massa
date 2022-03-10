@@ -7,14 +7,13 @@ use crate::{
 };
 use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
+use massa_models::signed::{Signable, Signed};
 use massa_models::{
-    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, SerializeCompact, Slot,
+    Address, Amount, Block, BlockHeader, BlockId, SignedEndorsement, SignedOperation, Slot,
 };
-use massa_models::{Endorsement, EndorsementContent, Operation, OperationContent, OperationType};
+use massa_models::{Endorsement, Operation, OperationType};
 use massa_network::NetworkCommand;
-use massa_signature::{
-    derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey,
-};
+use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
 use std::collections::HashMap;
 use tokio::time::sleep;
@@ -49,9 +48,8 @@ pub async fn create_and_connect_nodes(
 /// without paying attention to consensus related things
 /// like slot, parents, and merkle root.
 pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
-    let (_, header) = BlockHeader::new_signed(
-        private_key,
-        BlockHeaderContent {
+    let (_, header) = Signed::new_signed(
+        BlockHeader {
             creator: *public_key,
             slot: Slot::new(1, 0),
             parents: vec![
@@ -61,6 +59,7 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
         },
+        private_key,
     )
     .unwrap();
 
@@ -74,16 +73,15 @@ pub fn create_block_with_operations(
     private_key: &PrivateKey,
     public_key: &PublicKey,
     slot: Slot,
-    operations: Vec<Operation>,
+    operations: Vec<SignedOperation>,
 ) -> Block {
     let operation_merkle_root = Hash::compute_from(
         &operations.iter().fold(Vec::new(), |acc, v| {
-            [acc, v.get_operation_id().unwrap().to_bytes().to_vec()].concat()
+            [acc, v.content.compute_id().unwrap().to_bytes().to_vec()].concat()
         })[..],
     );
-    let (_, header) = BlockHeader::new_signed(
-        private_key,
-        BlockHeaderContent {
+    let (_, header) = Signed::new_signed(
+        BlockHeader {
             creator: *public_key,
             slot,
             parents: vec![
@@ -93,6 +91,7 @@ pub fn create_block_with_operations(
             operation_merkle_root,
             endorsements: Vec::new(),
         },
+        private_key,
     )
     .unwrap();
 
@@ -103,11 +102,10 @@ pub fn create_block_with_endorsements(
     private_key: &PrivateKey,
     public_key: &PublicKey,
     slot: Slot,
-    endorsements: Vec<Endorsement>,
+    endorsements: Vec<SignedEndorsement>,
 ) -> Block {
-    let (_, header) = BlockHeader::new_signed(
-        private_key,
-        BlockHeaderContent {
+    let (_, header) = Signed::new_signed(
+        BlockHeader {
             creator: *public_key,
             slot,
             parents: vec![
@@ -117,6 +115,7 @@ pub fn create_block_with_endorsements(
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements,
         },
+        private_key,
     )
     .unwrap();
 
@@ -133,7 +132,7 @@ pub async fn send_and_propagate_block(
     source_node_id: NodeId,
     protocol_event_receiver: &mut ProtocolEventReceiver,
 ) {
-    let expected_hash = block.header.compute_block_id().unwrap();
+    let expected_hash = block.header.content.compute_id().unwrap();
 
     // Send block to protocol.
     network_controller.send_block(source_node_id, block).await;
@@ -161,26 +160,24 @@ pub async fn send_and_propagate_block(
 
 /// Creates an endorsement for use in protocol tests,
 /// without paying attention to consensus related things.
-pub fn create_endorsement() -> Endorsement {
+pub fn create_endorsement() -> SignedEndorsement {
     let sender_priv = generate_random_private_key();
     let sender_public_key = derive_public_key(&sender_priv);
 
-    let content = EndorsementContent {
+    let content = Endorsement {
         sender_public_key,
         slot: Slot::new(10, 1),
         index: 0,
         endorsed_block: BlockId(Hash::compute_from(&[])),
     };
-    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-    let signature = sign(&hash, &sender_priv).unwrap();
-    Endorsement { content, signature }
+    Signed::new_signed(content, &sender_priv).unwrap().1
 }
 
 // Create an operation, from a specific sender, and with a specific expire period.
 pub fn create_operation_with_expire_period(
     sender_priv: &PrivateKey,
     expire_period: u64,
-) -> Operation {
+) -> SignedOperation {
     let sender_pub = derive_public_key(sender_priv);
 
     let recv_priv = generate_random_private_key();
@@ -190,16 +187,13 @@ pub fn create_operation_with_expire_period(
         recipient_address: Address::from_public_key(&recv_pub),
         amount: Amount::default(),
     };
-    let content = OperationContent {
+    let content = Operation {
         fee: Amount::default(),
         op,
         sender_public_key: sender_pub,
         expire_period,
     };
-    let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-    let signature = sign(&hash, sender_priv).unwrap();
-
-    Operation { content, signature }
+    Signed::new_signed(content, sender_priv).unwrap().1
 }
 
 lazy_static::lazy_static! {

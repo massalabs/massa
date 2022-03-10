@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::SETTINGS;
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcError, RpcResult, TypedClient};
 use massa_models::api::{
@@ -11,7 +10,7 @@ use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::prehash::{Map, Set};
-use massa_models::{Address, BlockId, EndorsementId, Operation, OperationId};
+use massa_models::{Address, BlockId, EndorsementId, OperationId, SignedOperation};
 use massa_signature::PrivateKey;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -22,7 +21,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub(crate) async fn new(ip: IpAddr, public_port: u16, private_port: u16) -> Client {
+    pub async fn new(ip: IpAddr, public_port: u16, private_port: u16) -> Client {
         let public_socket_addr = SocketAddr::new(ip, public_port);
         let private_socket_addr = SocketAddr::new(ip, private_port);
         let public_url = format!("http://{}", public_socket_addr);
@@ -34,18 +33,24 @@ impl Client {
     }
 }
 
-pub struct RpcClient(TypedClient);
+pub struct RpcClient {
+    client: TypedClient,
+    timeout: u64,
+}
 
 /// This is required by `jsonrpc_core_client::transports::http::connect`
 impl From<RpcChannel> for RpcClient {
     fn from(channel: RpcChannel) -> Self {
-        RpcClient(channel.into())
+        RpcClient {
+            client: channel.into(),
+            timeout: 10000,
+        }
     }
 }
 
 impl RpcClient {
     /// Default constructor
-    pub(crate) async fn from_url(url: &str) -> RpcClient {
+    pub async fn from_url(url: &str) -> RpcClient {
         match http::connect::<RpcClient>(url).await {
             Ok(client) => client,
             Err(_) => panic!("unable to connect to Node."),
@@ -59,61 +64,60 @@ impl RpcClient {
         returns: &str,
         args: T,
     ) -> RpcResult<R> {
-        let time = SETTINGS.timeout.to_duration();
-        tokio::time::timeout(time, self.0.call_method(method, returns, args))
-            .await
-            .map_err(|e| RpcError::Client(format!("timeout during {}: {}", method, e)))?
+        tokio::time::timeout(
+            tokio::time::Duration::from_millis(self.timeout),
+            self.client.call_method(method, returns, args),
+        )
+        .await
+        .map_err(|e| RpcError::Client(format!("timeout during {}: {}", method, e)))?
     }
 
     /// Gracefully stop the node.
-    pub(crate) async fn stop_node(&self) -> RpcResult<()> {
+    pub async fn stop_node(&self) -> RpcResult<()> {
         self.call_method("stop_node", "()", ()).await
     }
 
     /// Sign message with node's key.
     /// Returns the public key that signed the message and the signature.
-    pub(crate) async fn node_sign_message(&self, message: Vec<u8>) -> RpcResult<PubkeySig> {
+    pub async fn node_sign_message(&self, message: Vec<u8>) -> RpcResult<PubkeySig> {
         self.call_method("node_sign_message", "PubkeySig", vec![message])
             .await
     }
 
     /// Add a vec of new private keys for the node to use to stake.
     /// No confirmation to expect.
-    pub(crate) async fn add_staking_private_keys(
-        &self,
-        private_keys: Vec<PrivateKey>,
-    ) -> RpcResult<()> {
+    pub async fn add_staking_private_keys(&self, private_keys: Vec<PrivateKey>) -> RpcResult<()> {
         self.call_method("add_staking_private_keys", "()", vec![private_keys])
             .await
     }
 
     /// Remove a vec of addresses used to stake.
     /// No confirmation to expect.
-    pub(crate) async fn remove_staking_addresses(&self, addresses: Vec<Address>) -> RpcResult<()> {
+    pub async fn remove_staking_addresses(&self, addresses: Vec<Address>) -> RpcResult<()> {
         self.call_method("remove_staking_addresses", "()", vec![addresses])
             .await
     }
 
     /// Return hashset of staking addresses.
-    pub(crate) async fn get_staking_addresses(&self) -> RpcResult<Set<Address>> {
+    pub async fn get_staking_addresses(&self) -> RpcResult<Set<Address>> {
         self.call_method("get_staking_addresses", "Set<Address>", ())
             .await
     }
 
     /// Bans given node id
     /// No confirmation to expect.
-    pub(crate) async fn ban(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    pub async fn ban(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.call_method("ban", "()", vec![ips]).await
     }
 
     /// Unbans given ip addr
     /// No confirmation to expect.
-    pub(crate) async fn unban(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+    pub async fn unban(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.call_method("unban", "()", vec![ips]).await
     }
 
     /// execute read only bytecode
-    pub(crate) async fn execute_read_only_request(
+    pub async fn execute_read_only_request(
         &self,
         read_only_execution: ReadOnlyExecution,
     ) -> RpcResult<ExecuteReadOnlyResponse> {
@@ -134,7 +138,7 @@ impl RpcClient {
     // Explorer (aggregated stats)
 
     /// summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count
-    pub(crate) async fn get_status(&self) -> RpcResult<NodeStatus> {
+    pub async fn get_status(&self) -> RpcResult<NodeStatus> {
         self.call_method("get_status", "NodeStatus", ()).await
     }
 
@@ -151,7 +155,7 @@ impl RpcClient {
     }
 
     /// Returns operations information associated to a given list of operations' IDs.
-    pub(crate) async fn get_operations(
+    pub async fn get_operations(
         &self,
         operation_ids: Vec<OperationId>,
     ) -> RpcResult<Vec<OperationInfo>> {
@@ -159,7 +163,7 @@ impl RpcClient {
             .await
     }
 
-    pub(crate) async fn get_endorsements(
+    pub async fn get_endorsements(
         &self,
         endorsement_ids: Vec<EndorsementId>,
     ) -> RpcResult<Vec<EndorsementInfo>> {
@@ -172,7 +176,7 @@ impl RpcClient {
     }
 
     /// Get information on a block given its BlockId
-    pub(crate) async fn get_block(&self, block_id: BlockId) -> RpcResult<BlockInfo> {
+    pub async fn get_block(&self, block_id: BlockId) -> RpcResult<BlockInfo> {
         self.call_method("get_block", "BlockInfo", vec![block_id])
             .await
     }
@@ -187,10 +191,7 @@ impl RpcClient {
             .await
     }
 
-    pub(crate) async fn get_addresses(
-        &self,
-        addresses: Vec<Address>,
-    ) -> RpcResult<Vec<AddressInfo>> {
+    pub async fn get_addresses(&self, addresses: Vec<Address>) -> RpcResult<Vec<AddressInfo>> {
         self.call_method("get_addresses", "Vec<AddressInfo>", vec![addresses])
             .await
     }
@@ -198,9 +199,9 @@ impl RpcClient {
     // User (interaction with the node)
 
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
-    pub(crate) async fn send_operations(
+    pub async fn send_operations(
         &self,
-        operations: Vec<Operation>,
+        operations: Vec<SignedOperation>,
     ) -> RpcResult<Vec<OperationId>> {
         self.call_method("send_operations", "Vec<OperationId>", vec![operations])
             .await

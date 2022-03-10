@@ -10,11 +10,11 @@ use massa_models::{
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     prehash::{Map, Set},
-    Address, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact, SerializeCompact,
-    Slot,
+    signed::Signed,
+    Address, Block, BlockHeader, BlockId, DeserializeCompact, SerializeCompact, Slot,
 };
-use massa_models::{Amount, Endorsement, EndorsementContent};
-use massa_signature::{PublicKey, Signature};
+use massa_models::{Amount, Endorsement};
+use massa_signature::{generate_random_private_key, PublicKey};
 use serial_test::serial;
 use std::str::FromStr;
 use tempfile::NamedTempFile;
@@ -22,31 +22,40 @@ use tempfile::NamedTempFile;
 // the data input to create the public keys was generated using the same crate (secp256k1)
 // a test using this function is a regression test not an implementation test
 fn get_export_active_test_block() -> ExportActiveBlock {
+    let pk = generate_random_private_key();
     let block = Block {
-            header: BlockHeader {
-                content: BlockHeaderContent{
-                    creator: PublicKey::from_bs58_check("2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA").unwrap(),
-                    operation_merkle_root: Hash::compute_from(&Vec::new()),
-                    parents: vec![
-                        get_dummy_block_id("parent1"),
-                        get_dummy_block_id("parent2"),
-                    ],
-                    slot: Slot::new(1, 0),
-                    endorsements: vec![ Endorsement{content: EndorsementContent{
-                        sender_public_key: PublicKey::from_bs58_check("2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA").unwrap(),
-                        endorsed_block: get_dummy_block_id("parent1"),
-                        index: 0,
-                        slot: Slot::new(1, 0),
-                    }, signature: Signature::from_bs58_check(
-                        "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
-                    ).unwrap() }],
-                },
-                signature: Signature::from_bs58_check(
-                    "5f4E3opXPWc3A1gvRVV7DJufvabDfaLkT1GMterpJXqRZ5B7bxPe5LoNzGDQp9LkphQuChBN1R5yEvVJqanbjx7mgLEae"
-                ).unwrap()
+        header: Signed::new_signed(
+            BlockHeader {
+                creator: PublicKey::from_bs58_check(
+                    "2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA",
+                )
+                .unwrap(),
+                operation_merkle_root: Hash::compute_from(&Vec::new()),
+                parents: vec![get_dummy_block_id("parent1"), get_dummy_block_id("parent2")],
+                slot: Slot::new(1, 0),
+                endorsements: vec![
+                    Signed::new_signed(
+                        Endorsement {
+                            sender_public_key: PublicKey::from_bs58_check(
+                                "2R5DZjLSjfDTo34tAd77k1wbjD7Wz8nTvg2bwU2TrCCGK3ikrA",
+                            )
+                            .unwrap(),
+                            endorsed_block: get_dummy_block_id("parent1"),
+                            index: 0,
+                            slot: Slot::new(1, 0),
+                        },
+                        &pk,
+                    )
+                    .unwrap()
+                    .1,
+                ],
             },
-            operations: vec![]
-        };
+            &pk,
+        )
+        .unwrap()
+        .1,
+        operations: vec![],
+    };
 
     ExportActiveBlock {
         parents: vec![
