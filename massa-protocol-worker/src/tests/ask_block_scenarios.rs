@@ -55,7 +55,7 @@ async fn test_without_a_priori() {
             assert_hash_asked_to_node(hash_1, node_b.id, &mut network_controller).await;
 
             // node B replied with the block
-            network_controller.send_block(node_b.id, block).await;
+            network_controller.send_block(node_b.id, hash_1).await;
 
             // 7. Make sure protocol did not send additional ask for block commands.
             let ask_for_block_cmd_filter = |cmd| match cmd {
@@ -135,7 +135,7 @@ async fn test_someone_knows_it() {
             assert_hash_asked_to_node(hash_1, node_c.id, &mut network_controller).await;
 
             // node C replied with the block
-            network_controller.send_block(node_c.id, block).await;
+            network_controller.send_block(node_c.id, hash_1).await;
 
             // 7. Make sure protocol did not send additional ask for block commands.
             let ask_for_block_cmd_filter = |cmd| match cmd {

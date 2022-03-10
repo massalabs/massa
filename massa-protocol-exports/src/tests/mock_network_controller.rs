@@ -69,11 +69,11 @@ impl MockNetworkController {
             .expect("Couldn't send header to protocol.");
     }
 
-    pub async fn send_block(&mut self, source_node_id: NodeId, block: Block) {
+    pub async fn send_block(&mut self, source_node_id: NodeId, block_id: BlockId) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedBlock {
                 node: source_node_id,
-                block: block,
+                block_id,
             })
             .await
             .expect("Couldn't send block to protocol.");

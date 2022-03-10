@@ -191,10 +191,12 @@ pub async fn test_get_ledger_at_parents() {
         production_events: vec![],
     };
     let block: Block = {
-        let block_locked = storage.retrieve_block(&active_block.block).expect(&format!(
-            "Failed to retrieve block (id: {})",
-            active_block.block
-        ));
+        let block_locked = storage
+            .retrieve_block(&active_block.block_id)
+            .expect(&format!(
+                "Failed to retrieve block (id: {})",
+                active_block.block_id
+            ));
         let stored_block = block_locked.read();
         stored_block.block.clone()
     };

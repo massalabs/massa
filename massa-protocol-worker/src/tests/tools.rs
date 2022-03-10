@@ -40,6 +40,7 @@ where
         10,
         network_command_sender,
         network_event_receiver,
+        storage,
     )
     .await
     .expect("could not start protocol controller");

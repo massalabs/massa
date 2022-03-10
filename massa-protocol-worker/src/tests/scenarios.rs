@@ -162,8 +162,8 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             }
 
             // 4. Simulate consensus sending block.
-            let mut results = Map::default();
-            results.insert(expected_hash, Some((block, None, None)));
+            let mut results: BlocksResults = Map::default();
+            results.insert(expected_hash, Some((None, None)));
             protocol_command_sender
                 .send_get_blocks_results(results)
                 .await
@@ -178,14 +178,8 @@ async fn test_protocol_sends_blocks_when_asked_for() {
                     .wait_command(1000.into(), send_block_or_header_cmd_filter)
                     .await
                 {
-                    Some(NetworkCommand::SendBlock { node, block }) => {
-                        assert_eq!(
-                            block
-                                .header
-                                .compute_block_id()
-                                .expect("Fail to get block id"),
-                            expected_hash
-                        );
+                    Some(NetworkCommand::SendBlock { node, block_id }) => {
+                        assert_eq!(block_id, expected_hash);
                         assert!(expecting_block.remove(&node));
                     }
                     Some(NetworkCommand::SendBlockHeader { .. }) => {
@@ -300,7 +294,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                 .map(|endo| endo.content.compute_id().unwrap())
                 .collect();
             protocol_command_sender
-                .integrated_block(ref_hash, ref_block, op_ids, endo_ids)
+                .integrated_block(ref_hash, op_ids, endo_ids)
                 .await
                 .expect("Failed to ask for block.");
 
@@ -324,22 +318,13 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                     })
                     .await
                 {
-                    Some(NetworkCommand::SendBlockHeader { node, header }) => {
+                    Some(NetworkCommand::SendBlockHeader { node, block_id }) => {
                         assert!(expected_headers.remove(&node));
-                        assert_eq!(
-                            header.compute_block_id().expect("Fail to get block id"),
-                            ref_hash
-                        );
+                        assert_eq!(block_id, ref_hash);
                     }
-                    Some(NetworkCommand::SendBlock { node, block }) => {
+                    Some(NetworkCommand::SendBlock { node, block_id }) => {
                         assert!(expected_full_blocks.remove(&node));
-                        assert_eq!(
-                            block
-                                .header
-                                .compute_block_id()
-                                .expect("Fail to get block id"),
-                            ref_hash
-                        );
+                        assert_eq!(block_id, ref_hash);
                     }
                     _ => panic!("Unexpected or no network command."),
                 };
@@ -383,7 +368,9 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
             let expected_hash = block.header.content.compute_id().unwrap();
 
             // 3. Send block to protocol.
-            network_controller.send_block(creator_node.id, block).await;
+            network_controller
+                .send_block(creator_node.id, expected_hash)
+                .await;
 
             // Check protocol sends block to consensus.
             let hash =
@@ -397,7 +384,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
                 )
                 .await
                 {
-                    Some(ProtocolEvent::ReceivedBlock { block, .. }) => block,
+                    Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block,
                     _ => panic!("Unexpected or no protocol event."),
                 };
             assert_eq!(
