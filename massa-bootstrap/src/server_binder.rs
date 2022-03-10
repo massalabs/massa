@@ -53,7 +53,7 @@ impl BootstrapServerBinder {
 
         // send signature
         let sig = sign(&rand_hash, &self.local_privkey)?;
-        self.duplex.write_all(&sig.to_bytes()).await?;
+        self.duplex.write_all(sig.to_bytes()).await?;
 
         // save prev sig
         self.prev_sig = Some(sig);
@@ -73,13 +73,13 @@ impl BootstrapServerBinder {
         let sig = {
             let mut signed_data = vec![0u8; SIGNATURE_SIZE_BYTES + (msg_len as usize)];
             signed_data[..SIGNATURE_SIZE_BYTES]
-                .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
+                .clone_from_slice(self.prev_sig.unwrap().to_bytes());
             signed_data[SIGNATURE_SIZE_BYTES..].clone_from_slice(&msg_bytes);
             sign(&Hash::compute_from(&signed_data), &self.local_privkey)?
         };
 
         // send signature
-        self.duplex.write_all(&sig.to_bytes()).await?;
+        self.duplex.write_all(sig.to_bytes()).await?;
 
         // send message length
         {

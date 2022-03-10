@@ -85,7 +85,7 @@ impl SerializeCompact for Message {
             }
             Message::HandshakeReply { signature } => {
                 res.extend(u32::from(MessageTypeId::HandshakeReply).to_varint_bytes());
-                res.extend(&signature.to_bytes());
+                res.extend(signature.to_bytes());
             }
             Message::Block(block) => {
                 res.extend(u32::from(MessageTypeId::Block).to_varint_bytes());

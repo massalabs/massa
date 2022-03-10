@@ -555,8 +555,8 @@ impl Signature {
     ///
     /// let serialized = signature.to_bytes();
     /// ```
-    pub fn to_bytes(&self) -> [u8; SIGNATURE_SIZE_BYTES] {
-        *self.0.as_ref()
+    pub fn to_bytes(&self) -> &[u8; SIGNATURE_SIZE_BYTES] {
+        self.0.as_ref()
     }
 
     /// Serialize a Signature into bytes.
@@ -657,7 +657,7 @@ impl ::serde::Serialize for Signature {
         if s.is_human_readable() {
             s.collect_str(&self.to_bs58_check())
         } else {
-            s.serialize_bytes(&self.to_bytes())
+            s.serialize_bytes(self.to_bytes())
         }
     }
 }

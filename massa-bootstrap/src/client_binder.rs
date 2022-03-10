@@ -88,7 +88,7 @@ impl BootstrapClientBinder {
         let message = {
             let mut sig_msg_bytes = vec![0u8; SIGNATURE_SIZE_BYTES + (msg_len as usize)];
             sig_msg_bytes[..SIGNATURE_SIZE_BYTES]
-                .clone_from_slice(&self.prev_sig.unwrap().to_bytes());
+                .clone_from_slice(self.prev_sig.unwrap().to_bytes());
             self.duplex
                 .read_exact(&mut sig_msg_bytes[SIGNATURE_SIZE_BYTES..])
                 .await?;
