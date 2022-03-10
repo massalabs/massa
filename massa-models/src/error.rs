@@ -18,6 +18,8 @@ pub enum ModelsError {
     BufferError(String),
     /// massa_hash error: {0}
     MassaHashError(#[from] massa_hash::MassaHashError),
+    /// massa_signature error: {0}
+    MassaSignatureError(#[from] massa_signature::MassaSignatureError),
     /// thread overflow error
     ThreadOverflowError,
     /// period overflow error

@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_hash::hash::Hash;
-use massa_hash::MassaHashError;
+use crate::error::MassaSignatureError;
 use secp256k1::{schnorr, Message, SECP256K1};
 use std::{convert::TryInto, str::FromStr};
 
@@ -30,7 +30,7 @@ impl std::fmt::Display for PrivateKey {
 }
 
 impl FromStr for PrivateKey {
-    type Err = MassaHashError;
+    type Err = MassaSignatureError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if cfg!(feature = "hash-prefix") {
             let v: Vec<_> = s.split('-').collect();
@@ -38,7 +38,7 @@ impl FromStr for PrivateKey {
                 // assume there is no prefix
                 PrivateKey::from_bs58_check(s)
             } else if v[0] != PRIVATE_KEY_STRING_PREFIX {
-                Err(MassaHashError::WrongPrefix(
+                Err(MassaSignatureError::WrongPrefix(
                     PRIVATE_KEY_STRING_PREFIX.to_string(),
                     v[0].to_string(),
                 ))
@@ -106,19 +106,19 @@ impl PrivateKey {
     /// let serialized: String = private_key.to_bs58_check();
     /// let deserialized: PrivateKey = PrivateKey::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check(data: &str) -> Result<PrivateKey, MassaHashError> {
+    pub fn from_bs58_check(data: &str) -> Result<PrivateKey, MassaSignatureError> {
         bs58::decode(data)
             .with_check(None)
             .into_vec()
             .map_err(|err| {
-                MassaHashError::ParsingError(format!(
+                MassaSignatureError::ParsingError(format!(
                     "private key bs58_check parsing error: {}",
                     err
                 ))
             })
             .and_then(|key| {
                 PrivateKey::from_bytes(&key.try_into().map_err(|err| {
-                    MassaHashError::ParsingError(format!(
+                    MassaSignatureError::ParsingError(format!(
                         "private key bs58_check parsing error: {:?}",
                         err
                     ))
@@ -137,11 +137,11 @@ impl PrivateKey {
     /// let serialized = private_key.to_bytes();
     /// let deserialized: PrivateKey = PrivateKey::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; PRIVATE_KEY_SIZE_BYTES]) -> Result<PrivateKey, MassaHashError> {
+    pub fn from_bytes(data: &[u8; PRIVATE_KEY_SIZE_BYTES]) -> Result<PrivateKey, MassaSignatureError> {
         secp256k1::KeyPair::from_seckey_slice(SECP256K1, &data[..])
             .map(PrivateKey)
             .map_err(|err| {
-                MassaHashError::ParsingError(format!("private key bytes parsing error: {}", err))
+                MassaSignatureError::ParsingError(format!("private key bytes parsing error: {}", err))
             })
     }
 }
@@ -258,7 +258,7 @@ impl std::fmt::Display for PublicKey {
 }
 
 impl FromStr for PublicKey {
-    type Err = MassaHashError;
+    type Err = MassaSignatureError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if cfg!(feature = "hash-prefix") {
             let v: Vec<_> = s.split('-').collect();
@@ -266,7 +266,7 @@ impl FromStr for PublicKey {
                 // assume there is no prefix
                 PublicKey::from_bs58_check(s)
             } else if v[0] != PUBLIC_KEY_STRING_PREFIX {
-                Err(MassaHashError::WrongPrefix(
+                Err(MassaSignatureError::WrongPrefix(
                     PUBLIC_KEY_STRING_PREFIX.to_string(),
                     v[0].to_string(),
                 ))
@@ -337,19 +337,19 @@ impl PublicKey {
     /// let serialized: String = public_key.to_bs58_check();
     /// let deserialized: PublicKey = PublicKey::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check(data: &str) -> Result<PublicKey, MassaHashError> {
+    pub fn from_bs58_check(data: &str) -> Result<PublicKey, MassaSignatureError> {
         bs58::decode(data)
             .with_check(None)
             .into_vec()
             .map_err(|err| {
-                MassaHashError::ParsingError(format!(
+                MassaSignatureError::ParsingError(format!(
                     "public key bs58_check parsing error: {}",
                     err
                 ))
             })
             .and_then(|key| {
                 PublicKey::from_bytes(&key.try_into().map_err(|err| {
-                    MassaHashError::ParsingError(format!(
+                    MassaSignatureError::ParsingError(format!(
                         "public key bs58_check parsing error: {:?}",
                         err
                     ))
@@ -369,11 +369,11 @@ impl PublicKey {
     /// let serialized = public_key.into_bytes();
     /// let deserialized: PublicKey = PublicKey::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; PUBLIC_KEY_SIZE_BYTES]) -> Result<PublicKey, MassaHashError> {
+    pub fn from_bytes(data: &[u8; PUBLIC_KEY_SIZE_BYTES]) -> Result<PublicKey, MassaSignatureError> {
         secp256k1::XOnlyPublicKey::from_slice(&data[..])
             .map(PublicKey)
             .map_err(|err| {
-                MassaHashError::ParsingError(format!("public key bytes parsing error: {}", err))
+                MassaSignatureError::ParsingError(format!("public key bytes parsing error: {}", err))
             })
     }
 }
@@ -492,7 +492,7 @@ impl std::fmt::Display for Signature {
 }
 
 impl FromStr for Signature {
-    type Err = MassaHashError;
+    type Err = MassaSignatureError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if cfg!(feature = "hash-prefix") {
             let v: Vec<_> = s.split('-').collect();
@@ -500,7 +500,7 @@ impl FromStr for Signature {
                 // assume there is no prefix
                 Signature::from_bs58_check(s)
             } else if v[0] != SIGNATURE_STRING_PREFIX {
-                Err(MassaHashError::WrongPrefix(
+                Err(MassaSignatureError::WrongPrefix(
                     SIGNATURE_STRING_PREFIX.to_string(),
                     v[0].to_string(),
                 ))
@@ -579,16 +579,16 @@ impl Signature {
     /// let serialized: String = signature.to_bs58_check();
     /// let deserialized: Signature = Signature::from_bs58_check(&serialized).unwrap();
     /// ```
-    pub fn from_bs58_check(data: &str) -> Result<Signature, MassaHashError> {
+    pub fn from_bs58_check(data: &str) -> Result<Signature, MassaSignatureError> {
         bs58::decode(data)
             .with_check(None)
             .into_vec()
             .map_err(|err| {
-                MassaHashError::ParsingError(format!("signature bs58_check parsing error: {}", err))
+                MassaSignatureError::ParsingError(format!("signature bs58_check parsing error: {}", err))
             })
             .and_then(|signature| {
                 Signature::from_bytes(&signature.try_into().map_err(|err| {
-                    MassaHashError::ParsingError(format!(
+                    MassaSignatureError::ParsingError(format!(
                         "signature bs58_check parsing error: {:?}",
                         err
                     ))
@@ -610,11 +610,11 @@ impl Signature {
     /// let serialized = signature.to_bytes();
     /// let deserialized: Signature = Signature::from_bytes(&serialized).unwrap();
     /// ```
-    pub fn from_bytes(data: &[u8; SIGNATURE_SIZE_BYTES]) -> Result<Signature, MassaHashError> {
+    pub fn from_bytes(data: &[u8; SIGNATURE_SIZE_BYTES]) -> Result<Signature, MassaSignatureError> {
         schnorr::Signature::from_slice(&data[..])
             .map(Signature)
             .map_err(|err| {
-                MassaHashError::ParsingError(format!("signature bytes parsing error: {}", err))
+                MassaSignatureError::ParsingError(format!("signature bytes parsing error: {}", err))
             })
     }
 }
@@ -748,7 +748,7 @@ pub fn derive_public_key(private_key: &PrivateKey) -> PublicKey {
 /// let data = Hash::compute_from("Hello World!".as_bytes());
 /// let signature = sign(&data, &private_key).unwrap();
 /// ```
-pub fn sign(hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaHashError> {
+pub fn sign(hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaSignatureError> {
     let message = Message::from_slice(&hash.to_bytes())?;
     Ok(Signature(SECP256K1.sign_schnorr(&message, &private_key.0)))
 }
@@ -771,7 +771,7 @@ pub fn verify_signature(
     hash: &Hash,
     signature: &Signature,
     public_key: &PublicKey,
-) -> Result<(), MassaHashError> {
+) -> Result<(), MassaSignatureError> {
     let message = Message::from_slice(&hash.to_bytes())?;
     Ok(SECP256K1.verify_schnorr(&signature.0, &message, &public_key.0)?)
 }
