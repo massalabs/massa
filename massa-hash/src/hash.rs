@@ -111,7 +111,7 @@ impl Hash {
     /// # use massa_hash::hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized = hash.into_bytes();
-    /// let deserialized: Hash = Hash::from_bytes(&serialized).unwrap();
+    /// let deserialized: Hash = Hash::from_bytes(&serialized);
     /// ```
     pub fn from_bytes(data: &[u8; HASH_SIZE_BYTES]) -> Hash {
         Hash(blake3::Hash::from(*data))
