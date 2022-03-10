@@ -2534,7 +2534,9 @@ impl BlockGraph {
         for thread in involved_threads.into_iter() {
             match self.block_statuses.get(&parents[thread as usize]) {
                 Some(BlockStatus::Active(b)) => {
-                    if b.slot.period < self.latest_final_blocks_periods[thread as usize].1 {
+                    let block = self.storage.retrieve_block(&b.block_id).ok_or(GraphError::MissingBlock)?;
+                    let stored_block = block.read();
+                    if stored_block.block.header.content.slot.period < self.latest_final_blocks_periods[thread as usize].1 {
                         return Err(GraphError::ContainerInconsistency(format!(
                             "asking for operations in thread {}, for which the given parent is older than the latest final block of that thread",
                             thread

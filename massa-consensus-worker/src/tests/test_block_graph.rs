@@ -240,10 +240,8 @@ pub async fn test_get_ledger_at_parents() {
     block_p1t0.header.content.creator = pubkey_a;
     block_p1t0.header.content.slot = Slot::new(1, 0);
 
-    let block_id = block_p1t0
-        .header
-        .compute_block_id()
-        .expect("Fail to calculate block id");
+    let block_id = get_dummy_block_id("active_block_p1t0");
+    active_block_p1t0.block_id = block_id;
     let block_serialized = block_p1t0
         .to_bytes_compact()
         .expect("Fail to serialize block");
@@ -282,10 +280,8 @@ pub async fn test_get_ledger_at_parents() {
     block_p1t1.header.content.creator = pubkey_b;
     block_p1t1.header.content.slot = Slot::new(1, 1);
 
-    let block_id = block_p1t1
-        .header
-        .compute_block_id()
-        .expect("Fail to calculate block id");
+    let block_id = get_dummy_block_id("active_block_p1t1");
+    active_block_p1t1.block_id = block_id;
     let block_serialized = block_p1t1
         .to_bytes_compact()
         .expect("Fail to serialize block");
@@ -316,10 +312,8 @@ pub async fn test_get_ledger_at_parents() {
     block_p2t0.header.content.creator = pubkey_a;
     block_p2t0.header.content.slot = Slot::new(2, 0);
 
-    let block_id = block_p2t0
-        .header
-        .compute_block_id()
-        .expect("Fail to calculate block id");
+    let block_id = get_dummy_block_id("active_block_p2t0");
+    active_block_p2t0.block_id = block_id;
     let block_serialized = block_p2t0
         .to_bytes_compact()
         .expect("Fail to serialize block");
@@ -360,10 +354,8 @@ pub async fn test_get_ledger_at_parents() {
     block_p2t1.header.content.creator = pubkey_b;
     block_p2t1.header.content.slot = Slot::new(2, 1);
 
-    let block_id = block_p2t1
-        .header
-        .compute_block_id()
-        .expect("Fail to calculate block id");
+    let block_id = get_dummy_block_id("active_block_p2t1");
+    active_block_p2t1.block_id = block_id;
     let block_serialized = block_p2t1
         .to_bytes_compact()
         .expect("Fail to serialize block");
@@ -403,10 +395,8 @@ pub async fn test_get_ledger_at_parents() {
     let mut block_p3t0 = block.clone();
     block_p3t0.header.content.creator = pubkey_a;
     block_p3t0.header.content.slot = Slot::new(3, 0);
-    let block_id = block_p3t0
-        .header
-        .compute_block_id()
-        .expect("Fail to calculate block id");
+    let block_id = get_dummy_block_id("active_block_p3t0");
+    active_block_p3t0.block_id = block_id;
     let block_serialized = block_p3t0
         .to_bytes_compact()
         .expect("Fail to serialize block");
@@ -447,10 +437,8 @@ pub async fn test_get_ledger_at_parents() {
     block_p3t1.header.content.creator = pubkey_b;
     block_p3t1.header.content.slot = Slot::new(3, 1);
 
-    let block_id = block_p3t1
-        .header
-        .compute_block_id()
-        .expect("Fail to calculate block id");
+    let block_id = get_dummy_block_id("active_block_p3t1");
+    active_block_p3t1.block_id = block_id;
     let block_serialized = block_p3t1
         .to_bytes_compact()
         .expect("Fail to serialize block");
@@ -483,7 +471,8 @@ pub async fn test_get_ledger_at_parents() {
             ),
             (
                 get_dummy_block_id("active_block_p3t0"),
-                ExportActiveBlock::try_from_active_block(&active_block_p3t0, storage.clone()).unwrap(),
+                ExportActiveBlock::try_from_active_block(&active_block_p3t0, storage.clone())
+                    .unwrap(),
             ),
             (
                 get_dummy_block_id("active_block_p3t1"),

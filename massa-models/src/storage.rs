@@ -4,6 +4,7 @@ use parking_lot::RwLock;
 use std::sync::Arc;
 use tracing::debug;
 
+#[derive(Debug)]
 pub struct StoredBlock {
     pub block: Block,
     pub serialized: Vec<u8>,
@@ -30,10 +31,8 @@ impl Storage {
     }
 
     pub fn retrieve_block(&self, block_id: &BlockId) -> Option<Arc<RwLock<StoredBlock>>> {
-        //debug!("Try retrieve block {} in storage", block_id);
         let blocks = self.blocks.read();
         if let Some(block) = blocks.get(block_id) {
-            //debug!("Successfully retrieved block id :{}", block_id);
             return Some(Arc::clone(block));
         }
         None
