@@ -1579,7 +1579,8 @@ dependencies = [
  "massa_ledger",
  "massa_logging",
  "massa_models",
- "massa_network",
+ "massa_network_exports",
+ "massa_network_worker",
  "massa_pool",
  "massa_protocol_exports",
  "massa_protocol_worker",
@@ -1629,7 +1630,7 @@ dependencies = [
  "massa_graph",
  "massa_hash",
  "massa_models",
- "massa_network",
+ "massa_network_exports",
  "massa_pool",
  "massa_protocol_exports",
  "massa_signature",
@@ -1653,7 +1654,7 @@ dependencies = [
  "massa_ledger",
  "massa_logging",
  "massa_models",
- "massa_network",
+ "massa_network_exports",
  "massa_proof_of_stake_exports",
  "massa_signature",
  "massa_time",
@@ -1880,7 +1881,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa_network"
+name = "massa_network_exports"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "massa_hash",
+ "massa_logging",
+ "massa_models",
+ "massa_signature",
+ "massa_time",
+ "serde 1.0.136",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "massa_network_worker"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
@@ -1889,6 +1908,7 @@ dependencies = [
  "massa_hash",
  "massa_logging",
  "massa_models",
+ "massa_network_exports",
  "massa_signature",
  "massa_time",
  "num_enum",
@@ -1960,7 +1980,7 @@ dependencies = [
  "massa_hash",
  "massa_logging",
  "massa_models",
- "massa_network",
+ "massa_network_exports",
  "massa_signature",
  "massa_time",
  "num_enum",
@@ -1986,7 +2006,7 @@ dependencies = [
  "massa_hash",
  "massa_logging",
  "massa_models",
- "massa_network",
+ "massa_network_exports",
  "massa_protocol_exports",
  "massa_signature",
  "massa_time",

@@ -11,7 +11,7 @@ use massa_models::{
     Address, Block, BlockId, EndorsementId, OperationId, OperationType, SignedEndorsement,
     SignedHeader, SignedOperation,
 };
-use massa_network::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
+use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolError, ProtocolEvent, ProtocolEventReceiver,
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,

@@ -57,10 +57,10 @@ pub struct NetworkSettings {
     pub max_in_connection_overflow: usize,
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::NetworkSettings;
-    use massa_models::constants::*;
+#[cfg(feature = "testing")]
+pub mod tests {
+    use crate::{test_exports::tools::get_temp_private_key_file, NetworkSettings};
+    use massa_models::constants::BASE_NETWORK_CONTROLLER_IP;
     use massa_time::MassaTime;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
@@ -126,9 +126,7 @@ mod tests {
                 peers_file_dump_interval: MassaTime::from(30000),
                 message_timeout: MassaTime::from(5000u64),
                 ask_peer_list_interval: MassaTime::from(50000u64),
-                private_key_file: crate::tests::tools::get_temp_private_key_file()
-                    .path()
-                    .to_path_buf(),
+                private_key_file: get_temp_private_key_file().path().to_path_buf(),
                 max_send_wait: MassaTime::from(100),
                 ban_timeout: MassaTime::from(100_000_000),
                 initial_peers_file: peers_file.to_path_buf(),

@@ -1,12 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::error::{NetworkConnectionErrorType, NetworkError};
-use crate::settings::NetworkSettings;
 use itertools::Itertools;
 use massa_logging::massa_trace;
 use massa_models::constants::MAX_ADVERTISE_LENGTH;
+use massa_network_exports::NetworkConnectionErrorType;
+use massa_network_exports::NetworkError;
+use massa_network_exports::NetworkSettings;
+use massa_network_exports::PeerInfo;
 use massa_time::MassaTime;
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Value;
 use std::collections::{hash_map, HashMap};
@@ -16,47 +17,6 @@ use tokio::sync::watch;
 use tokio::task::JoinHandle;
 use tokio::time::{sleep, Duration};
 use tracing::{trace, warn};
-
-/// All information concerning a peer is here
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
-pub struct PeerInfo {
-    /// Peer ip address.
-    pub ip: IpAddr,
-    /// If peer is banned.
-    pub banned: bool,
-    /// If peer is boostrap, ie peer was in initial peer file
-    pub bootstrap: bool,
-    /// Time in millis when peer was last alive
-    pub last_alive: Option<MassaTime>,
-    /// Time in millis of peer's last failure
-    pub last_failure: Option<MassaTime>,
-    /// Whether peer was promoted through another peer
-    pub advertised: bool,
-
-    /// Current number of active out connection attempts with that peer.
-    /// Isn't dump into peer file.
-    #[serde(default = "usize::default")]
-    pub active_out_connection_attempts: usize,
-    /// Current number of active out connections with that peer.
-    /// Isn't dump into peer file.
-    #[serde(default = "usize::default")]
-    pub active_out_connections: usize,
-    /// Current number of active in connections with that peer.
-    /// Isn't dump into peer file.
-    #[serde(default = "usize::default")]
-    pub active_in_connections: usize,
-}
-
-impl PeerInfo {
-    /// Returns true if there is at least one connection attempt /
-    ///  one active connection in either direction
-    /// with this peer
-    pub(crate) fn is_active(&self) -> bool {
-        self.active_out_connection_attempts > 0
-            || self.active_out_connections > 0
-            || self.active_in_connections > 0
-    }
-}
 
 /// Contains all information about every peers we know about.
 pub struct PeerInfoDatabase {

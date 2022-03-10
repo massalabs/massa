@@ -16,7 +16,7 @@ use massa_models::execution::ExecuteReadOnlyResponse;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
 use massa_models::{Address, BlockId, EndorsementId, OperationId, SignedOperation};
-use massa_network::NetworkCommandSender;
+use massa_network_exports::NetworkCommandSender;
 use massa_signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
 

@@ -62,6 +62,7 @@ pub enum HandshakeErrorType {
     PeerListReceived(Vec<IpAddr>),
 }
 
+#[macro_export]
 macro_rules! throw_handshake_error {
     ($err:ident) => {
         return Err(NetworkError::HandshakeError(HandshakeErrorType::$err))
@@ -70,7 +71,8 @@ macro_rules! throw_handshake_error {
         return Err(NetworkError::HandshakeError(HandshakeErrorType::$err($e)))
     };
 }
-pub(crate) use throw_handshake_error;
+
+pub use throw_handshake_error;
 
 #[derive(Debug, Error, Display)]
 #[non_exhaustive]
