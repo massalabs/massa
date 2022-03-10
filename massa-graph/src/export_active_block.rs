@@ -82,7 +82,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
 impl ExportActiveBlock {
     pub fn try_from_active_block(a_block: &ActiveBlock, storage: Storage) -> Result<Self> {
         let block = storage
-            .retrieve_block(&a_block.block)
+            .retrieve_block(&a_block.block_id)
             .ok_or(GraphError::MissingBlock)?;
         let stored_block = block.read();
         Ok(ExportActiveBlock {

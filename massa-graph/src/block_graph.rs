@@ -20,7 +20,7 @@ use massa_models::{
     api::EndorsementInfo,
     rolls::{RollCounts, RollUpdate, RollUpdates},
 };
-use massa_models::{clique::Clique, SerializeCompact};
+use massa_models::clique::Clique;
 use massa_models::{
     ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
     Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
