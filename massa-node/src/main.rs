@@ -147,8 +147,11 @@ async fn launch() -> (
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
     };
-    let (execution_manager, execution_controller) =
-        start_execution_worker(execution_config, final_ledger.clone());
+    let (execution_manager, execution_controller) = start_execution_worker(
+        execution_config,
+        final_ledger.clone(),
+        shared_storage.clone(),
+    );
 
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
     // launch consensus controller
