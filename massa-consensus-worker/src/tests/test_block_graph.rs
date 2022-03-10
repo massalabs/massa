@@ -8,6 +8,7 @@ use massa_hash::hash::Hash;
 use massa_models::{
     active_block::ActiveBlock,
     clique::Clique,
+    init_serialization_context,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     prehash::{Map, Set},
     signed::Signed,
@@ -49,10 +50,6 @@ fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
             },
             operations: vec![]
         };
-    let block_id = block
-        .header
-        .compute_block_id()
-        .expect("Fail to compute block id");
     (
         block.clone(),
         ExportActiveBlock {
@@ -119,6 +116,7 @@ pub async fn test_get_ledger_at_parents() {
     // .timestamp(stderrlog::Timestamp::Millisecond)
     // .init()
     // .unwrap();
+    init_serialization_context(massa_models::SerializationContext::default());
     let thread_count: u8 = 2;
     let storage: Storage = Default::default();
     let (block, export_active_block): (Block, ExportActiveBlock) = get_export_active_test_block();
@@ -374,14 +372,14 @@ pub async fn test_get_ledger_at_parents() {
     // block p3t0 [NON-FINAL]: creator A, parents [p2t0, p1t1] operations:
     //   A -> C : 2048, fee 4096
     // => counted as [A += 1 - 2048 - 4096 (+4096) ; C created to 2048]
-    let mut blockp3t0 = active_block.clone();
-    blockp3t0.parents = vec![
+    let mut active_block_p3t0 = active_block.clone();
+    active_block_p3t0.parents = vec![
         (get_dummy_block_id("active_block_p2t0"), 2),
         (get_dummy_block_id("active_block_p1t1"), 1),
     ];
-    blockp3t0.is_final = false;
-    blockp3t0.block_ledger_changes = LedgerChanges::default();
-    blockp3t0
+    active_block_p3t0.is_final = false;
+    active_block_p3t0.block_ledger_changes = LedgerChanges::default();
+    active_block_p3t0
         .block_ledger_changes
         .apply(
             &address_a,
@@ -391,7 +389,7 @@ pub async fn test_get_ledger_at_parents() {
             },
         )
         .unwrap();
-    blockp3t0
+    active_block_p3t0
         .block_ledger_changes
         .apply(
             &address_c,
@@ -484,8 +482,8 @@ pub async fn test_get_ledger_at_parents() {
                     .unwrap(),
             ),
             (
-                get_dummy_block_id("blockp3t0"),
-                ExportActiveBlock::try_from_active_block(&blockp3t0, storage.clone()).unwrap(),
+                get_dummy_block_id("active_block_p3t0"),
+                ExportActiveBlock::try_from_active_block(&active_block_p3t0, storage.clone()).unwrap(),
             ),
             (
                 get_dummy_block_id("active_block_p3t1"),
@@ -497,7 +495,7 @@ pub async fn test_get_ledger_at_parents() {
         .collect(),
         /// Best parents hash in each thread.
         best_parents: vec![
-            (get_dummy_block_id("blockp3t0"), 3),
+            (get_dummy_block_id("active_block_p3t0"), 3),
             (get_dummy_block_id("active_block_p3t1"), 3),
         ],
         /// Latest final period and block hash in each thread.
@@ -529,7 +527,7 @@ pub async fn test_get_ledger_at_parents() {
             .collect(),
         ),
     };
-    let storage: Storage = Default::default();
+
     let block_graph = BlockGraph::new(GraphConfig::from(&cfg), Some(export_graph), storage)
         .await
         .unwrap();
@@ -538,7 +536,7 @@ pub async fn test_get_ledger_at_parents() {
     let res = block_graph
         .get_ledger_at_parents(
             &[
-                get_dummy_block_id("blockp3t0"),
+                get_dummy_block_id("active_block_p3t0"),
                 get_dummy_block_id("active_block_p3t1"),
             ],
             &vec![address_a, address_b, address_c, address_d]
