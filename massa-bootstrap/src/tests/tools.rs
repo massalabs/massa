@@ -17,7 +17,7 @@ use massa_models::{
     Address, Amount, Block, BlockHeader, BlockId, DeserializeCompact, Endorsement, Operation,
     SerializeCompact, Slot,
 };
-use massa_network::{BootstrapPeers, NetworkCommand};
+use massa_network_exports::{BootstrapPeers, NetworkCommand};
 use massa_proof_of_stake_exports::{ExportProofOfStake, ThreadCycleState};
 use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,

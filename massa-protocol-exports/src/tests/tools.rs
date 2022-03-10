@@ -12,7 +12,7 @@ use massa_models::{
     Address, Amount, Block, BlockHeader, BlockId, SignedEndorsement, SignedOperation, Slot,
 };
 use massa_models::{Endorsement, Operation, OperationType};
-use massa_network::NetworkCommand;
+use massa_network_exports::NetworkCommand;
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use massa_time::MassaTime;
 use std::collections::HashMap;

@@ -4,10 +4,9 @@
 use super::tools;
 use crate::{
     binders::{ReadBinder, WriteBinder},
-    error::HandshakeErrorType,
     messages::Message,
     node_worker::{NodeCommand, NodeEvent, NodeWorker},
-    ConnectionClosureReason, ConnectionId, NetworkError, NetworkEvent, NetworkSettings, PeerInfo,
+    NetworkError, NetworkEvent, NetworkSettings,
 };
 use massa_hash::{self, hash::Hash};
 use massa_models::{
@@ -15,6 +14,7 @@ use massa_models::{
     signed::{Signable, Signed},
 };
 use massa_models::{BlockId, Endorsement, Slot};
+use massa_network_exports::{ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;

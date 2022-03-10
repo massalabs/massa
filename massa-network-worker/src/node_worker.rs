@@ -4,8 +4,7 @@ use super::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
 };
-use crate::settings::NetworkSettings;
-use crate::{error::NetworkError, ConnectionClosureReason};
+
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
@@ -16,6 +15,7 @@ use massa_models::{
     signed::Signable,
     Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation,
 };
+use massa_network_exports::{ConnectionClosureReason, NetworkError, NetworkSettings};
 use std::net::IpAddr;
 use tokio::{
     sync::mpsc,

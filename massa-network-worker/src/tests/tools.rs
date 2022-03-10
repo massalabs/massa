@@ -1,21 +1,20 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::super::binders::{ReadBinder, WriteBinder};
-use super::mock_establisher::MockEstablisherInterface;
-use super::{mock_establisher, tools};
-use crate::{
-    handshake_worker::HandshakeWorker, network_controller::NetworkEventReceiver, ConnectionId,
-    NetworkError, NetworkEvent,
-};
-use crate::{
-    messages::Message,
-    network_controller::{start_network_controller, NetworkCommandSender, NetworkManager},
-};
-use crate::{NetworkSettings, PeerInfo};
+use super::tools;
+use crate::handshake_worker::HandshakeWorker;
+use crate::messages::Message;
+use crate::start_network_controller;
+
 use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::Signed;
 use massa_models::{Address, Amount, BlockId, Operation, OperationType, SignedOperation, Version};
+use massa_network_exports::test_exports::mock_establisher::{self, MockEstablisherInterface};
+use massa_network_exports::{
+    ConnectionId, NetworkCommandSender, NetworkError, NetworkEvent, NetworkEventReceiver,
+    NetworkManager, NetworkSettings, PeerInfo,
+};
 use massa_signature::{derive_public_key, generate_random_private_key};
 use massa_time::MassaTime;
 use std::str::FromStr;
@@ -46,10 +45,7 @@ pub fn generate_peers_file(peer_vec: &[PeerInfo]) -> NamedTempFile {
     peers_file_named
 }
 
-pub fn get_temp_private_key_file() -> NamedTempFile {
-    NamedTempFile::new().expect("cannot create temp file")
-}
-
+#[cfg(test)]
 /// Establish a full alive connection to the controller
 ///
 /// * establishes connection
