@@ -17,7 +17,7 @@ use crate::{
 use massa_consensus_exports::{commands::ConsensusCommand, ConsensusCommandSender};
 use massa_ledger::{test_exports::assert_eq_ledger_bootstrap_state, FinalLedger};
 use massa_models::Version;
-use massa_network::{NetworkCommand, NetworkCommandSender};
+use massa_network_exports::{NetworkCommand, NetworkCommandSender};
 use massa_signature::PrivateKey;
 use massa_time::MassaTime;
 use parking_lot::RwLock;

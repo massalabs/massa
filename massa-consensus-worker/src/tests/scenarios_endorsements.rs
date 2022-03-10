@@ -1,8 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_hash::hash::Hash;
-use massa_models::{Amount, BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
-use massa_signature::{derive_public_key, generate_random_private_key, sign};
+use massa_models::{signed::Signed, Amount, BlockId, Endorsement, Slot};
+use massa_signature::{derive_public_key, generate_random_private_key};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::{collections::HashMap, str::FromStr};
@@ -86,72 +85,51 @@ async fn test_endorsement_check() {
             // create an otherwise valid endorsement with another address, include it in valid block(1,0), assert it is not propagated
             let sender_priv = generate_random_private_key();
             let sender_public_key = derive_public_key(&sender_priv);
-            let content = EndorsementContent {
+            let content = Endorsement {
                 sender_public_key,
                 slot: Slot::new(1, 0),
                 index: 0,
                 endorsed_block: parents[0],
             };
-            let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-            let signature = sign(&hash, &sender_priv).unwrap();
-            let ed = Endorsement {
-                content: content.clone(),
-                signature,
-            };
-
+            let ed = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
             b10.header.content.endorsements = vec![ed];
 
             propagate_block(&mut protocol_controller, b10, false, 500).await;
 
             // create an otherwise valid endorsement at slot (1,1), include it in valid block(1,0), assert it is not propagated
-            let content = EndorsementContent {
+            let content = Endorsement {
                 sender_public_key: pub_key_c,
                 slot: Slot::new(1, 1),
                 index: 0,
                 endorsed_block: parents[1],
             };
-            let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-            let signature = sign(&hash, &sender_priv).unwrap();
-            let ed = Endorsement {
-                content: content.clone(),
-                signature,
-            };
+            let ed = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
             let (_, mut b10, _) = create_block(&cfg, Slot::new(1, 0), parents.clone(), priv_key_a);
             b10.header.content.endorsements = vec![ed];
 
             propagate_block(&mut protocol_controller, b10, false, 500).await;
 
             // create an otherwise valid endorsement with genesis 1 as endorsed block, include it in valid block(1,0), assert it is not propagated
-            let content = EndorsementContent {
+            let content = Endorsement {
                 sender_public_key: pub_key_b,
                 slot: Slot::new(1, 0),
                 index: 0,
                 endorsed_block: parents[1],
             };
-            let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-            let signature = sign(&hash, &sender_priv).unwrap();
-            let ed = Endorsement {
-                content: content.clone(),
-                signature,
-            };
+            let ed = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
             let (_, mut b10, _) = create_block(&cfg, Slot::new(1, 0), parents.clone(), priv_key_a);
             b10.header.content.endorsements = vec![ed];
 
             propagate_block(&mut protocol_controller, b10, false, 500).await;
 
             // create a valid endorsement, include it in valid block(1,1), assert it is propagated
-            let content = EndorsementContent {
+            let content = Endorsement {
                 sender_public_key: pub_key_b,
                 slot: Slot::new(1, 0),
                 index: 0,
                 endorsed_block: parents[0],
             };
-            let hash = Hash::compute_from(&content.to_bytes_compact().unwrap());
-            let signature = sign(&hash, &sender_priv).unwrap();
-            let ed = Endorsement {
-                content: content.clone(),
-                signature,
-            };
+            let ed = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
             let (_, mut b10, _) = create_block(&cfg, Slot::new(1, 0), parents.clone(), priv_key_a);
             b10.header.content.endorsements = vec![ed];
 

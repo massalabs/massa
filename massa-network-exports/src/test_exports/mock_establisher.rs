@@ -116,6 +116,11 @@ pub struct MockEstablisher {
 }
 
 impl MockEstablisher {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        unreachable!("place holder")
+    }
+
     pub async fn get_listener(&mut self, _addr: SocketAddr) -> io::Result<MockListener> {
         Ok(MockListener {
             connection_listener_rx: self

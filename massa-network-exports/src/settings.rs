@@ -1,10 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::peer_info_database::PeerType;
 use enum_map::EnumMap;
 use massa_time::MassaTime;
 use serde::Deserialize;
 use std::net::{IpAddr, SocketAddr};
+
+use crate::peers::PeerType;
 
 /// Network configuration
 #[derive(Debug, Deserialize, Clone)]
@@ -63,11 +64,12 @@ pub struct PeerTypeConnectionConfig {
     pub max_out_attempts: usize,
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{peer_info_database::PeerType, NetworkSettings};
+#[cfg(feature = "testing")]
+pub mod tests {
+    use crate::NetworkSettings;
+    use crate::{test_exports::tools::get_temp_private_key_file, PeerType};
     use enum_map::enum_map;
-    use massa_models::constants::*;
+    use massa_models::constants::default_testing::BASE_NETWORK_CONTROLLER_IP;
     use massa_time::MassaTime;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
@@ -160,9 +162,7 @@ mod tests {
                 peers_file_dump_interval: MassaTime::from(30000),
                 message_timeout: MassaTime::from(5000u64),
                 ask_peer_list_interval: MassaTime::from(50000u64),
-                private_key_file: crate::tests::tools::get_temp_private_key_file()
-                    .path()
-                    .to_path_buf(),
+                private_key_file: get_temp_private_key_file().path().to_path_buf(),
                 max_send_wait: MassaTime::from(100),
                 ban_timeout: MassaTime::from(100_000_000),
                 initial_peers_file: peers_file.to_path_buf(),
