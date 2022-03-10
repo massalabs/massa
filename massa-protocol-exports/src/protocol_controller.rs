@@ -45,7 +45,8 @@ pub enum ProtocolPoolEvent {
     },
 }
 
-pub type BlocksResults = Map<BlockId, Option<(Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
+pub type BlocksResults =
+    Map<BlockId, Option<(Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
 
 /// Commands that protocol worker can process
 #[derive(Debug, Serialize)]

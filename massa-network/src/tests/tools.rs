@@ -307,7 +307,11 @@ pub async fn incoming_message_drain_start(
 
 pub async fn advertise_peers_in_connection(write_binder: &mut WriteBinder, peer_list: Vec<IpAddr>) {
     write_binder
-        .send(&Message::PeerList(peer_list))
+        .send(
+            &Message::PeerList(peer_list)
+                .to_bytes_compact()
+                .expect("Fail to serialize message"),
+        )
         .await
         .expect("could not send peer list");
 }
@@ -377,6 +381,7 @@ pub async fn network_test<F, V>(
             establisher,
             0,
             None,
+            storage,
             Version::from_str("TEST.1.2").unwrap(),
         )
         .await

@@ -11,6 +11,7 @@ use crate::{
 };
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
+use massa_models::clique::Clique;
 use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::storage::Storage;
@@ -20,7 +21,6 @@ use massa_models::{
     api::EndorsementInfo,
     rolls::{RollCounts, RollUpdate, RollUpdates},
 };
-use massa_models::clique::Clique;
 use massa_models::{
     ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
     Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,

@@ -136,7 +136,9 @@ pub async fn send_and_propagate_block(
     let expected_hash = block.header.compute_block_id().unwrap();
 
     // Send block to protocol.
-    network_controller.send_block(source_node_id, block).await;
+    network_controller
+        .send_block(source_node_id, expected_hash)
+        .await;
 
     // Check protocol sends block to consensus.
     let hash = match wait_protocol_event(protocol_event_receiver, 1000.into(), |evt| match evt {
@@ -145,18 +147,12 @@ pub async fn send_and_propagate_block(
     })
     .await
     {
-        Some(ProtocolEvent::ReceivedBlock { block, .. }) => Some(block),
+        Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => Some(block_id),
         None => None,
         _ => panic!("Unexpected or no protocol event."),
     };
     if valid {
-        assert_eq!(
-            expected_hash,
-            hash.expect("block not propagated before timeout")
-                .header
-                .compute_block_id()
-                .expect("Fail to serialize a block")
-        );
+        assert_eq!(expected_hash, hash.unwrap());
     } else {
         assert!(hash.is_none(), "unexpected protocol event")
     }

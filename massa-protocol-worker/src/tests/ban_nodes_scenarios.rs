@@ -33,7 +33,15 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
             block.header.content.slot = Slot::new(1, 1);
 
             // 3. Send block to protocol.
-            network_controller.send_block(creator_node.id, block).await;
+            network_controller
+                .send_block(
+                    creator_node.id,
+                    block
+                        .header
+                        .compute_block_id()
+                        .expect("Fail to compute block id"),
+                )
+                .await;
 
             // The node is banned.
             tools::assert_banned_node(creator_node.id, &mut network_controller).await;
@@ -359,7 +367,7 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
 
             // 4. Simulate consensus sending block.
             let mut results: BlocksResults = Map::default();
-            results.insert(expected_hash, Some((block, None, None)));
+            results.insert(expected_hash, Some((None, None)));
             protocol_command_sender
                 .send_get_blocks_results(results)
                 .await
@@ -373,14 +381,8 @@ async fn test_protocol_does_not_send_blocks_when_asked_for_by_banned_node() {
                     .wait_command(1000.into(), send_block_or_header_cmd_filter)
                     .await
                 {
-                    Some(NetworkCommand::SendBlock { node, block }) => {
-                        assert_eq!(
-                            expected_hash,
-                            block
-                                .header
-                                .compute_block_id()
-                                .expect("Fail to get block id")
-                        );
+                    Some(NetworkCommand::SendBlock { node, block_id }) => {
+                        assert_eq!(expected_hash, block_id);
                         assert!(expecting_block.remove(&node));
                     }
                     Some(NetworkCommand::SendBlockHeader { .. }) => {
