@@ -16,13 +16,10 @@ use massa_models::{
     signed::Signable,
     Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation,
 };
-<<<<<<< HEAD:massa-network-worker/src/node_worker.rs
 use massa_network_exports::{ConnectionClosureReason, NetworkError, NetworkSettings};
-=======
 use massa_models::{SerializeCompact, SerializeVarInt};
 use serde::{Deserialize, Serialize};
 use std::mem;
->>>>>>> 7fb60524 (network: use shared storage):massa-network/src/node_worker.rs
 use std::net::IpAddr;
 use tokio::{
     sync::mpsc,
@@ -48,11 +45,7 @@ pub enum NodeCommand {
     /// Send that block to node.
     SendBlock(BlockId),
     /// Send the header of a block to a node.
-<<<<<<< HEAD:massa-network-worker/src/node_worker.rs
-    SendBlockHeader(SignedHeader),
-=======
     SendBlockHeader(BlockId),
->>>>>>> 7fb60524 (network: use shared storage):massa-network/src/node_worker.rs
     /// Ask for a block from that node.
     AskForBlocks(Vec<BlockId>),
     /// Close the node worker.
@@ -382,17 +375,6 @@ impl NodeWorker {
                                 break;
                             }
                         },
-<<<<<<< HEAD:massa-network-worker/src/node_worker.rs
-                        Some(NodeCommand::SendBlockHeader(header)) => {
-                            massa_trace!("node_worker.run_loop. send Message::BlockHeader", {"hash": header.content.compute_id()?, "header": header, "node": self.node_id});
-                            if self.try_send_to_node(&writer_command_tx, Message::BlockHeader(header)).is_err() {
-                                break;
-                            }
-                        },
-                        Some(NodeCommand::SendBlock(block)) => {
-                            massa_trace!("node_worker.run_loop. send Message::Block", {"hash": block.header.content.compute_id()?, "block": block, "node": self.node_id});
-                            if self.try_send_to_node(&writer_command_tx, Message::Block(block)).is_err() {
-=======
                         Some(NodeCommand::SendBlockHeader(block_id)) => {
                             massa_trace!("node_worker.run_loop. send Message::BlockHeader", {"hash": block_id, "node": self.node_id});
                             if self.try_send_to_node(&writer_command_tx, ToSend::Header(block_id)).is_err() {
@@ -402,7 +384,6 @@ impl NodeWorker {
                         Some(NodeCommand::SendBlock(block_id)) => {
                             massa_trace!("node_worker.run_loop. send Message::Block", {"hash": block_id, "node": self.node_id});
                             if self.try_send_to_node(&writer_command_tx, ToSend::Block(block_id)).is_err() {
->>>>>>> 7fb60524 (network: use shared storage):massa-network/src/node_worker.rs
                                 break;
                             }
                             trace!("after sending Message::Block from writer_command_tx in node_worker run_loop");

@@ -36,10 +36,7 @@ async fn test_ti() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller,
-                    consensus_command_sender,
-                    consensus_event_receiver,
-                    storage| {
+        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -189,10 +186,7 @@ async fn test_gpi() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller,
-                    consensus_command_sender,
-                    consensus_event_receiver,
-                    storage| {
+        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -352,10 +346,7 @@ async fn test_old_stale() {
 
     consensus_without_pool_test(
         cfg.clone(),
-        async move |mut protocol_controller,
-                    consensus_command_sender,
-                    consensus_event_receiver,
-                    storage| {
+        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let genesis_hashes = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await

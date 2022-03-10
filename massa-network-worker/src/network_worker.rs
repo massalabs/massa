@@ -21,7 +21,9 @@ use massa_models::{
     SerializeCompact, SerializeVarInt, Version,
 };
 use massa_network_exports::{HandshakeErrorType, NetworkConnectionErrorType};
-use massa_signature::{derive_public_key, PrivateKey};
+use massa_models::{BlockHeader, BlockId, Endorsement, Operation};
+use massa_signature::{derive_public_key, sign, PrivateKey};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, HashMap, HashSet},
     net::{IpAddr, SocketAddr},
