@@ -65,7 +65,7 @@ pub enum NodeEventType {
     /// Node we are connected to sent peer list
     ReceivedPeerList(Vec<IpAddr>),
     /// Node we are connected to sent block
-    ReceivedBlock(Block),
+    ReceivedBlock(BlockId),
     /// Node we are connected to sent block header
     ReceivedBlockHeader(BlockHeader),
     /// Node we are connected to asks for a block.
@@ -309,9 +309,10 @@ impl NodeWorker {
                                     {"block_id": block.header.compute_block_id()?, "block": block, "node": self.node_id}
                                 );
 
-                                // TODO: avoid computing id, and cloning block.
-                                self.storage.store_block(block.header.compute_block_id()?, block.clone(), serialized.unwrap());
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block))).await;
+                                // TODO: avoid computing id.
+                                let block_id = block.header.compute_block_id()?;
+                                self.storage.store_block(block_id, block.clone(), serialized.unwrap());
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block_id))).await;
                             },
                             Message::BlockHeader(header) => {
                                 massa_trace!(
