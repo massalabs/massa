@@ -68,7 +68,7 @@ pub fn deserialize_message_with_optional_serialized_object(
         MessageTypeId::Block => {
             let mut serialized = Vec::new();
             serialized.extend_from_slice(&buffer[cursor..]);
-            let (block, delta) = Block::from_bytes_compact(&buffer[cursor..])?;
+            let (block, _) = Block::from_bytes_compact(&buffer[cursor..])?;
             Ok((Message::Block(block), Some(serialized)))
         }
         _ => Message::from_bytes_compact(buffer).map(|result| (result.0, None)),
