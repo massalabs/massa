@@ -3,6 +3,7 @@ use crate::{Block, BlockId};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
+#[derive(Debug)]
 pub struct StoredBlock {
     pub block: Block,
     pub serialized: Vec<u8>,
@@ -22,17 +23,14 @@ impl Storage {
             serialized,
             serialized_header: None,
         };
-        //debug!("Store block {} in storage", block_id);
         let to_store = Arc::new(RwLock::new(stored_block));
         let mut blocks = self.blocks.write();
         blocks.insert(block_id, to_store);
     }
 
     pub fn retrieve_block(&self, block_id: &BlockId) -> Option<Arc<RwLock<StoredBlock>>> {
-        //debug!("Try retrieve block {} in storage", block_id);
         let blocks = self.blocks.read();
         if let Some(block) = blocks.get(block_id) {
-            //debug!("Successfully retrieved block id :{}", block_id);
             return Some(Arc::clone(block));
         }
         None
