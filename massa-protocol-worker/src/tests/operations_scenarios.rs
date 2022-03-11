@@ -537,7 +537,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .expect("Fail to compute block id");
 
             // Node 2 sends block, resulting in operations and endorsements noted in block info.
-            network_controller.send_block(nodes[1].id, block_id).await;
+            network_controller
+                .send_block(nodes[1].id, block_id, block.clone())
+                .await;
 
             // Node 1 sends header, resulting in protocol using the block info to determine
             // the node knows about the operations contained in the block.
@@ -634,10 +636,14 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 .expect("Fail to compute block id");
             // Node 2 sends block, not resulting in operations and endorsements noted in block info,
             // because of the invalid root hash.
-            network_controller.send_block(nodes[1].id, block_id).await;
+            network_controller
+                .send_block(nodes[1].id, block_id, block.clone())
+                .await;
 
             // Node 3 sends block, resulting in operations and endorsements noted in block info.
-            network_controller.send_block(nodes[2].id, block_id).await;
+            network_controller
+                .send_block(nodes[2].id, block_id, block.clone())
+                .await;
 
             // Node 1 sends header, but the block is empty.
             network_controller
@@ -730,6 +736,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
                         .header
                         .compute_block_id()
                         .expect("Fail to compute block id"),
+                    block,
                 )
                 .await;
 

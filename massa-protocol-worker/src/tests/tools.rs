@@ -25,9 +25,9 @@ where
         ),
     >,
 {
-    let (network_controller, network_command_sender, network_event_receiver) =
-        MockNetworkController::new();
     let storage: Storage = Default::default();
+    let (network_controller, network_command_sender, network_event_receiver) =
+        MockNetworkController::new(storage.clone());
     // start protocol controller
     let (
         protocol_command_sender,

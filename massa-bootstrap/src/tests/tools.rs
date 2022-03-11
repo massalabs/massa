@@ -437,11 +437,6 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         ],
     };
 
-    let block_id = block
-        .header
-        .compute_block_id()
-        .expect("Fail to compute block id");
-
     //TODO: We currently lost information. Need to use shared storage
     let block1 = ExportActiveBlock {
         block: block,

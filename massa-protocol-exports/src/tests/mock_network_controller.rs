@@ -1,7 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId};
-use massa_models::{BlockHeader, BlockId, Endorsement, Operation};
+use massa_models::{
+    storage::Storage, Block, BlockHeader, BlockId, Endorsement, Operation, SerializeCompact,
+};
 use massa_network::{NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
@@ -9,10 +11,11 @@ use tokio::{sync::mpsc, time::sleep};
 pub struct MockNetworkController {
     network_command_rx: mpsc::Receiver<NetworkCommand>,
     network_event_tx: mpsc::Sender<NetworkEvent>,
+    storage: Storage,
 }
 
 impl MockNetworkController {
-    pub fn new() -> (Self, NetworkCommandSender, NetworkEventReceiver) {
+    pub fn new(storage: Storage) -> (Self, NetworkCommandSender, NetworkEventReceiver) {
         let (network_command_tx, network_command_rx) =
             mpsc::channel::<NetworkCommand>(CHANNEL_SIZE);
         let (network_event_tx, network_event_rx) = mpsc::channel::<NetworkEvent>(CHANNEL_SIZE);
@@ -20,6 +23,7 @@ impl MockNetworkController {
             MockNetworkController {
                 network_event_tx,
                 network_command_rx,
+                storage,
             },
             NetworkCommandSender(network_command_tx),
             NetworkEventReceiver(network_event_rx),
@@ -67,7 +71,9 @@ impl MockNetworkController {
             .expect("Couldn't send header to protocol.");
     }
 
-    pub async fn send_block(&mut self, source_node_id: NodeId, block_id: BlockId) {
+    pub async fn send_block(&mut self, source_node_id: NodeId, block_id: BlockId, block: Block) {
+        let serialized_block = block.to_bytes_compact().expect("Fail to serialize block");
+        self.storage.store_block(block_id, block, serialized_block);
         self.network_event_tx
             .send(NetworkEvent::ReceivedBlock {
                 node: source_node_id,

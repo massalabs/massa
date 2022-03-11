@@ -137,7 +137,7 @@ pub async fn send_and_propagate_block(
 
     // Send block to protocol.
     network_controller
-        .send_block(source_node_id, expected_hash)
+        .send_block(source_node_id, expected_hash, block)
         .await;
 
     // Check protocol sends block to consensus.

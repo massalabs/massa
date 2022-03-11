@@ -4,9 +4,7 @@ use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
 use massa_models::prehash::{Map, Set};
-use massa_models::{
-    BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
-};
+use massa_models::{BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId};
 use massa_network::NetworkEventReceiver;
 use serde::Serialize;
 use std::collections::VecDeque;

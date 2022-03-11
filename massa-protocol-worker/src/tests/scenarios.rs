@@ -4,7 +4,7 @@
 
 use super::tools::protocol_test;
 use massa_models::prehash::{Map, Set};
-use massa_models::{BlockId, SerializeCompact};
+use massa_models::BlockId;
 use massa_network::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{
@@ -368,7 +368,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
 
             // 3. Send block to protocol.
             network_controller
-                .send_block(creator_node.id, expected_hash)
+                .send_block(creator_node.id, expected_hash, block.clone())
                 .await;
 
             // Check protocol sends block to consensus.
@@ -383,15 +383,10 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
                 )
                 .await
                 {
-                    Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block,
+                    Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block_id,
                     _ => panic!("Unexpected or no protocol event."),
                 };
-            assert_eq!(
-                expected_hash,
-                hash.header
-                    .compute_block_id()
-                    .expect("Fail to get block id")
-            );
+            assert_eq!(expected_hash, hash);
 
             (
                 network_controller,

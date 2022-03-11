@@ -525,6 +525,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                         .header
                         .compute_block_id()
                         .expect("Fail to get block id"),
+                    block.clone(),
                 )
                 .await;
 

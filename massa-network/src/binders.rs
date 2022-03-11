@@ -4,10 +4,7 @@
 use super::messages::{deserialize_message_with_optional_serialized_object, Message};
 use crate::error::NetworkError;
 use crate::establisher::{ReadHalf, WriteHalf};
-use massa_models::{
-    with_serialization_context, DeserializeMinBEInt,
-    SerializeMinBEInt,
-};
+use massa_models::{with_serialization_context, DeserializeMinBEInt, SerializeMinBEInt};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 

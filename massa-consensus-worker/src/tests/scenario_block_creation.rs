@@ -52,9 +52,7 @@ async fn test_genesis_block_creation() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller,
-                    consensus_command_sender,
-                    consensus_event_receiver| {
+        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
             let _genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await

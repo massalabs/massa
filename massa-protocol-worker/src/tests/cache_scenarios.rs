@@ -58,6 +58,7 @@ async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size()
                         .header
                         .compute_block_id()
                         .expect("Fail to compute block id"),
+                    block,
                 )
                 .await;
 
