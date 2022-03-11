@@ -1,4 +1,4 @@
-# Code review checklist (TODO: should be copy-pasted in PR template)
+# Code review checklist
 
 - [ ] code should be formatted using `rustfmt` (:warning: this also applies to code in macro like `tokio::select!` and `lazy_static!`)
 - [ ] reduce the code size in macro arguments and in matching patterns
