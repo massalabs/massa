@@ -151,25 +151,25 @@ fn get_bootgraph(
     operations: Vec<Operation>,
     ledger: LedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
-    let (genesis_0, g0_id) =
+    let (g0_id, genesis_0) =
         get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 0), true);
-    let (genesis_1, g1_id) =
+    let (g1_id, genesis_1) =
         get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 1), true);
-    let (p1t0, p1t0_id) = get_export_active_test_block(
+    let (p1t0_id, p1t0) = get_export_active_test_block(
         creator,
         vec![(g0_id, 0), (g1_id, 0)],
         vec![operations[0].clone()],
         Slot::new(1, 0),
         true,
     );
-    let (p1t1, p1t1_id) = get_export_active_test_block(
+    let (p1t1_id, p1t1) = get_export_active_test_block(
         creator,
         vec![(g0_id, 0), (g1_id, 0)],
         vec![],
         Slot::new(1, 1),
         false,
     );
-    let (p2t0, p2t0_id) = get_export_active_test_block(
+    let (p2t0_id, p2t0) = get_export_active_test_block(
         creator,
         vec![(p1t0_id, 1), (p1t1_id, 1)],
         vec![operations[1].clone()],
@@ -180,11 +180,11 @@ fn get_bootgraph(
         BootstrapableGraph {
             /// Map of active blocks, where blocks are in their exported version.
             active_blocks: vec![
-                (g0_id, genesis_0),
-                (g1_id, genesis_1),
-                (p1t0_id, p1t0),
-                (p1t1_id, p1t1),
-                (p2t0_id, p2t0),
+                (g0_id, genesis_0.clone()),
+                (g1_id, genesis_1.clone()),
+                (p1t0_id, p1t0.clone()),
+                (p1t1_id, p1t1.clone()),
+                (p2t0_id, p2t0.clone()),
             ]
             .into_iter()
             .collect(),

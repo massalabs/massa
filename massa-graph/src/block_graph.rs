@@ -1094,8 +1094,6 @@ impl BlockGraph {
                 }
             };
             if cur_a_block.is_final {
-                let block = self.storage.retrieve_block(&cur_a_block.block_id).unwrap();
-                let stored_block = block.read();
 
                 // filters out genesis and final blocks
                 // (step 1.1 in pos.md)
@@ -1150,6 +1148,7 @@ impl BlockGraph {
                     };
                     // (step 4.1 in pos.md)
                     cur_rolls.apply_updates(&applied_updates)?;
+
                     // (step 4.2 in pos.md)
                     if a_block.slot.get_cycle(self.cfg.periods_per_cycle) == target_cycle {
                         // if the block is in the target cycle, accumulate the roll updates
@@ -1200,9 +1199,6 @@ impl BlockGraph {
                         operations.into_iter().map(|op| Some(op)).collect()
                     };
                     for op in ops.iter() {
-                        let block = self.storage.retrieve_block(&b_id).unwrap();
-                        let stored_block = block.read();
-
                         let (idx, _) = active_block.operation_set.get(op).ok_or_else(|| {
                             GraphError::ContainerInconsistency(format!("op {} should be here", op))
                         })?;
@@ -1496,9 +1492,6 @@ impl BlockGraph {
         // list items to reprocess
         let mut reprocess = BTreeSet::new();
 
-        let block = self.storage.retrieve_block(&block_id).unwrap();
-        let stored_block = block.read();
-
         massa_trace!("consensus.block_graph.process", { "block_id": block_id });
         // control all the waiting states and try to get a valid block
         let (
@@ -1637,6 +1630,8 @@ impl BlockGraph {
                 massa_trace!("consensus.block_graph.process.incoming_block", {
                     "block_id": block_id
                 });
+                let block = self.storage.retrieve_block(&block_id).unwrap();
+                let stored_block = block.read();
                 let (_block_id, slot, operation_set, endorsement_ids) =
                     if let Some(BlockStatus::Incoming(HeaderOrBlock::Block(
                         block_id,
@@ -1674,7 +1669,7 @@ impl BlockGraph {
                             "block_id": block_id
                         });
                         (
-                            stored_block,
+                            stored_block.block.clone(),
                             parents_hash_period,
                             dependencies,
                             incompatibilities,
@@ -1825,18 +1820,16 @@ impl BlockGraph {
             }
         };
 
-        let valid_block_addresses_to_operations = valid_block
-            .block
-            .involved_addresses(&valid_block_operation_set)?;
-        let valid_block_addresses_to_endorsements = valid_block
-            .block
-            .addresses_to_endorsements(&valid_block_endorsement_ids)?;
+        let valid_block_addresses_to_operations =
+            valid_block.involved_addresses(&valid_block_operation_set)?;
+        let valid_block_addresses_to_endorsements =
+            valid_block.addresses_to_endorsements(&valid_block_endorsement_ids)?;
 
         // add block to graph
         self.add_block_to_graph(
             block_id,
             valid_block_parents_hash_period,
-            &valid_block.block,
+            &valid_block,
             valid_block_deps,
             valid_block_incomp,
             valid_block_inherited_incomp_count,
@@ -2530,7 +2523,9 @@ impl BlockGraph {
         for thread in involved_threads.into_iter() {
             match self.block_statuses.get(&parents[thread as usize]) {
                 Some(BlockStatus::Active(b)) => {
-                    if b.slot.period < self.latest_final_blocks_periods[thread as usize].1 {
+                    let block = self.storage.retrieve_block(&b.block_id).ok_or(GraphError::MissingBlock)?;
+                    let stored_block = block.read();
+                    if stored_block.block.header.content.slot.period < self.latest_final_blocks_periods[thread as usize].1 {
                         return Err(GraphError::ContainerInconsistency(format!(
                             "asking for operations in thread {}, for which the given parent is older than the latest final block of that thread",
                             thread
@@ -3216,13 +3211,14 @@ impl BlockGraph {
         for (thread, id) in latest_final_blocks.iter().enumerate() {
             let mut current_block_id = *id;
             while let Some(current_block) = self.get_active_block(&current_block_id) {
-                let (is_genesis, parent_id) = {
+                let parent_id = {
                     let block = self.storage.retrieve_block(&current_block_id).unwrap();
                     let stored_block = block.read();
-                    (
-                        stored_block.block.header.content.parents.is_empty(),
-                        stored_block.block.header.content.parents[thread as usize],
-                    )
+                    if !stored_block.block.header.content.parents.is_empty() {
+                        Some(stored_block.block.header.content.parents[thread as usize])
+                    } else {
+                        None
+                    }
                 };
 
                 // retain block
@@ -3240,11 +3236,10 @@ impl BlockGraph {
                 }
 
                 // if not genesis, traverse parent
-                if is_genesis {
-                    break;
+                match parent_id {
+                    Some(p_id) => current_block_id = p_id,
+                    None => break,
                 }
-
-                current_block_id = parent_id;
             }
         }
 

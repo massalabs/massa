@@ -10,7 +10,7 @@ use crate::{
     ConnectionClosureReason, ConnectionId, NetworkError, NetworkEvent, NetworkSettings, PeerInfo,
 };
 use massa_hash::{self, hash::Hash};
-use massa_models::node::NodeId;
+use massa_models::{node::NodeId, storage::Storage};
 use massa_models::{BlockId, Endorsement, EndorsementContent, SerializeCompact, Slot};
 use massa_signature::sign;
 use massa_time::MassaTime;
@@ -45,6 +45,8 @@ async fn test_node_worker_shutdown() {
     let private_key = massa_signature::generate_random_private_key();
     let public_key = massa_signature::derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
+    let storage: Storage = Default::default();
+
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
             network_conf,
@@ -53,6 +55,7 @@ async fn test_node_worker_shutdown() {
             writer,
             node_command_rx,
             node_event_tx,
+            storage,
         )
         .run_loop()
         .await
@@ -680,7 +683,11 @@ async fn test_block_not_found() {
             // Send ask for block message from connected peer
             let wanted_hash = get_dummy_block_id("default_val");
             conn1_w
-                .send(&Message::AskForBlocks(vec![wanted_hash]))
+                .send(
+                    &Message::AskForBlocks(vec![wanted_hash])
+                        .to_bytes_compact()
+                        .expect("Fail to serialize message"),
+                )
                 .await
                 .unwrap();
 
@@ -774,12 +781,16 @@ async fn test_block_not_found() {
             let wanted_hash3 = get_dummy_block_id("default_val3");
             let wanted_hash4 = get_dummy_block_id("default_val4");
             conn1_w
-                .send(&Message::AskForBlocks(vec![
-                    wanted_hash1,
-                    wanted_hash2,
-                    wanted_hash3,
-                    wanted_hash4,
-                ]))
+                .send(
+                    &Message::AskForBlocks(vec![
+                        wanted_hash1,
+                        wanted_hash2,
+                        wanted_hash3,
+                        wanted_hash4,
+                    ])
+                    .to_bytes_compact()
+                    .expect("Fail to serialize message"),
+                )
                 .await
                 .unwrap();
             // assert it is sent to protocol
@@ -969,7 +980,11 @@ async fn test_operation_messages() {
             let (transaction, _) = get_transaction(50, 10);
             let ref_id = transaction.verify_integrity().unwrap();
             conn1_w
-                .send(&Message::Operations(vec![transaction.clone()]))
+                .send(
+                    &Message::Operations(vec![transaction.clone()])
+                        .to_bytes_compact()
+                        .expect("Fail to serialize message"),
+                )
                 .await
                 .unwrap();
 
@@ -1105,7 +1120,11 @@ async fn test_endorsements_messages() {
             };
             let ref_id = endorsement.compute_endorsement_id().unwrap();
             conn1_w
-                .send(&Message::Endorsements(vec![endorsement]))
+                .send(
+                    &Message::Endorsements(vec![endorsement])
+                        .to_bytes_compact()
+                        .expect("Fail to serialize message"),
+                )
                 .await
                 .unwrap();
 

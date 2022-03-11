@@ -14,8 +14,7 @@ use crate::{
 use massa_logging::massa_trace;
 use massa_models::storage::Storage;
 use massa_models::{
-    composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, stats::NetworkStats, Block,
-    BlockHeader, BlockId, Endorsement, Operation, Version,
+    composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, stats::NetworkStats, BlockId, Endorsement, Operation, Version,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use std::{

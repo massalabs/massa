@@ -7,7 +7,7 @@ use massa_models::prehash::Map;
 use massa_models::{Address, Slot};
 use massa_network::NetworkCommand;
 use massa_protocol_exports::tests::tools;
-use massa_protocol_exports::{ProtocolEvent, ProtocolPoolEvent};
+use massa_protocol_exports::{BlocksResults, ProtocolEvent, ProtocolPoolEvent};
 use serial_test::serial;
 use std::time::Duration;
 
@@ -304,10 +304,10 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 Slot::new(1, thread),
                 vec![endorsement.clone()],
             );
-            let block_id = block.header.compute_block_id().unwrap();
+            let expected_block_id = block.header.compute_block_id().unwrap();
 
             network_controller
-                .send_ask_for_block(nodes[0].id, vec![block_id])
+                .send_ask_for_block(nodes[0].id, vec![expected_block_id])
                 .await;
 
             // Wait for the event to be sure that the node is connected,
@@ -323,7 +323,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             // Integrate the block,
             // this should note the node as knowning about the endorsement.
             protocol_command_sender
-                .integrated_block(block_id, block, Default::default(), vec![endorsement_id])
+                .integrated_block(expected_block_id, Default::default(), vec![endorsement_id])
                 .await
                 .unwrap();
 
@@ -334,9 +334,9 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 })
                 .await
             {
-                Some(NetworkCommand::SendBlock { node, block }) => {
+                Some(NetworkCommand::SendBlock { node, block_id }) => {
                     assert_eq!(node, nodes[0].id);
-                    assert_eq!(block.header.compute_block_id().unwrap(), block_id);
+                    assert_eq!(block_id, expected_block_id);
                 }
                 Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),
@@ -409,10 +409,10 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 Slot::new(1, thread),
                 vec![endorsement.clone()],
             );
-            let block_id = block.header.compute_block_id().unwrap();
+            let expected_block_id = block.header.compute_block_id().unwrap();
 
             network_controller
-                .send_ask_for_block(nodes[0].id, vec![block_id])
+                .send_ask_for_block(nodes[0].id, vec![expected_block_id])
                 .await;
 
             // Wait for the event to be sure that the node is connected,
@@ -426,11 +426,8 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             .await;
 
             // Send the block as search results.
-            let mut results = Map::default();
-            results.insert(
-                block_id,
-                Some((block.clone(), None, Some(vec![endorsement_id]))),
-            );
+            let mut results: BlocksResults = Map::default();
+            results.insert(expected_block_id, Some((None, Some(vec![endorsement_id]))));
 
             protocol_command_sender
                 .send_get_blocks_results(results)
@@ -444,9 +441,9 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 })
                 .await
             {
-                Some(NetworkCommand::SendBlock { node, block }) => {
+                Some(NetworkCommand::SendBlock { node, block_id }) => {
                     assert_eq!(node, nodes[0].id);
-                    assert_eq!(block.header.compute_block_id().unwrap(), block_id);
+                    assert_eq!(expected_block_id, block_id);
                 }
                 Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),
@@ -522,7 +519,13 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 
             // Node 2 sends block, resulting in endorsements noted in block info.
             network_controller
-                .send_block(nodes[1].id, block.clone())
+                .send_block(
+                    nodes[1].id,
+                    block
+                        .header
+                        .compute_block_id()
+                        .expect("Fail to get block id"),
+                )
                 .await;
 
             // Node 1 sends header, resulting in protocol using the block info to determine

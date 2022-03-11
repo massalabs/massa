@@ -5,7 +5,7 @@ use massa_logging::massa_trace;
 
 use massa_models::prehash::{Map, Set};
 use massa_models::{
-    Block, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
+    BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
 };
 use massa_network::NetworkEventReceiver;
 use serde::Serialize;
@@ -45,7 +45,8 @@ pub enum ProtocolPoolEvent {
     },
 }
 
-type BlocksResults = Map<BlockId, Option<(Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
+pub type BlocksResults =
+    Map<BlockId, Option<(Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
 
 /// Commands that protocol worker can process
 #[derive(Debug, Serialize)]

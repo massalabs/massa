@@ -3,6 +3,7 @@ use crate::{Block, BlockId};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
+#[derive(Debug)]
 pub struct StoredBlock {
     pub block: Block,
     pub serialized: Vec<u8>,

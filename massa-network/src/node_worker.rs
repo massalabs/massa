@@ -14,7 +14,7 @@ use massa_models::{
         NODE_SEND_CHANNEL_SIZE,
     },
     node::NodeId,
-    Block, BlockHeader, BlockId, Endorsement, Operation,
+    BlockHeader, BlockId, Endorsement, Operation,
 };
 use massa_models::{SerializeCompact, SerializeVarInt};
 use serde::{Deserialize, Serialize};

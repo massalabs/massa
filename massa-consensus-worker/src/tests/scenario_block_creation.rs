@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use super::tools::{create_executesc, random_address_on_thread};
 use crate::tests::tools::{self, create_endorsement, create_roll_transaction, create_transaction};
 use massa_consensus_exports::{tools::*, ConsensusConfig};
 use massa_graph::ledger::LedgerSubset;
@@ -16,8 +17,6 @@ use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::time::sleep_until;
-
-use super::tools::{create_executesc, random_address_on_thread};
 
 #[tokio::test]
 #[serial]
@@ -53,7 +52,9 @@ async fn test_genesis_block_creation() {
 
     tools::consensus_without_pool_test(
         cfg.clone(),
-        async move |protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver| {
             let _genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -125,10 +126,12 @@ async fn test_block_creation_with_draw() {
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
     let operation_fee = 0;
-
-    tools::consensus_without_pool_test(
+    tools::consensus_without_pool_test_with_storage(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -144,6 +147,7 @@ async fn test_block_creation_with_draw() {
                 staking_keys[0],
                 vec![op1],
             );
+
             tools::propagate_block(&mut protocol_controller, block, true, 1000).await;
 
             // make cycle 0 final/finished by sending enough blocks in each thread in cycle 1
@@ -193,9 +197,13 @@ async fn test_block_creation_with_draw() {
                 // wait block propagation
                 let block_creator = protocol_controller
                     .wait_command(3500.into(), |cmd| match cmd {
-                        ProtocolCommand::IntegratedBlock { block, .. } => {
-                            if block.header.content.slot == cur_slot {
-                                Some(block.header.content.creator)
+                        ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                            let block = storage
+                                .retrieve_block(&block_id)
+                                .expect(&format!("Block id : {} not found in storage", block_id));
+                            let stored_block = block.read();
+                            if stored_block.block.header.content.slot == cur_slot {
+                                Some(stored_block.block.header.content.creator)
                             } else {
                                 None
                             }
@@ -264,9 +272,12 @@ async fn test_interleaving_block_creation_with_reception() {
     let temp_roll_file = generate_roll_counts_file(&roll_counts);
     cfg.initial_rolls_path = temp_roll_file.path().to_path_buf();
 
-    tools::consensus_without_pool_test(
+    tools::consensus_without_pool_test_with_storage(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let mut parents = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -303,11 +314,14 @@ async fn test_interleaving_block_creation_with_reception() {
                     // wait block propagation
                     let (header, id) = protocol_controller
                         .wait_command(cfg.t0.saturating_add(300.into()), |cmd| match cmd {
-                            ProtocolCommand::IntegratedBlock {
-                                block, block_id, ..
-                            } => {
-                                if block.header.content.slot == cur_slot {
-                                    Some((block.header, block_id))
+                            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                                let block = storage.retrieve_block(&block_id).expect(&format!(
+                                    "Block id : {} not found in storage",
+                                    block_id
+                                ));
+                                let stored_block = block.read();
+                                if stored_block.block.header.content.slot == cur_slot {
+                                    Some((stored_block.block.header.clone(), block_id))
                                 } else {
                                     None
                                 }
@@ -385,14 +399,15 @@ async fn test_order_of_inclusion() {
 
     // there is only one node so it should be drawn at every slot
 
-    tools::consensus_pool_test(
+    tools::consensus_pool_test_with_storage(
         cfg.clone(),
         None,
         None,
         async move |mut pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    storage| {
             // wait for first slot
             pool_controller
                 .wait_command(
@@ -461,9 +476,13 @@ async fn test_order_of_inclusion() {
             // wait for block
             let (_block_id, block) = protocol_controller
                 .wait_command(300.into(), |cmd| match cmd {
-                    ProtocolCommand::IntegratedBlock {
-                        block_id, block, ..
-                    } => Some((block_id, block)),
+                    ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                        let block = storage
+                            .retrieve_block(&block_id)
+                            .expect(&format!("Block id : {} not found in storage", block_id));
+                        let stored_block = block.read();
+                        Some((block_id, stored_block.block.clone()))
+                    }
                     _ => None,
                 })
                 .await
@@ -531,14 +550,15 @@ async fn test_block_filling() {
         ops.push(create_transaction(priv_a, pubkey_a, address_a, 5, 10, 1))
     }
 
-    tools::consensus_pool_test(
+    tools::consensus_pool_test_with_storage(
         cfg.clone(),
         None,
         None,
         async move |mut pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    storage| {
             let op_size = 10;
 
             // wait for slot
@@ -571,9 +591,13 @@ async fn test_block_filling() {
                 // wait for block
                 let (block_id, block) = protocol_controller
                     .wait_command(500.into(), |cmd| match cmd {
-                        ProtocolCommand::IntegratedBlock {
-                            block_id, block, ..
-                        } => Some((block_id, block)),
+                        ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                            let block = storage
+                                .retrieve_block(&block_id)
+                                .expect(&format!("Block id : {} not found in storage", block_id));
+                            let stored_block = block.read();
+                            Some((block_id, stored_block.block.clone()))
+                        }
                         _ => None,
                     })
                     .await
@@ -667,9 +691,13 @@ async fn test_block_filling() {
             // wait for block
             let (_block_id, block) = protocol_controller
                 .wait_command(500.into(), |cmd| match cmd {
-                    ProtocolCommand::IntegratedBlock {
-                        block_id, block, ..
-                    } => Some((block_id, block)),
+                    ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                        let block = storage
+                            .retrieve_block(&block_id)
+                            .expect(&format!("Block id : {} not found in storage", block_id));
+                        let stored_block = block.read();
+                        Some((block_id, stored_block.block.clone()))
+                    }
                     _ => None,
                 })
                 .await
