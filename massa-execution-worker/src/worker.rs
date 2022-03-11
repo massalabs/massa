@@ -417,7 +417,6 @@ impl ExecutionThread {
             {
                 return Some(false);
             }
-            #[cfg(test)]
             if input_data.stop {
                 return Some(true);
             }
