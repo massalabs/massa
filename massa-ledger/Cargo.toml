@@ -13,7 +13,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
 tokio = { version = "1.11", features = ["full"] }
-tracing = {version = "0.1", features = ["max_level_debug", "release_max_level_debug"] }
+tracing = {version = "0.1" }
 # custom modules
 massa_hash = { path = "../massa-hash" }
 massa_logging = { path = "../massa-logging" }
