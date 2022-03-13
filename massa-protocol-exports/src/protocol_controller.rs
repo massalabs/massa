@@ -8,7 +8,7 @@ use massa_models::prehash::{Map, Set};
 use massa_models::{
     Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
 };
-use massa_network::NetworkEventReceiver;
+use massa_network_exports::NetworkEventReceiver;
 use serde::Serialize;
 use std::collections::VecDeque;
 use tokio::{sync::mpsc, task::JoinHandle};

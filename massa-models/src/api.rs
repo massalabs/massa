@@ -142,7 +142,7 @@ impl std::fmt::Display for RollsInfo {
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct SCELedgerInfo {
     pub balance: Amount,
-    pub module: Option<Vec<u8>>,
+    pub module: Vec<u8>,
     pub datastore: Map<Hash, Vec<u8>>,
 }
 
@@ -159,7 +159,8 @@ pub struct AddressInfo {
     pub address: Address,
     pub thread: u8,
     pub ledger_info: LedgerInfo,
-    pub sce_ledger_info: SCELedgerInfo,
+    pub final_sce_ledger_info: SCELedgerInfo,
+    pub candidate_sce_ledger_info: SCELedgerInfo,
     pub rolls: RollsInfo,
     pub block_draws: HashSet<Slot>,
     pub endorsement_draws: HashSet<IndexedSlot>,
@@ -174,7 +175,12 @@ impl std::fmt::Display for AddressInfo {
         writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
         writeln!(f, "Sequential balance:\n{}", self.ledger_info)?;
-        writeln!(f, "Parallel balance:\n{}", self.sce_ledger_info)?;
+        writeln!(f, "Final Parallel balance:\n{}", self.final_sce_ledger_info)?;
+        writeln!(
+            f,
+            "Candidate Parallel balance:\n{}",
+            self.candidate_sce_ledger_info
+        )?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         writeln!(
             f,
@@ -240,7 +246,8 @@ impl AddressInfo {
             thread: self.thread,
             balance: self.ledger_info,
             rolls: self.rolls,
-            sce_balance: self.sce_ledger_info.clone(),
+            final_sce_balance: self.final_sce_ledger_info.clone(),
+            candidate_sce_balance: self.candidate_sce_ledger_info.clone(),
         }
     }
 }
@@ -264,14 +271,20 @@ pub struct CompactAddressInfo {
     pub thread: u8,
     pub balance: LedgerInfo,
     pub rolls: RollsInfo,
-    pub sce_balance: SCELedgerInfo,
+    pub final_sce_balance: SCELedgerInfo,
+    pub candidate_sce_balance: SCELedgerInfo,
 }
 
 impl std::fmt::Display for CompactAddressInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Address: {}", self.address)?;
         writeln!(f, "Thread: {}", self.thread)?;
-        writeln!(f, "Sequential balance:\n{}", self.sce_balance)?;
+        writeln!(f, "Final Sequential balance:\n{}", self.final_sce_balance)?;
+        writeln!(
+            f,
+            "Candidate Sequential balance:\n{}",
+            self.candidate_sce_balance
+        )?;
         writeln!(f, "Parallel balance:\n{}", self.balance)?;
         writeln!(f, "Rolls:\n{}", self.rolls)?;
         Ok(())

@@ -1,6 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-pub mod mock_establisher;
+#[cfg(test)]
 mod scenarios;
+#[cfg(test)]
 mod test_peer_info_database;
+#[cfg(test)]
 pub mod tools;
