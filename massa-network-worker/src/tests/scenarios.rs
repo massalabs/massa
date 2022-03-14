@@ -2,19 +2,27 @@
 
 // To start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::tools;
+use crate::messages::Message;
+use crate::node_worker::{NodeCommand, NodeEvent, NodeWorker};
+use crate::tests::tools::{get_dummy_block_id, get_transaction};
+use crate::NetworkError;
+use crate::NetworkEvent;
 use crate::{
     binders::{ReadBinder, WriteBinder},
-    messages::Message,
-    node_worker::{NodeCommand, NodeEvent, NodeWorker},
-    NetworkError, NetworkEvent, NetworkSettings,
+    NetworkSettings,
 };
+use enum_map::enum_map;
+use enum_map::EnumMap;
 use massa_hash::{self, hash::Hash};
 use massa_models::{
     node::NodeId,
     signed::{Signable, Signed},
 };
 use massa_models::{BlockId, Endorsement, Slot};
-use massa_network_exports::{ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo};
+use massa_network_exports::settings::PeerTypeConnectionConfig;
+use massa_network_exports::{
+    ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
+};
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -24,8 +32,27 @@ use std::{
 };
 use tokio::sync::mpsc;
 use tokio::time::sleep;
-use tools::{get_dummy_block_id, get_transaction};
 use tracing::trace;
+
+fn default_testing_peer_type_enum_map() -> EnumMap<PeerType, PeerTypeConnectionConfig> {
+    enum_map! {
+        PeerType::Bootstrap => PeerTypeConnectionConfig {
+            target_out_connections: 1,
+            max_out_attempts: 1,
+            max_in_connections: 1,
+        },
+        PeerType::WhiteListed => PeerTypeConnectionConfig {
+            target_out_connections: 2,
+            max_out_attempts: 2,
+            max_in_connections: 3,
+        },
+        PeerType::Standard => PeerTypeConnectionConfig {
+            target_out_connections: 0,
+            max_out_attempts: 0,
+            max_in_connections: 2,
+        }
+    }
+}
 
 /// Test that a node worker can shutdown even if the event channel is full,
 /// and that sending additional node commands during shutdown does not deadlock.
@@ -98,7 +125,7 @@ async fn test_multiple_connections_to_controller() {
     let bind_port: u16 = 50_000;
     let temp_peers_file = super::tools::generate_peers_file(&[]);
     let network_conf = NetworkSettings {
-        max_in_nonbootstrap_connections: 2,
+        peer_types_config: default_testing_peer_type_enum_map(),
         max_in_connections_per_ip: 1,
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
@@ -214,17 +241,7 @@ async fn test_peer_ban() {
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
     // add advertised peer to controller
-    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
-        ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: false,
-        last_alive: None,
-        last_failure: None,
-        advertised: true,
-        active_out_connection_attempts: 0,
-        active_out_connections: 0,
-        active_in_connections: 0,
-    }]);
+    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo::new(mock_addr.ip(), true)]);
 
     let network_conf = NetworkSettings {
         wakeup_interval: 1000.into(),
@@ -359,17 +376,7 @@ async fn test_peer_ban_by_ip() {
 
     let mock_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 11)), bind_port);
     // add advertised peer to controller
-    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
-        ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: false,
-        last_alive: None,
-        last_failure: None,
-        advertised: true,
-        active_out_connection_attempts: 0,
-        active_out_connections: 0,
-        active_in_connections: 0,
-    }]);
+    let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo::new(mock_addr.ip(), true)]);
 
     let network_conf = NetworkSettings {
         wakeup_interval: 1000.into(),
@@ -504,14 +511,14 @@ async fn test_advertised_and_wakeup_interval() {
     let mock_ignore_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(169, 202, 0, 13)), bind_port);
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_ignore_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: false,
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
     let network_conf = NetworkSettings {
         wakeup_interval: MassaTime::from(500),
@@ -639,18 +646,17 @@ async fn test_block_not_found() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: true,
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
-
     let network_conf = NetworkSettings {
-        target_bootstrap_connections: 1,
+        peer_types_config: default_testing_peer_type_enum_map(),
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
@@ -827,18 +833,17 @@ async fn test_retry_connection_closed() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: true,
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
-
     let network_conf = NetworkSettings {
-        target_bootstrap_connections: 1,
+        peer_types_config: default_testing_peer_type_enum_map(),
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
@@ -927,18 +932,17 @@ async fn test_operation_messages() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: true,
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
-
     let network_conf = NetworkSettings {
-        target_bootstrap_connections: 1,
+        peer_types_config: default_testing_peer_type_enum_map(),
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 
@@ -1050,18 +1054,17 @@ async fn test_endorsements_messages() {
     // add advertised peer to controller
     let temp_peers_file = super::tools::generate_peers_file(&[PeerInfo {
         ip: mock_addr.ip(),
-        banned: false,
-        bootstrap: true,
+        peer_type: PeerType::Bootstrap,
         last_alive: None,
         last_failure: None,
         advertised: true,
         active_out_connection_attempts: 0,
         active_out_connections: 0,
         active_in_connections: 0,
+        banned: false,
     }]);
-
     let network_conf = NetworkSettings {
-        target_bootstrap_connections: 1,
+        peer_types_config: default_testing_peer_type_enum_map(),
         ..NetworkSettings::scenarios_default(bind_port, temp_peers_file.path())
     };
 

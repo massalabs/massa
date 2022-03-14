@@ -8,6 +8,7 @@ edition = "2021"
 
 [dependencies]
 displaydoc = "0.2"
+enum-map = { version = "2.0.3", features = ["serde"] }
 futures = "0.3"
 itertools = "0.10"
 num_enum = "0.5"

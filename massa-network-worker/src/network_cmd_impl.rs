@@ -328,7 +328,7 @@ pub async fn on_unban_cmd(
     worker: &mut NetworkWorker,
     ips: Vec<IpAddr>,
 ) -> Result<(), NetworkError> {
-    worker.peer_info_db.unban(ips).await
+    worker.peer_info_db.unban(ips)
 }
 
 pub async fn on_get_stats_cmd(
@@ -336,8 +336,8 @@ pub async fn on_get_stats_cmd(
     response_tx: oneshot::Sender<NetworkStats>,
 ) {
     let res = NetworkStats {
-        in_connection_count: worker.peer_info_db.active_in_nonbootstrap_connections as u64, // TODO: add bootstrap connections ... see #1312
-        out_connection_count: worker.peer_info_db.active_out_nonbootstrap_connections as u64, // TODO: add bootstrap connections ... see #1312
+        in_connection_count: worker.peer_info_db.get_in_connection_count() as u64,
+        out_connection_count: worker.peer_info_db.get_out_connection_count() as u64,
         known_peer_count: worker.peer_info_db.peers.len() as u64,
         banned_peer_count: worker
             .peer_info_db

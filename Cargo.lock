@@ -732,6 +732,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum-map"
+version = "2.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82605a2a3d13a9661b07ba27f39d00496aa347c9c236b1a3b8201c1b6d761408"
+dependencies = [
+ "enum-map-derive",
+ "serde 1.0.136",
+]
+
+[[package]]
+name = "enum-map-derive"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a63b7a0ddec6f38dcec5e36257750b7a8fcaf4227e12ceb306e341d63634da05"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "enumset"
 version = "1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1829,6 +1850,7 @@ name = "massa_network_exports"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
+ "enum-map",
  "massa_hash",
  "massa_logging",
  "massa_models",
@@ -1847,6 +1869,7 @@ name = "massa_network_worker"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
+ "enum-map",
  "futures 0.3.21",
  "itertools",
  "massa_hash",
