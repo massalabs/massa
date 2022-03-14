@@ -141,11 +141,51 @@
 <span id="136">136</span>
 <span id="137">137</span>
 <span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
+<span class="kw">use</span> <span class="ident">enum_map::EnumMap</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
+
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::peers::PeerType</span>;
 
 <span class="doccomment">/// Network configuration</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
@@ -168,18 +208,10 @@
     <span class="kw">pub</span> <span class="ident">peers_file</span>: <span class="ident">std::path::PathBuf</span>,
     <span class="doccomment">/// Path to the file containing our private_key</span>
     <span class="kw">pub</span> <span class="ident">private_key_file</span>: <span class="ident">std::path::PathBuf</span>,
-    <span class="doccomment">/// Target number of bootstrap connections.</span>
-    <span class="kw">pub</span> <span class="ident">target_bootstrap_connections</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Limit on the number of simultaneout outgoing bootstrap connection attempts.</span>
-    <span class="kw">pub</span> <span class="ident">max_out_bootstrap_connection_attempts</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Target number of outgoing nonbootstrap connections.</span>
-    <span class="kw">pub</span> <span class="ident">target_out_nonbootstrap_connections</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Limit on the number of in connections.</span>
-    <span class="kw">pub</span> <span class="ident">max_in_nonbootstrap_connections</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// Config for PeerType connections</span>
+    <span class="kw">pub</span> <span class="ident">peer_types_config</span>: <span class="ident">EnumMap</span><span class="op">&lt;</span><span class="ident">PeerType</span>, <span class="ident">PeerTypeConnectionConfig</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Limit on the number of in connections per ip.</span>
     <span class="kw">pub</span> <span class="ident">max_in_connections_per_ip</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Limit on the total current number of outgoing non-bootstrap connection attempts.</span>
-    <span class="kw">pub</span> <span class="ident">max_out_nonbootstrap_connection_attempts</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// Limit on the number of idle peers we remember.</span>
     <span class="kw">pub</span> <span class="ident">max_idle_peers</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// Limit on the number of banned peers we remember.</span>
@@ -200,15 +232,48 @@
     <span class="kw">pub</span> <span class="ident">max_in_connection_overflow</span>: <span class="ident">usize</span>,
 }
 
+<span class="doccomment">/// Connection config for a peer type</span>
+<span class="doccomment">/// Limit the current connections for a given peer type as a whole</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PeerTypeConnectionConfig</span> {
+    <span class="doccomment">/// max number of incomming connection</span>
+    <span class="kw">pub</span> <span class="ident">max_in_connections</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// target number of outgoing connections</span>
+    <span class="kw">pub</span> <span class="ident">target_out_connections</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// max number of on going outgoing connection attempt</span>
+    <span class="kw">pub</span> <span class="ident">max_out_attempts</span>: <span class="ident">usize</span>,
+}
+
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">test_exports::tools::get_temp_private_key_file</span>, <span class="ident">NetworkSettings</span>};
-    <span class="kw">use</span> <span class="ident">massa_models::constants::BASE_NETWORK_CONTROLLER_IP</span>;
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::NetworkSettings</span>;
+    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">test_exports::tools::get_temp_private_key_file</span>, <span class="ident">PeerType</span>};
+    <span class="kw">use</span> <span class="ident">enum_map::enum_map</span>;
+    <span class="kw">use</span> <span class="ident">massa_models::constants::default_testing::BASE_NETWORK_CONTROLLER_IP</span>;
     <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
     <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">Ipv4Addr</span>, <span class="ident">SocketAddr</span>};
 
+    <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::PeerTypeConnectionConfig</span>;
+
     <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">NetworkSettings</span> {
         <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+            <span class="kw">let</span> <span class="ident">peer_types_config</span> <span class="op">=</span> <span class="macro">enum_map!</span> {
+                <span class="ident">PeerType::Bootstrap</span> =&gt; <span class="ident">PeerTypeConnectionConfig</span> {
+                    <span class="ident">target_out_connections</span>: <span class="number">1</span>,
+                    <span class="ident">max_out_attempts</span>: <span class="number">1</span>,
+                    <span class="ident">max_in_connections</span>: <span class="number">1</span>,
+                },
+                <span class="ident">PeerType::WhiteListed</span> =&gt; <span class="ident">PeerTypeConnectionConfig</span> {
+                    <span class="ident">target_out_connections</span>: <span class="number">2</span>,
+                    <span class="ident">max_out_attempts</span>: <span class="number">2</span>,
+                    <span class="ident">max_in_connections</span>: <span class="number">3</span>,
+                },
+                <span class="ident">PeerType::Standard</span> =&gt; <span class="ident">PeerTypeConnectionConfig</span> {
+                    <span class="ident">target_out_connections</span>: <span class="number">10</span>,
+                    <span class="ident">max_out_attempts</span>: <span class="number">15</span>,
+                    <span class="ident">max_in_connections</span>: <span class="number">5</span>,
+                }
+            };
             <span class="ident">NetworkSettings</span> {
                 <span class="ident">bind</span>: <span class="ident">SocketAddr::new</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">Ipv4Addr::new</span>(<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>)), <span class="number">8080</span>),
                 <span class="ident">routable_ip</span>: <span class="prelude-val">Some</span>(<span class="ident">IpAddr::V4</span>(<span class="ident">Ipv4Addr::new</span>(<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>))),
@@ -216,12 +281,7 @@
                 <span class="ident">connect_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">180_000</span>),
                 <span class="ident">wakeup_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">10_000</span>),
                 <span class="ident">peers_file</span>: <span class="ident">std::path::PathBuf::new</span>(),
-                <span class="ident">target_bootstrap_connections</span>: <span class="number">1</span>,
-                <span class="ident">max_out_bootstrap_connection_attempts</span>: <span class="number">1</span>,
-                <span class="ident">target_out_nonbootstrap_connections</span>: <span class="number">10</span>,
-                <span class="ident">max_in_nonbootstrap_connections</span>: <span class="number">5</span>,
                 <span class="ident">max_in_connections_per_ip</span>: <span class="number">2</span>,
-                <span class="ident">max_out_nonbootstrap_connection_attempts</span>: <span class="number">15</span>,
                 <span class="ident">max_idle_peers</span>: <span class="number">3</span>,
                 <span class="ident">max_banned_peers</span>: <span class="number">3</span>,
                 <span class="ident">peers_file_dump_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">10_000</span>),
@@ -233,6 +293,7 @@
                 <span class="ident">initial_peers_file</span>: <span class="ident">std::path::PathBuf::new</span>(),
                 <span class="ident">peer_list_send_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">500</span>),
                 <span class="ident">max_in_connection_overflow</span>: <span class="number">2</span>,
+                <span class="ident">peer_types_config</span>,
             }
         }
     }
@@ -251,19 +312,31 @@
                 <span class="ident">endorsement_count</span>: <span class="number">8</span>,
                 ..<span class="ident">massa_models::SerializationContext::default</span>()
             });
+            <span class="kw">let</span> <span class="ident">peer_types_config</span> <span class="op">=</span> <span class="macro">enum_map!</span> {
+                <span class="ident">PeerType::Bootstrap</span> =&gt; <span class="ident">PeerTypeConnectionConfig</span> {
+                    <span class="ident">target_out_connections</span>: <span class="number">1</span>,
+                    <span class="ident">max_out_attempts</span>: <span class="number">1</span>,
+                    <span class="ident">max_in_connections</span>: <span class="number">1</span>,
+                },
+                <span class="ident">PeerType::WhiteListed</span> =&gt; <span class="ident">PeerTypeConnectionConfig</span> {
+                    <span class="ident">target_out_connections</span>: <span class="number">2</span>,
+                    <span class="ident">max_out_attempts</span>: <span class="number">2</span>,
+                    <span class="ident">max_in_connections</span>: <span class="number">3</span>,
+                },
+                <span class="ident">PeerType::Standard</span> =&gt; <span class="ident">PeerTypeConnectionConfig</span> {
+                    <span class="ident">target_out_connections</span>: <span class="number">10</span>,
+                    <span class="ident">max_out_attempts</span>: <span class="number">15</span>,
+                    <span class="ident">max_in_connections</span>: <span class="number">5</span>,
+                }
+            };
             <span class="self">Self</span> {
                 <span class="ident">bind</span>: <span class="macro">format!</span>(<span class="string">&quot;0.0.0.0:{}&quot;</span>, <span class="ident">port</span>).<span class="ident">parse</span>().<span class="ident">unwrap</span>(),
                 <span class="ident">routable_ip</span>: <span class="prelude-val">Some</span>(<span class="ident">BASE_NETWORK_CONTROLLER_IP</span>),
                 <span class="ident">protocol_port</span>: <span class="ident">port</span>,
                 <span class="ident">connect_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">3000</span>),
                 <span class="ident">peers_file</span>: <span class="ident">peers_file</span>.<span class="ident">to_path_buf</span>(),
-                <span class="ident">target_out_nonbootstrap_connections</span>: <span class="number">10</span>,
                 <span class="ident">wakeup_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">3000</span>),
-                <span class="ident">target_bootstrap_connections</span>: <span class="number">0</span>,
-                <span class="ident">max_out_bootstrap_connection_attempts</span>: <span class="number">1</span>,
-                <span class="ident">max_in_nonbootstrap_connections</span>: <span class="number">100</span>,
                 <span class="ident">max_in_connections_per_ip</span>: <span class="number">100</span>,
-                <span class="ident">max_out_nonbootstrap_connection_attempts</span>: <span class="number">100</span>,
                 <span class="ident">max_idle_peers</span>: <span class="number">100</span>,
                 <span class="ident">max_banned_peers</span>: <span class="number">100</span>,
                 <span class="ident">peers_file_dump_interval</span>: <span class="ident">MassaTime::from</span>(<span class="number">30000</span>),
@@ -275,10 +348,11 @@
                 <span class="ident">initial_peers_file</span>: <span class="ident">peers_file</span>.<span class="ident">to_path_buf</span>(),
                 <span class="ident">peer_list_send_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">50</span>),
                 <span class="ident">max_in_connection_overflow</span>: <span class="number">10</span>,
+                <span class="ident">peer_types_config</span>,
             }
         }
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (458262b13 2022-03-09)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (e95b10ba4 2022-03-13)" ></div>
 </body></html>

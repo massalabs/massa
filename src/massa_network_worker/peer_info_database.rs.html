@@ -856,26 +856,56 @@
 <span id="851">851</span>
 <span id="852">852</span>
 <span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
+<span class="kw">use</span> <span class="ident">enum_map::EnumMap</span>;
 <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models::constants::MAX_ADVERTISE_LENGTH</span>;
+<span class="kw">use</span> <span class="ident">massa_network_exports::settings::PeerTypeConnectionConfig</span>;
+<span class="kw">use</span> <span class="ident">massa_network_exports::ConnectionCount</span>;
 <span class="kw">use</span> <span class="ident">massa_network_exports::NetworkConnectionErrorType</span>;
 <span class="kw">use</span> <span class="ident">massa_network_exports::NetworkError</span>;
 <span class="kw">use</span> <span class="ident">massa_network_exports::NetworkSettings</span>;
 <span class="kw">use</span> <span class="ident">massa_network_exports::PeerInfo</span>;
+<span class="kw">use</span> <span class="ident">massa_network_exports::PeerType</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
-<span class="kw">use</span> <span class="ident">serde_json::json</span>;
-<span class="kw">use</span> <span class="ident">serde_json::Value</span>;
-<span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">hash_map</span>, <span class="ident">HashMap</span>};
+<span class="kw">use</span> <span class="ident">std::cmp::Reverse</span>;
+<span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 <span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
 <span class="kw">use</span> <span class="ident">std::path::Path</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::watch</span>;
 <span class="kw">use</span> <span class="ident">tokio::task::JoinHandle</span>;
 <span class="kw">use</span> <span class="ident">tokio::time</span>::{<span class="ident">sleep</span>, <span class="ident">Duration</span>};
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">trace</span>, <span class="ident">warn</span>};
-
 <span class="doccomment">/// Contains all information about every peers we know about.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PeerInfoDatabase</span> {
     <span class="doccomment">/// Network configuration.</span>
@@ -886,23 +916,15 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">saver_join_handle</span>: <span class="ident">JoinHandle</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
     <span class="doccomment">/// Monitor changed peers.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">saver_watch_tx</span>: <span class="ident">watch::Sender</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Total number of active out bootstrap connection attempts.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">active_out_bootstrap_connection_attempts</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Total number of active out non-bootstrap connection attempts.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">active_out_nonbootstrap_connection_attempts</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Total number of active bootstrap connections.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">active_bootstrap_connections</span>: <span class="ident">usize</span>, <span class="comment">// TODO: in or out connections?</span>
-    <span class="doccomment">/// Total number of active out non-bootstrap connections.</span>
-    <span class="kw">pub</span> <span class="ident">active_out_nonbootstrap_connections</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// Total number of active in non-bootstrap connections</span>
-    <span class="kw">pub</span> <span class="ident">active_in_nonbootstrap_connections</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// Connections count for each PeerType</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">peer_types_connection_count</span>: <span class="ident">EnumMap</span><span class="op">&lt;</span><span class="ident">PeerType</span>, <span class="ident">ConnectionCount</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Every wakeup_interval we try to establish a connection with known inactive peers</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">wakeup_interval</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Clock compensation.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
 }
 
-<span class="doccomment">/// Saves banned, advertised and bootstrap peers to a file.</span>
+<span class="doccomment">/// Saves advertised and non standard peers to a file.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Arguments</span>
 <span class="doccomment">/// * peers: peers to save</span>
@@ -911,20 +933,9 @@
     <span class="ident">peers</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span>,
     <span class="ident">file_path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">peer_vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">peers</span>
+    <span class="kw">let</span> <span class="ident">peer_vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">peers</span>
         .<span class="ident">values</span>()
-        .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">banned</span> <span class="op">|</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">advertised</span> <span class="op">|</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">bootstrap</span>)
-        <span class="comment">//        .cloned()</span>
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">peer</span><span class="op">|</span> {
-            <span class="macro">json!</span>({
-                <span class="string">&quot;ip&quot;</span>: <span class="ident">peer</span>.<span class="ident">ip</span>,
-                <span class="string">&quot;banned&quot;</span>: <span class="ident">peer</span>.<span class="ident">banned</span>,
-                <span class="string">&quot;bootstrap&quot;</span>: <span class="ident">peer</span>.<span class="ident">bootstrap</span>,
-                <span class="string">&quot;last_alive&quot;</span>: <span class="ident">peer</span>.<span class="ident">last_alive</span>,
-                <span class="string">&quot;last_failure&quot;</span>: <span class="ident">peer</span>.<span class="ident">last_failure</span>,
-                <span class="string">&quot;advertised&quot;</span>: <span class="ident">peer</span>.<span class="ident">advertised</span>,
-            })
-        })
+        .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">advertised</span> <span class="op">|</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">peer_type</span> <span class="op">!</span><span class="op">=</span> <span class="ident">PeerType::Standard</span> <span class="op">|</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">banned</span>)
         .<span class="ident">collect</span>();
 
     <span class="ident">tokio::fs::write</span>(<span class="ident">file_path</span>, <span class="ident">serde_json::to_string_pretty</span>(<span class="kw-2">&amp;</span><span class="ident">peer_vec</span>)<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -936,11 +947,14 @@
 <span class="doccomment">/// provided by NetworkConfig.ProtocolConfig.</span>
 <span class="doccomment">/// If opt_new_peers is provided, adds its contents as well.</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// Note: only non-active, non-bootstrap peers are counted when clipping to size limits.</span>
+<span class="doccomment">/// Note: only standard non-active peers are counted when clipping to size limits.</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// Arguments : cfg : NetworkConfig</span>
-<span class="doccomment">/// peers : peers to clean up</span>
-<span class="doccomment">/// opt_new_peers : optional peers to add to the database</span>
+<span class="doccomment">/// Arguments :</span>
+<span class="doccomment">/// * cfg : NetworkSettings</span>
+<span class="doccomment">/// * peers : peers to clean up</span>
+<span class="doccomment">/// * opt_new_peers : optional peers to add to the database</span>
+<span class="doccomment">/// * clock_compensation: to be sync with server time</span>
+<span class="doccomment">/// * ban_timeout: after that time we forget we banned a peer</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">cleanup_peers</span>(
     <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">NetworkSettings</span>,
     <span class="ident">peers</span>: <span class="kw-2">&amp;mut</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span>,
@@ -972,17 +986,7 @@
                 <span class="bool-val">true</span>
             })
             .<span class="ident">take</span>(<span class="ident">MAX_ADVERTISE_LENGTH</span> <span class="kw">as</span> <span class="ident">usize</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">ip</span><span class="op">|</span> <span class="ident">PeerInfo</span> {
-                <span class="ident">ip</span>,
-                <span class="ident">banned</span>: <span class="bool-val">false</span>,
-                <span class="ident">bootstrap</span>: <span class="bool-val">false</span>,
-                <span class="ident">last_alive</span>: <span class="prelude-val">None</span>,
-                <span class="ident">last_failure</span>: <span class="prelude-val">None</span>,
-                <span class="ident">advertised</span>: <span class="bool-val">true</span>,
-                <span class="ident">active_out_connection_attempts</span>: <span class="number">0</span>,
-                <span class="ident">active_out_connections</span>: <span class="number">0</span>,
-                <span class="ident">active_in_connections</span>: <span class="number">0</span>,
-            })
+            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">ip</span><span class="op">|</span> <span class="ident">PeerInfo::new</span>(<span class="ident">ip</span>, <span class="bool-val">true</span>))
             .<span class="ident">collect</span>()
     } <span class="kw">else</span> {
         <span class="ident">Vec::new</span>()
@@ -1006,7 +1010,7 @@
                 <span class="kw">continue</span>;
             }
         }
-        <span class="kw">if</span> <span class="ident">p</span>.<span class="ident">bootstrap</span> <span class="op">|</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">is_active</span>() {
+        <span class="kw">if</span> <span class="ident">p</span>.<span class="ident">peer_type</span> <span class="op">!</span><span class="op">=</span> <span class="ident">Default::default</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">is_active</span>() {
             <span class="ident">keep_peers</span>.<span class="ident">push</span>(<span class="ident">p</span>);
         } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">p</span>.<span class="ident">banned</span> {
             <span class="ident">banned_peers</span>.<span class="ident">push</span>(<span class="ident">p</span>);
@@ -1043,6 +1047,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Argument</span>
     <span class="doccomment">/// * cfg : network configuration</span>
+    <span class="doccomment">/// * clock_compensation: sync with server</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">NetworkSettings</span>, <span class="ident">clock_compensation</span>: <span class="ident">i64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="comment">// wakeup interval</span>
         <span class="kw">let</span> <span class="ident">wakeup_interval</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">wakeup_interval</span>;
@@ -1105,15 +1110,54 @@
             <span class="ident">peers</span>,
             <span class="ident">saver_join_handle</span>,
             <span class="ident">saver_watch_tx</span>,
-            <span class="ident">active_out_bootstrap_connection_attempts</span>: <span class="number">0</span>,
-            <span class="ident">active_bootstrap_connections</span>: <span class="number">0</span>,
-            <span class="ident">active_out_nonbootstrap_connection_attempts</span>: <span class="number">0</span>,
-            <span class="ident">active_out_nonbootstrap_connections</span>: <span class="number">0</span>,
-            <span class="ident">active_in_nonbootstrap_connections</span>: <span class="number">0</span>,
             <span class="ident">wakeup_interval</span>,
             <span class="ident">clock_compensation</span>,
+            <span class="ident">peer_types_connection_count</span>: <span class="ident">EnumMap::default</span>(),
         })
     }
+
+    <span class="doccomment">/// Cleanly closes peerInfoDatabase, performing one last peer dump.</span>
+    <span class="doccomment">/// A warning is raised on dump failure.</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+        <span class="ident">drop</span>(<span class="self">self</span>.<span class="ident">saver_watch_tx</span>);
+        <span class="self">self</span>.<span class="ident">saver_join_handle</span>.<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">dump_peers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">peers</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">peers_file</span>).<span class="kw">await</span> {
+            <span class="macro">warn!</span>(<span class="string">&quot;could not dump peers to file: {}&quot;</span>, <span class="ident">e</span>);
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="comment">//////////////////////</span>
+    <span class="comment">// aggregated stats //</span>
+    <span class="comment">//////////////////////</span>
+
+    <span class="doccomment">/// total in connection count, considering all peer types</span>
+    <span class="doccomment">/// quite similar to get_out_connection_count</span>
+    <span class="doccomment">/// todo https://github.com/massalabs/massa/issues/2319</span>
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_in_connection_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
+        <span class="self">self</span>.<span class="ident">peer_types_connection_count</span>
+            .<span class="ident">values</span>()
+            .<span class="ident">fold</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">connection_count</span><span class="op">|</span> {
+                <span class="ident">acc</span> <span class="op">+</span> (<span class="ident">connection_count</span>.<span class="ident">active_in_connections</span> <span class="kw">as</span> <span class="ident">u64</span>)
+            })
+    }
+
+    <span class="doccomment">/// total out connections count, considering all peer types</span>
+    <span class="doccomment">/// quite similar to get_in_connection_count</span>
+    <span class="doccomment">/// todo https://github.com/massalabs/massa/issues/2319</span>
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_out_connection_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
+        <span class="self">self</span>.<span class="ident">peer_types_connection_count</span>
+            .<span class="ident">values</span>()
+            .<span class="ident">fold</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">connection_count</span><span class="op">|</span> {
+                <span class="ident">acc</span> <span class="op">+</span> (<span class="ident">connection_count</span>.<span class="ident">active_out_connections</span> <span class="kw">as</span> <span class="ident">u64</span>)
+            })
+    }
+
+    <span class="comment">///////////////////////</span>
+    <span class="comment">// hard disk storage //</span>
+    <span class="comment">///////////////////////</span>
 
     <span class="doccomment">/// Refreshes the peer list. Should be called at regular intervals.</span>
     <span class="doccomment">/// Performs multiple cleanup tasks e.g. remove old banned peers</span>
@@ -1139,206 +1183,6 @@
         <span class="ident">res</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">unban</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="kw">for</span> <span class="ident">ip</span> <span class="kw">in</span> <span class="ident">ips</span>.<span class="ident">into_iter</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">peer</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">ip</span>) {
-                <span class="ident">peer</span>.<span class="ident">banned</span> <span class="op">=</span> <span class="bool-val">false</span>;
-            } <span class="kw">else</span> {
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
-            }
-        }
-        <span class="ident">cleanup_peers</span>(
-            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
-            <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
-            <span class="prelude-val">None</span>,
-            <span class="self">self</span>.<span class="ident">clock_compensation</span>,
-            <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
-        )<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// Cleanly closes peerInfoDatabase, performing one last peer dump.</span>
-    <span class="doccomment">/// A warning is raised on dump failure.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="ident">drop</span>(<span class="self">self</span>.<span class="ident">saver_watch_tx</span>);
-        <span class="self">self</span>.<span class="ident">saver_join_handle</span>.<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">dump_peers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">peers</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">peers_file</span>).<span class="kw">await</span> {
-            <span class="macro">warn!</span>(<span class="string">&quot;could not dump peers to file: {}&quot;</span>, <span class="ident">e</span>);
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// Gets available out connection attempts</span>
-    <span class="doccomment">/// according to NetworkConfig and current connections and connection attempts.</span>
-    <span class="comment">// returns (count for bootstrap, count for non-bootstrap)</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_available_out_connection_attempts</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">usize</span>, <span class="ident">usize</span>) {
-        <span class="kw">let</span> <span class="ident">bootstrap_count</span> <span class="op">=</span> <span class="ident">std::cmp::min</span>(
-            <span class="self">self</span>.<span class="ident">network_settings</span>
-                .<span class="ident">target_bootstrap_connections</span>
-                .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_out_bootstrap_connection_attempts</span>)
-                .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_bootstrap_connections</span>),
-            <span class="self">self</span>.<span class="ident">network_settings</span>
-                .<span class="ident">max_out_bootstrap_connection_attempts</span>
-                .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_out_bootstrap_connection_attempts</span>),
-        );
-
-        <span class="kw">let</span> <span class="ident">nonbootstrap_count</span> <span class="op">=</span> <span class="ident">std::cmp::min</span>(
-            <span class="self">self</span>.<span class="ident">network_settings</span>
-                .<span class="ident">target_out_nonbootstrap_connections</span>
-                .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connection_attempts</span>)
-                .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connections</span>),
-            <span class="self">self</span>.<span class="ident">network_settings</span>
-                .<span class="ident">max_out_nonbootstrap_connection_attempts</span>
-                .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connection_attempts</span>),
-        );
-
-        (<span class="ident">bootstrap_count</span>, <span class="ident">nonbootstrap_count</span>)
-    }
-
-    <span class="doccomment">/// Sorts peers by ( last_failure, rev(last_success) )</span>
-    <span class="doccomment">/// and returns as many peers as there are available slots to attempt outgoing connections to.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_out_connection_candidate_ips</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="comment">/*
-            get_connect_candidate_ips must return the full sorted list where:
-                advertised &amp;&amp; !banned &amp;&amp; out_connection_attempts==0 &amp;&amp; out_connections==0 &amp;&amp; in_connections=0
-                sorted_by = ( last_failure, rev(last_success) )
-        */</span>
-        <span class="kw">let</span> (<span class="ident">available_slots_bootstrap</span>, <span class="ident">available_slots_nonbootstrap</span>) <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">get_available_out_connection_attempts</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res_ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-
-        <span class="kw">if</span> <span class="ident">available_slots_bootstrap</span> <span class="op">&gt;</span> <span class="number">0</span> {
-            <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">MassaTime::compensated_now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sorted_peers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">peers</span>
-                .<span class="ident">values</span>()
-                .<span class="ident">filter</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">p</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">p</span>.<span class="ident">bootstrap</span> <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">p</span>.<span class="ident">advertised</span> <span class="op">|</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">banned</span> <span class="op">|</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">is_active</span>() {
-                        <span class="kw">return</span> <span class="bool-val">false</span>;
-                    }
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">last_failure</span>) <span class="op">=</span> <span class="ident">p</span>.<span class="ident">last_failure</span> {
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">last_alive</span>) <span class="op">=</span> <span class="ident">p</span>.<span class="ident">last_alive</span> {
-                            <span class="kw">if</span> <span class="ident">last_alive</span> <span class="op">&gt;</span> <span class="ident">last_failure</span> {
-                                <span class="kw">return</span> <span class="bool-val">true</span>;
-                            }
-                        }
-                        <span class="kw">return</span> <span class="ident">now</span>
-                            .<span class="ident">saturating_sub</span>(<span class="ident">last_failure</span>)
-                            .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">wakeup_interval</span>)
-                            <span class="op">&gt;</span> <span class="ident">MassaTime::from</span>(<span class="number">0u64</span>);
-                    }
-                    <span class="bool-val">true</span>
-                })
-                .<span class="ident">copied</span>()
-                .<span class="ident">collect</span>();
-            <span class="ident">sorted_peers</span>
-                .<span class="ident">sort_unstable_by_key</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">p</span><span class="op">|</span> (<span class="ident">p</span>.<span class="ident">last_failure</span>, <span class="ident">std::cmp::Reverse</span>(<span class="ident">p</span>.<span class="ident">last_alive</span>)));
-            <span class="ident">res_ips</span>.<span class="ident">extend</span>(
-                <span class="ident">sorted_peers</span>
-                    .<span class="ident">into_iter</span>()
-                    .<span class="ident">take</span>(<span class="ident">available_slots_bootstrap</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">ip</span>),
-            )
-        }
-
-        <span class="kw">if</span> <span class="ident">available_slots_nonbootstrap</span> <span class="op">&gt;</span> <span class="number">0</span> {
-            <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">MassaTime::compensated_now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sorted_peers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">peers</span>
-                .<span class="ident">values</span>()
-                .<span class="ident">filter</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">p</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="op">!</span>(<span class="op">!</span><span class="ident">p</span>.<span class="ident">bootstrap</span> <span class="op">&amp;&amp;</span> <span class="ident">p</span>.<span class="ident">advertised</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">p</span>.<span class="ident">banned</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">p</span>.<span class="ident">is_active</span>()) {
-                        <span class="kw">return</span> <span class="bool-val">false</span>;
-                    }
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">last_failure</span>) <span class="op">=</span> <span class="ident">p</span>.<span class="ident">last_failure</span> {
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">last_alive</span>) <span class="op">=</span> <span class="ident">p</span>.<span class="ident">last_alive</span> {
-                            <span class="kw">if</span> <span class="ident">last_alive</span> <span class="op">&gt;</span> <span class="ident">last_failure</span> {
-                                <span class="kw">return</span> <span class="bool-val">true</span>;
-                            }
-                        }
-                        <span class="kw">return</span> <span class="ident">now</span>
-                            .<span class="ident">saturating_sub</span>(<span class="ident">last_failure</span>)
-                            .<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">wakeup_interval</span>)
-                            <span class="op">&gt;</span> <span class="ident">MassaTime::from</span>(<span class="number">0u64</span>);
-                    }
-                    <span class="bool-val">true</span>
-                })
-                .<span class="ident">copied</span>()
-                .<span class="ident">collect</span>();
-            <span class="ident">sorted_peers</span>
-                .<span class="ident">sort_unstable_by_key</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">p</span><span class="op">|</span> (<span class="ident">p</span>.<span class="ident">last_failure</span>, <span class="ident">std::cmp::Reverse</span>(<span class="ident">p</span>.<span class="ident">last_alive</span>)));
-            <span class="ident">res_ips</span>.<span class="ident">extend</span>(
-                <span class="ident">sorted_peers</span>
-                    .<span class="ident">into_iter</span>()
-                    .<span class="ident">take</span>(<span class="ident">available_slots_nonbootstrap</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">ip</span>),
-            )
-        }
-
-        <span class="prelude-val">Ok</span>(<span class="ident">res_ips</span>)
-    }
-
-    <span class="doccomment">/// returns Hashmap of ipAddrs -&gt; Peerinfo</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_peers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">peers</span>
-    }
-
-    <span class="doccomment">/// Returns a vec of advertisable IpAddrs sorted by ( last_failure, rev(last_success) )</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_advertisable_peer_ips</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sorted_peers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">peers</span>
-            .<span class="ident">values</span>()
-            .<span class="ident">filter</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">p</span><span class="op">|</span> (<span class="ident">p</span>.<span class="ident">advertised</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">p</span>.<span class="ident">banned</span>))
-            .<span class="ident">copied</span>()
-            .<span class="ident">collect</span>();
-        <span class="ident">sorted_peers</span>.<span class="ident">sort_unstable_by_key</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">p</span><span class="op">|</span> (<span class="ident">std::cmp::Reverse</span>(<span class="ident">p</span>.<span class="ident">last_alive</span>), <span class="ident">p</span>.<span class="ident">last_failure</span>));
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sorted_ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">sorted_peers</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">take</span>(<span class="ident">MAX_ADVERTISE_LENGTH</span> <span class="kw">as</span> <span class="ident">usize</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">ip</span>)
-            .<span class="ident">collect</span>();
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">our_ip</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">routable_ip</span> {
-            <span class="ident">sorted_ips</span>.<span class="ident">insert</span>(<span class="number">0</span>, <span class="ident">our_ip</span>);
-            <span class="ident">sorted_ips</span>.<span class="ident">truncate</span>(<span class="ident">MAX_ADVERTISE_LENGTH</span> <span class="kw">as</span> <span class="ident">usize</span>);
-        }
-        <span class="ident">sorted_ips</span>
-    }
-
-    <span class="doccomment">/// Acknowledges a new out connection attempt to ip.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Argument</span>
-    <span class="doccomment">/// ip: ipAddr we are now connected to</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_out_connection_attempt</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ip</span>: <span class="kw-2">&amp;</span><span class="ident">IpAddr</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">ip</span>.<span class="ident">is_global</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::InvalidIpError</span>(<span class="kw-2">*</span><span class="ident">ip</span>));
-        }
-        <span class="kw">let</span> (<span class="ident">available_bootstrap_conns</span>, <span class="ident">available_nonbootstrap_conns</span>) <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">get_available_out_connection_attempts</span>();
-        <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get_mut</span>(<span class="ident">ip</span>).<span class="ident">ok_or</span>({
-            <span class="ident">NetworkError::PeerConnectionError</span>(<span class="ident">NetworkConnectionErrorType::PeerInfoNotFoundError</span>(
-                <span class="kw-2">*</span><span class="ident">ip</span>,
-            ))
-        })<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">bootstrap</span> {
-            <span class="kw">if</span> <span class="ident">available_bootstrap_conns</span> <span class="op">==</span> <span class="number">0</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
-                    <span class="ident">NetworkConnectionErrorType::ToManyConnectionAttempt</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
-                ));
-            }
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">available_nonbootstrap_conns</span> <span class="op">==</span> <span class="number">0</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
-                <span class="ident">NetworkConnectionErrorType::ToManyConnectionAttempt</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
-            ));
-        }
-        <span class="ident">peer</span>.<span class="ident">active_out_connection_attempts</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">bootstrap</span> {
-            <span class="self">self</span>.<span class="ident">active_out_bootstrap_connection_attempts</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connection_attempts</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-
     <span class="doccomment">/// Merges new_peers with our peers using the cleanup_peers function.</span>
     <span class="doccomment">/// A dump is requested afterwards.</span>
     <span class="doccomment">///</span>
@@ -1356,6 +1200,59 @@
             <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
         )<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">request_dump</span>()
+    }
+
+    <span class="comment">////////////////////////////////</span>
+    <span class="comment">// high level peer management //</span>
+    <span class="comment">////////////////////////////////</span>
+
+    <span class="doccomment">/// Unbans a list of ip</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unban</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">update_happened</span> <span class="op">=</span> <span class="bool-val">false</span>;
+        <span class="kw">for</span> <span class="ident">ip</span> <span class="kw">in</span> <span class="ident">ips</span>.<span class="ident">into_iter</span>() {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">peer</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">ip</span>) {
+                <span class="ident">update_happened</span> <span class="op">=</span> <span class="ident">update_happened</span> <span class="op">|</span><span class="op">|</span> <span class="ident">peer</span>.<span class="ident">banned</span>;
+                <span class="ident">peer</span>.<span class="ident">banned</span> <span class="op">=</span> <span class="bool-val">false</span>;
+            }
+        }
+        <span class="self">self</span>.<span class="ident">update</span>()<span class="question-mark">?</span>;
+        <span class="kw">if</span> <span class="ident">update_happened</span> {
+            <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Acknowledges a new out connection attempt to ip.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Argument</span>
+    <span class="doccomment">/// ip: ipAddr we are now connected to</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_out_connection_attempt</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ip</span>: <span class="kw-2">&amp;</span><span class="ident">IpAddr</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">ip</span>.<span class="ident">is_global</span>() {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::InvalidIpError</span>(<span class="kw-2">*</span><span class="ident">ip</span>));
+        }
+        <span class="kw">let</span> <span class="ident">peer_type</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">peer</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get</span>(<span class="ident">ip</span>) {
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">can_try_new_out_connection</span>(<span class="ident">peer</span>.<span class="ident">peer_type</span>) {
+                <span class="comment">// Can unwrap because we checked above that there is a peer.</span>
+                <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get_mut</span>(<span class="ident">ip</span>).<span class="ident">unwrap</span>();
+                <span class="ident">peer</span>.<span class="ident">active_out_connection_attempts</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+                <span class="prelude-val">Ok</span>(<span class="ident">peer</span>.<span class="ident">peer_type</span>)
+            } <span class="kw">else</span> {
+                <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::TooManyConnectionAttempts</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                ))
+            }
+        } <span class="kw">else</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">can_try_new_out_connection</span>(<span class="ident">Default::default</span>()) {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">PeerInfo::new</span>(<span class="kw-2">*</span><span class="ident">ip</span>, <span class="bool-val">false</span>);
+            <span class="ident">peer</span>.<span class="ident">active_out_connection_attempts</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+            <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">ip</span>, <span class="ident">peer</span>);
+            <span class="prelude-val">Ok</span>(<span class="ident">peer</span>.<span class="ident">peer_type</span>)
+        } <span class="kw">else</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                <span class="ident">NetworkConnectionErrorType::TooManyConnectionAttempts</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+            ))
+        }<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">increase_global_active_out_connection_attempt_count</span>(<span class="ident">peer_type</span>, <span class="ident">ip</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">update</span>()
     }
 
     <span class="doccomment">/// Sets the peer status as alive.</span>
@@ -1399,28 +1296,15 @@
     <span class="doccomment">/// # Argument</span>
     <span class="doccomment">/// * ip : ip address of the considered peer.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">peer_banned</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ip</span>: <span class="kw-2">&amp;</span><span class="ident">IpAddr</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">entry</span>(<span class="kw-2">*</span><span class="ident">ip</span>).<span class="ident">or_insert_with</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">PeerInfo</span> {
-            <span class="ident">ip</span>: <span class="kw-2">*</span><span class="ident">ip</span>,
-            <span class="ident">banned</span>: <span class="bool-val">false</span>,
-            <span class="ident">bootstrap</span>: <span class="bool-val">false</span>,
-            <span class="ident">last_alive</span>: <span class="prelude-val">None</span>,
-            <span class="ident">last_failure</span>: <span class="prelude-val">None</span>,
-            <span class="ident">advertised</span>: <span class="bool-val">false</span>,
-            <span class="ident">active_out_connection_attempts</span>: <span class="number">0</span>,
-            <span class="ident">active_out_connections</span>: <span class="number">0</span>,
-            <span class="ident">active_in_connections</span>: <span class="number">0</span>,
-        });
+        <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">peers</span>
+            .<span class="ident">entry</span>(<span class="kw-2">*</span><span class="ident">ip</span>)
+            .<span class="ident">or_insert_with</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">PeerInfo::new</span>(<span class="kw-2">*</span><span class="ident">ip</span>, <span class="bool-val">false</span>));
         <span class="ident">peer</span>.<span class="ident">last_failure</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">MassaTime::compensated_now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>);
         <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">banned</span> {
             <span class="ident">peer</span>.<span class="ident">banned</span> <span class="op">=</span> <span class="bool-val">true</span>;
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span> {
-                <span class="ident">cleanup_peers</span>(
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
-                    <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
-                    <span class="prelude-val">None</span>,
-                    <span class="self">self</span>.<span class="ident">clock_compensation</span>,
-                    <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
-                )<span class="question-mark">?</span>;
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() {
+                <span class="self">self</span>.<span class="ident">update</span>()<span class="question-mark">?</span>
             }
         }
         <span class="self">self</span>.<span class="ident">request_dump</span>()
@@ -1434,38 +1318,34 @@
     <span class="doccomment">/// # Argument</span>
     <span class="doccomment">/// * ip : ip address of the considered peer.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">out_connection_closed</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ip</span>: <span class="kw-2">&amp;</span><span class="ident">IpAddr</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get_mut</span>(<span class="ident">ip</span>).<span class="ident">ok_or</span>({
-            <span class="ident">NetworkError::PeerConnectionError</span>(<span class="ident">NetworkConnectionErrorType::PeerInfoNotFoundError</span>(
-                <span class="kw-2">*</span><span class="ident">ip</span>,
-            ))
-        })<span class="question-mark">?</span>;
-        <span class="kw">if</span> (<span class="ident">peer</span>.<span class="ident">bootstrap</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_bootstrap_connections</span> <span class="op">==</span> <span class="number">0</span>)
-            <span class="op">|</span><span class="op">|</span> (<span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connections</span> <span class="op">==</span> <span class="number">0</span>)
-            <span class="op">|</span><span class="op">|</span> <span class="ident">peer</span>.<span class="ident">active_out_connections</span> <span class="op">==</span> <span class="number">0</span>
-        {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
-                <span class="ident">NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
-            ));
-        }
-        <span class="ident">peer</span>.<span class="ident">active_out_connections</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">bootstrap</span> {
-            <span class="self">self</span>.<span class="ident">active_bootstrap_connections</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connections</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-        }
-
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span> {
-            <span class="ident">cleanup_peers</span>(
-                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
-                <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
-                <span class="prelude-val">None</span>,
-                <span class="self">self</span>.<span class="ident">clock_compensation</span>,
-                <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
-            )<span class="question-mark">?</span>;
-            <span class="self">self</span>.<span class="ident">request_dump</span>()
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(())
-        }
+        <span class="kw">let</span> <span class="ident">peer_type</span> <span class="op">=</span> {
+            <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get</span>(<span class="ident">ip</span>).<span class="ident">ok_or</span>({
+                <span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::PeerInfoNotFoundError</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                )
+            })<span class="question-mark">?</span>;
+            <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">active_out_connections</span> <span class="op">==</span> <span class="number">0</span>
+                <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">can_remove_active_out_connection_count</span>(<span class="ident">peer</span>.<span class="ident">peer_type</span>)
+            {
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                ));
+            }
+            <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get_mut</span>(<span class="ident">ip</span>).<span class="ident">ok_or</span>({
+                <span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::PeerInfoNotFoundError</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                )
+            })<span class="question-mark">?</span>;
+            <span class="ident">peer</span>.<span class="ident">active_out_connections</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
+            <span class="kw">let</span> <span class="ident">peer_type</span> <span class="op">=</span> <span class="ident">peer</span>.<span class="ident">peer_type</span>;
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() <span class="op">&amp;&amp;</span> <span class="ident">peer</span>.<span class="ident">peer_type</span> <span class="op">==</span> <span class="ident">Default::default</span>() {
+                <span class="self">self</span>.<span class="ident">update</span>()<span class="question-mark">?</span>;
+                <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
+            }
+            <span class="ident">peer_type</span>
+        };
+        <span class="self">self</span>.<span class="ident">decrease_global_active_out_connection_count</span>(<span class="ident">peer_type</span>, <span class="ident">ip</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Notifies that an inbound connection is closed.</span>
@@ -1476,38 +1356,35 @@
     <span class="doccomment">/// # Argument</span>
     <span class="doccomment">/// * ip : ip address of the considered peer.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">in_connection_closed</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ip</span>: <span class="kw-2">&amp;</span><span class="ident">IpAddr</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get_mut</span>(<span class="ident">ip</span>).<span class="ident">ok_or</span>({
-            <span class="ident">NetworkError::PeerConnectionError</span>(<span class="ident">NetworkConnectionErrorType::PeerInfoNotFoundError</span>(
-                <span class="kw-2">*</span><span class="ident">ip</span>,
-            ))
-        })<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">peer_type</span> <span class="op">=</span> {
+            <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get</span>(<span class="ident">ip</span>).<span class="ident">ok_or</span>({
+                <span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::PeerInfoNotFoundError</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                )
+            })<span class="question-mark">?</span>;
+            <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">active_in_connections</span> <span class="op">==</span> <span class="number">0</span>
+                <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">can_decrease_global_active_in_connection_count</span>(<span class="ident">peer</span>.<span class="ident">peer_type</span>)
+            {
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                ));
+            }
+            <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get_mut</span>(<span class="ident">ip</span>).<span class="ident">ok_or</span>({
+                <span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::PeerInfoNotFoundError</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                )
+            })<span class="question-mark">?</span>;
+            <span class="ident">peer</span>.<span class="ident">active_in_connections</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
+            <span class="kw">let</span> <span class="ident">peer_type</span> <span class="op">=</span> <span class="ident">peer</span>.<span class="ident">peer_type</span>;
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() <span class="op">&amp;&amp;</span> <span class="ident">peer</span>.<span class="ident">peer_type</span> <span class="op">==</span> <span class="ident">PeerType::Standard</span> {
+                <span class="self">self</span>.<span class="ident">update</span>()<span class="question-mark">?</span>;
+                <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
+            }
+            <span class="ident">peer_type</span>
+        };
 
-        <span class="kw">if</span> (<span class="ident">peer</span>.<span class="ident">bootstrap</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_bootstrap_connections</span> <span class="op">==</span> <span class="number">0</span>)
-            <span class="op">|</span><span class="op">|</span> (<span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_in_nonbootstrap_connections</span> <span class="op">==</span> <span class="number">0</span>)
-            <span class="op">|</span><span class="op">|</span> <span class="ident">peer</span>.<span class="ident">active_in_connections</span> <span class="op">==</span> <span class="number">0</span>
-        {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
-                <span class="ident">NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
-            ));
-        }
-        <span class="ident">peer</span>.<span class="ident">active_in_connections</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">bootstrap</span> {
-            <span class="self">self</span>.<span class="ident">active_bootstrap_connections</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">active_in_nonbootstrap_connections</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-        }
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span> {
-            <span class="ident">cleanup_peers</span>(
-                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
-                <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
-                <span class="prelude-val">None</span>,
-                <span class="self">self</span>.<span class="ident">clock_compensation</span>,
-                <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
-            )<span class="question-mark">?</span>;
-            <span class="self">self</span>.<span class="ident">request_dump</span>()
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(())
-        }
+        <span class="self">self</span>.<span class="ident">decrease_global_active_in_connection_count</span>(<span class="ident">peer_type</span>, <span class="ident">ip</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Yay an out connection attempt succeeded.</span>
@@ -1524,56 +1401,50 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="comment">// a connection attempt succeeded</span>
         <span class="comment">// remove out connection attempt and add out connection</span>
-        <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get_mut</span>(<span class="ident">ip</span>).<span class="ident">ok_or</span>({
+        <span class="kw">let</span> <span class="ident">peer_type</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_peer_type</span>(<span class="ident">ip</span>).<span class="ident">ok_or</span>({
             <span class="ident">NetworkError::PeerConnectionError</span>(<span class="ident">NetworkConnectionErrorType::PeerInfoNotFoundError</span>(
                 <span class="kw-2">*</span><span class="ident">ip</span>,
             ))
         })<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> (<span class="ident">peer</span>.<span class="ident">bootstrap</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_out_bootstrap_connection_attempts</span> <span class="op">==</span> <span class="number">0</span>)
-            <span class="op">|</span><span class="op">|</span> (<span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connection_attempts</span> <span class="op">==</span> <span class="number">0</span>)
-            <span class="op">|</span><span class="op">|</span> (<span class="ident">peer</span>.<span class="ident">active_out_connection_attempts</span> <span class="op">==</span> <span class="number">0</span>)
-        {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
-                <span class="ident">NetworkConnectionErrorType::ToManyConnectionAttempt</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
-            ));
-        }
-        <span class="kw">if</span> (<span class="ident">peer</span>.<span class="ident">bootstrap</span>
-            <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_bootstrap_connections</span>
-                <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">target_bootstrap_connections</span>)
-            <span class="op">|</span><span class="op">|</span> (<span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span>
-                <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connections</span>
-                    <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">target_out_nonbootstrap_connections</span>)
-        {
+        <span class="comment">// have we reached target yet ?</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_target_out_connection_count_reached</span>(<span class="ident">peer_type</span>) {
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
         }
-        <span class="ident">peer</span>.<span class="ident">active_out_connection_attempts</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">bootstrap</span> {
-            <span class="self">self</span>.<span class="ident">active_out_bootstrap_connection_attempts</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connection_attempts</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-        }
-        <span class="ident">peer</span>.<span class="ident">advertised</span> <span class="op">=</span> <span class="bool-val">true</span>; <span class="comment">// we just connected to it. Assume advertised.</span>
-        <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">banned</span> {
-            <span class="ident">peer</span>.<span class="ident">last_failure</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">MassaTime::compensated_now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>);
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span> {
-                <span class="ident">cleanup_peers</span>(
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
-                    <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
-                    <span class="prelude-val">None</span>,
-                    <span class="self">self</span>.<span class="ident">clock_compensation</span>,
-                    <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
-                )<span class="question-mark">?</span>;
+
+        <span class="self">self</span>.<span class="ident">decrease_global_active_out_connection_attempt_count</span>(<span class="ident">peer_type</span>, <span class="ident">ip</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">peer_type</span> <span class="op">=</span> {
+            <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get</span>(<span class="ident">ip</span>).<span class="ident">ok_or</span>({
+                <span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::PeerInfoNotFoundError</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                )
+            })<span class="question-mark">?</span>;
+            <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">active_out_connection_attempts</span> <span class="op">==</span> <span class="number">0</span> {
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::TooManyConnectionAttempts</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                ));
             }
-            <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
-        }
-        <span class="ident">peer</span>.<span class="ident">active_out_connections</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">bootstrap</span> {
-            <span class="self">self</span>.<span class="ident">active_bootstrap_connections</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connections</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        }
+            <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get_mut</span>(<span class="ident">ip</span>).<span class="ident">ok_or</span>({
+                <span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::PeerInfoNotFoundError</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                )
+            })<span class="question-mark">?</span>;
+            <span class="ident">peer</span>.<span class="ident">active_out_connection_attempts</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
+            <span class="ident">peer</span>.<span class="ident">advertised</span> <span class="op">=</span> <span class="bool-val">true</span>; <span class="comment">// we just connected to it. Assume advertised.</span>
+
+            <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">banned</span> {
+                <span class="ident">peer</span>.<span class="ident">last_failure</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">MassaTime::compensated_now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>);
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() <span class="op">&amp;&amp;</span> <span class="ident">peer</span>.<span class="ident">peer_type</span> <span class="op">==</span> <span class="ident">Default::default</span>() {
+                    <span class="self">self</span>.<span class="ident">update</span>()<span class="question-mark">?</span>;
+                }
+                <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
+                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>);
+            }
+            <span class="ident">peer</span>.<span class="ident">active_out_connections</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+            <span class="ident">peer</span>.<span class="ident">peer_type</span>
+        };
+        <span class="self">self</span>.<span class="ident">increase_global_active_out_connection_count</span>(<span class="ident">peer_type</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
     }
@@ -1585,35 +1456,32 @@
     <span class="doccomment">/// # Argument</span>
     <span class="doccomment">/// * ip : ip address of the considered peer.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">out_connection_attempt_failed</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ip</span>: <span class="kw-2">&amp;</span><span class="ident">IpAddr</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get_mut</span>(<span class="ident">ip</span>).<span class="ident">ok_or</span>({
-            <span class="ident">NetworkError::PeerConnectionError</span>(<span class="ident">NetworkConnectionErrorType::PeerInfoNotFoundError</span>(
-                <span class="kw-2">*</span><span class="ident">ip</span>,
-            ))
-        })<span class="question-mark">?</span>;
-        <span class="kw">if</span> (<span class="ident">peer</span>.<span class="ident">bootstrap</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_out_bootstrap_connection_attempts</span> <span class="op">==</span> <span class="number">0</span>)
-            <span class="op">|</span><span class="op">|</span> (<span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connection_attempts</span> <span class="op">==</span> <span class="number">0</span>)
-            <span class="op">|</span><span class="op">|</span> <span class="ident">peer</span>.<span class="ident">active_out_connection_attempts</span> <span class="op">==</span> <span class="number">0</span>
-        {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
-                <span class="ident">NetworkConnectionErrorType::ToManyConnectionFailure</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
-            ));
-        }
-        <span class="ident">peer</span>.<span class="ident">active_out_connection_attempts</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">bootstrap</span> {
-            <span class="self">self</span>.<span class="ident">active_out_bootstrap_connection_attempts</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">active_out_nonbootstrap_connection_attempts</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-        }
-        <span class="ident">peer</span>.<span class="ident">last_failure</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">MassaTime::compensated_now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>);
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span> {
-            <span class="ident">cleanup_peers</span>(
-                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>,
-                <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">peers</span>,
-                <span class="prelude-val">None</span>,
-                <span class="self">self</span>.<span class="ident">clock_compensation</span>,
-                <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">ban_timeout</span>,
-            )<span class="question-mark">?</span>;
-        }
+        <span class="kw">let</span> <span class="ident">peer_type</span> <span class="op">=</span> {
+            <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get</span>(<span class="ident">ip</span>).<span class="ident">ok_or</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                <span class="ident">NetworkConnectionErrorType::PeerInfoNotFoundError</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+            ))<span class="question-mark">?</span>;
+            <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">active_out_connection_attempts</span> <span class="op">==</span> <span class="number">0</span>
+                <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">can_remove_new_out_connection_attempt</span>(<span class="ident">peer</span>.<span class="ident">peer_type</span>)
+            {
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::TooManyConnectionFailure</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                ));
+            }
+            <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">peers</span>
+                .<span class="ident">get_mut</span>(<span class="ident">ip</span>)
+                .<span class="ident">ok_or</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::PeerInfoNotFoundError</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                ))<span class="question-mark">?</span>;
+            <span class="ident">peer</span>.<span class="ident">active_out_connection_attempts</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
+            <span class="ident">peer</span>.<span class="ident">last_failure</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">MassaTime::compensated_now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>);
+            <span class="kw">let</span> <span class="ident">pt</span> <span class="op">=</span> <span class="ident">peer</span>.<span class="ident">peer_type</span>;
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">is_active</span>() <span class="op">&amp;&amp;</span> <span class="ident">peer</span>.<span class="ident">peer_type</span> <span class="op">==</span> <span class="ident">PeerType::Standard</span> {
+                <span class="self">self</span>.<span class="ident">update</span>()<span class="question-mark">?</span>;
+            }
+            <span class="ident">pt</span>
+        };
+        <span class="self">self</span>.<span class="ident">decrease_global_active_out_connection_attempt_count</span>(<span class="ident">peer_type</span>, <span class="ident">ip</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">request_dump</span>()
     }
 
@@ -1642,73 +1510,261 @@
             }
         }
 
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">entry</span>(<span class="kw-2">*</span><span class="ident">ip</span>) {
-            <span class="ident">hash_map::Entry::Occupied</span>(<span class="kw-2">mut</span> <span class="ident">occ</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">occ</span>.<span class="ident">get_mut</span>();
-                <span class="kw">if</span> (<span class="ident">peer</span>.<span class="ident">bootstrap</span>
-                    <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_bootstrap_connections</span>
-                        <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">target_bootstrap_connections</span>)
-                    <span class="op">|</span><span class="op">|</span> (<span class="op">!</span><span class="ident">peer</span>.<span class="ident">bootstrap</span>
-                        <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">active_in_nonbootstrap_connections</span>
-                            <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">max_in_nonbootstrap_connections</span>)
-                {
-                    <span class="prelude-val">Err</span>(<span class="ident">NetworkConnectionErrorType::MaxPeersConnectionReached</span>(<span class="kw-2">*</span><span class="ident">ip</span>))
-                } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">banned</span> {
-                    <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_refused_peer_banned&quot;</span>, {<span class="string">&quot;ip&quot;</span>: <span class="ident">peer</span>.<span class="ident">ip</span>});
-                    <span class="ident">peer</span>.<span class="ident">last_failure</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">MassaTime::compensated_now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>);
-                    <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
-                    <span class="prelude-val">Err</span>(<span class="ident">NetworkConnectionErrorType::BannedPeerTryingToConnect</span>(<span class="kw-2">*</span><span class="ident">ip</span>))
-                } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">active_in_connections</span>
-                    <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">max_in_connections_per_ip</span>
-                {
-                    <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
-                    <span class="prelude-val">Err</span>(<span class="ident">NetworkConnectionErrorType::MaxPeersConnectionReached</span>(<span class="kw-2">*</span><span class="ident">ip</span>))
-                } <span class="kw">else</span> {
-                    <span class="ident">peer</span>.<span class="ident">active_in_connections</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-                    <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">bootstrap</span> {
-                        <span class="self">self</span>.<span class="ident">active_bootstrap_connections</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-                    } <span class="kw">else</span> {
-                        <span class="self">self</span>.<span class="ident">active_in_nonbootstrap_connections</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-                    }
-                    <span class="prelude-val">Ok</span>(())
-                }
-            }
-            <span class="ident">hash_map::Entry::Vacant</span>(<span class="ident">vac</span>) =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">PeerInfo</span> {
-                    <span class="ident">ip</span>: <span class="kw-2">*</span><span class="ident">ip</span>,
-                    <span class="ident">banned</span>: <span class="bool-val">false</span>,
-                    <span class="ident">bootstrap</span>: <span class="bool-val">false</span>,
-                    <span class="ident">last_alive</span>: <span class="prelude-val">None</span>,
-                    <span class="ident">last_failure</span>: <span class="prelude-val">None</span>,
-                    <span class="ident">advertised</span>: <span class="bool-val">false</span>,
-                    <span class="ident">active_out_connection_attempts</span>: <span class="number">0</span>,
-                    <span class="ident">active_out_connections</span>: <span class="number">0</span>,
-                    <span class="ident">active_in_connections</span>: <span class="number">0</span>,
-                };
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active_in_nonbootstrap_connections</span>
-                    <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">max_in_nonbootstrap_connections</span>
-                {
-                    <span class="prelude-val">Err</span>(<span class="ident">NetworkConnectionErrorType::MaxPeersConnectionReached</span>(<span class="kw-2">*</span><span class="ident">ip</span>))
-                } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">active_in_connections</span>
-                    <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">max_in_connections_per_ip</span>
-                {
-                    <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
-                    <span class="prelude-val">Err</span>(<span class="ident">NetworkConnectionErrorType::MaxPeersConnectionReached</span>(<span class="kw-2">*</span><span class="ident">ip</span>))
-                } <span class="kw">else</span> {
-                    <span class="ident">peer</span>.<span class="ident">active_in_connections</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-                    <span class="ident">vac</span>.<span class="ident">insert</span>(<span class="ident">peer</span>);
-                    <span class="self">self</span>.<span class="ident">active_in_nonbootstrap_connections</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-                    <span class="prelude-val">Ok</span>(())
-                }
-            }
-        };
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">res</span>) <span class="op">=</span> <span class="ident">res</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(<span class="ident">res</span>));
+        <span class="kw">let</span> <span class="ident">peer_type</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">peers</span>
+            .<span class="ident">entry</span>(<span class="kw-2">*</span><span class="ident">ip</span>)
+            .<span class="ident">or_insert_with</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">PeerInfo::new</span>(<span class="kw-2">*</span><span class="ident">ip</span>, <span class="bool-val">false</span>))
+            .<span class="ident">peer_type</span>;
+
+        <span class="comment">// we need to first check if there is a global slot avaible</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_max_in_connection_count_reached</span>(<span class="ident">peer_type</span>) {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                <span class="ident">NetworkConnectionErrorType::MaxPeersConnectionReached</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+            ));
         }
+
+        <span class="kw">let</span> <span class="ident">peer_type</span> <span class="op">=</span> {
+            <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get_mut</span>(<span class="ident">ip</span>).<span class="ident">ok_or</span>({
+                <span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::PeerInfoNotFoundError</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                )
+            })<span class="question-mark">?</span>; <span class="comment">// peer was inserted just before</span>
+
+            <span class="comment">// is there a attempt slot avaible</span>
+            <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">banned</span> {
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;in_connection_refused_peer_banned&quot;</span>, {<span class="string">&quot;ip&quot;</span>: <span class="ident">peer</span>.<span class="ident">ip</span>});
+                <span class="ident">peer</span>.<span class="ident">last_failure</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">MassaTime::compensated_now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>);
+                <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::BannedPeerTryingToConnect</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                ));
+            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">peer</span>.<span class="ident">active_in_connections</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">max_in_connections_per_ip</span>
+            {
+                <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                    <span class="ident">NetworkConnectionErrorType::MaxPeersConnectionReached</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+                ));
+            } <span class="kw">else</span> {
+                <span class="ident">peer</span>.<span class="ident">active_in_connections</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+            }
+            <span class="ident">peer</span>.<span class="ident">peer_type</span>
+        };
+
+        <span class="self">self</span>.<span class="ident">increase_global_active_in_connection_count</span>(<span class="ident">peer_type</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">request_dump</span>()<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
+
+    <span class="comment">////////////////////</span>
+    <span class="comment">// public getters //</span>
+    <span class="comment">////////////////////</span>
+
+    <span class="doccomment">/// Sorts peers by ( last_failure, rev(last_success) )</span>
+    <span class="doccomment">/// and returns as many peers as there are available slots to attempt outgoing connections to.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_out_connection_candidate_ips</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">connections</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_types</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PeerType</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">peer_types_connection_count</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">peer_type</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">peer_type</span>)
+            .<span class="ident">collect</span>();
+        <span class="ident">peer_types</span>.<span class="ident">sort_by_key</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">peer_type</span><span class="op">|</span> <span class="ident">Reverse</span>(<span class="ident">peer_type</span>));
+        <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">peer_type</span> <span class="kw">in</span> <span class="ident">peer_types</span>.<span class="ident">iter</span>() {
+            <span class="ident">connections</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">get_out_connection_candidate_ips_for_type</span>(
+                <span class="ident">peer_type</span>,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">peer_types_connection_count</span>[<span class="ident">peer_type</span>],
+                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">peer_types_config</span>[<span class="ident">peer_type</span>],
+            )<span class="question-mark">?</span>);
+        }
+        <span class="prelude-val">Ok</span>(<span class="ident">connections</span>)
+    }
+
+    <span class="doccomment">/// returns Hashmap of ipAddrs -&gt; Peerinfo</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_peers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IpAddr</span>, <span class="ident">PeerInfo</span><span class="op">&gt;</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">peers</span>
+    }
+
+    <span class="doccomment">/// Returns a vec of advertisable IpAddrs sorted by ( last_failure, rev(last_success) )</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_advertisable_peer_ips</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sorted_peers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PeerInfo</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">peers</span>
+            .<span class="ident">values</span>()
+            .<span class="ident">filter</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">p</span><span class="op">|</span> (<span class="ident">p</span>.<span class="ident">advertised</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">p</span>.<span class="ident">banned</span>))
+            .<span class="ident">copied</span>()
+            .<span class="ident">collect</span>();
+        <span class="ident">sorted_peers</span>.<span class="ident">sort_unstable_by_key</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">p</span><span class="op">|</span> (<span class="ident">std::cmp::Reverse</span>(<span class="ident">p</span>.<span class="ident">last_alive</span>), <span class="ident">p</span>.<span class="ident">last_failure</span>));
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sorted_ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">sorted_peers</span>
+            .<span class="ident">into_iter</span>()
+            .<span class="ident">take</span>(<span class="ident">MAX_ADVERTISE_LENGTH</span> <span class="kw">as</span> <span class="ident">usize</span>)
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">ip</span>)
+            .<span class="ident">collect</span>();
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">our_ip</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">routable_ip</span> {
+            <span class="ident">sorted_ips</span>.<span class="ident">insert</span>(<span class="number">0</span>, <span class="ident">our_ip</span>);
+            <span class="ident">sorted_ips</span>.<span class="ident">truncate</span>(<span class="ident">MAX_ADVERTISE_LENGTH</span> <span class="kw">as</span> <span class="ident">usize</span>);
+        }
+        <span class="ident">sorted_ips</span>
+    }
+
+    <span class="comment">//////////////////////////////</span>
+    <span class="comment">// per peer type management //</span>
+    <span class="comment">//////////////////////////////</span>
+
+    <span class="kw">fn</span> <span class="ident">get_available_out_connection_attempts_for_peer_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">peer_type</span>: <span class="ident">PeerType</span>) -&gt; <span class="ident">usize</span> {
+        <span class="self">self</span>.<span class="ident">peer_types_connection_count</span>[<span class="ident">peer_type</span>].<span class="ident">get_available_out_connection_attempts</span>(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">peer_types_config</span>[<span class="ident">peer_type</span>],
+        )
+    }
+
+    <span class="kw">fn</span> <span class="ident">is_target_out_connection_count_reached</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">peer_type</span>: <span class="ident">PeerType</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">peer_types_connection_count</span>[<span class="ident">peer_type</span>].<span class="ident">active_out_connections</span>
+            <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">peer_types_config</span>[<span class="ident">peer_type</span>].<span class="ident">target_out_connections</span>
+    }
+
+    <span class="kw">fn</span> <span class="ident">is_max_in_connection_count_reached</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">peer_type</span>: <span class="ident">PeerType</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">peer_types_connection_count</span>[<span class="ident">peer_type</span>].<span class="ident">active_in_connections</span>
+            <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">network_settings</span>.<span class="ident">peer_types_config</span>[<span class="ident">peer_type</span>].<span class="ident">max_in_connections</span>
+    }
+
+    <span class="doccomment">/// Get ips we want to connect to for a given peer type</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Arguments</span>
+    <span class="doccomment">/// * peer_type: which type to consider</span>
+    <span class="doccomment">/// * count: what is the current connection count for that type</span>
+    <span class="doccomment">/// * cfg: settings for that peer type</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Returns an iterator</span>
+    <span class="kw">fn</span> <span class="ident">get_out_connection_candidate_ips_for_type</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">peer_type</span>: <span class="ident">PeerType</span>,
+        <span class="ident">count</span>: <span class="kw-2">&amp;</span><span class="ident">ConnectionCount</span>,
+        <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">PeerTypeConnectionConfig</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">avaible_slots</span> <span class="op">=</span> <span class="ident">count</span>.<span class="ident">get_available_out_connection_attempts</span>(<span class="ident">cfg</span>);
+        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">MassaTime::compensated_now</span>(<span class="self">self</span>.<span class="ident">clock_compensation</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="kw">move</span> <span class="op">|</span><span class="ident">p</span>: <span class="op">&amp;&amp;</span><span class="ident">PeerInfo</span><span class="op">|</span> {
+            <span class="kw">if</span> <span class="ident">p</span>.<span class="ident">peer_type</span> <span class="op">!</span><span class="op">=</span> <span class="ident">peer_type</span> <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">p</span>.<span class="ident">advertised</span> <span class="op">|</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">is_active</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">banned</span> {
+                <span class="kw">return</span> <span class="bool-val">false</span>;
+            }
+            <span class="ident">p</span>.<span class="ident">is_peer_ready</span>(<span class="self">self</span>.<span class="ident">wakeup_interval</span>, <span class="ident">now</span>)
+        };
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">values</span>().<span class="ident">filter</span>(<span class="ident">f</span>).<span class="ident">take</span>(<span class="ident">avaible_slots</span>).<span class="ident">collect</span>();
+        <span class="ident">res</span>.<span class="ident">sort_unstable_by_key</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">p</span><span class="op">|</span> (<span class="ident">p</span>.<span class="ident">last_failure</span>, <span class="ident">std::cmp::Reverse</span>(<span class="ident">p</span>.<span class="ident">last_alive</span>)));
+        <span class="prelude-val">Ok</span>(<span class="ident">res</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">ip</span>).<span class="ident">collect</span>())
+    }
+
+    <span class="kw">fn</span> <span class="ident">get_peer_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ip</span>: <span class="kw-2">&amp;</span><span class="ident">IpAddr</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PeerType</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">peers</span>.<span class="ident">get</span>(<span class="ident">ip</span>)<span class="question-mark">?</span>.<span class="ident">peer_type</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">can_try_new_out_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">peer_type</span>: <span class="ident">PeerType</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">get_available_out_connection_attempts_for_peer_type</span>(<span class="ident">peer_type</span>) <span class="op">!</span><span class="op">=</span> <span class="number">0</span>
+    }
+
+    <span class="kw">fn</span> <span class="ident">can_remove_new_out_connection_attempt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">peer_type</span>: <span class="ident">PeerType</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">get_global_active_out_connection_attempt_count</span>(<span class="ident">peer_type</span>) <span class="op">!</span><span class="op">=</span> <span class="number">0</span>
+    }
+
+    <span class="kw">fn</span> <span class="ident">increase_global_active_out_connection_attempt_count</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">peer_type</span>: <span class="ident">PeerType</span>,
+        <span class="ident">ip</span>: <span class="kw-2">&amp;</span><span class="ident">IpAddr</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">can_try_new_out_connection</span>(<span class="ident">peer_type</span>) {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                <span class="ident">NetworkConnectionErrorType::TooManyConnectionAttempts</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+            ));
+        }
+        <span class="self">self</span>.<span class="ident">peer_types_connection_count</span>[<span class="ident">peer_type</span>].<span class="ident">active_out_connection_attempts</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn</span> <span class="ident">decrease_global_active_out_connection_attempt_count</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">peer_type</span>: <span class="ident">PeerType</span>,
+        <span class="ident">ip</span>: <span class="kw-2">&amp;</span><span class="ident">IpAddr</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">can_remove_new_out_connection_attempt</span>(<span class="ident">peer_type</span>) {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                <span class="ident">NetworkConnectionErrorType::TooManyConnectionAttempts</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+            ));
+        }
+        <span class="self">self</span>.<span class="ident">peer_types_connection_count</span>[<span class="ident">peer_type</span>].<span class="ident">active_out_connection_attempts</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn</span> <span class="ident">can_remove_active_out_connection_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">peer_type</span>: <span class="ident">PeerType</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">get_global_active_out_connection_count</span>(<span class="ident">peer_type</span>) <span class="op">!</span><span class="op">=</span> <span class="number">0</span>
+    }
+
+    <span class="kw">fn</span> <span class="ident">decrease_global_active_out_connection_count</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">peer_type</span>: <span class="ident">PeerType</span>,
+        <span class="ident">ip</span>: <span class="kw-2">&amp;</span><span class="ident">IpAddr</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">can_remove_active_out_connection_count</span>(<span class="ident">peer_type</span>) {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                <span class="ident">NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+            ));
+        }
+        <span class="self">self</span>.<span class="ident">peer_types_connection_count</span>[<span class="ident">peer_type</span>].<span class="ident">active_out_connections</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn</span> <span class="ident">increase_global_active_out_connection_count</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">peer_type</span>: <span class="ident">PeerType</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">peer_types_connection_count</span>[<span class="ident">peer_type</span>].<span class="ident">active_out_connections</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn</span> <span class="ident">can_decrease_global_active_in_connection_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">peer_type</span>: <span class="ident">PeerType</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">get_global_active_in_connection_count</span>(<span class="ident">peer_type</span>) <span class="op">!</span><span class="op">=</span> <span class="number">0</span>
+    }
+
+    <span class="kw">fn</span> <span class="ident">decrease_global_active_in_connection_count</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">peer_type</span>: <span class="ident">PeerType</span>,
+        <span class="ident">ip</span>: <span class="kw-2">&amp;</span><span class="ident">IpAddr</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">can_decrease_global_active_in_connection_count</span>(<span class="ident">peer_type</span>) {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
+                <span class="ident">NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose</span>(<span class="kw-2">*</span><span class="ident">ip</span>),
+            ));
+        }
+        <span class="self">self</span>.<span class="ident">peer_types_connection_count</span>[<span class="ident">peer_type</span>].<span class="ident">active_in_connections</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="kw">fn</span> <span class="ident">increase_global_active_in_connection_count</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">peer_type</span>: <span class="ident">PeerType</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">peer_types_connection_count</span>[<span class="ident">peer_type</span>].<span class="ident">active_in_connections</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// similar to get_global_active_out_connection_count and get_global_active_in_connection_count</span>
+    <span class="doccomment">/// todo https://github.com/massalabs/massa/issues/2319</span>
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">fn</span> <span class="ident">get_global_active_out_connection_attempt_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">peer_type</span>: <span class="ident">PeerType</span>) -&gt; <span class="ident">usize</span> {
+        <span class="self">self</span>.<span class="ident">peer_types_connection_count</span>[<span class="ident">peer_type</span>].<span class="ident">active_out_connection_attempts</span>
+    }
+
+    <span class="doccomment">/// similar to get_global_active_out_connection_attempt_count and get_global_active_in_connection_count</span>
+    <span class="doccomment">/// todo https://github.com/massalabs/massa/issues/2319</span>
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">fn</span> <span class="ident">get_global_active_out_connection_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">peer_type</span>: <span class="ident">PeerType</span>) -&gt; <span class="ident">usize</span> {
+        <span class="self">self</span>.<span class="ident">peer_types_connection_count</span>[<span class="ident">peer_type</span>].<span class="ident">active_out_connections</span>
+    }
+
+    <span class="doccomment">/// similar to get_global_active_out_connection_count and get_global_active_out_connection_attempt_count</span>
+    <span class="doccomment">/// todo https://github.com/massalabs/massa/issues/2319</span>
+    <span class="attribute">#[<span class="ident">inline</span>]</span>
+    <span class="kw">fn</span> <span class="ident">get_global_active_in_connection_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">peer_type</span>: <span class="ident">PeerType</span>) -&gt; <span class="ident">usize</span> {
+        <span class="self">self</span>.<span class="ident">peer_types_connection_count</span>[<span class="ident">peer_type</span>].<span class="ident">active_in_connections</span>
+    }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (458262b13 2022-03-09)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (e95b10ba4 2022-03-13)" ></div>
 </body></html>

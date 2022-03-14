@@ -96,9 +96,13 @@
 <span id="91">91</span>
 <span id="92">92</span>
 <span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ConnectionId</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">peers::PeerType</span>, <span class="ident">ConnectionId</span>};
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
 <span class="kw">use</span> <span class="ident">massa_models::ModelsError</span>;
 <span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
@@ -178,17 +182,21 @@
     <span class="ident">CloseConnectionWithNoConnectionToClose</span>(<span class="ident">IpAddr</span>),
     <span class="doccomment">/// Peer info not found for address: {0}</span>
     <span class="ident">PeerInfoNotFoundError</span>(<span class="ident">IpAddr</span>),
+    <span class="doccomment">/// Peer info not found for address: {0}</span>
+    <span class="ident">PeerTypeNotFoundError</span>(<span class="ident">PeerType</span>),
     <span class="doccomment">/// Too many connection attempt: {0}</span>
-    <span class="ident">ToManyConnectionAttempt</span>(<span class="ident">IpAddr</span>),
+    <span class="ident">TooManyConnectionAttempts</span>(<span class="ident">IpAddr</span>),
     <span class="doccomment">/// Too many connection failure: {0}</span>
-    <span class="ident">ToManyConnectionFailure</span>(<span class="ident">IpAddr</span>),
+    <span class="ident">TooManyConnectionFailure</span>(<span class="ident">IpAddr</span>),
     <span class="doccomment">/// Max connected peers reached: {0}</span>
     <span class="ident">MaxPeersConnectionReached</span>(<span class="ident">IpAddr</span>),
     <span class="doccomment">/// Attempt too connect from you own IP</span>
     <span class="ident">SelfConnection</span>,
     <span class="doccomment">/// A banned peer is trying to connect: {0}</span>
     <span class="ident">BannedPeerTryingToConnect</span>(<span class="ident">IpAddr</span>),
+    <span class="doccomment">/// Unexpected error</span>
+    <span class="ident">UnexpectedError</span>,
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (458262b13 2022-03-09)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (e95b10ba4 2022-03-13)" ></div>
 </body></html>
