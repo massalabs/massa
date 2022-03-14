@@ -150,7 +150,7 @@ impl ExecutionContext {
     /// # arguments
     /// * slot: slot at which the execution will happen
     /// * req: parameters of the read only execution
-    /// * previous_changes: list of state changes that happened since the final state state and before this execution
+    /// * previous_changes: list of state changes that happened since the final_state state and before this execution
     /// * final_state: thread-safe access to the final state. Note that this will be used only for reading, never for writing
     ///
     /// # returns
