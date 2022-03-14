@@ -193,7 +193,7 @@ impl ExecutionState {
         }
     }
 
-    /// Returns he state changes accumulated from the beginning of the output history,
+    /// Returns the state changes accumulated from the beginning of the output history,
     /// up until a provided slot (excluded).
     /// Only used in the VM main loop because the lock on the final ledger
     /// carried by the returned SpeculativeLedger is not held.
