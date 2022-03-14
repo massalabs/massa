@@ -26,4 +26,5 @@ pretty_assertions = "1.0"
 serial_test = "0.5"
 
 [features]
+instrument = ["tokio/tracing", "massa_consensus_exports/instrument", "massa_graph/instrument", "massa_models/instrument", "massa_pool/instrument", "massa_proof_of_stake_exports/instrument", "massa_protocol_exports/instrument", "massa_time/instrument"]
 testing = []
