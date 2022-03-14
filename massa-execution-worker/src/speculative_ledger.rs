@@ -153,7 +153,7 @@ impl SpeculativeLedger {
     /// # Returns
     /// true if the address was found, otherwise false
     pub fn entry_exists(&self, addr: &Address) -> bool {
-        // try to read from added_changes, then previous_changes, then final_ledger
+        // try to read from added_changes, then previous_changes, then ledger in final_state
         self.added_changes.entry_exists_or_else(addr, || {
             self.previous_changes
                 .entry_exists_or_else(addr, || self.final_state.read().ledger.entry_exists(addr))
