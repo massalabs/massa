@@ -223,7 +223,7 @@ impl SpeculativeLedger {
     /// # Returns
     /// true if the key exists in the address' datastore, false otherwise
     pub fn has_data_entry(&self, addr: &Address, key: &Hash) -> bool {
-        // try to read from added_changes, then previous_changes, then final_ledger
+        // try to read from added_changes, then previous_changes, then ledger in final_state
         self.added_changes.has_data_entry_or_else(addr, key, || {
             self.previous_changes.has_data_entry_or_else(addr, key, || {
                 self.final_state.read().ledger.has_data_entry(addr, key)
