@@ -2038,7 +2038,6 @@ dependencies = [
  "massa_hash",
  "massa_models",
  "massa_signature",
- "massa_time",
  "serde 1.0.136",
  "serde_json",
  "serde_qs",
