@@ -13,7 +13,7 @@ use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use tokio::time::Instant;
 
-/// Time structure used every where.
+/// Time structure used everywhere.
 /// Millis since 01/01/1970.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct MassaTime(u64);

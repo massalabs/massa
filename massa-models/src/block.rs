@@ -23,6 +23,7 @@ const BLOCK_ID_STRING_PREFIX: &str = "BLO";
 pub struct BlockId(pub Hash);
 
 impl PreHashed for BlockId {}
+
 impl Id for BlockId {
     fn new(hash: Hash) -> Self {
         BlockId(hash)
@@ -91,6 +92,7 @@ impl BlockId {
         ))
     }
 
+    /// first bit of the hashed block
     pub fn get_first_bit(&self) -> bool {
         Hash::compute_from(&self.to_bytes()).to_bytes()[0] >> 7 == 1
     }
@@ -103,6 +105,8 @@ pub struct Block {
 }
 
 impl Block {
+    /// true if given operation is included in the block
+    /// may fail if computing an id of an operation in the block
     pub fn contains_operation(&self, op: SignedOperation) -> Result<bool, ModelsError> {
         let op_id = op.content.compute_id()?;
         Ok(self.operations.iter().any(|o| {
@@ -113,6 +117,7 @@ impl Block {
         }))
     }
 
+    /// size in bytes of the whole block
     pub fn bytes_count(&self) -> Result<u64, ModelsError> {
         Ok(self.to_bytes_compact()?.len() as u64)
     }
@@ -157,9 +162,9 @@ impl Block {
         Ok(addresses_to_operations)
     }
 
+    /// returns the set of addresses mapped the the endorsements they are involved in
     pub fn addresses_to_endorsements(
         &self,
-        _endo: &Map<EndorsementId, u32>,
     ) -> Result<Map<Address, Set<EndorsementId>>, ModelsError> {
         let mut res: Map<Address, Set<EndorsementId>> = Map::default();
         self.header

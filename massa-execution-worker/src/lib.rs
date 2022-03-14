@@ -36,7 +36,7 @@
 //! This crate is meant to be included only at the binary level to launch the worker,
 //! not by the lib crates that will interact with it.
 //! It depends on the massa-execution-exports crate that contains all the publicly exposed elements
-//! and throuh which users will actually interact with the worker.
+//! and through which users will actually interact with the worker.
 //!
 //! ## worker.rs
 //! This module runs the main loop of the worker thread.

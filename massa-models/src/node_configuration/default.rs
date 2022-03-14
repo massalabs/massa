@@ -1,4 +1,4 @@
-//! DEFAULT VALUES USED TO INITIALISE DIVERS CONFIGURATIONS STRUCTURES
+//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
 //! # Default hardcoded
@@ -7,11 +7,11 @@
 //! implementation of each object take the default Values from the following
 //! file.
 //!
-//! These values are the hardcoded values that make sens to never be modifyed
+//! These values are the hardcoded values that make sens to never be modified
 //! by a user. Generally, this values are passed with dependency injection in a `cfg`
-//! parameter for each worker, that is conveniant for unit tests.
+//! parameter for each worker, that is convenient for unit tests.
 //!
-//! A parralell file with the same const definitions exist for the testing case.
+//! A parallel file with the same const definitions exist for the testing case.
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use crate::{Amount, Version};
 use massa_signature::PrivateKey;
@@ -89,7 +89,7 @@ pub const MAX_BLOCK_SIZE: u32 = 204800;
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
-/// PoS lookback cycles: when drawing for cycle N, we use the rolls from cycle N - pos_lookback_cycles - 1
+/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - pos_look back_cycles - 1
 pub const POS_LOOKBACK_CYCLES: u64 = 2;
 /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles
 pub const POS_LOCK_CYCLES: u64 = 1;

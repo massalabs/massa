@@ -1722,8 +1722,7 @@ impl BlockGraph {
 
         let valid_block_addresses_to_operations =
             valid_block.involved_addresses(&valid_block_operation_set)?;
-        let valid_block_addresses_to_endorsements =
-            valid_block.addresses_to_endorsements(&valid_block_endorsement_ids)?;
+        let valid_block_addresses_to_endorsements = valid_block.addresses_to_endorsements()?;
 
         // add block to graph
         self.add_block_to_graph(

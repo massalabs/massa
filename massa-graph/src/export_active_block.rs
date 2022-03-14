@@ -71,8 +71,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             .collect::<Result<_>>()?;
 
         let addresses_to_operations = a_block.block.involved_addresses(&operation_set)?;
-        let addresses_to_endorsements =
-            a_block.block.addresses_to_endorsements(&endorsement_ids)?;
+        let addresses_to_endorsements = a_block.block.addresses_to_endorsements()?;
         Ok(ActiveBlock {
             creator_address: Address::from_public_key(&a_block.block.header.content.creator),
             block: a_block.block,

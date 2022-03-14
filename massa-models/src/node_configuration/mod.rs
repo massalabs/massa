@@ -1,8 +1,8 @@
-//! Main node config and all that stuf is here
+//! Main node config and all that stuff is here
 //!
 //! # Introduction
 //!
-//! This module is mainelly used to define the default values used through
+//! This module is mainly used to define the default values used through
 //! the project in all *Configuration* objects.
 //!
 //! The name "constant" is a used for some hardcoded default values. It shouldn't
@@ -49,7 +49,7 @@
 // Note:
 // We can force the access to one of defined value (test or not)
 // with `use massa_config::exported_constants::CONST_VALUE`
-// Nevertheless the disign is more like using `massa_config::CONST_VALUE`
+// Nevertheless the design is more like using `massa_config::CONST_VALUE`
 // and defining in `Cargo.toml` if we are testing or not
 // ```toml
 // [dependencies]

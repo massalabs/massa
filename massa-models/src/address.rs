@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::prehash::{PreHashed, Set};
+use crate::prehash::PreHashed;
 use crate::ModelsError;
 use crate::{
     api::{LedgerInfo, RollsInfo},
@@ -11,6 +11,7 @@ use massa_signature::PublicKey;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
+/// Derived from a public key
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct Address(pub Hash);
 const ADDRESS_STRING_PREFIX: &str = "ADR";
@@ -157,22 +158,27 @@ impl Address {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Addresses {
-    pub addrs: Set<Address>,
-}
-
+/// Production stats for a given address during a given cycle
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AddressCycleProductionStats {
+    /// cycle number
     pub cycle: u64,
+    /// true if that cycle is final
     pub is_final: bool,
+    /// ok_count blocks were created by this address during that cycle
     pub ok_count: u64,
+    /// ok_count blocks were missed by this address during that cycle
     pub nok_count: u64,
 }
 
+/// Address state as know by consensus
+/// Used to answer to api
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AddressState {
+    /// Parallel balance information
     pub ledger_info: LedgerInfo,
+    /// Rolls information
     pub rolls: RollsInfo,
+    /// stats for still in memory cycles
     pub production_stats: Vec<AddressCycleProductionStats>,
 }

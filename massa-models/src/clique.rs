@@ -12,10 +12,15 @@ use crate::{
     DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
 };
 
+/// Mutually compatible blocks in the graph
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Clique {
+    /// the block ids of the blocks in that clique
     pub block_ids: Set<BlockId>,
+    /// Fitness used to compute finality
+    /// Depends on descendants and endorsement count
     pub fitness: u64,
+    /// True if it is the CLique of higher fitness
     pub is_blockclique: bool,
 }
 
