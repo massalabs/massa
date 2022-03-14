@@ -69,7 +69,7 @@ impl ExecutionState {
     /// # returns
     /// A new ExecutionState
     pub fn new(config: ExecutionConfig, final_state: Arc<RwLock<FinalState>>) -> ExecutionState {
-        // Get the slot at the output of which the final ledger is attached.
+        // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
         let last_final_slot = final_state.read().slot;
 
