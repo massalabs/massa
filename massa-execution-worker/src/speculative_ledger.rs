@@ -73,7 +73,7 @@ impl SpeculativeLedger {
     /// # Returns
     /// Some(Amount) if the address was found, otherwise None
     pub fn get_parallel_balance(&self, addr: &Address) -> Option<Amount> {
-        // try to read from added_changes, then previous_changes, then final_ledger
+        // try to read from added_changes, then previous_changes, then final_state
         self.added_changes.get_parallel_balance_or_else(addr, || {
             self.previous_changes
                 .get_parallel_balance_or_else(addr, || {
