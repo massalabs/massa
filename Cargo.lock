@@ -1618,6 +1618,7 @@ dependencies = [
  "massa_final_state",
  "massa_graph",
  "massa_hash",
+ "massa_ledger",
  "massa_logging",
  "massa_models",
  "massa_network_exports",
@@ -1752,7 +1753,6 @@ name = "massa_final_state"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
- "massa_final_state",
  "massa_ledger",
  "massa_models",
  "pretty_assertions",

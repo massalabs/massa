@@ -1,13 +1,15 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-/// This file defines testing tools related to the config
-use crate::LedgerConfig;
+//! This file defines testing tools related to the config
 
-/// Default value of LedgerConfig used for tests
-impl Default for LedgerConfig {
+use crate::FinalStateConfig;
+use massa_ledger::LedgerConfig;
+
+/// Default value of FinalStateConfig used for tests
+impl Default for FinalStateConfig {
     fn default() -> Self {
-        LedgerConfig {
-            initial_sce_ledger_path: "".into(), // unused by the mock
+        FinalStateConfig {
+            ledger_config: LedgerConfig::default(),
             final_history_length: 10,
             thread_count: 2,
         }

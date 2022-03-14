@@ -17,7 +17,7 @@ massa_models = { path = "../massa-models" }
 [dev-dependencies]
 pretty_assertions = "1.0"
 serial_test = "0.6"
-massa_final_state = { path = "../massa-final-state", features=["testing"] }
+massa_ledger = { path = "../massa-ledger", features=["testing"] }
 
 [features]
 testing = []

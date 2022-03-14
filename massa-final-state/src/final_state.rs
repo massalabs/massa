@@ -1,22 +1,19 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! This file defines the execution state, which includes
 //! the final ledger and async message pool that are kept at
 //! the output of a given final slot,
 //! and need to be bootstrapped by nodes joining the network.
 
-use std::collections::VecDeque;
-
-use massa_ledger::FinalLedger;
-use massa_models::Slot;
-
 use crate::{
     bootstrap::FinalStateBootstrap, config::FinalStateConfig, error::FinalStateError,
     state_changes::StateChanges,
 };
+use massa_ledger::FinalLedger;
+use massa_models::Slot;
+use std::collections::VecDeque;
 
 /// Represents a final execution state (ledger, async pool)
-///
 pub struct FinalState {
     /// execution state config
     config: FinalStateConfig,
