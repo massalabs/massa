@@ -90,7 +90,7 @@ impl SpeculativeLedger {
     /// # Returns
     /// Some(Vec<u8>) if the address was found, otherwise None
     pub fn get_bytecode(&self, addr: &Address) -> Option<Vec<u8>> {
-        // try to read from added_changes, then previous_changes, then final_ledger
+        // try to read from added_changes, then previous_changes, then ledger in final_state
         self.added_changes.get_bytecode_or_else(addr, || {
             self.previous_changes
                 .get_bytecode_or_else(addr, || self.final_state.read().ledger.get_bytecode(addr))
