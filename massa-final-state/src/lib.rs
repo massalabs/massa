@@ -2,15 +2,27 @@
 
 //! # General description
 //!
-//! This crate implements a
+//! This crate implements a final state that encompasses a final ledger and async message pool.
+//! Nodes store only one copy of this final state which is very large
+//! (the copy is attached to the output of the last executed final slot),
+//! and apply speculative changes on it to deduce its value at a non-final slot
+//! (see massa-execution-exports crate for more details).
+//! Nodes joining the network need to bootstrap this state.
 //!
 //! # Architecture
 //!
-//! ## ledger.rs
-//! Defines the FinalLedger that matches an address to a LedgerEntry (see ledger_entry.rs),
-//! and can be manipulated using LedgerChanges (see ledger_changes.rs).
-//! The FinalLedger is bootstrapped using tooling available in bootstrap.rs
+//! ## final_state.rs
+//! Defines the FinalState that matches  that represents the state of the node at
+//! the latest executed final slot. It contains the final ledger and the async event pool.
+//! It can be manipulated using StateChanges (see state_changes.rs).
+//! The FinalState is bootstrapped using tooling available in bootstrap.rs
 //!
+//! ## state_changes.rs
+//! Represents a list of changes the final state.
+//! It can be modified, combined or applied to the final ledger.
+//!
+//! ## bootstrap.rs
+//! Provides serializable strucutres and tools for bootstrapping the final state.  
 //!
 //! ## Test exports
 //!

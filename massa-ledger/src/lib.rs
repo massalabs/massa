@@ -5,6 +5,9 @@
 //! This crate implements a ledger matching addresses to balances, executable bytecode and data.
 //! It also provides tools to manipulate ledger entries.
 //!
+//! FinalLedger is used as part of FinalState that represents the latest final state of the node
+//! (see massa-final-state crate for more details).
+//!
 //! FinalLedger representing a ledger at a given slot that was executed as final
 //! (see the massa-execution-worker crate for details on execution).
 //! Only the execution worker writes into the final ledger.
