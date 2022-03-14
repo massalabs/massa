@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use massa_models::Address;
+use massa_models::{Address, Slot};
 
 use crate::{FinalLedgerBootstrapState, LedgerEntry};
 
@@ -10,9 +10,13 @@ use crate::{FinalLedgerBootstrapState, LedgerEntry};
 
 /// creates a ledger bootstrap state from components
 pub fn make_bootstrap_state(
+    slot: Slot,
     sorted_ledger: BTreeMap<Address, LedgerEntry>,
 ) -> FinalLedgerBootstrapState {
-    FinalLedgerBootstrapState { sorted_ledger }
+    FinalLedgerBootstrapState {
+        slot,
+        sorted_ledger,
+    }
 }
 
 /// asserts that two ledger entries are the same
@@ -39,6 +43,7 @@ pub fn assert_eq_ledger_bootstrap_state(
     v1: &FinalLedgerBootstrapState,
     v2: &FinalLedgerBootstrapState,
 ) {
+    assert_eq!(v1.slot, v2.slot, "final slot mismatch");
     assert_eq!(
         v1.sorted_ledger.len(),
         v2.sorted_ledger.len(),

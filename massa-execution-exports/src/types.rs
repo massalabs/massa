@@ -3,7 +3,7 @@
 //! This file exports useful types used to interact with the execution worker
 
 use crate::event_store::EventStore;
-use massa_ledger::LedgerChanges;
+use massa_final_state::StateChanges;
 use massa_models::{Address, Amount, BlockId, Slot};
 
 /// structure describing the output of a single execution
@@ -13,8 +13,8 @@ pub struct ExecutionOutput {
     pub slot: Slot,
     // optional block ID at that slot (None if miss)
     pub block_id: Option<BlockId>,
-    // ledger_changes caused by the execution step
-    pub ledger_changes: LedgerChanges,
+    // state changes caused by the execution step
+    pub state_changes: StateChanges,
     // events emitted by the execution step
     pub events: EventStore,
 }

@@ -12,7 +12,7 @@ use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
     ReadOnlyExecutionRequest,
 };
-use massa_ledger::FinalLedger;
+use massa_final_state::FinalState;
 use massa_models::BlockId;
 use massa_models::{
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
@@ -521,7 +521,7 @@ impl ExecutionThread {
 ///
 /// # parameters
 /// * config: execution config
-/// * final_ledger: a thread-safe shared access to the final ledger for reading and writing
+/// * final_state: a thread-safe shared access to the final state for reading and writing
 ///
 /// # Returns
 /// A pair (execution_manager, execution_controller) where:
@@ -529,12 +529,12 @@ impl ExecutionThread {
 /// * execution_controller allows sending requests and notifications to the worker
 pub fn start_execution_worker(
     config: ExecutionConfig,
-    final_ledger: Arc<RwLock<FinalLedger>>,
+    final_state: Arc<RwLock<FinalState>>,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     // create an execution state
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
-        final_ledger,
+        final_state,
     )));
 
     // define the input data interface

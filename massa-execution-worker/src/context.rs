@@ -11,8 +11,9 @@ use crate::speculative_ledger::SpeculativeLedger;
 use massa_execution_exports::{
     EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest,
 };
+use massa_final_state::{FinalState, StateChanges};
 use massa_hash::hash::Hash;
-use massa_ledger::{FinalLedger, LedgerChanges};
+use massa_ledger::LedgerChanges;
 use massa_models::{Address, Amount, BlockId, OperationId, Slot};
 use parking_lot::RwLock;
 use rand::SeedableRng;
@@ -90,17 +91,20 @@ impl ExecutionContext {
     /// (see readonly and active_slot methods).
     ///
     /// # arguments
-    /// * final_ledger: thread-safe access to the final ledger. Note that this will be used only for reading, never for writing
+    /// * final_state: thread-safe access to the final state. Note that this will be used only for reading, never for writing
     /// * previous_changes: list of ledger changes that happened since the final ledger state and before the current execution
     ///
     /// # returns
     /// A new (empty) ExecutionContext instance
     pub(crate) fn new(
-        final_ledger: Arc<RwLock<FinalLedger>>,
-        previous_changes: LedgerChanges,
+        final_state: Arc<RwLock<FinalState>>,
+        previous_changes: StateChanges,
     ) -> Self {
         ExecutionContext {
-            speculative_ledger: SpeculativeLedger::new(final_ledger, previous_changes),
+            speculative_ledger: SpeculativeLedger::new(
+                final_state,
+                previous_changes.ledger_changes,
+            ),
             max_gas: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),
@@ -146,16 +150,16 @@ impl ExecutionContext {
     /// # arguments
     /// * slot: slot at which the execution will happen
     /// * req: parameters of the read only execution
-    /// * previous_changes: list of ledger changes that happened since the final ledger state and before this execution
-    /// * final_ledger: thread-safe access to the final ledger. Note that this will be used only for reading, never for writing
+    /// * previous_changes: list of state changes that happened since the final state state and before this execution
+    /// * final_state: thread-safe access to the final state. Note that this will be used only for reading, never for writing
     ///
     /// # returns
     /// A ExecutionContext instance ready for a read-only execution
     pub(crate) fn readonly(
         slot: Slot,
         req: ReadOnlyExecutionRequest,
-        previous_changes: LedgerChanges,
-        final_ledger: Arc<RwLock<FinalLedger>>,
+        previous_changes: StateChanges,
+        final_state: Arc<RwLock<FinalState>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
         // Note that consecutive read-only calls for the same slot will get the same random seed.
@@ -180,7 +184,7 @@ impl ExecutionContext {
             stack: req.call_stack,
             read_only: true,
             unsafe_rng,
-            ..ExecutionContext::new(final_ledger, previous_changes)
+            ..ExecutionContext::new(final_state, previous_changes)
         }
     }
 
@@ -191,15 +195,15 @@ impl ExecutionContext {
     /// * slot: slot at which the execution will happen
     /// * opt_block_id: optional ID of the block at that slot
     /// * previous_changes: list of ledger changes that happened since the final ledger state and before this execution
-    /// * final_ledger: thread-safe access to the final ledger. Note that this will be used only for reading, never for writing
+    /// * final_state: thread-safe access to the final state. Note that this will be used only for reading, never for writing
     ///
     /// # returns
     /// A ExecutionContext instance ready for a read-only execution
     pub(crate) fn active_slot(
         slot: Slot,
         opt_block_id: Option<BlockId>,
-        previous_changes: LedgerChanges,
-        final_ledger: Arc<RwLock<FinalLedger>>,
+        previous_changes: StateChanges,
+        final_state: Arc<RwLock<FinalState>>,
     ) -> Self {
         // Deterministically seed the unsafe RNG to allow the bytecode to use it.
 
@@ -221,7 +225,7 @@ impl ExecutionContext {
             slot,
             opt_block_id,
             unsafe_rng,
-            ..ExecutionContext::new(final_ledger, previous_changes)
+            ..ExecutionContext::new(final_state, previous_changes)
         }
     }
 
@@ -231,10 +235,13 @@ impl ExecutionContext {
     /// This is used to get the output of an execution before discarding the context.
     /// Note that we are not taking self by value to consume it because the context is shared.
     pub fn take_execution_output(&mut self) -> ExecutionOutput {
+        let state_changes = StateChanges {
+            ledger_changes: self.speculative_ledger.take(),
+        };
         ExecutionOutput {
             slot: self.slot,
             block_id: std::mem::take(&mut self.opt_block_id),
-            ledger_changes: self.speculative_ledger.take(),
+            state_changes,
             events: std::mem::take(&mut self.events),
         }
     }

@@ -19,6 +19,7 @@ tracing = { version = "0.1", features = [
 # custom modules
 massa_models = { path = "../massa-models" }
 massa_time = { path = "../massa-time" }
+massa_final_state = { path = "../massa-final-state" }
 massa_ledger = { path = "../massa-ledger" }
 
 [dev-dependencies]

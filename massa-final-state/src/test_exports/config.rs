@@ -8,6 +8,8 @@ impl Default for LedgerConfig {
     fn default() -> Self {
         LedgerConfig {
             initial_sce_ledger_path: "".into(), // unused by the mock
+            final_history_length: 10,
+            thread_count: 2,
         }
     }
 }
