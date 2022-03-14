@@ -36,7 +36,9 @@ pretty_assertions = "1.0"
 serial_test = "0.5"
 massa_final_state = { path = "../massa-final-state", features=["testing"] }
 massa_ledger = { path = "../massa-ledger", features=["testing"] }
+massa_async_pool = { path = "../massa-async-pool", features=["testing"] }
 
 
+# for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 instrument = ["tokio/tracing", "massa_consensus_exports/instrument", "massa_graph/instrument", "massa_models/instrument", "massa_network_exports/instrument", "massa_proof_of_stake_exports/instrument", "massa_time/instrument"]

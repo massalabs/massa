@@ -1,12 +1,19 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-
+//! Bootstrap crate
+//!
+//! At start up, if now is after genesis timestamp,
+//! the node will bootstrap from one of the provided bootstrap servers.
+//!
+//! On server side, the server will query consensus for the graph and the ledger,
+//! execution for execution related data and network for the peer list.
+//!
 #![feature(async_closure)]
-
+#![warn(missing_docs)]
 use crate::client_binder::BootstrapClientBinder;
-use crate::establisher::Duplex;
+use crate::establisher::types::Duplex;
 use crate::server_binder::BootstrapServerBinder;
 use error::BootstrapError;
-pub use establisher::Establisher;
+pub use establisher::types::Establisher;
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_consensus_exports::ConsensusCommandSender;
 use massa_final_state::{FinalState, FinalStateBootstrap};
@@ -20,7 +27,6 @@ use massa_time::MassaTime;
 use messages::BootstrapMessage;
 use parking_lot::RwLock;
 use rand::{prelude::SliceRandom, rngs::StdRng, SeedableRng};
-use settings::BootstrapSettings;
 use std::collections::{hash_map, HashMap};
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -31,10 +37,15 @@ use tracing::{debug, info, warn};
 
 mod client_binder;
 mod error;
-pub mod establisher;
+mod establisher;
 mod messages;
 mod server_binder;
-pub mod settings;
+mod settings;
+pub use establisher::types;
+pub use settings::BootstrapSettings;
+
+#[cfg(test)]
+pub mod tests;
 
 /// a collection of the bootstrap state snapshots of all relevant modules
 #[derive(Default, Debug)]
@@ -256,12 +267,14 @@ pub async fn get_state(
     }
 }
 
+/// handle on the bootstrap server
 pub struct BootstrapManager {
     join_handle: JoinHandle<Result<(), BootstrapError>>,
     manager_tx: mpsc::Sender<()>,
 }
 
 impl BootstrapManager {
+    /// stop the bootstrap server
     pub async fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
         if self.manager_tx.send(()).await.is_err() {
@@ -273,6 +286,10 @@ impl BootstrapManager {
 }
 
 #[allow(clippy::too_many_arguments)]
+/// TODO merging the command senders into one channel struct may allow removing that allow
+///
+/// start a bootstrap server.
+/// Once your node will be ready, you may want other to bootstrap from you.
 pub async fn start_bootstrap_server(
     consensus_command_sender: ConsensusCommandSender,
     network_command_sender: NetworkCommandSender,
@@ -520,6 +537,3 @@ async fn send_state_timeout(
         Ok(Ok(_)) => Ok(()),
     }
 }
-
-#[cfg(test)]
-pub mod tests;

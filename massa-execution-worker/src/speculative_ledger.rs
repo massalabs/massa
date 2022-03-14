@@ -7,7 +7,7 @@
 
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalState;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_ledger::{Applicable, LedgerChanges};
 use massa_models::{Address, Amount};
 use parking_lot::RwLock;

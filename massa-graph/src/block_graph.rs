@@ -9,7 +9,7 @@ use crate::{
     settings::GraphConfig,
     LedgerConfig,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
@@ -85,6 +85,7 @@ pub struct BlockStateAccumulator {
     pub endorsers_addresses: Vec<Address>,
 }
 
+/// Something can be discarded
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DiscardReason {
     /// Block is invalid, either structurally, or because of some incompatibility. The String contains the reason for info or debugging.
@@ -129,11 +130,17 @@ enum BlockStatus {
 /// Block status in the graph that can be exported.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ExportBlockStatus {
+    /// received but not yet graph processed
     Incoming,
+    /// waiting for its slot
     WaitingForSlot,
+    /// waiting for a missing dependency
     WaitingForDependencies,
+    /// valid and not yet final
     Active(Block),
+    /// immutable
     Final(Block),
+    /// not part of the graph
     Discarded(DiscardReason),
 }
 
@@ -152,9 +159,12 @@ pub struct ExportCompiledBlock {
     pub is_final: bool,
 }
 
+/// Status
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Status {
+    /// without enough fitness to be part of immutable history
     Active,
+    /// with enough fitness to be part of immutable history
     Final,
 }
 
@@ -233,6 +243,7 @@ impl<'a> BlockGraphExport {
     }
 }
 
+/// Bootstrap compatible version of the block graph
 #[derive(Debug, Clone)]
 pub struct BlockGraphExport {
     /// Genesis blocks.
@@ -251,6 +262,7 @@ pub struct BlockGraphExport {
     pub max_cliques: Vec<Clique>,
 }
 
+/// Final and candidate ledger data
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LedgerDataExport {
     /// Candidate data
@@ -259,6 +271,7 @@ pub struct LedgerDataExport {
     pub final_data: LedgerSubset,
 }
 
+/// Graph management
 pub struct BlockGraph {
     /// Consensus related config
     cfg: GraphConfig,
@@ -567,6 +580,7 @@ impl BlockGraph {
         }
     }
 
+    /// export full graph in a bootstrap compatible version
     pub fn export_bootstrap_graph(&self) -> Result<BootstrapableGraph> {
         let required_active_blocks = self.list_required_active_blocks()?;
         let mut active_blocks: Map<BlockId, ExportActiveBlock> =
@@ -1152,6 +1166,7 @@ impl BlockGraph {
         })
     }
 
+    /// get operation info by involved address
     pub fn get_operations_involving_address(
         &self,
         address: &Address,
@@ -1202,6 +1217,7 @@ impl BlockGraph {
         BlockGraph::get_full_active_block(&self.block_statuses, *block_id)
     }
 
+    /// get export version of a block
     pub fn get_export_block_status(&self, block_id: &BlockId) -> Option<ExportBlockStatus> {
         self.block_statuses
             .get(block_id)
@@ -1785,8 +1801,7 @@ impl BlockGraph {
 
         let valid_block_addresses_to_operations =
             valid_block.involved_addresses(&valid_block_operation_set)?;
-        let valid_block_addresses_to_endorsements =
-            valid_block.addresses_to_endorsements(&valid_block_endorsement_ids)?;
+        let valid_block_addresses_to_endorsements = valid_block.addresses_to_endorsements()?;
 
         // add block to graph
         self.add_block_to_graph(
@@ -2471,6 +2486,7 @@ impl BlockGraph {
         })
     }
 
+    /// get genesis block ids
     pub fn get_genesis_block_ids(&self) -> &Vec<BlockId> {
         &self.genesis_hashes
     }
@@ -3641,10 +3657,12 @@ impl BlockGraph {
         Ok(wishlist)
     }
 
+    /// get clique count
     pub fn get_clique_count(&self) -> usize {
         self.max_cliques.len()
     }
 
+    /// get the clique of higher fitness
     pub fn get_blockclique(&self) -> Set<BlockId> {
         self.max_cliques
             .iter()
@@ -3697,6 +3715,7 @@ impl BlockGraph {
         mem::take(&mut self.new_stale_blocks)
     }
 
+    /// endorsement info by involved address
     pub fn get_endorsement_by_address(
         &self,
         address: Address,
@@ -3722,6 +3741,7 @@ impl BlockGraph {
         Ok(res)
     }
 
+    /// endorsement info by id
     pub fn get_endorsement_by_id(
         &self,
         endorsements: Set<EndorsementId>,

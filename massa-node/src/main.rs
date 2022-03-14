@@ -2,7 +2,7 @@
 
 #![feature(ip)]
 #![doc = include_str!("../../README.md")]
-
+#![warn(missing_docs)]
 extern crate massa_logging;
 use crate::settings::{POOL_CONFIG, SETTINGS};
 use massa_api::{Private, Public, RpcServer, StopHandle, API};
@@ -80,7 +80,7 @@ async fn launch() -> (
         },
         res = get_state(
             &SETTINGS.bootstrap,
-            massa_bootstrap::establisher::Establisher::new(),
+            massa_bootstrap::types::Establisher::new(),
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,

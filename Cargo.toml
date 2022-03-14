@@ -32,3 +32,32 @@ resolver = "2"
 # From https://doc.rust-lang.org/cargo/reference/profiles.html#overrides
 [profile.dev.package."*"]
 opt-level = 3 # Speed-up the CI
+
+
+
+# # Features
+#
+# * instrument: enable tracing, based on tokio-tracing.
+#
+#
+# * testing: enable some tests specific exports.
+# Usage: add testing = ["massa_crate/testing", ...] to dev-dependencies to use test specific functions avaible in massa-crate.
+# Do not add as a regular dependency. Never.
+#
+#
+# * hash-prefix: only affect the cli output. To avoid confusion between diffrent hash types, prefix them.
+# Hash parsing accept both prefix and raw hashes. (see https://github.com/massalabs/massa/pull/2241)
+#
+# List of avaible prefixes :
+# - ADR: Address
+# - PRI: Private key
+# - PUB: Public Key
+# - SIG: Signature
+# - END: Endorsement Id
+# - OPE: Operation Id
+# - BLO: Block id
+# - SCE: SC output event id
+# - NOD: Node id
+#
+#
+# * sandbox: for testing purpose, genesis timestamps is set as now + 3 minutes.

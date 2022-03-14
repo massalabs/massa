@@ -10,7 +10,7 @@ use anyhow::{bail, Result};
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId},
     timeslots::get_block_slot_timestamp,
@@ -190,7 +190,7 @@ impl Interface for InterfaceImpl {
     /// The datastore value matching the provided key, if found, otherwise an error.
     fn raw_get_data_for(&self, address: &str, key: &str) -> Result<Vec<u8>> {
         let addr = &massa_models::Address::from_bs58_check(address)?;
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         match context.get_data_entry(addr, &key) {
             Some(value) => Ok(value),
@@ -206,7 +206,7 @@ impl Interface for InterfaceImpl {
     /// * value: new value to set
     fn raw_set_data_for(&self, address: &str, key: &str, value: &[u8]) -> Result<()> {
         let addr = massa_models::Address::from_str(address)?;
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
         context.set_data_entry(&addr, key, value.to_vec())?;
         Ok(())
@@ -222,7 +222,7 @@ impl Interface for InterfaceImpl {
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
     fn has_data_for(&self, address: &str, key: &str) -> Result<bool> {
         let addr = massa_models::Address::from_str(address)?;
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         Ok(context.has_data_entry(&addr, &key))
     }
@@ -235,7 +235,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
     fn raw_get_data(&self, key: &str) -> Result<Vec<u8>> {
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
         match context.get_data_entry(&addr, &key) {
@@ -251,7 +251,7 @@ impl Interface for InterfaceImpl {
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
     fn raw_set_data(&self, key: &str, value: &[u8]) -> Result<()> {
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
         context.set_data_entry(&addr, key, value.to_vec())?;
@@ -266,7 +266,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
     fn has_data(&self, key: &str) -> Result<bool> {
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
         Ok(context.has_data_entry(&addr, &key))
@@ -280,7 +280,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The string representation of the resulting hash
     fn hash(&self, data: &[u8]) -> Result<String> {
-        Ok(massa_hash::hash::Hash::compute_from(data).to_bs58_check())
+        Ok(massa_hash::Hash::compute_from(data).to_bs58_check())
     }
 
     /// Converts a pubkey to an address
@@ -314,7 +314,7 @@ impl Interface for InterfaceImpl {
             Ok(pubk) => pubk,
             Err(_) => return Ok(false),
         };
-        let h = massa_hash::hash::Hash::compute_from(data);
+        let h = massa_hash::Hash::compute_from(data);
         Ok(massa_signature::verify_signature(&h, &signature, &public_key).is_ok())
     }
 

@@ -37,13 +37,14 @@
 //! can be modified, combined or applied to the final ledger.
 //!
 //! ## bootstrap.rs
-//! Provides serializable strucutres and tools for bootstrapping the final ledger.  
+//! Provides serializable strucutres and tools for bootstrapping the final ledger.
 //!
 //! ## Test exports
 //!
 //! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
 //! See test_exports/mod.rs for details.
 
+#![warn(missing_docs)]
 #![feature(map_first_last)]
 #![feature(async_closure)]
 
@@ -67,4 +68,5 @@ pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 mod tests;
 
 #[cfg(feature = "testing")]
+/// test exports
 pub mod test_exports;

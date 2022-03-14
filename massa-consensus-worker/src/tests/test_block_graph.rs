@@ -4,7 +4,7 @@ use massa_graph::{
     create_genesis_block, export_active_block::ExportActiveBlock, ledger::LedgerSubset,
     settings::GraphConfig, BlockGraph, BootstrapableGraph,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::signed::Signable;
 use massa_models::{
     active_block::ActiveBlock,

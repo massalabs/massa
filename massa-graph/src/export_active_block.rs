@@ -58,8 +58,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             .collect::<Result<_>>()?;
 
         let addresses_to_operations = a_block.block.involved_addresses(&operation_set)?;
-        let addresses_to_endorsements =
-            a_block.block.addresses_to_endorsements(&endorsement_ids)?;
+        let addresses_to_endorsements = a_block.block.addresses_to_endorsements()?;
         Ok(ActiveBlock {
             creator_address: Address::from_public_key(&a_block.block.header.content.creator),
             block_id: a_block.block_id,
@@ -82,6 +81,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
 }
 
 impl ExportActiveBlock {
+    /// try conversion from active block to export active block
     pub fn try_from_active_block(a_block: &ActiveBlock, storage: Storage) -> Result<Self> {
         let block = storage
             .retrieve_block(&a_block.block_id)

@@ -80,6 +80,7 @@ use massa_models::{
 use std::{collections::HashMap, net::IpAddr};
 use tokio::sync::oneshot;
 
+/// network command
 #[derive(Clone, Debug)]
 pub enum NodeCommand {
     /// Send given peer list to node.
@@ -141,20 +142,26 @@ pub struct NodeEvent(pub NodeId, pub NodeEventType);
 pub enum NetworkCommand {
     /// Ask for a block to a node.
     AskForBlocks {
+        /// node to block ids
         list: HashMap<NodeId, Vec<BlockId>>,
     },
     /// Send that block to node.
     SendBlock {
+        /// to node id
         node: NodeId,
+        /// block id
         block_id: BlockId,
     },
     /// Send a header to a node.
     SendBlockHeader {
+        /// to node id
         node: NodeId,
+        /// block id
         block_id: BlockId,
     },
-    // (PeerInfo, Vec <(NodeId, bool)>) peer info + list of associated Id nodes in connection out (true)
+    /// (PeerInfo, Vec <(NodeId, bool)>) peer info + list of associated Id nodes in connection out (true)
     GetPeers(oneshot::Sender<Peers>),
+    /// get peers for bootstrap server
     GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
     /// Ban a peer by his node id
     Ban(NodeId),
@@ -164,34 +171,50 @@ pub enum NetworkCommand {
     Unban(Vec<IpAddr>),
     /// Send a message that a block is not found to a node
     BlockNotFound {
+        /// to node id
         node: NodeId,
+        /// block id
         block_id: BlockId,
     },
     /// Send endorsements to a node
     SendEndorsements {
+        /// to node id
         node: NodeId,
+        /// endorsements
         endorsements: Vec<SignedEndorsement>,
     },
+    /// sign message with our node private key (associated to node id)
+    /// != staking key
     NodeSignMessage {
+        /// arbitrary message
         msg: Vec<u8>,
+        /// response channels
         response_tx: oneshot::Sender<PubkeySig>,
     },
+    /// gets network stats
     GetStats {
+        /// response channels
         response_tx: oneshot::Sender<NetworkStats>,
     },
     /// Send a batch of full operations
     SendOperations {
+        /// to node id
         node: NodeId,
+        /// operations
         operations: Operations,
     },
     /// Send operation ids batch to a node
     SendOperationAnnouncements {
+        /// to node id
         to_node: NodeId,
+        /// batch of operation ids
         batch: OperationIds,
     },
     /// Ask for operation
     AskForOperations {
+        /// to node id
         to_node: NodeId,
+        /// operation ids in the wishlist
         wishlist: OperationIds,
     },
     /// Whitelist a list of IpAddr
@@ -200,51 +223,73 @@ pub enum NetworkCommand {
     RemoveFromWhitelist(Vec<IpAddr>),
 }
 
+/// network event
 #[derive(Debug)]
 pub enum NetworkEvent {
+    /// new connection from node
     NewConnection(NodeId),
+    /// connection to node was closed
     ConnectionClosed(NodeId),
     /// A block was received
     ReceivedBlock {
+        /// from node id
         node: NodeId,
+        /// block
         block: Block,
+        /// serialized block
         serialized: Vec<u8>,
     },
     /// A block header was received
     ReceivedBlockHeader {
+        /// from node id
         source_node_id: NodeId,
+        /// header
         header: SignedHeader,
     },
     /// Someone ask for block with given header hash.
     AskedForBlocks {
+        /// node id
         node: NodeId,
+        /// asked blocks
         list: Vec<BlockId>,
     },
     /// That node does not have this block
     BlockNotFound {
+        /// node id
         node: NodeId,
+        /// block id
         block_id: BlockId,
     },
     /// Receive previously asked Operation
     ReceivedOperations {
+        /// node id
         node: NodeId,
+        /// operations
         operations: Operations,
     },
     /// Receive a list of OperationId
     ReceivedOperationAnnouncements {
+        /// from node id
         node: NodeId,
+        /// operation ids
         operation_ids: OperationIds,
     },
     /// Receive a list of asked operations from `node`
     ReceiveAskForOperations {
+        /// from node id
         node: NodeId,
+        /// operation ids
         operation_ids: OperationIds,
     },
+    /// received endorsements from node
     ReceivedEndorsements {
+        /// node id
         node: NodeId,
+        /// Endorsements
         endorsements: Vec<SignedEndorsement>,
     },
 }
 
+/// Network management command
 #[derive(Debug)]
 pub enum NetworkManagementCommand {}

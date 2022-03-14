@@ -7,7 +7,7 @@ use super::{
     messages::Message,
 };
 use futures::future::try_join;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::node::NodeId;
 use massa_models::SerializeCompact;

@@ -24,5 +24,6 @@ massa_ledger = { path = "../massa-ledger" }
 pretty_assertions = "1.0"
 serial_test = "0.5"
 
+# for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 testing = ["massa_ledger/testing", "massa_models/testing"]

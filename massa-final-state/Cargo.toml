@@ -21,5 +21,6 @@ serial_test = "0.6"
 massa_ledger = { path = "../massa-ledger", features=["testing"] }
 massa_async_pool = { path = "../massa-async-pool", features=["testing"] }
 
+# for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 testing = []

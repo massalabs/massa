@@ -11,24 +11,38 @@ use crate::SignedOperation;
 use crate::{
     Address, Amount, Block, BlockId, CompactConfig, EndorsementId, OperationId, Slot, Version,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
+
+/// node status
 #[derive(Debug, Deserialize, Serialize)]
 pub struct NodeStatus {
+    /// our node id
     pub node_id: NodeId,
+    /// optional node ip
     pub node_ip: Option<IpAddr>,
+    /// node version
     pub version: Version,
+    /// now
     pub current_time: MassaTime,
+    /// current cycle
     pub current_cycle: u64,
+    /// connected nodes (node id, ip address)
     pub connected_nodes: HashMap<NodeId, IpAddr>,
+    /// latest slot, none if now is before genesis timestamp
     pub last_slot: Option<Slot>,
+    /// next slot
     pub next_slot: Slot,
+    /// consensus stats
     pub consensus_stats: ConsensusStats,
+    /// pool stats
     pub pool_stats: PoolStats,
+    /// network stats
     pub network_stats: NetworkStats,
+    /// compact config
     pub config: CompactConfig,
 }
 
@@ -68,16 +82,25 @@ impl std::fmt::Display for NodeStatus {
     }
 }
 
+/// Operation and contextual info about it
 #[derive(Debug, Deserialize, Serialize)]
 pub struct OperationInfo {
+    /// id
     pub id: OperationId,
+    /// true if operation is still in pool
     pub in_pool: bool,
+    /// the operation appears in in_blocks
+    /// if it appears in multiple blocks, these blocks are in different cliques
     pub in_blocks: Vec<BlockId>,
+    /// true if the operation is final (ie in a final block)
     pub is_final: bool,
+    /// the operation itself
     pub operation: SignedOperation,
 }
 
 impl OperationInfo {
+    /// extend an operation info with another one
+    /// There is not check to see if the id and operation are indeed the same
     pub fn extend(&mut self, other: &OperationInfo) {
         self.in_pool = self.in_pool || other.in_pool;
         self.in_blocks.extend(other.in_blocks.iter());
@@ -103,10 +126,14 @@ impl std::fmt::Display for OperationInfo {
     }
 }
 
+/// Current Parallel balance leger info
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct LedgerInfo {
+    /// final data
     pub final_ledger_info: LedgerData,
+    /// latest data
     pub candidate_ledger_info: LedgerData,
+    /// locked balance, ie balance due to a roll sell
     pub locked_balance: Amount,
 }
 
@@ -123,10 +150,14 @@ impl std::fmt::Display for LedgerInfo {
     }
 }
 
+/// Roll counts
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct RollsInfo {
+    /// count taken into account for the current cycle
     pub active_rolls: u64,
+    /// at final blocks
     pub final_rolls: u64,
+    /// at latest blocks
     pub candidate_rolls: u64,
 }
 
@@ -139,10 +170,14 @@ impl std::fmt::Display for RollsInfo {
     }
 }
 
+/// Sequential balance state (really same as SCELedgerEntry)
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct SCELedgerInfo {
+    /// sequential coins
     pub balance: Amount,
+    /// stored bytes
     pub module: Vec<u8>,
+    /// datastore
     pub datastore: Map<Hash, Vec<u8>>,
 }
 
@@ -154,19 +189,32 @@ impl std::fmt::Display for SCELedgerInfo {
     }
 }
 
+/// All you ever dreamt to know about an address
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AddressInfo {
+    /// the address
     pub address: Address,
+    /// the thread it is in
     pub thread: u8,
+    /// parallel balance info
     pub ledger_info: LedgerInfo,
+    /// final sequential balance
     pub final_sce_ledger_info: SCELedgerInfo,
+    /// latest sequential balance
     pub candidate_sce_ledger_info: SCELedgerInfo,
+    /// rolls
     pub rolls: RollsInfo,
+    /// next slots this address will be selected to create a block
     pub block_draws: HashSet<Slot>,
+    /// next slots this address will be selected to create a endorsement
     pub endorsement_draws: HashSet<IndexedSlot>,
+    /// created blocks ids
     pub blocks_created: Set<BlockId>,
+    /// endorsements in which this address is involved (endorser, block creator)
     pub involved_in_endorsements: Set<EndorsementId>,
+    /// operation in which this address is involved (sender or receiver)
     pub involved_in_operations: Set<OperationId>,
+    /// stats about block production
     pub production_stats: Vec<AddressCycleProductionStats>,
 }
 
@@ -240,6 +288,7 @@ impl std::fmt::Display for AddressInfo {
 }
 
 impl AddressInfo {
+    /// Only essential info about an address
     pub fn compact(&self) -> CompactAddressInfo {
         CompactAddressInfo {
             address: self.address,
@@ -255,7 +304,9 @@ impl AddressInfo {
 /// When an address is drawn to create an endorsement it is selected for a specific index
 #[derive(Debug, Deserialize, Serialize, Hash, PartialEq, Eq)]
 pub struct IndexedSlot {
+    /// slot
     pub slot: Slot,
+    /// endorsement index in the slot
     pub index: usize,
 }
 
@@ -265,13 +316,20 @@ impl std::fmt::Display for IndexedSlot {
     }
 }
 
-#[derive(Serialize)]
+/// Less information about an address
+#[derive(Debug, Serialize)]
 pub struct CompactAddressInfo {
+    /// the address
     pub address: Address,
+    /// the thread it is
     pub thread: u8,
+    /// parallel balance
     pub balance: LedgerInfo,
+    /// rolls
     pub rolls: RollsInfo,
+    /// final sequential balance
     pub final_sce_balance: SCELedgerInfo,
+    /// latest sequential balance
     pub candidate_sce_balance: SCELedgerInfo,
 }
 
@@ -291,12 +349,18 @@ impl std::fmt::Display for CompactAddressInfo {
     }
 }
 
+/// All you wanna know about an endorsement
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct EndorsementInfo {
+    /// the id
     pub id: EndorsementId,
+    /// true is the endorsement is still in pool
     pub in_pool: bool,
+    /// endorsements included in these blocks
     pub in_blocks: Vec<BlockId>,
+    /// true included in a final block
     pub is_final: bool,
+    /// The full endorsement
     pub endorsement: SignedEndorsement,
 }
 
@@ -317,17 +381,25 @@ impl std::fmt::Display for EndorsementInfo {
     }
 }
 
+/// refactor to delete
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BlockInfo {
+    /// block id
     pub id: BlockId,
+    /// optional block info content
     pub content: Option<BlockInfoContent>,
 }
 
+/// Block content
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BlockInfoContent {
+    /// true if final
     pub is_final: bool,
+    /// true if incompatible with a final block
     pub is_stale: bool,
+    /// true if in the greatest clique
     pub is_in_blockclique: bool,
+    /// block
     pub block: Block,
 }
 
@@ -350,14 +422,22 @@ impl std::fmt::Display for BlockInfo {
     }
 }
 
+/// A block resume (without the block itself)
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BlockSummary {
+    /// id
     pub id: BlockId,
+    /// true if in a final block
     pub is_final: bool,
+    /// true if incompatible with a final block
     pub is_stale: bool,
+    /// true if in the greatest block clique
     pub is_in_blockclique: bool,
+    /// the slot the block is in
     pub slot: Slot,
+    /// the block creator
     pub creator: Address,
+    /// the block parents
     pub parents: Vec<BlockId>,
 }
 
@@ -390,33 +470,53 @@ fn display_if_true(value: bool, text: &str) -> String {
     }
 }
 
+/// Just a wrapper with a optional beginning and end
 #[derive(Debug, Deserialize, Clone, Copy, Serialize)]
 pub struct TimeInterval {
+    /// optional start slot
     pub start: Option<MassaTime>,
+    /// optional end slot
     pub end: Option<MassaTime>,
 }
 
+/// Move to the api crate
+/// the api settings
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct APISettings {
+    /// when looking for next draw we want to look at max draw_lookahead_period_count
     pub draw_lookahead_period_count: u64,
+    /// bind for the private api
     pub bind_private: SocketAddr,
+    /// bind for the public api
     pub bind_public: SocketAddr,
+    /// max argument count
     pub max_arguments: u64,
 }
 
+/// filter used when retrieving sc output events
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct EventFilter {
+    /// optional start slot
     pub start: Option<Slot>,
+    /// optional end slot
     pub end: Option<Slot>,
+    /// optional emitter address
     pub emitter_address: Option<Address>,
+    /// optional caller address
     pub original_caller_address: Option<Address>,
+    /// optional operation id
     pub original_operation_id: Option<OperationId>,
 }
 
+/// read only execution request
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct ReadOnlyExecution {
+    /// max available gas
     pub max_gas: u64,
+    /// gas price
     pub simulated_gas_price: Amount,
+    /// byte code
     pub bytecode: Vec<u8>,
+    /// caller's address, optional
     pub address: Option<Address>,
 }

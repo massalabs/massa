@@ -21,7 +21,7 @@
 //! ```
 use crate::network_worker::NetworkWorker;
 use futures::{stream::FuturesUnordered, StreamExt};
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::operation::Operations;
 use massa_models::{

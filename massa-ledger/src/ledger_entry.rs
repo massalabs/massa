@@ -4,7 +4,7 @@
 
 use crate::ledger_changes::LedgerEntryUpdate;
 use crate::types::{Applicable, SetOrDelete};
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_models::{array_from_slice, Amount, DeserializeVarInt, ModelsError, SerializeVarInt};
 use massa_models::{DeserializeCompact, SerializeCompact};

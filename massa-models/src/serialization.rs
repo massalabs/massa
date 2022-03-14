@@ -7,6 +7,7 @@ use massa_time::MassaTime;
 use std::convert::TryInto;
 use std::net::IpAddr;
 
+/// varint serialization
 pub trait SerializeVarInt {
     /// Serialize as varint bytes
     fn to_varint_bytes(self) -> Vec<u8>;
@@ -24,6 +25,7 @@ impl SerializeVarInt for u64 {
     }
 }
 
+/// var int deserialization
 pub trait DeserializeVarInt: Sized {
     /// Deserialize variable size integer to Self from the provided buffer.
     /// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.
@@ -79,6 +81,7 @@ impl DeserializeVarInt for u64 {
     }
 }
 
+/// Serialize min big endian integer
 pub trait SerializeMinBEInt {
     /// serializes with the minimal amount of big endian bytes
     fn to_be_bytes_min(self, max_value: Self) -> Result<Vec<u8>, ModelsError>;
@@ -104,7 +107,9 @@ impl SerializeMinBEInt for u64 {
     }
 }
 
+/// Deserialize min big endian
 pub trait DeserializeMinBEInt: Sized {
+    /// min big endian integer base size
     const MIN_BE_INT_BASE_SIZE: usize;
 
     /// Compute the minimal big endian deserialization size
@@ -165,6 +170,7 @@ impl DeserializeMinBEInt for u64 {
     }
 }
 
+/// array from slice
 pub fn array_from_slice<const ARRAY_SIZE: usize>(
     buffer: &[u8],
 ) -> Result<[u8; ARRAY_SIZE], ModelsError> {
@@ -178,6 +184,7 @@ pub fn array_from_slice<const ARRAY_SIZE: usize>(
     })
 }
 
+/// u8 from slice
 pub fn u8_from_slice(buffer: &[u8]) -> Result<u8, ModelsError> {
     if buffer.is_empty() {
         return Err(ModelsError::BufferError(
@@ -187,11 +194,15 @@ pub fn u8_from_slice(buffer: &[u8]) -> Result<u8, ModelsError> {
     Ok(buffer[0])
 }
 
+/// custom serialization trait
 pub trait SerializeCompact {
+    /// serialization
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError>;
 }
 
+/// custom deserialization trait
 pub trait DeserializeCompact: Sized {
+    /// deserialization
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError>;
 }
 

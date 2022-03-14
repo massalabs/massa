@@ -9,18 +9,25 @@ use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, net::IpAddr};
 
+/// Associate a peer info with nodes
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Peer {
+    /// peer info
     pub peer_info: PeerInfo,
+    /// corresponding nodes (true if active)
     pub active_nodes: Vec<(NodeId, bool)>,
 }
 
+/// peers
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Peers {
+    /// our node id
     pub our_node_id: NodeId,
+    /// peers
     pub peers: HashMap<IpAddr, Peer>,
 }
 
+/// Peers that are transmitted during bootstrap
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BootstrapPeers(pub Vec<IpAddr>);
 

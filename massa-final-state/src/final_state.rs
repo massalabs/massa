@@ -22,7 +22,7 @@ pub struct FinalState {
     pub slot: Slot,
     /// final ledger associating addresses to their balance, executable bytecode and data
     pub ledger: FinalLedger,
-    // async pool containing messages sorted by priority and their data
+    /// async pool containing messages sorted by priority and their data
     pub async_pool: AsyncPool,
     /// history of recent final state changes, useful for streaming bootstrap
     /// front = oldest, back = newest

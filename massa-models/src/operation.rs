@@ -10,7 +10,7 @@ use crate::{
     },
     Address, Amount, ModelsError,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -19,6 +19,8 @@ use std::fmt::Formatter;
 use std::{ops::RangeInclusive, str::FromStr};
 
 const OPERATION_ID_STRING_PREFIX: &str = "OPE";
+
+/// operation id
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationId(Hash);
 
@@ -82,20 +84,24 @@ impl Id for OperationId {
 }
 
 impl OperationId {
+    /// op id into bytes
     pub fn to_bytes(&self) -> [u8; OPERATION_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
+    /// op id into bytes
     pub fn into_bytes(self) -> [u8; OPERATION_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
+    /// op id from bytes
     pub fn from_bytes(data: &[u8; OPERATION_ID_SIZE_BYTES]) -> Result<OperationId, ModelsError> {
         Ok(OperationId(
             Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
         ))
     }
 
+    /// op id from bs58 check
     pub fn from_bs58_check(data: &str) -> Result<OperationId, ModelsError> {
         Ok(OperationId(
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
@@ -112,40 +118,16 @@ enum OperationTypeId {
     ExecuteSC = 3,
 }
 
-// #[derive(Debug, Clone, Serialize, Deserialize)]
-// pub struct Operation {
-//     pub content: Operation,
-//     pub signature: Signature,
-// }
-
-// impl std::fmt::Display for Operation {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         writeln!(
-//             f,
-//             "Id: {}",
-//             match self.content.compute_id() {
-//                 Ok(id) => format!("{}", id),
-//                 Err(e) => format!("error computing id: {}", e),
-//             }
-//         )?;
-//         writeln!(f, "Signature: {}", self.signature)?;
-//         let addr = Address::from_public_key(&self.content.sender_public_key);
-//         let amount = self.content.fee.to_string();
-//         writeln!(
-//             f,
-//             "sender: {}     fee: {}     expire_period: {}",
-//             addr, amount, self.content.expire_period,
-//         )?;
-//         writeln!(f, "{}", self.content.op)?;
-//         Ok(())
-//     }
-// }
-
+/// the operation as sent in the network
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Operation {
+    /// the operation creator public key
     pub sender_public_key: PublicKey,
+    /// the fee they have decided for tis operation
     pub fee: Amount,
+    /// after expire_period slot the operation won't be included in a block
     pub expire_period: u64,
+    /// the type specific operation part
     pub op: OperationType,
 }
 
@@ -161,18 +143,27 @@ impl std::fmt::Display for Operation {
 
 impl Signable<OperationId> for Operation {}
 
+/// signed operation
 pub type SignedOperation = Signed<Operation, OperationId>;
 
+/// Type specific operation content
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OperationType {
+    /// transfer coins from sender to recipient
     Transaction {
+        /// recipient address
         recipient_address: Address,
+        /// amount
         amount: Amount,
     },
+    /// the sender buys roll_count rolls. Roll price is config defined
     RollBuy {
+        /// roll count
         roll_count: u64,
     },
+    /// the sender sells roll_count rolls. Roll price is config defined
     RollSell {
+        /// roll count
         roll_count: u64,
     },
     /// Execute a smart contract.
@@ -208,12 +199,16 @@ impl std::fmt::Display for OperationType {
                 write!(f, "\t- Roll count:{}", roll_count)?;
             }
             OperationType::ExecuteSC {
-                data: _,
-                max_gas: _,
-                coins: _,
-                gas_price: _,
+                max_gas,
+                coins,
+                gas_price,
+                ..
+                // data, // this field is ignored because bytes eh
             } => {
-                writeln!(f, "ExecuteSC")?;
+                writeln!(f, "ExecuteSC: ")?;
+                write!(f, "\t- max_gas:{}", max_gas)?;
+                write!(f, "\t- gas_price:{}", gas_price)?;
+                write!(f, "\t- coins:{}", coins)?;
             }
         }
         Ok(())
@@ -441,11 +436,13 @@ impl SignedOperation {
 }
 
 impl Operation {
+    /// get the range of periods during which an operation is valid
     pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
         let start = self.expire_period.saturating_sub(operation_validity_period);
         start..=self.expire_period
     }
 
+    /// get the addresses that are involved in this operation from a ledger point of view
     pub fn get_ledger_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut res = Set::<Address>::default();
         let emitter_address = Address::from_public_key(&self.sender_public_key);
@@ -463,6 +460,7 @@ impl Operation {
         Ok(res)
     }
 
+    /// get the addresses that are involved in this operation from a rolls point of view
     pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut res = Set::<Address>::default();
         match self.op {

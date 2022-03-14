@@ -2,8 +2,8 @@
 
 use super::messages::BootstrapMessage;
 use crate::error::BootstrapError;
-use crate::establisher::Duplex;
-use massa_hash::hash::Hash;
+use crate::establisher::types::Duplex;
+use massa_hash::Hash;
 use massa_models::{
     constants::BOOTSTRAP_RANDOMNESS_SIZE_BYTES, with_serialization_context, DeserializeCompact,
     DeserializeMinBEInt,

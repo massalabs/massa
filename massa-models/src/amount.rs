@@ -9,7 +9,7 @@ use std::str::FromStr;
 
 /// A structure representing a decimal Amount of coins with safe operations
 /// this allows ensuring that there is never an uncontrolled overflow or precision loss
-/// while providig a convenient decimal interface for users
+/// while providing a convenient decimal interface for users
 /// The underlying u64 raw representation if a fixed-point value with factor AMOUNT_DECIMAL_FACTOR
 /// The minimal value is 0 and the maximal value is 18446744073.709551615
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Default)]
@@ -42,7 +42,7 @@ impl Amount {
         Amount(self.0.saturating_add(amount.0))
     }
 
-    /// safely substact another amount from self, saturating the result on udnerflow
+    /// safely subtract another amount from self, saturating the result on underflow
     #[must_use]
     pub fn saturating_sub(self, amount: Amount) -> Self {
         Amount(self.0.saturating_sub(amount.0))
@@ -53,7 +53,7 @@ impl Amount {
         self.0 == 0
     }
 
-    /// safely substact another amount from self, returning None on underflow
+    /// safely subtract another amount from self, returning None on underflow
     /// ```
     /// # use massa_models::Amount;
     /// # use std::str::FromStr;

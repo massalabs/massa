@@ -9,12 +9,16 @@ use crate::{
 
 use std::collections::{btree_map, BTreeMap};
 
+/// just a u64 to keep track of the roll sells and buys during a cycle
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct RollCompensation(pub u64);
 
+/// roll sales and purchases
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RollUpdate {
+    /// roll purchases
     pub roll_purchases: u64,
+    /// roll sales
     pub roll_sales: u64,
     // Here is space for registering any denunciations/resets
 }
@@ -56,15 +60,18 @@ impl RollUpdate {
         RollCompensation(compensation)
     }
 
+    /// true if the update has no effect
     pub fn is_nil(&self) -> bool {
         self.roll_purchases == 0 && self.roll_sales == 0
     }
 }
 
+/// maps addresses to roll updates
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct RollUpdates(pub Map<Address, RollUpdate>);
 
 impl RollUpdates {
+    /// the addresses impacted by the updates
     pub fn get_involved_addresses(&self) -> Set<Address> {
         self.0.keys().copied().collect()
     }
@@ -160,18 +167,22 @@ impl DeserializeCompact for RollUpdate {
     }
 }
 
+/// counts the roll for each address
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct RollCounts(pub BTreeMap<Address, u64>);
 
 impl RollCounts {
+    /// Makes a new, empty RollCounts.
     pub fn new() -> Self {
         RollCounts(BTreeMap::new())
     }
 
+    /// Returns the number of elements in the RollCounts.
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    /// Returns true if the RollCounts contains no elements.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }

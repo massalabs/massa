@@ -28,7 +28,7 @@
 //! ## controller_traits.rs
 //! Defines the ExecutionManager and ExecutionController traits for interacting with the execution worker.
 //!
-//! ## erorrs.rs
+//! ## errors.rs
 //! Defines error types for the crate.
 //!
 //! ## event_store.rs
@@ -42,6 +42,7 @@
 //! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
 //! See test_exports/mod.rs for details.
 
+#![warn(missing_docs)]
 mod controller_traits;
 mod error;
 mod event_store;

@@ -8,6 +8,7 @@ use massa_network_exports::NetworkError;
 use std::net::IpAddr;
 use thiserror::Error;
 
+/// protocol error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum ProtocolError {

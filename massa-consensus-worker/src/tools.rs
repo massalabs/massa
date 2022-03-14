@@ -17,6 +17,13 @@ use massa_storage::Storage;
 use std::path::Path;
 use tokio::sync::mpsc;
 
+/// Load staking keys from file
+/// and derive public keys and addresses
+///
+/// Returns default map if path isn't a file
+/// Maybe it would be worth considering returning the default map
+/// when the read to string or the parse is failing
+/// but eh that's left for another refactoring
 async fn load_initial_staking_keys(path: &Path) -> Result<Map<Address, (PublicKey, PrivateKey)>> {
     if !std::path::Path::is_file(path) {
         return Ok(Map::default());
@@ -61,12 +68,12 @@ pub async fn start_consensus_controller(
     // ensure that the parameters are sane
     if cfg.thread_count == 0 {
         return Err(ConsensusError::ConfigError(
-            "thread_count shoud be strictly more than 0".to_string(),
+            "thread_count should be strictly more than 0".to_string(),
         ));
     }
     if cfg.t0 == 0.into() {
         return Err(ConsensusError::ConfigError(
-            "t0 shoud be strictly more than 0".to_string(),
+            "t0 should be strictly more than 0".to_string(),
         ));
     }
     if cfg.t0.checked_rem_u64(cfg.thread_count as u64)? != 0.into() {

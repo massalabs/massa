@@ -60,7 +60,7 @@
 //!       * call_stack = [M.target_address, M.sender_address]
 //!   * on any failure, cancel all the effects of execution and credit M.coins back to the sender
 //!   * if there is a block at slot S, the execution of the block happens here
-//!  
+//!
 //! ## How to receive a message (inside the smart contract)
 //!
 //! * define a public exported handler function taking 1 parameter (the message data)
@@ -79,7 +79,7 @@
 //! Represents and manipulates changes (message additions/deletions) in the AsyncPool.
 //!
 //! ## bootstrap.rs
-//! Provides serializable strucutres and tools for bootstrapping the async pool.  
+//! Provides serializable strucutres and tools for bootstrapping the async pool.
 //!
 //! ## Test exports
 //!

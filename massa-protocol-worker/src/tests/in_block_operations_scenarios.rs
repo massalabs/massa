@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use super::tools::protocol_test;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::signed::Signed;
 use massa_models::{get_serialization_context, Address, Amount, Block, BlockHeader, Slot};
 use massa_protocol_exports::tests::tools;

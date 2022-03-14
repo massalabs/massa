@@ -11,7 +11,7 @@ use massa_consensus_exports::{
 };
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_graph::{export_active_block::ExportActiveBlock, BlockGraphExport, BootstrapableGraph};
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::{
     prehash::Set,
     signed::{Signable, Signed},
