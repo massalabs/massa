@@ -36,9 +36,9 @@ use tracing::{debug, info, warn};
 pub struct ConsensusWorker {
     /// Consensus Configuration
     cfg: ConsensusConfig,
-    /// Genesis blocks werecreated with that public key.
+    /// Genesis blocks we recreated with that public key.
     genesis_public_key: PublicKey,
-    // Associated channels, sender and receivers
+    /// Associated channels, sender and receivers
     channels: ConsensusWorkerChannels,
     /// Database containing all information about blocks, the blockgraph and cliques.
     block_db: BlockGraph,
@@ -50,17 +50,21 @@ pub struct ConsensusWorker {
     next_slot: Slot,
     /// blocks we want
     wishlist: Set<BlockId>,
-    // latest final periods
+    /// latest final periods
     latest_final_periods: Vec<u64>,
     /// clock compensation
     clock_compensation: i64,
     // staking keys
     staking_keys: Map<Address, (PublicKey, PrivateKey)>,
-    // stats (block -> tx_count, creator)
+    /// stats (block -> tx_count, creator)
     final_block_stats: VecDeque<(MassaTime, u64, Address)>,
+    /// No idea what this is used for. My guess is one timestamp per stale block
     stale_block_stats: VecDeque<MassaTime>,
+    /// the time span considered for stats
     stats_history_timespan: MassaTime,
+    /// the time span considered for desync detection
     stats_desync_detection_timespan: MassaTime,
+    /// time at which the node was launched (used for desync detection)
     launch_time: MassaTime,
     // endorsed slots cache
     endorsed_slots: HashSet<Slot>,
@@ -272,10 +276,16 @@ impl ConsensusWorker {
                 },
             }
         }
-        // end loop
+        // after this curly brace you can find the end of the loop
         Ok(self.channels.protocol_event_receiver)
     }
 
+    /// this function is called around every slot tick
+    /// it checks for cycle incrementation
+    /// creates block and endorsement if a staking address has been drawn
+    /// it signals the new slot to other components
+    /// detects desynchronization
+    /// produce quite more logs than actual stuff
     async fn slot_tick(&mut self, next_slot_timer: &mut std::pin::Pin<&mut Sleep>) -> Result<()> {
         let now = MassaTime::compensated_now(self.clock_compensation)?;
         let observed_slot = get_latest_block_slot_at_timestamp(
@@ -414,6 +424,11 @@ impl ConsensusWorker {
         Ok(())
     }
 
+    /// creates a block with given address
+    /// first an empty block is created then it's filled with operations
+    /// the operations are retrieved from the pool
+    /// the block is added to the graph as it it was received from the outside
+    /// so it will on go the same checks
     async fn create_block(
         &mut self,
         cur_slot: Slot,
@@ -617,6 +632,9 @@ impl ConsensusWorker {
         Ok(())
     }
 
+    /// Just channel management stuff
+    /// please get rid of it soon
+    /// or at least introduce some genericity
     async fn send_consensus_event(&self, event: ConsensusEvent) -> Result<()> {
         let result = self
             .channels
@@ -639,9 +657,11 @@ impl ConsensusWorker {
     }
 
     /// Manages given consensus command.
+    /// They can come from the api or the bootstrap server
+    /// Please refactor me
     ///
     /// # Argument
-    /// * cmd: consens command to process
+    /// * cmd: consensus command to process
     async fn process_consensus_command(&mut self, cmd: ConsensusCommand) -> Result<()> {
         match cmd {
             ConsensusCommand::GetBlockGraphStatus {
@@ -928,6 +948,7 @@ impl ConsensusWorker {
         }
     }
 
+    /// Save the staking keys to a file
     async fn dump_staking_keys(&self) {
         let keys = self
             .staking_keys
@@ -947,6 +968,8 @@ impl ConsensusWorker {
         }
     }
 
+    /// retrieve stats
+    /// Used in response to a api request
     fn get_stats(&mut self) -> Result<ConsensusStats> {
         let timespan_end = max(
             self.launch_time,
@@ -984,6 +1007,8 @@ impl ConsensusWorker {
         })
     }
 
+    /// retrieve all current cycle active stakers
+    /// Used in response to a api request
     fn get_active_stakers(&self) -> Result<Map<Address, u64>, ConsensusError> {
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         let mut res: Map<Address, u64> = Map::default();
@@ -998,6 +1023,8 @@ impl ConsensusWorker {
         Ok(res)
     }
 
+    /// all you wanna know about an address
+    /// Used in response to a api request
     fn get_addresses_info(&self, addresses: &Set<Address>) -> Result<Map<Address, AddressState>> {
         let thread_count = self.cfg.thread_count;
         let mut addresses_by_thread = vec![Set::<Address>::default(); thread_count as usize];
@@ -1080,6 +1107,8 @@ impl ConsensusWorker {
         Ok(states)
     }
 
+    /// search operations by id in the whole graph
+    /// Used in response to a api request
     async fn get_operations(
         &mut self,
         operation_ids: &Set<OperationId>,
@@ -1152,7 +1181,7 @@ impl ConsensusWorker {
         Ok(())
     }
 
-    // prune statistics
+    /// prune statistics according to the stats span
     fn prune_stats(&mut self) -> Result<()> {
         let start_time = MassaTime::compensated_now(self.clock_compensation)?
             .saturating_sub(self.stats_history_timespan);
@@ -1161,6 +1190,21 @@ impl ConsensusWorker {
         Ok(())
     }
 
+    /// call me if the block database changed
+    /// Please refactor me
+    ///
+    /// 1. propagate blocks
+    /// 2. Notify of attack attempts
+    /// 3. get new final blocks
+    /// 4. get blockclique
+    /// 5. notify Execution
+    /// 6. Process new final blocks
+    /// 7. Notify pool of new final ops
+    /// 8. Notify PoS of final blocks
+    /// 9. notify protocol of block wishlist
+    /// 10. note new latest final periods (prune graph if changed)
+    /// 11. Produce endorsements
+    /// 12. add stale blocks to stats
     async fn block_db_changed(&mut self) -> Result<()> {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
 
@@ -1362,6 +1406,8 @@ impl ConsensusWorker {
     }
 }
 
+/// just a convenient function to create an endorsement
+/// should probably be moved to models (or fully deleted)
 pub fn create_endorsement(
     slot: Slot,
     sender_public_key: PublicKey,
