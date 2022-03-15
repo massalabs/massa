@@ -1,4 +1,4 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! This file defines the structure representing an entry in the FinalLedger
 
@@ -7,9 +7,10 @@ use massa_models::{array_from_slice, Slot, Address, Amount, DeserializeVarInt, M
 use massa_models::{DeserializeCompact, SerializeCompact};
 use serde::{Deserialize, Serialize};
 
-/// Represents the score of a message for use when sorting
-/// We use the triplet (max_gas*gas_price, rev(emission_slot), rev(emission_index))
-type MessageScore = (Amount,  std::cmp::Reverse<Slot>, std::cmp::Reverse<u64>);
+/// Unique identifier of a message.
+/// Also has the property of ordering by priority following the triplet:
+/// (max_gas*gas_price, rev(emission_slot), rev(emission_index))
+pub type AsyncMessageId = (Amount,  std::cmp::Reverse<Slot>, std::cmp::Reverse<u64>);
 
 /// Structure defining an asynchronous smart contract message
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,8 +18,8 @@ pub struct AsyncMessage {
     /// Slot at which the message was emitted
     pub emission_slot: Slot,
 
-    /// Index of the emitted message within the emission_slot
-    /// This is used for disambiguating the  of the 
+    /// Index of the emitted message within the emission_slot.
+    /// This is used for disambiguating the emission of multiple messages at the same slot.
     pub emission_index: u64,
 
     /// The address that sent the message
@@ -54,9 +55,9 @@ pub struct AsyncMessage {
 }
 
 impl AsyncMessage {
-    /// Compute the score of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
+    /// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
     /// For now, the formula is simply score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))
-    pub fn compute_score(&self) -> MessageScore {
+    pub fn compute_id(&self) -> AsyncMessageId {
         (self.gas_price.saturating_mul_u64(self.max_gas), std::cmp::Reverse(self.emission_slot), std::cmp::Reverse(self.emission_index))
     }
 }

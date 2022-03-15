@@ -1,17 +1,13 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! This file defines all error types for the ledger system
+//! This file defines all error types for the async message pool system
 
 use displaydoc::Display;
 use thiserror::Error;
 
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
-pub enum LedgerError {
+pub enum AsyncPoolError {
     /// container iconsistency: {0}
     ContainerInconsistency(String),
-    /// missing entry: {0}
-    MissingEntry(String),
-    /// file error: {0}
-    FileError(String),
 }
