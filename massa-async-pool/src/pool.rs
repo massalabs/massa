@@ -4,8 +4,10 @@
 
 use std::collections::BTreeMap;
 
-use crate::{config::AsyncPoolConfig, message::{AsyncMessage, AsyncMessageId}};
-
+use crate::{
+    config::AsyncPoolConfig,
+    message::{AsyncMessage, AsyncMessageId},
+};
 
 /// Represents a pool of deterministically sorted messages.
 /// The final async pool is attached to the output of the latest final slot within the context of massa-final-state.
@@ -22,16 +24,14 @@ impl AsyncPool {
     pub fn new(config: AsyncPoolConfig) -> AsyncPool {
         AsyncPool {
             config,
-            messages: Default::default()
+            messages: Default::default(),
         }
     }
 
     /// applies AsyncPoolChanges to the pool
-    /// 
+    ///
     /// # returns
     /// the list of (message_id, message) that were eliminated from the pool after the new one was added
-    /// 
-    pub fn apply(changes: AsyncPoolChanges) -> Vec<(AsyncMessageId, AsyncMessage)> {
-
-    }
+    ///
+    pub fn apply(changes: AsyncPoolChanges) -> Vec<(AsyncMessageId, AsyncMessage)> {}
 }

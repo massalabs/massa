@@ -3,14 +3,16 @@
 //! This file defines the structure representing an entry in the FinalLedger
 
 use massa_models::constants::ADDRESS_SIZE_BYTES;
-use massa_models::{array_from_slice, Slot, Address, Amount, DeserializeVarInt, ModelsError, SerializeVarInt};
+use massa_models::{
+    array_from_slice, Address, Amount, DeserializeVarInt, ModelsError, SerializeVarInt, Slot,
+};
 use massa_models::{DeserializeCompact, SerializeCompact};
 use serde::{Deserialize, Serialize};
 
 /// Unique identifier of a message.
 /// Also has the property of ordering by priority following the triplet:
 /// (max_gas*gas_price, rev(emission_slot), rev(emission_index))
-pub type AsyncMessageId = (Amount,  std::cmp::Reverse<Slot>, std::cmp::Reverse<u64>);
+pub type AsyncMessageId = (Amount, std::cmp::Reverse<Slot>, std::cmp::Reverse<u64>);
 
 /// Structure defining an asynchronous smart contract message
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,7 +60,11 @@ impl AsyncMessage {
     /// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
     /// For now, the formula is simply score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))
     pub fn compute_id(&self) -> AsyncMessageId {
-        (self.gas_price.saturating_mul_u64(self.max_gas), std::cmp::Reverse(self.emission_slot), std::cmp::Reverse(self.emission_index))
+        (
+            self.gas_price.saturating_mul_u64(self.max_gas),
+            std::cmp::Reverse(self.emission_slot),
+            std::cmp::Reverse(self.emission_index),
+        )
     }
 }
 
@@ -144,16 +150,16 @@ impl DeserializeCompact for AsyncMessage {
         cursor += 1;
 
         // handler name
-        let handler =
-            if let Some(range) = buffer.get(cursor..(cursor + handler_name_len as usize)) {
-                cursor += handler_name_len as usize;
-                String::from_utf8(range.to_vec())
-                    .map_err(|_| ModelsError::SerializeError("handler name is not utf-8".into()))?
-            } else {
-                return Err(ModelsError::SerializeError(
-                    "buffer ended prematurely".into(),
-                ));
-            };
+        let handler = if let Some(range) = buffer.get(cursor..(cursor + handler_name_len as usize))
+        {
+            cursor += handler_name_len as usize;
+            String::from_utf8(range.to_vec())
+                .map_err(|_| ModelsError::SerializeError("handler name is not utf-8".into()))?
+        } else {
+            return Err(ModelsError::SerializeError(
+                "buffer ended prematurely".into(),
+            ));
+        };
 
         // max gas
         let (max_gas, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
