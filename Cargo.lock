@@ -1622,7 +1622,7 @@ dependencies = [
  "pretty_assertions",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "thiserror",
  "tokio",
  "tracing",
