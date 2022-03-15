@@ -11,7 +11,7 @@ use massa_models::{Address, Amount};
 use std::collections::BTreeMap;
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
-/// The final ledger is also attached to a final slot, can be boostrapped and allows others to bootstrap.
+/// The final ledger is part of the final state which is attached to a final slot, can be boostrapped and allows others to bootstrap.
 /// The ledger size can be very high: it can exceed 1TB.
 /// To allow for storage on disk, the ledger uses trees and has `O(log(N))` access, insertion and deletion complexity.
 ///
