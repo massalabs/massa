@@ -25,6 +25,7 @@ massa_hash = { path = "../massa-hash" }
 massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", tag = "v0.4.4" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
+massa_final_state = { path = "../massa-final-state" }
 massa_ledger = { path = "../massa-ledger" }
 
 [dev-dependencies]
