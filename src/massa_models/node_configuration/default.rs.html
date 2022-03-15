@@ -158,6 +158,8 @@
 <span id="153">153</span>
 <span id="154">154</span>
 <span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALISE DIVERS CONFIGURATIONS STRUCTURES</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//!</span>
@@ -197,9 +199,11 @@
 <span class="macro">lazy_static::lazy_static!</span> {
     <span class="doccomment">/// Time in millis when the blockclique started.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_TIMESTAMP</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) {
-        <span class="ident">MassaTime::now</span>()
-            .<span class="ident">unwrap</span>()
-            .<span class="ident">saturating_add</span>(<span class="ident">MassaTime::from</span>(<span class="number">1000</span> <span class="op">*</span> <span class="number">60</span> <span class="op">*</span> <span class="number">3</span>))
+        <span class="ident">std::env::var</span>(<span class="string">&quot;GENESIS_TIMESTAMP&quot;</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">timestamp</span><span class="op">|</span> <span class="ident">timestamp</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>().<span class="ident">into</span>()).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span>
+            <span class="ident">MassaTime::now</span>()
+                .<span class="ident">unwrap</span>()
+                .<span class="ident">saturating_add</span>(<span class="ident">MassaTime::from</span>(<span class="number">1000</span> <span class="op">*</span> <span class="number">60</span> <span class="op">*</span> <span class="number">3</span>))
+        )
     } <span class="kw">else</span> {
         <span class="number">1646334000000</span>.<span class="ident">into</span>()
     };
@@ -314,5 +318,5 @@
     <span class="macro">assert!</span>((<span class="ident">T0</span>).<span class="ident">to_millis</span>() <span class="op">%</span> (<span class="ident">THREAD_COUNT</span> <span class="kw">as</span> <span class="ident">u64</span>) <span class="op">==</span> <span class="number">0</span>);
 };
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (e95b10ba4 2022-03-13)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (285fa7ecd 2022-03-14)" ></div>
 </body></html>
