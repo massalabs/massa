@@ -1,4 +1,4 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! # General description
 //!
@@ -43,6 +43,8 @@
 
 #![feature(map_first_last)]
 #![feature(async_closure)]
+#![feature(btree_drain_filter)]
+#![feature(drain_filter)]
 
 mod bootstrap;
 mod changes;
@@ -53,6 +55,7 @@ mod pool;
 mod types;
 
 use message::AsyncMessage;
+use pool::AsyncPool;
 
 #[cfg(test)]
 mod tests;
