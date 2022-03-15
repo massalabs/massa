@@ -513,8 +513,6 @@
 <span id="508">508</span>
 <span id="509">509</span>
 <span id="510">510</span>
-<span id="511">511</span>
-<span id="512">512</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.</span>
@@ -531,7 +529,8 @@
     <span class="ident">EventStore</span>, <span class="ident">ExecutionConfig</span>, <span class="ident">ExecutionError</span>, <span class="ident">ExecutionOutput</span>, <span class="ident">ExecutionStackElement</span>,
     <span class="ident">ReadOnlyExecutionRequest</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_ledger</span>::{<span class="ident">Applicable</span>, <span class="ident">FinalLedger</span>, <span class="ident">LedgerChanges</span>, <span class="ident">LedgerEntry</span>, <span class="ident">SetUpdateOrDelete</span>};
+<span class="kw">use</span> <span class="ident">massa_final_state</span>::{<span class="ident">FinalState</span>, <span class="ident">StateChanges</span>};
+<span class="kw">use</span> <span class="ident">massa_ledger</span>::{<span class="ident">Applicable</span>, <span class="ident">LedgerEntry</span>, <span class="ident">SetUpdateOrDelete</span>};
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::signed::Signable</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>, <span class="ident">SignedOperation</span>};
@@ -567,8 +566,8 @@
     <span class="kw">pub</span> <span class="ident">final_cursor</span>: <span class="ident">Slot</span>,
     <span class="comment">// store containing execution events that became final</span>
     <span class="kw">pub</span> <span class="ident">final_events</span>: <span class="ident">EventStore</span>,
-    <span class="comment">// final ledger with atomic R/W access</span>
-    <span class="kw">pub</span> <span class="ident">final_ledger</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalLedger</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="comment">// final state with atomic R/W access</span>
+    <span class="kw">pub</span> <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="comment">// execution context (see documentation in context.rs)</span>
     <span class="kw">pub</span> <span class="ident">execution_context</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionContext</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="comment">// execution interface allowing the VM runtime to access the Massa context</span>
@@ -580,18 +579,18 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # arguments</span>
     <span class="doccomment">/// * config: execution config</span>
-    <span class="doccomment">/// * final_lefger: atomic access to the final ledger</span>
+    <span class="doccomment">/// * final_state: atomic access to the final state</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # returns</span>
     <span class="doccomment">/// A new ExecutionState</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">config</span>: <span class="ident">ExecutionConfig</span>, <span class="ident">final_ledger</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalLedger</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="ident">ExecutionState</span> {
-        <span class="comment">// Get the slot at the output of which the final ledger is attached.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">config</span>: <span class="ident">ExecutionConfig</span>, <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="ident">ExecutionState</span> {
+        <span class="comment">// Get the slot at the output of which the final state is attached.</span>
         <span class="comment">// This should be among the latest final slots.</span>
-        <span class="kw">let</span> <span class="ident">last_final_slot</span> <span class="op">=</span> <span class="ident">final_ledger</span>.<span class="ident">read</span>().<span class="ident">slot</span>;
+        <span class="kw">let</span> <span class="ident">last_final_slot</span> <span class="op">=</span> <span class="ident">final_state</span>.<span class="ident">read</span>().<span class="ident">slot</span>;
 
         <span class="comment">// Create an empty placeholder execution context, with shared atomic access</span>
         <span class="kw">let</span> <span class="ident">execution_context</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">ExecutionContext::new</span>(
-            <span class="ident">final_ledger</span>.<span class="ident">clone</span>(),
+            <span class="ident">final_state</span>.<span class="ident">clone</span>(),
             <span class="ident">Default::default</span>(),
         )));
 
@@ -604,7 +603,7 @@
         <span class="comment">// build the execution state</span>
         <span class="ident">ExecutionState</span> {
             <span class="ident">config</span>,
-            <span class="ident">final_ledger</span>,
+            <span class="ident">final_state</span>,
             <span class="ident">execution_context</span>,
             <span class="ident">execution_interface</span>,
             <span class="comment">// empty execution output history: it is not recovered through bootstrap</span>
@@ -623,10 +622,10 @@
     <span class="doccomment">/// # Arguments</span>
     <span class="doccomment">/// * exec_out: execution output to apply</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_final_execution_output</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">exec_out</span>: <span class="ident">ExecutionOutput</span>) {
-        <span class="comment">// apply ledger changes to the final ledger</span>
-        <span class="self">self</span>.<span class="ident">final_ledger</span>
+        <span class="comment">// apply state changes to the final ledger</span>
+        <span class="self">self</span>.<span class="ident">final_state</span>
             .<span class="ident">write</span>()
-            .<span class="ident">settle_slot</span>(<span class="ident">exec_out</span>.<span class="ident">slot</span>, <span class="ident">exec_out</span>.<span class="ident">ledger_changes</span>);
+            .<span class="ident">settle_slot</span>(<span class="ident">exec_out</span>.<span class="ident">slot</span>, <span class="ident">exec_out</span>.<span class="ident">state_changes</span>);
         <span class="comment">// update the final ledger&#39;s slot</span>
         <span class="self">self</span>.<span class="ident">final_cursor</span> <span class="op">=</span> <span class="ident">exec_out</span>.<span class="ident">slot</span>;
 
@@ -709,14 +708,14 @@
         }
     }
 
-    <span class="doccomment">/// Returns he ledger changes accumulated from the beginning of the output history,</span>
+    <span class="doccomment">/// Returns the state changes accumulated from the beginning of the output history,</span>
     <span class="doccomment">/// up until a provided slot (excluded).</span>
     <span class="doccomment">/// Only used in the VM main loop because the lock on the final ledger</span>
     <span class="doccomment">/// carried by the returned SpeculativeLedger is not held.</span>
     <span class="doccomment">/// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any subentry</span>
     <span class="doccomment">/// by scanning through history from end to beginning</span>
     <span class="doccomment">/// https://github.com/massalabs/massa/issues/2343</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_accumulated_active_changes_at_slot</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) -&gt; <span class="ident">LedgerChanges</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_accumulated_active_changes_at_slot</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) -&gt; <span class="ident">StateChanges</span> {
         <span class="comment">// check that the slot is within the reach of history</span>
         <span class="kw">if</span> <span class="ident">slot</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">final_cursor</span> {
             <span class="macro">panic!</span>(<span class="string">&quot;cannot execute at a slot before finality&quot;</span>);
@@ -729,13 +728,13 @@
             <span class="macro">panic!</span>(<span class="string">&quot;cannot execute at a slot beyond active cursor + 1&quot;</span>);
         }
 
-        <span class="comment">// gather the history of changes in the relevant history range</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accumulated_changes</span> <span class="op">=</span> <span class="ident">LedgerChanges::default</span>();
+        <span class="comment">// gather the history of state changes in the relevant history range</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">accumulated_changes</span> <span class="op">=</span> <span class="ident">StateChanges::default</span>();
         <span class="kw">for</span> <span class="ident">previous_output</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">active_history</span> {
             <span class="kw">if</span> <span class="ident">previous_output</span>.<span class="ident">slot</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">slot</span> {
                 <span class="kw">break</span>;
             }
-            <span class="ident">accumulated_changes</span>.<span class="ident">apply</span>(<span class="ident">previous_output</span>.<span class="ident">ledger_changes</span>.<span class="ident">clone</span>());
+            <span class="ident">accumulated_changes</span>.<span class="ident">apply</span>(<span class="ident">previous_output</span>.<span class="ident">state_changes</span>.<span class="ident">clone</span>());
         }
 
         <span class="ident">accumulated_changes</span>
@@ -861,14 +860,14 @@
             .<span class="ident">unzip</span>();
 
         <span class="comment">// accumulate previous active changes from output history</span>
-        <span class="kw">let</span> <span class="ident">previous_ledger_changes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_accumulated_active_changes_at_slot</span>(<span class="ident">slot</span>);
+        <span class="kw">let</span> <span class="ident">previous_changes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_accumulated_active_changes_at_slot</span>(<span class="ident">slot</span>);
 
         <span class="comment">// create a new execution context for the whole active slot</span>
         <span class="kw">let</span> <span class="ident">execution_context</span> <span class="op">=</span> <span class="ident">ExecutionContext::active_slot</span>(
             <span class="ident">slot</span>,
             <span class="ident">opt_block_id</span>,
-            <span class="ident">previous_ledger_changes</span>,
-            <span class="self">self</span>.<span class="ident">final_ledger</span>.<span class="ident">clone</span>(),
+            <span class="ident">previous_changes</span>,
+            <span class="self">self</span>.<span class="ident">final_state</span>.<span class="ident">clone</span>(),
         );
 
         <span class="comment">// note that here, some pre-operations (like crediting block producers) can be performed before the lock</span>
@@ -918,18 +917,14 @@
             .<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>)
             .<span class="ident">expect</span>(<span class="string">&quot;slot overflow in readonly execution&quot;</span>);
 
-        <span class="comment">// accumulate ledger changes that happened in the output history before this slot</span>
-        <span class="kw">let</span> <span class="ident">previous_ledger_changes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_accumulated_active_changes_at_slot</span>(<span class="ident">slot</span>);
+        <span class="comment">// accumulate state changes that happened in the output history before this slot</span>
+        <span class="kw">let</span> <span class="ident">previous_changes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_accumulated_active_changes_at_slot</span>(<span class="ident">slot</span>);
 
         <span class="comment">// create a readonly execution context</span>
         <span class="kw">let</span> <span class="ident">max_gas</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">max_gas</span>;
         <span class="kw">let</span> <span class="ident">bytecode</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">bytecode</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">execution_context</span> <span class="op">=</span> <span class="ident">ExecutionContext::readonly</span>(
-            <span class="ident">slot</span>,
-            <span class="ident">req</span>,
-            <span class="ident">previous_ledger_changes</span>,
-            <span class="self">self</span>.<span class="ident">final_ledger</span>.<span class="ident">clone</span>(),
-        );
+        <span class="kw">let</span> <span class="ident">execution_context</span> <span class="op">=</span>
+            <span class="ident">ExecutionContext::readonly</span>(<span class="ident">slot</span>, <span class="ident">req</span>, <span class="ident">previous_changes</span>, <span class="self">self</span>.<span class="ident">final_state</span>.<span class="ident">clone</span>());
 
         <span class="comment">// set the execution context for execution</span>
         <span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) <span class="op">=</span> <span class="ident">execution_context</span>;
@@ -952,7 +947,7 @@
         <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>,
     ) -&gt; (<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LedgerEntry</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LedgerEntry</span><span class="op">&gt;</span>) {
         <span class="comment">// get the full entry from the final ledger</span>
-        <span class="kw">let</span> <span class="ident">final_entry</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">final_ledger</span>.<span class="ident">read</span>().<span class="ident">get_full_entry</span>(<span class="ident">addr</span>);
+        <span class="kw">let</span> <span class="ident">final_entry</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">final_state</span>.<span class="ident">read</span>().<span class="ident">ledger</span>.<span class="ident">get_full_entry</span>(<span class="ident">addr</span>);
 
         <span class="comment">// get cumulative active changes and apply them</span>
         <span class="comment">// TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it</span>
@@ -960,6 +955,7 @@
         <span class="comment">// https://github.com/massalabs/massa/issues/2343</span>
         <span class="kw">let</span> <span class="ident">active_change</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">get_accumulated_active_changes_at_slot</span>(<span class="self">self</span>.<span class="ident">active_cursor</span>)
+            .<span class="ident">ledger_changes</span>
             .<span class="ident">get</span>(<span class="ident">addr</span>)
             .<span class="ident">cloned</span>();
         <span class="kw">let</span> <span class="ident">active_entry</span> <span class="op">=</span> <span class="kw">match</span> (<span class="kw-2">&amp;</span><span class="ident">final_entry</span>, <span class="ident">active_change</span>) {

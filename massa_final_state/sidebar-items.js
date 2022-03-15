@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["FinalStateError",""]],"struct":[["FinalState","Represents a final state (ledger, async pool)"],["FinalStateBootstrap","Represents a snapshot of the final state, which is enough to fully bootstrap a FinalState"],["FinalStateConfig","Ledger configuration"],["StateChanges","represents changes that can be applied to the execution state"]]});

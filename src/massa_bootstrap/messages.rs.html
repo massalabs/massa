@@ -134,8 +134,8 @@
 <span id="129">129</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
+<span class="kw">use</span> <span class="ident">massa_final_state::FinalStateBootstrap</span>;
 <span class="kw">use</span> <span class="ident">massa_graph::BootstrapableGraph</span>;
-<span class="kw">use</span> <span class="ident">massa_ledger::FinalLedgerBootstrapState</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>, <span class="ident">Version</span>,
 };
@@ -167,10 +167,10 @@
         <span class="doccomment">/// block graph</span>
         <span class="ident">graph</span>: <span class="ident">BootstrapableGraph</span>,
     },
-    <span class="doccomment">/// Execution state</span>
-    <span class="ident">FinalLedgerState</span> {
-        <span class="doccomment">/// ledger state</span>
-        <span class="ident">ledger_state</span>: <span class="ident">FinalLedgerBootstrapState</span>,
+    <span class="doccomment">/// Final execution state</span>
+    <span class="ident">FinalState</span> {
+        <span class="doccomment">/// final execution state bootstrap</span>
+        <span class="ident">final_state</span>: <span class="ident">FinalStateBootstrap</span>,
     },
 }
 
@@ -180,7 +180,7 @@
     <span class="ident">BootstrapTime</span> <span class="op">=</span> <span class="number">0u32</span>,
     <span class="ident">Peers</span> <span class="op">=</span> <span class="number">1u32</span>,
     <span class="ident">ConsensusState</span> <span class="op">=</span> <span class="number">2u32</span>,
-    <span class="ident">FinalLedgerState</span> <span class="op">=</span> <span class="number">3u32</span>,
+    <span class="ident">FinalState</span> <span class="op">=</span> <span class="number">3u32</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">BootstrapMessage</span> {
@@ -204,9 +204,9 @@
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">pos</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
                 <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">graph</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
             }
-            <span class="ident">BootstrapMessage::FinalLedgerState</span> { <span class="ident">ledger_state</span> } =&gt; {
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::FinalLedgerState</span>).<span class="ident">to_varint_bytes</span>());
-                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">ledger_state</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
+            <span class="ident">BootstrapMessage::FinalState</span> { <span class="ident">final_state</span> } =&gt; {
+                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::FinalState</span>).<span class="ident">to_varint_bytes</span>());
+                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">final_state</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
             }
         }
         <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
@@ -250,12 +250,12 @@
 
                 <span class="ident">BootstrapMessage::ConsensusState</span> { <span class="ident">pos</span>, <span class="ident">graph</span> }
             }
-            <span class="ident">MessageTypeId::FinalLedgerState</span> =&gt; {
-                <span class="kw">let</span> (<span class="ident">ledger_state</span>, <span class="ident">delta</span>) <span class="op">=</span>
-                    <span class="ident">FinalLedgerBootstrapState::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
+            <span class="ident">MessageTypeId::FinalState</span> =&gt; {
+                <span class="kw">let</span> (<span class="ident">final_state</span>, <span class="ident">delta</span>) <span class="op">=</span>
+                    <span class="ident">FinalStateBootstrap::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
                 <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
 
-                <span class="ident">BootstrapMessage::FinalLedgerState</span> { <span class="ident">ledger_state</span> }
+                <span class="ident">BootstrapMessage::FinalState</span> { <span class="ident">final_state</span> }
             }
         };
         <span class="prelude-val">Ok</span>((<span class="ident">res</span>, <span class="ident">cursor</span>))

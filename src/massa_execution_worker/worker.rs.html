@@ -583,7 +583,7 @@
     <span class="ident">ExecutionConfig</span>, <span class="ident">ExecutionController</span>, <span class="ident">ExecutionError</span>, <span class="ident">ExecutionManager</span>, <span class="ident">ExecutionOutput</span>,
     <span class="ident">ReadOnlyExecutionRequest</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_ledger::FinalLedger</span>;
+<span class="kw">use</span> <span class="ident">massa_final_state::FinalState</span>;
 <span class="kw">use</span> <span class="ident">massa_models::BlockId</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">timeslots</span>::{<span class="ident">get_block_slot_timestamp</span>, <span class="ident">get_latest_block_slot_at_timestamp</span>},
@@ -1092,7 +1092,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// # parameters</span>
 <span class="doccomment">/// * config: execution config</span>
-<span class="doccomment">/// * final_ledger: a thread-safe shared access to the final ledger for reading and writing</span>
+<span class="doccomment">/// * final_state: a thread-safe shared access to the final state for reading and writing</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Returns</span>
 <span class="doccomment">/// A pair (execution_manager, execution_controller) where:</span>
@@ -1100,12 +1100,12 @@
 <span class="doccomment">/// * execution_controller allows sending requests and notifications to the worker</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">start_execution_worker</span>(
     <span class="ident">config</span>: <span class="ident">ExecutionConfig</span>,
-    <span class="ident">final_ledger</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalLedger</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 ) -&gt; (<span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionManager</span><span class="op">&gt;</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>) {
     <span class="comment">// create an execution state</span>
     <span class="kw">let</span> <span class="ident">execution_state</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">ExecutionState::new</span>(
         <span class="ident">config</span>.<span class="ident">clone</span>(),
-        <span class="ident">final_ledger</span>,
+        <span class="ident">final_state</span>,
     )));
 
     <span class="comment">// define the input data interface</span>

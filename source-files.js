@@ -6,6 +6,7 @@ sourcesIndex["massa_consensus_exports"] = {"name":"","files":["commands.rs","con
 sourcesIndex["massa_consensus_worker"] = {"name":"","files":["consensus_worker.rs","lib.rs","tools.rs"]};
 sourcesIndex["massa_execution_exports"] = {"name":"","files":["config.rs","controller_traits.rs","error.rs","event_store.rs","lib.rs","types.rs"]};
 sourcesIndex["massa_execution_worker"] = {"name":"","files":["context.rs","controller.rs","execution.rs","interface_impl.rs","lib.rs","request_queue.rs","speculative_ledger.rs","worker.rs"]};
+sourcesIndex["massa_final_state"] = {"name":"","files":["bootstrap.rs","config.rs","error.rs","final_state.rs","lib.rs","state_changes.rs"]};
 sourcesIndex["massa_graph"] = {"name":"","files":["block_graph.rs","bootstrapable_graph.rs","error.rs","export_active_block.rs","ledger.rs","lib.rs","settings.rs"]};
 sourcesIndex["massa_hash"] = {"name":"","files":["error.rs","hash.rs","lib.rs","settings.rs"]};
 sourcesIndex["massa_ledger"] = {"name":"","files":["bootstrap.rs","config.rs","error.rs","ledger.rs","ledger_changes.rs","ledger_entry.rs","lib.rs","types.rs"]};

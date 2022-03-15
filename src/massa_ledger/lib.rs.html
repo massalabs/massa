@@ -70,12 +70,18 @@
 <span id="65">65</span>
 <span id="66">66</span>
 <span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! # General description</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This crate implements a ledger matching addresses to balances, executable bytecode and data.</span>
 <span class="doccomment">//! It also provides tools to manipulate ledger entries.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! FinalLedger is used as part of FinalState that represents the latest final state of the node</span>
+<span class="doccomment">//! (see massa-final-state crate for more details).</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! FinalLedger representing a ledger at a given slot that was executed as final</span>
 <span class="doccomment">//! (see the massa-execution-worker crate for details on execution).</span>

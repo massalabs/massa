@@ -539,8 +539,8 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">establisher::Establisher</span>;
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">stream::FuturesUnordered</span>, <span class="ident">StreamExt</span>};
 <span class="kw">use</span> <span class="ident">massa_consensus_exports::ConsensusCommandSender</span>;
+<span class="kw">use</span> <span class="ident">massa_final_state</span>::{<span class="ident">FinalState</span>, <span class="ident">FinalStateBootstrap</span>};
 <span class="kw">use</span> <span class="ident">massa_graph::BootstrapableGraph</span>;
-<span class="kw">use</span> <span class="ident">massa_ledger</span>::{<span class="ident">FinalLedger</span>, <span class="ident">FinalLedgerBootstrapState</span>};
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Version</span>;
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">BootstrapPeers</span>, <span class="ident">NetworkCommandSender</span>};
@@ -581,8 +581,8 @@
     <span class="doccomment">/// list of network peers</span>
     <span class="kw">pub</span> <span class="ident">peers</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BootstrapPeers</span><span class="op">&gt;</span>,
 
-    <span class="doccomment">/// state of the final ledger</span>
-    <span class="kw">pub</span> <span class="ident">final_ledger</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">FinalLedgerBootstrapState</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// state of the final state</span>
+    <span class="kw">pub</span> <span class="ident">final_state</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">FinalStateBootstrap</span><span class="op">&gt;</span>,
 }
 
 <span class="doccomment">/// Gets the state from a bootstrap server (internal private function)</span>
@@ -713,18 +713,18 @@
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="ident">msg</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">BootstrapError::UnexpectedMessage</span>(<span class="ident">msg</span>)),
     };
 
-    <span class="comment">// Fourth, get final ledger</span>
+    <span class="comment">// Fourth, get final state</span>
     <span class="comment">// client.next() is not cancel-safe but we drop the whole client object if cancelled =&gt; it&#39;s OK</span>
-    <span class="kw">let</span> <span class="ident">final_ledger</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">tokio::time::timeout</span>(<span class="ident">cfg</span>.<span class="ident">read_timeout</span>.<span class="ident">into</span>(), <span class="ident">client</span>.<span class="ident">next</span>()).<span class="kw">await</span> {
+    <span class="kw">let</span> <span class="ident">final_state</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">tokio::time::timeout</span>(<span class="ident">cfg</span>.<span class="ident">read_timeout</span>.<span class="ident">into</span>(), <span class="ident">client</span>.<span class="ident">next</span>()).<span class="kw">await</span> {
         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">std::io::Error::new</span>(
                 <span class="ident">std::io::ErrorKind::TimedOut</span>,
-                <span class="string">&quot;final ledger bootstrap state read timed out&quot;</span>,
+                <span class="string">&quot;final state bootstrap read timed out&quot;</span>,
             )
             .<span class="ident">into</span>())
         }
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="ident">BootstrapMessage::FinalLedgerState</span> { <span class="ident">ledger_state</span> })) =&gt; <span class="ident">ledger_state</span>,
+        <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="ident">BootstrapMessage::FinalState</span> { <span class="ident">final_state</span> })) =&gt; <span class="ident">final_state</span>,
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="ident">msg</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">BootstrapError::UnexpectedMessage</span>(<span class="ident">msg</span>)),
     };
 
@@ -735,7 +735,7 @@
         <span class="ident">graph</span>: <span class="prelude-val">Some</span>(<span class="ident">graph</span>),
         <span class="ident">compensation_millis</span>,
         <span class="ident">peers</span>: <span class="prelude-val">Some</span>(<span class="ident">peers</span>),
-        <span class="ident">final_ledger</span>: <span class="prelude-val">Some</span>(<span class="ident">final_ledger</span>),
+        <span class="ident">final_state</span>: <span class="prelude-val">Some</span>(<span class="ident">final_state</span>),
     })
 }
 
@@ -806,7 +806,7 @@
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">start_bootstrap_server</span>(
     <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
     <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
-    <span class="ident">final_ledger</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalLedger</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">bootstrap_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">BootstrapSettings</span>,
     <span class="ident">establisher</span>: <span class="ident">Establisher</span>,
     <span class="ident">private_key</span>: <span class="ident">PrivateKey</span>,
@@ -820,7 +820,7 @@
             <span class="ident">BootstrapServer</span> {
                 <span class="ident">consensus_command_sender</span>,
                 <span class="ident">network_command_sender</span>,
-                <span class="ident">final_ledger</span>,
+                <span class="ident">final_state</span>,
                 <span class="ident">establisher</span>,
                 <span class="ident">manager_rx</span>,
                 <span class="ident">bind</span>,
@@ -845,7 +845,7 @@
 <span class="kw">struct</span> <span class="ident">BootstrapServer</span> {
     <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
     <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
-    <span class="ident">final_ledger</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalLedger</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">establisher</span>: <span class="ident">Establisher</span>,
     <span class="ident">manager_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
     <span class="ident">bind</span>: <span class="ident">SocketAddr</span>,
@@ -867,7 +867,7 @@
             <span class="ident">ExportProofOfStake</span>,
             <span class="ident">BootstrapableGraph</span>,
             <span class="ident">BootstrapPeers</span>,
-            <span class="ident">FinalLedgerBootstrapState</span>,
+            <span class="ident">FinalStateBootstrap</span>,
         )<span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
         <span class="kw">let</span> <span class="ident">cache_timer</span> <span class="op">=</span> <span class="ident">sleep</span>(<span class="ident">cache_timeout</span>);
         <span class="kw">let</span> <span class="ident">per_ip_min_interval</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">bootstrap_settings</span>.<span class="ident">per_ip_min_interval</span>.<span class="ident">to_duration</span>();
@@ -942,9 +942,9 @@
                         <span class="comment">// If the consensus state snapshot is older than the execution state snapshot,</span>
                         <span class="comment">//   the execution final ledger will be in the future after bootstrap, which causes an inconsistency.</span>
                         <span class="kw">let</span> <span class="ident">peer_boot</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">network_command_sender</span>.<span class="ident">get_bootstrap_peers</span>().<span class="kw">await</span><span class="question-mark">?</span>;
-                        <span class="kw">let</span> <span class="ident">res_ledger</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">final_ledger</span>.<span class="ident">read</span>().<span class="ident">get_bootstrap_state</span>();
+                        <span class="kw">let</span> <span class="ident">res_state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">final_state</span>.<span class="ident">read</span>().<span class="ident">get_bootstrap_state</span>();
                         <span class="kw">let</span> (<span class="ident">pos_boot</span>, <span class="ident">graph_boot</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">consensus_command_sender</span>.<span class="ident">get_bootstrap_state</span>().<span class="kw">await</span><span class="question-mark">?</span>;
-                        <span class="ident">bootstrap_data</span> <span class="op">=</span> <span class="prelude-val">Some</span>((<span class="ident">pos_boot</span>, <span class="ident">graph_boot</span>, <span class="ident">peer_boot</span>, <span class="ident">res_ledger</span>));
+                        <span class="ident">bootstrap_data</span> <span class="op">=</span> <span class="prelude-val">Some</span>((<span class="ident">pos_boot</span>, <span class="ident">graph_boot</span>, <span class="ident">peer_boot</span>, <span class="ident">res_state</span>));
                         <span class="ident">cache_timer</span>.<span class="ident">set</span>(<span class="ident">sleep</span>(<span class="ident">cache_timeout</span>));
                     }
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept.cache_available&quot;</span>, {});
@@ -979,7 +979,7 @@
     <span class="ident">data_pos</span>: <span class="ident">ExportProofOfStake</span>,
     <span class="ident">data_graph</span>: <span class="ident">BootstrapableGraph</span>,
     <span class="ident">data_peers</span>: <span class="ident">BootstrapPeers</span>,
-    <span class="ident">ledger_state</span>: <span class="ident">FinalLedgerBootstrapState</span>,
+    <span class="ident">final_state</span>: <span class="ident">FinalStateBootstrap</span>,
     <span class="ident">private_key</span>: <span class="ident">PrivateKey</span>,
     <span class="ident">compensation_millis</span>: <span class="ident">i64</span>,
     <span class="ident">version</span>: <span class="ident">Version</span>,
@@ -1029,10 +1029,10 @@
     )
     .<span class="kw">await</span><span class="question-mark">?</span>;
 
-    <span class="comment">// Fourth, send ledger state</span>
+    <span class="comment">// Fourth, send final state</span>
     <span class="ident">send_state_timeout</span>(
         <span class="ident">write_timeout</span>,
-        <span class="ident">server</span>.<span class="ident">send</span>(<span class="ident">messages::BootstrapMessage::FinalLedgerState</span> { <span class="ident">ledger_state</span> }),
+        <span class="ident">server</span>.<span class="ident">send</span>(<span class="ident">messages::BootstrapMessage::FinalState</span> { <span class="ident">final_state</span> }),
         <span class="string">&quot;bootstrap ledger state send timed out&quot;</span>,
     )
     .<span class="kw">await</span>

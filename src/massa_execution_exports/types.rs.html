@@ -64,7 +64,7 @@
 <span class="doccomment">//! This file exports useful types used to interact with the execution worker</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event_store::EventStore</span>;
-<span class="kw">use</span> <span class="ident">massa_ledger::LedgerChanges</span>;
+<span class="kw">use</span> <span class="ident">massa_final_state::StateChanges</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">BlockId</span>, <span class="ident">Slot</span>};
 
 <span class="doccomment">/// structure describing the output of a single execution</span>
@@ -74,8 +74,8 @@
     <span class="kw">pub</span> <span class="ident">slot</span>: <span class="ident">Slot</span>,
     <span class="comment">// optional block ID at that slot (None if miss)</span>
     <span class="kw">pub</span> <span class="ident">block_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
-    <span class="comment">// ledger_changes caused by the execution step</span>
-    <span class="kw">pub</span> <span class="ident">ledger_changes</span>: <span class="ident">LedgerChanges</span>,
+    <span class="comment">// state changes caused by the execution step</span>
+    <span class="kw">pub</span> <span class="ident">state_changes</span>: <span class="ident">StateChanges</span>,
     <span class="comment">// events emitted by the execution step</span>
     <span class="kw">pub</span> <span class="ident">events</span>: <span class="ident">EventStore</span>,
 }
