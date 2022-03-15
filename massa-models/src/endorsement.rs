@@ -15,10 +15,12 @@ use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 
 const ENDORSEMENT_ID_STRING_PREFIX: &str = "END";
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct EndorsementId(Hash);
 
 impl PreHashed for EndorsementId {}
+
 impl Id for EndorsementId {
     fn new(hash: Hash) -> Self {
         EndorsementId(hash)
@@ -102,6 +104,7 @@ impl Display for Endorsement {
     }
 }
 
+/// an endorsement, as sent in the network
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Endorsement {
     /// Public key of the endorser.

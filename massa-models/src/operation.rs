@@ -111,35 +111,6 @@ enum OperationTypeId {
     ExecuteSC = 3,
 }
 
-// #[derive(Debug, Clone, Serialize, Deserialize)]
-// pub struct Operation {
-//     pub content: Operation,
-//     pub signature: Signature,
-// }
-
-// impl std::fmt::Display for Operation {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         writeln!(
-//             f,
-//             "Id: {}",
-//             match self.content.compute_id() {
-//                 Ok(id) => format!("{}", id),
-//                 Err(e) => format!("error computing id: {}", e),
-//             }
-//         )?;
-//         writeln!(f, "Signature: {}", self.signature)?;
-//         let addr = Address::from_public_key(&self.content.sender_public_key);
-//         let amount = self.content.fee.to_string();
-//         writeln!(
-//             f,
-//             "sender: {}     fee: {}     expire_period: {}",
-//             addr, amount, self.content.expire_period,
-//         )?;
-//         writeln!(f, "{}", self.content.op)?;
-//         Ok(())
-//     }
-// }
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Operation {
     pub sender_public_key: PublicKey,
