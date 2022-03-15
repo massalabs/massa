@@ -6,6 +6,8 @@ use massa_signature::{
     sign, verify_signature, PrivateKey, PublicKey, Signature, SIGNATURE_SIZE_BYTES,
 };
 use serde::{Deserialize, Serialize};
+
+/// Signed struct T where U is the associated id
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Signed<T, U>
 where
@@ -16,6 +18,8 @@ where
     pub signature: Signature,
     phantom: PhantomData<U>,
 }
+
+/// Used by signed struct
 pub trait Id {
     fn new(hash: Hash) -> Self;
 }
@@ -36,10 +40,12 @@ where
     U: Id,
     Self: SerializeCompact,
 {
+    /// The hash that should be used for the signature
     fn get_signature_message(&self) -> Result<Hash, ModelsError> {
         Ok(Hash::compute_from(&self.to_bytes_compact()?))
     }
 
+    /// Associated id
     fn compute_id(&self) -> Result<U, ModelsError> {
         Ok(U::new(Hash::compute_from(&self.to_bytes_compact()?)))
     }
@@ -50,6 +56,7 @@ where
     T: SerializeCompact + DeserializeCompact + Signable<U> + Display,
     U: Id,
 {
+    /// generate new signed struct and id
     pub fn new_signed(content: T, private_key: &PrivateKey) -> Result<(U, Self), ModelsError> {
         Ok((
             content.compute_id()?,
@@ -61,6 +68,7 @@ where
         ))
     }
 
+    /// check if self has been signed by public key
     pub fn verify_signature(&self, public_key: &PublicKey) -> Result<(), ModelsError> {
         Ok(verify_signature(
             &self.content.get_signature_message()?,

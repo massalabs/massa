@@ -4,6 +4,7 @@ use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::fmt::Formatter;
 
+/// stats produced by network module
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NetworkStats {
     pub in_connection_count: u64,
@@ -25,6 +26,7 @@ impl std::fmt::Display for NetworkStats {
     }
 }
 
+/// stats produced by consensus module
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConsensusStats {
     pub start_timespan: MassaTime,
@@ -58,6 +60,7 @@ impl std::fmt::Display for ConsensusStats {
     }
 }
 
+/// stats produced by pool module
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PoolStats {
     pub operation_count: u64,

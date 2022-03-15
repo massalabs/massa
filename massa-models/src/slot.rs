@@ -12,6 +12,7 @@ use massa_hash::hash::Hash;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, convert::TryInto};
 
+/// a point in time where a block is expected
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Slot {
     pub period: u64,
@@ -58,10 +59,12 @@ impl Slot {
         }
     }
 
+    /// first bit of the slot, for seed purpose
     pub fn get_first_bit(&self) -> bool {
         Hash::compute_from(&self.to_bytes_key()).to_bytes()[0] >> 7 == 1
     }
 
+    /// cycle associated to that slot
     pub fn get_cycle(&self, periods_per_cycle: u64) -> u64 {
         self.period / periods_per_cycle
     }
