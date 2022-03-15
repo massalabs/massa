@@ -9,8 +9,4 @@ use std::path::PathBuf;
 pub struct LedgerConfig {
     /// initial SCE ledger file
     pub initial_sce_ledger_path: PathBuf,
-    /// final changes history length
-    pub final_history_length: usize,
-    /// thread count
-    pub thread_count: u8,
 }

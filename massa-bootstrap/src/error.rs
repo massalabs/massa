@@ -3,8 +3,8 @@
 use crate::messages::BootstrapMessage;
 use displaydoc::Display;
 use massa_consensus_exports::error::ConsensusError;
+use massa_final_state::FinalStateError;
 use massa_hash::MassaHashError;
-use massa_ledger::LedgerError;
 use massa_network_exports::NetworkError;
 use massa_time::TimeError;
 use thiserror::Error;
@@ -30,8 +30,8 @@ pub enum BootstrapError {
     ConsensusError(#[from] ConsensusError),
     /// network error: {0}
     NetworkError(#[from] NetworkError),
-    /// ledger error: {0}
-    LedgerError(#[from] LedgerError),
+    /// final state error: {0}
+    FinalStateError(#[from] FinalStateError),
     /// join error: {0}
     JoinError(#[from] tokio::task::JoinError),
     /// missing private key file

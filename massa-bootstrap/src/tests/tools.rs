@@ -4,11 +4,14 @@ use super::mock_establisher::Duplex;
 use crate::settings::BootstrapSettings;
 use bitvec::prelude::*;
 use massa_consensus_exports::commands::ConsensusCommand;
+use massa_final_state::{
+    test_exports::make_bootstrap_state as make_final_state_bootstrap, FinalStateBootstrap,
+};
 use massa_graph::{
     export_active_block::ExportActiveBlock, ledger::LedgerSubset, BootstrapableGraph,
 };
 use massa_hash::hash::Hash;
-use massa_ledger::{test_exports::make_bootstrap_state, FinalLedgerBootstrapState, LedgerEntry};
+use massa_ledger::LedgerEntry;
 use massa_models::{
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
@@ -61,8 +64,8 @@ fn get_random_ledger_entry() -> LedgerEntry {
     }
 }
 
-/// generates a rendom bootstrap state for a final ledger
-pub fn get_random_ledger_bootstrap_state(thread_count: u8) -> FinalLedgerBootstrapState {
+/// generates a random bootstrap state for the final state
+pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalStateBootstrap {
     let mut rng = rand::thread_rng();
 
     let mut sorted_ledger = BTreeMap::new();
@@ -70,7 +73,7 @@ pub fn get_random_ledger_bootstrap_state(thread_count: u8) -> FinalLedgerBootstr
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
 
-    make_bootstrap_state(
+    make_final_state_bootstrap(
         Slot::new(rng.gen::<u64>(), rng.gen_range(0..thread_count)),
         sorted_ledger,
     )
