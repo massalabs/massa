@@ -11,21 +11,19 @@ use crate::{
 };
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::clique::Clique;
-use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::storage::Storage;
-use massa_models::SerializeCompact;
 use massa_models::{
     active_block::ActiveBlock,
     api::EndorsementInfo,
     rolls::{RollCounts, RollUpdate, RollUpdates},
     SignedEndorsement, SignedHeader, SignedOperation,
 };
-use massa_models::{clique::Clique, signed::Signable, SerializeCompact};
-use massa_models::{ledger_models::LedgerChange, signed::Signed};
+use massa_models::signed::{Signable, Signed};
+use massa_models::{clique::Clique, SerializeCompact};
+use massa_models::ledger_models::LedgerChange;
 use massa_models::{
-    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockId, EndorsementId, OperationId,
+    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockId, EndorsementId, Operation, OperationId,
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
 };
 use massa_proof_of_stake_exports::{
@@ -477,52 +475,8 @@ impl BlockGraph {
                 block_statuses: boot_graph
                     .active_blocks
                     .into_iter()
-                    .map(|(b_id, block_export)| {
-                        let operation_set = block_export
-                            .block
-                            .operations
-                            .iter()
-                            .enumerate()
-                            .map(|(idx, op)| match op.get_operation_id() {
-                                Ok(id) => Ok((id, (idx, op.content.expire_period))),
-                                Err(e) => Err(e),
-                            })
-                            .collect::<Result<_, _>>()?;
-
-                        let endorsement_ids = block_export
-                            .block
-                            .header
-                            .content
-                            .endorsements
-                            .iter()
-                            .map(|endo| Ok((endo.compute_endorsement_id()?, endo.content.index)))
-                            .collect::<Result<_>>()?;
-
-                        let addresses_to_operations =
-                            block_export.block.involved_addresses(&operation_set)?;
-                        let addresses_to_endorsements = block_export
-                            .block
-                            .addresses_to_endorsements(&endorsement_ids)?;
-                        let active_block = ActiveBlock {
-                            creator_address: Address::from_public_key(
-                                &block_export.block.header.content.creator,
-                            ),
-                            block_id: b_id,
-                            parents: block_export.parents,
-                            children: block_export.children,
-                            dependencies: block_export.dependencies,
-                            descendants: Default::default(), // will be computed once the full graph is available
-                            is_final: block_export.is_final,
-                            block_ledger_changes: block_export.block_ledger_changes,
-                            operation_set,
-                            endorsement_ids,
-                            addresses_to_operations,
-                            roll_updates: block_export.roll_updates,
-                            production_events: block_export.production_events,
-                            addresses_to_endorsements,
-                            slot: block_export.block.header.content.slot,
-                        };
-                        Ok((b_id, BlockStatus::Active(Box::new(active_block))))
+                    .map(|(b_id, block)| {
+                        Ok((b_id, BlockStatus::Active(Box::new(block.try_into()?))))
                     })
                     .collect::<Result<_>>()?,
                 incoming_index: Default::default(),
@@ -1201,7 +1155,7 @@ impl BlockGraph {
                 if let Some(ops) = active_block.addresses_to_operations.get(address) {
                     let block = self.storage.retrieve_block(&b_id).unwrap();
                     // Clone operations once, take from the option later in the algorithm.
-                    let mut operations: Vec<Option<Operation>> = {
+                    let mut operations: Vec<Option<_>> = {
                         let operations = block.read().block.operations.clone();
                         operations.into_iter().map(|op| Some(op)).collect()
                     };
@@ -1210,20 +1164,18 @@ impl BlockGraph {
                             GraphError::ContainerInconsistency(format!("op {} should be here", op))
                         })?;
                         let search = OperationSearchResult {
-                            op: operations[*idx].take().ok_or_else(|| {
-                                GraphError::ContainerInconsistency(format!(
-                                    "op {} should be here",
-                                    op
-                                ))
-                            })?,
-                            in_pool: false,
-                            in_blocks: vec![(b_id.clone(), (*idx, active_block.is_final))]
-                                .into_iter()
-                                .collect(),
-                            status: OperationSearchResultStatus::InBlock(
-                                OperationSearchResultBlockStatus::Active,
-                            ),
-                        };
+                                                    op: block.read().block.operations[*idx].clone(),
+                                                    in_pool: false,
+                                                    in_blocks: vec![(
+                                                        b_id.clone(),
+                                                        (*idx, active_block.is_final),
+                                                    )]
+                                                    .into_iter()
+                                                    .collect(),
+                                                    status: OperationSearchResultStatus::InBlock(
+                                                        OperationSearchResultBlockStatus::Active,
+                                                    ),
+                                                };
                         if let Some(old_search) = res.get_mut(op) {
                             old_search.extend(&search);
                         } else {
@@ -3733,7 +3685,7 @@ impl BlockGraph {
                     let block = self.storage.retrieve_block(b_id).unwrap();
                     let endorsements = block.read().block.header.content.endorsements.clone();
                     for e in endorsements {
-                        let id = e.compute_endorsement_id()?;
+                        let id = e.content.compute_id()?;
                         if eds.contains(&id) {
                             res.insert(id, e);
                         }
@@ -3762,7 +3714,7 @@ impl BlockGraph {
                     .is_empty()
                 {
                     for e in stored_block.block.header.content.endorsements.iter() {
-                        let id = e.compute_id()?;
+                        let id = e.content.compute_id()?;
                         if endorsements.contains(&id) {
                             res.entry(id)
                                 .and_modify(|EndorsementInfo { in_blocks, .. }| {

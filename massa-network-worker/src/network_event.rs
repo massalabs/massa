@@ -111,15 +111,15 @@ pub mod event_impl {
     pub async fn on_received_block(
         worker: &mut NetworkWorker,
         from: NodeId,
-        block: Block,
+        block_id: BlockId,
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlock",
-            {"block_id": block.header.content.compute_id()?, "block": block, "node": from}
+            {"block_id": block_id, "node": from}
         );
         if let Err(err) = worker
             .event
-            .send(NetworkEvent::ReceivedBlock { node: from, block })
+            .send(NetworkEvent::ReceivedBlock { node: from, block_id })
             .await
         {
             evt_failed!(err)

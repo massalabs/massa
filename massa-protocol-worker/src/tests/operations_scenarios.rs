@@ -346,7 +346,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                     assert_eq!(
                         block
                             .header
-                            .compute_block_id()
+                            .compute_id()
                             .expect("Fail to get block id"),
                         block_id
                     );
@@ -534,7 +534,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             let block_id = block
                 .header
-                .compute_block_id()
+                .compute_id()
                 .expect("Fail to compute block id");
 
             // Node 2 sends block, resulting in operations and endorsements noted in block info.
@@ -631,7 +631,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             let block_id = block
                 .header
-                .compute_block_id()
+                .compute_id()
                 .expect("Fail to compute block id");
             // Node 2 sends block, not resulting in operations and endorsements noted in block info,
             // because of the invalid root hash.
@@ -729,7 +729,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
                     creator_node.id,
                     block
                         .header
-                        .compute_block_id()
+                        .compute_id()
                         .expect("Fail to compute block id"),
                 )
                 .await;

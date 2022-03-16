@@ -13,11 +13,11 @@ use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::Signed;
 use massa_models::storage::Storage;
-use massa_models::{Address, Amount, BlockId, Operation, OperationType, SignedOperation, Version};
+use massa_models::{Address, Amount, BlockId, Operation, OperationType, SignedOperation, SerializeCompact, Version};
 use massa_network_exports::test_exports::mock_establisher::{self, MockEstablisherInterface};
 use massa_network_exports::{
     ConnectionId, NetworkCommandSender, NetworkEventReceiver, NetworkManager, PeerInfo,
-
+};
 use massa_signature::{derive_public_key, generate_random_private_key};
 use massa_time::MassaTime;
 use std::str::FromStr;

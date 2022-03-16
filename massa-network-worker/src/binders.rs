@@ -2,8 +2,6 @@
 
 //! Flexbuffer layer between raw data and our objects.
 use super::messages::{deserialize_message_with_optional_serialized_object, Message};
-use crate::error::NetworkError;
-use crate::establisher::{ReadHalf, WriteHalf};
 use massa_models::{
     with_serialization_context, DeserializeMinBEInt,
     SerializeMinBEInt,

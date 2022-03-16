@@ -175,15 +175,15 @@ pub async fn on_ban_cmd(worker: &mut NetworkWorker, node: NodeId) -> Result<(), 
 pub async fn on_send_block_header_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
-    header: SignedHeader,
+    block_id: BlockId,
 ) -> Result<(), NetworkError> {
-    massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id": header.content.compute_id()?, "header": header, "node": node});
+    massa_trace!("network_worker.manage_network_command send NodeCommand::SendBlockHeader", {"block_id": block_id, "node": node});
     worker
         .event
         .forward(
             &node,
             worker.active_nodes.get(&node),
-            NodeCommand::SendBlockHeader(header),
+            NodeCommand::SendBlockHeader(block_id),
         )
         .await;
     Ok(())
@@ -209,18 +209,18 @@ pub async fn on_ask_bfor_block_cmd(worker: &mut NetworkWorker, map: HashMap<Node
 pub async fn on_send_block_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
-    block: Block,
+    block_id: BlockId,
 ) -> Result<(), NetworkError> {
     massa_trace!(
         "network_worker.manage_network_command send NodeCommand::SendBlock",
-        {"hash": block.header.content.compute_hash()?, "block": block, "node": node}
+        {"hash": block_id, "node": node}
     );
     worker
         .event
         .forward(
             &node,
             worker.active_nodes.get(&node),
-            NodeCommand::SendBlock(block),
+            NodeCommand::SendBlock(block_id),
         )
         .await;
     Ok(())

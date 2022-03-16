@@ -5,7 +5,6 @@
 use super::tools::protocol_test;
 use massa_models::prehash::{Map, Set};
 use massa_models::{BlockId, SerializeCompact};
-use massa_models::BlockId;
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{
@@ -389,9 +388,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
                 };
             assert_eq!(
                 expected_hash,
-                hash.header
-                    .compute_block_id()
-                    .expect("Fail to get block id")
+                hash
             );
 
             (

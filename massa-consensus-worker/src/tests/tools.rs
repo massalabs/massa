@@ -16,7 +16,7 @@ use massa_models::{
     prehash::Set,
     signed::{Signable, Signed},
     Address, Amount, Block, BlockHeader, BlockId, Endorsement, Operation, OperationType,
-    SerializeCompact, SignedEndorsement, SignedOperation, Slot,
+    SerializeCompact, SignedEndorsement, SignedOperation, Slot};
 use massa_models::storage::Storage;
 use massa_pool::PoolCommand;
 use massa_proof_of_stake_exports::ExportProofOfStake;
