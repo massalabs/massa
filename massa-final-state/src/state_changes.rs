@@ -3,11 +3,13 @@
 //! This file provides structures representing changes to the final state
 
 use massa_ledger::LedgerChanges;
+use massa_async_pool::AsyncPoolChanges;
 
 /// represents changes that can be applied to the execution state
 #[derive(Default, Debug, Clone)]
 pub struct StateChanges {
     pub ledger_changes: LedgerChanges,
+    pub async_pool_changes: AsyncPoolChanges,
 }
 
 impl StateChanges {
