@@ -6,6 +6,7 @@ use massa_models::{
     prehash::{BuildMap, Map, Set},
     rolls::{RollUpdate, RollUpdates},
     storage::Storage,
+    signed::Signable,
     *,
 };
 use serde::{Deserialize, Serialize};
@@ -39,7 +40,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             .operations
             .iter()
             .enumerate()
-            .map(|(idx, op)| match op.get_operation_id() {
+            .map(|(idx, op)| match op.content.compute_id() {
                 Ok(id) => Ok((id, (idx, op.content.expire_period))),
                 Err(e) => Err(e),
             })
@@ -51,7 +52,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             .content
             .endorsements
             .iter()
-            .map(|endo| Ok((endo.compute_endorsement_id()?, endo.content.index)))
+            .map(|endo| Ok((endo.content.compute_id()?, endo.content.index)))
             .collect::<Result<_>>()?;
 
         let addresses_to_operations = a_block.block.involved_addresses(&operation_set)?;
@@ -60,7 +61,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
         Ok(ActiveBlock {
             creator_address: Address::from_public_key(&a_block.block.header.content.creator),
             //TODO: Unwrap
-            block_id: a_block.block.header.compute_block_id().unwrap(),
+            block_id: a_block.block.header.content.compute_id().unwrap(),
             parents: a_block.parents.clone(),
             children: a_block.children.clone(),
             dependencies: a_block.dependencies.clone(),

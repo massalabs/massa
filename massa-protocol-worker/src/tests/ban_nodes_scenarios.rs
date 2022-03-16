@@ -39,7 +39,7 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
                     creator_node.id,
                     block
                         .header
-                        .compute_block_id()
+                        .compute_id()
                         .expect("Fail to compute block id"),
                 )
                 .await;

@@ -17,12 +17,12 @@ pub enum NetworkCommand {
     /// Send that block to node.
     SendBlock {
         node: NodeId,
-        block: BlockId,
+        block_id: BlockId,
     },
     /// Send a header to a node.
     SendBlockHeader {
         node: NodeId,
-        header: SignedHeader,
+        block_id: BlockId,
     },
     // (PeerInfo, Vec <(NodeId, bool)>) peer info + list of associated Id nodes in connection out (true)
     GetPeers(oneshot::Sender<Peers>),
@@ -58,7 +58,7 @@ pub enum NetworkEvent {
     /// A block was received
     ReceivedBlock {
         node: NodeId,
-        block: BlockId,
+        block_id: BlockId,
     },
     /// A block header was received
     ReceivedBlockHeader {

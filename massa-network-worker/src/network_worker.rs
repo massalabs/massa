@@ -20,7 +20,9 @@ use massa_models::{
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializeCompact, SerializeVarInt, Version,
 };
-use massa_network_exports::{HandshakeErrorType, NetworkConnectionErrorType};
+use massa_network_exports::{ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener, NetworkSettings, NetworkConnectionErrorType, NetworkError};
+use massa_network_exports::{NetworkCommand, NetworkEvent, NetworkManagementCommand};
+use massa_network_exports::{ReadHalf, WriteHalf};
 use massa_models::{BlockHeader, BlockId, Endorsement, Operation};
 use massa_signature::{derive_public_key, sign, PrivateKey};
 use serde::{Deserialize, Serialize};
@@ -512,12 +514,12 @@ impl NetworkWorker {
         match cmd {
             NetworkCommand::BanIp(ips) => on_ban_ip_cmd(self, ips).await?,
             NetworkCommand::Ban(node) => on_ban_cmd(self, node).await?,
-            NetworkCommand::SendBlockHeader { node, header } => {
-                on_send_block_header_cmd(self, node, header).await?
+            NetworkCommand::SendBlockHeader { node, block_id } => {
+                on_send_block_header_cmd(self, node, block_id).await?
             }
             NetworkCommand::AskForBlocks { list } => on_ask_bfor_block_cmd(self, list).await,
-            NetworkCommand::SendBlock { node, block } => {
-                on_send_block_cmd(self, node, block).await?
+            NetworkCommand::SendBlock { node, block_id } => {
+                on_send_block_cmd(self, node, block_id).await?
             }
             NetworkCommand::GetPeers(response_tx) => on_get_peers_cmd(self, response_tx).await,
             NetworkCommand::GetBootstrapPeers(response_tx) => {

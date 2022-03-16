@@ -8,14 +8,9 @@ use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
     prehash::{BuildMap, Map, Set},
-<<<<<<< HEAD
     signed::Signable,
     Address, Block, BlockId, EndorsementId, OperationId, OperationType, SignedEndorsement,
     SignedHeader, SignedOperation,
-=======
-    Address, BlockHeader, BlockId, Endorsement, EndorsementId, Operation, OperationId,
-    OperationType,
->>>>>>> 1da68021 (Clean all warnings.)
 };
 use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{

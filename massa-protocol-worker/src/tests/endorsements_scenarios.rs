@@ -305,7 +305,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                 Slot::new(1, thread),
                 vec![endorsement.clone()],
             );
-            let block_id = block.header.content.compute_id().unwrap();
+            let expected_block_id = block.header.content.compute_id().unwrap();
 
             network_controller
                 .send_ask_for_block(nodes[0].id, vec![expected_block_id])
@@ -524,7 +524,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                     nodes[1].id,
                     block
                         .header
-                        .compute_block_id()
+                        .compute_id()
                         .expect("Fail to get block id"),
                 )
                 .await;

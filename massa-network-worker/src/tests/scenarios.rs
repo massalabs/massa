@@ -19,6 +19,7 @@ use massa_models::{
     signed::{Signable, Signed},
     storage::Storage
 };
+use massa_models::SerializeCompact;
 use massa_models::{BlockId, Endorsement, Slot};
 use massa_network_exports::settings::PeerTypeConnectionConfig;
 use massa_network_exports::{

@@ -13,7 +13,7 @@ use massa_models::{
         NODE_SEND_CHANNEL_SIZE,
     },
     node::NodeId,
-    signed::Signable,
+    signed::{Signable, Signed},
     Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation,
 };
 use massa_network_exports::{ConnectionClosureReason, NetworkError, NetworkSettings};
@@ -311,7 +311,7 @@ impl NodeWorker {
                                 );
 
                                 // TODO: avoid computing id.
-                                let block_id = block.header.compute_block_id()?;
+                                let block_id = block.header.content.compute_id()?;
                                 self.storage.store_block(block_id, block.clone(), serialized.unwrap());
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block_id))).await;
                             },

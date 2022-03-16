@@ -11,7 +11,7 @@ use crate::{
     peer_info_database::PeerInfoDatabase,
 };
 use massa_logging::massa_trace;
-use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
+use massa_models::{constants::CHANNEL_SIZE, node::NodeId, storage::Storage, Version};
 use massa_network_exports::{
     BootstrapPeers, Establisher, NetworkCommand, NetworkCommandSender, NetworkError, NetworkEvent,
     NetworkEventReceiver, NetworkManagementCommand, NetworkManager, NetworkSettings,
@@ -42,6 +42,7 @@ pub async fn start_network_controller(
     mut establisher: Establisher,
     clock_compensation: i64,
     initial_peers: Option<BootstrapPeers>,
+    storage: Storage,
     version: Version,
 ) -> Result<
     (
@@ -127,6 +128,7 @@ pub async fn start_network_controller(
                 controller_event_tx,
                 controller_manager_rx,
             },
+            storage,
             version,
         )
         .run_loop()
