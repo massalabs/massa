@@ -128,7 +128,7 @@ pub async fn test_get_ledger_at_parents() {
     // let tracing_layer = tracing_subscriber::fmt::layer();
     // build a `Subscriber` by combining layers with a `tracing_subscriber::Registry`:
     //tracing_subscriber::registry()
-        // add the console layer to the subscriber or default layers...
+    // add the console layer to the subscriber or default layers...
     //    .with(tracing_layer)
     //    .init();
     init_serialization_context(massa_models::SerializationContext::default());
@@ -545,7 +545,11 @@ pub async fn test_get_ledger_at_parents() {
         .unwrap();
 
     // Ledger at parents (p3t0, p3t1) for addresses A, B, C, D:
-    warn!("active_block_p3t0: {}, active_block_p3t1: {}", get_dummy_block_id("active_block_p3t0"), get_dummy_block_id("active_block_p3t1"));
+    warn!(
+        "active_block_p3t0: {}, active_block_p3t1: {}",
+        get_dummy_block_id("active_block_p3t0"),
+        get_dummy_block_id("active_block_p3t1")
+    );
     let res = block_graph
         .get_ledger_at_parents(
             &[
