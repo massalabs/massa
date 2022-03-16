@@ -187,6 +187,7 @@ impl DeserializeCompact for AsyncMessage {
             ModelsError::SerializeError("could not convert data size to usize".into())
         })?;
         //TODO cap data length https://github.com/massalabs/massa/issues/1200
+        cursor += delta;
 
         // data
         let data = if let Some(slice) = buffer.get(cursor..(cursor + data_len)) {

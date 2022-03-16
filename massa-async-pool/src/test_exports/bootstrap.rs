@@ -1,57 +1,43 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::collections::BTreeMap;
-
 use massa_models::{Address, Slot};
 
-use crate::{FinalLedgerBootstrapState, LedgerEntry};
+/// This file defines tools to test the async pool bootstrap
 
-/// This file defines tools to test the ledger bootstrap
-
-/// creates a ledger bootstrap state from components
-pub fn make_bootstrap_state(
-    slot: Slot,
-    sorted_ledger: BTreeMap<Address, LedgerEntry>,
-) -> FinalLedgerBootstrapState {
-    FinalLedgerBootstrapState {
-        slot,
-        sorted_ledger,
-    }
+/// creates an async pool bootstrap state from components
+pub fn make_bootstrap_state(messages: Vec<AsyncMessage>) -> AsyncPoolBootstrap {
+    AsyncPoolBootstrap { messages }
 }
 
-/// asserts that two ledger entries are the same
-pub fn assert_eq_ledger_entry(v1: &LedgerEntry, v2: &LedgerEntry) {
+/// asserts that two instances of AsyncMessage are the same
+pub fn assert_eq_async_message(v1: &AsyncMessage, v2: &AsyncMessage) {
+    assert_eq!(v1.emission_slot, v2.emission_slot, "emission_slot mismatch");
     assert_eq!(
-        v1.parallel_balance, v2.parallel_balance,
-        "parallel balance mismatch"
+        v1.emission_index, v2.emission_index,
+        "emission_index mismatch"
     );
-    assert_eq!(v1.bytecode, v2.bytecode, "bytecode mismatch");
+    assert_eq!(v1.sender, v2.sender, "sender mismatch");
+    assert_eq!(v1.destination, v2.destination, "destination mismatch");
+    assert_eq!(v1.handler, v2.handler, "handler mismatch");
+    assert_eq!(v1.max_gas, v2.max_gas, "max_gas mismatch");
+    assert_eq!(v1.gas_price, v2.gas_price, "gas_price mismatch");
+    assert_eq!(v1.coins, v2.coins, "coins mismatch");
     assert_eq!(
-        v1.datastore.len(),
-        v2.datastore.len(),
-        "datastore len mismatch"
+        v1.validity_start, v2.validity_start,
+        "validity_start mismatch"
     );
-    for k in v1.datastore.keys() {
-        let itm1 = v1.datastore.get(k).unwrap();
-        let itm2 = v2.datastore.get(k).expect("datastore key mismatch");
-        assert_eq!(itm1, itm2, "datasore entry mismatch");
-    }
+    assert_eq!(v1.validity_end, v2.validity_end, "validity_end mismatch");
+    assert_eq!(v1.data, v2.data, "data mismatch");
 }
 
-/// asserts that two FinalLedgerBootstrapState are equal
-pub fn assert_eq_ledger_bootstrap_state(
-    v1: &FinalLedgerBootstrapState,
-    v2: &FinalLedgerBootstrapState,
-) {
-    assert_eq!(v1.slot, v2.slot, "final slot mismatch");
+/// asserts that two AsyncPoolBootstrap are equal
+pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPoolBootstrap, v2: &AsyncPoolBootstrap) {
     assert_eq!(
-        v1.sorted_ledger.len(),
-        v2.sorted_ledger.len(),
-        "ledger len mismatch"
+        v1.messages.len(),
+        v2.messages.len(),
+        "message count mismatch"
     );
-    for k in v1.sorted_ledger.keys() {
-        let itm1 = v1.sorted_ledger.get(k).unwrap();
-        let itm2 = v2.sorted_ledger.get(k).expect("ledger key mismatch");
-        assert_eq_ledger_entry(itm1, itm2);
+    for (val1, val2) in v1.messages.iter().zip(v2.messages.iter()) {
+        assert_eq_async_message(val1, val2);
     }
 }

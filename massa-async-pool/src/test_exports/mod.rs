@@ -1,4 +1,4 @@
-// exports testing utilities
+//! exports testing utilities
 
 mod bootstrap;
 mod config;

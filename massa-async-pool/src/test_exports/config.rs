@@ -1,15 +1,11 @@
-// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-/// This file defines testing tools related to the config
-use crate::LedgerConfig;
+///! This file defines testing tools related to the config
+use crate::AsyncPoolConfig;
 
-/// Default value of LedgerConfig used for tests
-impl Default for LedgerConfig {
+/// Default value of AsyncPoolConfig used for tests
+impl Default for AsyncPoolConfig {
     fn default() -> Self {
-        LedgerConfig {
-            initial_sce_ledger_path: "".into(), // unused by the mock
-            final_history_length: 10,
-            thread_count: 2,
-        }
+        AsyncPoolConfig { max_length: 100 }
     }
 }

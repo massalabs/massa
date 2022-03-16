@@ -7,10 +7,10 @@ use std::collections::BTreeMap;
 use massa_models::Slot;
 
 use crate::{
-    changes::AsyncPoolChanges,
+    bootstrap::AsyncPoolBootstrap,
+    changes::{AddOrDelete, AsyncPoolChanges},
     config::AsyncPoolConfig,
     message::{AsyncMessage, AsyncMessageId},
-    types::AddOrDelete,
 };
 
 /// Represents a pool of deterministically sorted messages.
@@ -34,7 +34,33 @@ impl AsyncPool {
         }
     }
 
-    /// Applies precompiled AsyncPoolChanges to the pool without checking for overflows
+    /// Creates an AsyncPool from a bootstrap snapshot obtained using AsyncPool::get_bootstrap_snapshot
+    pub fn from_bootstrap_snapshot(
+        config: AsyncPoolConfig,
+        snapshot: AsyncPoolBootstrap,
+    ) -> AsyncPool {
+        AsyncPool {
+            config,
+            messages: snapshot
+                .messages
+                .into_iter()
+                .map(|msg| (msg.compute_id(), msg))
+                .collect(),
+        }
+    }
+
+    /// Returns a snapshot clone of the AsyncPool for bootstrapping other nodes
+    pub fn get_bootstrap_snapshot(&self) -> AsyncPoolBootstrap {
+        AsyncPoolBootstrap {
+            messages: self.messages.values().cloned().collect(),
+        }
+    }
+
+    /// Applies precompiled AsyncPoolChanges to the pool without checking for overflows.
+    /// This function is used when applying pre-compiled AsyncPoolChanges to an AsyncPool.
+    ///
+    /// # arguments
+    /// * changes: AsyncPoolChanges listing all async pool changes (message insertions/deletions)
     pub fn apply_changes_unchecked(&mut self, changes: AsyncPoolChanges) {
         for change in changes.0.into_iter() {
             match change {
@@ -52,6 +78,8 @@ impl AsyncPool {
     }
 
     /// Settles a slot, adding new messages to the pool and returning expired and excess ones.
+    /// This method is called at the end of a slot execution to apply the list of emitted messages,
+    /// and get the list of pruned messages for `coins` reimbursement.
     ///
     /// # arguments
     /// * slot: used to filter out expired messages, not stored
@@ -89,7 +117,7 @@ impl AsyncPool {
             .messages
             .len()
             .saturating_sub(self.config.max_length as usize);
-        new_messages.reserve_exact(excess_count);
+        eliminated.reserve_exact(excess_count);
         for _ in 0..excess_count {
             eliminated.push(self.messages.pop_first().unwrap()); // will not panic (checked at excess_count computation)
         }
