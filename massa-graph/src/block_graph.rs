@@ -11,7 +11,9 @@ use crate::{
 };
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
+use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
+use massa_models::signed::{Signable, Signed};
 use massa_models::storage::Storage;
 use massa_models::{
     active_block::ActiveBlock,
@@ -19,12 +21,11 @@ use massa_models::{
     rolls::{RollCounts, RollUpdate, RollUpdates},
     SignedEndorsement, SignedHeader, SignedOperation,
 };
-use massa_models::signed::{Signable, Signed};
 use massa_models::{clique::Clique, SerializeCompact};
-use massa_models::ledger_models::LedgerChange;
 use massa_models::{
-    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockId, EndorsementId, Operation, OperationId,
-    OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
+    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockId, EndorsementId, Operation,
+    OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
+    OperationSearchResultStatus, Slot,
 };
 use massa_proof_of_stake_exports::{
     error::ProofOfStakeError, OperationRollInterface, ProofOfStake,
@@ -1164,18 +1165,15 @@ impl BlockGraph {
                             GraphError::ContainerInconsistency(format!("op {} should be here", op))
                         })?;
                         let search = OperationSearchResult {
-                                                    op: block.read().block.operations[*idx].clone(),
-                                                    in_pool: false,
-                                                    in_blocks: vec![(
-                                                        b_id.clone(),
-                                                        (*idx, active_block.is_final),
-                                                    )]
-                                                    .into_iter()
-                                                    .collect(),
-                                                    status: OperationSearchResultStatus::InBlock(
-                                                        OperationSearchResultBlockStatus::Active,
-                                                    ),
-                                                };
+                            op: block.read().block.operations[*idx].clone(),
+                            in_pool: false,
+                            in_blocks: vec![(b_id.clone(), (*idx, active_block.is_final))]
+                                .into_iter()
+                                .collect(),
+                            status: OperationSearchResultStatus::InBlock(
+                                OperationSearchResultBlockStatus::Active,
+                            ),
+                        };
                         if let Some(old_search) = res.get_mut(op) {
                             old_search.extend(&search);
                         } else {
@@ -2483,9 +2481,14 @@ impl BlockGraph {
         for thread in involved_threads.into_iter() {
             match self.block_statuses.get(&parents[thread as usize]) {
                 Some(BlockStatus::Active(b)) => {
-                    let block = self.storage.retrieve_block(&b.block_id).ok_or(GraphError::MissingBlock)?;
+                    let block = self
+                        .storage
+                        .retrieve_block(&b.block_id)
+                        .ok_or(GraphError::MissingBlock)?;
                     let stored_block = block.read();
-                    if stored_block.block.header.content.slot.period < self.latest_final_blocks_periods[thread as usize].1 {
+                    if stored_block.block.header.content.slot.period
+                        < self.latest_final_blocks_periods[thread as usize].1
+                    {
                         return Err(GraphError::ContainerInconsistency(format!(
                             "asking for operations in thread {}, for which the given parent is older than the latest final block of that thread",
                             thread

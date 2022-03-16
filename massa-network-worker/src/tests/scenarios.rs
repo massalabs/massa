@@ -14,12 +14,12 @@ use crate::{
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::{self, hash::Hash};
+use massa_models::SerializeCompact;
 use massa_models::{
     node::NodeId,
     signed::{Signable, Signed},
-    storage::Storage
+    storage::Storage,
 };
-use massa_models::SerializeCompact;
 use massa_models::{BlockId, Endorsement, Slot};
 use massa_network_exports::settings::PeerTypeConnectionConfig;
 use massa_network_exports::{

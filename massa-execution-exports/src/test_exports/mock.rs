@@ -4,9 +4,7 @@
 
 use crate::{ExecutionController, ExecutionError, ExecutionOutput, ReadOnlyExecutionRequest};
 use massa_ledger::LedgerEntry;
-use massa_models::{
-    output_event::SCOutputEvent, Address, BlockId, OperationId, Slot,
-};
+use massa_models::{output_event::SCOutputEvent, Address, BlockId, OperationId, Slot};
 use std::{
     collections::HashMap,
     sync::{

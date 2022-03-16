@@ -20,10 +20,13 @@ use massa_models::{
     with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
     SerializeCompact, SerializeVarInt, Version,
 };
-use massa_network_exports::{ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener, NetworkSettings, NetworkConnectionErrorType, NetworkError};
+use massa_models::{BlockHeader, BlockId, Endorsement, Operation};
+use massa_network_exports::{
+    ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener,
+    NetworkConnectionErrorType, NetworkError, NetworkSettings,
+};
 use massa_network_exports::{NetworkCommand, NetworkEvent, NetworkManagementCommand};
 use massa_network_exports::{ReadHalf, WriteHalf};
-use massa_models::{BlockHeader, BlockId, Endorsement, Operation};
 use massa_signature::{derive_public_key, sign, PrivateKey};
 use serde::{Deserialize, Serialize};
 use std::{

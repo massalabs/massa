@@ -16,8 +16,8 @@ use massa_models::{
     signed::{Signable, Signed},
     Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation,
 };
-use massa_network_exports::{ConnectionClosureReason, NetworkError, NetworkSettings};
 use massa_models::{SerializeCompact, SerializeVarInt};
+use massa_network_exports::{ConnectionClosureReason, NetworkError, NetworkSettings};
 use serde::{Deserialize, Serialize};
 use std::mem;
 use std::net::IpAddr;
