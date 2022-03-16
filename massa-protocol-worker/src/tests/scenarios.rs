@@ -386,10 +386,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
                     Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block,
                     _ => panic!("Unexpected or no protocol event."),
                 };
-            assert_eq!(
-                expected_hash,
-                hash
-            );
+            assert_eq!(expected_hash, hash);
 
             (
                 network_controller,

@@ -344,10 +344,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 Some(NetworkCommand::SendBlock { node, block_id }) => {
                     assert_eq!(node, nodes[0].id);
                     assert_eq!(
-                        block
-                            .header
-                            .compute_id()
-                            .expect("Fail to get block id"),
+                        block.header.compute_id().expect("Fail to get block id"),
                         block_id
                     );
                 }
@@ -532,10 +529,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 vec![operation.clone()],
             );
 
-            let block_id = block
-                .header
-                .compute_id()
-                .expect("Fail to compute block id");
+            let block_id = block.header.compute_id().expect("Fail to compute block id");
 
             // Node 2 sends block, resulting in operations and endorsements noted in block info.
             network_controller.send_block(nodes[1].id, block_id).await;
@@ -629,10 +623,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Change the root operation hash
             block.operations = vec![operation_2.clone()];
 
-            let block_id = block
-                .header
-                .compute_id()
-                .expect("Fail to compute block id");
+            let block_id = block.header.compute_id().expect("Fail to compute block id");
             // Node 2 sends block, not resulting in operations and endorsements noted in block info,
             // because of the invalid root hash.
             network_controller.send_block(nodes[1].id, block_id).await;
@@ -727,10 +718,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
             network_controller
                 .send_block(
                     creator_node.id,
-                    block
-                        .header
-                        .compute_id()
-                        .expect("Fail to compute block id"),
+                    block.header.compute_id().expect("Fail to compute block id"),
                 )
                 .await;
 

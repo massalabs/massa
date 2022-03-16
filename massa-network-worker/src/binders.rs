@@ -2,10 +2,7 @@
 
 //! Flexbuffer layer between raw data and our objects.
 use super::messages::{deserialize_message_with_optional_serialized_object, Message};
-use massa_models::{
-    with_serialization_context, DeserializeMinBEInt,
-    SerializeMinBEInt,
-};
+use massa_models::{with_serialization_context, DeserializeMinBEInt, SerializeMinBEInt};
 use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
 use std::convert::TryInto;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};

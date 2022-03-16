@@ -48,8 +48,9 @@ fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
                     .1,
                 ],
             },
-            operations: vec![]),
-        };
+            operations: vec![],
+        ),
+    };
     (
         block.clone(),
         ExportActiveBlock {

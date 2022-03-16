@@ -5,8 +5,8 @@ use massa_models::{
     ledger_models::{LedgerChange, LedgerChanges},
     prehash::{BuildMap, Map, Set},
     rolls::{RollUpdate, RollUpdates},
-    storage::Storage,
     signed::Signable,
+    storage::Storage,
     *,
 };
 use serde::{Deserialize, Serialize};

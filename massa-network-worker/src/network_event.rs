@@ -119,7 +119,10 @@ pub mod event_impl {
         );
         if let Err(err) = worker
             .event
-            .send(NetworkEvent::ReceivedBlock { node: from, block_id })
+            .send(NetworkEvent::ReceivedBlock {
+                node: from,
+                block_id,
+            })
             .await
         {
             evt_failed!(err)
