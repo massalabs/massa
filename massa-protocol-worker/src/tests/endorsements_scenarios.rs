@@ -522,7 +522,11 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
             network_controller
                 .send_block(
                     nodes[1].id,
-                    block.header.compute_id().expect("Fail to get block id"),
+                    block
+                        .header
+                        .content
+                        .compute_id()
+                        .expect("Fail to get block id"),
                 )
                 .await;
 
