@@ -1018,11 +1018,17 @@ impl BlockGraph {
             }
         };
 
+        // Get the latest final slot, as seen by PoS,
+        // We do this instead of looking for the latest graph final block because PoS might not be aware of the latest graph final blocks yet,
+        // since PoS is notified only after all block finality changes caused by this new block are processed.
+        let pos_latest_final_block_slot = pos.get_last_final_block_slot(target_thread);
+        let pos_latest_final_block_cycle =
+            pos_latest_final_block_slot.get_cycle(self.cfg.periods_per_cycle);
+
         // stack back to latest final slot
         // (step 1 in pos.md)
         let mut stack = Vec::new();
         let mut cur_block_id = block_id;
-        let final_cycle;
         loop {
             // get block
             let cur_a_block = match self.block_statuses.get(&cur_block_id) {
@@ -1034,15 +1040,9 @@ impl BlockGraph {
                     )));
                 }
             };
-            if cur_a_block.is_final {
+            if cur_a_block.block.header.content.slot.period == pos_latest_final_block_slot.period {
                 // filters out genesis and final blocks
                 // (step 1.1 in pos.md)
-                final_cycle = cur_a_block
-                    .block
-                    .header
-                    .content
-                    .slot
-                    .get_cycle(self.cfg.periods_per_cycle);
                 break;
             }
             // (step 1.2 in pos.md)
@@ -1055,15 +1055,15 @@ impl BlockGraph {
         let (mut cur_rolls, mut cur_cycle_roll_updates) = {
             // (step 2 in pos.md)
             let cycle_state = pos
-                .get_final_roll_data(final_cycle, target_thread)
+                .get_final_roll_data(pos_latest_final_block_cycle, target_thread)
                 .ok_or_else(|| {
                     GraphError::ContainerInconsistency(format!(
                         "final PoS cycle not available: {}",
-                        final_cycle
+                        pos_latest_final_block_cycle
                     ))
                 })?;
             // (step 3 in pos.md)
-            let cur_cycle_roll_updates = if final_cycle == target_cycle {
+            let cur_cycle_roll_updates = if pos_latest_final_block_cycle == target_cycle {
                 if let Some(addrs) = addrs_opt {
                     cycle_state.cycle_updates.clone_subset(addrs)
                 } else {
