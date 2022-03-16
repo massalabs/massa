@@ -124,4 +124,55 @@ impl AsyncPool {
 
         eliminated
     }
+
+    /// Takes the best possible batch of messages to execute, with gas limits and slot validity filtering.
+    /// The returned messages are removed from the pool.
+    /// This method is used at the beginning of a slot execution to list async messages to execute.
+    ///
+    /// # arguments
+    /// * slot: select only messages that are valid within this slot
+    /// * available_gas: maximum amount of available gas
+    ///
+    /// # returns
+    /// A vector of messages, sorted from the most prioritary to the least prioritary
+    pub fn take_batch_to_executte(
+        &mut self,
+        slot: Slot,
+        mut available_gas: u64,
+    ) -> Vec<AsyncMessage> {
+        let mut selected = Vec::new();
+
+        // iterate in decreasing priority order
+        for (msg_id, msg) in self.messages.iter().rev() {
+            // check validity period
+            if slot < msg.validity_start || slot >= msg.validity_end {
+                continue;
+            }
+
+            // check available gas
+            if available_gas < msg.max_gas {
+                continue;
+            }
+
+            // add to selected items
+            selected.push(msg_id.clone());
+
+            // substract available gas
+            available_gas -= msg.max_gas;
+
+            // if there is no more gas, quit
+            if available_gas == 0 {
+                break;
+            }
+        }
+
+        // gather all selected items and remove them from self.messages
+        let mut accumulator = Vec::with_capacity(selected.len());
+        for delete_id in selected {
+            if let Some(v) = self.messages.remove(&delete_id) {
+                accumulator.push(v);
+            }
+        }
+        accumulator
+    }
 }
