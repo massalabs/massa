@@ -12,6 +12,7 @@ use massa_graph::{
 };
 use massa_hash::hash::Hash;
 use massa_ledger::LedgerEntry;
+use massa_models::signed::Signable;
 use massa_models::{
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
@@ -35,7 +36,6 @@ use std::{
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tokio::{sync::mpsc::Receiver, time::sleep};
-use massa_models::signed::Signable;
 
 pub const BASE_BOOTSTRAP_IP: IpAddr = IpAddr::V4(Ipv4Addr::new(169, 202, 0, 10));
 

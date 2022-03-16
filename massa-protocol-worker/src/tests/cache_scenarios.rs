@@ -3,12 +3,12 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::protocol_test;
+use massa_models::signed::Signable;
 use massa_models::{self, Address, Slot};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::ProtocolEvent;
 use massa_protocol_exports::ProtocolSettings;
 use serial_test::serial;
-use massa_models::signed::Signable;
 
 lazy_static::lazy_static! {
     pub static ref CUSTOM_PROTOCOL_SETTINGS: ProtocolSettings = {

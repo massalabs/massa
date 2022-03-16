@@ -374,20 +374,19 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
                 .await;
 
             // Check protocol sends block to consensus.
-            let block =
-                match wait_protocol_event(
-                    &mut protocol_event_receiver,
-                    1000.into(),
-                    |evt| match evt {
-                        evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
-                        _ => None,
-                    },
-                )
-                .await
-                {
-                    Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block,
-                    _ => panic!("Unexpected or no protocol event."),
-                };
+            let block = match wait_protocol_event(
+                &mut protocol_event_receiver,
+                1000.into(),
+                |evt| match evt {
+                    evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
+                    _ => None,
+                },
+            )
+            .await
+            {
+                Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block,
+                _ => panic!("Unexpected or no protocol event."),
+            };
             assert_eq!(expected_hash, block.header.content.compute_id().unwrap());
 
             (
