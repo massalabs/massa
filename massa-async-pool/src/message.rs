@@ -144,9 +144,9 @@ impl DeserializeCompact for AsyncMessage {
         cursor += ADDRESS_SIZE_BYTES;
 
         // handler name length
-        let handler_name_len = *buffer.get(cursor).ok_or(ModelsError::SerializeError(
-            "buffer ended prematurely".into(),
-        ))?;
+        let handler_name_len = *buffer
+            .get(cursor)
+            .ok_or_else(|| ModelsError::SerializeError("buffer ended prematurely".into()))?;
         cursor += 1;
 
         // handler name

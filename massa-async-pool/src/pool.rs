@@ -155,7 +155,7 @@ impl AsyncPool {
             }
 
             // add to selected items
-            selected.push(msg_id.clone());
+            selected.push(*msg_id);
 
             // substract available gas
             available_gas -= msg.max_gas;
