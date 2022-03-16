@@ -9,7 +9,7 @@ pub enum MassaSignatureError {
     /// parsing error : {0}
     ParsingError(String),
 
-    /// error forwarded by engine: {0}
+    /// secp256k1 engine error: {0}
     EngineError(#[from] secp256k1::Error),
 
     /// Wrong prefix for hash: expected {0}, got {1}

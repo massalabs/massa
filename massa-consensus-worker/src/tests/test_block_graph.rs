@@ -19,8 +19,8 @@ use serial_test::serial;
 use std::str::FromStr;
 use tempfile::NamedTempFile;
 
-// the data input to create the public keys was generated using the same crate (secp256k1)
-// a test using this function is a regression test not an implementation test
+/// the data input to create the public keys was generated using the secp256k1 curve
+/// a test using this function is a regression test not an implementation test
 fn get_export_active_test_block() -> ExportActiveBlock {
     let pk = generate_random_private_key();
     let block = Block {
