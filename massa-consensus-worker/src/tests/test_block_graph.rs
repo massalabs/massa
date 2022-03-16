@@ -5,6 +5,7 @@ use massa_graph::{
     settings::GraphConfig, BlockGraph, BootstrapableGraph,
 };
 use massa_hash::hash::Hash;
+use massa_models::signed::Signable;
 use massa_models::{
     active_block::ActiveBlock,
     clique::Clique,
@@ -14,13 +15,15 @@ use massa_models::{
     signed::Signed,
     Address, Block, BlockHeader, BlockId, DeserializeCompact, SerializeCompact, Slot,
 };
-use massa_models::{storage::Storage, Amount, Endorsement, EndorsementContent};
+use massa_models::{storage::Storage, Amount, Endorsement};
 use massa_signature::{generate_random_private_key, PublicKey};
 use serial_test::serial;
 use std::str::FromStr;
 use tempfile::NamedTempFile;
+use tracing::warn;
 
 fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
+    let pk = generate_random_private_key();
     let block = Block {
         header: Signed::new_signed(
             BlockHeader {
@@ -48,9 +51,13 @@ fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
                     .1,
                 ],
             },
-            operations: vec![],
-        ),
+            &pk,
+        )
+        .unwrap()
+        .1,
+        operations: vec![],
     };
+
     (
         block.clone(),
         ExportActiveBlock {
@@ -117,16 +124,25 @@ pub async fn test_get_ledger_at_parents() {
     // .timestamp(stderrlog::Timestamp::Millisecond)
     // .init()
     // .unwrap();
+    // use tracing_subscriber::prelude::*;
+    // let tracing_layer = tracing_subscriber::fmt::layer();
+    // build a `Subscriber` by combining layers with a `tracing_subscriber::Registry`:
+    //tracing_subscriber::registry()
+        // add the console layer to the subscriber or default layers...
+    //    .with(tracing_layer)
+    //    .init();
     init_serialization_context(massa_models::SerializationContext::default());
     let thread_count: u8 = 2;
     let storage: Storage = Default::default();
     let (block, export_active_block): (Block, ExportActiveBlock) = get_export_active_test_block();
     let block_id = block
         .header
+        .content
         .compute_id()
         .expect("Fail to calculate block id");
     let block_serialized = block.to_bytes_compact().expect("Fail to serialize block");
     storage.store_block(block_id, block, block_serialized);
+    warn!("Store block default!");
     let active_block: ActiveBlock = ActiveBlock::try_from(export_active_block).expect(&format!(
         "Fail to convert block (id: {}) from ExportActiveBlock to ActiveBlock",
         block_id
@@ -246,6 +262,7 @@ pub async fn test_get_ledger_at_parents() {
     let block_serialized = block_p1t0
         .to_bytes_compact()
         .expect("Fail to serialize block");
+    warn!("Store active_block_p1t0!");
     storage.store_block(block_id, block_p1t0, block_serialized);
 
     // block p1t1 [FINAL]: creator B, parents [p0t0, p0t1], operations:
@@ -286,6 +303,7 @@ pub async fn test_get_ledger_at_parents() {
     let block_serialized = block_p1t1
         .to_bytes_compact()
         .expect("Fail to serialize block");
+    warn!("Store active_block_p1t1!");
     storage.store_block(block_id, block_p1t1, block_serialized);
 
     // block p2t0 [NON-FINAL]: creator A, parents [p1t0, p0t1], operations:
@@ -318,6 +336,7 @@ pub async fn test_get_ledger_at_parents() {
     let block_serialized = block_p2t0
         .to_bytes_compact()
         .expect("Fail to serialize block");
+    warn!("Store active_block_p2t0!");
     storage.store_block(block_id, block_p2t0, block_serialized);
 
     // block p2t1 [FINAL]: creator B, parents [p1t0, p1t1] operations:
@@ -360,6 +379,7 @@ pub async fn test_get_ledger_at_parents() {
     let block_serialized = block_p2t1
         .to_bytes_compact()
         .expect("Fail to serialize block");
+    warn!("Store active_block_p2t1!");
     storage.store_block(block_id, block_p2t1, block_serialized);
 
     // block p3t0 [NON-FINAL]: creator A, parents [p2t0, p1t1] operations:
@@ -401,6 +421,7 @@ pub async fn test_get_ledger_at_parents() {
     let block_serialized = block_p3t0
         .to_bytes_compact()
         .expect("Fail to serialize block");
+    warn!("Store active_block_p3t0!");
     storage.store_block(block_id, block_p3t0, block_serialized);
 
     // block p3t1 [NON-FINAL]: creator B, parents [p2t0, p2t1] operations:
@@ -443,6 +464,7 @@ pub async fn test_get_ledger_at_parents() {
     let block_serialized = block_p3t1
         .to_bytes_compact()
         .expect("Fail to serialize block");
+    warn!("Store active_block_p3t1!");
     storage.store_block(block_id, block_p3t1, block_serialized);
 
     let export_graph = BootstrapableGraph {
@@ -523,6 +545,7 @@ pub async fn test_get_ledger_at_parents() {
         .unwrap();
 
     // Ledger at parents (p3t0, p3t1) for addresses A, B, C, D:
+    warn!("active_block_p3t0: {}, active_block_p3t1: {}", get_dummy_block_id("active_block_p3t0"), get_dummy_block_id("active_block_p3t1"));
     let res = block_graph
         .get_ledger_at_parents(
             &[
@@ -602,7 +625,7 @@ fn test_bootsrapable_graph_serialize_compact() {
 
     let (block, active_block) = get_export_active_test_block();
 
-    //storage.store_block(block.header.compute_id().expect("Fail to calculate block id."), block, block.to_bytes_compact().expect("Fail to serialize block"));
+    //storage.store_block(block.header.content.compute_id().expect("Fail to calculate block id."), block, block.to_bytes_compact().expect("Fail to serialize block"));
 
     println!("{:?}", block);
     let b1_id = get_dummy_block_id("active11");

@@ -51,7 +51,7 @@ impl MockProtocolController {
 
     // Note: if you care about the operation set, use another method.
     pub async fn receive_block(&mut self, block: Block) {
-        let block_id = block.header.compute_id().unwrap();
+        let block_id = block.header.content.compute_id().unwrap();
         let serialize_block = block.to_bytes_compact().expect("Fail to serialize block.");
         self.storage.store_block(block_id, block, serialize_block);
         self.protocol_event_tx

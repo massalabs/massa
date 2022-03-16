@@ -4,6 +4,7 @@
 
 use super::tools::protocol_test;
 use massa_models::prehash::{Map, Set};
+use massa_models::signed::Signable;
 use massa_models::{BlockId, SerializeCompact};
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
@@ -13,6 +14,7 @@ use massa_protocol_exports::{
 };
 use serial_test::serial;
 use std::collections::HashSet;
+
 #[tokio::test]
 #[serial]
 async fn test_protocol_asks_for_block_from_node_who_propagated_header() {
@@ -372,7 +374,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
                 .await;
 
             // Check protocol sends block to consensus.
-            let hash =
+            let block =
                 match wait_protocol_event(
                     &mut protocol_event_receiver,
                     1000.into(),
@@ -386,7 +388,7 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
                     Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block,
                     _ => panic!("Unexpected or no protocol event."),
                 };
-            assert_eq!(expected_hash, hash);
+            assert_eq!(expected_hash, block.header.content.compute_id().unwrap());
 
             (
                 network_controller,
