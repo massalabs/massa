@@ -3,12 +3,15 @@
 //! This file defines a config structure containing all settings for final state management
 
 use massa_ledger::LedgerConfig;
+use massa_async_pool::AsyncPoolConfig;
 
 /// Ledger configuration
 #[derive(Debug, Clone)]
 pub struct FinalStateConfig {
     /// ledger config
     pub ledger_config: LedgerConfig,
+    /// async pool config
+    pub async_pool_config: AsyncPoolConfig,
     /// final changes history length
     pub final_history_length: usize,
     /// thread count

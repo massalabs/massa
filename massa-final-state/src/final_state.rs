@@ -9,6 +9,7 @@ use crate::{
     bootstrap::FinalStateBootstrap, config::FinalStateConfig, error::FinalStateError,
     state_changes::StateChanges,
 };
+use massa_async_pool::AsyncPool;
 use massa_ledger::FinalLedger;
 use massa_models::Slot;
 use std::collections::VecDeque;
@@ -21,6 +22,8 @@ pub struct FinalState {
     pub slot: Slot,
     /// final ledger associating addresses to their balance, executable bytecode and data
     pub ledger: FinalLedger,
+    // async pool containing messages sorted by priority and their data
+    pub async_pool: AsyncPool,
     /// history of recent final state changes, useful for streaming bootstrap
     /// front = oldest, back = newest
     changes_history: VecDeque<(Slot, StateChanges)>,
@@ -40,10 +43,14 @@ impl FinalState {
             FinalStateError::LedgerError(format!("could not initialize ledger: {}", err))
         })?;
 
+        // create the async pool
+        let async_pool = AsyncPool::new(config.async_pool_config.clone());
+
         // generate the final ledger
         Ok(FinalState {
             slot,
             ledger,
+            async_pool,
             config,
             changes_history: Default::default(), // no changes in history
         })
@@ -58,6 +65,7 @@ impl FinalState {
         FinalState {
             slot: state.slot,
             ledger: FinalLedger::from_bootstrap_state(config.ledger_config.clone(), state.ledger),
+            async_pool: AsyncPool::from_bootstrap_snapshot(config.async_pool_config.clone(), state.async_pool),
             config,
             changes_history: Default::default(), // no changes in history
         }
@@ -67,6 +75,7 @@ impl FinalState {
     pub fn get_bootstrap_state(&self) -> FinalStateBootstrap {
         FinalStateBootstrap {
             slot: self.slot,
+            async_pool: self.async_pool.get_bootstrap_snapshot(),
             ledger: self.ledger.get_bootstrap_state(),
         }
     }

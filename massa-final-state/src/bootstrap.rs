@@ -5,6 +5,7 @@
 use massa_ledger::FinalLedgerBootstrapState;
 use massa_models::{DeserializeCompact, SerializeCompact, Slot};
 use serde::{Deserialize, Serialize};
+use massa_async_pool::AsyncPoolBootstrap;
 
 /// Represents a snapshot of the final state,
 /// which is enough to fully bootstrap a FinalState
@@ -14,6 +15,8 @@ pub struct FinalStateBootstrap {
     pub(crate) slot: Slot,
     /// final ledger
     pub(crate) ledger: FinalLedgerBootstrapState,
+    /// aysnc pool
+    pub(crate) async_pool: AsyncPoolBootstrap,
 }
 
 /// Allows serializing the FinalStateBootstrap to a compact binary representation
@@ -44,6 +47,9 @@ impl DeserializeCompact for FinalStateBootstrap {
         let (ledger, delta) = FinalLedgerBootstrapState::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 
-        Ok((FinalStateBootstrap { slot, ledger }, cursor))
+        let (async_pool, delta) = AsyncPoolBootstrap::from_bytes_compact(&buffer[cursor..])?;
+        cursor += delta;
+
+        Ok((FinalStateBootstrap { slot, ledger, async_pool }, cursor))
     }
 }
