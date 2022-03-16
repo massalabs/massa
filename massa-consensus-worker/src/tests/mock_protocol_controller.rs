@@ -44,7 +44,7 @@ impl MockProtocolController {
         }
     }
 
-    // Note: if you care about the operation set, use another method.
+    /// Note: if you care about the operation set, use another method.
     pub async fn receive_block(&mut self, block: Block) {
         let block_id = block.header.content.compute_id().unwrap();
         self.protocol_event_tx
@@ -73,7 +73,7 @@ impl MockProtocolController {
             .expect("could not send protocol event");
     }
 
-    // ignore all commands while waiting for a future
+    /// ignore all commands while waiting for a future
     pub async fn ignore_commands_while<FutureT: futures::Future + Unpin>(
         &mut self,
         mut future: FutureT,
