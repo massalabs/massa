@@ -79,6 +79,8 @@ impl Default for SerializationContext {
     }
 }
 
+/// Create a specific default implementation for sandbox because the constants are not declared
+/// at compile time but at runtime using `lazy_static` so they need to be deref.
 #[cfg(feature = "sandbox")]
 impl Default for SerializationContext {
     fn default() -> Self {
