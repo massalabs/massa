@@ -1032,8 +1032,6 @@ impl BlockGraph {
         // start graph exploration until the latest period known as final
         // for the PoS module
         loop {
-        // for the PoS module
-        loop {
             // get block
             let cur_a_block = match self.block_statuses.get(&cur_block_id) {
                 Some(BlockStatus::Active(a_block)) => a_block,
