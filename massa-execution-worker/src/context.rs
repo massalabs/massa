@@ -8,6 +8,8 @@
 //! and does not write anything persistent to the conensus state.
 
 use crate::speculative_ledger::SpeculativeLedger;
+use crate::speculative_async_pool::SpeculativeAsyncPool;
+use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest,
 };
@@ -50,6 +52,10 @@ pub(crate) struct ExecutionContext {
     /// as seen after everything that happened so far in the context
     speculative_ledger: SpeculativeLedger,
 
+    /// speculative async pool state,
+    /// as seen after everything that happened so far in the context
+    speculative_async_pool: SpeculativeAsyncPool,
+
     /// max gas for this execution
     pub max_gas: u64,
 
@@ -64,6 +70,9 @@ pub(crate) struct ExecutionContext {
 
     /// counter of newly created events so far during this execution
     pub created_event_index: u64,
+
+    /// counter of newly created messages so far during this execution
+    pub created_message_index: u64,
 
     /// block ID, if one is present at the execution slot
     pub opt_block_id: Option<BlockId>,
@@ -102,14 +111,19 @@ impl ExecutionContext {
     ) -> Self {
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
-                final_state,
+                final_state.clone(),
                 previous_changes.ledger_changes,
+            ),
+            speculative_async_pool: SpeculativeAsyncPool::new(
+                final_state,
+                previous_changes.async_pool_changes,
             ),
             max_gas: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
+            created_message_index: Default::default(),
             opt_block_id: Default::default(),
             stack: Default::default(),
             read_only: Default::default(),
@@ -198,7 +212,7 @@ impl ExecutionContext {
     /// * final_state: thread-safe access to the final state. Note that this will be used only for reading, never for writing
     ///
     /// # returns
-    /// A ExecutionContext instance ready for a read-only execution
+    /// A ExecutionContext instance
     pub(crate) fn active_slot(
         slot: Slot,
         opt_block_id: Option<BlockId>,
@@ -237,6 +251,7 @@ impl ExecutionContext {
     pub fn take_execution_output(&mut self) -> ExecutionOutput {
         let state_changes = StateChanges {
             ledger_changes: self.speculative_ledger.take(),
+            async_pool_changes: self.speculative_async_pool.take(),
         };
         ExecutionOutput {
             slot: self.slot,
@@ -355,7 +370,7 @@ impl ExecutionContext {
         self.speculative_ledger.has_data_entry(address, key)
     }
 
-    /// gets the bytecode of an address if it exists in the speculative ledger, or returns None
+    /// note: define this comment
     pub fn get_parallel_balance(&self, address: &Address) -> Option<Amount> {
         self.speculative_ledger.get_parallel_balance(address)
     }
@@ -412,5 +427,15 @@ impl ExecutionContext {
         // do the transfer
         self.speculative_ledger
             .transfer_parallel_coins(from_addr, to_addr, amount)
+    }
+
+    // note: needs doc
+    pub fn push_new_message(&mut self, msg: AsyncMessage) {
+        self.speculative_async_pool.push_new_message(msg);
+    }
+
+    // note: needs doc
+    pub fn compute_new_messages(&mut self) {
+        self.speculative_async_pool.compute_and_add_changes(self.slot);
     }
 }

@@ -6,6 +6,7 @@
 extern crate massa_logging;
 use crate::settings::{POOL_CONFIG, SETTINGS};
 use massa_api::{Private, Public, RpcServer, StopHandle, API};
+use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use massa_consensus_exports::{
     events::ConsensusEvent, settings::ConsensusChannels, ConsensusCommandSender, ConsensusConfig,
@@ -126,10 +127,15 @@ async fn launch() -> (
     let ledger_config = LedgerConfig {
         initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
     };
+    let async_pool_config = AsyncPoolConfig {
+        // note: define this
+        max_length: 100,
+    };
     let final_state_config = FinalStateConfig {
         final_history_length: SETTINGS.ledger.final_history_length,
         thread_count: THREAD_COUNT,
         ledger_config,
+        async_pool_config,
     };
     let final_state = Arc::new(RwLock::new(match bootstrap_state.final_state {
         Some(l) => FinalState::from_bootstrap_state(final_state_config, l),

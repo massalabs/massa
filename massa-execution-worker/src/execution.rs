@@ -312,7 +312,7 @@ impl ExecutionState {
         };
 
         // run the VM on the bytecode contained in the operation
-        let run_result = massa_sc_runtime::run(bytecode, *max_gas, &*self.execution_interface);
+        let run_result = massa_sc_runtime::run_main(bytecode, *max_gas, &*self.execution_interface);
         if let Err(err) = run_result {
             // there was an error during bytecode execution:
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
@@ -360,7 +360,23 @@ impl ExecutionState {
         // apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
 
-        // note that here, async operations should be executed
+        // execute async operations
+        let messages = self
+            .final_state
+            .write()
+            .async_pool
+            .take_batch_to_executte(slot, context_guard!(self).max_gas);
+        for m in messages {
+            massa_sc_runtime::run_function(
+                &context_guard!(self).get_bytecode(&m.destination).unwrap_or(Vec::new()),
+                m.max_gas,
+                &m.handler,
+                // we know these bytes are valid
+                std::str::from_utf8(&m.data).unwrap(),
+                &*self.execution_interface,
+            )
+            .unwrap();
+        }
 
         // check if there is a block at this slot
         if let (Some((block_id, block)), Some(block_creator_addr)) =
@@ -378,8 +394,12 @@ impl ExecutionState {
             }
         }
 
+        let mut context = context_guard!(self);
+        // compute new messages
+        context.compute_new_messages();
+        // note: reimbursement here
         // return the execution output
-        context_guard!(self).take_execution_output()
+        context.take_execution_output()
     }
 
     /// Executes a read-only execution request.
@@ -415,7 +435,7 @@ impl ExecutionState {
         *context_guard!(self) = execution_context;
 
         // run the intepreter
-        massa_sc_runtime::run(&bytecode, max_gas, &*self.execution_interface)
+        massa_sc_runtime::run_main(&bytecode, max_gas, &*self.execution_interface)
             .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
 
         // return the execution output
