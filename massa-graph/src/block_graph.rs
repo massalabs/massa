@@ -1029,6 +1029,8 @@ impl BlockGraph {
         // (step 1 in pos.md)
         let mut stack = Vec::new();
         let mut cur_block_id = block_id;
+        // start graph exploration until the latest period known as final
+        // for the PoS module
         loop {
             // get block
             let cur_a_block = match self.block_statuses.get(&cur_block_id) {
