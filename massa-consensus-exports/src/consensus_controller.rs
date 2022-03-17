@@ -139,7 +139,7 @@ impl ConsensusCommandSender {
     /// Gets (slot, public_key) were the staker with public_key was selected for slot, between start_slot and end_slot.
     ///
     /// # Arguments
-    /// * start_slot: begining of the considered interval.
+    /// * start_slot: beginning of the considered interval.
     /// * end_slot: end of the considered interval.
     pub async fn get_selection_draws(
         &self,

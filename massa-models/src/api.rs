@@ -301,7 +301,7 @@ impl std::fmt::Display for IndexedSlot {
 }
 
 /// Less information about an address
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct CompactAddressInfo {
     /// the address
     pub address: Address,
