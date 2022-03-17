@@ -37,7 +37,7 @@ impl SpeculativeAsyncPool {
         self.new_messages.push(msg);
     }
 
-    pub fn compute_and_add_changes(&mut self, slot: Slot) {
+    pub fn compute_and_add_changes(&mut self, slot: Slot) ->  Vec<AsyncMessage> {
         let mut pool_copy = self.final_state.read().async_pool.clone();
         pool_copy.apply_changes_unchecked(&self.previous_changes);
         for msg in &self.new_messages {
@@ -51,8 +51,9 @@ impl SpeculativeAsyncPool {
             );
         }
         let eliminated = pool_copy.settle_slot(slot, self.new_messages.clone());
-        for v in eliminated {
+        for v in &eliminated {
             self.added_changes.push_delete(v.0);
         }
+        eliminated.into_iter().map(|x| x.1).collect::<Vec<AsyncMessage>>()
     }
 }

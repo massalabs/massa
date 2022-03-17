@@ -18,7 +18,7 @@ use massa_final_state::{FinalState, StateChanges};
 use massa_ledger::{Applicable, LedgerEntry, SetUpdateOrDelete};
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
-use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
+use massa_models::{Address, Amount, BlockId, OperationId, OperationType, SignedOperation};
 use massa_models::{Block, Slot};
 use massa_sc_runtime::Interface;
 use parking_lot::{Mutex, RwLock};
@@ -368,7 +368,9 @@ impl ExecutionState {
             .take_batch_to_executte(slot, context_guard!(self).max_gas);
         for m in messages {
             massa_sc_runtime::run_function(
-                &context_guard!(self).get_bytecode(&m.destination).unwrap_or(Vec::new()),
+                &context_guard!(self)
+                    .get_bytecode(&m.destination)
+                    .unwrap_or(Vec::new()),
                 m.max_gas,
                 &m.handler,
                 // we know these bytes are valid
@@ -396,8 +398,12 @@ impl ExecutionState {
 
         let mut context = context_guard!(self);
         // compute new messages
-        context.compute_new_messages();
-        // note: reimbursement here
+        let mut reimbursement_messages = context.compute_new_messages();
+        for msg in reimbursement_messages {
+            let amount = Amount::from_raw(msg.max_gas * msg.gas_price.to_raw() + msg.coins.to_raw());
+            // note: the following unwrap is not ideal
+            context.transfer_parallel_coins(Some(msg.sender), Some(msg.destination), amount).unwrap();
+        }
         // return the execution output
         context.take_execution_output()
     }
