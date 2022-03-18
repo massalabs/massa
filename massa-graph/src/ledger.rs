@@ -259,13 +259,13 @@ impl Ledger {
                 .is_some()
             {
                 return Err(LedgerError::LedgerInconsistency(format!(
-                    "adress {} already in ledger while bootsrapping",
+                    "address {} already in ledger while bootstrapping",
                     address
                 )));
             };
         }
 
-        // initilize final periods
+        // initialize final periods
         ledger.latest_final_periods.transaction(|tree| {
             for (thread, period) in latest_final_periods.iter().enumerate() {
                 tree.insert(&[thread as u8], &period.to_be_bytes())?;
@@ -286,12 +286,12 @@ impl Ledger {
     }
 
     /// Atomically apply a batch of changes to the ledger.
-    /// All changes should occure in one thread.
+    /// All changes should occur in one thread.
     /// Update last final period.
     ///
     /// * If the balance of an address falls exactly to 0, it is removed from the ledger.
     /// * If the balance of a non-existing address increases, the address is added to the ledger.
-    /// * If we attempt to substract more than the balance of an address, the transaction is cancelled and the function returns an error.
+    /// * If we attempt to subtract more than the balance of an address, the transaction is cancelled and the function returns an error.
     pub fn apply_final_changes(
         &self,
         thread: u8,

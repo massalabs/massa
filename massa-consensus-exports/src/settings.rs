@@ -7,7 +7,7 @@
 //!
 //! * setting: read from user settings file
 //! * config: merge of settings and hardcoded configuration that shouldn't be
-//!           modifyed by user.
+//!           modified by user.
 //!
 //! This file is allowed to use a lot of constants from `massa-models` as all
 //! other files named `settings.rs` or `config.rs`.
@@ -16,7 +16,7 @@
 //! node. You can get almost every configuration from that one.
 //!
 //! `From<ConsensusSettings> impl *`:
-//! - `ConsensusConfig`: Create a config merging user settings andhardcoded values
+//! - `ConsensusConfig`: Create a config merging user settings and hardcoded values
 //!                      (see `/massa-models/node_configuration/*)
 //!
 //! `From<&ConsensusConfig> impl *`:
@@ -153,7 +153,7 @@ pub struct ConsensusConfig {
     pub ledger_cache_capacity: u64,
     pub ledger_flush_interval: Option<MassaTime>,
     pub ledger_reset_at_startup: bool,
-    /// Inital file path that describe the ledger to merge in `ledger_path` after starting
+    /// Initial file path that describe the ledger to merge in `ledger_path` after starting
     pub initial_ledger_path: PathBuf,
     /// Reward for the creation of a block
     pub block_reward: Amount,
@@ -180,15 +180,15 @@ pub struct ConsensusConfig {
 
 #[cfg(feature = "testing")]
 #[derive(Default, Debug)]
-/// In testing mode if you create a conguration with tempfiles
+/// In testing mode if you create a configuration with temporary files
 /// we need to keep inside this structure the `TempDir` and
 /// `NamedTempFile` here since the end of the test.
 /// We don't need to move or clone, only the main cfg need that and
 /// the var is never used.
 pub struct TempFiles {
-    /// Doesn't drop tempfile on testing
+    /// Doesn't drop temporary file on testing
     pub temp_files: Vec<tempfile::NamedTempFile>,
-    /// Doesn't drop tempdir on testing
+    /// Doesn't drop temporary directory on testing
     pub temp_dir: Vec<tempfile::TempDir>,
 }
 
@@ -296,7 +296,7 @@ impl From<&ConsensusConfig> for LedgerConfig {
 
 /// Communication async channels for the consensus worker
 /// Contains consensus channels associated (protocol & execution)
-/// Contains alse controller async channels (command, manager receivers and event sender)
+/// Contains also controller async channels (command, manager receivers and event sender)
 /// Contains a sender to the pool worker commands
 pub struct ConsensusWorkerChannels {
     /// Associated protocol command sender.
@@ -328,7 +328,7 @@ impl From<&ConsensusSettings> for ConsensusConfig {
     fn from(settings: &ConsensusSettings) -> Self {
         #[cfg(feature = "testing")]
         /// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialisation.
+        /// test values to be used for a default initialization.
         use massa_models::constants::default_testing::*;
         #[cfg(not(feature = "testing"))]
         use massa_models::constants::*;
@@ -381,7 +381,7 @@ impl From<ConsensusSettings> for ConsensusConfig {
     fn from(settings: ConsensusSettings) -> Self {
         #[cfg(feature = "testing")]
         /// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialisation.
+        /// test values to be used for a default initialization.
         use massa_models::constants::default_testing::*;
         #[cfg(not(feature = "testing"))]
         use massa_models::constants::*;
@@ -435,16 +435,16 @@ impl From<ConsensusSettings> for ConsensusConfig {
 ///
 /// Use the feature testing to load mocked default variable
 /// This is default variable but the configuration is a dynamic
-/// configuration passed as dependences with no particular lifetime
+/// configuration passed as dependencies with no particular lifetime
 #[cfg(feature = "testing")]
 impl Default for ConsensusSettings {
     fn default() -> Self {
         /// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialisation.
+        /// test values to be used for a default initialization.
         use massa_models::constants::default_testing::*;
         Self {
             staking_keys_path: Default::default(),
-            max_discarded_blocks: MAX_DISCARED_BLOCKS,
+            max_discarded_blocks: MAX_DISCARDED_BLOCKS,
             future_block_processing_max_periods: FUTURE_BLOCK_PROCESSING_MAX_PERIODS,
             max_future_processing_blocks: MAX_FUTURE_PROCESSING_BLOCK,
             max_dependency_blocks: MAX_DEPENDENCY_BLOCK,
@@ -513,10 +513,10 @@ impl From<&std::path::Path> for ConsensusConfig {
  * ```
  *
  * You can also look at the divers `default()` implementation bellow. For example that
- * one is used to initialise the _default paths_ :
+ * one is used to initialize the _default paths_ :
  *
  * ```ignore
- * let cfg = ConensusConfig {
+ * let cfg = ConsensusConfig {
  *     max_discarded_blocks: 21,
  *     ..ConsensusConfig::default_with_paths(),
  * };
@@ -540,7 +540,7 @@ impl Default for ConsensusConfig {
             t0: T0,
             genesis_key: *GENESIS_KEY,
             staking_keys_path: Default::default(),
-            max_discarded_blocks: MAX_DISCARED_BLOCKS,
+            max_discarded_blocks: MAX_DISCARDED_BLOCKS,
             future_block_processing_max_periods: FUTURE_BLOCK_PROCESSING_MAX_PERIODS,
             max_future_processing_blocks: MAX_FUTURE_PROCESSING_BLOCK,
             max_dependency_blocks: MAX_DEPENDENCY_BLOCK,
@@ -580,7 +580,7 @@ impl Default for ConsensusConfig {
 /**
  * The following implementation correspond to tools used in unit tests
  * It allow you to get a default `ConsensusConfig` (that isn't possible without
- * the feature *testing*) with already setted/default `initial_ledger_path`,
+ * the feature *testing*) with already initialized/default `initial_ledger_path`,
  * `staking_keys_path` and `initial_rolls_path`.
  *
  * Used to radically reduce code duplication in unit tests of Consensus.

@@ -307,7 +307,7 @@ impl ExecutionThread {
 
         // choose the execution target
         let exec_target = match self.active_slots.get(&slot) {
-            Some(b) => b.clone(), //TODO get rid of that clone on storage refactorig https://github.com/massalabs/massa/issues/2178
+            Some(b) => b.clone(), //TODO get rid of that clone on storage refactoring https://github.com/massalabs/massa/issues/2178
             None => return false,
         };
 
@@ -335,7 +335,7 @@ impl ExecutionThread {
             self.config.genesis_timestamp,
             next_slot,
         )
-        .expect("could not compute block timestmap in VM");
+        .expect("could not compute block timestamp in VM");
 
         // get the current timestamp minus the cursor delay
         let end_time = MassaTime::compensated_now(self.config.clock_compensation)
@@ -368,7 +368,7 @@ impl ExecutionThread {
         new_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
     ) {
         // Append incoming readonly requests to our readonly request queue
-        // Excess requests are cancelld
+        // Excess requests are cancelled
         self.readonly_requests.extend(new_requests);
     }
 
@@ -394,7 +394,7 @@ impl ExecutionThread {
         false
     }
 
-    /// Waits for an event to trigger a new iteration in the excution main loop.
+    /// Waits for an event to trigger a new iteration in the execution main loop.
     ///
     /// # Returns
     /// Some(ExecutionInputData) representing the input requests,
@@ -465,9 +465,9 @@ impl ExecutionThread {
         None
     }
 
-    /// Main loop of the executin worker
+    /// Main loop of the execution worker
     pub fn main_loop(&mut self) {
-        // This loop restarts everytime an execution happens for easier tracking.
+        // This loop restarts every time an execution happens for easier tracking.
         // It also prioritizes executions in the following order:
         // 1 - final executions
         // 2 - speculative executions

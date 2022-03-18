@@ -1,6 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Provides serializable strucutres for bootstrapping the FinalState
+//! Provides serializable structures for bootstrapping the FinalState
 
 use massa_ledger::FinalLedgerBootstrapState;
 use massa_models::{DeserializeCompact, SerializeCompact, Slot};

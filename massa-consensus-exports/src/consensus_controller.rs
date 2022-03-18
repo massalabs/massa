@@ -365,7 +365,7 @@ impl ConsensusCommandSender {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_staking_addresses", {});
         self.0
-            .send(ConsensusCommand::GetStakingAddressses(response_tx))
+            .send(ConsensusCommand::GetStakingAddresses(response_tx))
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError(

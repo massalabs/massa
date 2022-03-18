@@ -128,7 +128,7 @@ impl EventStore {
         self.operation_id_to_event_id.clear();
     }
 
-    /// Prune the exess of events from the event store,
+    /// Prune the excess of events from the event store,
     /// While there is a slot found, pop slots and get the `event_ids`
     /// inside, remove the event from divers containers.
     ///
@@ -215,7 +215,7 @@ impl EventStore {
     }
 
     /// get vec of event for given slot range (start included, end excluded)
-    /// Get events optionnally filtered by:
+    /// Get events optionally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address

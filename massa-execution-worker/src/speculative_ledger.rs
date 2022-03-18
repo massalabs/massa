@@ -121,7 +121,7 @@ impl SpeculativeLedger {
                 .ok_or_else(|| ExecutionError::RuntimeError("source address not found".into()))?
                 .checked_sub(amount)
                 .ok_or_else(|| {
-                    ExecutionError::RuntimeError("unsufficient from_addr balance".into())
+                    ExecutionError::RuntimeError("insufficient from_addr balance".into())
                 })?;
             changes.set_parallel_balance(from_addr, new_balance);
         }
@@ -170,7 +170,7 @@ impl SpeculativeLedger {
         addr: Address,
         bytecode: Vec<u8>,
     ) -> Result<(), ExecutionError> {
-        // set bytecode (create if non-existant)
+        // set bytecode (create if do not exist)
         self.added_changes.set_bytecode(addr, bytecode);
         Ok(())
     }

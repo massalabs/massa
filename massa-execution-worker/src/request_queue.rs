@@ -46,7 +46,7 @@ impl<T, R> RequestWithResponseSender<T, R> {
 
 /// Structure representing an execution request queue with maximal length.
 /// Each request is a RequestWithResponseSender that comes with an MPSC sender
-/// to return the exection result when the execution is over (or an error).
+/// to return the execution result when the execution is over (or an error).
 pub(crate) struct RequestQueue<T, R> {
     /// Max number of item in the queue.
     /// When the queue is full, extra new items are cancelled and dropped.

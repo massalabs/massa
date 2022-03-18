@@ -27,7 +27,7 @@ pub trait ExecutionController: Send + Sync {
         blockclique: Map<BlockId, Block>,
     );
 
-    /// Get execution events optionnally filtered by:
+    /// Get execution events optionally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address

@@ -42,7 +42,7 @@ fn spawn_node(timeout: Duration) -> JoinHandle<String> {
             .args(["run", "--features", "test"])
             .current_dir("../massa-node")
             // TODO: .env("MASSA_CONFIG_PATH", "../massa-node/src/tests/config.toml");
-            // use custom wallet / staking adresses / peers to not pollute user files
+            // use custom wallet / staking addresses / peers to not pollute user files
             .timeout(timeout)
             .assert()
             .get_output()
@@ -60,7 +60,7 @@ async fn test_run_node() {
     let output = send_cmd_with_output::<NodeStatus>("get_status")
         .await
         .unwrap();
-    // TODO: assert_eq! or try a REGEX against the receved output to validate it
+    // TODO: assert_eq! or try a REGEX against the received output to validate it
     println!("{}", output);
 
     ////////////////////////////////////////////////////

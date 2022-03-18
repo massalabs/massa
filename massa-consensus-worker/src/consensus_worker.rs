@@ -36,7 +36,7 @@ use tracing::{debug, info, warn};
 pub struct ConsensusWorker {
     /// Consensus Configuration
     cfg: ConsensusConfig,
-    /// Genesis blocks werecreated with that public key.
+    /// Genesis blocks will be created with that public key.
     genesis_public_key: PublicKey,
     // Associated channels, sender and receivers
     channels: ConsensusWorkerChannels,
@@ -345,7 +345,7 @@ impl ConsensusWorker {
                     Ok(b_draw) => Some(b_draw),
                     Err(ProofOfStakeError::PosCycleUnavailable(_)) => {
                         massa_trace!(
-                            "consensus.consensus_worker.slot_tick.block_creatorunavailable",
+                            "consensus.consensus_worker.slot_tick.block_creator_unavailable",
                             {}
                         );
                         warn!("desynchronization detected because the lookback cycle is not final at the current time");
@@ -641,7 +641,7 @@ impl ConsensusWorker {
     /// Manages given consensus command.
     ///
     /// # Argument
-    /// * cmd: consens command to process
+    /// * cmd: consensus command to process
     async fn process_consensus_command(&mut self, cmd: ConsensusCommand) -> Result<()> {
         match cmd {
             ConsensusCommand::GetBlockGraphStatus {
@@ -865,7 +865,7 @@ impl ConsensusWorker {
                 self.dump_staking_keys().await;
                 Ok(())
             }
-            ConsensusCommand::GetStakingAddressses(response_tx) => {
+            ConsensusCommand::GetStakingAddresses(response_tx) => {
                 massa_trace!(
                     "consensus.consensus_worker.process_consensus_command.get_staking_addresses",
                     {}
@@ -1139,7 +1139,7 @@ impl ConsensusWorker {
                         );
                     } else {
                         // not found in consensus
-                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensu_not_found", { "hash": block_hash});
+                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_not_found", { "hash": block_hash});
                         results.insert(block_hash, None);
                     }
                 }
@@ -1293,7 +1293,7 @@ impl ConsensusWorker {
                     None => continue,
                 };
                 if self.endorsed_slots.contains(&block_slot) {
-                    // skip already endorsed (to prevent double stake pernalty)
+                    // skip already endorsed (to prevent double stake penalty)
                     continue;
                 }
                 // check that the block to endorse is at most one period before the last slot

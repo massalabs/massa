@@ -207,7 +207,7 @@ impl LedgerChanges {
 
                     // The entry is being updated
                     SetUpdateOrDelete::Update(u) => {
-                        // Make sure the update sets the paralell balance of the entry to its new value
+                        // Make sure the update sets the parallel balance of the entry to its new value
                         u.parallel_balance = SetOrKeep::Set(balance);
                     }
 
@@ -336,7 +336,7 @@ impl LedgerChanges {
         }
     }
 
-    /// Tries to return wherther a datastore entry exists for a given address,
+    /// Tries to return whether a datastore entry exists for a given address,
     /// or gets it from a function if the datastore entry's status is unknown.
     ///
     /// This function is used as an optimization:
@@ -393,14 +393,14 @@ impl LedgerChanges {
 
     /// Set a datastore entry for a given address.  
     /// If the address doesn't exist, its ledger entry is created.
-    /// If the datasotre entry exists, its value is replaced, otherwise it is created.
+    /// If the datastore entry exists, its value is replaced, otherwise it is created.
     ///
     /// # Arguments
     /// * addr: target address
     /// * key: datastore key
     /// * data: datastore value to set
     pub fn set_data_entry(&mut self, addr: Address, key: Hash, data: Vec<u8>) {
-        // Get the changes being applied to the ledgr entry associated to that address
+        // Get the changes being applied to the ledger entry associated to that address
         match self.0.entry(addr) {
             // There are changes currently being applied to the ledger entry
             hash_map::Entry::Occupied(mut occ) => {

@@ -1,4 +1,4 @@
-//! DEFAULT VALUES USED TO INITIALISE DIVERS CONFIGURATIONS STRUCTURES
+//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
 //! # Default hardcoded
@@ -7,11 +7,11 @@
 //! implementation of each object take the default Values from the following
 //! file.
 //!
-//! These values are the hardcoded values that make sens to never be modifyed
+//! These values are the hardcoded values that make sens to never be modified
 //! by a user. Generally, this values are passed with dependency injection in a `cfg`
-//! parameter for each worker, that is conveniant for unit tests.
+//! parameter for each worker, that is convenient for unit tests.
 //!
-//! A parralell file with the same const definitions exist for the testing case.
+//! A parallel file with the same const definitions exist for the testing case.
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use crate::{Amount, Version};
 use massa_signature::PrivateKey;

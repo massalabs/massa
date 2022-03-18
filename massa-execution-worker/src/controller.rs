@@ -59,7 +59,7 @@ impl ExecutionInputData {
 /// implementation of the execution controller
 pub struct ExecutionControllerImpl {
     /// input data to process in the VM loop
-    /// with a wakeup condition variable that needs to be triggered when the data changes
+    /// with a wake-up condition variable that needs to be triggered when the data changes
     pub(crate) input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     /// current execution state (see execution.rs for details)
     pub(crate) execution_state: Arc<RwLock<ExecutionState>>,
@@ -93,7 +93,7 @@ impl ExecutionController for ExecutionControllerImpl {
         self.input_data.0.notify_one(); // wake up VM loop
     }
 
-    /// Get the generated execution events, optionnally filtered by:
+    /// Get the generated execution events, optionally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address
@@ -130,7 +130,7 @@ impl ExecutionController for ExecutionControllerImpl {
     }
 
     /// Executes a readonly request
-    /// Read-only requests do not modify consesnsus state
+    /// Read-only requests do not modify consensus state
     fn execute_readonly_request(
         &self,
         req: ReadOnlyExecutionRequest,
@@ -138,7 +138,7 @@ impl ExecutionController for ExecutionControllerImpl {
         let resp_rx = {
             let mut input_data = self.input_data.1.lock();
 
-            // if the read-onlyi queue is already full, return an error
+            // if the read-only queue is already full, return an error
             if input_data.readonly_requests.is_full() {
                 return Err(ExecutionError::ChannelError(
                     "too many queued readonly requests".into(),
@@ -184,7 +184,7 @@ impl ExecutionController for ExecutionControllerImpl {
 /// Allows stopping the execution worker
 pub struct ExecutionManagerImpl {
     /// input data to process in the VM loop
-    /// with a wakeup condition variable that needs to be triggered when the data changes
+    /// with a wake-up condition variable that needs to be triggered when the data changes
     pub(crate) input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     /// handle used to join the worker thread
     pub(crate) thread_handle: Option<std::thread::JoinHandle<()>>,

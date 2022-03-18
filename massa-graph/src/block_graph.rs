@@ -107,10 +107,10 @@ enum BlockStatus {
         header_or_block: HeaderOrBlock,
         /// includes self if it's only a header
         unsatisfied_dependencies: Set<BlockId>,
-        /// Used to limit and sort the number of blocks/headers wainting for dependencies
+        /// Used to limit and sort the number of blocks/headers waiting for dependencies
         sequence_number: u64,
     },
-    /// The block was checked and incluced in the blockgraph
+    /// The block was checked and included in the blockgraph
     Active(Box<ActiveBlock>),
     /// The block was discarded and is kept to avoid reprocessing it
     Discarded {
@@ -118,7 +118,7 @@ enum BlockStatus {
         header: SignedHeader,
         /// why it was discarded
         reason: DiscardReason,
-        /// Used to limit and sort the number of blocks/headers wainting for dependencies
+        /// Used to limit and sort the number of blocks/headers waiting for dependencies
         sequence_number: u64,
     },
 }
@@ -251,7 +251,7 @@ pub struct BlockGraphExport {
     pub active_blocks: Map<BlockId, ExportCompiledBlock>,
     /// Finite cache of discarded blocks, in exported version.
     pub discarded_blocks: Map<BlockId, (DiscardReason, SignedHeader)>,
-    /// Best parents hashe in each thread.
+    /// Best parents hashes in each thread.
     pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
     pub latest_final_blocks_periods: Vec<(BlockId, u64)>,
@@ -278,7 +278,7 @@ pub struct BlockGraph {
     sequence_counter: u64,
     /// Every block we know about
     block_statuses: Map<BlockId, BlockStatus>,
-    /// Ids of incomming blocks/headers
+    /// Ids of incoming blocks/headers
     incoming_index: Set<BlockId>,
     /// ids of waiting for slot blocks/headers
     waiting_for_slot_index: Set<BlockId>,
@@ -395,7 +395,7 @@ enum BlockOperationsCheckOutcome {
 /// # Arguments
 /// * cfg: consensus configuration
 /// * serialization_context: ref to a SerializationContext instance
-/// * thread_number: thread in wich we want a genesis block
+/// * thread_number: thread in which we want a genesis block
 pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> Result<(BlockId, Block)> {
     let private_key = cfg.genesis_key;
     let public_key = derive_public_key(&private_key);

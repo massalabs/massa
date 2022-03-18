@@ -17,7 +17,7 @@ use tokio::sync::oneshot;
 
 use crate::{error::ConsensusResult as Result, ConsensusError, SelectionDraws};
 
-/// Commands that can be proccessed by consensus.
+/// Commands that can be processed by consensus.
 #[derive(Debug)]
 pub enum ConsensusCommand {
     /// Returns through a channel current blockgraph without block operations.
@@ -61,7 +61,7 @@ pub enum ConsensusCommand {
     GetActiveStakers(oneshot::Sender<Map<Address, u64>>),
     RegisterStakingPrivateKeys(Vec<PrivateKey>),
     RemoveStakingAddresses(Set<Address>),
-    GetStakingAddressses(oneshot::Sender<Set<Address>>),
+    GetStakingAddresses(oneshot::Sender<Set<Address>>),
     GetStakersProductionStats {
         addrs: Set<Address>,
         response_tx: oneshot::Sender<Vec<StakersCycleProductionStats>>,

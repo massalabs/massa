@@ -30,7 +30,7 @@ pub fn assert_eq_ledger_entry(v1: &LedgerEntry, v2: &LedgerEntry) {
     for k in v1.datastore.keys() {
         let itm1 = v1.datastore.get(k).unwrap();
         let itm2 = v2.datastore.get(k).expect("datastore key mismatch");
-        assert_eq!(itm1, itm2, "datasore entry mismatch");
+        assert_eq!(itm1, itm2, "datastore entry mismatch");
     }
 }
 

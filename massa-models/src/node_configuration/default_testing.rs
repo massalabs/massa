@@ -1,4 +1,4 @@
-//! DEFAULT VALUES USED TO INITIALISE DIVERS CONFIGURATIONS STRUCTURES
+//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //! Same as default constants but in testing mode. You can access to them with
 //! the `testing` feature activated.
 //!
@@ -8,9 +8,9 @@
 //! implementation of each object take the default Values from the following
 //! file.
 //!
-//! These values are the hardcoded values that make sens to never be modifyed
+//! These values are the hardcoded values that make sens to never be modified
 //! by a user. Generally, this values are passed with dependency injection in a `cfg`
-//! parameter for each worker, that is conveniant for unit tests.
+//! parameter for each worker, that is convenient for unit tests.
 //!
 //! See `./default.rs` for more documentation about each constants
 //!
@@ -43,9 +43,9 @@ lazy_static::lazy_static! {
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = None;
-    // Be carefull:
+    // Be careful:
     // The `GENESIS_TIMESTAMP` shouldn't be used as it in test because if you start the full test
-    // process, the first use is effectivelly `MassaTime::now().unwrap()` but will be outdated for
+    // process, the first use is effectively `MassaTime::now().unwrap()` but will be outdated for
     // the latest test. That's the reason why we choose to reset it each time we get a ConsensusConfig.
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(1, 1);
     pub static ref VERSION: Version = "DEVE.0.0".parse().unwrap();
@@ -117,7 +117,7 @@ pub const FUTURE_BLOCK_PROCESSING_MAX_PERIODS: u64 = 10;
 pub const LEDGER_CACHE_CAPACITY: u64 = 1_000_000;
 pub const LEDGER_RESET_AT_STARTUP: bool = true;
 pub const MAX_DEPENDENCY_BLOCK: usize = 10;
-pub const MAX_DISCARED_BLOCKS: usize = 10;
+pub const MAX_DISCARDED_BLOCKS: usize = 10;
 pub const MAX_FUTURE_PROCESSING_BLOCK: usize = 10;
 pub const MAX_ITEM_RETURN_COUNT: usize = 1000;
 pub const MAX_OPERATION_FILL_ATTEMPTS: u32 = 6;

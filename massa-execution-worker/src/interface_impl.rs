@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
-//! This allows the VM runtime to acceess the Massa execution context,
+//! This allows the VM runtime to access the Massa execution context,
 //! for example to interact with the ledger.
 //! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
@@ -270,7 +270,7 @@ impl Interface for InterfaceImpl {
         Ok(context.has_data_entry(&addr, &key))
     }
 
-    /// Hashses arbitrary data
+    /// Hashes arbitrary data
     ///
     /// # Arguments
     /// * data: data bytes to hash
@@ -350,7 +350,7 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    /// Returns the list of owned adresses (top of the call stack).
+    /// Returns the list of owned addresses (top of the call stack).
     /// Those addresses are the ones the current execution context has write access to,
     /// typically it includes the current address itself,
     /// but also the ones that were created previously by the current call to allow initializing them.
@@ -378,7 +378,7 @@ impl Interface for InterfaceImpl {
             .collect())
     }
 
-    /// Gets the amount of coins that have been ransferred at the beginning of the call.
+    /// Gets the amount of coins that have been transferred at the beginning of the call.
     /// See the init_call method.
     ///
     /// # Returns
