@@ -7,6 +7,8 @@ use massa_ledger::LedgerEntry;
 use massa_models::{Address, Slot};
 use std::collections::BTreeMap;
 
+// note: update of test_exports has not been done yet
+
 /// creates a final state bootstrap from components
 pub fn make_bootstrap_state(
     slot: Slot,
@@ -17,8 +19,6 @@ pub fn make_bootstrap_state(
         ledger: massa_ledger::test_exports::make_bootstrap_state(sorted_ledger),
     }
 }
-
-// note: update has not been done yet
 
 /// asserts that two FinalStateBootstrap are equal
 pub fn assert_eq_final_state_bootstrap(v1: &FinalStateBootstrap, v2: &FinalStateBootstrap) {

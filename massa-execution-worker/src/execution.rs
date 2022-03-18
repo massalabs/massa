@@ -10,6 +10,7 @@
 
 use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;
+use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
     ReadOnlyExecutionRequest,
@@ -328,52 +329,40 @@ impl ExecutionState {
         Ok(())
     }
 
-    /// Try executing a batch of asynchronous messages
+    /// Try executing an asynchronous message
     /// Assumes the execution context was initialized at the beginning of the slot.
     ///
     /// # Arguments
-    /// * slot: slot to execute
-    pub fn try_execute_async_messages(&self, slot: Slot) {
-        // question n1 : should executing a message credit coins to the executer?
+    /// * message: message information
+    /// * module: web assembly module
+    pub fn try_execute_async_message(
+        &self,
+        message: AsyncMessage,
+        module: Vec<u8>,
+    ) -> Result<(), ExecutionError> {
+        // question n2 : should executing a message credit coins to the executer?
 
         let context_snapshot;
-        let iter = {
+        {
             let context = context_guard!(self);
+            // note: set context values here
             context_snapshot = context.get_snapshot();
-
-            let messages = self
-                .final_state
-                .write()
-                .async_pool
-                .take_batch_to_executte(slot, context.max_gas);
-            // question n2 : shouldn't the above available_gas be coming from a config or something like it?
-            // maybe it should be in the async pool config?
-            // also I don't see anything else to do with the context than saving the snapshot
-            // and initializing the max_gas but don't get where to take it from
-            let mut modules: Vec<Vec<u8>> = Vec::with_capacity(messages.len());
-            for message in &messages {
-                modules.push(context.get_bytecode(&message.destination).unwrap());
-            }
-            messages.into_iter().zip(modules)
-        };
-        for (message, module) in iter {
-            match std::str::from_utf8(&message.data) {
-                Ok(param) => {
-                    if let Err(_) = massa_sc_runtime::run_function(
-                        &module,
-                        message.max_gas,
-                        &message.handler,
-                        param,
-                        &*self.execution_interface,
-                    ) {
-                        // handler function execution failed
-                        // reset the context to the previously saved snapshot
-                        // context_guard!(self).reset_to_snapshot(context_snapshot);
-                        // note: this is bad need to rethink it
-                    }
-                }
-                Err(_) => println!("reimburse"),
-            }
+        }
+        if let Err(err) = massa_sc_runtime::run_function(
+            &module,
+            message.max_gas,
+            &message.handler,
+            std::str::from_utf8(&message.data).unwrap_or_default(),
+            &*self.execution_interface,
+        ) {
+            // note: make reimbursement here
+            context_guard!(self).reset_to_snapshot(context_snapshot);
+            Err(ExecutionError::RuntimeError(format!(
+                "bytecode execution error: {}",
+                err
+            )))
+        } else {
+            Ok(())
         }
     }
 
@@ -406,12 +395,32 @@ impl ExecutionState {
 
         // note that here, some pre-operations (like crediting block producers) can be performed before the lock
 
-        // apply the created execution context for slot execution
-        *context_guard!(self) = execution_context;
+        // take a lock on the context
+        let mut context = context_guard!(self);
 
         // try executing asynchronous messages
-        // note: send context lock to avoid taking a new lock?
-        self.try_execute_async_messages(slot);
+        let iter = {
+            // apply the created execution context for slot execution
+            *context = execution_context;
+
+            let messages = self
+                .final_state
+                .write()
+                .async_pool
+                .take_batch_to_executte(slot, context.max_gas);
+            // question n1 : shouldn't the above available_gas be coming from a config or something like it?
+            // maybe it should be in the async pool config?
+            let mut modules: Vec<Vec<u8>> = Vec::with_capacity(messages.len());
+            for message in &messages {
+                modules.push(context.get_bytecode(&message.destination).unwrap());
+            }
+            messages.into_iter().zip(modules)
+        };
+        for (message, module) in iter {
+            if let Err(err) = self.try_execute_async_message(message, module) {
+                debug!("failed executing message: {}", err);
+            }
+        }
 
         // check if there is a block at this slot
         if let (Some((block_id, block)), Some(block_creator_addr)) =
