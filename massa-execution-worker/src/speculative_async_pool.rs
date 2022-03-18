@@ -6,9 +6,9 @@
 //! which and keeps track of all the changes that
 //! were applied to it since its creation.
 
-use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges};
-use massa_final_state::{FinalState, StateChanges};
-use massa_models::{amount, Amount, Slot};
+use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
+use massa_final_state::FinalState;
+use massa_models::Slot;
 use parking_lot::RwLock;
 use std::sync::Arc;
 

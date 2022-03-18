@@ -10,7 +10,7 @@ use crate::{
     state_changes::StateChanges,
 };
 use massa_async_pool::AsyncPool;
-use massa_ledger::{FinalLedger, Applicable};
+use massa_ledger::{Applicable, FinalLedger};
 use massa_models::Slot;
 use std::collections::VecDeque;
 
@@ -65,7 +65,10 @@ impl FinalState {
         FinalState {
             slot: state.slot,
             ledger: FinalLedger::from_bootstrap_state(config.ledger_config.clone(), state.ledger),
-            async_pool: AsyncPool::from_bootstrap_snapshot(config.async_pool_config.clone(), state.async_pool),
+            async_pool: AsyncPool::from_bootstrap_snapshot(
+                config.async_pool_config.clone(),
+                state.async_pool,
+            ),
             config,
             changes_history: Default::default(), // no changes in history
         }
@@ -104,11 +107,12 @@ impl FinalState {
             }
             self.changes_history.push_back((slot, changes));
         }
-        
+
         // iter on the changes history from oldest to newest and apply
         for (_, change) in std::mem::take(&mut self.changes_history) {
             self.ledger.apply(change.ledger_changes);
-            self.async_pool.apply_changes_unchecked(change.async_pool_changes);
+            self.async_pool
+                .apply_changes_unchecked(change.async_pool_changes);
         }
     }
 }

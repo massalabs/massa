@@ -97,10 +97,10 @@ mod message;
 mod pool;
 
 pub use bootstrap::AsyncPoolBootstrap;
+pub use changes::AsyncPoolChanges;
 pub use config::AsyncPoolConfig;
 pub use message::AsyncMessage;
 pub use pool::AsyncPool;
-pub use changes::AsyncPoolChanges;
 
 #[cfg(test)]
 mod tests;

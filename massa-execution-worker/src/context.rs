@@ -7,8 +7,8 @@
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the conensus state.
 
-use crate::speculative_ledger::SpeculativeLedger;
 use crate::speculative_async_pool::SpeculativeAsyncPool;
+use crate::speculative_ledger::SpeculativeLedger;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest,
@@ -435,7 +435,8 @@ impl ExecutionContext {
     }
 
     // note: needs doc
-    pub fn compute_new_messages(&mut self) -> Vec<AsyncMessage> {
-        self.speculative_async_pool.compute_and_add_changes(self.slot)
+    pub fn compute_slot_messages(&mut self) -> Vec<AsyncMessage> {
+        self.speculative_async_pool
+            .compute_and_add_changes(self.slot)
     }
 }

@@ -18,7 +18,7 @@ use massa_final_state::{FinalState, StateChanges};
 use massa_ledger::{Applicable, LedgerEntry, SetUpdateOrDelete};
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
-use massa_models::{Address, Amount, BlockId, OperationId, OperationType, SignedOperation};
+use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
 use massa_models::{Block, Slot};
 use massa_sc_runtime::Interface;
 use parking_lot::{Mutex, RwLock};
@@ -328,7 +328,7 @@ impl ExecutionState {
         Ok(())
     }
 
-    /// Try executing an asynchronous message
+    /// Try executing a batch of asynchronous messages
     /// Assumes the execution context was initialized at the beginning of the slot.
     ///
     /// # Arguments
@@ -359,7 +359,7 @@ impl ExecutionState {
         for (message, module) in iter {
             match std::str::from_utf8(&message.data) {
                 Ok(param) => {
-                    if let Err(e) = massa_sc_runtime::run_function(
+                    if let Err(_) = massa_sc_runtime::run_function(
                         &module,
                         message.max_gas,
                         &message.handler,
@@ -368,7 +368,8 @@ impl ExecutionState {
                     ) {
                         // handler function execution failed
                         // reset the context to the previously saved snapshot
-                        context.reset_to_snapshot(context_snapshot);
+                        // context_guard!(self).reset_to_snapshot(context_snapshot);
+                        // note: this is bad need to rethink it
                     }
                 }
                 Err(_) => println!("reimburse"),
@@ -429,16 +430,20 @@ impl ExecutionState {
         }
 
         let mut context = context_guard!(self);
-        // compute new messages
-        let reimbursement_messages = context.compute_new_messages();
+        // compute new messages and reimburse senders of removed messages
+        let reimbursement_messages = context.compute_slot_messages();
         for msg in reimbursement_messages {
-            // note: use safe amount computing functions
-            let amount =
-                Amount::from_raw(msg.max_gas * msg.gas_price.to_raw() + msg.coins.to_raw());
-            // note: the following unwrap is not ideal - use warning (no crash)
-            context
-                .transfer_parallel_coins(None, Some(msg.sender), amount)
-                .unwrap();
+            if let Some(amount) = msg
+                .gas_price
+                .checked_mul_u64(msg.max_gas)
+                .and_then(|x| Some(x.saturating_add(msg.coins)))
+            {
+                if let Err(e) = context.transfer_parallel_coins(None, Some(msg.sender), amount) {
+                    debug!("reimbursement of {} failed: {}", msg.sender, e);
+                }
+            } else {
+                debug!("the total amount hit the limit overflow, coins transfer will be rejected");
+            }
         }
         // return the execution output
         context.take_execution_output()

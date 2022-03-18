@@ -2,8 +2,8 @@
 
 //! This file provides structures representing changes to the final state
 
-use massa_ledger::LedgerChanges;
 use massa_async_pool::AsyncPoolChanges;
+use massa_ledger::LedgerChanges;
 
 /// represents changes that can be applied to the execution state
 #[derive(Default, Debug, Clone)]
