@@ -10,7 +10,7 @@ use crate::{
     state_changes::StateChanges,
 };
 use massa_async_pool::AsyncPool;
-use massa_ledger::FinalLedger;
+use massa_ledger::{FinalLedger, Applicable};
 use massa_models::Slot;
 use std::collections::VecDeque;
 
@@ -84,7 +84,7 @@ impl FinalState {
     /// Once this is called, the state is attached at the output of the provided slot.
     ///
     /// Panics if the new slot is not the one coming just after the current one.
-    pub fn settle_slot(&mut self, slot: Slot, changes: StateChanges) {
+    pub fn finalize(&mut self, slot: Slot, changes: StateChanges) {
         // check slot consistency
         let next_slot = self
             .slot
@@ -103,6 +103,12 @@ impl FinalState {
                 self.changes_history.pop_front();
             }
             self.changes_history.push_back((slot, changes));
+        }
+        
+        // iter on the changes history from oldest to newest and apply
+        for (_, change) in std::mem::take(&mut self.changes_history) {
+            self.ledger.apply(change.ledger_changes);
+            self.async_pool.apply_changes_unchecked(change.async_pool_changes);
         }
     }
 }

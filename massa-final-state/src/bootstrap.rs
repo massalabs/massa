@@ -30,6 +30,9 @@ impl SerializeCompact for FinalStateBootstrap {
         // final ledger
         res.extend(self.ledger.to_bytes_compact()?);
 
+        // final async pool
+        res.extend(self.async_pool.to_bytes_compact()?);
+
         Ok(res)
     }
 }

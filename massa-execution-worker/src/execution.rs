@@ -110,7 +110,7 @@ impl ExecutionState {
         // apply state changes to the final ledger
         self.final_state
             .write()
-            .settle_slot(exec_out.slot, exec_out.state_changes);
+            .finalize(exec_out.slot, exec_out.state_changes);
         // update the final ledger's slot
         self.final_cursor = exec_out.slot;
 
@@ -358,27 +358,43 @@ impl ExecutionState {
         // note that here, some pre-operations (like crediting block producers) can be performed before the lock
 
         // apply the created execution context for slot execution
-        *context_guard!(self) = execution_context;
 
-        // execute async operations
-        let messages = self
-            .final_state
-            .write()
-            .async_pool
-            .take_batch_to_executte(slot, context_guard!(self).max_gas);
-        for m in messages {
+        // note: handle context
+        // note: create try_execute_async_message
+
+        let both = {
+            let mut save = context_guard!(self);
+
+            *save = execution_context;
+
+            // execute async operations
+            let messages = self
+                .final_state
+                .write()
+                .async_pool
+                .take_batch_to_executte(slot, save.max_gas);
+            let mut save2 = Vec::with_capacity(messages.len());
+            for m in &messages {
+                save2.push(save.get_bytecode(&m.destination).unwrap_or_default());
+            }
+            (messages, save2)
+        };
+        // note: remove all unwraps
+        for m in both.0 {
             massa_sc_runtime::run_function(
                 &context_guard!(self)
                     .get_bytecode(&m.destination)
                     .unwrap_or(Vec::new()),
                 m.max_gas,
                 &m.handler,
-                // we know these bytes are valid
+                // we know these bytes are valid - bad idea - if not -> no exec and reimburse
                 std::str::from_utf8(&m.data).unwrap(),
                 &*self.execution_interface,
             )
             .unwrap();
         }
+
+        // note: here reset to snapshot
 
         // check if there is a block at this slot
         if let (Some((block_id, block)), Some(block_creator_addr)) =
@@ -398,11 +414,15 @@ impl ExecutionState {
 
         let mut context = context_guard!(self);
         // compute new messages
-        let mut reimbursement_messages = context.compute_new_messages();
+        let reimbursement_messages = context.compute_new_messages();
         for msg in reimbursement_messages {
-            let amount = Amount::from_raw(msg.max_gas * msg.gas_price.to_raw() + msg.coins.to_raw());
-            // note: the following unwrap is not ideal
-            context.transfer_parallel_coins(Some(msg.sender), Some(msg.destination), amount).unwrap();
+            // note: use safe amount computing functions
+            let amount =
+                Amount::from_raw(msg.max_gas * msg.gas_price.to_raw() + msg.coins.to_raw());
+            // note: the following unwrap is not ideal - use warning (no crash)
+            context
+                .transfer_parallel_coins(None, Some(msg.sender), amount)
+                .unwrap();
         }
         // return the execution output
         context.take_execution_output()

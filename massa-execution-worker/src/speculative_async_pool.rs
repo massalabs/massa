@@ -39,7 +39,7 @@ impl SpeculativeAsyncPool {
 
     pub fn compute_and_add_changes(&mut self, slot: Slot) -> Vec<AsyncMessage> {
         let mut pool_copy = self.final_state.read().async_pool.clone();
-        pool_copy.apply_changes_unchecked(&self.previous_changes);
+        pool_copy.apply_changes_unchecked(std::mem::take(&mut self.previous_changes));
         for msg in &self.new_messages {
             // note: message is not pushed if mul overflows
             // not sure if it is the right way to handle this

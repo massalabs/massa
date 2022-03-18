@@ -61,7 +61,7 @@ impl AsyncPool {
     ///
     /// # arguments
     /// * changes: AsyncPoolChanges listing all async pool changes (message insertions/deletions)
-    pub fn apply_changes_unchecked(&mut self, changes: &AsyncPoolChanges) {
+    pub fn apply_changes_unchecked(&mut self, changes: AsyncPoolChanges) {
         for change in changes.0.iter() {
             match change {
                 // add a new message to the pool
