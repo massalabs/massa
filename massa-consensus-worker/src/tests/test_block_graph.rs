@@ -58,6 +58,12 @@ fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
         operations: vec![],
     };
 
+    let block_id = block
+        .header
+        .content
+        .compute_id()
+        .expect("Fail to calculate block id");
+
     (
         block.clone(),
         ExportActiveBlock {
@@ -73,6 +79,7 @@ fn get_export_active_test_block() -> (Block, ExportActiveBlock) {
             .into_iter()
             .collect(),
             block,
+            block_id,
             children: vec![vec![
                 (get_dummy_block_id("child11"), 31),
                 (get_dummy_block_id("child11"), 31),
@@ -187,6 +194,7 @@ pub async fn test_get_ledger_at_parents() {
     let (hash_genesist1, block_genesist1) = create_genesis_block(&graph_cfg, 1).unwrap();
     let export_genesist0 = ExportActiveBlock {
         block: block_genesist0,
+        block_id: hash_genesist0,
         parents: vec![],  // one (hash, period) per thread ( if not genesis )
         children: vec![], // one HashMap<hash, period> per thread (blocks that need to be kept)
         dependencies: Default::default(), // dependencies required for validity check
@@ -197,6 +205,7 @@ pub async fn test_get_ledger_at_parents() {
     };
     let export_genesist1 = ExportActiveBlock {
         block: block_genesist1,
+        block_id: hash_genesist1,
         parents: vec![],  // one (hash, period) per thread ( if not genesis )
         children: vec![], // one HashMap<hash, period> per thread (blocks that need to be kept)
         dependencies: Default::default(), // dependencies required for validity check

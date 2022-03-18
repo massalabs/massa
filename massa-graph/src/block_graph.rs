@@ -567,6 +567,7 @@ impl BlockGraph {
                     b_id,
                     ExportActiveBlock {
                         block: stored_block,
+                        block_id: b_id,
                         parents: a_block.parents.clone(),
                         children: a_block.children.clone(),
                         dependencies: a_block.dependencies.clone(),

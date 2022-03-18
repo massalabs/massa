@@ -462,7 +462,8 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
 
     //TODO: We currently lost information. Need to use shared storage
     let block1 = ExportActiveBlock {
-        block: block,
+        block,
+        block_id,
         parents: vec![
             (get_dummy_block_id("b1"), 4777),
             (get_dummy_block_id("b2"), 8870),
