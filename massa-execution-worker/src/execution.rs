@@ -359,42 +359,43 @@ impl ExecutionState {
 
         // apply the created execution context for slot execution
 
+        // START
         // note: handle context
         // note: create try_execute_async_message
+        let iter = {
+            let mut context_guard = context_guard!(self);
 
-        let both = {
-            let mut save = context_guard!(self);
+            *context_guard = execution_context;
 
-            *save = execution_context;
-
-            // execute async operations
             let messages = self
                 .final_state
                 .write()
                 .async_pool
-                .take_batch_to_executte(slot, save.max_gas);
-            let mut save2 = Vec::with_capacity(messages.len());
-            for m in &messages {
-                save2.push(save.get_bytecode(&m.destination).unwrap_or_default());
+                .take_batch_to_executte(slot, context_guard.max_gas);
+            let mut modules: Vec<Vec<u8>> = Vec::with_capacity(messages.len());
+            for message in &messages {
+                modules.push(
+                    context_guard
+                        .get_bytecode(&message.destination)
+                        .unwrap(),
+                );
             }
-            (messages, save2)
+            messages.into_iter().zip(modules)
         };
         // note: remove all unwraps
-        for m in both.0 {
+        for (message, module) in iter {
             massa_sc_runtime::run_function(
-                &context_guard!(self)
-                    .get_bytecode(&m.destination)
-                    .unwrap_or(Vec::new()),
-                m.max_gas,
-                &m.handler,
+                &module,
+                message.max_gas,
+                &message.handler,
                 // we know these bytes are valid - bad idea - if not -> no exec and reimburse
-                std::str::from_utf8(&m.data).unwrap(),
+                std::str::from_utf8(&message.data).unwrap(),
                 &*self.execution_interface,
             )
             .unwrap();
         }
-
         // note: here reset to snapshot
+        // END
 
         // check if there is a block at this slot
         if let (Some((block_id, block)), Some(block_creator_addr)) =
