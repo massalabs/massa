@@ -1,19 +1,20 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_models::prehash::BuildMap;
 use massa_models::{
     array_from_slice,
     constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES},
     operation::{OperationIds, Operations},
+    prehash::Set,
     signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
-    Endorsement, EndorsementId, ModelsError, OperationId, SerializeCompact,
-    SerializeVarInt, SignedEndorsement, SignedHeader, SignedOperation, Version, prehash::Set,
+    Endorsement, EndorsementId, ModelsError, OperationId, SerializeCompact, SerializeVarInt,
+    SignedEndorsement, SignedHeader, SignedOperation, Version,
 };
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
 use std::{convert::TryInto, net::IpAddr};
-use massa_models::prehash::BuildMap;
 
 /// All messages that can be sent or received.
 #[derive(Debug, Serialize, Deserialize)]
@@ -139,7 +140,7 @@ impl SerializeCompact for Message {
             }
             Message::Operations(operations) => {
                 res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());
-                serialize_operation_opt_map(&mut res, operations)?;
+                serialize_operations(&mut res, operations)?;
             }
             Message::Endorsements(endorsements) => {
                 res.extend(u32::from(MessageTypeId::Endorsements).to_varint_bytes());
@@ -153,17 +154,12 @@ impl SerializeCompact for Message {
     }
 }
 
-/// Tooling for the serialization of an `HashMap<OperationId, Option<Operation>>`
+/// Tooling for the serialization of [Operations]
 /// Order of th serialized data
 /// - 32 bit: size T of the complete hashmap
 /// - for each in the range `0..T`
-///     - `OPERATION_ID_SIZE_BYTES` bytes used for the operation id in (be)
-///     - 32 bit corresponds to state of the option, 0 is None, Some otherwise
-///     - operation in bytes compact (if option state != 0)
-fn serialize_operation_opt_map(
-    res: &mut Vec<u8>,
-    operations: &Operations,
-) -> Result<(), ModelsError> {
+///     - [SignedOperation] in bytes compact (if option state != 0)
+fn serialize_operations(res: &mut Vec<u8>, operations: &Operations) -> Result<(), ModelsError> {
     res.extend((operations.len() as u32).to_varint_bytes());
     for op in operations.iter() {
         res.extend(op.to_bytes_compact()?);
@@ -171,9 +167,8 @@ fn serialize_operation_opt_map(
     Ok(())
 }
 
-/// Deserialize a `HashMap<OperationId, Option<Operation>>` from a
-/// `buffer` starting from `cursor` position, serialized by
-/// `serialize_operation_opt_map()`.
+/// Deserialize [Operations] from a `buffer` starting from `cursor` position,
+/// serialized by [serialize_operations].
 fn deserialize_operations(
     buffer: &[u8],
     cursor: &mut usize,
@@ -182,13 +177,11 @@ fn deserialize_operations(
     let (length, delta) =
         u32::from_varint_bytes_bounded(&buffer[*cursor..], max_operations_per_message)?;
     *cursor += delta;
-    let mut ops: Operations =
-        Operations::with_capacity(length as usize);
+    let mut ops: Operations = Operations::with_capacity(length as usize);
     for _ in 0..length {
-            let (operation, delta) =
-                SignedOperation::from_bytes_compact(&buffer[*cursor..])?;
-            *cursor += delta;
-            ops.push(operation);
+        let (operation, delta) = SignedOperation::from_bytes_compact(&buffer[*cursor..])?;
+        *cursor += delta;
+        ops.push(operation);
     }
     Ok(ops)
 }
@@ -227,7 +220,8 @@ fn deserialize_operation_ids(
     let (length, delta) = u32::from_varint_bytes_bounded(&buffer[c..], max_operations_per_message)?;
     c += delta;
     // hash list
-    let mut list: OperationIds = Set::with_capacity_and_hasher(length as usize, BuildMap::default());
+    let mut list: OperationIds =
+        Set::with_capacity_and_hasher(length as usize, BuildMap::default());
     for _ in 0..length {
         let b_id = OperationId::from_bytes(&array_from_slice(&buffer[c..])?)?;
         c += OPERATION_ID_SIZE_BYTES;
