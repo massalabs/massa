@@ -6,13 +6,14 @@ use massa_models::{
     operation::{OperationIds, Operations},
     signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
-    Endorsement, EndorsementId, ModelsError, Operation, OperationId, SerializeCompact,
-    SerializeVarInt, SignedEndorsement, SignedHeader, SignedOperation, Version,
+    Endorsement, EndorsementId, ModelsError, OperationId, SerializeCompact,
+    SerializeVarInt, SignedEndorsement, SignedHeader, SignedOperation, Version, prehash::Set,
 };
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, convert::TryInto, net::IpAddr};
+use std::{convert::TryInto, net::IpAddr};
+use massa_models::prehash::BuildMap;
 
 /// All messages that can be sent or received.
 #[derive(Debug, Serialize, Deserialize)]
@@ -161,18 +162,11 @@ impl SerializeCompact for Message {
 ///     - operation in bytes compact (if option state != 0)
 fn serialize_operation_opt_map(
     res: &mut Vec<u8>,
-    operations: &HashMap<OperationId, Option<SignedOperation>>,
+    operations: &Operations,
 ) -> Result<(), ModelsError> {
     res.extend((operations.len() as u32).to_varint_bytes());
-    for (op_id, op_opt) in operations.iter() {
-        res.extend(op_id.to_bytes());
-        match op_opt {
-            Some(op) => {
-                res.extend(1u32.to_be_bytes());
-                res.extend(op.to_bytes_compact()?);
-            }
-            None => res.extend(0u32.to_be_bytes()),
-        };
+    for op in operations.iter() {
+        res.extend(op.to_bytes_compact()?);
     }
     Ok(())
 }
@@ -180,29 +174,21 @@ fn serialize_operation_opt_map(
 /// Deserialize a `HashMap<OperationId, Option<Operation>>` from a
 /// `buffer` starting from `cursor` position, serialized by
 /// `serialize_operation_opt_map()`.
-fn derialize_operation_opt_map(
+fn deserialize_operations(
     buffer: &[u8],
     cursor: &mut usize,
     max_operations_per_message: u32,
-) -> Result<HashMap<OperationId, Option<SignedOperation>>, ModelsError> {
+) -> Result<Operations, ModelsError> {
     let (length, delta) =
         u32::from_varint_bytes_bounded(&buffer[*cursor..], max_operations_per_message)?;
     *cursor += delta;
-    let mut ops: HashMap<OperationId, Option<SignedOperation>> =
-        HashMap::with_capacity(length as usize);
+    let mut ops: Operations =
+        Operations::with_capacity(length as usize);
     for _ in 0..length {
-        let id = OperationId::from_bytes(&array_from_slice(&buffer[*cursor..])?)?;
-        *cursor += OPERATION_ID_SIZE_BYTES;
-        let (opt_state, delta) = u32::from_varint_bytes(&buffer[*cursor..])?;
-        *cursor += delta;
-        if opt_state == 0 {
-            ops.insert(id, None);
-        } else {
-            let signed_op =
-                Signed::<Operation, OperationId>::from_bytes_compact(&buffer[*cursor..])?;
+            let (operation, delta) =
+                SignedOperation::from_bytes_compact(&buffer[*cursor..])?;
             *cursor += delta;
-            ops.insert(id, Some(signed_op.0));
-        }
+            ops.push(operation);
     }
     Ok(ops)
 }
@@ -236,16 +222,16 @@ fn deserialize_operation_ids(
     buffer: &[u8],
     cursor: &mut usize,
     max_operations_per_message: u32,
-) -> Result<Vec<OperationId>, ModelsError> {
+) -> Result<OperationIds, ModelsError> {
     let mut c = *cursor;
     let (length, delta) = u32::from_varint_bytes_bounded(&buffer[c..], max_operations_per_message)?;
     c += delta;
     // hash list
-    let mut list: Vec<OperationId> = Vec::with_capacity(length as usize);
+    let mut list: OperationIds = Set::with_capacity_and_hasher(length as usize, BuildMap::default());
     for _ in 0..length {
         let b_id = OperationId::from_bytes(&array_from_slice(&buffer[c..])?)?;
         c += OPERATION_ID_SIZE_BYTES;
-        list.push(b_id);
+        list.insert(b_id);
     }
     *cursor = c;
     Ok(list)
@@ -351,7 +337,7 @@ impl DeserializeCompact for Message {
                     cursor += BLOCK_ID_SIZE_BYTES;
                     Message::BlockNotFound(b_id)
                 }
-                MessageTypeId::Operations => Message::Operations(derialize_operation_opt_map(
+                MessageTypeId::Operations => Message::Operations(deserialize_operations(
                     buffer,
                     &mut cursor,
                     max_operations_per_message,

@@ -488,7 +488,7 @@ impl Operation {
 /// Set of operation ids
 pub type OperationIds = Set<OperationId>;
 /// Set of self containing both operation and operationid already signed.
-pub type Operations = HashSet<SignedOperation>;
+pub type Operations = Vec<SignedOperation>;
 
 /// Structure containing a Batch of `operation_ids` we would like to ask
 /// to a `node_id` now or later. Mainly used in protocol and translated into
