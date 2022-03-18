@@ -159,16 +159,17 @@ impl ProtocolCommandSender {
         res
     }
 
+    /// Propagate a batch of operation ids from pool.
     pub async fn propagate_operations(
         &mut self,
-        operations: OperationIds,
+        operation_ids: OperationIds,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
-            "operations": operations
+            "operations": operation_ids
         });
         let res = self
             .0
-            .send(ProtocolCommand::PropagateOperations(operations))
+            .send(ProtocolCommand::PropagateOperations(operation_ids))
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_operation command send error".into())
