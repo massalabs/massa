@@ -18,7 +18,7 @@ pub fn make_bootstrap_state(
     }
 }
 
-// note: update tests exports
+// note: update has not been done yet
 
 /// asserts that two FinalStateBootstrap are equal
 pub fn assert_eq_final_state_bootstrap(v1: &FinalStateBootstrap, v2: &FinalStateBootstrap) {

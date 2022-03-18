@@ -329,12 +329,11 @@ impl ExecutionState {
     }
 
     /// note: needs commentary
-    pub fn try_execute_async_message(&self, slot: Slot) {
+    pub fn try_execute_async_messages(&self, slot: Slot) {
         // note: handle context
         // note: create try_execute_async_message
         let iter = {
             let context_guard = context_guard!(self);
-
             let messages = self
                 .final_state
                 .write()
@@ -348,15 +347,20 @@ impl ExecutionState {
         };
         // note: remove all unwraps
         for (message, module) in iter {
-            massa_sc_runtime::run_function(
-                &module,
-                message.max_gas,
-                &message.handler,
-                // we know these bytes are valid - bad idea - if not -> no exec and reimburse
-                std::str::from_utf8(&message.data).unwrap(),
-                &*self.execution_interface,
-            )
-            .unwrap();
+            match std::str::from_utf8(&message.data) {
+                Ok(param) => {
+                    if let Err(e) = massa_sc_runtime::run_function(
+                        &module,
+                        message.max_gas,
+                        &message.handler,
+                        param,
+                        &*self.execution_interface,
+                    ) {
+                        println!("reimburse");
+                    }
+                }
+                Err(_) => println!("reimburse"),
+            }
         }
         // note: here reset to snapshot
     }
@@ -394,7 +398,7 @@ impl ExecutionState {
         *context_guard!(self) = execution_context;
 
         // try executing asynchronous messages
-        self.try_execute_async_message(slot);
+        self.try_execute_async_messages(slot);
 
         // check if there is a block at this slot
         if let (Some((block_id, block)), Some(block_creator_addr)) =
