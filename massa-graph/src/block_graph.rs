@@ -23,9 +23,8 @@ use massa_models::{
 };
 use massa_models::{clique::Clique, SerializeCompact};
 use massa_models::{
-    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockId, EndorsementId, Operation,
-    OperationId, OperationSearchResult, OperationSearchResultBlockStatus,
-    OperationSearchResultStatus, Slot,
+    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockId, EndorsementId, OperationId,
+    OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
 };
 use massa_proof_of_stake_exports::{
     error::ProofOfStakeError, OperationRollInterface, ProofOfStake,
@@ -1155,12 +1154,7 @@ impl BlockGraph {
         'outer: for b_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(b_id) {
                 if let Some(ops) = active_block.addresses_to_operations.get(address) {
-                    let block = self.storage.retrieve_block(&b_id).unwrap();
-                    // Clone operations once, take from the option later in the algorithm.
-                    let mut operations: Vec<Option<_>> = {
-                        let operations = block.read().block.operations.clone();
-                        operations.into_iter().map(|op| Some(op)).collect()
-                    };
+                    let block = self.storage.retrieve_block(b_id).unwrap();
                     for op in ops.iter() {
                         let (idx, _) = active_block.operation_set.get(op).ok_or_else(|| {
                             GraphError::ContainerInconsistency(format!("op {} should be here", op))
@@ -1168,7 +1162,7 @@ impl BlockGraph {
                         let search = OperationSearchResult {
                             op: block.read().block.operations[*idx].clone(),
                             in_pool: false,
-                            in_blocks: vec![(b_id.clone(), (*idx, active_block.is_final))]
+                            in_blocks: vec![(*b_id, (*idx, active_block.is_final))]
                                 .into_iter()
                                 .collect(),
                             status: OperationSearchResultStatus::InBlock(
@@ -2142,7 +2136,6 @@ impl BlockGraph {
                     let block = self.storage.retrieve_block(&cur_b.block_id).unwrap();
                     let stored_block = block.read();
                     stored_block.block.header.content.parents[header.content.slot.thread as usize]
-                        .clone()
                 };
 
                 // check if the parent in tauB has a strictly lower period number than B's parent in tauB
@@ -3644,7 +3637,7 @@ impl BlockGraph {
             .filter_map(|b_id| {
                 if let Some(a_b) = self.get_active_block(b_id) {
                     if a_b.is_final {
-                        return Some((a_b.slot.clone(), b_id.clone()));
+                        return Some((a_b.slot, *b_id));
                     }
                 }
                 None

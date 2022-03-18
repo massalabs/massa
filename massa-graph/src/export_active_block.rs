@@ -67,7 +67,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             children: a_block.children.clone(),
             dependencies: a_block.dependencies.clone(),
             descendants: Default::default(), // will be computed once the full graph is available
-            is_final: a_block.is_final.clone(),
+            is_final: a_block.is_final,
             block_ledger_changes: a_block.block_ledger_changes.clone(),
             operation_set,
             endorsement_ids,

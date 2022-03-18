@@ -9,8 +9,8 @@ use massa_models::{
     node::NodeId,
     prehash::{BuildMap, Map, Set},
     signed::Signable,
-    Address, Block, BlockId, EndorsementId, OperationId, OperationType, SignedEndorsement,
-    SignedHeader, SignedOperation,
+    Address, BlockId, EndorsementId, OperationId, OperationType, SignedEndorsement, SignedHeader,
+    SignedOperation,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
@@ -1138,17 +1138,12 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
         let (header, operations, operation_merkle_root, slot) = {
-            let stored_block = self.storage.retrieve_block(&block).unwrap();
+            let stored_block = self.storage.retrieve_block(block).unwrap();
             let stored_block = stored_block.read();
             (
                 stored_block.block.header.clone(),
                 stored_block.block.operations.clone(),
-                stored_block
-                    .block
-                    .header
-                    .content
-                    .operation_merkle_root
-                    .clone(),
+                stored_block.block.header.content.operation_merkle_root,
                 stored_block.block.header.content.slot,
             )
         };

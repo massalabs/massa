@@ -2,7 +2,7 @@
 
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::tools::protocol_test;
+use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_models::prehash::{Map, Set};
 use massa_models::signed::Signable;
 use massa_models::{BlockId, SerializeCompact};
@@ -351,13 +351,14 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
 async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
 
-    protocol_test(
+    protocol_test_with_storage(
         protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver| {
+                    protocol_pool_event_receiver,
+                    storage| {
             // Create 1 node.
             let mut nodes = create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -370,7 +371,11 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
 
             // 3. Send block to protocol.
             network_controller
-                .send_block(creator_node.id, expected_hash)
+                .send_block(
+                    creator_node.id,
+                    expected_hash,
+                    Some((block.clone(), storage)),
+                )
                 .await;
 
             // Check protocol sends block to consensus.

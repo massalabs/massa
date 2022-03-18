@@ -6,7 +6,7 @@ use massa_logging::massa_trace;
 use massa_models::prehash::{Map, Set};
 
 use massa_models::{
-    Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
+    BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
 };
 use massa_network_exports::NetworkEventReceiver;
 use serde::Serialize;

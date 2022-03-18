@@ -166,7 +166,9 @@ impl ExecutionState {
         // iterate over the output history, in chronological order
         for (hist_index, exec_output) in self.active_history.iter().enumerate() {
             // try to find the corresponding slot in active_slots
-            let found_block_id = active_slots.get(&exec_output.slot);
+            let found_block_id = active_slots
+                .get(&exec_output.slot)
+                .or_else(|| ready_final_slots.get(&exec_output.slot));
             if found_block_id == Some(&exec_output.block_id) {
                 // the slot number and block ID still match. Continue scanning
                 continue;

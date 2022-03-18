@@ -155,7 +155,7 @@ impl ConsensusWorker {
                 .filter_map(|block_id| {
                     block_db
                         .get_active_block(&block_id)
-                        .map(|a_block| (a_block.slot.clone(), block_id))
+                        .map(|a_block| (a_block.slot, block_id))
                 })
                 .collect(),
         );
@@ -599,7 +599,7 @@ impl ConsensusWorker {
         // TODO: remove clone, in https://github.com/massalabs/massa/pull/2304
         self.block_db
             .storage
-            .store_block(block_id.clone(), block.clone(), serialized_block);
+            .store_block(block_id, block.clone(), serialized_block);
 
         massa_trace!("create block", { "block": block });
         info!(
@@ -1211,7 +1211,7 @@ impl ConsensusWorker {
                     .filter_map(|b_id| {
                         if let Some(a_b) = self.block_db.get_active_block(&b_id) {
                             if a_b.is_final {
-                                return Some((a_b.slot.clone(), b_id));
+                                return Some((a_b.slot, b_id));
                             }
                         }
                         None
@@ -1223,7 +1223,7 @@ impl ConsensusWorker {
                     .filter_map(|block_id| {
                         self.block_db
                             .get_active_block(&block_id)
-                            .map(|a_block| (a_block.slot.clone(), block_id))
+                            .map(|a_block| (a_block.slot, block_id))
                     })
                     .collect(),
             );

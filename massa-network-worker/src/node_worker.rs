@@ -13,8 +13,8 @@ use massa_models::{
         NODE_SEND_CHANNEL_SIZE,
     },
     node::NodeId,
-    signed::{Signable, Signed},
-    Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation,
+    signed::Signable,
+    BlockId, SignedEndorsement, SignedHeader, SignedOperation,
 };
 use massa_models::{SerializeCompact, SerializeVarInt};
 use massa_network_exports::{ConnectionClosureReason, NetworkError, NetworkSettings};
