@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::node_info::NodeInfo;
+use std::time::Duration;
 use itertools::Itertools;
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
@@ -11,6 +12,7 @@ use massa_models::{
     signed::Signable,
     Address, Block, BlockId, EndorsementId, OperationId, OperationType, SignedEndorsement,
     SignedHeader, SignedOperation,
+    operation::{OperationIds, Operations}, Operation
 };
 use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
@@ -144,6 +146,11 @@ pub struct ProtocolWorker {
     checked_operations: Set<OperationId>,
     /// List of processed headers
     checked_headers: Map<BlockId, BlockInfo>,
+    /// List of operations received
+    // TODO: Operation should be store when receive and we work only with id in the future.
+    received_operations: HashMap<OperationId, Operation>,
+    /// List of ids of operations that we asked to the nodes
+    asked_operations: HashMap<OperationId, (Instant, Vec<NodeId>)>
 }
 
 pub struct ProtocolWorkerChannels {
@@ -195,6 +202,8 @@ impl ProtocolWorker {
             checked_endorsements: Default::default(),
             checked_operations: Default::default(),
             checked_headers: Default::default(),
+            received_operations: Default::default(),
+            asked_operations: Default::default()
         }
     }
 
@@ -1170,6 +1179,70 @@ impl ProtocolWorker {
         Ok((endorsement_ids, contains_duplicates))
     }
 
+    pub fn on_asked_operations_received( 
+        &mut self,
+        node_id: NodeId, 
+        op_ids: OperationIds,
+    ) { 
+        if let Some(node_info) = self.active_nodes.get_mut(&node_id) { 
+            for op_ids in op_ids.iter() { 
+                node_info.known_operations.remove(op_ids); 
+            } 
+        } 
+        let mut operation_map: HashMap<OperationId, Operation> = Default::default(); 
+        for op_id in op_ids.iter() { 
+            if let Some(op) = self.received_operations.get(op_id) { 
+                operation_map.insert(*op_id, op.clone()); 
+            } 
+        } 
+        // TODO : Implement
+        //send_operations(node_id, operation_map); 
+    } 
+
+    pub fn on_batch_operations_received( 
+        &mut self,
+        op_batch: OperationIds, 
+        node_id: NodeId, 
+    ) -> OperationIds { 
+        let mut ask_set = OperationIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default()); 
+        let mut future_set = OperationIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default()); 
+        // exactitude isn't important, we want to have a now for that function call 
+        let now = Instant::now(); 
+        for op_id in op_batch { 
+            if self.received_operations.contains_key(&op_id) { 
+                // Should I manage here the prune of `wanted`, `op_batch_buffer` etc? 
+                continue; 
+            } 
+            let wish = match self.asked_operations.get(&op_id) { 
+                Some(wish) => { 
+                    if wish.1.contains(&node_id) { 
+                        continue; // already asked to the `node_id` 
+                    } else { 
+                        Some(wish) 
+                    } 
+                } 
+                None => None, 
+            }; 
+            if wish.is_some() && wish.unwrap().0 > now { 
+                future_set.insert(op_id); 
+            } else { 
+                ask_set.insert(op_id); 
+                self 
+                    .asked_operations 
+                    .insert(op_id, (now, vec![node_id])); 
+            } 
+        } 
+        if self.op_batch_buffer.len() < self.op_batch_buf_capacity { 
+            self.op_batch_buffer.push_back(( 
+                now + Duration::from_millis(self.op_batch_proc_period), 
+                node_id, 
+                future_set, 
+            )); 
+        } 
+        ask_operations(node_id, ask_set.clone());
+        ask_set 
+    }
+
     /// Manages network event
     /// Only used by the worker.
     ///
@@ -1309,20 +1382,14 @@ impl ProtocolWorker {
             NetworkEvent::ReceivedOperationBatch {
                 node,
                 operation_ids,
-            } => todo!(
-                "implement behavior with input {} and {:?}",
-                node,
-                operation_ids
-            ),
+            } => {
+                self.on_batch_operations_received(operation_ids, node);
+            },
             NetworkEvent::ReceiveAskForOperations {
                 node,
                 operation_ids,
             } => {
-                todo!(
-                    "implement behavior with input {} and {:?}",
-                    node,
-                    operation_ids
-                )
+                self.on_asked_operations_received(node, operation_ids);
             }
         }
         Ok(())
