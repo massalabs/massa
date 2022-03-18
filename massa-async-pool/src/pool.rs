@@ -8,7 +8,7 @@ use massa_models::Slot;
 
 use crate::{
     bootstrap::AsyncPoolBootstrap,
-    changes::{AddOrDelete, AsyncPoolChanges},
+    changes::{Change, AsyncPoolChanges},
     config::AsyncPoolConfig,
     message::{AsyncMessage, AsyncMessageId},
 };
@@ -65,12 +65,12 @@ impl AsyncPool {
         for change in changes.0.into_iter() {
             match change {
                 // add a new message to the pool
-                (msg_id, AddOrDelete::Add(msg)) => {
+                Change::Add(msg_id, msg) => {
                     self.messages.insert(msg_id, msg);
                 }
 
                 // delete a message from the pool
-                (msg_id, AddOrDelete::Delete) => {
+                Change::Delete(msg_id) => {
                     self.messages.remove(&msg_id);
                 }
             }
@@ -106,7 +106,7 @@ impl AsyncPool {
         let mut eliminated: Vec<_> = self
             .messages
             .drain_filter(|_k, v| slot >= v.validity_end)
-            .chain(new_messages.drain_filter(|(_k, v)| slot > v.validity_end))
+            .chain(new_messages.drain_filter(|(_k, v)| slot >= v.validity_end))
             .collect();
 
         // Insert new messages into the pool

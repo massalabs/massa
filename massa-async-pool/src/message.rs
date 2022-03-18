@@ -1,6 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! This file defines the structure representing an entry in the FinalLedger
+//! This file defines the structure representing an asynchronous message
 
 use massa_models::constants::ADDRESS_SIZE_BYTES;
 use massa_models::{
