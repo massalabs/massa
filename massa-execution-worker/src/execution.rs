@@ -328,6 +328,39 @@ impl ExecutionState {
         Ok(())
     }
 
+    /// note: needs commentary
+    pub fn try_execute_async_message(&self, slot: Slot) {
+        // note: handle context
+        // note: create try_execute_async_message
+        let iter = {
+            let context_guard = context_guard!(self);
+
+            let messages = self
+                .final_state
+                .write()
+                .async_pool
+                .take_batch_to_executte(slot, context_guard.max_gas);
+            let mut modules: Vec<Vec<u8>> = Vec::with_capacity(messages.len());
+            for message in &messages {
+                modules.push(context_guard.get_bytecode(&message.destination).unwrap());
+            }
+            messages.into_iter().zip(modules)
+        };
+        // note: remove all unwraps
+        for (message, module) in iter {
+            massa_sc_runtime::run_function(
+                &module,
+                message.max_gas,
+                &message.handler,
+                // we know these bytes are valid - bad idea - if not -> no exec and reimburse
+                std::str::from_utf8(&message.data).unwrap(),
+                &*self.execution_interface,
+            )
+            .unwrap();
+        }
+        // note: here reset to snapshot
+    }
+
     /// Executes a full slot (with or without a block inside) without causing any changes to the state,
     /// just yielding the execution output.
     ///
@@ -358,44 +391,10 @@ impl ExecutionState {
         // note that here, some pre-operations (like crediting block producers) can be performed before the lock
 
         // apply the created execution context for slot execution
+        *context_guard!(self) = execution_context;
 
-        // START
-        // note: handle context
-        // note: create try_execute_async_message
-        let iter = {
-            let mut context_guard = context_guard!(self);
-
-            *context_guard = execution_context;
-
-            let messages = self
-                .final_state
-                .write()
-                .async_pool
-                .take_batch_to_executte(slot, context_guard.max_gas);
-            let mut modules: Vec<Vec<u8>> = Vec::with_capacity(messages.len());
-            for message in &messages {
-                modules.push(
-                    context_guard
-                        .get_bytecode(&message.destination)
-                        .unwrap(),
-                );
-            }
-            messages.into_iter().zip(modules)
-        };
-        // note: remove all unwraps
-        for (message, module) in iter {
-            massa_sc_runtime::run_function(
-                &module,
-                message.max_gas,
-                &message.handler,
-                // we know these bytes are valid - bad idea - if not -> no exec and reimburse
-                std::str::from_utf8(&message.data).unwrap(),
-                &*self.execution_interface,
-            )
-            .unwrap();
-        }
-        // note: here reset to snapshot
-        // END
+        // try executing asynchronous messages
+        self.try_execute_async_message(slot);
 
         // check if there is a block at this slot
         if let (Some((block_id, block)), Some(block_creator_addr)) =
