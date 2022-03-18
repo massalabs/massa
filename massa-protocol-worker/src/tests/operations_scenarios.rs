@@ -3,9 +3,9 @@
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
 use super::tools::protocol_test;
-use massa_models::prehash::{Map, Set};
-use massa_models::signed::Signable;
-use massa_models::{self, Address, Amount, OperationId, Slot};
+use massa_models::{self, Address, Amount, Slot};
+use massa_models::{operation::OperationIds, prehash::Set};
+use massa_models::{prehash::Map, signed::Signable};
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{ProtocolEvent, ProtocolPoolEvent};
@@ -35,7 +35,6 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
-            AskedOperations::
             // 3. Send operation to protocol.
             network_controller
                 .send_operations(creator_node.id, vec![operation])
@@ -162,8 +161,8 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
-            let mut ops = Map::default();
-            ops.insert(expected_operation_id, operation);
+            let mut ops = OperationIds::default();
+            ops.insert(expected_operation_id);
             protocol_command_sender
                 .propagate_operations(ops)
                 .await
@@ -172,15 +171,15 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
             loop {
                 match network_controller
                     .wait_command(1000.into(), |cmd| match cmd {
-                        cmd @ NetworkCommand::SendOperations { .. } => Some(cmd),
+                        cmd @ NetworkCommand::SendOperationBatch { .. } => Some(cmd),
                         _ => None,
                     })
                     .await
                 {
-                    Some(NetworkCommand::SendOperations { node, operations }) => {
-                        let id = operations[0].verify_integrity().unwrap();
-                        assert_eq!(id, expected_operation_id);
-                        assert_eq!(nodes[1].id, node);
+                    Some(NetworkCommand::SendOperationBatch { to_node, batch }) => {
+                        assert_eq!(batch.len(), 1);
+                        assert!(batch.contains(&expected_operation_id));
+                        assert_eq!(nodes[1].id, to_node);
                         break;
                     }
                     _ => panic!("Unexpected or no network command."),
@@ -241,8 +240,8 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
-            let mut ops = Map::default();
-            ops.insert(expected_operation_id, operation);
+            let mut ops = OperationIds::default();
+            ops.insert(expected_operation_id);
 
             // send endorsement to protocol
             // it should be propagated only to the node that doesn't know about it
@@ -254,15 +253,15 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             loop {
                 match network_controller
                     .wait_command(1000.into(), |cmd| match cmd {
-                        cmd @ NetworkCommand::SendOperations { .. } => Some(cmd),
+                        cmd @ NetworkCommand::SendOperationBatch { .. } => Some(cmd),
                         _ => None,
                     })
                     .await
                 {
-                    Some(NetworkCommand::SendOperations { node, operations }) => {
-                        let id = operations[0].verify_integrity().unwrap();
-                        assert_eq!(id, expected_operation_id);
-                        assert_eq!(new_nodes[0].id, node);
+                    Some(NetworkCommand::SendOperationBatch { to_node, batch }) => {
+                        assert_eq!(batch.len(), 1);
+                        assert!(batch.contains(&expected_operation_id));
+                        assert_eq!(new_nodes[0].id, to_node);
                         break;
                     }
                     _ => panic!("Unexpected or no network command."),
@@ -354,8 +353,8 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Send the endorsement to protocol
             // it should not propagate to the node that already knows about it
             // because of the previously integrated block.
-            let mut ops = Map::default();
-            ops.insert(operation_id, operation);
+            let mut ops = OperationIds::default();
+            ops.insert(operation_id);
             protocol_command_sender
                 .propagate_operations(ops)
                 .await
@@ -436,7 +435,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             // Send the block as search results.
             let mut results = Map::default();
-            let mut ops = Set::<OperationId>::default();
+            let mut ops = OperationIds::default();
             ops.insert(operation_id);
             results.insert(block_id, Some((block.clone(), Some(ops), None)));
 
@@ -463,8 +462,8 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Send the endorsement to protocol
             // it should not propagate to the node that already knows about it
             // because of the previously integrated block.
-            let mut ops = Map::default();
-            ops.insert(operation_id, operation);
+            let mut ops = Set::default();
+            ops.insert(operation_id);
             protocol_command_sender
                 .propagate_operations(ops)
                 .await
@@ -472,16 +471,16 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             match network_controller
                 .wait_command(1000.into(), |cmd| match cmd {
-                    cmd @ NetworkCommand::SendOperations { .. } => Some(cmd),
+                    cmd @ NetworkCommand::SendOperationBatch { .. } => Some(cmd),
                     _ => None,
                 })
                 .await
             {
-                Some(NetworkCommand::SendOperations { node, operations }) => {
-                    let id = operations[0].content.compute_id().unwrap();
-                    assert_eq!(id, operation_id);
-                    assert_eq!(nodes[0].id, node);
-                    panic!("Unexpected propagated of operation.");
+                Some(NetworkCommand::SendOperationBatch { to_node, batch }) => {
+                    panic!(
+                        "Unexpected propagated of operation to node {to_node} of {:?}.",
+                        batch
+                    );
                 }
                 None => {}
                 Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
@@ -552,8 +551,8 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Send the operation to protocol
             // it should not propagate to the node that already knows about it
             // because of the previously received header.
-            let mut ops = Map::default();
-            ops.insert(operation_id, operation);
+            let mut ops = Set::default();
+            ops.insert(operation_id);
             protocol_command_sender
                 .propagate_operations(ops)
                 .await
@@ -561,16 +560,16 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             match network_controller
                 .wait_command(1000.into(), |cmd| match cmd {
-                    cmd @ NetworkCommand::SendOperations { .. } => Some(cmd),
+                    cmd @ NetworkCommand::SendOperationBatch { .. } => Some(cmd),
                     _ => None,
                 })
                 .await
             {
-                Some(NetworkCommand::SendOperations { node, operations }) => {
-                    let id = operations[0].content.compute_id().unwrap();
-                    assert_eq!(id, operation_id);
-                    assert_eq!(nodes[0].id, node);
-                    panic!("Unexpected propagated of operation.");
+                Some(NetworkCommand::SendOperationBatch { to_node, batch }) => {
+                    panic!(
+                        "Unexpected propagated of operation to node {to_node} of {:?}.",
+                        batch
+                    );
                 }
                 None => {}
                 Some(cmd) => panic!("Unexpected network command.{:?}", cmd),
@@ -649,8 +648,8 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             // Send the operation to protocol
             // it should propagate to the node because it isn't in the block.
-            let mut ops = Map::default();
-            ops.insert(operation_id_2, operation_2);
+            let mut ops = Set::default();
+            ops.insert(operation_id_2);
             protocol_command_sender
                 .propagate_operations(ops)
                 .await
@@ -658,15 +657,15 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             match network_controller
                 .wait_command(1000.into(), |cmd| match cmd {
-                    cmd @ NetworkCommand::SendOperations { .. } => Some(cmd),
+                    cmd @ NetworkCommand::SendOperationBatch { .. } => Some(cmd),
                     _ => None,
                 })
                 .await
             {
-                Some(NetworkCommand::SendOperations { node, operations }) => {
-                    let id = operations[0].content.compute_id().unwrap();
-                    assert_eq!(id, operation_id_2);
-                    assert_eq!(nodes[0].id, node);
+                Some(NetworkCommand::SendOperationBatch { to_node, batch }) => {
+                    assert_eq!(batch.len(), 1);
+                    assert!(batch.contains(&operation_id_2));
+                    assert_eq!(nodes[0].id, to_node);
                 }
                 None => panic!("Operation not propagated."),
                 Some(cmd) => panic!("Unexpected network command.{:?}", cmd),

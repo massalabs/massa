@@ -16,11 +16,8 @@ use massa_hash::hash::Hash;
 use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Formatter};
-use std::{
-    collections::{HashSet, VecDeque},
-    convert::TryInto,
-};
+use std::fmt::Formatter;
+use std::{collections::VecDeque, convert::TryInto};
 use std::{ops::RangeInclusive, str::FromStr};
 use tokio::time::Instant;
 
