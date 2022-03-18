@@ -620,7 +620,7 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    /// Get events optionnally filtered by:
+    /// Get events optionally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address

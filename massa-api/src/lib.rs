@@ -124,7 +124,7 @@ pub trait Endpoints {
     #[rpc(name = "remove_staking_addresses")]
     fn remove_staking_addresses(&self, _: Vec<Address>) -> BoxFuture<Result<(), ApiError>>;
 
-    /// Return hashset of staking addresses.
+    /// Return hash set of staking addresses.
     #[rpc(name = "get_staking_addresses")]
     fn get_staking_addresses(&self) -> BoxFuture<Result<Set<Address>, ApiError>>;
 
@@ -133,7 +133,7 @@ pub trait Endpoints {
     #[rpc(name = "ban")]
     fn ban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
 
-    /// Unbans given IP address.
+    /// Remove ban for a given IP address.
     /// No confirmation to expect.
     #[rpc(name = "unban")]
     fn unban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
@@ -185,7 +185,7 @@ pub trait Endpoints {
         _: Vec<SignedOperation>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>>;
 
-    /// Get events optionnally filtered by:
+    /// Get events optionally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address

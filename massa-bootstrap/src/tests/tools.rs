@@ -525,7 +525,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
         ],
     };
 
-    // check reserialization
+    // check re-serialization
     assert_eq_thread_cycle_states(
         &ExportProofOfStake::from_bytes_compact(&boot_pos.to_bytes_compact().unwrap())
             .unwrap()
