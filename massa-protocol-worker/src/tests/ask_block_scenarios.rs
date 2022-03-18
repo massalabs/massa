@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::tools::protocol_test;
+use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_models::prehash::Set;
 use massa_models::signed::Signable;
 use massa_models::BlockId;
@@ -16,13 +16,14 @@ async fn test_without_a_priori() {
     // start
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
 
-    protocol_test(
+    protocol_test_with_storage(
         protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver| {
+                    protocol_pool_event_receiver,
+                    storage| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
                 .pop()
@@ -55,7 +56,9 @@ async fn test_without_a_priori() {
             assert_hash_asked_to_node(hash_1, node_b.id, &mut network_controller).await;
 
             // node B replied with the block
-            network_controller.send_block(node_b.id, hash_1).await;
+            network_controller
+                .send_block(node_b.id, hash_1, Some((block, storage)))
+                .await;
 
             // 7. Make sure protocol did not send additional ask for block commands.
             let ask_for_block_cmd_filter = |cmd| match cmd {
@@ -88,13 +91,14 @@ async fn test_without_a_priori() {
 async fn test_someone_knows_it() {
     // start
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
-    protocol_test(
+    protocol_test_with_storage(
         protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver| {
+                    protocol_pool_event_receiver,
+                    storage| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
                 .pop()
@@ -135,7 +139,9 @@ async fn test_someone_knows_it() {
             assert_hash_asked_to_node(hash_1, node_c.id, &mut network_controller).await;
 
             // node C replied with the block
-            network_controller.send_block(node_c.id, hash_1).await;
+            network_controller
+                .send_block(node_c.id, hash_1, Some((block, storage)))
+                .await;
 
             // 7. Make sure protocol did not send additional ask for block commands.
             let ask_for_block_cmd_filter = |cmd| match cmd {

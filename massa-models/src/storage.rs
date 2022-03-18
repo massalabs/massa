@@ -2,7 +2,6 @@ use crate::prehash::Map;
 use crate::{Block, BlockId};
 use parking_lot::RwLock;
 use std::sync::Arc;
-use tracing::debug;
 
 #[derive(Debug)]
 pub struct StoredBlock {
@@ -25,7 +24,6 @@ impl Storage {
             serialized_header: None,
         };
         let to_store = Arc::new(RwLock::new(stored_block));
-        //debug!("Store block {} in storage", block_id);
         let mut blocks = self.blocks.write();
         blocks.insert(block_id, to_store);
     }

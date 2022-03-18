@@ -4,7 +4,7 @@ use crate::{BootstrapPeers, Peers};
 use massa_models::SignedEndorsement;
 use massa_models::SignedHeader;
 use massa_models::SignedOperation;
-use massa_models::{composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId};
+use massa_models::{composite::PubkeySig, node::NodeId, stats::NetworkStats, BlockId};
 use tokio::sync::oneshot;
 
 /// Commands that the worker can execute

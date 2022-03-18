@@ -4,11 +4,9 @@ use crate::{
     commands::NetworkManagementCommand, error::NetworkError, BootstrapPeers, NetworkCommand,
     NetworkEvent, Peers,
 };
-use massa_logging::massa_trace;
-use massa_models::storage::Storage;
 use massa_models::{
-    composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId, SignedEndorsement,
-    SignedHeader, SignedOperation,
+    composite::PubkeySig, node::NodeId, stats::NetworkStats, BlockId, SignedEndorsement,
+    SignedOperation,
 };
 use std::{
     collections::{HashMap, VecDeque},

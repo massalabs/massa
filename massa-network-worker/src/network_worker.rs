@@ -15,20 +15,14 @@ use crate::{
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_logging::massa_trace;
 use massa_models::storage::Storage;
-use massa_models::{
-    composite::PubkeySig, constants::CHANNEL_SIZE, node::NodeId, stats::NetworkStats,
-    with_serialization_context, DeserializeCompact, DeserializeVarInt, ModelsError,
-    SerializeCompact, SerializeVarInt, Version,
-};
-use massa_models::{BlockHeader, BlockId, Endorsement, Operation};
+use massa_models::{constants::CHANNEL_SIZE, node::NodeId, SerializeCompact, Version};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener,
     NetworkConnectionErrorType, NetworkError, NetworkSettings,
 };
 use massa_network_exports::{NetworkCommand, NetworkEvent, NetworkManagementCommand};
 use massa_network_exports::{ReadHalf, WriteHalf};
-use massa_signature::{derive_public_key, sign, PrivateKey};
-use serde::{Deserialize, Serialize};
+use massa_signature::{derive_public_key, PrivateKey};
 use std::{
     collections::{hash_map, HashMap, HashSet},
     net::{IpAddr, SocketAddr},
@@ -95,6 +89,7 @@ impl NetworkWorker {
     /// * controller_command_rx: Channel receiving network commands.
     /// * controller_event_tx: Channel sending out network events.
     /// * controller_manager_rx: Channel receiving network management commands.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         cfg: NetworkSettings,
         private_key: PrivateKey,

@@ -2,7 +2,7 @@
 
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::tools::protocol_test;
+use super::tools::protocol_test_with_storage;
 use massa_models::signed::Signable;
 use massa_models::{self, Address, Slot};
 use massa_protocol_exports::tests::tools;
@@ -26,13 +26,14 @@ lazy_static::lazy_static! {
 async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size() {
     let protocol_settings = &CUSTOM_PROTOCOL_SETTINGS;
 
-    protocol_test(
+    protocol_test_with_storage(
         protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver| {
+                    protocol_pool_event_receiver,
+                    storage| {
             // Create 1 node.
             let nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -60,6 +61,7 @@ async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size()
                         .content
                         .compute_id()
                         .expect("Fail to compute block id"),
+                    Some((block, storage)),
                 )
                 .await;
 

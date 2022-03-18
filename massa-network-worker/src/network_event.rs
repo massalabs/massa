@@ -80,10 +80,7 @@ impl EventSender {
 pub mod event_impl {
     use crate::{network_worker::NetworkWorker, node_worker::NodeCommand};
     use massa_logging::massa_trace;
-    use massa_models::signed::Signable;
-    use massa_models::{
-        node::NodeId, Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation,
-    };
+    use massa_models::{node::NodeId, BlockId, SignedEndorsement, SignedHeader, SignedOperation};
     use massa_network_exports::{NetworkError, NetworkEvent};
     use std::net::IpAddr;
     use tracing::{debug, info};

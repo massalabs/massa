@@ -256,8 +256,7 @@ impl ExecutionThread {
 
         // check if the final slot is cached at the front of the speculative execution history
         if let Some(exec_out) = exec_state.active_history.pop_front() {
-            if exec_out.slot == slot && exec_out.block_id == exec_target.as_ref().map(|b_id| *b_id)
-            {
+            if exec_out.slot == slot && exec_out.block_id == exec_target.as_ref().copied() {
                 // speculative execution front result matches what we want to compute
 
                 // apply the cached output and return
@@ -315,7 +314,7 @@ impl ExecutionThread {
 
         // choose the execution target
         let exec_target = match self.active_slots.get(&slot) {
-            Some(Some(b_id)) => b_id.clone(),
+            Some(Some(b_id)) => *b_id,
             _ => return false,
         };
 

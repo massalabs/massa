@@ -22,10 +22,9 @@
 use crate::{network_worker::NetworkWorker, node_worker::NodeCommand};
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::signed::Signable;
 use massa_models::{
-    composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId, SignedEndorsement,
-    SignedHeader, SignedOperation,
+    composite::PubkeySig, node::NodeId, stats::NetworkStats, BlockId, SignedEndorsement,
+    SignedOperation,
 };
 use massa_network_exports::{
     BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, Peer, Peers,

@@ -2,7 +2,7 @@
 
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::tools::protocol_test;
+use super::tools::{protocol_test, protocol_test_with_storage};
 use massa_models::prehash::Map;
 use massa_models::signed::Signable;
 use massa_models::{Address, Slot};
@@ -494,13 +494,14 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
 async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_header(
 ) {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
-    protocol_test(
+    protocol_test_with_storage(
         protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver| {
+                    protocol_pool_event_receiver,
+                    storage| {
             // Create 2 nodes.
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
@@ -527,6 +528,7 @@ async fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_abou
                         .content
                         .compute_id()
                         .expect("Fail to get block id"),
+                    Some((block.clone(), storage)),
                 )
                 .await;
 
