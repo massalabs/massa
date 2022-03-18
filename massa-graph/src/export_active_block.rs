@@ -17,6 +17,8 @@ use serde::{Deserialize, Serialize};
 pub struct ExportActiveBlock {
     /// The block.
     pub block: Block,
+    /// The Id of the block.
+    pub block_id: BlockId,
     /// one (block id, period) per thread ( if not genesis )
     pub parents: Vec<(BlockId, u64)>,
     /// one HashMap<Block id, period> per thread (blocks that need to be kept)
@@ -60,8 +62,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             a_block.block.addresses_to_endorsements(&endorsement_ids)?;
         Ok(ActiveBlock {
             creator_address: Address::from_public_key(&a_block.block.header.content.creator),
-            //TODO: Unwrap
-            block_id: a_block.block.header.content.compute_id().unwrap(),
+            block_id: a_block.block_id,
             parents: a_block.parents.clone(),
             children: a_block.children.clone(),
             dependencies: a_block.dependencies.clone(),
@@ -88,6 +89,7 @@ impl ExportActiveBlock {
         let stored_block = block.read();
         Ok(ExportActiveBlock {
             block: stored_block.block.clone(),
+            block_id: a_block.block_id,
             parents: a_block.parents.clone(),
             children: a_block.children.clone(),
             dependencies: a_block.dependencies.clone(),
@@ -112,6 +114,9 @@ impl SerializeCompact for ExportActiveBlock {
 
         // block
         res.extend(self.block.to_bytes_compact()?);
+
+        // block id
+        res.extend(self.block_id.to_bytes());
 
         // parents (note: there should be none if slot period=0)
         if self.parents.is_empty() {
@@ -220,6 +225,10 @@ impl DeserializeCompact for ExportActiveBlock {
         // block
         let (block, delta) = Block::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
+
+        // block id
+        let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        cursor += BLOCK_ID_SIZE_BYTES;
 
         // parents
         let has_parents = u8_from_slice(&buffer[cursor..])?;
@@ -355,6 +364,7 @@ impl DeserializeCompact for ExportActiveBlock {
             ExportActiveBlock {
                 is_final,
                 block,
+                block_id,
                 parents,
                 children,
                 dependencies,

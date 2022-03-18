@@ -550,6 +550,7 @@ pub fn get_export_active_test_block(
             parents,
             dependencies: Default::default(),
             block: block,
+            block_id: id,
             children: vec![Default::default(), Default::default()],
             is_final,
             block_ledger_changes: Default::default(),
