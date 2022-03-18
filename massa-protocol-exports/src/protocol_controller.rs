@@ -3,7 +3,10 @@
 use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
-use massa_models::prehash::{Map, Set};
+use massa_models::{
+    operation::OperationIds,
+    prehash::{Map, Set},
+};
 
 use massa_models::{
     Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
@@ -57,7 +60,7 @@ pub enum ProtocolCommand {
     IntegratedBlock {
         block_id: BlockId,
         block: Box<Block>,
-        operation_ids: Set<OperationId>,
+        operation_ids: OperationIds,
         endorsement_ids: Vec<EndorsementId>,
     },
     /// A block, or it's header, amounted to an attempted attack.
@@ -70,7 +73,7 @@ pub enum ProtocolCommand {
     /// The response to a ProtocolEvent::GetBlocks.
     GetBlocksResults(BlocksResults),
     /// Propagate operations ids (send batches)
-    PropagateOperations(Vec<OperationId>),
+    PropagateOperations(OperationIds),
     /// Propagate endorsements
     PropagateEndorsements(Map<EndorsementId, SignedEndorsement>),
 }
@@ -158,7 +161,7 @@ impl ProtocolCommandSender {
 
     pub async fn propagate_operations(
         &mut self,
-        operations: Vec<OperationId>,
+        operations: OperationIds,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
             "operations": operations
