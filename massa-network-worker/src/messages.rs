@@ -3,6 +3,7 @@
 use massa_models::{
     array_from_slice,
     constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES},
+    operation::{OperationIds, Operations},
     signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
     Endorsement, EndorsementId, ModelsError, Operation, OperationId, SerializeCompact,
@@ -47,11 +48,11 @@ pub enum Message {
     /// Block not found
     BlockNotFound(BlockId),
     /// Batch of operation ids
-    OperationsBatch(Vec<OperationId>),
+    OperationsBatch(OperationIds),
     /// Someone ask for operations.
-    AskForOperations(Vec<OperationId>),
+    AskForOperations(OperationIds),
     /// A list of operations
-    Operations(HashMap<OperationId, Option<SignedOperation>>),
+    Operations(Operations),
     /// Endorsements
     Endorsements(Vec<SignedEndorsement>),
 }
@@ -211,7 +212,7 @@ fn derialize_operation_opt_map(
 /// * operation_ids [in]: the operation ids to serialize
 fn serialize_operation_ids(
     res: &mut Vec<u8>,
-    operation_ids: &Vec<OperationId>,
+    operation_ids: &OperationIds,
 ) -> Result<(), ModelsError> {
     let list_len: u32 = operation_ids.len().try_into().map_err(|_| {
         ModelsError::SerializeError("could not encode AskForBlocks list length as u32".into())

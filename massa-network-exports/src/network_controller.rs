@@ -7,7 +7,7 @@ use crate::{
 use massa_models::{
     composite::PubkeySig,
     node::NodeId,
-    operation::{AskedOperations, OperationBatches, WantOperations},
+    operation::{OperationIds, Operations},
     stats::NetworkStats,
     Block, BlockId, SignedEndorsement, SignedHeader,
 };
@@ -142,7 +142,7 @@ impl NetworkCommandSender {
     pub async fn send_operations(
         &self,
         node: NodeId,
-        operations: AskedOperations,
+        operations: Operations,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendOperations { node, operations })
@@ -153,12 +153,19 @@ impl NetworkCommandSender {
         Ok(())
     }
 
-    pub async fn send_operations_batches(
+    /// Create a new call to the network, sending a `batch` of operations to a
+    /// target node (`to_node`)
+    ///
+    /// # Result
+    /// Can return an error that must be managed by the direct caller of the
+    /// function.
+    pub async fn send_operations_batch(
         &self,
-        batches: OperationBatches,
+        to_node: NodeId,
+        batch: OperationIds,
     ) -> Result<(), NetworkError> {
         self.0
-            .send(NetworkCommand::SendOperationBatch { batches })
+            .send(NetworkCommand::SendOperationBatch { to_node, batch })
             .await
             .map_err(|_| {
                 NetworkError::ChannelError("could not send SendOperationBatch command".into())
@@ -168,10 +175,11 @@ impl NetworkCommandSender {
 
     pub async fn send_ask_for_operations(
         &self,
-        wishlist: WantOperations,
+        to_node: NodeId,
+        wishlist: OperationIds,
     ) -> Result<(), NetworkError> {
         self.0
-            .send(NetworkCommand::AskForOperations { wishlist })
+            .send(NetworkCommand::AskForOperations { to_node, wishlist })
             .await
             .map_err(|_| {
                 NetworkError::ChannelError("could not send AskForOperations command".into())

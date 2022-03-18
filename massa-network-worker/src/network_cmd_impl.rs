@@ -23,14 +23,11 @@ use crate::network_worker::NetworkWorker;
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::signed::Signable;
 use massa_models::{
-    composite::PubkeySig,
-    node::NodeId,
-    operation::{AskedOperations, OperationBatches, WantOperations},
-    stats::NetworkStats,
-    Block, BlockId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
+    composite::PubkeySig, node::NodeId, operation::OperationIds, stats::NetworkStats, Block,
+    BlockId, SignedEndorsement, SignedHeader,
 };
+use massa_models::{operation::Operations, signed::Signable};
 use massa_network_exports::{
     BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, NodeCommand, Peer, Peers,
 };
@@ -270,7 +267,7 @@ pub async fn on_block_not_found_cmd(worker: &mut NetworkWorker, node: NodeId, bl
 pub async fn on_send_operation_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
-    operations: HashMap<OperationId, Option<SignedOperation>>,
+    operations: Operations,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendOperations",
@@ -356,20 +353,27 @@ pub async fn on_get_stats_cmd(
     }
 }
 
+/// Network worker received the command `NetworkCommand::SendOperations` from
+/// the controller. Happen when the program has received a new set of operation
+/// or run a kind of "send operations" loop.
+///
+/// todo: precise the documentation in followup
+///
+/// Forward to the node worker to be propagate in the network.
 pub async fn on_send_operations_cmd(
     worker: &mut NetworkWorker,
-    node: NodeId,
-    operations: AskedOperations,
+    to_node: NodeId,
+    operations: Operations,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendOperations",
-        { "node": node, "operations": operations }
+        { "node": to_node, "operations": operations }
     );
     worker
         .event
         .forward(
-            node,
-            worker.active_nodes.get(&node),
+            to_node,
+            worker.active_nodes.get(&to_node),
             NodeCommand::SendOperations(operations),
         )
         .await;
@@ -377,38 +381,49 @@ pub async fn on_send_operations_cmd(
 
 /// On the command [massa_network_exports::NetworkCommand::SendOperationBatch] is called,
 /// Forward (and split) the command to the `NodeWorker` and propagate to the network
-pub async fn on_send_operation_batches_cmd(worker: &mut NetworkWorker, batches: OperationBatches) {
+pub async fn on_send_operation_batches_cmd(
+    worker: &mut NetworkWorker,
+    to_node: NodeId,
+    batch: OperationIds,
+) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendOperationBatch",
-        { "batches": batches }
+        { "batch": batch }
     );
     let mut futs = FuturesUnordered::new();
-    for (node, operation_ids) in batches {
-        let fut = worker.event.forward(
-            node,
-            worker.active_nodes.get(&node),
-            NodeCommand::SendOperationBatch(operation_ids),
-        );
-        futs.push(fut);
-    }
+    let fut = worker.event.forward(
+        to_node,
+        worker.active_nodes.get(&to_node),
+        NodeCommand::SendOperationBatch(batch),
+    );
+    futs.push(fut);
     while futs.next().await.is_some() {}
 }
 
-/// On the command [massa_network_exports::NetworkCommand::AskForOperations] is called,
+/// Network worker received the command `NetworkCommand::AskForOperations` from
+/// the controller. Happen when the program run a kind of "ask operations" loop
+/// or received a new batch.
+///
+/// # See also
+/// [massa_models::operation::OperationBatchItem]
+/// [massa_models::operation::OperationBatchBuffer]
+/// todo: add the link to the function tha process the buffer
+///
+/// # What it does
+/// When the command [massa_network_exports::NetworkCommand::AskForOperations] is called,
 /// Forward the command to the `NodeWorker` and propagate to the network
-pub async fn on_ask_for_operations_cmd(worker: &mut NetworkWorker, wishlist: WantOperations) {
+pub async fn on_ask_for_operations_cmd(
+    worker: &mut NetworkWorker,
+    to_node: NodeId,
+    wishlist: OperationIds,
+) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::SendOperationBatch",
         { "wishlist": wishlist }
     );
-    let mut futs = FuturesUnordered::new();
-    for (node, operation_ids) in wishlist {
-        let fut = worker.event.forward(
-            node,
-            worker.active_nodes.get(&node),
-            NodeCommand::AskForOperations(operation_ids),
-        );
-        futs.push(fut);
-    }
-    while futs.next().await.is_some() {}
+    let fut = worker.event.forward(
+        to_node,
+        worker.active_nodes.get(&to_node),
+        NodeCommand::AskForOperations(wishlist),
+    );
 }

@@ -16,9 +16,13 @@ use massa_hash::hash::Hash;
 use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
-use std::fmt::Formatter;
+use std::{collections::HashMap, fmt::Formatter};
+use std::{
+    collections::{HashSet, VecDeque},
+    convert::TryInto,
+};
 use std::{ops::RangeInclusive, str::FromStr};
+use tokio::time::Instant;
 
 const OPERATION_ID_STRING_PREFIX: &str = "OPE";
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
@@ -481,13 +485,22 @@ impl Operation {
     }
 }
 
-/// Data structure forwarded in the network after asking [Operation].
-/// Option is None if the asked node hasn't the operation.
-pub type AskedOperations = std::collections::HashMap<OperationId, Option<SignedOperation>>;
-/// Internal data structure describing the [Operation] we do want from which `NodeId`.
-pub type WantOperations = std::collections::HashMap<NodeId, Vec<OperationId>>;
-/// Same as wanted operation but used to propagate `OperationId` through `NodeId`
-pub type OperationBatches = std::collections::HashMap<NodeId, Vec<OperationId>>;
+/// Set of operation ids
+pub type OperationIds = Set<OperationId>;
+/// Set of self containing both operation and operationid already signed.
+pub type Operations = HashSet<SignedOperation>;
+
+/// Structure containing a Batch of `operation_ids` we would like to ask
+/// to a `node_id` now or later. Mainly used in protocol and translated into
+/// simple combination of a `node_id` and `operations_ids`
+pub struct OperationBatchItem {
+    instant: Instant,
+    node_id: NodeId,
+    operations_ids: OperationIds,
+}
+
+/// Queue containings every [OperationsBatchItem] we want to ask now or later.
+pub struct OperationBatchBuffer(VecDeque<OperationBatchItem>);
 
 #[cfg(test)]
 mod tests {

@@ -35,6 +35,7 @@ async fn test_protocol_sends_valid_operations_it_receives_to_consensus() {
 
             let expected_operation_id = operation.verify_integrity().unwrap();
 
+            AskedOperations::
             // 3. Send operation to protocol.
             network_controller
                 .send_operations(creator_node.id, vec![operation])

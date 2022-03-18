@@ -98,9 +98,9 @@ use crate::{BootstrapPeers, ConnectionClosureReason, Peers};
 use massa_models::{
     composite::PubkeySig,
     node::NodeId,
-    operation::{AskedOperations, OperationBatches, WantOperations},
+    operation::{OperationIds, Operations},
     stats::NetworkStats,
-    Block, BlockId, OperationId, SignedEndorsement, SignedHeader,
+    Block, BlockId, SignedEndorsement, SignedHeader,
 };
 use std::{collections::HashMap, net::IpAddr};
 use tokio::sync::oneshot;
@@ -120,11 +120,11 @@ pub enum NodeCommand {
     /// Block not found
     BlockNotFound(BlockId),
     /// Send full Operations (send to a node that previously asked for)
-    SendOperations(AskedOperations),
+    SendOperations(Operations),
     /// Send a batch of operation ids
-    SendOperationBatch(Vec<OperationId>),
+    SendOperationBatch(OperationIds),
     /// Ask for a set of operations
-    AskForOperations(Vec<OperationId>),
+    AskForOperations(OperationIds),
     /// Endorsements
     SendEndorsements(Vec<SignedEndorsement>),
 }
@@ -147,11 +147,11 @@ pub enum NodeEventType {
     /// Didn't found given block,
     BlockNotFound(BlockId),
     /// Operation
-    ReceivedOperations(AskedOperations),
+    ReceivedOperations(Operations),
     /// Received operation batch
-    ReceivedOperationBatch(Vec<OperationId>),
+    ReceivedOperationBatch(OperationIds),
     /// Receive a list of wanted operations
-    ReceivedAskForOperations(Vec<OperationId>),
+    ReceivedAskForOperations(OperationIds),
     /// Receive a set of endorsement
     ReceivedEndorsements(Vec<SignedEndorsement>),
 }
@@ -199,18 +199,19 @@ pub enum NetworkCommand {
     GetStats {
         response_tx: oneshot::Sender<NetworkStats>,
     },
-    /// Require to the network to send a list of full operations
     SendOperations {
         node: NodeId,
-        operations: AskedOperations,
+        operations: Operations,
     },
-    /// Receive previously asked Operation
+    /// Send operation ids batch to a node
     SendOperationBatch {
-        batches: OperationBatches,
+        to_node: NodeId,
+        batch: OperationIds,
     },
     /// Ask for operation
     AskForOperations {
-        wishlist: WantOperations,
+        to_node: NodeId,
+        wishlist: OperationIds,
     },
 }
 
@@ -241,16 +242,16 @@ pub enum NetworkEvent {
     /// Receive previously asked Operation
     ReceivedOperations {
         node: NodeId,
-        operations: AskedOperations,
+        operations: Operations,
     },
     ReceivedOperationBatch {
         node: NodeId,
-        operation_ids: Vec<OperationId>,
+        operation_ids: OperationIds,
     },
     /// Receive a list of asked operations from `node`
     ReceiveAskForOperations {
         node: NodeId,
-        operation_ids: Vec<OperationId>,
+        operation_ids: OperationIds,
     },
     ReceivedEndorsements {
         node: NodeId,

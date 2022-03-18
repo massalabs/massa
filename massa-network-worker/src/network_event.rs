@@ -79,10 +79,12 @@ impl EventSender {
 pub mod event_impl {
     use crate::network_worker::NetworkWorker;
     use massa_logging::massa_trace;
+    use massa_models::signed::Signable;
     use massa_models::{
-        node::NodeId, operation::AskedOperations, Block, BlockId, SignedEndorsement, SignedHeader,
+        node::NodeId,
+        operation::{OperationIds, Operations},
+        Block, BlockId, SignedEndorsement, SignedHeader,
     };
-    use massa_models::{signed::Signable, OperationId};
     use massa_network_exports::NodeCommand;
     use massa_network_exports::{NetworkError, NetworkEvent};
     use std::net::IpAddr;
@@ -205,10 +207,15 @@ pub mod event_impl {
         }
     }
 
+    /// The node worker signal that he received some full `operations` from a
+    /// node.
+    ///
+    /// Forward the event by sending a [NetworkEvent::ReceivedOperations].
+    /// See also [massa_network_exports::NodeEventType::ReceivedOperations]
     pub async fn on_received_operations(
         worker: &mut NetworkWorker,
         from: NodeId,
-        operations: AskedOperations,
+        operations: Operations,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",
@@ -226,10 +233,11 @@ pub mod event_impl {
         }
     }
 
+    /// todo: document
     pub async fn on_received_operations_batch(
         worker: &mut NetworkWorker,
         from: NodeId,
-        operation_ids: Vec<OperationId>,
+        operation_ids: OperationIds,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",
@@ -247,10 +255,11 @@ pub mod event_impl {
         }
     }
 
+    /// todo: document
     pub async fn on_received_ask_for_operations(
         worker: &mut NetworkWorker,
         from: NodeId,
-        operation_ids: Vec<OperationId>,
+        operation_ids: OperationIds,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",

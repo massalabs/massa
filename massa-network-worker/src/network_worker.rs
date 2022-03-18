@@ -526,11 +526,11 @@ impl NetworkWorker {
             NetworkCommand::SendOperations { node, operations } => {
                 on_send_operations_cmd(self, node, operations).await
             }
-            NetworkCommand::SendOperationBatch { batches } => {
-                on_send_operation_batches_cmd(self, batches).await
+            NetworkCommand::SendOperationBatch { to_node, batch } => {
+                on_send_operation_batches_cmd(self, to_node, batch).await
             }
-            NetworkCommand::AskForOperations { wishlist } => {
-                on_ask_for_operations_cmd(self, wishlist).await
+            NetworkCommand::AskForOperations { to_node, wishlist } => {
+                on_ask_for_operations_cmd(self, to_node, wishlist).await
             }
             NetworkCommand::SendEndorsements { node, endorsements } => {
                 on_send_endorsements_cmd(self, node, endorsements).await
