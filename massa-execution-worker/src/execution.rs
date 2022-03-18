@@ -331,7 +331,6 @@ impl ExecutionState {
     /// note: needs commentary
     pub fn try_execute_async_messages(&self, slot: Slot) {
         // note: handle context
-        // note: create try_execute_async_message
         let iter = {
             let context_guard = context_guard!(self);
             let messages = self
@@ -345,7 +344,6 @@ impl ExecutionState {
             }
             messages.into_iter().zip(modules)
         };
-        // note: remove all unwraps
         for (message, module) in iter {
             match std::str::from_utf8(&message.data) {
                 Ok(param) => {
@@ -398,6 +396,7 @@ impl ExecutionState {
         *context_guard!(self) = execution_context;
 
         // try executing asynchronous messages
+        // note: send context lock to avoid taking a new lock?
         self.try_execute_async_messages(slot);
 
         // check if there is a block at this slot
