@@ -438,7 +438,9 @@ impl ExecutionState {
             }
         }
 
+        // take a lock on the context
         let mut context = context_guard!(self);
+
         // compute new messages and reimburse senders of removed messages
         let reimbursement_messages = context.compute_slot_messages();
         for msg in reimbursement_messages {
@@ -454,6 +456,7 @@ impl ExecutionState {
                 debug!("the total amount hit the limit overflow, coins transfer will be rejected");
             }
         }
+
         // return the execution output
         context.take_execution_output()
     }
