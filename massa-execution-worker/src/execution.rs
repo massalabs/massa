@@ -228,7 +228,7 @@ impl ExecutionState {
     /// Execute an operation in the context of a block.
     /// Assumes the execution context was initialized at the beginning of the slot.
     ///
-    /// # arguments
+    /// # Arguments
     /// * operation: operation to execute
     /// * block_creator_addr: address of the block creator
     pub fn execute_operation(
@@ -299,7 +299,7 @@ impl ExecutionState {
 
             // Set the call stack to a single element:
             // * the execution will happen in the context of the address of the operation's sender
-            // * the context will signal that `coins` were creditedto the parallel balance of the sender during that call
+            // * the context will signal that `coins` were credited to the parallel balance of the sender during that call
             // * the context will give the operation's sender write access to its own ledger entry
             context.stack = vec![ExecutionStackElement {
                 address: sender_addr,
@@ -328,19 +328,31 @@ impl ExecutionState {
         Ok(())
     }
 
-    /// note: needs commentary
+    /// Try executing an asynchronous message
+    /// Assumes the execution context was initialized at the beginning of the slot.
+    ///
+    /// # Arguments
+    /// * slot: slot to execute
     pub fn try_execute_async_messages(&self, slot: Slot) {
-        // note: handle context
+        // question n1 : should executing a message credit coins to the executer?
+
+        let context_snapshot;
         let iter = {
-            let context_guard = context_guard!(self);
+            let context = context_guard!(self);
+            context_snapshot = context.get_snapshot();
+
             let messages = self
                 .final_state
                 .write()
                 .async_pool
-                .take_batch_to_executte(slot, context_guard.max_gas);
+                .take_batch_to_executte(slot, context.max_gas);
+            // question n2 : shouldn't the above available_gas be coming from a config or something like it?
+            // maybe it should be in the async pool config?
+            // also I don't see anything else to do with the context than saving the snapshot
+            // and initializing the max_gas but don't get where to take it from
             let mut modules: Vec<Vec<u8>> = Vec::with_capacity(messages.len());
             for message in &messages {
-                modules.push(context_guard.get_bytecode(&message.destination).unwrap());
+                modules.push(context.get_bytecode(&message.destination).unwrap());
             }
             messages.into_iter().zip(modules)
         };
@@ -354,13 +366,14 @@ impl ExecutionState {
                         param,
                         &*self.execution_interface,
                     ) {
-                        println!("reimburse");
+                        // handler function execution failed
+                        // reset the context to the previously saved snapshot
+                        context.reset_to_snapshot(context_snapshot);
                     }
                 }
                 Err(_) => println!("reimburse"),
             }
         }
-        // note: here reset to snapshot
     }
 
     /// Executes a full slot (with or without a block inside) without causing any changes to the state,
