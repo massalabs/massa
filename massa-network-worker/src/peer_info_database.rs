@@ -761,7 +761,12 @@ impl PeerInfoDatabase {
             }
             p.is_peer_ready(self.wakeup_interval, now)
         };
-        let mut res: Vec<_> = self.peers.values().filter(f).take(available_slots).collect();
+        let mut res: Vec<_> = self
+            .peers
+            .values()
+            .filter(f)
+            .take(available_slots)
+            .collect();
         res.sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
         Ok(res.into_iter().map(|p| p.ip).collect())
     }
