@@ -136,7 +136,7 @@ impl ReadBinder {
             if self.buf.len() != (res_size as usize) {
                 self.buf = vec![0u8; res_size as usize];
             }
-            // reset the curor so that it now represents how many content bytes have been read so far
+            // reset the cursor so that it now represents how many content bytes have been read so far
             self.cursor = 0;
         }
 

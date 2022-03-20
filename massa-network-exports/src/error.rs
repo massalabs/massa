@@ -18,7 +18,7 @@ pub enum NetworkError {
     /// A tokio task has crashed err:{0}
     TokioTaskJoinError(#[from] tokio::task::JoinError),
     /// error receiving oneshot response : {0}
-    TokieRecvError(#[from] tokio::sync::oneshot::error::RecvError),
+    TokioRecvError(#[from] tokio::sync::oneshot::error::RecvError),
     /// Error during network connection: {0}
     PeerConnectionError(#[from] NetworkConnectionErrorType),
     /// The ip:`{0}` address is not valid

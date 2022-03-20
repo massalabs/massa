@@ -20,7 +20,7 @@ pub enum ProtocolError {
     /// A tokio task has crashed err:{0}
     TokioTaskJoinError(#[from] tokio::task::JoinError),
     /// error receiving oneshot response : {0}
-    TokieRecvError(#[from] tokio::sync::oneshot::error::RecvError),
+    TokioRecvError(#[from] tokio::sync::oneshot::error::RecvError),
     /// error sending protocol event: {0}
     TokioSendError(#[from] Box<tokio::sync::mpsc::error::SendError<ProtocolEvent>>),
     /// Error during network connection:`{0:?}`

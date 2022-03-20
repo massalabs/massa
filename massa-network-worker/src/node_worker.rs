@@ -219,7 +219,7 @@ impl NodeWorker {
                 select! without the "biased" modifier will randomly select the 1st branch to check,
                 then will check the next ones in the order they are written.
                 We choose this order:
-                    * node_writer_handle (rare) to immediately register a stop and avoid wasting ressources
+                    * node_writer_handle (rare) to immediately register a stop and avoid wasting resources
                     * incoming socket data (high frequency): forward incoming data in priority to avoid contention
                     * node commands (high frequency): try to send, fail on contention
                     * ask peers: low frequency, non-critical

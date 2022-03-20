@@ -203,7 +203,7 @@ impl ProofOfStake {
                     })?;
                 if !final_data.is_complete(self.cfg.periods_per_cycle) {
                     // the target cycle is not final yet
-                    return Err(ProofOfStakeError::PosCycleUnavailable(format!("tryign to get PoS draw rolls/seed for cycle {} thread {} which is not finalized yet", target_cycle, scan_thread)));
+                    return Err(ProofOfStakeError::PosCycleUnavailable(format!("trying to get PoS draw rolls/seed for cycle {} thread {} which is not finalized yet", target_cycle, scan_thread)));
                 }
                 rng_seed_bits.extend(&final_data.rng_seed);
                 for (addr, &n_rolls) in final_data.roll_count.0.iter() {

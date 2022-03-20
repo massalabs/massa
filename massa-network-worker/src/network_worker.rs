@@ -564,7 +564,7 @@ impl NetworkWorker {
                     cur_connection_id.0 += 1;
                     self.active_connections
                         .insert(connection_id, (ip_addr, true));
-                    self.manage_successfull_connection(connection_id, reader, writer)?;
+                    self.manage_successful_connection(connection_id, reader, writer)?;
                 } else {
                     debug!("out connection towards ip={} refused", ip_addr);
                     massa_trace!("out_connection_refused", { "ip": ip_addr });
@@ -588,9 +588,9 @@ impl NetworkWorker {
     /// Manages in connection
     /// Only used inside worker's run_loop
     ///
-    /// Try a connection with an incomming node, if success insert the remote
+    /// Try a connection with an incoming node, if success insert the remote
     /// address at the index `connection_id` inside `self.active_connections`
-    /// and call `self.manage_successfull_connection`
+    /// and call `self.manage_successful_connection`
     ///
     /// If the connection failed with `MaxPeersConnectionReached`, mock the
     /// handshake and send a list of advertisable peer ips.
@@ -619,7 +619,7 @@ impl NetworkWorker {
                         cur_connection_id.0 += 1;
                         self.active_connections
                             .insert(connection_id, (remote_addr.ip(), false));
-                        self.manage_successfull_connection(connection_id, reader, writer)?;
+                        self.manage_successful_connection(connection_id, reader, writer)?;
                     }
                     Err(NetworkError::PeerConnectionError(
                         NetworkConnectionErrorType::MaxPeersConnectionReached(_),
@@ -655,10 +655,10 @@ impl NetworkWorker {
     ///        |                          |      : Connection success anyway
     ///        |                          |        and the in connection enter
     ///        |<------------------------>|        in `HandshakeWorker::run()`
-    ///        |  symetric read & write   |
+    ///        |  symmetric read & write   |
     ///```
     ///
-    /// In the `symetric read & write` the current node simulate a handshake
+    /// In the `symmetric read & write` the current node simulate a handshake
     /// managed by the *connection node* in `HandshakeWorker::run()`, the
     /// current node send a ListPeer as a message.
     ///
@@ -701,7 +701,7 @@ impl NetworkWorker {
     /// Add a new handshake to perform in `self.handshake_futures` to be handle in the main loop.
     ///
     /// Return an hanshake error if connection already running/waiting
-    fn manage_successfull_connection(
+    fn manage_successful_connection(
         &mut self,
         connection_id: ConnectionId,
         reader: ReadHalf,

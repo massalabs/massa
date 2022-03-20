@@ -7,8 +7,8 @@
 //!
 //! The First thing that the node will try is to read the configuration located
 //! in the `path` described in the environment variable `MASSA_CONFIG_PATH`.
-//! If no path found in the environment variable, the relativ path
-//! `base_confg/config.toml` is used as default. The default path should exist
+//! If no path found in the environment variable, the relative path
+//! `base_config/config.toml` is used as default. The default path should exist
 //! because it's a config file pushed in the repository.
 //!
 //! The next step will try to read the file at the given path. It will `panic`
@@ -20,7 +20,7 @@
 //! is set on Setting creation. All the configuration in this file will be merged
 //! with the previous step (override if duplicated)
 //!
-//! The last step is to merge the enironment variable prefixed with
+//! The last step is to merge the environment variable prefixed with
 //! `MASSA_CLIENT`, override if duplicated
 //!
 use directories::ProjectDirs;

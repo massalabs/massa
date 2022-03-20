@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 /// The result of the read-only execution.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum ReadOnlyResult {
-    /// An error occured during execution.
+    /// An error occurred during execution.
     Error(String),
-    /// The result of a sucessful execution.
+    /// The result of a successful execution.
     /// TODO: specify result.
     Ok,
 }
@@ -20,7 +20,7 @@ pub enum ReadOnlyResult {
 /// The response to a request for a read-only execution.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ExecuteReadOnlyResponse {
-    /// The slot at which the read-only execution occured.
+    /// The slot at which the read-only execution occurred.
     pub executed_at: Slot,
     /// The result fo the read-only execution.
     pub result: ReadOnlyResult,
@@ -35,7 +35,7 @@ impl Display for ExecuteReadOnlyResponse {
             f,
             "Result: {}",
             match &self.result {
-                ReadOnlyResult::Error(e) => format!("an error occured during the execution: {}", e),
+                ReadOnlyResult::Error(e) => format!("an error occurred during the execution: {}", e),
                 ReadOnlyResult::Ok => "ok".to_string(),
             }
         )?;

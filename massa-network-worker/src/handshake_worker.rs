@@ -44,7 +44,7 @@ impl HandshakeWorker {
     ///
     /// Manage a new connection and perform a normal handshake
     ///
-    /// Used for incomming and outgoing connections.
+    /// Used for incoming and outgoing connections.
     /// It will spawn a new future with an HandshakeWorker from the given `reader`
     /// and `writer` from your current node to the distant `connectionId`
     ///
@@ -54,7 +54,7 @@ impl HandshakeWorker {
     /// * self_node_id: our node id.
     /// * private_key : our private key.
     /// * timeout_duration: after timeout_duration millis, the handshake attempt is dropped.
-    /// * connection_id : Node we are trying to connect for debuging
+    /// * connection_id : Node we are trying to connect for debugging
     /// * version : Node version used in handshake initialization (check peers compatibility)
     pub fn spawn(
         socket_reader: ReadHalf,

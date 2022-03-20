@@ -320,7 +320,7 @@ impl PeerInfoDatabase {
     // high level peer management //
     ////////////////////////////////
 
-    /// Unbans a list of ip
+    /// Unban a list of ip
     pub fn unban(&mut self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         let mut update_happened = false;
         for ip in ips.into_iter() {
@@ -630,7 +630,7 @@ impl PeerInfoDatabase {
             .or_insert_with(|| PeerInfo::new(*ip, false))
             .peer_type;
 
-        // we need to first check if there is a global slot avaible
+        // we need to first check if there is a global slot available
         if self.is_max_in_connection_count_reached(peer_type) {
             return Err(NetworkError::PeerConnectionError(
                 NetworkConnectionErrorType::MaxPeersConnectionReached(*ip),
@@ -644,7 +644,7 @@ impl PeerInfoDatabase {
                 )
             })?; // peer was inserted just before
 
-            // is there a attempt slot avaible
+            // is there a attempt slot available
             if peer.banned {
                 massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
                 peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
@@ -693,7 +693,7 @@ impl PeerInfoDatabase {
         Ok(connections)
     }
 
-    /// returns Hashmap of ipAddrs -> Peerinfo
+    /// returns Hashmap of ipAddrs -> PeerInfo
     pub fn get_peers(&self) -> &HashMap<IpAddr, PeerInfo> {
         &self.peers
     }
@@ -753,7 +753,7 @@ impl PeerInfoDatabase {
         count: &ConnectionCount,
         cfg: &PeerTypeConnectionConfig,
     ) -> Result<Vec<IpAddr>, NetworkError> {
-        let avaible_slots = count.get_available_out_connection_attempts(cfg);
+        let available_slots = count.get_available_out_connection_attempts(cfg);
         let now = MassaTime::compensated_now(self.clock_compensation)?;
         let f = move |p: &&PeerInfo| {
             if p.peer_type != peer_type || !p.advertised || p.is_active() || p.banned {
@@ -761,7 +761,7 @@ impl PeerInfoDatabase {
             }
             p.is_peer_ready(self.wakeup_interval, now)
         };
-        let mut res: Vec<_> = self.peers.values().filter(f).take(avaible_slots).collect();
+        let mut res: Vec<_> = self.peers.values().filter(f).take(available_slots).collect();
         res.sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
         Ok(res.into_iter().map(|p| p.ip).collect())
     }

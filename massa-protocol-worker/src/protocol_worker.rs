@@ -447,7 +447,7 @@ impl ProtocolWorker {
                 select! without the "biased" modifier will randomly select the 1st branch to check,
                 then will check the next ones in the order they are written.
                 We choose this order:
-                    * manager commands: low freq, avoid havign to wait to stop
+                    * manager commands: low freq, avoid having to wait to stop
                     * incoming commands (high frequency): process commands in priority (this is a high-level crate so we prioritize this side to avoid slowing down consensus)
                     * network events (high frequency): process incoming events
                     * ask for blocks (timing not important)
@@ -1032,21 +1032,21 @@ impl ProtocolWorker {
         for endorsement in header.content.endorsements.iter() {
             // check index reuse
             if !used_endorsement_indices.insert(endorsement.content.index) {
-                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_index_reused", { "header": header, "edorsement": endorsement});
+                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_index_reused", { "header": header, "endorsement": endorsement});
                 return Ok(None);
             }
             // check slot
             if (endorsement.content.slot.thread != header.content.slot.thread)
                 || (endorsement.content.slot >= header.content.slot)
             {
-                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_slot", { "header": header, "edorsement": endorsement});
+                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_slot", { "header": header, "endorsement": endorsement});
                 return Ok(None);
             }
             // check endorsed block
             if endorsement.content.endorsed_block
                 != header.content.parents[header.content.slot.thread as usize]
             {
-                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_endorsed_block", { "header": header, "edorsement": endorsement});
+                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_endorsed_block", { "header": header, "endorsement": endorsement});
                 return Ok(None);
             }
         }
@@ -1109,7 +1109,7 @@ impl ProtocolWorker {
     /// - Check the header(see note_header_from_node).
     /// - Check operations(see note_operations_from_node).
     /// - Check operations:
-    ///     - Absense of duplicates.
+    ///     - Absence of duplicates.
     ///     - Validity period includes the slot of the block.
     ///     - Address matches that of the block.
     ///     - Thread matches that of the block.
@@ -1525,7 +1525,7 @@ mod tests {
             "wanted_blocks pruning incorrect"
         );
 
-        // ensure that there are max_node_known_blocks_size entries for knwon blocks
+        // ensure that there are max_node_known_blocks_size entries for known blocks
         assert_eq!(
             nodeinfo.known_blocks.len(),
             max_node_known_blocks_size,

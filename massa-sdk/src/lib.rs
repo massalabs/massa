@@ -110,7 +110,7 @@ impl RpcClient {
         self.call_method("ban", "()", vec![ips]).await
     }
 
-    /// Unbans given ip addr
+    /// Unban given ip addr
     /// No confirmation to expect.
     pub async fn unban(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.call_method("unban", "()", vec![ips]).await
