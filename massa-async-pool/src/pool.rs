@@ -135,16 +135,14 @@ impl AsyncPool {
     ///
     /// # returns
     /// A vector of messages, sorted from the most prioritary to the least prioritary
-    pub fn take_batch_to_executte(
+    pub fn take_batch_to_execute(
         &mut self,
         slot: Slot,
         mut available_gas: u64,
     ) -> Vec<AsyncMessage> {
         // gather all selected items and remove them from self.messages
         // iterate in decreasing priority order
-        let (btree, result) = self
-            .messages
-            .clone()
+        let (removed, kept) = std::mem::take(&mut self.messages)
             .into_iter()
             .rev()
             .partition(|(_, msg)| {
@@ -159,8 +157,8 @@ impl AsyncPool {
                     false
                 }
             });
-        self.messages = result;
-        btree
+        self.messages = kept;
+        removed
             .into_iter()
             .map(|x| x.1)
             .collect::<Vec<AsyncMessage>>()
@@ -198,13 +196,6 @@ fn test_take_batch() {
         );
     }
     assert_eq!(pool.messages.len(), 9);
-    pool.take_batch_to_executte(Slot::new(2, 0), 19);
-    println!(
-        "{:?}",
-        pool.messages
-            .iter()
-            .map(|x| x.1.max_gas)
-            .collect::<Vec<u64>>()
-    );
+    pool.take_batch_to_execute(Slot::new(2, 0), 19);
     assert_eq!(pool.messages.len(), 6);
 }
