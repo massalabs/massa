@@ -160,8 +160,8 @@ async fn test_inter_cycle_batch_finalization() {
 
             // Create, send and propagate A3
             let roll_sell = create_roll_sell(staking_key, 2, 5, 0);
-            let endorsement1 = create_endorsement(staking_key, Slot::new(5, 0), a2_id, 0);
-            let endorsement2 = create_endorsement(staking_key, Slot::new(5, 0), a2_id, 1);
+            let endorsement1 = create_endorsement(staking_key, Slot::new(4, 0), a2_id, 0);
+            let endorsement2 = create_endorsement(staking_key, Slot::new(4, 0), a2_id, 1);
             let (a3_id, a3_block, _) = create_block_with_operations_and_endorsements(
                 &cfg,
                 Slot::new(5, 0),
