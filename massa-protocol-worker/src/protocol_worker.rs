@@ -146,8 +146,6 @@ pub struct ProtocolWorker {
     checked_operations: OperationIds,
     /// List of processed headers
     checked_headers: Map<BlockId, BlockInfo>,
-    /// List of operation ids we received.
-    received_operations: OperationIds,
     /// List of ids of operations that we asked to the nodes
     asked_operations: HashMap<OperationId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
@@ -203,7 +201,6 @@ impl ProtocolWorker {
             checked_endorsements: Default::default(),
             checked_operations: Default::default(),
             checked_headers: Default::default(),
-            received_operations: Default::default(),
             asked_operations: Default::default(),
             op_batch_buffer: OperationBatchBuffer::with_capacity(
                 protocol_settings.operation_batch_buffer_capacity,
@@ -1223,7 +1220,7 @@ impl ProtocolWorker {
         }
         let mut operation_ids = OperationIds::default();
         for op_id in op_ids.iter() {
-            if self.received_operations.get(op_id).is_some() {
+            if self.checked_operations.get(op_id).is_some() {
                 operation_ids.insert(*op_id);
             }
         }
@@ -1264,7 +1261,7 @@ impl ProtocolWorker {
         // exactitude isn't important, we want to have a now for that function call
         let now = Instant::now();
         for op_id in op_batch {
-            if self.received_operations.contains(&op_id) {
+            if self.checked_operations.contains(&op_id) {
                 continue;
             }
             let wish = match self.asked_operations.get(&op_id) {
@@ -1317,7 +1314,7 @@ impl ProtocolWorker {
                 _ => None,
             })
             .collect();
-        self.received_operations.extend(operation_ids.iter());
+        self.checked_operations.extend(operation_ids.iter());
         if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
             node_info.known_operations.extend(operation_ids.iter());
         }
