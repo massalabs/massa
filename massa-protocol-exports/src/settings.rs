@@ -14,6 +14,8 @@ pub struct ProtocolSettings {
     pub max_simultaneous_ask_blocks_per_node: usize,
     /// Max wait time for sending a Network or Node event.
     pub max_send_wait: MassaTime,
+    /// Maximum number of batches in the memory buffer.
+    /// Dismiss the new batches if overflow
     pub operation_batch_buffer_capacity: usize,
     /// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     pub operation_batch_proc_period: u64,
