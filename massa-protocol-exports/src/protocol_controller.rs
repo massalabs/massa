@@ -35,8 +35,6 @@ pub enum ProtocolEvent {
     },
     /// Ask for a list of blocks from consensus.
     GetBlocks(Vec<BlockId>),
-    /// Get operations for a node
-    GetOperations((NodeId, OperationIds)),
 }
 /// Possible types of pool events that can happen.
 #[derive(Debug, Serialize)]
@@ -51,6 +49,8 @@ pub enum ProtocolPoolEvent {
         endorsements: Map<EndorsementId, SignedEndorsement>,
         propagate: bool, // whether or not to propagate endorsements
     },
+    /// Get operations for a node
+    GetOperations((NodeId, OperationIds)),
 }
 
 type BlocksResults =
