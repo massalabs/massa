@@ -22,7 +22,7 @@ use massa_models::signed::Signable;
 use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
 use massa_models::{Block, Slot};
 use massa_sc_runtime::Interface;
-use parking_lot::{Mutex, RwLock};
+use parking_lot::{Mutex, MutexGuard, RwLock};
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,
@@ -356,8 +356,9 @@ impl ExecutionState {
             std::str::from_utf8(&message.data).unwrap_or_default(),
             &*self.execution_interface,
         ) {
-            // note: make reimbursement here
-            context_guard!(self).reset_to_snapshot(context_snapshot);
+            let mut context = context_guard!(self);
+            self.reimburse_message_sender(&mut context, message);
+            context.reset_to_snapshot(context_snapshot);
             Err(ExecutionError::RuntimeError(format!(
                 "bytecode execution error: {}",
                 err
@@ -441,23 +442,32 @@ impl ExecutionState {
         let mut context = context_guard!(self);
 
         // compute new messages and reimburse senders of removed messages
-        let reimbursement_messages = context.compute_slot_messages();
-        for msg in reimbursement_messages {
-            if let Some(amount) = msg
-                .gas_price
-                .checked_mul_u64(msg.max_gas)
-                .and_then(|x| Some(x.saturating_add(msg.coins)))
-            {
-                if let Err(e) = context.transfer_parallel_coins(None, Some(msg.sender), amount) {
-                    debug!("reimbursement of {} failed: {}", msg.sender, e);
-                }
-            } else {
-                debug!("the total amount hit the limit overflow, coins transfer will be rejected");
-            }
+        let removed_messages = context.compute_slot_messages();
+        for msg in removed_messages {
+            self.reimburse_message_sender(&mut context, msg);
         }
 
         // return the execution output
         context.take_execution_output()
+    }
+
+    /// Tooling function used to reimburse the sender of an asynchronous message
+    fn reimburse_message_sender(
+        &self,
+        context: &mut MutexGuard<ExecutionContext>,
+        msg: AsyncMessage,
+    ) {
+        if let Some(amount) = msg
+            .gas_price
+            .checked_mul_u64(msg.max_gas)
+            .and_then(|x| Some(x.saturating_add(msg.coins)))
+        {
+            if let Err(e) = context.transfer_parallel_coins(None, Some(msg.sender), amount) {
+                debug!("reimbursement of {} failed: {}", msg.sender, e);
+            }
+        } else {
+            debug!("the total amount hit the limit overflow, coins transfer will be rejected");
+        }
     }
 
     /// Executes a read-only execution request.

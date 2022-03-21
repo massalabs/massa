@@ -8,7 +8,7 @@
 
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_final_state::FinalState;
-use massa_models::{Amount, Slot};
+use massa_models::Slot;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
