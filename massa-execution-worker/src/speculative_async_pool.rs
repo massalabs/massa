@@ -8,7 +8,7 @@
 
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_final_state::FinalState;
-use massa_models::Slot;
+use massa_models::{Amount, Slot};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -48,9 +48,16 @@ impl SpeculativeAsyncPool {
     pub fn compute_and_add_changes(&mut self, slot: Slot) -> Vec<AsyncMessage> {
         let mut pool_copy = self.final_state.read().async_pool.clone();
         pool_copy.apply_changes_unchecked(std::mem::take(&mut self.previous_changes));
+
+        let eliminated = pool_copy.settle_slot(slot, std::mem::take(&mut self.new_messages));
+        for v in &eliminated {
+            self.added_changes.push_delete(v.0);
+        }
+        let mut reimbursements = eliminated
+            .into_iter()
+            .map(|x| x.1)
+            .collect::<Vec<AsyncMessage>>();
         for msg in &self.new_messages {
-            // note: message is not pushed if mul overflows
-            // not sure if it is the right way to handle this
             if let Some(cost) = msg.gas_price.checked_mul_u64(msg.max_gas) {
                 self.added_changes.push_add(
                     (
@@ -60,15 +67,10 @@ impl SpeculativeAsyncPool {
                     ),
                     msg.clone(),
                 );
+            } else {
+                reimbursements.push(msg.clone());
             }
         }
-        let eliminated = pool_copy.settle_slot(slot, std::mem::take(&mut self.new_messages));
-        for v in &eliminated {
-            self.added_changes.push_delete(v.0);
-        }
-        eliminated
-            .into_iter()
-            .map(|x| x.1)
-            .collect::<Vec<AsyncMessage>>()
+        reimbursements
     }
 }
