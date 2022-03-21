@@ -387,6 +387,7 @@ impl PeerInfoDatabase {
 
             if old_pt != Default::default() {
                 // update global connection counts by peer type
+                // as the peer isn't whitelist anymore
                 let peer = *self.peers.get(&ip).unwrap(); // filled just before
                 if peer.active_out_connection_attempts > 0 {
                     self.decrease_global_active_out_connection_attempt_count(old_pt, &ip)?;

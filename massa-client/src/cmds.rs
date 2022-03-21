@@ -35,14 +35,14 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(args = "[IpAddr]"),
-        message = "unban a given IP addresses"
+        message = "unba given IP addresses"
     )]
     unban,
 
     #[strum(
         ascii_case_insensitive,
         props(args = "[IpAddr]"),
-        message = "ban a given IP addresses"
+        message = "ban given IP addresses"
     )]
     ban,
 
@@ -76,14 +76,14 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(args = "[IpAddr]"),
-        message = "whitelist a given IP addresses"
+        message = "whitelist given IP addresses"
     )]
     node_whitelist,
 
     #[strum(
         ascii_case_insensitive,
         props(args = "[IpAddr]"),
-        message = "remove from whitelist a given IP addresses"
+        message = "remove from whitelist given IP addresses"
     )]
     node_remove_from_whitelist,
 
