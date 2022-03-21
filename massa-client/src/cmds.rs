@@ -35,7 +35,7 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(args = "[IpAddr]"),
-        message = "unba given IP addresses"
+        message = "unban given IP addresses"
     )]
     unban,
 
