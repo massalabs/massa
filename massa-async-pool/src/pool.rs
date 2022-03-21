@@ -62,16 +62,16 @@ impl AsyncPool {
     /// # arguments
     /// * changes: AsyncPoolChanges listing all async pool changes (message insertions/deletions)
     pub fn apply_changes_unchecked(&mut self, changes: AsyncPoolChanges) {
-        for change in changes.0.iter() {
+        for change in changes.0 {
             match change {
                 // add a new message to the pool
                 (msg_id, AddOrDelete::Add(msg)) => {
-                    self.messages.insert(*msg_id, msg.clone());
+                    self.messages.insert(msg_id, msg);
                 }
 
                 // delete a message from the pool
                 (msg_id, AddOrDelete::Delete) => {
-                    self.messages.remove(msg_id);
+                    self.messages.remove(&msg_id);
                 }
             }
         }
