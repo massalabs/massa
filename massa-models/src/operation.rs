@@ -491,14 +491,27 @@ pub type Operations = Vec<SignedOperation>;
 /// to a `node_id` now or later. Mainly used in protocol and translated into
 /// simple combination of a `node_id` and `operations_ids`
 pub struct OperationBatchItem {
-    instant: Instant,
-    node_id: NodeId,
-    operations_ids: OperationIds,
+    pub instant: Instant,
+    pub node_id: NodeId,
+    pub operations_ids: OperationIds,
 }
 
-/// Queue containings every [OperationsBatchItem] we want to ask now or later.
+/// Queue containing every [OperationsBatchItem] we want to ask now or later.
+#[derive(Default)]
 pub struct OperationBatchBuffer(VecDeque<OperationBatchItem>);
 
+impl std::ops::Deref for OperationBatchBuffer {
+    type Target = VecDeque<OperationBatchItem>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for OperationBatchBuffer {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
