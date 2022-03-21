@@ -27,8 +27,6 @@ pub(crate) struct NodeInfo {
     pub known_blocks: Map<BlockId, (bool, Instant)>,
     /// The blocks the node asked for.
     pub wanted_blocks: Map<BlockId, Instant>,
-    /// The blocks the node asked for.
-    pub operation_wishlist: OperationIds,
     /// Blocks we asked that node for
     pub asked_blocks: Map<BlockId, Instant>,
     /// Instant when the node was added
@@ -69,7 +67,6 @@ impl NodeInfo {
             known_endorsements_queue: VecDeque::with_capacity(
                 pool_settings.max_known_endorsements_size,
             ),
-            operation_wishlist: Set::default(),
         }
     }
 

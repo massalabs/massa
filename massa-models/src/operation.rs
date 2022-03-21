@@ -500,6 +500,12 @@ pub struct OperationBatchItem {
 #[derive(Default)]
 pub struct OperationBatchBuffer(VecDeque<OperationBatchItem>);
 
+impl OperationBatchBuffer {
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(VecDeque::with_capacity(capacity))
+    }
+}
+
 impl std::ops::Deref for OperationBatchBuffer {
     type Target = VecDeque<OperationBatchItem>;
     fn deref(&self) -> &Self::Target {
@@ -512,6 +518,7 @@ impl std::ops::DerefMut for OperationBatchBuffer {
         &mut self.0
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
