@@ -230,7 +230,8 @@ impl Display for ExtendedWalletEntry {
     }
 }
 
-/// Just a map of extended wallet entries
+/// Aggregation of the local, with some useful information as the balance, etc
+/// to be printed by the client.
 #[derive(Debug, Serialize)]
 pub struct ExtendedWallet(Map<Address, ExtendedWalletEntry>);
 
