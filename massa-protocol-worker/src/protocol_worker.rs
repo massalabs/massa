@@ -264,7 +264,9 @@ impl ProtocolWorker {
     /// It's mostly a tokio::select within a loop.
     pub async fn run_loop(mut self) -> Result<NetworkEventReceiver, ProtocolError> {
         // TODO: Config variable for the moment 10000 (prune) (100 seconds)
-        let operation_prune_timer = sleep(Duration::from_millis(100000));
+        let operation_prune_timer = sleep(Duration::from_millis(
+            self.protocol_settings.asked_operations_pruning_period,
+        ));
         tokio::pin!(operation_prune_timer);
         let block_ask_timer = sleep(self.protocol_settings.ask_block_timeout.into());
         tokio::pin!(block_ask_timer);
@@ -318,7 +320,7 @@ impl ProtocolWorker {
                 // operation prune timer
                 _ = &mut operation_prune_timer => {
                     massa_trace!("protocol.protocol_worker.run_loop.operation_prune_timer", { });
-                    self.asked_operations.clear();
+                    self.prune_asked_operations(&mut operation_prune_timer)?;
                 }
             }
             massa_trace!("protocol.protocol_worker.run_loop.end", {});
@@ -1230,6 +1232,23 @@ impl ProtocolWorker {
         Ok(())
     }
 
+    /// Clear the `asked_operations` data structure and reset
+    /// `ask_operations_timer`
+    fn prune_asked_operations(
+        &mut self,
+        ask_operations_timer: &mut std::pin::Pin<&mut Sleep>,
+    ) -> Result<(), ProtocolError> {
+        self.asked_operations.clear();
+        // reset timer
+        let instant = Instant::now()
+            .checked_add(Duration::from_millis(
+                self.protocol_settings.asked_operations_pruning_period,
+            ))
+            .ok_or(TimeError::TimeOverflowError)?;
+        ask_operations_timer.set(sleep_until(instant));
+        Ok(())
+    }
+
     /// On receive a batch of operation ids `op_batch` from another `node_id`
     /// Execute the following algorithm: [redirect to github](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)
     ///
@@ -1246,7 +1265,6 @@ impl ProtocolWorker {
         let now = Instant::now();
         for op_id in op_batch {
             if self.received_operations.contains(&op_id) {
-                // Should I manage here the prune of `wanted`, `op_batch_buffer` etc?
                 continue;
             }
             let wish = match self.asked_operations.get(&op_id) {
@@ -1269,7 +1287,10 @@ impl ProtocolWorker {
         if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity {
             self.op_batch_buffer.push_back(OperationBatchItem {
                 instant: now
-                    + Duration::from_millis(self.protocol_settings.operation_batch_proc_period),
+                    .checked_add(Duration::from_millis(
+                        self.protocol_settings.operation_batch_proc_period,
+                    ))
+                    .ok_or(TimeError::TimeOverflowError)?,
                 node_id,
                 operations_ids: future_set,
             });

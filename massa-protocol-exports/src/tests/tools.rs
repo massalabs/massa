@@ -233,7 +233,7 @@ pub fn create_protocol_settings() -> ProtocolSettings {
         max_known_endorsements_size: 1000,
         operation_batch_buffer_capacity: 1000,
         operation_batch_proc_period: 200,
-        operation_asked_pruning_period: 500,
+        asked_operations_pruning_period: 500,
     }
 }
 
