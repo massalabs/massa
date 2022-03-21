@@ -502,32 +502,27 @@ impl ProtocolWorker {
                     {}
                 );
             }
-            ProtocolCommand::PropagateOperations(ops) => {
+            ProtocolCommand::PropagateOperations(operation_ids) => {
                 massa_trace!(
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
-                    { "operations": ops }
+                    { "operation_ids": operation_ids }
                 );
-                //for (node, node_info) in self.active_nodes.iter_mut() {
-                //    let new_ops: Map<OperationId, SignedOperation> = ops
-                //        .iter()
-                //        .filter(|(id, _)| !node_info.knows_op(*id))
-                //        .map(|(k, v)| (*k, v.clone()))
-                //        .collect();
-                //    node_info.insert_known_ops(
-                //        new_ops.keys().copied().collect(),
-                //        self.protocol_settings.max_known_ops_size,
-                //    );
-                //    let to_send = new_ops.into_iter().map(|(_, op)| op).collect::<Vec<_>>();
-                //    if !to_send.is_empty() {
-                //        self.network_command_sender
-                //            .send_operations(*node, to_send)
-                //            .await?;
-                //    }
-                //}
-                todo!("Implement build `OperationBatches` method")
-                // TODO: correctly build an `OperationBatches` with the previous loop and send that
-                //       result to the massa-network.
-                //       Refer to documentation in `massa-network-exports/src/commands.rs`
+                for (node, node_info) in self.active_nodes.iter_mut() {
+                    let new_ops: OperationIds = operation_ids
+                        .iter()
+                        .filter(|id| !node_info.knows_op(*id))
+                        .copied()
+                        .collect();
+                    node_info.insert_known_ops(
+                        new_ops.iter().cloned().collect(),
+                        self.protocol_settings.max_known_ops_size,
+                    );
+                    if !new_ops.is_empty() {
+                        self.network_command_sender
+                            .send_operations_batch(*node, new_ops)
+                            .await?;
+                    }
+                }
             }
             ProtocolCommand::PropagateEndorsements(endorsements) => {
                 massa_trace!(
