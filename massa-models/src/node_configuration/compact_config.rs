@@ -35,11 +35,19 @@ pub struct CompactConfig {
 
 impl Default for CompactConfig {
     fn default() -> Self {
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let t0 = T0;
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(feature = "sandbox")]
+        let t0 = *T0;
         Self {
             genesis_timestamp: *GENESIS_TIMESTAMP,
             end_timestamp: *END_TIMESTAMP,
-            thread_count: THREAD_COUNT,
-            t0: T0,
+            thread_count,
+            t0,
             delta_f0: DELTA_F0,
             operation_validity_periods: OPERATION_VALIDITY_PERIODS,
             periods_per_cycle: PERIODS_PER_CYCLE,
