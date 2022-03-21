@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{Address, Slot};
+use crate::{AsyncMessage, AsyncPoolBootstrap};
 
 /// This file defines tools to test the async pool bootstrap
 

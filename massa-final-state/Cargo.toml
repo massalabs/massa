@@ -19,6 +19,7 @@ massa_async_pool = { path = "../massa-async-pool" }
 pretty_assertions = "1.0"
 serial_test = "0.6"
 massa_ledger = { path = "../massa-ledger", features=["testing"] }
+massa_async_pool = { path = "../massa-async-pool", features=["testing"] }
 
 [features]
 testing = []
