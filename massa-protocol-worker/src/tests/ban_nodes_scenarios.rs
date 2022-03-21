@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::tools::{protocol_test, protocol_test_with_storage};
+use super::tools::protocol_test;
 use massa_models::prehash::{Map, Set};
 use massa_models::signed::Signable;
 use massa_models::{BlockId, Slot};
@@ -15,14 +15,13 @@ use std::time::Duration;
 #[serial]
 async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
-    protocol_test_with_storage(
+    protocol_test(
         protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver,
-                    storage| {
+                    protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -36,15 +35,7 @@ async fn test_protocol_bans_node_sending_block_with_invalid_signature() {
 
             // 3. Send block to protocol.
             network_controller
-                .send_block(
-                    creator_node.id,
-                    block
-                        .header
-                        .content
-                        .compute_id()
-                        .expect("Fail to compute block id"),
-                    Some((block, storage)),
-                )
+                .send_block(creator_node.id, block, Default::default())
                 .await;
 
             // The node is banned.

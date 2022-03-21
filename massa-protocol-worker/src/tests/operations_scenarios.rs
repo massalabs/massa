@@ -2,7 +2,7 @@
 
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::tools::{protocol_test, protocol_test_with_storage};
+use super::tools::protocol_test;
 use massa_models::prehash::{Map, Set};
 use massa_models::signed::Signable;
 use massa_models::{self, Address, Amount, OperationId, Slot};
@@ -509,14 +509,13 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_header(
 ) {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
-    protocol_test_with_storage(
+    protocol_test(
         protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver,
-                    storage| {
+                    protocol_pool_event_receiver| {
             // Create 2 nodes.
             let nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
@@ -534,15 +533,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 vec![operation.clone()],
             );
 
-            let block_id = block
-                .header
-                .content
-                .compute_id()
-                .expect("Fail to compute block id");
-
             // Node 2 sends block, resulting in operations and endorsements noted in block info.
             network_controller
-                .send_block(nodes[1].id, block_id, Some((block.clone(), storage)))
+                .send_block(nodes[1].id, block.clone(), Default::default())
                 .await;
 
             // Node 1 sends header, resulting in protocol using the block info to determine
@@ -605,14 +598,13 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_header_wrong_root_hash(
 ) {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
-    protocol_test_with_storage(
+    protocol_test(
         protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver,
-                    storage| {
+                    protocol_pool_event_receiver| {
             // Create 3 nodes.
             let nodes = tools::create_and_connect_nodes(3, &mut network_controller).await;
 
@@ -635,20 +627,15 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Change the root operation hash
             block.operations = vec![operation_2.clone()];
 
-            let block_id = block
-                .header
-                .content
-                .compute_id()
-                .expect("Fail to compute block id");
             // Node 2 sends block, not resulting in operations and endorsements noted in block info,
             // because of the invalid root hash.
             network_controller
-                .send_block(nodes[1].id, block_id, Some((block.clone(), storage)))
+                .send_block(nodes[1].id, block.clone(), Default::default())
                 .await;
 
             // Node 3 sends block, resulting in operations and endorsements noted in block info.
             network_controller
-                .send_block(nodes[2].id, block_id, None)
+                .send_block(nodes[2].id, block.clone(), Default::default())
                 .await;
 
             // Node 1 sends header, but the block is empty.
@@ -706,14 +693,13 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 #[serial]
 async fn test_protocol_does_not_propagates_operations_when_receiving_those_inside_a_block() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
-    protocol_test_with_storage(
+    protocol_test(
         protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
-                    mut protocol_pool_event_receiver,
-                    storage| {
+                    mut protocol_pool_event_receiver| {
             // Create 2 nodes.
             let mut nodes = tools::create_and_connect_nodes(2, &mut network_controller).await;
 
@@ -737,15 +723,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
 
             // 4. Send block to protocol.
             network_controller
-                .send_block(
-                    creator_node.id,
-                    block
-                        .header
-                        .content
-                        .compute_id()
-                        .expect("Fail to compute block id"),
-                    Some((block, storage)),
-                )
+                .send_block(creator_node.id, block, Default::default())
                 .await;
 
             // 5. Check that the operation included in the block is not propagated.

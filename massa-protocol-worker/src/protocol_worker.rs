@@ -9,8 +9,8 @@ use massa_models::{
     node::NodeId,
     prehash::{BuildMap, Map, Set},
     signed::Signable,
-    Address, BlockId, EndorsementId, OperationId, OperationType, SignedEndorsement, SignedHeader,
-    SignedOperation,
+    Address, Block, BlockId, EndorsementId, OperationId, OperationType, SignedEndorsement,
+    SignedHeader, SignedOperation,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
@@ -1125,7 +1125,7 @@ impl ProtocolWorker {
     /// - Check root hash.
     async fn note_block_from_node(
         &mut self,
-        block: &BlockId,
+        block: &Block,
         source_node_id: &NodeId,
     ) -> Result<
         Option<(
@@ -1138,13 +1138,11 @@ impl ProtocolWorker {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
         let (header, operations, operation_merkle_root, slot) = {
-            let stored_block = self.storage.retrieve_block(block).unwrap();
-            let stored_block = stored_block.read();
             (
-                stored_block.block.header.clone(),
-                stored_block.block.operations.clone(),
-                stored_block.block.header.content.operation_merkle_root,
-                stored_block.block.header.content.slot,
+                block.header.clone(),
+                block.operations.clone(),
+                block.header.content.operation_merkle_root,
+                block.header.content.slot,
             )
         };
 
@@ -1390,14 +1388,17 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedBlock {
                 node: from_node_id,
-                block_id,
+                block,
+                serialized,
             } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.received_block", { "node": from_node_id, "block_id": block_id});
-
-                // TODO: remove clone of block.
+                massa_trace!("protocol.protocol_worker.on_network_event.received_block", { "node": from_node_id, "block": block});
                 if let Some((block_id, operation_set, endorsement_ids)) =
-                    self.note_block_from_node(&block_id, &from_node_id).await?
+                    self.note_block_from_node(&block, &from_node_id).await?
                 {
+                    // Store block in shared storage.
+                    self.storage
+                        .store_block(block_id, block.clone(), serialized);
+
                     let mut set = Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
                     set.insert(block_id);
                     self.stop_asking_blocks(set)?;

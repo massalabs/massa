@@ -748,8 +748,8 @@ impl NetworkWorker {
             NodeEvent(from_node_id, NodeEventType::ReceivedPeerList(lst)) => {
                 event_impl::on_received_peer_list(self, from_node_id, &lst)?
             }
-            NodeEvent(from_node_id, NodeEventType::ReceivedBlock(data)) => {
-                event_impl::on_received_block(self, from_node_id, data).await?
+            NodeEvent(from_node_id, NodeEventType::ReceivedBlock(block, serialized)) => {
+                event_impl::on_received_block(self, from_node_id, block, serialized).await?
             }
             NodeEvent(from_node_id, NodeEventType::ReceivedAskForBlocks(list)) => {
                 event_impl::on_received_ask_for_blocks(self, from_node_id, list).await

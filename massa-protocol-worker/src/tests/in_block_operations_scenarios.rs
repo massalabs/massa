@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::tools::{protocol_test, protocol_test_with_storage};
+use super::tools::protocol_test;
 use massa_hash::hash::Hash;
 use massa_models::signed::Signed;
 use massa_models::{get_serialization_context, Address, Amount, Block, BlockHeader, Slot};
@@ -23,14 +23,13 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
     // .init()
     // .unwrap();
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
-    protocol_test_with_storage(
+    protocol_test(
         protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver,
-                    storage| {
+                    protocol_pool_event_receiver| {
             let serialization_context = get_serialization_context();
 
             // Create 1 node.
@@ -69,7 +68,6 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     true,
                     creator_node.id,
                     &mut protocol_event_receiver,
-                    Some(storage.clone()),
                 )
                 .await;
             }
@@ -91,7 +89,6 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     false,
                     creator_node.id,
                     &mut protocol_event_receiver,
-                    Some(storage.clone()),
                 )
                 .await;
             }
@@ -112,7 +109,6 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     false,
                     creator_node.id,
                     &mut protocol_event_receiver,
-                    Some(storage.clone()),
                 )
                 .await;
             }
@@ -147,7 +143,6 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     false,
                     creator_node.id,
                     &mut protocol_event_receiver,
-                    Some(storage.clone()),
                 )
                 .await;
             }
@@ -169,7 +164,6 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     false,
                     creator_node.id,
                     &mut protocol_event_receiver,
-                    Some(storage.clone()),
                 )
                 .await;
             }
@@ -191,7 +185,6 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     false,
                     creator_node.id,
                     &mut protocol_event_receiver,
-                    Some(storage.clone()),
                 )
                 .await;
             }

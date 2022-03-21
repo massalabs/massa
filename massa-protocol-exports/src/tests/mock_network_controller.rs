@@ -1,10 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::SerializeCompact;
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId};
-use massa_models::{
-    storage::Storage, Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation,
-};
+use massa_models::{Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation};
 use massa_network_exports::{
     NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
 };
@@ -72,19 +69,12 @@ impl MockNetworkController {
             .expect("Couldn't send header to protocol.");
     }
 
-    pub async fn send_block(
-        &mut self,
-        source_node_id: NodeId,
-        block_id: BlockId,
-        block_and_storage: Option<(Block, Storage)>,
-    ) {
-        if let Some((block, storage)) = block_and_storage {
-            storage.store_block(block_id, block.clone(), block.to_bytes_compact().unwrap());
-        }
+    pub async fn send_block(&mut self, source_node_id: NodeId, block: Block, serialized: Vec<u8>) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedBlock {
                 node: source_node_id,
-                block_id,
+                block,
+                serialized,
             })
             .await
             .expect("Couldn't send block to protocol.");
