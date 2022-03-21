@@ -18,7 +18,7 @@ use std::collections::BTreeMap;
 /// Note: currently the ledger is stored in RAM. TODO put it on the hard drive with cache.
 pub struct FinalLedger {
     /// ledger config
-    config: LedgerConfig,
+    _config: LedgerConfig,
     /// ledger tree, sorted by address
     sorted_ledger: BTreeMap<Address, LedgerEntry>,
 }
@@ -96,7 +96,7 @@ impl FinalLedger {
         // generate the final ledger
         Ok(FinalLedger {
             sorted_ledger,
-            config,
+            _config: config,
         })
     }
 
@@ -110,7 +110,7 @@ impl FinalLedger {
     pub fn from_bootstrap_state(config: LedgerConfig, state: FinalLedgerBootstrapState) -> Self {
         FinalLedger {
             sorted_ledger: state.sorted_ledger,
-            config,
+            _config: config,
         }
     }
 
