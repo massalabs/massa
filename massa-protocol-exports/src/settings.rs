@@ -20,6 +20,5 @@ pub struct ProtocolSettings {
     /// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
     pub operation_batch_proc_period: u64,
     /// All operations asked are prune each `operation_asked_pruning_period` millisecond
-    /// todo: link algorithm documentation
     pub operation_asked_pruning_period: u64,
 }

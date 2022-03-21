@@ -146,8 +146,7 @@ pub struct ProtocolWorker {
     checked_operations: OperationIds,
     /// List of processed headers
     checked_headers: Map<BlockId, BlockInfo>,
-    /// List of operations received
-    // TODO: Operation should be stored when received and we work only with id in the future.
+    /// List of operation ids we received.
     received_operations: OperationIds,
     /// List of ids of operations that we asked to the nodes
     asked_operations: HashMap<OperationId, (Instant, Vec<NodeId>)>,
@@ -1231,6 +1230,9 @@ impl ProtocolWorker {
         Ok(())
     }
 
+    /// On receive a batch of operation ids `op_batch` from another `node_id`
+    /// Execute the following algorithm: [redirect to github](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)
+    ///
     async fn on_batch_operations_received(
         &mut self,
         op_batch: OperationIds,
@@ -1275,19 +1277,24 @@ impl ProtocolWorker {
         self.network_command_sender
             .send_ask_for_operations(node_id, ask_set)
             .await
-            .map_err(|_| ProtocolError::ChannelError("send ask for operations failed".into()))?;
-        Ok(())
+            .map_err(|_| ProtocolError::ChannelError("send ask for operations failed".into()))
     }
 
+    /// On full operations are received from the network,
+    /// - Uptate the cache `received_operations` ids and each
+    ///   `node_info.known_operations`
+    /// - Notify the operations to he local node, to be propagated
     async fn on_operations_received(
         &mut self,
         node_id: NodeId,
         operations: Operations,
     ) -> Result<(), ProtocolError> {
-        // todo: remove unwrap, if fail, ignore the operation
         let operation_ids: OperationIds = operations
             .iter()
-            .map(|signed_op| signed_op.content.compute_id().unwrap())
+            .filter_map(|signed_op| match signed_op.content.compute_id() {
+                Ok(op_id) => Some(op_id),
+                _ => None,
+            })
             .collect();
         self.received_operations.extend(operation_ids.iter());
         if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
