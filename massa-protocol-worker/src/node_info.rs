@@ -6,7 +6,10 @@
 //! Same as for wanted/known blocks, we remember here in cache wich node asked
 //! for operations and which operations he seem to already know.
 
-use massa_models::prehash::{BuildMap, Map, Set};
+use massa_models::{
+    operation::OperationIds,
+    prehash::{BuildMap, Map, Set},
+};
 use massa_models::{BlockId, EndorsementId, OperationId};
 use massa_protocol_exports::ProtocolSettings;
 use std::collections::VecDeque;
@@ -25,13 +28,13 @@ pub(crate) struct NodeInfo {
     /// The blocks the node asked for.
     pub wanted_blocks: Map<BlockId, Instant>,
     /// The blocks the node asked for.
-    pub operation_wishlist: Set<OperationId>,
+    pub operation_wishlist: OperationIds,
     /// Blocks we asked that node for
     pub asked_blocks: Map<BlockId, Instant>,
     /// Instant when the node was added
     pub connection_instant: Instant,
     /// all known operations
-    pub known_operations: Set<OperationId>,
+    pub known_operations: OperationIds,
     /// Same as `known_operations` but sorted for a premature optimization :-)
     pub known_operations_queue: VecDeque<OperationId>,
     /// all known endorsements

@@ -4,7 +4,8 @@ use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
 use massa_models::{
-    operation::OperationIds,
+    node::NodeId,
+    operation::{OperationIds, Operations},
     prehash::{Map, Set},
 };
 
@@ -34,6 +35,8 @@ pub enum ProtocolEvent {
     },
     /// Ask for a list of blocks from consensus.
     GetBlocks(Vec<BlockId>),
+    /// Get operations for a node
+    GetOperations((NodeId, OperationIds)),
 }
 /// Possible types of pool events that can happen.
 #[derive(Debug, Serialize)]
@@ -72,6 +75,8 @@ pub enum ProtocolCommand {
     },
     /// The response to a ProtocolEvent::GetBlocks.
     GetBlocksResults(BlocksResults),
+    /// The response to a [ProtocolEvent::GetOperations].
+    GetOperationsResults((NodeId, Operations)),
     /// Propagate operations ids (send batches)
     PropagateOperations(OperationIds),
     /// Propagate endorsements

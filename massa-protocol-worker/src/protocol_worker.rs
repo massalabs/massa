@@ -143,12 +143,12 @@ pub struct ProtocolWorker {
     /// List of processed endorsements
     checked_endorsements: Set<EndorsementId>,
     /// List of processed operations
-    checked_operations: Set<OperationId>,
+    checked_operations: OperationIds,
     /// List of processed headers
     checked_headers: Map<BlockId, BlockInfo>,
     /// List of operations received
     // TODO: Operation should be stored when received and we work only with id in the future.
-    received_operations: HashMap<OperationId, SignedOperation>,
+    received_operations: OperationIds,
     /// List of ids of operations that we asked to the nodes
     asked_operations: HashMap<OperationId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
@@ -555,6 +555,12 @@ impl ProtocolWorker {
                     }
                 }
             }
+            ProtocolCommand::GetOperationsResults((_node_id, _operations)) => todo!(
+                "Forward to the network
+            self.network_command_sender
+            .send_operations(node_id, operations)
+            .await;"
+            ),
         }
         massa_trace!("protocol.protocol_worker.process_command.end", {});
         Ok(())
@@ -1097,7 +1103,7 @@ impl ProtocolWorker {
     /// - Valid signature
     async fn note_operations_from_node(
         &mut self,
-        operations: Vec<SignedOperation>,
+        operations: Operations,
         source_node_id: &NodeId,
         propagate: bool,
     ) -> Result<(Vec<OperationId>, Map<OperationId, (usize, u64)>, bool, u64), ProtocolError> {
@@ -1226,17 +1232,13 @@ impl ProtocolWorker {
                 node_info.known_operations.remove(op_ids);
             }
         }
-        let mut operation_map: HashMap<OperationId, SignedOperation> = Default::default();
+        let mut operation_ids = OperationIds::default();
         for op_id in op_ids.iter() {
-            if let Some(op) = self.received_operations.get(op_id) {
-                operation_map.insert(*op_id, op.clone());
+            if self.received_operations.get(op_id).is_some() {
+                operation_ids.insert(*op_id);
             }
         }
-        self.network_command_sender
-            .send_operations(node_id, operation_map.into_values().collect())
-            .await
-            .map_err(|_| ProtocolError::ChannelError("send operations failed".into()))?;
-        Ok(())
+        todo!("self.send_protocol_event(ProtocolEvent::GetOperations(for_node, operation_ids)).await;");
     }
 
     async fn on_batch_operations_received(
@@ -1251,7 +1253,7 @@ impl ProtocolWorker {
         // exactitude isn't important, we want to have a now for that function call
         let now = Instant::now();
         for op_id in op_batch {
-            if self.received_operations.contains_key(&op_id) {
+            if self.received_operations.contains(&op_id) {
                 // Should I manage here the prune of `wanted`, `op_batch_buffer` etc?
                 continue;
             }
@@ -1291,29 +1293,17 @@ impl ProtocolWorker {
         node_id: NodeId,
         operations: Operations,
     ) -> Result<(), ProtocolError> {
-        // TODO: Here to have the operations id. To confirm with @adrien-zinger
-        let mut operations_map: HashMap<OperationId, SignedOperation> =
-            HashMap::with_capacity(operations.len());
-        for op in operations {
-            // TODO: Can unwrap ?
-            operations_map.insert(op.content.compute_id().unwrap(), op);
-        }
-        self.received_operations.extend(operations_map.clone());
+        // todo: remove unwrap, if fail, ignore the operation
+        let operation_ids: OperationIds = operations
+            .iter()
+            .map(|signed_op| signed_op.content.compute_id().unwrap())
+            .collect();
+        self.received_operations.extend(operation_ids.iter());
         if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
-            node_info.known_operations.extend(operations_map.keys());
+            node_info.known_operations.extend(operation_ids.iter());
         }
-        for (node_id, node_info) in self.active_nodes.iter_mut() {
-            let mut batch = OperationIds::default();
-            batch.extend(
-                operations_map
-                    .keys()
-                    .filter(|&&op_id| node_info.known_operations.insert(op_id)),
-            );
-            self.network_command_sender
-                .send_operations_batch(*node_id, batch)
-                .await
-                .map_err(|_| ProtocolError::ChannelError("send operations batch failed".into()))?;
-        }
+        self.note_operations_from_node(operations, &node_id, true)
+            .await?;
         Ok(())
     }
 

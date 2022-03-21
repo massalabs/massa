@@ -1148,6 +1148,9 @@ impl ConsensusWorker {
                     .send_get_blocks_results(results)
                     .await?;
             }
+            ProtocolEvent::GetOperations((_node_id, _operation_ids)) => {
+                todo!("Find all oprations and send the resultas it's done for blocks")
+            }
         }
         Ok(())
     }
