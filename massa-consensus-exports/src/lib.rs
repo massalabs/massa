@@ -22,7 +22,7 @@ pub mod commands;
 
 pub mod events;
 
-// Useful defined types
+// For a slot associate the selected node's addresses for draws by a node address
 type SelectionDraws = Vec<(Slot, (Address, Vec<Address>))>;
 
 pub mod tools;
