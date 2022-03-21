@@ -3530,11 +3530,17 @@ impl BlockGraph {
             })
             .collect();
         slot_waiting.sort_unstable();
-        (self.cfg.max_future_processing_blocks..slot_waiting.len()).for_each(|idx| {
+        let len_slot_waiting = slot_waiting.len();
+        let mut to_prune: Vec<BlockId> =
+            Vec::with_capacity(len_slot_waiting - self.cfg.max_future_processing_blocks);
+        (self.cfg.max_future_processing_blocks..len_slot_waiting).for_each(|idx| {
             let (_slot, block_id) = &slot_waiting[idx];
             self.block_statuses.remove(block_id);
             self.waiting_for_slot_index.remove(block_id);
+            to_prune.push(*block_id);
         });
+        // Prune shared storage
+        self.storage.remove_blocks(&to_prune);
     }
 
     fn prune_discarded(&mut self) -> Result<()> {
@@ -3556,10 +3562,13 @@ impl BlockGraph {
             .collect();
         discard_hashes.sort_unstable();
         discard_hashes.truncate(self.discarded_index.len() - self.cfg.max_discarded_blocks);
-        for (_, block_id) in discard_hashes.into_iter() {
+        for (_, block_id) in discard_hashes.iter() {
             self.block_statuses.remove(&block_id);
             self.discarded_index.remove(&block_id);
         }
+        // Prune shared storage
+        let ids: Vec<BlockId> = discard_hashes.into_iter().map(|(_, id)| id).collect();
+        self.storage.remove_blocks(&ids);
         Ok(())
     }
 

@@ -266,7 +266,9 @@ impl ConsensusWorker {
                 evt = self.channels.protocol_event_receiver.wait_event() =>{
                     massa_trace!("consensus.consensus_worker.run_loop.select.protocol_event", {});
                     match evt {
-                        Ok(event) => self.process_protocol_event(event).await?,
+                        Ok(event) => {
+                            self.process_protocol_event(event).await?
+                        },
                         Err(err) => return Err(ConsensusError::ProtocolError(Box::new(err)))
                     }
                 },
