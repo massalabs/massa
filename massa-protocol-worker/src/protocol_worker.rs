@@ -153,10 +153,6 @@ pub struct ProtocolWorker {
     asked_operations: HashMap<OperationId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
     op_batch_buffer: OperationBatchBuffer,
-    /// config operation_period
-    op_batch_proc_period: u64,
-    /// config buffer capacity limit [FakeProtocol::op_batch_buffer]
-    op_batch_buf_capacity: usize,
 }
 
 pub struct ProtocolWorkerChannels {
@@ -210,11 +206,9 @@ impl ProtocolWorker {
             checked_headers: Default::default(),
             received_operations: Default::default(),
             asked_operations: Default::default(),
-            op_batch_buffer: Default::default(),
-            // TODO: Take it as parameters
-            op_batch_buf_capacity: 1000,
-            /// In milliseconds
-            op_batch_proc_period: 200,
+            op_batch_buffer: OperationBatchBuffer::with_capacity(
+                protocol_settings.operation_batch_buffer_capacity,
+            ),
         }
     }
 
@@ -1270,9 +1264,10 @@ impl ProtocolWorker {
                 self.asked_operations.insert(op_id, (now, vec![node_id]));
             }
         }
-        if self.op_batch_buffer.len() < self.op_batch_buf_capacity {
+        if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity {
             self.op_batch_buffer.push_back(OperationBatchItem {
-                instant: now + Duration::from_millis(self.op_batch_proc_period),
+                instant: now
+                    + Duration::from_millis(self.protocol_settings.operation_batch_proc_period),
                 node_id,
                 operations_ids: future_set,
             });

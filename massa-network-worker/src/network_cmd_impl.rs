@@ -264,25 +264,6 @@ pub async fn on_block_not_found_cmd(worker: &mut NetworkWorker, node: NodeId, bl
         .await;
 }
 
-pub async fn on_send_operation_cmd(
-    worker: &mut NetworkWorker,
-    node: NodeId,
-    operations: Operations,
-) {
-    massa_trace!(
-        "network_worker.manage_network_command receive NetworkCommand::SendOperations",
-        { "node": node, "operations": operations }
-    );
-    worker
-        .event
-        .forward(
-            node,
-            worker.active_nodes.get(&node),
-            NodeCommand::SendOperations(operations),
-        )
-        .await;
-}
-
 pub async fn on_send_endorsements_cmd(
     worker: &mut NetworkWorker,
     node: NodeId,
@@ -421,9 +402,12 @@ pub async fn on_ask_for_operations_cmd(
         "network_worker.manage_network_command receive NetworkCommand::SendOperationBatch",
         { "wishlist": wishlist }
     );
-    let fut = worker.event.forward(
-        to_node,
-        worker.active_nodes.get(&to_node),
-        NodeCommand::AskForOperations(wishlist),
-    );
+    worker
+        .event
+        .forward(
+            to_node,
+            worker.active_nodes.get(&to_node),
+            NodeCommand::AskForOperations(wishlist),
+        )
+        .await;
 }
