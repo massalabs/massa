@@ -121,7 +121,6 @@ impl SerializeCompact for AsyncMessage {
     }
 }
 
-/// Allow deserializing a AsyncMessage from its compact binary representation
 impl DeserializeCompact for AsyncMessage {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
         let mut cursor = 0usize;
