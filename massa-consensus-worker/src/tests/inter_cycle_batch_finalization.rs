@@ -1,48 +1,43 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use super::tools::*;
+use massa_consensus_exports::ConsensusConfig;
 use massa_models::{ledger_models::LedgerData, Address, Amount, BlockId, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key};
 use massa_time::MassaTime;
 use serial_test::serial;
-use std::str::FromStr;
-
-use super::tools::*;
-use massa_consensus_exports::ConsensusConfig;
+use std::{collections::HashSet, str::FromStr};
 
 /// # Context
 ///
 /// Regression test for https://github.com/massalabs/massa/pull/2433
 ///
-/// When there are 2 cliques C1 and C2, and a new block B arrives and makes C2 stale,
-/// a whole batch of blocks from C1 will suddenly become final.
-/// However, clique computation, and stale/final block identification is done
-/// after checking the integrity of B and adding it to the graph.
-/// And once all of that is done, PoS is informed of the newly finalized block batch.
-/// Therefore, while B is being checked, PoS is not yet aware of the blocks
-/// finalized by the addition of B to the graph.
+/// When we have the following block sequence
+/// 1 thread, periods_per_cycle = 2, delta_f0 = 1, 1 endorsement per block
 ///
-/// On the other hand when verifying roll sales happening in B (before its addition to the graph),
-/// we need to go back to the latest final block to which the final roll registry is attached,
-/// and apply roll changes coming from subsequent active blocks
-/// in order to get the current effective roll registry at the input of B.
-/// The PoS module is the one holding the final roll registry.
+/// cycle 0 | cycle 1 | cycle 2
+///  G - B1 - B2 - B3 - B4
+/// where G is the genesis block
+/// and B4 contains a roll sell operation
 ///
-/// This means that when getting the current final roll registry,
-/// we must ask PoS for the final roll registry at the latest cycle with final blocks according to PoS,
-/// and apply subsequent graph blocks, whether they are final or not according to block graph.
-/// We must not assume that PoS has the same knowledge of final blocks as consensus.
+/// And the block B1 is received AFTER B4, blocks will be processed recursively:
+/// * B1 is received and included
+/// * B2 is processed
+/// * B1 becomes final in the graph
+/// * B3 is processed
+/// * B2 becomes final in the graph
+/// * B4 is processed
+/// * B3 becomes final in the graph
+/// * PoS is told about all finalized blocks
 ///
-/// # Test description
+/// The problem we had is that in order to check rolls to verify B4's roll sell,
+/// the final roll registry was assumed to be attached to the last final block known by the graph,
+/// but that was inaccurate becaue PoS was the one holding the final roll registry,
+/// and PoS was not yet aware of the blocks that finalized during recursion,
+/// so it was actually still attached to G when B4 was checked.
 ///
-/// * extend 2 cliques C1 and C2
-/// * push an incoming block B that contains valid a roll sale
-/// * ensure that when B is added:
-///   * C2 becomes stale
-///   * a batch of blocks from B1 becomes final so that this batch spans across the limit of a cycle
-///
-/// If the lookup is badly implemented, B's verification step will fail
-/// because Consensus and PoS are desynchronized in their final block/cycle knowledge.
-/// If the the lookup is implemented correctly, B will be propagated.
+/// The correction involved taking the point of view of PoS on where the final roll registry is attached.
+/// This test ensures non-regression by making sure B4 is propagated when B1 is received.
 #[tokio::test]
 #[serial]
 async fn test_inter_cycle_batch_finalization() {
@@ -62,13 +57,15 @@ async fn test_inter_cycle_batch_finalization() {
     let warmup_time: MassaTime = 1000.into();
     let margin_time: MassaTime = 300.into();
     let cfg = ConsensusConfig {
-        periods_per_cycle: 4,
-        delta_f0: 2,
+        periods_per_cycle: 2,
+        delta_f0: 1,
         thread_count: 1,
-        endorsement_count: 2,
+        endorsement_count: 1,
+        max_future_processing_blocks: 10,
+        max_dependency_blocks: 10,
+        future_block_processing_max_periods: 10,
         roll_price,
         t0,
-        future_block_processing_max_periods: 50,
         genesis_timestamp: MassaTime::now().unwrap().saturating_add(warmup_time),
         ..ConsensusConfig::default_with_staking_keys_and_ledger(&vec![staking_key], &initial_ledger)
     };
@@ -88,95 +85,67 @@ async fn test_inter_cycle_batch_finalization() {
                 .map(|(b, _p)| *b)
                 .collect();
 
-            // Graph (1 thread):
-            //            cycle limit
-            //                v
-            // G - M - A1 - M - A2 - A3
-            //   \
-            //    B1 - M  - B2
-            //
-            // Where:
-            // G = genesis
-            // M = miss
-            // A1 = block buying 1 roll, 0 endorsements
-            // A2 = empty block, 0 endorsements
-            // A3 = block selling 1 roll, 2 endorsements
-            // B1, B2 = empty blocks of the alternative clique, 0 endorsements
-            //
-            // When A3 arrives:
-            // * B1 and B2 become stale
-            // * A1, A2 become final
-            // * A3 should be propagated
-
-            // Create, send and propagate B1
+            // create B1 but DO NOT SEND IT
+            tokio::time::sleep(t0.to_duration()).await;
             let (b1_id, b1_block, _) =
                 create_block(&cfg, Slot::new(1, 0), genesis_blocks.clone(), staking_key);
-            protocol_controller.receive_block(b1_block.clone()).await;
-            validate_propagate_block(
-                &mut protocol_controller,
-                b1_id,
-                t0.saturating_add(margin_time).to_millis(),
-            )
-            .await;
 
-            // Create, send and propagate A1
-            let roll_buy = create_roll_buy(staking_key, 1, 2, 0);
-            let (a1_id, a1_block, _) = create_block_with_operations(
+            // create and send B2
+            tokio::time::sleep(t0.to_duration()).await;
+            let (b2_id, b2_block, _) = create_block_with_operations_and_endorsements(
                 &cfg,
                 Slot::new(2, 0),
-                &genesis_blocks,
+                &vec![b1_id],
                 staking_key,
-                vec![roll_buy],
+                vec![],
+                vec![create_endorsement(staking_key, Slot::new(1, 0), b1_id, 0)],
             );
-            protocol_controller.receive_block(a1_block.clone()).await;
-            validate_propagate_block(
-                &mut protocol_controller,
-                a1_id,
-                t0.saturating_add(margin_time).to_millis(),
-            )
-            .await;
-
-            // Create, send and propagate B2
-            let (b2_id, b2_block, _) =
-                create_block(&cfg, Slot::new(3, 0), vec![b1_id], staking_key);
             protocol_controller.receive_block(b2_block.clone()).await;
-            validate_propagate_block(
-                &mut protocol_controller,
-                b2_id,
-                t0.saturating_add(margin_time).to_millis(),
-            )
-            .await;
 
-            // Create, send and propagate A2
-            let (a2_id, a2_block, _) =
-                create_block(&cfg, Slot::new(4, 0), vec![a1_id], staking_key);
-            protocol_controller.receive_block(a2_block.clone()).await;
-            validate_propagate_block(
-                &mut protocol_controller,
-                a2_id,
-                t0.saturating_add(margin_time).to_millis(),
-            )
-            .await;
-
-            // Create, send and propagate A3
-            let roll_sell = create_roll_sell(staking_key, 2, 5, 0);
-            let endorsement1 = create_endorsement(staking_key, Slot::new(4, 0), a2_id, 0);
-            let endorsement2 = create_endorsement(staking_key, Slot::new(4, 0), a2_id, 1);
-            let (a3_id, a3_block, _) = create_block_with_operations_and_endorsements(
+            // create and send B3
+            tokio::time::sleep(t0.to_duration()).await;
+            let (b3_id, b3_block, _) = create_block_with_operations_and_endorsements(
                 &cfg,
-                Slot::new(5, 0),
-                &vec![a2_id],
+                Slot::new(3, 0),
+                &vec![b2_id],
+                staking_key,
+                vec![],
+                vec![create_endorsement(staking_key, Slot::new(2, 0), b2_id, 0)],
+            );
+            protocol_controller.receive_block(b3_block.clone()).await;
+
+            // create and send B4
+            tokio::time::sleep(t0.to_duration()).await;
+            let roll_sell = create_roll_sell(staking_key, 1, 4, 0);
+            let (b4_id, b4_block, _) = create_block_with_operations_and_endorsements(
+                &cfg,
+                Slot::new(4, 0),
+                &vec![b3_id],
                 staking_key,
                 vec![roll_sell],
-                vec![endorsement1, endorsement2],
+                vec![create_endorsement(staking_key, Slot::new(3, 0), b3_id, 0)],
             );
-            protocol_controller.receive_block(a3_block.clone()).await;
-            validate_propagate_block(
-                &mut protocol_controller,
-                a3_id,
-                t0.saturating_add(margin_time).to_millis(),
-            )
-            .await;
+            protocol_controller.receive_block(b4_block.clone()).await;
+
+            // wait for the slot after B4
+            tokio::time::sleep(t0.saturating_mul(5).to_duration()).await;
+
+            // send B1
+            protocol_controller.receive_block(b1_block.clone()).await;
+
+            // wait for the propagation of B1, B2, B3 and B4 (unordered)
+            let mut to_propagate: HashSet<_> =
+                vec![b1_id, b2_id, b3_id, b4_id].into_iter().collect();
+            for _ in 0u8..4 {
+                to_propagate.remove(
+                    &validate_propagate_block_in_list(
+                        &mut protocol_controller,
+                        &to_propagate.clone().into_iter().collect(),
+                        margin_time.to_millis(),
+                    )
+                    .await,
+                );
+            }
 
             (
                 protocol_controller,
