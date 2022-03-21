@@ -516,6 +516,11 @@ impl ProofOfStake {
         self.cycle_states[thread as usize][0].cycle
     }
 
+    /// Returns the latest final block slot known by PoS in a given thread
+    pub fn get_last_final_block_slot(&self, thread: u8) -> Slot {
+        self.cycle_states[thread as usize][0].last_final_slot
+    }
+
     pub fn get_final_roll_data(&self, cycle: u64, thread: u8) -> Option<&ThreadCycleState> {
         let last_final_block_cycle = self.get_last_final_block_cycle(thread);
         if let Some(neg_relative_cycle) = last_final_block_cycle.checked_sub(cycle) {

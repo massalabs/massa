@@ -22,7 +22,8 @@ members = [
   "massa-signature",
   "massa-time",
   "massa-wallet",
-  "massa-ledger"
+  "massa-ledger",
+  "massa-final-state"
 ]
 resolver = "2"
 

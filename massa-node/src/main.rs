@@ -14,7 +14,8 @@ use massa_consensus_exports::{
 use massa_consensus_worker::start_consensus_controller;
 use massa_execution_exports::{ExecutionConfig, ExecutionManager};
 use massa_execution_worker::start_execution_worker;
-use massa_ledger::{FinalLedger, LedgerConfig};
+use massa_final_state::{FinalState, FinalStateConfig};
+use massa_ledger::LedgerConfig;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
@@ -121,15 +122,18 @@ async fn launch() -> (
     .await
     .expect("could not start pool controller");
 
-    // init ledger
+    // init final state
     let ledger_config = LedgerConfig {
         initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
+    };
+    let final_state_config = FinalStateConfig {
         final_history_length: SETTINGS.ledger.final_history_length,
         thread_count: THREAD_COUNT,
+        ledger_config,
     };
-    let final_ledger = Arc::new(RwLock::new(match bootstrap_state.final_ledger {
-        Some(l) => FinalLedger::from_bootstrap_state(ledger_config, l),
-        None => FinalLedger::new(ledger_config).expect("could not init final ledger"),
+    let final_state = Arc::new(RwLock::new(match bootstrap_state.final_state {
+        Some(l) => FinalState::from_bootstrap_state(final_state_config, l),
+        None => FinalState::new(final_state_config).expect("could not init final state"),
     }));
 
     // launch execution module
@@ -143,7 +147,7 @@ async fn launch() -> (
         genesis_timestamp: *GENESIS_TIMESTAMP,
     };
     let (execution_manager, execution_controller) =
-        start_execution_worker(execution_config, final_ledger.clone());
+        start_execution_worker(execution_config, final_state.clone());
 
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
     // launch consensus controller
@@ -167,7 +171,7 @@ async fn launch() -> (
     let bootstrap_manager = start_bootstrap_server(
         consensus_command_sender.clone(),
         network_command_sender.clone(),
-        final_ledger.clone(),
+        final_state.clone(),
         &SETTINGS.bootstrap,
         massa_bootstrap::Establisher::new(),
         private_key,

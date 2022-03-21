@@ -1516,7 +1516,7 @@ dependencies = [
  "rev_lines",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "structopt",
  "strum",
  "strum_macros",
@@ -1540,6 +1540,7 @@ dependencies = [
  "massa_consensus_worker",
  "massa_execution_exports",
  "massa_execution_worker",
+ "massa_final_state",
  "massa_graph",
  "massa_ledger",
  "massa_logging",
@@ -1554,7 +1555,7 @@ dependencies = [
  "pretty_assertions",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "tokio",
  "tokio-util 0.6.9",
  "tracing",
@@ -1574,7 +1575,7 @@ dependencies = [
  "loupe",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "wasmer",
  "wasmer-compiler-singlepass",
  "wasmer-engine-universal",
@@ -1614,6 +1615,7 @@ dependencies = [
  "futures 0.3.21",
  "lazy_static",
  "massa_consensus_exports",
+ "massa_final_state",
  "massa_graph",
  "massa_hash",
  "massa_ledger",
@@ -1629,7 +1631,7 @@ dependencies = [
  "rand 0.8.5",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "thiserror",
  "tokio",
  "tracing",
@@ -1659,7 +1661,7 @@ dependencies = [
  "rand_xoshiro",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "sled",
  "tempfile",
  "thiserror",
@@ -1692,7 +1694,7 @@ dependencies = [
  "rand_xoshiro",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "sled",
  "tempfile",
  "thiserror",
@@ -1706,13 +1708,14 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "displaydoc",
+ "massa_final_state",
  "massa_ledger",
  "massa_models",
  "massa_time",
  "pretty_assertions",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "thiserror",
  "tracing",
 ]
@@ -1726,6 +1729,7 @@ dependencies = [
  "lazy_static",
  "massa-sc-runtime",
  "massa_execution_exports",
+ "massa_final_state",
  "massa_hash",
  "massa_ledger",
  "massa_models",
@@ -1737,10 +1741,25 @@ dependencies = [
  "rand_xoshiro",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "tempfile",
  "thiserror",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "massa_final_state"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "massa_ledger",
+ "massa_models",
+ "pretty_assertions",
+ "serde 1.0.136",
+ "serde_json",
+ "serial_test 0.6.0",
+ "thiserror",
  "tracing",
 ]
 
@@ -1764,7 +1783,7 @@ dependencies = [
  "rand_xoshiro",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "sled",
  "tempfile",
  "thiserror",
@@ -1784,7 +1803,7 @@ dependencies = [
  "secp256k1",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "thiserror",
 ]
 
@@ -1804,7 +1823,7 @@ dependencies = [
  "pretty_assertions",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "thiserror",
  "tokio",
  "tracing",
@@ -1816,7 +1835,7 @@ version = "0.1.0"
 dependencies = [
  "pretty_assertions",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "tracing",
 ]
 
@@ -1840,7 +1859,7 @@ dependencies = [
  "reqwest",
  "rust_decimal",
  "serde 1.0.136",
- "serial_test",
+ "serial_test 0.5.1",
  "thiserror",
  "tokio",
 ]
@@ -1883,7 +1902,7 @@ dependencies = [
  "rand 0.8.5",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "tempfile",
  "thiserror",
  "tokio",
@@ -1907,7 +1926,7 @@ dependencies = [
  "pretty_assertions",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "thiserror",
  "tokio",
  "tracing",
@@ -1929,7 +1948,7 @@ dependencies = [
  "rand_xoshiro",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "tempfile",
  "thiserror",
  "tokio",
@@ -1955,7 +1974,7 @@ dependencies = [
  "rand 0.8.5",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "tempfile",
  "thiserror",
  "tokio",
@@ -1982,7 +2001,7 @@ dependencies = [
  "rand 0.8.5",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "tempfile",
  "thiserror",
  "tokio",
@@ -2013,7 +2032,7 @@ dependencies = [
  "secp256k1",
  "serde 1.0.136",
  "serde_json",
- "serial_test",
+ "serial_test 0.5.1",
  "thiserror",
 ]
 
@@ -2024,7 +2043,7 @@ dependencies = [
  "displaydoc",
  "pretty_assertions",
  "serde 1.0.136",
- "serial_test",
+ "serial_test 0.5.1",
  "thiserror",
  "time",
  "tokio",
@@ -3292,7 +3311,18 @@ checksum = "e0bccbcf40c8938196944a3da0e133e031a33f4d6b72db3bda3cc556e361905d"
 dependencies = [
  "lazy_static",
  "parking_lot 0.11.2",
- "serial_test_derive",
+ "serial_test_derive 0.5.1",
+]
+
+[[package]]
+name = "serial_test"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5bcc41d18f7a1d50525d080fd3e953be87c4f9f1a974f3c21798ca00d54ec15"
+dependencies = [
+ "lazy_static",
+ "parking_lot 0.11.2",
+ "serial_test_derive 0.6.0",
 ]
 
 [[package]]
@@ -3303,6 +3333,19 @@ checksum = "b2acd6defeddb41eb60bb468f8825d0cfd0c2a76bc03bfd235b6a1dc4f6a1ad5"
 dependencies = [
  "proc-macro2",
  "quote",
+ "syn",
+]
+
+[[package]]
+name = "serial_test_derive"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2881bccd7d60fb32dfa3d7b3136385312f8ad75e2674aab2852867a09790cae8"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "rustversion",
  "syn",
 ]
 

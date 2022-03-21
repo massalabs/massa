@@ -16,6 +16,7 @@ where
 {
     pub content: T,
     pub signature: Signature,
+    #[serde(skip_deserializing)]
     phantom: PhantomData<U>,
 }
 
