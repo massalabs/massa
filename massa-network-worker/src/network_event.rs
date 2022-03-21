@@ -233,7 +233,8 @@ pub mod event_impl {
         }
     }
 
-    /// todo: document
+    /// The node worker signal that he received a bach of operation ids
+    /// from another node.
     pub async fn on_received_operations_batch(
         worker: &mut NetworkWorker,
         from: NodeId,
@@ -255,7 +256,8 @@ pub mod event_impl {
         }
     }
 
-    /// todo: document
+    /// The node worker signal that he received a list of operations required
+    /// from another node.
     pub async fn on_received_ask_for_operations(
         worker: &mut NetworkWorker,
         from: NodeId,
