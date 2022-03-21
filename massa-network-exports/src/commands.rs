@@ -4,7 +4,7 @@ use crate::{BootstrapPeers, Peers};
 use massa_models::SignedEndorsement;
 use massa_models::SignedHeader;
 use massa_models::SignedOperation;
-use massa_models::{composite::PubkeySig, node::NodeId, stats::NetworkStats, BlockId};
+use massa_models::{composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId};
 use tokio::sync::oneshot;
 
 /// Commands that the worker can execute
@@ -58,7 +58,8 @@ pub enum NetworkEvent {
     /// A block was received
     ReceivedBlock {
         node: NodeId,
-        block_id: BlockId,
+        block: Block,
+        serialized: Vec<u8>,
     },
     /// A block header was received
     ReceivedBlockHeader {

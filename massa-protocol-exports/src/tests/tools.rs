@@ -8,9 +8,9 @@ use crate::{
 use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::{Signable, Signed};
+use massa_models::SerializeCompact;
 use massa_models::{
-    storage::Storage, Address, Amount, Block, BlockHeader, BlockId, SignedEndorsement,
-    SignedOperation, Slot,
+    Address, Amount, Block, BlockHeader, BlockId, SignedEndorsement, SignedOperation, Slot,
 };
 use massa_models::{Endorsement, Operation, OperationType};
 use massa_network_exports::NetworkCommand;
@@ -132,13 +132,13 @@ pub async fn send_and_propagate_block(
     valid: bool,
     source_node_id: NodeId,
     protocol_event_receiver: &mut ProtocolEventReceiver,
-    storage: Option<Storage>,
 ) {
     let expected_hash = block.header.content.compute_id().unwrap();
+    let serialized = block.to_bytes_compact().unwrap();
 
     // Send block to protocol.
     network_controller
-        .send_block(source_node_id, expected_hash, storage.map(|s| (block, s)))
+        .send_block(source_node_id, block, serialized)
         .await;
 
     // Check protocol sends block to consensus.

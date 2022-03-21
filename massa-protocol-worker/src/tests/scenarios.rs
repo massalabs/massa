@@ -2,10 +2,10 @@
 
 // RUST_BACKTRACE=1 cargo test test_one_handshake -- --nocapture --test-threads=1
 
-use super::tools::{protocol_test, protocol_test_with_storage};
+use super::tools::protocol_test;
 use massa_models::prehash::{Map, Set};
 use massa_models::signed::Signable;
-use massa_models::{BlockId, SerializeCompact};
+use massa_models::BlockId;
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{
@@ -351,14 +351,13 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
 async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
 
-    protocol_test_with_storage(
+    protocol_test(
         protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver,
-                    storage| {
+                    protocol_pool_event_receiver| {
             // Create 1 node.
             let mut nodes = create_and_connect_nodes(1, &mut network_controller).await;
 
@@ -371,15 +370,11 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
 
             // 3. Send block to protocol.
             network_controller
-                .send_block(
-                    creator_node.id,
-                    expected_hash,
-                    Some((block.clone(), storage)),
-                )
+                .send_block(creator_node.id, block.clone(), Default::default())
                 .await;
 
             // Check protocol sends block to consensus.
-            let block = match wait_protocol_event(
+            let block_id = match wait_protocol_event(
                 &mut protocol_event_receiver,
                 1000.into(),
                 |evt| match evt {
@@ -389,10 +384,10 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
             )
             .await
             {
-                Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block,
+                Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block_id,
                 _ => panic!("Unexpected or no protocol event."),
             };
-            assert_eq!(expected_hash, block.header.content.compute_id().unwrap());
+            assert_eq!(expected_hash, block_id);
 
             (
                 network_controller,

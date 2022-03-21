@@ -80,7 +80,9 @@ impl EventSender {
 pub mod event_impl {
     use crate::{network_worker::NetworkWorker, node_worker::NodeCommand};
     use massa_logging::massa_trace;
-    use massa_models::{node::NodeId, BlockId, SignedEndorsement, SignedHeader, SignedOperation};
+    use massa_models::{
+        node::NodeId, Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation,
+    };
     use massa_network_exports::{NetworkError, NetworkEvent};
     use std::net::IpAddr;
     use tracing::{debug, info};
@@ -108,17 +110,19 @@ pub mod event_impl {
     pub async fn on_received_block(
         worker: &mut NetworkWorker,
         from: NodeId,
-        block_id: BlockId,
+        block: Block,
+        serialized: Vec<u8>,
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlock",
-            {"block_id": block_id, "node": from}
+            {"block": block, "node": from}
         );
         if let Err(err) = worker
             .event
             .send(NetworkEvent::ReceivedBlock {
                 node: from,
-                block_id,
+                block,
+                serialized,
             })
             .await
         {

@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::tools::{protocol_test, protocol_test_with_storage};
+use super::tools::protocol_test;
 use massa_models::prehash::Set;
 use massa_models::signed::Signable;
 use massa_models::BlockId;
@@ -16,14 +16,13 @@ async fn test_without_a_priori() {
     // start
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
 
-    protocol_test_with_storage(
+    protocol_test(
         protocol_settings,
         async move |mut network_controller,
                     protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver,
-                    storage| {
+                    protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
                 .pop()
@@ -57,7 +56,7 @@ async fn test_without_a_priori() {
 
             // node B replied with the block
             network_controller
-                .send_block(node_b.id, hash_1, Some((block, storage)))
+                .send_block(node_b.id, block, Default::default())
                 .await;
 
             // 7. Make sure protocol did not send additional ask for block commands.
@@ -91,14 +90,13 @@ async fn test_without_a_priori() {
 async fn test_someone_knows_it() {
     // start
     let protocol_settings = &tools::PROTOCOL_SETTINGS;
-    protocol_test_with_storage(
+    protocol_test(
         protocol_settings,
         async move |mut network_controller,
                     mut protocol_event_receiver,
                     mut protocol_command_sender,
                     protocol_manager,
-                    protocol_pool_event_receiver,
-                    storage| {
+                    protocol_pool_event_receiver| {
             let node_a = tools::create_and_connect_nodes(1, &mut network_controller)
                 .await
                 .pop()
@@ -140,7 +138,7 @@ async fn test_someone_knows_it() {
 
             // node C replied with the block
             network_controller
-                .send_block(node_c.id, hash_1, Some((block, storage)))
+                .send_block(node_c.id, block, Default::default())
                 .await;
 
             // 7. Make sure protocol did not send additional ask for block commands.
