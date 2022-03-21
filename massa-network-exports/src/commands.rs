@@ -1,6 +1,6 @@
 use std::{collections::HashMap, net::IpAddr};
 
-use crate::{BootstrapPeers, Peers};
+use crate::Peers;
 use massa_models::SignedEndorsement;
 use massa_models::SignedHeader;
 use massa_models::SignedOperation;
@@ -26,7 +26,7 @@ pub enum NetworkCommand {
     },
     // (PeerInfo, Vec <(NodeId, bool)>) peer info + list of associated Id nodes in connection out (true)
     GetPeers(oneshot::Sender<Peers>),
-    GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
+    GetBootstrapPeers(oneshot::Sender<Vec<IpAddr>>),
     Ban(NodeId),
     BanIp(Vec<IpAddr>),
     Unban(Vec<IpAddr>),

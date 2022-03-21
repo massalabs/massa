@@ -1,8 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::{
-    commands::NetworkManagementCommand, error::NetworkError, BootstrapPeers, NetworkCommand,
-    NetworkEvent, Peers,
+    commands::NetworkManagementCommand, error::NetworkError, NetworkCommand, NetworkEvent, Peers,
 };
 use massa_models::{
     composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId, SignedEndorsement,
@@ -109,8 +108,8 @@ impl NetworkCommandSender {
     }
 
     /// Send the order to get bootstrap peers.
-    pub async fn get_bootstrap_peers(&self) -> Result<BootstrapPeers, NetworkError> {
-        let (response_tx, response_rx) = oneshot::channel::<BootstrapPeers>();
+    pub async fn get_bootstrap_peers(&self) -> Result<Vec<IpAddr>, NetworkError> {
+        let (response_tx, response_rx) = oneshot::channel();
         self.0
             .send(NetworkCommand::GetBootstrapPeers(response_tx))
             .await

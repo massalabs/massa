@@ -27,9 +27,7 @@ use massa_models::{
     composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId, SignedEndorsement,
     SignedHeader, SignedOperation,
 };
-use massa_network_exports::{
-    BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, Peer, Peers,
-};
+use massa_network_exports::{ConnectionClosureReason, ConnectionId, NetworkError, Peer, Peers};
 use massa_signature::{derive_public_key, sign};
 use std::{
     collections::{HashMap, HashSet},
@@ -236,14 +234,14 @@ pub async fn on_get_peers_cmd(worker: &mut NetworkWorker, response_tx: oneshot::
 
 pub async fn on_get_bootstrap_peers_cmd(
     worker: &mut NetworkWorker,
-    response_tx: oneshot::Sender<BootstrapPeers>,
+    response_tx: oneshot::Sender<Vec<IpAddr>>,
 ) {
     massa_trace!(
         "network_worker.manage_network_command receive NetworkCommand::GetBootstrapPeers",
         {}
     );
     let peer_list = worker.peer_info_db.get_advertisable_peer_ips();
-    if response_tx.send(BootstrapPeers(peer_list)).is_err() {
+    if response_tx.send(peer_list).is_err() {
         warn!("network: could not send GetBootstrapPeers response upstream");
     }
 }

@@ -5,12 +5,11 @@ use massa_ledger::FinalLedgerBootstrapState;
 use massa_models::{
     DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Version,
 };
-use massa_network_exports::BootstrapPeers;
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_time::MassaTime;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
+use std::{convert::TryInto, net::IpAddr};
 
 /// Messages used during bootstrap
 #[derive(Debug, Serialize, Deserialize)]
@@ -24,7 +23,7 @@ pub enum BootstrapMessage {
     /// Bootstrap peers
     BootstrapPeers {
         /// Server peers
-        peers: BootstrapPeers,
+        peers: Vec<IpAddr>,
     },
     /// Consensus state
     ConsensusState {
@@ -103,7 +102,7 @@ impl DeserializeCompact for BootstrapMessage {
                 }
             }
             MessageTypeId::Peers => {
-                let (peers, delta) = BootstrapPeers::from_bytes_compact(&buffer[cursor..])?;
+                let (peers, delta) = Vec::<IpAddr>::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
 
                 BootstrapMessage::BootstrapPeers { peers }

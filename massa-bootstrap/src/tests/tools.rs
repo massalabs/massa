@@ -17,7 +17,7 @@ use massa_models::{
     Address, Amount, Block, BlockHeader, BlockId, DeserializeCompact, Endorsement, Operation,
     SerializeCompact, Slot,
 };
-use massa_network_exports::{BootstrapPeers, NetworkCommand};
+use massa_network_exports::NetworkCommand;
 use massa_proof_of_stake_exports::{ExportProofOfStake, ThreadCycleState};
 use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
@@ -568,11 +568,11 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     (boot_pos, boot_graph)
 }
 
-pub fn get_peers() -> BootstrapPeers {
-    BootstrapPeers(vec![
+pub fn get_peers() -> Vec<IpAddr> {
+    vec![
         "82.245.123.77".parse().unwrap(),
         "82.220.123.78".parse().unwrap(),
-    ])
+    ]
 }
 
 pub async fn bridge_mock_streams(mut side1: Duplex, mut side2: Duplex) {

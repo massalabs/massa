@@ -13,7 +13,7 @@ use massa_graph::BootstrapableGraph;
 use massa_ledger::{FinalLedger, FinalLedgerBootstrapState};
 use massa_logging::massa_trace;
 use massa_models::Version;
-use massa_network_exports::{BootstrapPeers, NetworkCommandSender, PeerType};
+use massa_network_exports::{NetworkCommandSender, PeerType};
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_signature::{PrivateKey, PublicKey};
 use massa_time::MassaTime;
@@ -217,7 +217,6 @@ async fn get_state_internal(
         graph: Some(graph),
         compensation_millis,
         peers: peers
-            .0
             .into_iter()
             .map(|ip| (ip, PeerType::default()))
             .collect(),
@@ -358,7 +357,7 @@ impl BootstrapServer {
         let mut bootstrap_data: Option<(
             ExportProofOfStake,
             BootstrapableGraph,
-            BootstrapPeers,
+            Vec<IpAddr>,
             FinalLedgerBootstrapState,
         )> = None;
         let cache_timer = sleep(cache_timeout);
@@ -470,7 +469,7 @@ async fn manage_bootstrap(
     duplex: Duplex,
     data_pos: ExportProofOfStake,
     data_graph: BootstrapableGraph,
-    data_peers: BootstrapPeers,
+    data_peers: Vec<IpAddr>,
     ledger_state: FinalLedgerBootstrapState,
     private_key: PrivateKey,
     compensation_millis: i64,

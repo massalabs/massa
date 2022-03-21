@@ -153,7 +153,7 @@ async fn test_bootstrap_server() {
     // wait for bridge
     bridge.await.expect("bridge join failed");
 
-    let mut expected_ips = sent_peers.0.clone();
+    let mut expected_ips = sent_peers.clone();
     expected_ips.push(expect_conn_addr.ip());
     // check peers
     assert_eq!(

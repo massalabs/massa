@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::ModelsError;
-use crate::Amount;
+use crate::{with_serialization_context, Amount};
 use integer_encoding::VarInt;
 use massa_time::MassaTime;
 use std::convert::TryInto;
@@ -257,6 +257,57 @@ impl DeserializeCompact for Amount {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let (res_u64, delta) = u64::from_varint_bytes(buffer)?;
         Ok((Amount::from_raw(res_u64), delta))
+    }
+}
+
+impl SerializeCompact for Vec<IpAddr> {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+
+        // peers
+        let peers_count: u32 = self.len().try_into().map_err(|err| {
+            ModelsError::SerializeError(format!("too many peers blocks in BootstrapPeers: {}", err))
+        })?;
+        let max_peer_list_length =
+            with_serialization_context(|context| context.max_advertise_length);
+        if peers_count > max_peer_list_length {
+            return Err(ModelsError::SerializeError(format!(
+                "too many peers for serialization context in BootstrapPeers: {}",
+                peers_count
+            )));
+        }
+        res.extend(peers_count.to_varint_bytes());
+        for peer in self.iter() {
+            res.extend(peer.to_bytes_compact()?);
+        }
+
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for Vec<IpAddr> {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        let mut cursor = 0usize;
+
+        // peers
+        let (peers_count, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+        let max_peer_list_length =
+            with_serialization_context(|context| context.max_advertise_length);
+        if peers_count > max_peer_list_length {
+            return Err(ModelsError::DeserializeError(format!(
+                "too many peers for deserialization context in BootstrapPeers: {}",
+                peers_count
+            )));
+        }
+        cursor += delta;
+        let mut peers: Vec<IpAddr> = Vec::with_capacity(peers_count as usize);
+        for _ in 0..(peers_count as usize) {
+            let (ip, delta) = IpAddr::from_bytes_compact(&buffer[cursor..])?;
+            cursor += delta;
+            peers.push(ip);
+        }
+
+        Ok((peers, cursor))
     }
 }
 
