@@ -1058,7 +1058,7 @@ impl BlockGraph {
                     )));
                 }
             };
-            if cur_a_block.block.header.content.slot.period == pos_latest_final_block_slot.period {
+            if cur_a_block.slot.period == pos_latest_final_block_slot.period {
                 // filters out genesis and final blocks
                 // (step 1.1 in pos.md)
                 break;
