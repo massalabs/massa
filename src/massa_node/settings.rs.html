@@ -65,6 +65,17 @@
 <span id="60">60</span>
 <span id="61">61</span>
 <span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! Build here the default node settings from the config file toml</span>
@@ -82,11 +93,22 @@
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
 <span class="macro">lazy_static::lazy_static!</span> {
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">SETTINGS</span>: <span class="ident">Settings</span> <span class="op">=</span> <span class="ident">build_massa_settings</span>(<span class="string">&quot;massa-node&quot;</span>, <span class="string">&quot;MASSA_NODE&quot;</span>);
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">POOL_CONFIG</span>: <span class="ident">PoolConfig</span> <span class="op">=</span> <span class="ident">PoolConfig</span> {
         <span class="ident">settings</span>: <span class="ident">SETTINGS</span>.<span class="ident">pool</span>,
         <span class="ident">thread_count</span>: <span class="ident">THREAD_COUNT</span>,
+        <span class="ident">operation_validity_periods</span>: <span class="ident">OPERATION_VALIDITY_PERIODS</span>
+    };
+}
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>)]</span>
+<span class="macro">lazy_static::lazy_static!</span> {
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">SETTINGS</span>: <span class="ident">Settings</span> <span class="op">=</span> <span class="ident">build_massa_settings</span>(<span class="string">&quot;massa-node&quot;</span>, <span class="string">&quot;MASSA_NODE&quot;</span>);
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">POOL_CONFIG</span>: <span class="ident">PoolConfig</span> <span class="op">=</span> <span class="ident">PoolConfig</span> {
+        <span class="ident">settings</span>: <span class="ident">SETTINGS</span>.<span class="ident">pool</span>,
+        <span class="ident">thread_count</span>: <span class="kw-2">*</span><span class="ident">THREAD_COUNT</span>,
         <span class="ident">operation_validity_periods</span>: <span class="ident">OPERATION_VALIDITY_PERIODS</span>
     };
 }
