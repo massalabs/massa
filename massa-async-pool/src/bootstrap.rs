@@ -1,6 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Provides serializable strucutres for bootstrapping the AsyncPool
+//! Provides serializable structures for bootstrapping the AsyncPool
 
 use crate::message::AsyncMessage;
 use massa_models::{
@@ -43,7 +43,7 @@ impl DeserializeCompact for AsyncPoolBootstrap {
         // TODO cap message count https://github.com/massalabs/massa/issues/1200
         cursor += delta;
 
-        // messaages
+        // messages
         let mut messages = Vec::with_capacity(message_count as usize);
         for _ in 0..message_count {
             let (entry, delta) = AsyncMessage::from_bytes_compact(&buffer[cursor..])?;
