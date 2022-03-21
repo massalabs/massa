@@ -7,7 +7,7 @@ use massa_logging::massa_trace;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
-    operation::{OperationIds, Operations},
+    operation::{OperationBatchBuffer, OperationBatchItem, OperationIds, Operations},
     prehash::{BuildMap, Map, Set},
     signed::Signable,
     Address, Block, BlockId, EndorsementId, OperationId, OperationType, SignedEndorsement,
@@ -21,7 +21,7 @@ use massa_protocol_exports::{
 };
 use massa_time::TimeError;
 use std::collections::{HashMap, HashSet};
-use std::{collections::VecDeque, time::Duration};
+use std::time::Duration;
 use tokio::{
     sync::mpsc,
     sync::mpsc::error::SendTimeoutError,
@@ -152,7 +152,7 @@ pub struct ProtocolWorker {
     /// List of ids of operations that we asked to the nodes
     asked_operations: HashMap<OperationId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
-    op_batch_buffer: VecDeque<(Instant, NodeId, OperationIds)>,
+    op_batch_buffer: OperationBatchBuffer,
     /// config operation_period
     op_batch_proc_period: u64,
     /// config buffer capacity limit [FakeProtocol::op_batch_buffer]
@@ -586,10 +586,11 @@ impl ProtocolWorker {
             .ok_or(TimeError::TimeOverflowError)?;
         while !self.op_batch_buffer.is_empty()
         // This unwrap is ok because we checked that it's not empty just before.
-            && Instant::now() > self.op_batch_buffer.front().unwrap().0
+            && Instant::now() > self.op_batch_buffer.front().unwrap().instant
         {
-            let (_, node_id, op_batch) = self.op_batch_buffer.pop_front().unwrap();
-            self.on_batch_operations_received(op_batch, node_id).await;
+            let op_batch_item = self.op_batch_buffer.pop_front().unwrap();
+            self.on_batch_operations_received(op_batch_item.operations_ids, op_batch_item.node_id)
+                .await?;
         }
         // reset timer
         ask_operations_timer.set(sleep_until(next_tick));
@@ -1215,7 +1216,11 @@ impl ProtocolWorker {
         Ok((endorsement_ids, contains_duplicates))
     }
 
-    async fn on_asked_operations_received(&mut self, node_id: NodeId, op_ids: OperationIds) {
+    async fn on_asked_operations_received(
+        &mut self,
+        node_id: NodeId,
+        op_ids: OperationIds,
+    ) -> Result<(), ProtocolError> {
         if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
             for op_ids in op_ids.iter() {
                 node_info.known_operations.remove(op_ids);
@@ -1229,10 +1234,16 @@ impl ProtocolWorker {
         }
         self.network_command_sender
             .send_operations(node_id, operation_map.into_values().collect())
-            .await;
+            .await
+            .map_err(|_| ProtocolError::ChannelError("send operations failed".into()))?;
+        Ok(())
     }
 
-    async fn on_batch_operations_received(&mut self, op_batch: OperationIds, node_id: NodeId) {
+    async fn on_batch_operations_received(
+        &mut self,
+        op_batch: OperationIds,
+        node_id: NodeId,
+    ) -> Result<(), ProtocolError> {
         let mut ask_set =
             OperationIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
         let mut future_set =
@@ -1262,18 +1273,24 @@ impl ProtocolWorker {
             }
         }
         if self.op_batch_buffer.len() < self.op_batch_buf_capacity {
-            self.op_batch_buffer.push_back((
-                now + Duration::from_millis(self.op_batch_proc_period),
+            self.op_batch_buffer.push_back(OperationBatchItem {
+                instant: now + Duration::from_millis(self.op_batch_proc_period),
                 node_id,
-                future_set,
-            ));
+                operations_ids: future_set,
+            });
         }
         self.network_command_sender
             .send_ask_for_operations(node_id, ask_set)
-            .await;
+            .await
+            .map_err(|_| ProtocolError::ChannelError("send ask for operations failed".into()))?;
+        Ok(())
     }
 
-    async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {
+    async fn on_operations_received(
+        &mut self,
+        node_id: NodeId,
+        operations: Operations,
+    ) -> Result<(), ProtocolError> {
         // TODO: Here to have the operations id. To confirm with @adrien-zinger
         let mut operations_map: HashMap<OperationId, SignedOperation> =
             HashMap::with_capacity(operations.len());
@@ -1294,8 +1311,10 @@ impl ProtocolWorker {
             );
             self.network_command_sender
                 .send_operations_batch(*node_id, batch)
-                .await;
+                .await
+                .map_err(|_| ProtocolError::ChannelError("send operations batch failed".into()))?;
         }
+        Ok(())
     }
 
     /// Manages network event
@@ -1411,7 +1430,7 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedOperations { node, operations } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_operations", { "node": node, "operations": operations});
-                self.on_operations_received(node, operations).await;
+                self.on_operations_received(node, operations).await?;
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_endorsements", { "node": node, "endorsements": endorsements});
@@ -1428,13 +1447,15 @@ impl ProtocolWorker {
                 node,
                 operation_ids,
             } => {
-                self.on_batch_operations_received(operation_ids, node).await;
+                self.on_batch_operations_received(operation_ids, node)
+                    .await?;
             }
             NetworkEvent::ReceiveAskForOperations {
                 node,
                 operation_ids,
             } => {
-                self.on_asked_operations_received(node, operation_ids).await;
+                self.on_asked_operations_received(node, operation_ids)
+                    .await?;
             }
         }
         Ok(())
