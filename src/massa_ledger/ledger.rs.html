@@ -211,7 +211,7 @@
 <span class="doccomment">/// Note: currently the ledger is stored in RAM. TODO put it on the hard drive with cache.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FinalLedger</span> {
     <span class="doccomment">/// ledger config</span>
-    <span class="ident">config</span>: <span class="ident">LedgerConfig</span>,
+    <span class="ident">_config</span>: <span class="ident">LedgerConfig</span>,
     <span class="doccomment">/// ledger tree, sorted by address</span>
     <span class="ident">sorted_ledger</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">LedgerEntry</span><span class="op">&gt;</span>,
 }
@@ -289,7 +289,7 @@
         <span class="comment">// generate the final ledger</span>
         <span class="prelude-val">Ok</span>(<span class="ident">FinalLedger</span> {
             <span class="ident">sorted_ledger</span>,
-            <span class="ident">config</span>,
+            <span class="ident">_config</span>: <span class="ident">config</span>,
         })
     }
 
@@ -303,7 +303,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bootstrap_state</span>(<span class="ident">config</span>: <span class="ident">LedgerConfig</span>, <span class="ident">state</span>: <span class="ident">FinalLedgerBootstrapState</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">FinalLedger</span> {
             <span class="ident">sorted_ledger</span>: <span class="ident">state</span>.<span class="ident">sorted_ledger</span>,
-            <span class="ident">config</span>,
+            <span class="ident">_config</span>: <span class="ident">config</span>,
         }
     }
 

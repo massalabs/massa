@@ -3673,6 +3673,8 @@
 <span id="3668">3668</span>
 <span id="3669">3669</span>
 <span id="3670">3670</span>
+<span id="3671">3671</span>
+<span id="3672">3672</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! All information concerning blocks, the block graph and cliques is managed here.</span>
@@ -4693,11 +4695,19 @@
             }
         };
 
+        <span class="comment">// Get the latest final slot, as seen by PoS,</span>
+        <span class="comment">// We do this instead of looking for the latest graph final block because PoS might not be aware of the latest graph final blocks yet,</span>
+        <span class="comment">// since PoS is notified only after all block finality changes caused by this new block are processed.</span>
+        <span class="kw">let</span> <span class="ident">pos_latest_final_block_slot</span> <span class="op">=</span> <span class="ident">pos</span>.<span class="ident">get_last_final_block_slot</span>(<span class="ident">target_thread</span>);
+        <span class="kw">let</span> <span class="ident">pos_latest_final_block_cycle</span> <span class="op">=</span>
+            <span class="ident">pos_latest_final_block_slot</span>.<span class="ident">get_cycle</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">periods_per_cycle</span>);
+
         <span class="comment">// stack back to latest final slot</span>
         <span class="comment">// (step 1 in pos.md)</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stack</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cur_block_id</span> <span class="op">=</span> <span class="ident">block_id</span>;
-        <span class="kw">let</span> <span class="ident">final_cycle</span>;
+        <span class="comment">// start graph exploration until the latest period known as final</span>
+        <span class="comment">// for the PoS module</span>
         <span class="kw">loop</span> {
             <span class="comment">// get block</span>
             <span class="kw">let</span> <span class="ident">cur_a_block</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">block_statuses</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cur_block_id</span>) {
@@ -4709,15 +4719,9 @@
                     )));
                 }
             };
-            <span class="kw">if</span> <span class="ident">cur_a_block</span>.<span class="ident">is_final</span> {
+            <span class="kw">if</span> <span class="ident">cur_a_block</span>.<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">period</span> <span class="op">==</span> <span class="ident">pos_latest_final_block_slot</span>.<span class="ident">period</span> {
                 <span class="comment">// filters out genesis and final blocks</span>
                 <span class="comment">// (step 1.1 in pos.md)</span>
-                <span class="ident">final_cycle</span> <span class="op">=</span> <span class="ident">cur_a_block</span>
-                    .<span class="ident">block</span>
-                    .<span class="ident">header</span>
-                    .<span class="ident">content</span>
-                    .<span class="ident">slot</span>
-                    .<span class="ident">get_cycle</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">periods_per_cycle</span>);
                 <span class="kw">break</span>;
             }
             <span class="comment">// (step 1.2 in pos.md)</span>
@@ -4730,15 +4734,15 @@
         <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">cur_rolls</span>, <span class="kw-2">mut</span> <span class="ident">cur_cycle_roll_updates</span>) <span class="op">=</span> {
             <span class="comment">// (step 2 in pos.md)</span>
             <span class="kw">let</span> <span class="ident">cycle_state</span> <span class="op">=</span> <span class="ident">pos</span>
-                .<span class="ident">get_final_roll_data</span>(<span class="ident">final_cycle</span>, <span class="ident">target_thread</span>)
+                .<span class="ident">get_final_roll_data</span>(<span class="ident">pos_latest_final_block_cycle</span>, <span class="ident">target_thread</span>)
                 .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                     <span class="ident">GraphError::ContainerInconsistency</span>(<span class="macro">format!</span>(
                         <span class="string">&quot;final PoS cycle not available: {}&quot;</span>,
-                        <span class="ident">final_cycle</span>
+                        <span class="ident">pos_latest_final_block_cycle</span>
                     ))
                 })<span class="question-mark">?</span>;
             <span class="comment">// (step 3 in pos.md)</span>
-            <span class="kw">let</span> <span class="ident">cur_cycle_roll_updates</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">final_cycle</span> <span class="op">==</span> <span class="ident">target_cycle</span> {
+            <span class="kw">let</span> <span class="ident">cur_cycle_roll_updates</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">pos_latest_final_block_cycle</span> <span class="op">==</span> <span class="ident">target_cycle</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">addrs</span>) <span class="op">=</span> <span class="ident">addrs_opt</span> {
                     <span class="ident">cycle_state</span>.<span class="ident">cycle_updates</span>.<span class="ident">clone_subset</span>(<span class="ident">addrs</span>)
                 } <span class="kw">else</span> {
