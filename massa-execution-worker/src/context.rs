@@ -30,7 +30,7 @@ pub(crate) struct ExecutionContextSnapshot {
 
     /// speculative async pool changes caused so far in the context
     // note: re-think what the type of this should be
-    // pub async_pool_changes: AsyncPoolChanges,
+    pub async_pool_changes: AsyncPoolChanges,
 
     /// counter of newly created addresses so far at this slot during this execution
     pub created_addr_index: u64,
@@ -146,6 +146,7 @@ impl ExecutionContext {
     pub(crate) fn get_snapshot(&self) -> ExecutionContextSnapshot {
         ExecutionContextSnapshot {
             ledger_changes: self.speculative_ledger.get_snapshot(),
+            async_pool_changes: self.speculative_async_pool.get_snapshot(),
             created_addr_index: self.created_addr_index,
             created_event_index: self.created_event_index,
             stack: self.stack.clone(),
@@ -159,6 +160,8 @@ impl ExecutionContext {
     pub fn reset_to_snapshot(&mut self, snapshot: ExecutionContextSnapshot) {
         self.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
+        self.speculative_async_pool
+            .reset_to_snapshot(snapshot.async_pool_changes);
         self.created_addr_index = snapshot.created_addr_index;
         self.created_event_index = snapshot.created_event_index;
         self.stack = snapshot.stack;

@@ -20,8 +20,8 @@ use massa_ledger::LedgerConfig;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
-        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, T0,
-        THREAD_COUNT, VERSION, MAX_ASYNC_GAS,
+        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS, MAX_GAS_PER_BLOCK,
+        OPERATION_VALIDITY_PERIODS, T0, THREAD_COUNT, VERSION,
     },
     init_serialization_context, SerializationContext,
 };

@@ -33,6 +33,14 @@ impl SpeculativeAsyncPool {
         std::mem::take(&mut self.added_changes)
     }
 
+    pub fn get_snapshot(&self) -> AsyncPoolChanges {
+        self.added_changes.clone()
+    }
+
+    pub fn reset_to_snapshot(&mut self, snapshot: AsyncPoolChanges) {
+        self.added_changes = snapshot;
+    }
+
     pub fn push_new_message(&mut self, msg: AsyncMessage) {
         self.new_messages.push(msg);
     }
