@@ -322,6 +322,7 @@ impl PoolWorker {
                     self.endorsement_pool.add_endorsements(endorsements)?;
                 }
             }
+            ProtocolPoolEvent::GetOperations((node_id, operation_ids)) => self.operation_pool,
         }
         Ok(())
     }

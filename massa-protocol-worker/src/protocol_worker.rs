@@ -1232,7 +1232,7 @@ impl ProtocolWorker {
                 operation_ids.insert(*op_id);
             }
         }
-        self.send_protocol_event(ProtocolEvent::GetOperations((node_id, operation_ids)))
+        self.send_protocol_pool_event(ProtocolPoolEvent::GetOperations((node_id, operation_ids)))
             .await;
         Ok(())
     }
