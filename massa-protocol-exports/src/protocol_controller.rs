@@ -148,6 +148,25 @@ impl ProtocolCommandSender {
         res
     }
 
+    /// Send the response to a ProtocolEvent::GetBlocks.
+    pub async fn send_get_operations_results(
+        &mut self,
+        node_id: NodeId,
+        results: Operations,
+    ) -> Result<(), ProtocolError> {
+        massa_trace!("protocol.command_sender.send_get_operations_results", {
+            "results": results
+        });
+        let res = self
+            .0
+            .send(ProtocolCommand::GetOperationsResults((node_id, results)))
+            .await
+            .map_err(|_| {
+                ProtocolError::ChannelError("send_get_operations_results command send error".into())
+            });
+        res
+    }
+
     pub async fn send_wishlist_delta(
         &mut self,
         new: Set<BlockId>,
