@@ -21,7 +21,7 @@ use massa_logging::massa_trace;
 use massa_models::{
     constants::{
         END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, T0,
-        THREAD_COUNT, VERSION,
+        THREAD_COUNT, VERSION, MAX_ASYNC_GAS,
     },
     init_serialization_context, SerializationContext,
 };
@@ -148,6 +148,7 @@ async fn launch() -> (
         readonly_queue_length: SETTINGS.execution.readonly_queue_length,
         cursor_delay: SETTINGS.execution.cursor_delay,
         clock_compensation: bootstrap_state.compensation_millis,
+        max_async_gas: MAX_ASYNC_GAS,
         thread_count: THREAD_COUNT,
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,

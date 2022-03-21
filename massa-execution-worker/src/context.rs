@@ -9,7 +9,7 @@
 
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_ledger::SpeculativeLedger;
-use massa_async_pool::AsyncMessage;
+use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_execution_exports::{
     EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest,
 };
@@ -25,8 +25,12 @@ use std::sync::Arc;
 /// A snapshot taken from an ExecutionContext and that represents its current state.
 /// The ExecutionContext state can then be restored later from this snapshot.
 pub(crate) struct ExecutionContextSnapshot {
-    // speculative ledger changes caused so far in the context
+    /// speculative ledger changes caused so far in the context
     pub ledger_changes: LedgerChanges,
+
+    /// speculative async pool changes caused so far in the context
+    // note: re-think what the type of this should be
+    // pub async_pool_changes: AsyncPoolChanges,
 
     /// counter of newly created addresses so far at this slot during this execution
     pub created_addr_index: u64,
@@ -64,6 +68,9 @@ pub(crate) struct ExecutionContext {
 
     /// slot at which the execution happens
     pub slot: Slot,
+
+    /// coins available for async messages execution
+    pub async_coins: Amount,
 
     /// counter of newly created addresses so far during this execution
     pub created_addr_index: u64,
@@ -121,6 +128,7 @@ impl ExecutionContext {
             max_gas: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),
+            async_coins: Default::default(),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
             created_message_index: Default::default(),

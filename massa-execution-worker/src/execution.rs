@@ -340,13 +340,14 @@ impl ExecutionState {
         message: AsyncMessage,
         module: Vec<u8>,
     ) -> Result<(), ExecutionError> {
-        // question n2 : should executing a message credit coins to the executer?
-
         let context_snapshot;
         {
-            let context = context_guard!(self);
-            // note: set context values here
+            let mut context = context_guard!(self);
             context_snapshot = context.get_snapshot();
+            context.max_gas = message.max_gas;
+            context.gas_price = message.gas_price;
+            context.async_coins = message.coins;
+            // note: context value might be missing here
         }
         if let Err(err) = massa_sc_runtime::run_function(
             &module,
@@ -407,9 +408,7 @@ impl ExecutionState {
                 .final_state
                 .write()
                 .async_pool
-                .take_batch_to_executte(slot, context.max_gas);
-            // question n1 : shouldn't the above available_gas be coming from a config or something like it?
-            // maybe it should be in the async pool config?
+                .take_batch_to_executte(slot, self.config.max_async_gas);
             let mut modules: Vec<Vec<u8>> = Vec::with_capacity(messages.len());
             for message in &messages {
                 modules.push(context.get_bytecode(&message.destination).unwrap());
