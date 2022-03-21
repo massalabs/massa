@@ -13,7 +13,7 @@ use massa_graph::BootstrapableGraph;
 use massa_ledger::{FinalLedger, FinalLedgerBootstrapState};
 use massa_logging::massa_trace;
 use massa_models::Version;
-use massa_network_exports::{BootstrapPeers, NetworkCommandSender};
+use massa_network_exports::{BootstrapPeers, NetworkCommandSender, PeerType};
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_signature::{PrivateKey, PublicKey};
 use massa_time::MassaTime;
@@ -49,21 +49,21 @@ pub struct GlobalBootstrapState {
     pub compensation_millis: i64,
 
     /// list of network and bootstrap peers, true if peer in bootstrap list
-    pub peers: Vec<(IpAddr, bool)>,
+    pub peers: Vec<(IpAddr, PeerType)>,
 
     /// state of the final ledger
     pub final_ledger: Option<FinalLedgerBootstrapState>,
 }
 
 impl GlobalBootstrapState {
-    fn new(peers: Vec<(IpAddr, bool)>) -> Self {
+    fn new(peers: Vec<(IpAddr, PeerType)>) -> Self {
         GlobalBootstrapState {
             peers,
             ..Default::default()
         }
     }
 
-    fn extend_peers(&mut self, peers: Vec<(IpAddr, bool)>) {
+    fn extend_peers(&mut self, peers: Vec<(IpAddr, PeerType)>) {
         self.peers.extend(peers)
     }
 }
@@ -216,7 +216,11 @@ async fn get_state_internal(
         pos: Some(pos),
         graph: Some(graph),
         compensation_millis,
-        peers: peers.0.into_iter().map(|ip| (ip, false)).collect(),
+        peers: peers
+            .0
+            .into_iter()
+            .map(|ip| (ip, PeerType::default()))
+            .collect(),
         final_ledger: Some(final_ledger),
     })
 }
@@ -235,7 +239,7 @@ pub async fn get_state(
     let peer_list: Vec<_> = bootstrap_settings
         .bootstrap_list
         .iter()
-        .map(|(s, _)| (s.ip(), true))
+        .map(|(s, _)| (s.ip(), PeerType::Bootstrap))
         .collect();
     // if we are before genesis, do not bootstrap
     if now < genesis_timestamp {

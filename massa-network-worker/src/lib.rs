@@ -16,7 +16,7 @@ use massa_logging::massa_trace;
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
 use massa_network_exports::{
     Establisher, NetworkCommand, NetworkCommandSender, NetworkError, NetworkEvent,
-    NetworkEventReceiver, NetworkManagementCommand, NetworkManager, NetworkSettings,
+    NetworkEventReceiver, NetworkManagementCommand, NetworkManager, NetworkSettings, PeerType,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
 use tokio::sync::mpsc;
@@ -45,7 +45,7 @@ pub async fn start_network_controller(
     network_settings: NetworkSettings,
     mut establisher: Establisher,
     clock_compensation: i64,
-    initial_peers: Vec<(IpAddr, bool)>,
+    initial_peers: Vec<(IpAddr, PeerType)>,
     version: Version,
 ) -> Result<
     (

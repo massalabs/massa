@@ -181,7 +181,7 @@ impl PeerInfoDatabase {
     pub async fn new(
         cfg: &NetworkSettings,
         clock_compensation: i64,
-        initial_peers: Vec<(IpAddr, bool)>,
+        initial_peers: Vec<(IpAddr, PeerType)>,
     ) -> Result<Self, NetworkError> {
         // wakeup interval
         let wakeup_interval = cfg.wakeup_interval;
@@ -203,10 +203,10 @@ impl PeerInfoDatabase {
                 .map(|p| (p.ip, p)),
             );
         }
-        peers.extend(initial_peers.into_iter().map(|(ip, bootstrap)| {
+        peers.extend(initial_peers.into_iter().map(|(ip, peer_type)| {
             let mut p = PeerInfo::new(ip, true);
-            if bootstrap {
-                p.peer_type = PeerType::Bootstrap
+            if peer_type != PeerType::default() {
+                p.peer_type = peer_type
             }
             (ip, p)
         }));
