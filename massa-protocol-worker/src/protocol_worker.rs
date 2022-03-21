@@ -11,7 +11,7 @@ use massa_models::{
     prehash::{BuildMap, Map, Set},
     signed::Signable,
     Address, Block, BlockId, EndorsementId, OperationId, OperationType, SignedEndorsement,
-    SignedHeader, SignedOperation,
+    SignedHeader,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
@@ -550,12 +550,11 @@ impl ProtocolWorker {
                     }
                 }
             }
-            ProtocolCommand::GetOperationsResults((_node_id, _operations)) => todo!(
-                "Forward to the network
-            self.network_command_sender
-            .send_operations(node_id, operations)
-            .await;"
-            ),
+            ProtocolCommand::GetOperationsResults((node_id, operations)) => {
+                self.network_command_sender
+                    .send_operations(node_id, operations)
+                    .await?
+            }
         }
         massa_trace!("protocol.protocol_worker.process_command.end", {});
         Ok(())
@@ -1233,7 +1232,9 @@ impl ProtocolWorker {
                 operation_ids.insert(*op_id);
             }
         }
-        todo!("self.send_protocol_event(ProtocolEvent::GetOperations(for_node, operation_ids)).await;");
+        self.send_protocol_event(ProtocolEvent::GetOperations((node_id, operation_ids)))
+            .await;
+        Ok(())
     }
 
     async fn on_batch_operations_received(
