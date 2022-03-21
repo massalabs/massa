@@ -494,9 +494,9 @@ pub type Operations = Vec<SignedOperation>;
 /// to a `node_id` now or later. Mainly used in protocol and translated into
 /// simple combination of a `node_id` and `operations_ids`
 pub struct OperationBatchItem {
-    instant: Instant,
-    node_id: NodeId,
-    operations_ids: OperationIds,
+    pub instant: Instant,
+    pub node_id: NodeId,
+    pub operations_ids: OperationIds,
 }
 
 /// Queue containings every [OperationsBatchItem] we want to ask now or later.
