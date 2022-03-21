@@ -15,7 +15,6 @@ pub struct AsyncPoolBootstrap {
     pub(crate) messages: Vec<AsyncMessage>,
 }
 
-/// Allows serializing the AsyncPoolBootstrap to a compact binary representation
 impl SerializeCompact for AsyncPoolBootstrap {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -35,7 +34,6 @@ impl SerializeCompact for AsyncPoolBootstrap {
     }
 }
 
-/// Allows deserializing a AsyncPoolBootstrap from its compact binary representation
 impl DeserializeCompact for AsyncPoolBootstrap {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
         let mut cursor = 0usize;

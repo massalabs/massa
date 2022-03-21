@@ -68,7 +68,6 @@ impl AsyncMessage {
     }
 }
 
-/// Allow serializing the AsyncMessage into a compact binary representation
 impl SerializeCompact for AsyncMessage {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
