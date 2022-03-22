@@ -41,6 +41,8 @@ pub enum NetworkError {
     TimeError(#[from] massa_time::TimeError),
     /// missing peers
     MissingPeersError,
+    /// missing block
+    MissingBlock,
     /// models error: {0}
     ModelsError(#[from] ModelsError),
     /// container inconsistency error: {0}

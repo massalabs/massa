@@ -198,7 +198,9 @@ impl NodeWorker {
                                 // TODO: precisely allocate?
                                 let mut res: Vec<u8> = Vec::new();
                                 res.extend(u32::from(MessageTypeId::Block).to_varint_bytes());
-                                let block = storage.retrieve_block(&block_id).unwrap();
+                                let block = storage
+                                    .retrieve_block(&block_id)
+                                    .ok_or(NetworkError::MissingBlock)?;
                                 let mut stored_block = block.write();
                                 res.extend(mem::take(&mut stored_block.serialized));
                                 res
@@ -208,7 +210,9 @@ impl NodeWorker {
                                 let mut res: Vec<u8> = Vec::new();
                                 res.extend(u32::from(MessageTypeId::BlockHeader).to_varint_bytes());
 
-                                let block = storage.retrieve_block(&block_id).unwrap();
+                                let block = storage
+                                    .retrieve_block(&block_id)
+                                    .ok_or(NetworkError::MissingBlock)?;
                                 let mut stored_block = block.write();
                                 if let Some(serialized) = stored_block.serialized_header.as_ref() {
                                     res.extend(serialized);

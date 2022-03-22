@@ -272,7 +272,10 @@ impl ExecutionThread {
 
         // execute slot
         let exec_out = if let Some(exec_target) = exec_target {
-            let block = self.storage.retrieve_block(&exec_target).unwrap();
+            let block = self
+                .storage
+                .retrieve_block(&exec_target)
+                .expect("Missing block in storage.");
             let stored_block = block.read();
             exec_state.execute_slot(slot, Some((exec_target, &stored_block.block)))
         } else {
@@ -319,7 +322,10 @@ impl ExecutionThread {
         };
 
         let exec_out = {
-            let block = self.storage.retrieve_block(&exec_target).unwrap();
+            let block = self
+                .storage
+                .retrieve_block(&exec_target)
+                .expect("Missing block in storage.");
             let stored_block = block.read();
 
             // execute the slot
