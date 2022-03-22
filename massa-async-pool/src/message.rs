@@ -41,7 +41,7 @@ pub struct AsyncMessage {
     pub gas_price: Amount,
 
     /// Coins sent from the sender to the target address of the message.
-    /// Those coins are spent by the sender address when the emessage is sent,
+    /// Those coins are spent by the sender address when the message is sent,
     /// and credited to the destination address when receiving the message.
     /// In case of failure or discard, those coins are reimbursed to the sender.
     pub coins: Amount,
