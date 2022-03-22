@@ -54,7 +54,7 @@ pub struct ConsensusWorker {
     latest_final_periods: Vec<u64>,
     /// clock compensation
     clock_compensation: i64,
-    // staking keys
+    /// staking keys
     staking_keys: Map<Address, (PublicKey, PrivateKey)>,
     /// stats (block -> tx_count, creator)
     final_block_stats: VecDeque<(MassaTime, u64, Address)>,
