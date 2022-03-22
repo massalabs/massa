@@ -1302,11 +1302,7 @@ impl ProtocolWorker {
     /// - Uptate the cache `received_operations` ids and each
     ///   `node_info.known_operations`
     /// - Notify the operations to he local node, to be propagated
-    async fn on_operations_received(
-        &mut self,
-        node_id: NodeId,
-        operations: Operations,
-    ) -> Result<(), ProtocolError> {
+    async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {
         let operation_ids: OperationIds = operations
             .iter()
             .filter_map(|signed_op| match signed_op.content.compute_id() {
@@ -1314,13 +1310,17 @@ impl ProtocolWorker {
                 _ => None,
             })
             .collect();
-        self.checked_operations.extend(operation_ids.iter());
         if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
             node_info.known_operations.extend(operation_ids.iter());
         }
-        self.note_operations_from_node(operations, &node_id, true)
-            .await?;
-        Ok(())
+        if self
+            .note_operations_from_node(operations, &node_id, true)
+            .await
+            .is_err()
+        {
+            warn!("node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node", node_id,);
+            let _ = self.ban_node(&node_id).await;
+        }
     }
 
     /// Manages network event
@@ -1436,7 +1436,7 @@ impl ProtocolWorker {
             }
             NetworkEvent::ReceivedOperations { node, operations } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_operations", { "node": node, "operations": operations});
-                self.on_operations_received(node, operations).await?;
+                self.on_operations_received(node, operations).await;
             }
             NetworkEvent::ReceivedEndorsements { node, endorsements } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_endorsements", { "node": node, "endorsements": endorsements});
