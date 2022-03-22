@@ -21,7 +21,7 @@ pub struct AsyncPool {
     /// async pool config
     config: AsyncPoolConfig,
 
-    /// messages sorted by increasing ID (increasing priority)
+    /// messages sorted by decreasing ID (decreasing priority)
     pub(crate) messages: BTreeMap<AsyncMessageId, AsyncMessage>,
 }
 
@@ -119,7 +119,7 @@ impl AsyncPool {
             .saturating_sub(self.config.max_length as usize);
         eliminated.reserve_exact(excess_count);
         for _ in 0..excess_count {
-            eliminated.push(self.messages.pop_first().unwrap()); // will not panic (checked at excess_count computation)
+            eliminated.push(self.messages.pop_last().unwrap()); // will not panic (checked at excess_count computation)
         }
 
         eliminated
@@ -142,12 +142,10 @@ impl AsyncPool {
     ) -> Vec<AsyncMessage> {
         // gather all selected items and remove them from self.messages
         // iterate in decreasing priority order
-        let (removed, kept) = std::mem::take(&mut self.messages)
-            .into_iter()
-            .rev()
-            .partition(|(_, msg)| {
+        self.messages
+            .drain_filter(|_, msg| {
                 // check available gas and validity period
-                if available_gas > msg.max_gas
+                if available_gas >= msg.max_gas
                     && slot >= msg.validity_start
                     && slot < msg.validity_end
                 {
@@ -156,10 +154,7 @@ impl AsyncPool {
                 } else {
                     false
                 }
-            });
-        self.messages = kept;
-        removed
-            .into_iter()
+            })
             .map(|x| x.1)
             .collect::<Vec<AsyncMessage>>()
     }
@@ -175,11 +170,7 @@ fn test_take_batch() {
     let address = Address(Hash::compute_from(b"abc"));
     for i in 1..10 {
         pool.messages.insert(
-            (
-                Amount::from_raw(i),
-                std::cmp::Reverse(Slot::new(0, 0)),
-                std::cmp::Reverse(0),
-            ),
+            (std::cmp::Reverse(Amount::from_raw(i)), Slot::new(0, 0), 0),
             AsyncMessage {
                 emission_slot: Slot::new(0, 0),
                 emission_index: 0,

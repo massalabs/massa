@@ -10,9 +10,9 @@ use massa_models::{DeserializeCompact, SerializeCompact};
 use serde::{Deserialize, Serialize};
 
 /// Unique identifier of a message.
-/// Also has the property of ordering by priority following the triplet:
-/// (max_gas*gas_price, rev(emission_slot), rev(emission_index))
-pub type AsyncMessageId = (Amount, std::cmp::Reverse<Slot>, std::cmp::Reverse<u64>);
+/// Also has the property of ordering by priority (lowest first) following the triplet:
+/// (rev(max_gas*gas_price), emission_slot, emission_index)
+pub type AsyncMessageId = (std::cmp::Reverse<Amount>, Slot, u64);
 
 /// Structure defining an asynchronous smart contract message
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,9 +61,9 @@ impl AsyncMessage {
     /// For now, the formula is simply score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))
     pub fn compute_id(&self) -> AsyncMessageId {
         (
-            self.gas_price.saturating_mul_u64(self.max_gas),
-            std::cmp::Reverse(self.emission_slot),
-            std::cmp::Reverse(self.emission_index),
+            std::cmp::Reverse(self.gas_price.saturating_mul_u64(self.max_gas)),
+            self.emission_slot,
+            self.emission_index,
         )
     }
 }
