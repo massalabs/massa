@@ -1009,7 +1009,7 @@
                 <span class="comment">// https://github.com/massalabs/massa/issues/2335</span>
                 <span class="self">self</span>.<span class="ident">active_history</span>
                     .<span class="ident">iter</span>()
-                    .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">item</span><span class="op">|</span> <span class="ident">item</span>.<span class="ident">slot</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">start</span> <span class="op">&amp;&amp;</span> <span class="ident">item</span>.<span class="ident">slot</span> <span class="op">&lt;</span> <span class="ident">end</span>)
+                    .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">item</span><span class="op">|</span> <span class="ident">item</span>.<span class="ident">slot</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">start</span> <span class="op">&amp;&amp;</span> <span class="ident">item</span>.<span class="ident">slot</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">end</span>)
                     .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">item</span><span class="op">|</span> {
                         <span class="ident">item</span>.<span class="ident">events</span>.<span class="ident">get_filtered_sc_output_event</span>(
                             <span class="ident">start</span>,
@@ -1024,5 +1024,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c84f39e6c 2022-03-20)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (3c17c84a3 2022-03-21)" ></div>
 </body></html>

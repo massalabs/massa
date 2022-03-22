@@ -1067,7 +1067,7 @@
                     <span class="kw">let</span> <span class="kw-2">&amp;</span>(<span class="ident">public_key</span>, <span class="ident">private_key</span>) <span class="op">=</span> <span class="ident">wallet</span>
                         .<span class="ident">keys</span>
                         .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>.<span class="ident">address</span>)
-                        .<span class="ident">ok_or</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;missing private key&quot;</span>))<span class="question-mark">?</span>;
+                        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">anyhow!</span>(<span class="string">&quot;missing private key&quot;</span>))<span class="question-mark">?</span>;
                     <span class="prelude-val">Ok</span>((
                         <span class="ident">x</span>.<span class="ident">address</span>,
                         <span class="ident">ExtendedWalletEntry</span> {
@@ -1666,5 +1666,5 @@
     <span class="prelude-val">Ok</span>(<span class="ident">tokio::fs::read</span>(<span class="ident">filename</span>).<span class="kw">await</span><span class="question-mark">?</span>)
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c84f39e6c 2022-03-20)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (3c17c84a3 2022-03-21)" ></div>
 </body></html>

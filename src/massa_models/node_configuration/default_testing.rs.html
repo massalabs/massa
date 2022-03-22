@@ -138,6 +138,10 @@
 <span id="133">133</span>
 <span id="134">134</span>
 <span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALISE DIVERS CONFIGURATIONS STRUCTURES</span>
 <span class="doccomment">//! Same as default constants but in testing mode. You can access to them with</span>
 <span class="doccomment">//! the `testing` feature activated.</span>
@@ -232,7 +236,7 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROLL_PRICE</span>: <span class="ident">Amount</span> <span class="op">=</span> <span class="ident">Amount::from_raw</span>(<span class="number">100</span> <span class="op">*</span> <span class="ident">AMOUNT_DECIMAL_FACTOR</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SLOT_KEY_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">9</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">THREAD_COUNT</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">T0</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="ident">MassaTime::from</span>(<span class="number">32000</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">T0</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="ident">MassaTime::from</span>(<span class="number">32000</span>); <span class="comment">// sometimes overriden in config.rs or setting.rs</span>
 
 <span class="comment">/*************************
 * Mocked constant section
@@ -251,18 +255,22 @@
 * };
 */</span>
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DISABLE_BLOCK_CREATION</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FORCE_KEEP_FINAL_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FUTURE_BLOCK_PROCESSING_MAX_PERIODS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LEDGER_CACHE_CAPACITY</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1_000_000</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LEDGER_RESET_AT_STARTUP</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_DEPENDENCY_BLOCK</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_DISCARED_BLOCKS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_FUTURE_PROCESSING_BLOCK</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ITEM_RETURN_COUNT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1000</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATION_FILL_ATTEMPTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">6</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPERATION_BATCH_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_DRAW_CACHED_CYCLE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CURSOR_DELAY</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="ident">MassaTime::from</span>(<span class="number">0</span>); <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DISABLE_BLOCK_CREATION</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>; <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FINAL_HISTORY_LENGTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>; <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FORCE_KEEP_FINAL_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>; <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FUTURE_BLOCK_PROCESSING_MAX_PERIODS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>; <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LEDGER_CACHE_CAPACITY</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1_000_000</span>; <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">LEDGER_RESET_AT_STARTUP</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>; <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_DEPENDENCY_BLOCK</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>; <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_DISCARED_BLOCKS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>; <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_FINAL_EVENTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>; <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_FUTURE_PROCESSING_BLOCK</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>; <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ITEM_RETURN_COUNT</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1000</span>; <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATION_FILL_ATTEMPTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">6</span>; <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPERATION_BATCH_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>; <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_DRAW_CACHED_CYCLE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>; <span class="comment">// normally in config.toml</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">READONLY_QUEUE_LENGTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>; <span class="comment">// normally in config.toml</span>
 
 <span class="comment">// Note: In the `massa-network`, the default values are defined in the `settings.rs` of the</span>
 <span class="comment">// `massa-network` crate.</span>
@@ -274,5 +282,5 @@
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">STATS_TIMESPAN</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="number">60000</span>.<span class="ident">into</span>();
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c84f39e6c 2022-03-20)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (3c17c84a3 2022-03-21)" ></div>
 </body></html>

@@ -496,8 +496,8 @@
 
     <span class="doccomment">/// get vec of event for given slot range (start included, end excluded)</span>
     <span class="doccomment">/// Get events optionnally filtered by:</span>
-    <span class="doccomment">/// * start slot</span>
-    <span class="doccomment">/// * end slot</span>
+    <span class="doccomment">/// * start slot (default Slot(0,0))</span>
+    <span class="doccomment">/// * end slot   (default Slot(0,0))</span>
     <span class="doccomment">/// * emitter address</span>
     <span class="doccomment">/// * original caller address</span>
     <span class="doccomment">/// * operation id</span>
@@ -514,7 +514,7 @@
             .<span class="ident">iter</span>()
             <span class="comment">// filter on slots</span>
             .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">slot</span>, <span class="ident">ids</span>)<span class="op">|</span> {
-                <span class="kw">if</span> <span class="ident">slot</span> <span class="op">&gt;</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">start</span> <span class="op">&amp;&amp;</span> <span class="ident">slot</span> <span class="op">&lt;</span> <span class="kw-2">&amp;</span><span class="ident">end</span> {
+                <span class="kw">if</span> <span class="ident">slot</span> <span class="op">&gt;</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">start</span> <span class="op">&amp;&amp;</span> <span class="ident">slot</span> <span class="op">&lt;</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">end</span> {
                     <span class="prelude-val">Some</span>(<span class="ident">ids</span>)
                 } <span class="kw">else</span> {
                     <span class="prelude-val">None</span>
@@ -554,5 +554,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c84f39e6c 2022-03-20)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (3c17c84a3 2022-03-21)" ></div>
 </body></html>

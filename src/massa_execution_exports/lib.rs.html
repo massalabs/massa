@@ -105,20 +105,20 @@
 <span class="doccomment">//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.</span>
 <span class="doccomment">//! See test_exports/mod.rs for details.</span>
 
-<span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">controller_traits</span>;
 <span class="kw">mod</span> <span class="ident">error</span>;
 <span class="kw">mod</span> <span class="ident">event_store</span>;
+<span class="kw">mod</span> <span class="ident">settings</span>;
 <span class="kw">mod</span> <span class="ident">types</span>;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">config::ExecutionConfig</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">controller_traits</span>::{<span class="ident">ExecutionController</span>, <span class="ident">ExecutionManager</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::ExecutionError</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">event_store::EventStore</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::ExecutionConfig</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">types</span>::{<span class="ident">ExecutionOutput</span>, <span class="ident">ExecutionStackElement</span>, <span class="ident">ReadOnlyExecutionRequest</span>};
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_exports</span>;
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c84f39e6c 2022-03-20)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (3c17c84a3 2022-03-21)" ></div>
 </body></html>
