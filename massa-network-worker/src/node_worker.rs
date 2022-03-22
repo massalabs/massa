@@ -8,11 +8,12 @@ use massa_logging::massa_trace;
 use massa_models::{
     constants::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
     node::NodeId,
+    operation::OperationIds,
     signed::Signable,
 };
-use massa_network_exports::{ConnectionClosureReason, NetworkError, NetworkSettings};
-
-use massa_network_exports::{NodeCommand, NodeEvent, NodeEventType};
+use massa_network_exports::{
+    ConnectionClosureReason, NetworkError, NetworkSettings, NodeCommand, NodeEvent, NodeEventType,
+};
 use tokio::{
     sync::mpsc,
     sync::mpsc::{
@@ -303,15 +304,18 @@ impl NodeWorker {
                         },
                         Some(NodeCommand::SendOperations(operations)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": self.node_id, "operations": operations});
-                            // cut operation list if it exceed max_operations_per_message
-                            if self.try_send_to_node(&writer_command_tx, Message::Operations(operations)).is_err() {
-                                break 'select_loop;
+                            for chunk in operations.chunks(self.cfg.max_operations_per_message as usize) {
+                                if self.try_send_to_node(&writer_command_tx, Message::Operations(chunk.into())).is_err() {
+                                    break 'select_loop;
+                                }
                             }
                         },
                         Some(NodeCommand::SendOperationBatch(operation_ids)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendOperationsBatch", {"node": self.node_id, "operation_ids": operation_ids});
-                            if self.try_send_to_node(&writer_command_tx, Message::OperationsBatch(operation_ids)).is_err() {
-                                break 'select_loop;
+                            for chunk in operation_ids.into_iter().collect::<Vec<_>>().chunks(self.cfg.max_operations_per_message as usize) {
+                                if self.try_send_to_node(&writer_command_tx, Message::OperationsBatch(OperationIds::from_iter(chunk.iter().cloned()))).is_err() {
+                                    break 'select_loop;
+                                }
                             }
                         }
                         Some(NodeCommand::AskForOperations(operation_ids)) => {
