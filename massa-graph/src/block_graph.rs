@@ -206,7 +206,10 @@ impl<'a> BlockGraphExport {
                 }
                 BlockStatus::Active(a_block) => {
                     if filter(a_block.slot) {
-                        let block = block_graph.storage.retrieve_block(hash).unwrap();
+                        let block = block_graph
+                            .storage
+                            .retrieve_block(hash)
+                            .expect("Missing block in storage.");
                         let stored_block = block.read();
                         export.active_blocks.insert(
                             *hash,
@@ -560,7 +563,10 @@ impl BlockGraph {
             Map::with_capacity_and_hasher(required_active_blocks.len(), BuildMap::default());
         for b_id in required_active_blocks {
             if let Some(BlockStatus::Active(a_block)) = self.block_statuses.get(&b_id) {
-                let block = self.storage.retrieve_block(&b_id).unwrap();
+                let block = self
+                    .storage
+                    .retrieve_block(&b_id)
+                    .ok_or(GraphError::MissingBlock)?;
                 let stored_block = block.read().block.clone();
                 active_blocks.insert(
                     b_id,
@@ -1154,7 +1160,10 @@ impl BlockGraph {
         'outer: for b_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(b_id) {
                 if let Some(ops) = active_block.addresses_to_operations.get(address) {
-                    let block = self.storage.retrieve_block(b_id).unwrap();
+                    let block = self
+                        .storage
+                        .retrieve_block(b_id)
+                        .ok_or(GraphError::MissingBlock)?;
                     for op in ops.iter() {
                         let (idx, _) = active_block.operation_set.get(op).ok_or_else(|| {
                             GraphError::ContainerInconsistency(format!("op {} should be here", op))
@@ -1202,7 +1211,10 @@ impl BlockGraph {
                     ExportBlockStatus::WaitingForDependencies
                 }
                 BlockStatus::Active(active_block) => {
-                    let block = self.storage.retrieve_block(block_id).unwrap();
+                    let block = self
+                        .storage
+                        .retrieve_block(block_id)
+                        .expect("Missing block in storage.");
                     let stored_block = block.read();
                     if active_block.is_final {
                         ExportBlockStatus::Final(stored_block.block.clone())
@@ -1226,7 +1238,10 @@ impl BlockGraph {
         for block_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(block_id) {
                 // TODO: clone operations in one go as in `get_operations_involving_address`.
-                let block = self.storage.retrieve_block(block_id).unwrap();
+                let block = self
+                    .storage
+                    .retrieve_block(block_id)
+                    .expect("Missing block in storage.");
 
                 // check the intersection with the wanted operation ids, and update/insert into results
                 operation_ids
@@ -1352,7 +1367,10 @@ impl BlockGraph {
         }
 
         let slot = {
-            let stored_block = self.storage.retrieve_block(&block_id).unwrap();
+            let stored_block = self
+                .storage
+                .retrieve_block(&block_id)
+                .ok_or(GraphError::MissingBlock)?;
             let stored_block = stored_block.read();
             let slot = stored_block.block.header.content.slot;
             debug!("received block {} for slot {}", block_id, slot);
@@ -1582,7 +1600,10 @@ impl BlockGraph {
                 massa_trace!("consensus.block_graph.process.incoming_block", {
                     "block_id": block_id
                 });
-                let block = self.storage.retrieve_block(&block_id).unwrap();
+                let block = self
+                    .storage
+                    .retrieve_block(&block_id)
+                    .ok_or(GraphError::MissingBlock)?;
                 let stored_block = block.read();
                 let (_block_id, slot, operation_set, endorsement_ids) =
                     if let Some(BlockStatus::Incoming(HeaderOrBlock::Block(
@@ -2133,7 +2154,10 @@ impl BlockGraph {
                 }
 
                 let parent_id = {
-                    let block = self.storage.retrieve_block(&cur_b.block_id).unwrap();
+                    let block = self
+                        .storage
+                        .retrieve_block(&cur_b.block_id)
+                        .ok_or(GraphError::MissingBlock)?;
                     let stored_block = block.read();
                     stored_block.block.header.content.parents[header.content.slot.thread as usize]
                 };
@@ -2898,7 +2922,10 @@ impl BlockGraph {
                 });
 
                 let (creator, header) = {
-                    let block = self.storage.retrieve_block(&active_block.block_id).unwrap();
+                    let block = self
+                        .storage
+                        .retrieve_block(&active_block.block_id)
+                        .ok_or(GraphError::MissingBlock)?;
                     let stored_block = block.read();
                     (
                         stored_block.block.header.content.creator,
@@ -3169,7 +3196,10 @@ impl BlockGraph {
             let mut current_block_id = *id;
             while let Some(current_block) = self.get_active_block(&current_block_id) {
                 let parent_id = {
-                    let block = self.storage.retrieve_block(&current_block_id).unwrap();
+                    let block = self
+                        .storage
+                        .retrieve_block(&current_block_id)
+                        .ok_or(GraphError::MissingBlock)?;
                     let stored_block = block.read();
                     if !stored_block.block.header.content.parents.is_empty() {
                         Some(stored_block.block.header.content.parents[thread as usize])
@@ -3279,7 +3309,10 @@ impl BlockGraph {
             .copied()
             .collect();
         for discard_active_h in to_remove {
-            let block = self.storage.retrieve_block(&discard_active_h).unwrap();
+            let block = self
+                .storage
+                .retrieve_block(&discard_active_h)
+                .ok_or(GraphError::MissingBlock)?;
             let stored_block = block.read();
 
             let discarded_active = if let Some(BlockStatus::Active(discarded_active)) =
@@ -3481,7 +3514,10 @@ impl BlockGraph {
                 let header = match header_or_block {
                     HeaderOrBlock::Header(h) => h,
                     HeaderOrBlock::Block(block_id, ..) => {
-                        let block = self.storage.retrieve_block(&block_id).unwrap();
+                        let block = self
+                            .storage
+                            .retrieve_block(&block_id)
+                            .ok_or(GraphError::MissingBlock)?;
                         let stored_block = block.read();
                         stored_block.block.header.clone()
                     }
@@ -3688,7 +3724,10 @@ impl BlockGraph {
         for b_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(ab)) = self.block_statuses.get(b_id) {
                 if let Some(eds) = ab.addresses_to_endorsements.get(&address) {
-                    let block = self.storage.retrieve_block(b_id).unwrap();
+                    let block = self
+                        .storage
+                        .retrieve_block(b_id)
+                        .ok_or(GraphError::MissingBlock)?;
                     let endorsements = block.read().block.header.content.endorsements.clone();
                     for e in endorsements {
                         let id = e.content.compute_id()?;
@@ -3711,7 +3750,10 @@ impl BlockGraph {
         let mut res = Map::default();
         for block_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(ab)) = self.block_statuses.get(block_id) {
-                let block = self.storage.retrieve_block(block_id).unwrap();
+                let block = self
+                    .storage
+                    .retrieve_block(block_id)
+                    .ok_or(GraphError::MissingBlock)?;
                 let stored_block = block.read();
                 // list blocks with wanted endorsements
                 if endorsements
