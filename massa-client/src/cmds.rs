@@ -231,7 +231,7 @@ impl ExtendedWallet {
                     let &(public_key, private_key) = wallet
                         .keys
                         .get(&x.address)
-                        .ok_or(anyhow!("missing private key"))?;
+                        .ok_or_else(|| anyhow!("missing private key"))?;
                     Ok((
                         x.address,
                         ExtendedWalletEntry {

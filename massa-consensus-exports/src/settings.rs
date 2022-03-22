@@ -332,13 +332,21 @@ impl From<&ConsensusSettings> for ConsensusConfig {
         use massa_models::constants::default_testing::*;
         #[cfg(not(feature = "testing"))]
         use massa_models::constants::*;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let t0 = T0;
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(feature = "sandbox")]
+        let t0 = *T0;
         ConsensusConfig {
             #[cfg(feature = "testing")]
             temp_files: TempFiles::default(), // No need to clone
             genesis_timestamp: *GENESIS_TIMESTAMP,
             end_timestamp: *END_TIMESTAMP,
-            thread_count: THREAD_COUNT,
-            t0: T0,
+            thread_count,
+            t0,
             genesis_key: *GENESIS_KEY,
             staking_keys_path: settings.staking_keys_path.clone(),
             max_discarded_blocks: settings.max_discarded_blocks,
@@ -385,13 +393,21 @@ impl From<ConsensusSettings> for ConsensusConfig {
         use massa_models::constants::default_testing::*;
         #[cfg(not(feature = "testing"))]
         use massa_models::constants::*;
+        #[cfg(not(feature = "sandbox"))]
+        let thread_count = THREAD_COUNT;
+        #[cfg(not(feature = "sandbox"))]
+        let t0 = T0;
+        #[cfg(feature = "sandbox")]
+        let thread_count = *THREAD_COUNT;
+        #[cfg(feature = "sandbox")]
+        let t0 = *T0;
         ConsensusConfig {
             #[cfg(feature = "testing")]
             temp_files: Default::default(),
             genesis_timestamp: *GENESIS_TIMESTAMP,
             end_timestamp: *END_TIMESTAMP,
-            thread_count: THREAD_COUNT,
-            t0: T0,
+            thread_count,
+            t0,
             genesis_key: *GENESIS_KEY,
             staking_keys_path: settings.staking_keys_path,
             max_discarded_blocks: settings.max_discarded_blocks,

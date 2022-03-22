@@ -39,6 +39,14 @@ serial_test = "0.5"
 massa_models = { path = "../massa-models", features = ["testing"] }
 
 [features]
-instrument = ["tokio/tracing", "massa_graph/instrument", "massa_models/instrument", "massa_pool/instrument", "massa_proof_of_stake_exports/instrument", "massa_protocol_exports/instrument", "massa_time/instrument"]
+instrument = [
+    "tokio/tracing",
+    "massa_graph/instrument",
+    "massa_models/instrument",
+    "massa_pool/instrument",
+    "massa_proof_of_stake_exports/instrument",
+    "massa_protocol_exports/instrument",
+    "massa_time/instrument",
+]
 sandbox = []
-testing = []
+testing = ["massa_models/testing", "massa_execution_exports/testing"]
