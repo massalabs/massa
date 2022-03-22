@@ -55,7 +55,7 @@ impl HeaderOrBlock {
     pub fn get_slot(&self) -> Slot {
         match self {
             HeaderOrBlock::Header(header) => header.content.slot,
-            HeaderOrBlock::Block(_block, slot, ..) => *slot,
+            HeaderOrBlock::Block(_, slot, ..) => *slot,
         }
     }
 }
@@ -3563,8 +3563,8 @@ impl BlockGraph {
         discard_hashes.sort_unstable();
         discard_hashes.truncate(self.discarded_index.len() - self.cfg.max_discarded_blocks);
         for (_, block_id) in discard_hashes.iter() {
-            self.block_statuses.remove(&block_id);
-            self.discarded_index.remove(&block_id);
+            self.block_statuses.remove(block_id);
+            self.discarded_index.remove(block_id);
         }
         // Prune shared storage
         let ids: Vec<BlockId> = discard_hashes.into_iter().map(|(_, id)| id).collect();

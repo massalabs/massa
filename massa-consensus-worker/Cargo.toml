@@ -40,9 +40,6 @@ tempfile = "3.2"
 massa_models = { path = "../massa-models", features = ["testing"] }
 massa_execution_exports = { path = "../massa-execution-exports", features = ["testing"] }
 massa_consensus_exports = { path = "../massa-consensus-exports", features = ["testing"] }
-env_logger = "*"
-tracing = {version = "0.1", default-features = false}
-tracing-subscriber = {version = "0.3", default-features = false, features = ["env-filter", "fmt"]}
 test-log = {version = "0.2.8", features = ["trace"]}
 console-subscriber = "0.1.1"
 
