@@ -1,16 +1,17 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use crate::start_execution_worker;
 use massa_execution_exports::{ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest};
+use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::hash::Hash;
-use massa_ledger::{FinalLedger, LedgerConfig, LedgerError};
+use massa_ledger::{LedgerConfig, LedgerError};
 use massa_models::{
-    constants::AMOUNT_DECIMAL_FACTOR, prehash::Map, Block, BlockHeader, BlockHeaderContent,
-    BlockId, Operation, OperationContent, OperationType, SerializeCompact,
+    constants::{AMOUNT_DECIMAL_FACTOR, FINAL_HISTORY_LENGTH, THREAD_COUNT},
+    prehash::Map,
+    Block, BlockHeader, BlockId, Operation, OperationType, SerializeCompact, SignedHeader,
+    SignedOperation,
 };
 use massa_models::{Address, Amount, Slot};
-use massa_signature::{
-    derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey,
-};
+use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use parking_lot::RwLock;
 use serial_test::serial;
 use std::{collections::BTreeMap, str::FromStr, sync::Arc, time::Duration};
@@ -29,12 +30,20 @@ pub fn get_random_address() -> Address {
     get_random_address_full().0
 }
 
-fn get_sample_ledger() -> Result<(Arc<RwLock<FinalLedger>>, NamedTempFile), LedgerError> {
+fn get_sample_ledger() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile), LedgerError> {
     let mut initial: BTreeMap<Address, Amount> = Default::default();
     initial.insert(get_random_address(), Amount::from_str("129").unwrap());
     initial.insert(get_random_address(), Amount::from_str("878").unwrap());
-    let (cfg, tempfile) = LedgerConfig::sample(&initial);
-    Ok((Arc::new(RwLock::new(FinalLedger::new(cfg)?)), tempfile))
+    let (ledger_config, tempfile) = LedgerConfig::sample(&initial);
+    let cfg = FinalStateConfig {
+        ledger_config,
+        final_history_length: FINAL_HISTORY_LENGTH,
+        thread_count: THREAD_COUNT,
+    };
+    Ok((
+        Arc::new(RwLock::new(FinalState::new(cfg).unwrap())),
+        tempfile,
+    ))
 }
 
 #[test]
@@ -145,30 +154,30 @@ fn create_execute_sc_operation(
     sender_private_key: PrivateKey,
     sender_public_key: PublicKey,
     data: &[u8],
-) -> Result<Operation, ExecutionError> {
-    let signature = sign(&Hash::compute_from("dummy".as_bytes()), &sender_private_key)?;
+) -> Result<SignedOperation, ExecutionError> {
     let op = OperationType::ExecuteSC {
         data: data.to_vec(),
         max_gas: u64::MAX,
         coins: Amount::from_raw(u64::MAX),
         gas_price: Amount::from_raw(AMOUNT_DECIMAL_FACTOR),
     };
-    Ok(Operation {
-        content: OperationContent {
+    let (_, op) = SignedOperation::new_signed(
+        Operation {
             sender_public_key,
             fee: Amount::zero(),
             expire_period: 10,
             op,
         },
-        signature,
-    })
+        &sender_private_key,
+    )?;
+    Ok(op)
 }
 
 /// Create an almost empty block with a vector `operations` and a random
 /// creator.
 ///
 /// Return a result that should be unwraped in the root `#[test]` routine.
-fn create_block(operations: Vec<Operation>) -> Result<(BlockId, Block), ExecutionError> {
+fn create_block(operations: Vec<SignedOperation>) -> Result<(BlockId, Block), ExecutionError> {
     let creator = generate_random_private_key();
     let public_key = derive_public_key(&creator);
 
@@ -178,9 +187,8 @@ fn create_block(operations: Vec<Operation>) -> Result<(BlockId, Block), Executio
         })[..],
     );
 
-    let (hash, header) = BlockHeader::new_signed(
-        &creator,
-        BlockHeaderContent {
+    let (id, header) = SignedHeader::new_signed(
+        BlockHeader {
             creator: public_key,
             slot: Slot {
                 period: 1,
@@ -190,6 +198,7 @@ fn create_block(operations: Vec<Operation>) -> Result<(BlockId, Block), Executio
             operation_merkle_root,
             endorsements: vec![],
         },
+        &creator,
     )?;
-    Ok((hash, Block { header, operations }))
+    Ok((id, Block { header, operations }))
 }

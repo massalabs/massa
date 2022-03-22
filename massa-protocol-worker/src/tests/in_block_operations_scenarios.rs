@@ -2,9 +2,8 @@
 
 use super::tools::protocol_test;
 use massa_hash::hash::Hash;
-use massa_models::{
-    get_serialization_context, Address, Amount, Block, BlockHeader, BlockHeaderContent, Slot,
-};
+use massa_models::signed::Signed;
+use massa_models::{get_serialization_context, Address, Amount, Block, BlockHeader, Slot};
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::tests::tools::{
     create_and_connect_nodes, create_block_with_operations, create_operation_with_expire_period,
@@ -120,15 +119,15 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                 let block = {
                     let operation_merkle_root = Hash::compute_from("merkle root".as_bytes());
 
-                    let (_, header) = BlockHeader::new_signed(
-                        &creator_node.private_key,
-                        BlockHeaderContent {
+                    let (_, header) = Signed::new_signed(
+                        BlockHeader {
                             creator: derive_public_key(&creator_node.private_key),
                             slot: slot_a,
                             parents: Vec::new(),
                             operation_merkle_root,
                             endorsements: Vec::new(),
                         },
+                        &creator_node.private_key,
                     )
                     .unwrap();
 

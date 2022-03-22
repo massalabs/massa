@@ -11,8 +11,10 @@ members = [
   "massa-hash",
   "massa-logging",
   "massa-models",
-  "massa-network",
+  "massa-network-worker",
+  "massa-network-exports",
   "massa-node",
+  "massa-sdk",
   "massa-pool",
   "massa-proof-of-stake-exports",
   "massa-protocol-exports",
@@ -20,7 +22,8 @@ members = [
   "massa-signature",
   "massa-time",
   "massa-wallet",
-  "massa-ledger"
+  "massa-ledger",
+  "massa-final-state"
 ]
 resolver = "2"
 

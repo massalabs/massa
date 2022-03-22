@@ -1,9 +1,10 @@
+use massa_models::Operation;
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use massa_models::ledger_models::{LedgerChange, LedgerChanges, LedgerData};
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::{
     array_from_slice, constants::ADDRESS_SIZE_BYTES, Address, Amount, DeserializeCompact,
-    DeserializeVarInt, Operation, SerializeCompact, SerializeVarInt,
+    DeserializeVarInt, SerializeCompact, SerializeVarInt,
 };
 use serde::{Deserialize, Serialize};
 use sled::{Transactional, Tree};
@@ -71,11 +72,11 @@ impl OperationLedgerInterface for Operation {
         let mut res = LedgerChanges::default();
 
         // sender fee
-        let sender_address = Address::from_public_key(&self.content.sender_public_key);
+        let sender_address = Address::from_public_key(&self.sender_public_key);
         res.apply(
             &sender_address,
             &LedgerChange {
-                balance_delta: self.content.fee,
+                balance_delta: self.fee,
                 balance_increment: false,
             },
         )?;
@@ -85,12 +86,12 @@ impl OperationLedgerInterface for Operation {
             creator,
             endorsers,
             parent_creator,
-            self.content.fee,
+            self.fee,
             endorsement_count,
         )?;
 
         // operation type specific
-        match &self.content.op {
+        match &self.op {
             massa_models::OperationType::Transaction {
                 recipient_address,
                 amount,

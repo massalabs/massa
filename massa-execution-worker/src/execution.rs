@@ -14,9 +14,11 @@ use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
     ReadOnlyExecutionRequest,
 };
-use massa_ledger::{Applicable, FinalLedger, LedgerChanges, LedgerEntry, SetUpdateOrDelete};
+use massa_final_state::{FinalState, StateChanges};
+use massa_ledger::{Applicable, LedgerEntry, SetUpdateOrDelete};
 use massa_models::output_event::SCOutputEvent;
-use massa_models::{Address, BlockId, Operation, OperationId, OperationType};
+use massa_models::signed::Signable;
+use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
 use massa_models::{Block, Slot};
 use massa_sc_runtime::Interface;
 use parking_lot::{Mutex, RwLock};
@@ -49,8 +51,8 @@ pub(crate) struct ExecutionState {
     pub final_cursor: Slot,
     // store containing execution events that became final
     pub final_events: EventStore,
-    // final ledger with atomic R/W access
-    pub final_ledger: Arc<RwLock<FinalLedger>>,
+    // final state with atomic R/W access
+    pub final_state: Arc<RwLock<FinalState>>,
     // execution context (see documentation in context.rs)
     pub execution_context: Arc<Mutex<ExecutionContext>>,
     // execution interface allowing the VM runtime to access the Massa context
@@ -62,18 +64,18 @@ impl ExecutionState {
     ///
     /// # arguments
     /// * config: execution config
-    /// * final_lefger: atomic access to the final ledger
+    /// * final_state: atomic access to the final state
     ///
     /// # returns
     /// A new ExecutionState
-    pub fn new(config: ExecutionConfig, final_ledger: Arc<RwLock<FinalLedger>>) -> ExecutionState {
-        // Get the slot at the output of which the final ledger is attached.
+    pub fn new(config: ExecutionConfig, final_state: Arc<RwLock<FinalState>>) -> ExecutionState {
+        // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
-        let last_final_slot = final_ledger.read().slot;
+        let last_final_slot = final_state.read().slot;
 
         // Create an empty placeholder execution context, with shared atomic access
         let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
-            final_ledger.clone(),
+            final_state.clone(),
             Default::default(),
         )));
 
@@ -86,7 +88,7 @@ impl ExecutionState {
         // build the execution state
         ExecutionState {
             config,
-            final_ledger,
+            final_state,
             execution_context,
             execution_interface,
             // empty execution output history: it is not recovered through bootstrap
@@ -105,10 +107,10 @@ impl ExecutionState {
     /// # Arguments
     /// * exec_out: execution output to apply
     pub fn apply_final_execution_output(&mut self, exec_out: ExecutionOutput) {
-        // apply ledger changes to the final ledger
-        self.final_ledger
+        // apply state changes to the final ledger
+        self.final_state
             .write()
-            .settle_slot(exec_out.slot, exec_out.ledger_changes);
+            .settle_slot(exec_out.slot, exec_out.state_changes);
         // update the final ledger's slot
         self.final_cursor = exec_out.slot;
 
@@ -191,14 +193,14 @@ impl ExecutionState {
         }
     }
 
-    /// Returns he ledger changes accumulated from the beginning of the output history,
+    /// Returns the state changes accumulated from the beginning of the output history,
     /// up until a provided slot (excluded).
     /// Only used in the VM main loop because the lock on the final ledger
     /// carried by the returned SpeculativeLedger is not held.
     /// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any subentry
     /// by scanning through history from end to beginning
     /// https://github.com/massalabs/massa/issues/2343
-    pub fn get_accumulated_active_changes_at_slot(&self, slot: Slot) -> LedgerChanges {
+    pub fn get_accumulated_active_changes_at_slot(&self, slot: Slot) -> StateChanges {
         // check that the slot is within the reach of history
         if slot <= self.final_cursor {
             panic!("cannot execute at a slot before finality");
@@ -211,13 +213,13 @@ impl ExecutionState {
             panic!("cannot execute at a slot beyond active cursor + 1");
         }
 
-        // gather the history of changes in the relevant history range
-        let mut accumulated_changes = LedgerChanges::default();
+        // gather the history of state changes in the relevant history range
+        let mut accumulated_changes = StateChanges::default();
         for previous_output in &self.active_history {
             if previous_output.slot >= slot {
                 break;
             }
-            accumulated_changes.apply(previous_output.ledger_changes.clone());
+            accumulated_changes.apply(previous_output.state_changes.clone());
         }
 
         accumulated_changes
@@ -231,7 +233,7 @@ impl ExecutionState {
     /// * block_creator_addr: address of the block creator
     pub fn execute_operation(
         &self,
-        operation: &Operation,
+        operation: &SignedOperation,
         block_creator_addr: Address,
     ) -> Result<(), ExecutionError> {
         // process ExecuteSC operations only, ignore other types of operations
@@ -253,7 +255,8 @@ impl ExecutionState {
         // https://github.com/massalabs/massa/issues/1121
         // https://github.com/massalabs/massa/issues/2264
         let operation_id = operation
-            .get_operation_id()
+            .content
+            .compute_id()
             .expect("could not compute operation ID");
 
         // prepare the current slot context for executing the operation
@@ -342,14 +345,14 @@ impl ExecutionState {
             .unzip();
 
         // accumulate previous active changes from output history
-        let previous_ledger_changes = self.get_accumulated_active_changes_at_slot(slot);
+        let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
 
         // create a new execution context for the whole active slot
         let execution_context = ExecutionContext::active_slot(
             slot,
             opt_block_id,
-            previous_ledger_changes,
-            self.final_ledger.clone(),
+            previous_changes,
+            self.final_state.clone(),
         );
 
         // note that here, some pre-operations (like crediting block producers) can be performed before the lock
@@ -399,18 +402,14 @@ impl ExecutionState {
             .get_next_slot(self.config.thread_count)
             .expect("slot overflow in readonly execution");
 
-        // accumulate ledger changes that happened in the output history before this slot
-        let previous_ledger_changes = self.get_accumulated_active_changes_at_slot(slot);
+        // accumulate state changes that happened in the output history before this slot
+        let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
 
         // create a readonly execution context
         let max_gas = req.max_gas;
         let bytecode = req.bytecode.clone();
-        let execution_context = ExecutionContext::readonly(
-            slot,
-            req,
-            previous_ledger_changes,
-            self.final_ledger.clone(),
-        );
+        let execution_context =
+            ExecutionContext::readonly(slot, req, previous_changes, self.final_state.clone());
 
         // set the execution context for execution
         *context_guard!(self) = execution_context;
@@ -433,7 +432,7 @@ impl ExecutionState {
         addr: &Address,
     ) -> (Option<LedgerEntry>, Option<LedgerEntry>) {
         // get the full entry from the final ledger
-        let final_entry = self.final_ledger.read().get_full_entry(addr);
+        let final_entry = self.final_state.read().ledger.get_full_entry(addr);
 
         // get cumulative active changes and apply them
         // TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it
@@ -441,6 +440,7 @@ impl ExecutionState {
         // https://github.com/massalabs/massa/issues/2343
         let active_change = self
             .get_accumulated_active_changes_at_slot(self.active_cursor)
+            .ledger_changes
             .get(addr)
             .cloned();
         let active_entry = match (&final_entry, active_change) {

@@ -9,17 +9,28 @@ use massa_models::{
     api::APISettings,
     constants::{build_massa_settings, OPERATION_VALIDITY_PERIODS, THREAD_COUNT},
 };
-use massa_network::NetworkSettings;
+use massa_network_exports::NetworkSettings;
 use massa_pool::{PoolConfig, PoolSettings};
 use massa_protocol_exports::ProtocolSettings;
 use massa_time::MassaTime;
 use serde::Deserialize;
 
+#[cfg(not(feature = "sandbox"))]
 lazy_static::lazy_static! {
     pub static ref SETTINGS: Settings = build_massa_settings("massa-node", "MASSA_NODE");
     pub static ref POOL_CONFIG: PoolConfig = PoolConfig {
         settings: SETTINGS.pool,
         thread_count: THREAD_COUNT,
+        operation_validity_periods: OPERATION_VALIDITY_PERIODS
+    };
+}
+
+#[cfg(feature = "sandbox")]
+lazy_static::lazy_static! {
+    pub static ref SETTINGS: Settings = build_massa_settings("massa-node", "MASSA_NODE");
+    pub static ref POOL_CONFIG: PoolConfig = PoolConfig {
+        settings: SETTINGS.pool,
+        thread_count: *THREAD_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS
     };
 }

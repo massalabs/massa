@@ -11,18 +11,18 @@ use crate::{
 };
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::clique::Clique;
-use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::{
     active_block::ActiveBlock,
     api::EndorsementInfo,
     rolls::{RollCounts, RollUpdate, RollUpdates},
+    SignedEndorsement, SignedHeader, SignedOperation,
 };
+use massa_models::{clique::Clique, signed::Signable};
+use massa_models::{ledger_models::LedgerChange, signed::Signed};
 use massa_models::{
-    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockHeaderContent, BlockId,
-    Endorsement, EndorsementId, Operation, OperationId, OperationSearchResult,
-    OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
+    ledger_models::LedgerChanges, Address, Block, BlockHeader, BlockId, EndorsementId, OperationId,
+    OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus, Slot,
 };
 use massa_proof_of_stake_exports::{
     error::ProofOfStakeError, OperationRollInterface, ProofOfStake,
@@ -39,7 +39,7 @@ use tracing::{debug, error, info, warn};
 
 #[derive(Debug, Clone)]
 enum HeaderOrBlock {
-    Header(BlockHeader),
+    Header(SignedHeader),
     Block(
         Block,
         Map<OperationId, (usize, u64)>,
@@ -115,7 +115,7 @@ enum BlockStatus {
     /// The block was discarded and is kept to avoid reprocessing it
     Discarded {
         /// Just the header of that block
-        header: BlockHeader,
+        header: SignedHeader,
         /// why it was discarded
         reason: DiscardReason,
         /// Used to limit and sort the number of blocks/headers wainting for dependencies
@@ -157,7 +157,7 @@ impl<'a> From<&'a BlockStatus> for ExportBlockStatus {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportCompiledBlock {
     /// Header of the corresponding block.
-    pub header: BlockHeader,
+    pub header: SignedHeader,
     /// For (i, set) in children,
     /// set contains the headers' hashes
     /// of blocks referencing exported block as a parent,
@@ -250,7 +250,7 @@ pub struct BlockGraphExport {
     /// Map of active blocks, were blocks are in their exported version.
     pub active_blocks: Map<BlockId, ExportCompiledBlock>,
     /// Finite cache of discarded blocks, in exported version.
-    pub discarded_blocks: Map<BlockId, (DiscardReason, BlockHeader)>,
+    pub discarded_blocks: Map<BlockId, (DiscardReason, SignedHeader)>,
     /// Best parents hashe in each thread.
     pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
@@ -399,15 +399,15 @@ enum BlockOperationsCheckOutcome {
 pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> Result<(BlockId, Block)> {
     let private_key = cfg.genesis_key;
     let public_key = derive_public_key(&private_key);
-    let (header_hash, header) = BlockHeader::new_signed(
-        &private_key,
-        BlockHeaderContent {
+    let (header_hash, header) = Signed::new_signed(
+        BlockHeader {
             creator: public_key,
             slot: Slot::new(0, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),
             endorsements: Vec::new(),
         },
+        &private_key,
     )?;
 
     Ok((
@@ -589,16 +589,16 @@ impl BlockGraph {
     pub fn block_state_try_apply_op(
         &self,
         state_accu: &mut BlockStateAccumulator,
-        header: &BlockHeader,
-        operation: &Operation,
+        header: &SignedHeader,
+        operation: &SignedOperation,
         pos: &mut ProofOfStake,
     ) -> Result<()> {
         let block_creator_address = Address::from_public_key(&header.content.creator);
 
         // get roll updates
-        let op_roll_updates = operation.get_roll_updates()?;
+        let op_roll_updates = operation.content.get_roll_updates()?;
         // get ledger changes (includes fee distribution)
-        let op_ledger_changes = operation.get_ledger_changes(
+        let op_ledger_changes = operation.content.get_ledger_changes(
             block_creator_address,
             state_accu.endorsers_addresses.clone(),
             state_accu.same_thread_parent_creator,
@@ -627,7 +627,7 @@ impl BlockGraph {
     pub fn block_state_sync_rolls(
         &self,
         accu: &mut BlockStateAccumulator,
-        header: &BlockHeader,
+        header: &SignedHeader,
         pos: &ProofOfStake,
         involved_addrs: &Set<Address>,
     ) -> Result<()> {
@@ -657,7 +657,7 @@ impl BlockGraph {
     pub fn block_state_try_apply(
         &self,
         accu: &mut BlockStateAccumulator,
-        header: &BlockHeader,
+        header: &SignedHeader,
         mut opt_ledger_changes: Option<LedgerChanges>,
         opt_roll_updates: Option<RollUpdates>,
         pos: &mut ProofOfStake,
@@ -839,7 +839,7 @@ impl BlockGraph {
     /// initializes a block state accumulator from a block header
     pub fn block_state_accumulator_init(
         &self,
-        header: &BlockHeader,
+        header: &SignedHeader,
         pos: &mut ProofOfStake,
     ) -> Result<BlockStateAccumulator> {
         let block_thread = header.content.slot.thread;
@@ -1018,11 +1018,19 @@ impl BlockGraph {
             }
         };
 
+        // Get the latest final slot, as seen by PoS,
+        // We do this instead of looking for the latest graph final block because PoS might not be aware of the latest graph final blocks yet,
+        // since PoS is notified only after all block finality changes caused by this new block are processed.
+        let pos_latest_final_block_slot = pos.get_last_final_block_slot(target_thread);
+        let pos_latest_final_block_cycle =
+            pos_latest_final_block_slot.get_cycle(self.cfg.periods_per_cycle);
+
         // stack back to latest final slot
         // (step 1 in pos.md)
         let mut stack = Vec::new();
         let mut cur_block_id = block_id;
-        let final_cycle;
+        // start graph exploration until the latest period known as final
+        // for the PoS module
         loop {
             // get block
             let cur_a_block = match self.block_statuses.get(&cur_block_id) {
@@ -1034,15 +1042,9 @@ impl BlockGraph {
                     )));
                 }
             };
-            if cur_a_block.is_final {
+            if cur_a_block.block.header.content.slot.period == pos_latest_final_block_slot.period {
                 // filters out genesis and final blocks
                 // (step 1.1 in pos.md)
-                final_cycle = cur_a_block
-                    .block
-                    .header
-                    .content
-                    .slot
-                    .get_cycle(self.cfg.periods_per_cycle);
                 break;
             }
             // (step 1.2 in pos.md)
@@ -1055,15 +1057,15 @@ impl BlockGraph {
         let (mut cur_rolls, mut cur_cycle_roll_updates) = {
             // (step 2 in pos.md)
             let cycle_state = pos
-                .get_final_roll_data(final_cycle, target_thread)
+                .get_final_roll_data(pos_latest_final_block_cycle, target_thread)
                 .ok_or_else(|| {
                     GraphError::ContainerInconsistency(format!(
                         "final PoS cycle not available: {}",
-                        final_cycle
+                        pos_latest_final_block_cycle
                     ))
                 })?;
             // (step 3 in pos.md)
-            let cur_cycle_roll_updates = if final_cycle == target_cycle {
+            let cur_cycle_roll_updates = if pos_latest_final_block_cycle == target_cycle {
                 if let Some(addrs) = addrs_opt {
                     cycle_state.cycle_updates.clone_subset(addrs)
                 } else {
@@ -1151,7 +1153,7 @@ impl BlockGraph {
                             op: active_block.block.operations[*idx].clone(),
                             in_pool: false,
                             in_blocks: vec![(
-                                active_block.block.header.compute_block_id()?,
+                                active_block.block.header.content.compute_id()?,
                                 (*idx, active_block.is_final),
                             )]
                             .into_iter()
@@ -1261,7 +1263,7 @@ impl BlockGraph {
     pub fn incoming_header(
         &mut self,
         block_id: BlockId,
-        header: BlockHeader,
+        header: SignedHeader,
         pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<()> {
@@ -1841,7 +1843,7 @@ impl BlockGraph {
     fn check_header(
         &self,
         block_id: &BlockId,
-        header: &BlockHeader,
+        header: &SignedHeader,
         pos: &mut ProofOfStake,
         current_slot: Option<Slot>,
     ) -> Result<HeaderCheckOutcome> {
@@ -2170,7 +2172,7 @@ impl BlockGraph {
     /// * endorsed slot is parent_in_own_thread slot
     fn check_endorsements(
         &self,
-        header: &BlockHeader,
+        header: &SignedHeader,
         pos: &mut ProofOfStake,
         parent_in_own_thread: &ActiveBlock,
     ) -> Result<EndorsementsCheckOutcome> {
@@ -2315,6 +2317,7 @@ impl BlockGraph {
                 .get_thread(self.cfg.thread_count);
 
             let op_start_validity_period = *operation
+                .content
                 .get_validity_range(self.cfg.operation_validity_periods)
                 .start();
 
@@ -3613,13 +3616,13 @@ impl BlockGraph {
     pub fn get_endorsement_by_address(
         &self,
         address: Address,
-    ) -> Result<Map<EndorsementId, Endorsement>> {
-        let mut res: Map<EndorsementId, Endorsement> = Default::default();
+    ) -> Result<Map<EndorsementId, SignedEndorsement>> {
+        let mut res: Map<EndorsementId, SignedEndorsement> = Default::default();
         for b_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(ab)) = self.block_statuses.get(b_id) {
                 if let Some(eds) = ab.addresses_to_endorsements.get(&address) {
                     for e in ab.block.header.content.endorsements.iter() {
-                        let id = e.compute_endorsement_id()?;
+                        let id = e.content.compute_id()?;
                         if eds.contains(&id) {
                             res.insert(id, e.clone());
                         }
@@ -3646,7 +3649,7 @@ impl BlockGraph {
                     .is_empty()
                 {
                     for e in ab.block.header.content.endorsements.iter() {
-                        let id = e.compute_endorsement_id()?;
+                        let id = e.content.compute_id()?;
                         if endorsements.contains(&id) {
                             res.entry(id)
                                 .and_modify(|EndorsementInfo { in_blocks, .. }| {

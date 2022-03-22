@@ -30,4 +30,5 @@ pretty_assertions = "1.0"
 serial_test = "0.5"
 
 [features]
-testing = ["massa_models/testing"]
+instrument = ["tokio/tracing", "massa_models/instrument", "massa_time/instrument"]
+testing = []

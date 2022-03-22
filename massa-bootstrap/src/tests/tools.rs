@@ -4,19 +4,23 @@ use super::mock_establisher::Duplex;
 use crate::settings::BootstrapSettings;
 use bitvec::prelude::*;
 use massa_consensus_exports::commands::ConsensusCommand;
+use massa_final_state::{
+    test_exports::make_bootstrap_state as make_final_state_bootstrap, FinalStateBootstrap,
+};
 use massa_graph::{
     export_active_block::ExportActiveBlock, ledger::LedgerSubset, BootstrapableGraph,
 };
 use massa_hash::hash::Hash;
-use massa_ledger::{test_exports::make_bootstrap_state, FinalLedgerBootstrapState, LedgerEntry};
+use massa_ledger::LedgerEntry;
 use massa_models::{
     clique::Clique,
     ledger_models::{LedgerChange, LedgerChanges, LedgerData},
     rolls::{RollCounts, RollUpdate, RollUpdates},
-    Address, Amount, Block, BlockHeader, BlockHeaderContent, BlockId, DeserializeCompact,
-    Endorsement, EndorsementContent, Operation, OperationContent, SerializeCompact, Slot,
+    signed::Signed,
+    Address, Amount, Block, BlockHeader, BlockId, DeserializeCompact, Endorsement, Operation,
+    SerializeCompact, Slot,
 };
-use massa_network::{BootstrapPeers, NetworkCommand};
+use massa_network_exports::{BootstrapPeers, NetworkCommand};
 use massa_proof_of_stake_exports::{ExportProofOfStake, ThreadCycleState};
 use massa_signature::{
     derive_public_key, generate_random_private_key, sign, PrivateKey, PublicKey, Signature,
@@ -60,8 +64,8 @@ fn get_random_ledger_entry() -> LedgerEntry {
     }
 }
 
-/// generates a rendom bootstrap state for a final ledger
-pub fn get_random_ledger_bootstrap_state(thread_count: u8) -> FinalLedgerBootstrapState {
+/// generates a random bootstrap state for the final state
+pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalStateBootstrap {
     let mut rng = rand::thread_rng();
 
     let mut sorted_ledger = BTreeMap::new();
@@ -69,7 +73,7 @@ pub fn get_random_ledger_bootstrap_state(thread_count: u8) -> FinalLedgerBootstr
         sorted_ledger.insert(get_random_address(), get_random_ledger_entry());
     }
 
-    make_bootstrap_state(
+    make_final_state_bootstrap(
         Slot::new(rng.gen::<u64>(), rng.gen_range(0..thread_count)),
         sorted_ledger,
     )
@@ -373,38 +377,44 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
 
     let block1 = ExportActiveBlock {
         block: Block {
-            header: BlockHeader {
-                content: BlockHeaderContent {
+            header: Signed::new_signed(
+                BlockHeader {
                     creator: get_random_public_key(),
                     slot: Slot::new(1, 1),
                     parents: vec![get_dummy_block_id("p1"), get_dummy_block_id("p2")],
                     operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
                     endorsements: vec![
-                        Endorsement {
-                            content: EndorsementContent {
+                        Signed::new_signed(
+                            Endorsement {
                                 sender_public_key: get_random_public_key(),
                                 slot: Slot::new(1, 0),
                                 index: 1,
                                 endorsed_block: get_dummy_block_id("p1"),
                             },
-                            signature: get_dummy_signature("dummy_sig_0"),
-                        },
-                        Endorsement {
-                            content: EndorsementContent {
+                            &generate_random_private_key(),
+                        )
+                        .unwrap()
+                        .1,
+                        Signed::new_signed(
+                            Endorsement {
                                 sender_public_key: get_random_public_key(),
                                 slot: Slot::new(4, 1),
                                 index: 3,
                                 endorsed_block: get_dummy_block_id("p1"),
                             },
-                            signature: get_dummy_signature("dummy_sig_00"),
-                        },
+                            &generate_random_private_key(),
+                        )
+                        .unwrap()
+                        .1,
                     ],
                 },
-                signature: get_dummy_signature("dummy_sig_1"),
-            },
+                &generate_random_private_key(),
+            )
+            .unwrap()
+            .1,
             operations: vec![
-                Operation {
-                    content: OperationContent {
+                Signed::new_signed(
+                    Operation {
                         sender_public_key: get_random_public_key(),
                         fee: Amount::from_str("1524878").unwrap(),
                         expire_period: 5787899,
@@ -413,19 +423,23 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                             amount: Amount::from_str("1259787").unwrap(),
                         },
                     },
-                    signature: get_dummy_signature("dummy_sig_2"),
-                },
-                Operation {
-                    content: OperationContent {
+                    &generate_random_private_key(),
+                )
+                .unwrap()
+                .1,
+                Signed::new_signed(
+                    Operation {
                         sender_public_key: get_random_public_key(),
                         fee: Amount::from_str("878763222").unwrap(),
                         expire_period: 4557887,
                         op: massa_models::OperationType::RollBuy { roll_count: 45544 },
                     },
-                    signature: get_dummy_signature("dummy_sig_3"),
-                },
-                Operation {
-                    content: OperationContent {
+                    &generate_random_private_key(),
+                )
+                .unwrap()
+                .1,
+                Signed::new_signed(
+                    Operation {
                         sender_public_key: get_random_public_key(),
                         fee: Amount::from_str("4545").unwrap(),
                         expire_period: 452524,
@@ -433,8 +447,10 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
                             roll_count: 4888787,
                         },
                     },
-                    signature: get_dummy_signature("dummy_sig_4"),
-                },
+                    &generate_random_private_key(),
+                )
+                .unwrap()
+                .1,
             ],
         },
         parents: vec![

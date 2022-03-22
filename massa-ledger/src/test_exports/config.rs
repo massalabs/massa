@@ -2,10 +2,7 @@
 
 /// This file defines testing tools related to the config
 use crate::LedgerConfig;
-use massa_models::{
-    constants::default_testing::{FINAL_HISTORY_LENGTH, THREAD_COUNT},
-    Address, Amount,
-};
+use massa_models::{Address, Amount};
 use std::collections::BTreeMap;
 use std::io::prelude::*;
 use tempfile::NamedTempFile;
@@ -17,8 +14,6 @@ impl Default for LedgerConfig {
             // unused by the mock (you can use `LedgerConfig::sample()` to get
             // a NamedTempFile in addition)
             initial_sce_ledger_path: "".into(),
-            final_history_length: FINAL_HISTORY_LENGTH,
-            thread_count: THREAD_COUNT,
         }
     }
 }
@@ -35,8 +30,6 @@ impl LedgerConfig {
         (
             Self {
                 initial_sce_ledger_path: ledger_file_named.path().to_path_buf(),
-                final_history_length: 0,
-                thread_count: THREAD_COUNT,
             },
             ledger_file_named,
         )

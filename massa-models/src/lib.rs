@@ -5,14 +5,14 @@ extern crate lazy_static;
 
 pub use address::Address;
 pub use amount::Amount;
-pub use block::{Block, BlockHeader, BlockHeaderContent, BlockId};
+pub use block::{Block, BlockHeader, BlockId, SignedHeader};
 pub use composite::{
     OperationSearchResult, OperationSearchResultBlockStatus, OperationSearchResultStatus,
     StakersCycleProductionStats,
 };
-pub use endorsement::{Endorsement, EndorsementContent, EndorsementId};
+pub use endorsement::{Endorsement, EndorsementId, SignedEndorsement};
 pub use error::ModelsError;
-pub use operation::{Operation, OperationContent, OperationId, OperationType};
+pub use operation::{Operation, OperationId, OperationType, SignedOperation};
 pub use serialization::{
     array_from_slice, u8_from_slice, DeserializeCompact, DeserializeMinBEInt, DeserializeVarInt,
     SerializeCompact, SerializeMinBEInt, SerializeVarInt,
@@ -42,6 +42,7 @@ pub mod prehash;
 pub mod rolls;
 mod serialization;
 mod serialization_context;
+pub mod signed;
 pub mod slot;
 pub mod stats;
 pub mod timeslots;
