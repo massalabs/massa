@@ -209,7 +209,7 @@ macro_rules! client_warning {
 }
 
 /// Used to have a shinny json output
-/// Really I'm not sure why this exist
+/// TODO refactor me
 #[derive(Debug, Serialize)]
 struct ExtendedWalletEntry {
     /// the private key

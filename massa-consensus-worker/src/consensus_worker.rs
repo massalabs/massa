@@ -633,7 +633,7 @@ impl ConsensusWorker {
     }
 
     /// Just channel management stuff
-    /// please get rid of it soon
+    /// todo delete
     /// or at least introduce some genericity
     async fn send_consensus_event(&self, event: ConsensusEvent) -> Result<()> {
         let result = self
@@ -1191,6 +1191,7 @@ impl ConsensusWorker {
     }
 
     /// call me if the block database changed
+    /// Processing of final blocks, pruning and producing endorsement.
     /// Please refactor me
     ///
     /// 1. propagate blocks

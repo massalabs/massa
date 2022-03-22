@@ -20,7 +20,7 @@ pub struct Clique {
     /// Fitness used to compute finality
     /// Depends on descendants and endorsement count
     pub fitness: u64,
-    /// True if it is the CLique of higher fitness
+    /// True if it is the clique of higher fitness
     pub is_blockclique: bool,
 }
 

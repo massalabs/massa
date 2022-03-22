@@ -170,7 +170,7 @@ pub struct SCELedgerInfo {
 impl std::fmt::Display for SCELedgerInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "\tBalance: {}", self.balance)?;
-        // I choose not to display neither the module nor the datastore because bytes eh
+        // I choose not to display neither the module nor the datastore because bytes
         Ok(())
     }
 }
@@ -365,7 +365,7 @@ impl std::fmt::Display for EndorsementInfo {
     }
 }
 
-/// why does this struct exist ? wHy ?
+/// refactor to delete
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BlockInfo {
     pub id: BlockId,
@@ -459,7 +459,7 @@ pub struct TimeInterval {
     pub end: Option<MassaTime>,
 }
 
-/// WTF why is that here?
+/// Move to the api crate
 /// the api settings
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct APISettings {
