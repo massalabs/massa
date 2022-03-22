@@ -266,9 +266,7 @@ impl ConsensusWorker {
                 evt = self.channels.protocol_event_receiver.wait_event() =>{
                     massa_trace!("consensus.consensus_worker.run_loop.select.protocol_event", {});
                     match evt {
-                        Ok(event) => {
-                            self.process_protocol_event(event).await?
-                        },
+                        Ok(event) => self.process_protocol_event(event).await?,
                         Err(err) => return Err(ConsensusError::ProtocolError(Box::new(err)))
                     }
                 },
@@ -595,15 +593,15 @@ impl ConsensusWorker {
             creator_private_key,
         )?;
         let block = Block { header, operations };
+        massa_trace!("create block", { "block": block });
+
         let serialized_block = block.to_bytes_compact()?;
 
         // Add to shared storage
-        // TODO: remove clone, in https://github.com/massalabs/massa/pull/2304
         self.block_db
             .storage
-            .store_block(block_id, block.clone(), serialized_block);
+            .store_block(block_id, block, serialized_block);
 
-        massa_trace!("create block", { "block": block });
         info!(
             "Staked block {} with address {}, at cycle {}, period {}, thread {}",
             block_id,

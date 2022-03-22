@@ -23,7 +23,7 @@ pub trait ExecutionController: Send + Sync {
     fn update_blockclique_status(
         &self,
         finalized_blocks: HashMap<Slot, BlockId>,
-        new_blockclique: HashMap<Slot, BlockId>,
+        blockclique: HashMap<Slot, BlockId>,
     );
 
     /// Get execution events optionnally filtered by:
