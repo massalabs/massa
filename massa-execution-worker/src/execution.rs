@@ -494,7 +494,7 @@ impl ExecutionState {
                 // https://github.com/massalabs/massa/issues/2335
                 self.active_history
                     .iter()
-                    .filter(|item| item.slot >= start && item.slot < end)
+                    .filter(|item| item.slot >= start && item.slot <= end)
                     .flat_map(|item| {
                         item.events.get_filtered_sc_output_event(
                             start,
