@@ -10,8 +10,8 @@ use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{ProtocolEvent, ProtocolPoolEvent};
 use serial_test::serial;
+use std::str::FromStr;
 use std::time::Duration;
-use std::{collections::HashSet, str::FromStr};
 
 #[tokio::test]
 #[serial]
