@@ -107,6 +107,10 @@ impl ExecutionState {
     /// # Arguments
     /// * exec_out: execution output to apply
     pub fn apply_final_execution_output(&mut self, exec_out: ExecutionOutput) {
+        if self.final_cursor >= exec_out.slot {
+            panic!("attempting to apply a final execution output at or before the current final_cursor");
+        }
+
         // apply state changes to the final ledger
         self.final_state
             .write()
@@ -130,6 +134,10 @@ impl ExecutionState {
     /// # Arguments
     /// * exec_out: execution output to apply
     pub fn apply_active_execution_output(&mut self, exec_out: ExecutionOutput) {
+        if self.active_cursor >= exec_out.slot {
+            panic!("attempting to apply an active execution output at or before the current active_cursor");
+        }
+
         // update active cursor to reflect the new latest active slot
         self.active_cursor = exec_out.slot;
 
