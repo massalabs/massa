@@ -468,6 +468,7 @@ impl Interface for InterfaceImpl {
         let emission_slot = execution_context.slot;
         let emission_index = execution_context.created_message_index;
         let sender = execution_context.get_current_address()?;
+        execution_context.created_message_index += 1;
         execution_context.push_new_message(AsyncMessage {
             emission_slot,
             emission_index,
