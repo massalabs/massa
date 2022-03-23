@@ -1,6 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{constants::CHANNEL_SIZE, node::NodeId, operation::Operations};
+use massa_models::{
+    constants::CHANNEL_SIZE,
+    node::NodeId,
+    operation::{OperationIds, Operations},
+};
 use massa_models::{Block, BlockId, SignedEndorsement, SignedHeader};
 use massa_network_exports::{
     NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
@@ -84,6 +88,34 @@ impl MockNetworkController {
             .send(NetworkEvent::ReceivedOperations {
                 node: source_node_id,
                 operations,
+            })
+            .await
+            .expect("Couldn't send operations to protocol.");
+    }
+
+    pub async fn send_operation_batch(
+        &mut self,
+        source_node_id: NodeId,
+        operation_ids: OperationIds,
+    ) {
+        self.network_event_tx
+            .send(NetworkEvent::ReceivedOperationBatch {
+                node: source_node_id,
+                operation_ids,
+            })
+            .await
+            .expect("Couldn't send operations to protocol.");
+    }
+
+    pub async fn send_ask_for_operation(
+        &mut self,
+        source_node_id: NodeId,
+        operation_ids: OperationIds,
+    ) {
+        self.network_event_tx
+            .send(NetworkEvent::ReceiveAskForOperations {
+                node: source_node_id,
+                operation_ids,
             })
             .await
             .expect("Couldn't send operations to protocol.");
