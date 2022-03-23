@@ -21,7 +21,7 @@ use massa_models::{
 use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::{collections::HashMap, sync::Arc};
-use tracing::warn;
+use tracing::info;
 
 /// Structure gathering all elements needed by the execution thread
 pub(crate) struct ExecutionThread {
@@ -253,7 +253,7 @@ impl ExecutionThread {
             .expect("the SCE final slot list skipped a slot");
 
         // check if the final slot is cached at the front of the speculative execution history
-        if let Some(exec_out) = exec_state.active_history.pop_front() {
+        if let Some(exec_out) = exec_state.pop_first_execution_result() {
             if exec_out.slot == slot
                 && exec_out.block_id == exec_target.as_ref().map(|(b_id, _)| *b_id)
             {
@@ -266,7 +266,7 @@ impl ExecutionThread {
         }
 
         // speculative cache mismatch
-        warn!("speculative cache mismatch: resetting the cache");
+        info!("speculative execution cache mismatch: resetting the cache");
 
         // clear the speculative execution output cache completely
         exec_state.clear_history();

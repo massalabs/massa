@@ -39,24 +39,24 @@ macro_rules! context_guard {
 /// and allowing access to them.
 pub(crate) struct ExecutionState {
     // execution config
-    pub config: ExecutionConfig,
+    config: ExecutionConfig,
     // History of the outputs of recently executed slots. Slots should be consecutive, newest at the back.
     // Whenever an active slot is executed, it is appended at the back of active_history.
     // Whenever an executed active slot becomes final,
     // its output is popped from the front of active_history and applied to the final state.
-    pub active_history: VecDeque<ExecutionOutput>,
+    active_history: VecDeque<ExecutionOutput>,
     // a cursor pointing to the highest executed slot
     pub active_cursor: Slot,
     // a cursor pointing to the highest executed final slot
     pub final_cursor: Slot,
     // store containing execution events that became final
-    pub final_events: EventStore,
+    final_events: EventStore,
     // final state with atomic R/W access
-    pub final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<FinalState>>,
     // execution context (see documentation in context.rs)
-    pub execution_context: Arc<Mutex<ExecutionContext>>,
+    execution_context: Arc<Mutex<ExecutionContext>>,
     // execution interface allowing the VM runtime to access the Massa context
-    pub execution_interface: Box<dyn Interface>,
+    execution_interface: Box<dyn Interface>,
 }
 
 impl ExecutionState {
@@ -99,6 +99,14 @@ impl ExecutionState {
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
         }
+    }
+
+    /// Gets out the first (oldest) execution history item, removing it from history.
+    ///
+    /// # Returns
+    /// The earliest ExecutionOutput from the execution history, or None if the history is empty
+    pub fn pop_first_execution_result(&mut self) -> Option<ExecutionOutput> {
+        self.active_history.pop_front()
     }
 
     /// Applies the output of an execution to the final execution state.
