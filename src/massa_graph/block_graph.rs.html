@@ -6513,10 +6513,10 @@
 
                 <span class="comment">// remove from parent&#39;s children</span>
                 <span class="kw">for</span> (<span class="ident">parent_h</span>, <span class="ident">_parent_period</span>) <span class="kw">in</span> <span class="ident">active_block</span>.<span class="ident">parents</span>.<span class="ident">iter</span>() {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">BlockStatus::Active</span>(<span class="ident">active_block</span>)) <span class="op">=</span>
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">BlockStatus::Active</span>(<span class="ident">parent_active_block</span>)) <span class="op">=</span>
                         <span class="self">self</span>.<span class="ident">block_statuses</span>.<span class="ident">get_mut</span>(<span class="ident">parent_h</span>)
                     {
-                        <span class="ident">active_block</span>.<span class="ident">children</span>
+                        <span class="ident">parent_active_block</span>.<span class="ident">children</span>
                             [<span class="ident">active_block</span>.<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>]
                             .<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">stale_block_hash</span>);
                     }
@@ -6916,10 +6916,10 @@
 
             <span class="comment">// remove from parent&#39;s children</span>
             <span class="kw">for</span> (<span class="ident">parent_h</span>, <span class="ident">_parent_period</span>) <span class="kw">in</span> <span class="ident">discarded_active</span>.<span class="ident">parents</span>.<span class="ident">iter</span>() {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">BlockStatus::Active</span>(<span class="ident">active_block</span>)) <span class="op">=</span>
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">BlockStatus::Active</span>(<span class="ident">parent_active_block</span>)) <span class="op">=</span>
                     <span class="self">self</span>.<span class="ident">block_statuses</span>.<span class="ident">get_mut</span>(<span class="ident">parent_h</span>)
                 {
-                    <span class="ident">active_block</span>.<span class="ident">children</span>
+                    <span class="ident">parent_active_block</span>.<span class="ident">children</span>
                         [<span class="ident">discarded_active</span>.<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>]
                         .<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">discard_active_h</span>);
                 }
@@ -7348,5 +7348,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (3c17c84a3 2022-03-21)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (5f3700105 2022-03-22)" ></div>
 </body></html>
