@@ -10,8 +10,8 @@ use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{ProtocolEvent, ProtocolPoolEvent};
 use serial_test::serial;
-use std::str::FromStr;
 use std::time::Duration;
+use std::{collections::HashSet, str::FromStr};
 
 #[tokio::test]
 #[serial]
@@ -750,6 +750,114 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
                 }
                 Some(_) => panic!("Unexpected protocol pool event."),
             }
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_protocol_ask_operations_on_batch_received() {
+    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    protocol_test(
+        protocol_settings,
+        async move |mut network_controller,
+                    protocol_event_receiver,
+                    protocol_command_sender,
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
+            // Create 1 node.
+            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+
+            let creator_node = nodes.pop().expect("Failed to get node info.");
+
+            // 1. Create an operation
+            let operation =
+                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
+
+            let expected_operation_id = operation.verify_integrity().unwrap();
+            // 3. Send operation batch to protocol.
+            network_controller
+                .send_operation_batch(
+                    creator_node.id,
+                    OperationIds::from_iter(vec![expected_operation_id].iter().cloned()),
+                )
+                .await;
+
+            match network_controller
+                .wait_command(1000.into(), |cmd| match cmd {
+                    cmd @ NetworkCommand::AskForOperations { .. } => Some(cmd),
+                    _ => None,
+                })
+                .await
+            {
+                Some(NetworkCommand::AskForOperations { to_node, wishlist }) => {
+                    assert_eq!(wishlist.len(), 1);
+                    assert!(wishlist.contains(&expected_operation_id));
+                    assert_eq!(to_node, creator_node.id);
+                }
+                _ => panic!("Unexpected or no network command."),
+            };
+
+            (
+                network_controller,
+                protocol_event_receiver,
+                protocol_command_sender,
+                protocol_manager,
+                protocol_pool_event_receiver,
+            )
+        },
+    )
+    .await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_protocol_return_operation_on_ask_received() {
+    let protocol_settings = &tools::PROTOCOL_SETTINGS;
+    protocol_test(
+        protocol_settings,
+        async move |mut network_controller,
+                    protocol_event_receiver,
+                    protocol_command_sender,
+                    protocol_manager,
+                    protocol_pool_event_receiver| {
+            // Create 1 node.
+            let mut nodes = tools::create_and_connect_nodes(1, &mut network_controller).await;
+
+            let creator_node = nodes.pop().expect("Failed to get node info.");
+
+            // 1. Create an operation
+            let operation =
+                tools::create_operation_with_expire_period(&creator_node.private_key, 1);
+
+            let expected_operation_id = operation.verify_integrity().unwrap();
+            // 3. Send operation batch to protocol.
+            network_controller
+                .send_ask_for_operation(
+                    creator_node.id,
+                    OperationIds::from_iter(vec![expected_operation_id].iter().cloned()),
+                )
+                .await;
+
+            match network_controller
+                .wait_command(1000.into(), |cmd| match cmd {
+                    cmd @ NetworkCommand::SendOperations { .. } => Some(cmd),
+                    _ => None,
+                })
+                .await
+            {
+                Some(NetworkCommand::SendOperations { .. }) => {}
+                _ => panic!("Unexpected or no network command."),
+            };
+
             (
                 network_controller,
                 protocol_event_receiver,
