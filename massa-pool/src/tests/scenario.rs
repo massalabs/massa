@@ -83,7 +83,7 @@ async fn test_pool() {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 3;
                     let res = pool_command_sender
-                        .get_operation_batch(
+                        .send_get_operation_batch(
                             target_slot,
                             Set::<OperationId>::default(),
                             max_count,
@@ -117,7 +117,7 @@ async fn test_pool() {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 4;
                     let res = pool_command_sender
-                        .get_operation_batch(
+                        .send_get_operation_batch(
                             target_slot,
                             Set::<OperationId>::default(),
                             max_count,
@@ -157,7 +157,7 @@ async fn test_pool() {
                     panic!("unexpected protocol command {:?}", cmd)
                 };
                 let res = pool_command_sender
-                    .get_operation_batch(
+                    .send_get_operation_batch(
                         Slot::new(expire_period - 1, thread),
                         Set::<OperationId>::default(),
                         10,
@@ -241,7 +241,7 @@ async fn test_pool_with_execute_sc() {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 3;
                     let res = pool_command_sender
-                        .get_operation_batch(target_slot, Set::default(), max_count, 10000)
+                        .send_get_operation_batch(target_slot, Set::default(), max_count, 10000)
                         .await
                         .unwrap();
                     assert!(res
@@ -270,7 +270,7 @@ async fn test_pool_with_execute_sc() {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 4;
                     let res = pool_command_sender
-                        .get_operation_batch(target_slot, Set::default(), max_count, 10000)
+                        .send_get_operation_batch(target_slot, Set::default(), max_count, 10000)
                         .await
                         .unwrap();
                     assert!(res
@@ -305,7 +305,7 @@ async fn test_pool_with_execute_sc() {
                     panic!("unexpected protocol command {:?}", cmd)
                 };
                 let res = pool_command_sender
-                    .get_operation_batch(
+                    .send_get_operation_batch(
                         Slot::new(expire_period - 1, thread),
                         Set::default(),
                         10,
