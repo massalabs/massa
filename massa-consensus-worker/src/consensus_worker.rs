@@ -473,6 +473,7 @@ impl ConsensusWorker {
                     serialized_block.len()
                 ))
             })?;
+        massa_trace!("remaining block space {}", remaining_block_space);
         let mut remaining_operation_count = self.cfg.max_operations_per_block as usize;
 
         // exclude operations that were used in block ancestry
@@ -520,7 +521,7 @@ impl ConsensusWorker {
             let operation_batch = self
                 .channels
                 .pool_command_sender
-                .get_operation_batch(
+                .send_get_operation_batch(
                     cur_slot,
                     exclude_operations.clone(),
                     self.cfg.operation_batch_size,
