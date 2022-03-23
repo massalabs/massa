@@ -313,7 +313,7 @@ impl NodeWorker {
                                     "node_worker.run_loop. receive Message::Block",
                                     {"block_id": block.header.content.compute_id()?, "block": block, "node": self.node_id}
                                 );
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block, serialized.expect("Block should come wiht its serialized form.")))).await;
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedBlock(block, serialized.expect("Block should come with its serialized form.")))).await;
                             },
                             Message::BlockHeader(header) => {
                                 massa_trace!(
