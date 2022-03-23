@@ -137,6 +137,9 @@ impl ExecutionState {
         if self.active_cursor >= exec_out.slot {
             panic!("attempting to apply an active execution output at or before the current active_cursor");
         }
+        if exec_out.slot <= self.final_cursor {
+            panic!("attempting to apply an active execution output at or before the current final_cursor");
+        }
 
         // update active cursor to reflect the new latest active slot
         self.active_cursor = exec_out.slot;
