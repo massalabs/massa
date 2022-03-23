@@ -7,7 +7,7 @@ use massa_logging::massa_trace;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
-    operation::{OperationBatchBuffer, OperationBatchItem, OperationIds, Operations},
+    operation::{OperationBatchBuffer, OperationIds, Operations},
     prehash::{BuildMap, Map, Set},
     signed::Signable,
     Address, Block, BlockId, EndorsementId, OperationId, OperationType, SignedEndorsement,
@@ -119,13 +119,13 @@ impl BlockInfo {
 
 pub struct ProtocolWorker {
     /// Protocol configuration.
-    protocol_settings: &'static ProtocolSettings,
+    pub(crate) protocol_settings: &'static ProtocolSettings,
     /// Operation validity periods
     operation_validity_periods: u64,
     /// Max gas per block
     max_block_gas: u64,
     /// Associated network command sender.
-    network_command_sender: NetworkCommandSender,
+    pub(crate) network_command_sender: NetworkCommandSender,
     /// Associated network event receiver.
     network_event_receiver: NetworkEventReceiver,
     /// Channel to send protocol events to the controller.
@@ -137,19 +137,19 @@ pub struct ProtocolWorker {
     /// Channel to send management commands to the controller.
     controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
     /// Ids of active nodes mapped to node info.
-    active_nodes: HashMap<NodeId, NodeInfo>,
+    pub(crate) active_nodes: HashMap<NodeId, NodeInfo>,
     /// List of wanted blocks.
     block_wishlist: Set<BlockId>,
     /// List of processed endorsements
     checked_endorsements: Set<EndorsementId>,
     /// List of processed operations
-    checked_operations: OperationIds,
+    pub(crate) checked_operations: OperationIds,
     /// List of processed headers
     checked_headers: Map<BlockId, BlockInfo>,
     /// List of ids of operations that we asked to the nodes
-    asked_operations: HashMap<OperationId, (Instant, Vec<NodeId>)>,
+    pub(crate) asked_operations: HashMap<OperationId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
-    op_batch_buffer: OperationBatchBuffer,
+    pub(crate) op_batch_buffer: OperationBatchBuffer,
 }
 
 pub struct ProtocolWorkerChannels {
@@ -227,7 +227,7 @@ impl ProtocolWorker {
         }
     }
 
-    async fn send_protocol_pool_event(&self, event: ProtocolPoolEvent) {
+    pub(crate) async fn send_protocol_pool_event(&self, event: ProtocolPoolEvent) {
         let result = self
             .controller_pool_event_tx
             .send_timeout(event, self.protocol_settings.max_send_wait.to_duration())
@@ -543,9 +543,8 @@ impl ProtocolWorker {
                 }
             }
             ProtocolCommand::GetOperationsResults((node_id, operations)) => {
-                self.network_command_sender
-                    .send_operations(node_id, operations)
-                    .await?
+                self.on_operation_results_from_pool(node_id, operations)
+                    .await?;
             }
         }
         massa_trace!("protocol.protocol_worker.process_command.end", {});
@@ -562,30 +561,6 @@ impl ProtocolWorker {
                 .retain(|h, _| !remove_hashes.contains(h));
         }
         self.block_wishlist.retain(|h| !remove_hashes.contains(h));
-        Ok(())
-    }
-
-    async fn update_ask_operation(
-        &mut self,
-        ask_operations_timer: &mut std::pin::Pin<&mut Sleep>,
-    ) -> Result<(), ProtocolError> {
-        let now = Instant::now();
-
-        // init timer
-        //TODO: Have different variable for operations than blocks
-        let next_tick = now
-            .checked_add(self.protocol_settings.ask_block_timeout.into())
-            .ok_or(TimeError::TimeOverflowError)?;
-        while !self.op_batch_buffer.is_empty()
-        // This unwrap is ok because we checked that it's not empty just before.
-            && Instant::now() > self.op_batch_buffer.front().unwrap().instant
-        {
-            let op_batch_item = self.op_batch_buffer.pop_front().unwrap();
-            self.on_batch_operations_received(op_batch_item.operations_ids, op_batch_item.node_id)
-                .await?;
-        }
-        // reset timer
-        ask_operations_timer.set(sleep_until(next_tick));
         Ok(())
     }
 
@@ -777,7 +752,7 @@ impl ProtocolWorker {
     }
 
     /// Ban a node.
-    async fn ban_node(&mut self, node_id: &NodeId) -> Result<(), ProtocolError> {
+    pub(crate) async fn ban_node(&mut self, node_id: &NodeId) -> Result<(), ProtocolError> {
         massa_trace!("protocol.protocol_worker.ban_node", { "node": node_id });
         self.active_nodes.remove(node_id);
         self.network_command_sender
@@ -1087,7 +1062,7 @@ impl ProtocolWorker {
     ///
     /// Checks performed:
     /// - Valid signature
-    async fn note_operations_from_node(
+    pub(crate) async fn note_operations_from_node(
         &mut self,
         operations: Operations,
         source_node_id: &NodeId,
@@ -1206,121 +1181,6 @@ impl ProtocolWorker {
         }
 
         Ok((endorsement_ids, contains_duplicates))
-    }
-
-    async fn on_asked_operations_received(
-        &mut self,
-        node_id: NodeId,
-        op_ids: OperationIds,
-    ) -> Result<(), ProtocolError> {
-        if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
-            for op_ids in op_ids.iter() {
-                node_info.known_operations.remove(op_ids);
-            }
-        }
-        let mut operation_ids = OperationIds::default();
-        for op_id in op_ids.iter() {
-            if self.checked_operations.get(op_id).is_some() {
-                operation_ids.insert(*op_id);
-            }
-        }
-        self.send_protocol_pool_event(ProtocolPoolEvent::GetOperations((node_id, operation_ids)))
-            .await;
-        Ok(())
-    }
-
-    /// Clear the `asked_operations` data structure and reset
-    /// `ask_operations_timer`
-    fn prune_asked_operations(
-        &mut self,
-        ask_operations_timer: &mut std::pin::Pin<&mut Sleep>,
-    ) -> Result<(), ProtocolError> {
-        self.asked_operations.clear();
-        // reset timer
-        let instant = Instant::now()
-            .checked_add(Duration::from_millis(
-                self.protocol_settings.asked_operations_pruning_period,
-            ))
-            .ok_or(TimeError::TimeOverflowError)?;
-        ask_operations_timer.set(sleep_until(instant));
-        Ok(())
-    }
-
-    /// On receive a batch of operation ids `op_batch` from another `node_id`
-    /// Execute the following algorithm: [redirect to github](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)
-    ///
-    async fn on_batch_operations_received(
-        &mut self,
-        op_batch: OperationIds,
-        node_id: NodeId,
-    ) -> Result<(), ProtocolError> {
-        let mut ask_set =
-            OperationIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
-        let mut future_set =
-            OperationIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
-        // exactitude isn't important, we want to have a now for that function call
-        let now = Instant::now();
-        for op_id in op_batch {
-            if self.checked_operations.contains(&op_id) {
-                continue;
-            }
-            let wish = match self.asked_operations.get(&op_id) {
-                Some(wish) => {
-                    if wish.1.contains(&node_id) {
-                        continue; // already asked to the `node_id`
-                    } else {
-                        Some(wish)
-                    }
-                }
-                None => None,
-            };
-            if wish.is_some() && wish.unwrap().0 > now {
-                future_set.insert(op_id);
-            } else {
-                ask_set.insert(op_id);
-                self.asked_operations.insert(op_id, (now, vec![node_id]));
-            }
-        }
-        if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity {
-            self.op_batch_buffer.push_back(OperationBatchItem {
-                instant: now
-                    .checked_add(Duration::from_millis(
-                        self.protocol_settings.operation_batch_proc_period,
-                    ))
-                    .ok_or(TimeError::TimeOverflowError)?,
-                node_id,
-                operations_ids: future_set,
-            });
-        }
-        self.network_command_sender
-            .send_ask_for_operations(node_id, ask_set)
-            .await
-            .map_err(|_| ProtocolError::ChannelError("send ask for operations failed".into()))
-    }
-
-    /// On full operations are received from the network,
-    /// - Uptate the cache `received_operations` ids and each
-    ///   `node_info.known_operations`
-    /// - Notify the operations to he local node, to be propagated
-    async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {
-        let operation_ids: OperationIds = operations
-            .iter()
-            .filter_map(|signed_op| match signed_op.content.compute_id() {
-                Ok(op_id) => Some(op_id),
-                _ => None,
-            })
-            .collect();
-        if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
-            node_info.known_operations.extend(operation_ids.iter());
-        }
-        if self
-            .note_operations_from_node(operations, &node_id, true)
-            .await
-            .is_err()
-        {
-            warn!("node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node", node_id,);
-            let _ = self.ban_node(&node_id).await;
-        }
     }
 
     /// Manages network event
