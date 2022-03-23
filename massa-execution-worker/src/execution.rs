@@ -438,8 +438,15 @@ impl ExecutionState {
         // TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it
         // also we should proceed backwards through history for performance
         // https://github.com/massalabs/massa/issues/2343
+        // Note that get_accumulated_active_changes_at_slot is called at the slot AFTER the active one
+        // in order to take all available active slots into account (and not forget the last one)
+        // and prevent a get_accumulated_active_changes_at_slot crash in the case active_cursor = final_cursor.
+        let next_slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow when getting speculative ledger");
         let active_change = self
-            .get_accumulated_active_changes_at_slot(self.active_cursor)
+            .get_accumulated_active_changes_at_slot(next_slot)
             .ledger_changes
             .get(addr)
             .cloned();
