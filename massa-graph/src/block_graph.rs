@@ -2912,8 +2912,7 @@ impl BlockGraph {
                     if let Some(BlockStatus::Active(parent_active_block)) =
                         self.block_statuses.get_mut(parent_h)
                     {
-                        parent_active_block.children
-                            [active_block.slot.thread as usize]
+                        parent_active_block.children[active_block.slot.thread as usize]
                             .remove(&stale_block_hash);
                     }
                 }
@@ -3330,8 +3329,7 @@ impl BlockGraph {
                 if let Some(BlockStatus::Active(parent_active_block)) =
                     self.block_statuses.get_mut(parent_h)
                 {
-                    parent_active_block.children
-                        [discarded_active.slot.thread as usize]
+                    parent_active_block.children[discarded_active.slot.thread as usize]
                         .remove(&discard_active_h);
                 }
             }
