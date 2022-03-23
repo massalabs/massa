@@ -190,6 +190,12 @@ impl ExecutionState {
                 .active_history
                 .back()
                 .map_or(self.final_cursor, |out| out.slot);
+            // safety check to ensure that the active cursor cannot go too far back in time
+            if self.active_cursor < self.final_cursor {
+                panic!(
+                    "active_cursor moved before final_cursor after execution history truncation"
+                );
+            }
         }
     }
 
