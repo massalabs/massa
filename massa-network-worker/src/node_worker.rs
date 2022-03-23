@@ -237,15 +237,15 @@ impl NodeWorker {
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::BlockNotFound(hash))).await;
                             }
                             Message::Operations(operations) => {
-                                massa_trace!("node_worker.run_loop. receive Message::Operation", {"node": self.node_id, "operations": operations});
+                                massa_trace!("node_worker.run_loop. receive Message::Operations", {"node": self.node_id, "operations": operations});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperations(operations))).await;
                             }
                             Message::AskForOperations(operation_ids) => {
-                                massa_trace!("node_worker.run_loop. receive Message::Operation", {"node": self.node_id, "operations": operation_ids});
+                                massa_trace!("node_worker.run_loop. receive Message::AskForOperations", {"node": self.node_id, "operations": operation_ids});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedAskForOperations(operation_ids))).await;
                             }
                             Message::OperationsBatch(operation_ids) => {
-                                massa_trace!("node_worker.run_loop. receive Message::Operation", {"node": self.node_id, "operations": operation_ids});
+                                massa_trace!("node_worker.run_loop. receive Message::OperationsBatch", {"node": self.node_id, "operations": operation_ids});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperationBatch(operation_ids))).await;
                             }
                             Message::Endorsements(endorsements) => {
