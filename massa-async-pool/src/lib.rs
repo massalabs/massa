@@ -99,7 +99,7 @@ mod pool;
 pub use bootstrap::AsyncPoolBootstrap;
 pub use changes::AsyncPoolChanges;
 pub use config::AsyncPoolConfig;
-pub use message::AsyncMessage;
+pub use message::{AsyncMessage, AsyncMessageId};
 pub use pool::AsyncPool;
 
 #[cfg(test)]

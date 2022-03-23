@@ -463,7 +463,7 @@ impl Interface for InterfaceImpl {
         raw_coins: u64,
         data: &[u8],
     ) -> Result<()> {
-        tracing::info!("SC Send message");
+        tracing::info!("===> SC Send message <===");
         let mut execution_context = context_guard!(self);
         let emission_slot = execution_context.slot;
         let emission_index = execution_context.created_message_index;

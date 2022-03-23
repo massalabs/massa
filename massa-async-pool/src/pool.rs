@@ -93,14 +93,8 @@ impl AsyncPool {
     pub fn settle_slot(
         &mut self,
         slot: Slot,
-        new_messages: Vec<AsyncMessage>,
+        mut new_messages: Vec<(AsyncMessageId, AsyncMessage)>,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        // Compute IDs
-        let mut new_messages: Vec<_> = new_messages
-            .into_iter()
-            .map(|v| (v.compute_id(), v))
-            .collect();
-
         // Filter out all messages for which the validity end is expired.
         // Note that the validity_end bound is NOT included in the validity interval of the message.
         let mut eliminated: Vec<_> = self

@@ -313,7 +313,10 @@ impl ExecutionState {
         };
 
         // run the VM on the bytecode contained in the operation
-        tracing::warn!("EXECUTING OPERATION, MAX_GAS = {}", context_guard!(self).max_gas);
+        tracing::warn!(
+            "EXECUTING OPERATION, MAX_GAS = {}",
+            context_guard!(self).max_gas
+        );
         let run_result = massa_sc_runtime::run_main(bytecode, *max_gas, &*self.execution_interface);
         if let Err(err) = run_result {
             // there was an error during bytecode execution:
@@ -400,16 +403,13 @@ impl ExecutionState {
 
         // note that here, some pre-operations (like crediting block producers) can be performed before the lock
 
-        // tmp
-        *context_guard!(self) = execution_context;
-
-        // take a lock on the context
-        // let mut context = context_guard!(self);
-
-        // try executing asynchronous messages
+        // get asynchronous messages destination bytecode
         let iter = {
+            // take a lock on the context
+            let mut context = context_guard!(self);
+
             // apply the created execution context for slot execution
-            // *context = execution_context;
+            *context = execution_context;
 
             let messages = self
                 .final_state
@@ -418,10 +418,11 @@ impl ExecutionState {
                 .take_batch_to_executte(slot, self.config.max_async_gas);
             let mut modules: Vec<Vec<u8>> = Vec::with_capacity(messages.len());
             for message in &messages {
-                modules.push(context_guard!(self).get_bytecode(&message.destination).unwrap());
+                modules.push(context.get_bytecode(&message.destination).unwrap());
             }
             messages.into_iter().zip(modules)
         };
+        // try executing asynchronous messages
         for (message, module) in iter {
             if let Err(err) = self.try_execute_async_message(message, module) {
                 debug!("failed executing message: {}", err);
@@ -450,10 +451,10 @@ impl ExecutionState {
         let mut context = context_guard!(self);
 
         // compute new messages and reimburse senders of removed messages
-        // let removed_messages = context.compute_slot_messages();
-        // for msg in removed_messages {
-        //     self.reimburse_message_sender(&mut context, msg);
-        // }
+        let removed_messages = context.compute_slot_messages();
+        for (_, msg) in removed_messages {
+            self.reimburse_message_sender(&mut context, msg);
+        }
 
         // return the execution output
         context.take_execution_output()

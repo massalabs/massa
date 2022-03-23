@@ -9,7 +9,7 @@
 
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_ledger::SpeculativeLedger;
-use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
+use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncPoolChanges};
 use massa_execution_exports::{
     EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest,
 };
@@ -446,7 +446,7 @@ impl ExecutionContext {
     }
 
     // note: needs doc
-    pub fn compute_slot_messages(&mut self) -> Vec<AsyncMessage> {
+    pub fn compute_slot_messages(&mut self) -> Vec<(AsyncMessageId, AsyncMessage)> {
         self.speculative_async_pool
             .compute_and_add_changes(self.slot)
     }

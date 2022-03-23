@@ -2,6 +2,8 @@
 
 //! This file provides structures representing changes to the async message pool
 
+use std::ops::Add;
+
 use crate::message::{AsyncMessage, AsyncMessageId};
 
 /// Enum representing a add/delete change on a value T
@@ -50,5 +52,17 @@ impl AsyncPoolChanges {
     /// * msg_id: ID of the message to push as deleted to the list of changes
     pub fn push_delete(&mut self, msg_id: AsyncMessageId) {
         self.0.push((msg_id, AddOrDelete::Delete));
+    }
+
+    /// Retrieves only the added messages
+    pub fn get_add(&self) -> Vec<(AsyncMessageId, AsyncMessage)> {
+        self.0
+            .clone()
+            .into_iter()
+            .filter_map(|(id, v)| match v {
+                AddOrDelete::Add(x) => Some((id, x)),
+                AddOrDelete::Delete => None,
+            })
+            .collect::<Vec<(AsyncMessageId, AsyncMessage)>>()
     }
 }
