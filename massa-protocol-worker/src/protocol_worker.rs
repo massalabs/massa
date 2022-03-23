@@ -499,6 +499,8 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operation_ids": operation_ids }
                 );
+                self.checked_operations
+                    .extend(operation_ids.iter().cloned());
                 for (node, node_info) in self.active_nodes.iter_mut() {
                     let new_ops: OperationIds = operation_ids
                         .iter()

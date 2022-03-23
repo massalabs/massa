@@ -241,7 +241,7 @@ pub mod event_impl {
         operation_ids: OperationIds,
     ) {
         massa_trace!(
-            "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",
+            "network_worker.on_node_event receive NetworkEvent::ReceivedOperationBatch",
             { "operations": operation_ids }
         );
         if let Err(err) = worker
@@ -264,7 +264,7 @@ pub mod event_impl {
         operation_ids: OperationIds,
     ) {
         massa_trace!(
-            "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",
+            "network_worker.on_node_event receive NetworkEvent::ReceiveAskForOperations",
             { "operations": operation_ids }
         );
         if let Err(err) = worker
