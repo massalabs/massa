@@ -87,9 +87,9 @@ impl AsyncPool {
     ///
     /// # returns
     /// The list of (message_id, message) that were eliminated from the pool after the changes were applied, sorted in the following order:
-    /// * expired messages from the pool, in priority order (from lowest to highest priority)
+    /// * expired messages from the pool, in priority order (from highest to lowest priority)
     /// * expired messages from new_messages (in the order they appear in new_messages)
-    /// * excess messages after inserting all remaining new_messages, in priority order (from lowest to highest priority)
+    /// * excess messages after inserting all remaining new_messages, in priority order (from highest to lowest priority)
     pub fn settle_slot(
         &mut self,
         slot: Slot,
