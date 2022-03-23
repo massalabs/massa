@@ -42,16 +42,16 @@
 //! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
 //! See test_exports/mod.rs for details.
 
-mod config;
 mod controller_traits;
 mod error;
 mod event_store;
+mod settings;
 mod types;
 
-pub use config::ExecutionConfig;
 pub use controller_traits::{ExecutionController, ExecutionManager};
 pub use error::ExecutionError;
 pub use event_store::EventStore;
+pub use settings::ExecutionConfig;
 pub use types::{ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest};
 
 #[cfg(feature = "testing")]

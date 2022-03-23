@@ -128,13 +128,22 @@ async fn launch() -> (
     .await
     .expect("could not start pool controller");
 
+    #[cfg(not(feature = "sandbox"))]
+    let thread_count = THREAD_COUNT;
+    #[cfg(not(feature = "sandbox"))]
+    let t0 = T0;
+    #[cfg(feature = "sandbox")]
+    let thread_count = *THREAD_COUNT;
+    #[cfg(feature = "sandbox")]
+    let t0 = *T0;
+
     // init final state
     let ledger_config = LedgerConfig {
         initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
     };
     let final_state_config = FinalStateConfig {
         final_history_length: SETTINGS.ledger.final_history_length,
-        thread_count: THREAD_COUNT,
+        thread_count,
         ledger_config,
     };
     let final_state = Arc::new(RwLock::new(match bootstrap_state.final_state {
@@ -148,8 +157,8 @@ async fn launch() -> (
         readonly_queue_length: SETTINGS.execution.readonly_queue_length,
         cursor_delay: SETTINGS.execution.cursor_delay,
         clock_compensation: bootstrap_state.compensation_millis,
-        thread_count: THREAD_COUNT,
-        t0: T0,
+        thread_count,
+        t0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
     };
     let (execution_manager, execution_controller) = start_execution_worker(

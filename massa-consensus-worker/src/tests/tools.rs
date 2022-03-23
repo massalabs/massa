@@ -592,6 +592,39 @@ pub fn create_block_with_operations(
     (hash, block, creator)
 }
 
+pub fn create_block_with_operations_and_endorsements(
+    _cfg: &ConsensusConfig,
+    slot: Slot,
+    best_parents: &Vec<BlockId>,
+    creator: PrivateKey,
+    operations: Vec<SignedOperation>,
+    endorsements: Vec<SignedEndorsement>,
+) -> (BlockId, Block, PrivateKey) {
+    let public_key = derive_public_key(&creator);
+
+    let operation_merkle_root = Hash::compute_from(
+        &operations.iter().fold(Vec::new(), |acc, v| {
+            [acc, v.to_bytes_compact().unwrap()].concat()
+        })[..],
+    );
+
+    let (hash, header) = Signed::new_signed(
+        BlockHeader {
+            creator: public_key,
+            slot,
+            parents: best_parents.clone(),
+            operation_merkle_root,
+            endorsements,
+        },
+        &creator,
+    )
+    .unwrap();
+
+    let block = Block { header, operations };
+
+    (hash, block, creator)
+}
+
 pub fn get_creator_for_draw(draw: &Address, nodes: &Vec<PrivateKey>) -> PrivateKey {
     for key in nodes.iter() {
         let pub_key = derive_public_key(key);

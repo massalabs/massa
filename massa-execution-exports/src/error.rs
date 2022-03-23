@@ -14,4 +14,10 @@ pub enum ExecutionError {
 
     /// Runtime error: {0}
     RuntimeError(String),
+
+    /// MassaHashError: {0}
+    MassaHashError(#[from] massa_hash::MassaHashError),
+
+    /// ModelsError: {0}
+    ModelsError(#[from] massa_models::ModelsError),
 }

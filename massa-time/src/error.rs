@@ -4,7 +4,7 @@ use displaydoc::Display;
 use thiserror::Error;
 
 #[non_exhaustive]
-#[derive(Display, Error, Debug)]
+#[derive(Display, Error, Debug, Clone)]
 pub enum TimeError {
     /// Error converting
     ConversionError,

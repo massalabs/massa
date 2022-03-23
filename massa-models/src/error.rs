@@ -6,7 +6,7 @@ use thiserror::Error;
 pub type ModelsResult<T, E = ModelsError> = core::result::Result<T, E>;
 
 #[non_exhaustive]
-#[derive(Display, Error, Debug)]
+#[derive(Display, Error, Debug, Clone)]
 pub enum ModelsError {
     /// hashing error
     HashError,
