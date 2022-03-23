@@ -240,6 +240,14 @@ impl NodeWorker {
                                 massa_trace!("node_worker.run_loop. receive Message::Operation", {"node": self.node_id, "operations": operations});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperations(operations))).await;
                             }
+                            Message::AskForOperations(operation_ids) => {
+                                massa_trace!("node_worker.run_loop. receive Message::Operation", {"node": self.node_id, "operations": operation_ids});
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedAskForOperations(operation_ids))).await;
+                            }
+                            Message::OperationsBatch(operation_ids) => {
+                                massa_trace!("node_worker.run_loop. receive Message::Operation", {"node": self.node_id, "operations": operation_ids});
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperationBatch(operation_ids))).await;
+                            }
                             Message::Endorsements(endorsements) => {
                                 massa_trace!("node_worker.run_loop. receive Message::Endorsement", {"node": self.node_id, "endorsements": endorsements});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedEndorsements(endorsements))).await;
