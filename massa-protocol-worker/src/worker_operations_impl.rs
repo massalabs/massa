@@ -23,6 +23,14 @@ use tokio::time::{sleep_until, Instant, Sleep};
 use tracing::warn;
 
 impl ProtocolWorker {
+    /// Limit the number of batch an external node can send in a second. Ban
+    /// it if it exceed self.settings.max_op_batch_per_sec_per_node
+    ///
+    /// Call that function each time we receive a batch from a `node_id`
+    async fn limitation_batches_by_node(&mut self, node_id: NodeId) -> bool {
+        todo!("Impl limitation")
+    }
+
     /// On receive a batch of operation ids `op_batch` from another `node_id`
     /// Execute the following algorithm: [redirect to github](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)
     ///
@@ -48,6 +56,9 @@ impl ProtocolWorker {
         op_batch: OperationIds,
         node_id: NodeId,
     ) -> Result<(), ProtocolError> {
+        if self.limitation_batches_by_node(node_id) {
+            return Ok(());
+        }
         let mut ask_set =
             OperationIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
         let mut future_set =
