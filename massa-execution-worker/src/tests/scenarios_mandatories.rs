@@ -14,8 +14,12 @@ use massa_models::{Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::collections::HashMap;
-use std::{collections::BTreeMap, str::FromStr, sync::Arc, time::Duration};
+use std::{
+    collections::{BTreeMap, HashMap},
+    str::FromStr,
+    sync::Arc,
+    time::Duration,
+};
 use tempfile::NamedTempFile;
 
 /// Same as `get_random_address()` and return priv_key and pub_key associated
@@ -146,12 +150,13 @@ fn generate_events() {
     )
     .unwrap()])
     .unwrap();
+    let slot = block.header.content.slot;
 
-    storage.store_block(block_id, block.clone(), block.to_bytes_compact().unwrap());
+    storage.store_block(block_id, block, Default::default());
 
     let finalized_blocks: HashMap<Slot, BlockId> = Default::default();
     let mut blockclique: HashMap<Slot, BlockId> = Default::default();
-    let slot = block.header.content.slot;
+
     blockclique.insert(slot, block_id);
 
     controller.update_blockclique_status(finalized_blocks, blockclique);
