@@ -407,26 +407,26 @@ impl ExecutionState {
         // let mut context = context_guard!(self);
 
         // try executing asynchronous messages
-        // let iter = {
-        //     // apply the created execution context for slot execution
-        //     *context = execution_context;
+        let iter = {
+            // apply the created execution context for slot execution
+            // *context = execution_context;
 
-        //     let messages = self
-        //         .final_state
-        //         .write()
-        //         .async_pool
-        //         .take_batch_to_executte(slot, self.config.max_async_gas);
-        //     let mut modules: Vec<Vec<u8>> = Vec::with_capacity(messages.len());
-        //     for message in &messages {
-        //         modules.push(context.get_bytecode(&message.destination).unwrap());
-        //     }
-        //     messages.into_iter().zip(modules)
-        // };
-        // for (message, module) in iter {
-        //     if let Err(err) = self.try_execute_async_message(message, module) {
-        //         debug!("failed executing message: {}", err);
-        //     }
-        // }
+            let messages = self
+                .final_state
+                .write()
+                .async_pool
+                .take_batch_to_executte(slot, self.config.max_async_gas);
+            let mut modules: Vec<Vec<u8>> = Vec::with_capacity(messages.len());
+            for message in &messages {
+                modules.push(context_guard!(self).get_bytecode(&message.destination).unwrap());
+            }
+            messages.into_iter().zip(modules)
+        };
+        for (message, module) in iter {
+            if let Err(err) = self.try_execute_async_message(message, module) {
+                debug!("failed executing message: {}", err);
+            }
+        }
 
         // check if there is a block at this slot
         if let (Some((block_id, block)), Some(block_creator_addr)) =
