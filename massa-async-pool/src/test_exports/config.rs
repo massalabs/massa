@@ -1,7 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 ///! This file defines testing tools related to the config
-use crate::AsyncPoolConfig;
+use crate::config::AsyncPoolConfig;
 
 /// Default value of AsyncPoolConfig used for tests
 impl Default for AsyncPoolConfig {
