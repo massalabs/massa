@@ -91,6 +91,13 @@
     max_known_ops_size = 10024
     # max cache size for which endorsements a foreign node knows about
     max_known_endorsements_size = 1024
+    # Maximum number of batches in the memory buffer.
+    # Dismiss the new batches if overflow
+    operation_batch_buffer_capacity = 1000 
+    # Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
+    operation_batch_proc_period = 200
+    # All operations asked are prune each `operation_asked_pruning_period` millisecond
+    asked_operations_pruning_period = 100
 
 [network]
     # port on which to listen for protocol communication
