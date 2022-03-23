@@ -21,4 +21,6 @@ pub struct ProtocolSettings {
     pub operation_batch_proc_period: u64,
     /// All operations asked are prune each `operation_asked_pruning_period` millisecond
     pub asked_operations_pruning_period: u64,
+    /// Maximum number of batch we accept from a node by second before bannish it.
+    pub max_op_batch_per_sec_per_node: usize,
 }

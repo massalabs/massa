@@ -39,6 +39,8 @@ pub(crate) struct NodeInfo {
     pub known_endorsements: Set<EndorsementId>,
     /// Same as `known_endorsements` but sorted for a premature optimization :-)
     pub known_endorsements_queue: VecDeque<EndorsementId>,
+    /// History of when node sent batches
+    pub batches_sent_history: VecDeque<Instant>,
 }
 
 impl NodeInfo {
@@ -67,6 +69,7 @@ impl NodeInfo {
             known_endorsements_queue: VecDeque::with_capacity(
                 pool_settings.max_known_endorsements_size,
             ),
+            batches_sent_history: VecDeque::new(),
         }
     }
 

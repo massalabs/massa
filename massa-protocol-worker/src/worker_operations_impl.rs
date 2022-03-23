@@ -27,8 +27,37 @@ impl ProtocolWorker {
     /// it if it exceed self.settings.max_op_batch_per_sec_per_node
     ///
     /// Call that function each time we receive a batch from a `node_id`
+    ///
+    /// Return true if node has been considered as bannished, false otherwise.
     async fn limitation_batches_by_node(&mut self, node_id: NodeId) -> bool {
-        todo!("Impl limitation")
+        let now = Instant::now();
+        let max = self.protocol_settings.max_op_batch_per_sec_per_node;
+        match self.active_nodes.get_mut(&node_id) {
+            Some(node_info) => {
+                let s = now - Duration::from_secs(1);
+                if let Some(&oldest) = node_info.batches_sent_history.back() {
+                    // if history length >= max and oldest value older than 1 second ago
+                    let is_to_old = s > oldest; // one second ago is after the oldest
+                    if node_info.batches_sent_history.len() == max && is_to_old {
+                        if self.ban_node(&node_id).await.is_err() {
+                            warn!("ban node id {} failed", node_id);
+                        }
+                        return true;
+                    }
+                }
+                node_info.batches_sent_history.push_front(now);
+                if node_info.batches_sent_history.len() > max {
+                    node_info.batches_sent_history.pop_back();
+                }
+            }
+            None => {
+                if self.ban_node(&node_id).await.is_err() {
+                    warn!("ban node id {} failed", node_id);
+                }
+                return true;
+            }
+        };
+        false
     }
 
     /// On receive a batch of operation ids `op_batch` from another `node_id`
@@ -56,8 +85,8 @@ impl ProtocolWorker {
         op_batch: OperationIds,
         node_id: NodeId,
     ) -> Result<(), ProtocolError> {
-        if self.limitation_batches_by_node(node_id) {
-            return Ok(());
+        if self.limitation_batches_by_node(node_id).await {
+            return Ok(()); // return ok if we just limit (and ban) the current node
         }
         let mut ask_set =
             OperationIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
