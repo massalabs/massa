@@ -137,7 +137,7 @@ async fn launch() -> (
         initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
     };
     let async_pool_config = AsyncPoolConfig {
-        // note: define this
+        // TODO: define max_length value, it musn't come from a settings file
         max_length: 100,
     };
     let final_state_config = FinalStateConfig {

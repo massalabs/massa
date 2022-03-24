@@ -52,7 +52,7 @@ impl AsyncPoolChanges {
         self.0.push(Change::Delete(msg_id));
     }
 
-    /// Retrieves only the added messages
+    /// Retrieve only the added messages
     pub fn get_add(&self) -> Vec<(AsyncMessageId, AsyncMessage)> {
         self.0
             .clone()
