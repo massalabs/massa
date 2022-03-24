@@ -1607,28 +1607,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa_async_pool"
-version = "0.1.0"
-dependencies = [
- "displaydoc",
- "futures 0.3.21",
- "lazy_static",
- "massa_hash",
- "massa_logging",
- "massa_models",
- "massa_signature",
- "massa_time",
- "num",
- "pretty_assertions",
- "serde 1.0.136",
- "serde_json",
- "serial_test 0.5.1",
- "thiserror",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "massa_bootstrap"
 version = "0.1.0"
 dependencies = [
