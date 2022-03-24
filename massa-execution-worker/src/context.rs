@@ -430,7 +430,7 @@ impl ExecutionContext {
     ///
     /// # Arguments
     /// * msg: the async message to cancel
-    pub fn cancel_async_message(&mut self, msg: AsyncMessage) {
+    pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
         if let Err(e) = self.transfer_parallel_coins(None, Some(msg.sender), msg.coins) {
             debug!(
                 "async message cancel: reimbursment of {} failed: {}",
@@ -450,7 +450,7 @@ impl ExecutionContext {
         // settle emitted async messages and reimburse the senders of deleted messages
         let deleted_messages = self.speculative_async_pool.settle_slot(self.slot);
         for (_msg_id, msg) in deleted_messages {
-            self.cancel_async_message(msg);
+            self.cancel_async_message(&msg);
         }
 
         // generate the execution output

@@ -346,7 +346,7 @@ impl ExecutionState {
             (Some(bc), Ok(d)) => (bc, d),
             (bc, _d) => {
                 let mut context = context_guard!(self);
-                context.cancel_async_message(message);
+                context.cancel_async_message(&message);
                 if bc.is_none() {
                     return Err(ExecutionError::RuntimeError(
                         "no target bytecode found".into(),
@@ -376,7 +376,20 @@ impl ExecutionState {
                     coins: message.coins,
                     owned_addresses: vec![message.destination],
                 },
-            ]
+            ];
+
+            // credit coins to the target address
+            if let Err(err) =
+                context.transfer_parallel_coins(None, Some(message.destination), message.coins)
+            {
+                // coin crediting failed: reset context to snapshot and reimburse sender
+                context.reset_to_snapshot(context_snapshot);
+                context.cancel_async_message(&message);
+                return Err(ExecutionError::RuntimeError(format!(
+                    "could not credit coins to target of async execution: {}",
+                    err
+                )));
+            }
         }
 
         // run the target function
@@ -390,7 +403,7 @@ impl ExecutionState {
             // execution failed: reset context to snapshot and reimburse sender
             let mut context = context_guard!(self);
             context.reset_to_snapshot(context_snapshot);
-            context.cancel_async_message(message);
+            context.cancel_async_message(&message);
             Err(ExecutionError::RuntimeError(format!(
                 "async message runtime execution error: {}",
                 err
