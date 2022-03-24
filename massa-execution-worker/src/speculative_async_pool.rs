@@ -19,7 +19,7 @@ pub struct SpeculativeAsyncPool {
 
 impl SpeculativeAsyncPool {
     /// Creates a new SpeculativeAsyncPool
-    /// 
+    ///
     /// # Arguments
     /// * async_pool: a copy of the final state AsyncPool
     /// * previous_changes: accumulation of changes that previously happened to the async pool since finality

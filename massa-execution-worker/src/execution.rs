@@ -453,10 +453,7 @@ impl ExecutionState {
     }
 
     /// Tooling function used to reimburse the sender of a removed asynchronous message
-    fn reimburse_message_sender(
-        context: &mut MutexGuard<ExecutionContext>,
-        msg: AsyncMessage,
-    ) {
+    fn reimburse_message_sender(context: &mut MutexGuard<ExecutionContext>, msg: AsyncMessage) {
         if let Some(amount) = msg
             .gas_price
             .checked_mul_u64(msg.max_gas)
