@@ -28,7 +28,7 @@ impl ProtocolWorker {
     ///
     /// Call that function each time we receive a batch from a `node_id`
     ///
-    /// Return true if node has been considered as bannished, false otherwise.
+    /// Return true if node has been considered as banned, false otherwise.
     async fn limitation_batches_by_node(&mut self, node_id: NodeId) -> bool {
         let now = Instant::now();
         let max = self.protocol_settings.max_op_batch_per_sec_per_node;
