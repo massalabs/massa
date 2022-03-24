@@ -457,7 +457,7 @@ impl ExecutionState {
         if let Some(amount) = msg
             .gas_price
             .checked_mul_u64(msg.max_gas)
-            .and_then(|x| Some(x.saturating_add(msg.coins)))
+            .map(|x| x.saturating_add(msg.coins))
         {
             if let Err(e) = context.transfer_parallel_coins(None, Some(msg.sender), amount) {
                 debug!("reimbursement of {} failed: {}", msg.sender, e);
