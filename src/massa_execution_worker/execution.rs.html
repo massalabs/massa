@@ -513,6 +513,38 @@
 <span id="508">508</span>
 <span id="509">509</span>
 <span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.</span>
@@ -554,24 +586,24 @@
 <span class="doccomment">/// and allowing access to them.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ExecutionState</span> {
     <span class="comment">// execution config</span>
-    <span class="kw">pub</span> <span class="ident">config</span>: <span class="ident">ExecutionConfig</span>,
+    <span class="ident">config</span>: <span class="ident">ExecutionConfig</span>,
     <span class="comment">// History of the outputs of recently executed slots. Slots should be consecutive, newest at the back.</span>
     <span class="comment">// Whenever an active slot is executed, it is appended at the back of active_history.</span>
     <span class="comment">// Whenever an executed active slot becomes final,</span>
     <span class="comment">// its output is popped from the front of active_history and applied to the final state.</span>
-    <span class="kw">pub</span> <span class="ident">active_history</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ExecutionOutput</span><span class="op">&gt;</span>,
+    <span class="ident">active_history</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ExecutionOutput</span><span class="op">&gt;</span>,
     <span class="comment">// a cursor pointing to the highest executed slot</span>
     <span class="kw">pub</span> <span class="ident">active_cursor</span>: <span class="ident">Slot</span>,
     <span class="comment">// a cursor pointing to the highest executed final slot</span>
     <span class="kw">pub</span> <span class="ident">final_cursor</span>: <span class="ident">Slot</span>,
     <span class="comment">// store containing execution events that became final</span>
-    <span class="kw">pub</span> <span class="ident">final_events</span>: <span class="ident">EventStore</span>,
+    <span class="ident">final_events</span>: <span class="ident">EventStore</span>,
     <span class="comment">// final state with atomic R/W access</span>
-    <span class="kw">pub</span> <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="comment">// execution context (see documentation in context.rs)</span>
-    <span class="kw">pub</span> <span class="ident">execution_context</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionContext</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">execution_context</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionContext</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="comment">// execution interface allowing the VM runtime to access the Massa context</span>
-    <span class="kw">pub</span> <span class="ident">execution_interface</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Interface</span><span class="op">&gt;</span>,
+    <span class="ident">execution_interface</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Interface</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">ExecutionState</span> {
@@ -616,12 +648,24 @@
         }
     }
 
+    <span class="doccomment">/// Gets out the first (oldest) execution history item, removing it from history.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Returns</span>
+    <span class="doccomment">/// The earliest ExecutionOutput from the execution history, or None if the history is empty</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_first_execution_result</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ExecutionOutput</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">active_history</span>.<span class="ident">pop_front</span>()
+    }
+
     <span class="doccomment">/// Applies the output of an execution to the final execution state.</span>
     <span class="doccomment">/// The newly applied final output should be from the slot just after the last executed final slot</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
     <span class="doccomment">/// * exec_out: execution output to apply</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_final_execution_output</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">exec_out</span>: <span class="ident">ExecutionOutput</span>) {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">final_cursor</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">exec_out</span>.<span class="ident">slot</span> {
+            <span class="macro">panic!</span>(<span class="string">&quot;attempting to apply a final execution output at or before the current final_cursor&quot;</span>);
+        }
+
         <span class="comment">// apply state changes to the final ledger</span>
         <span class="self">self</span>.<span class="ident">final_state</span>
             .<span class="ident">write</span>()
@@ -645,6 +689,13 @@
     <span class="doccomment">/// # Arguments</span>
     <span class="doccomment">/// * exec_out: execution output to apply</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_active_execution_output</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">exec_out</span>: <span class="ident">ExecutionOutput</span>) {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active_cursor</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">exec_out</span>.<span class="ident">slot</span> {
+            <span class="macro">panic!</span>(<span class="string">&quot;attempting to apply an active execution output at or before the current active_cursor&quot;</span>);
+        }
+        <span class="kw">if</span> <span class="ident">exec_out</span>.<span class="ident">slot</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">final_cursor</span> {
+            <span class="macro">panic!</span>(<span class="string">&quot;attempting to apply an active execution output at or before the current final_cursor&quot;</span>);
+        }
+
         <span class="comment">// update active cursor to reflect the new latest active slot</span>
         <span class="self">self</span>.<span class="ident">active_cursor</span> <span class="op">=</span> <span class="ident">exec_out</span>.<span class="ident">slot</span>;
 
@@ -705,6 +756,12 @@
                 .<span class="ident">active_history</span>
                 .<span class="ident">back</span>()
                 .<span class="ident">map_or</span>(<span class="self">self</span>.<span class="ident">final_cursor</span>, <span class="op">|</span><span class="ident">out</span><span class="op">|</span> <span class="ident">out</span>.<span class="ident">slot</span>);
+            <span class="comment">// safety check to ensure that the active cursor cannot go too far back in time</span>
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active_cursor</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">final_cursor</span> {
+                <span class="macro">panic!</span>(
+                    <span class="string">&quot;active_cursor moved before final_cursor after execution history truncation&quot;</span>
+                );
+            }
         }
     }
 
@@ -953,8 +1010,15 @@
         <span class="comment">// TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it</span>
         <span class="comment">// also we should proceed backwards through history for performance</span>
         <span class="comment">// https://github.com/massalabs/massa/issues/2343</span>
+        <span class="comment">// Note that get_accumulated_active_changes_at_slot is called at the slot AFTER the active one</span>
+        <span class="comment">// in order to take all available active slots into account (and not forget the last one)</span>
+        <span class="comment">// and prevent a get_accumulated_active_changes_at_slot crash in the case active_cursor = final_cursor.</span>
+        <span class="kw">let</span> <span class="ident">next_slot</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">active_cursor</span>
+            .<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>)
+            .<span class="ident">expect</span>(<span class="string">&quot;slot overflow when getting speculative ledger&quot;</span>);
         <span class="kw">let</span> <span class="ident">active_change</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">get_accumulated_active_changes_at_slot</span>(<span class="self">self</span>.<span class="ident">active_cursor</span>)
+            .<span class="ident">get_accumulated_active_changes_at_slot</span>(<span class="ident">next_slot</span>)
             .<span class="ident">ledger_changes</span>
             .<span class="ident">get</span>(<span class="ident">addr</span>)
             .<span class="ident">cloned</span>();
