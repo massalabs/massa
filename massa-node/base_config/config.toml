@@ -98,7 +98,11 @@
     operation_batch_proc_period = 200
     # All operations asked are prune each `operation_asked_pruning_period` millisecond
     asked_operations_pruning_period = 100
-
+    # Max number of operation per message, same as network param but can be smaller
+    max_operations_per_message = 1024
+    # Max number of operation ids batches a node is allowed to send in a second
+    max_op_batch_per_sec_per_node = 6
+    
 [network]
     # port on which to listen for protocol communication
     bind = "[::]:31244"

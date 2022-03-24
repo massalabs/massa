@@ -250,4 +250,37 @@ impl ProtocolWorker {
             .send_operations(node_id, operations)
             .await
     }
+
+    pub(crate) async fn send_operation_ids_batch(
+        &mut self,
+        propagate_operations_timer: &mut std::pin::Pin<&mut Sleep>,
+    ) -> Result<(), NetworkError> {
+        let max = self.protocol_settings.max_operations_per_message as usize;
+        if self.op_ids_to_send.len() < max {
+            return Ok(());
+        }
+        let operation_ids = self.op_ids_to_send.drain(..max).collect::<Vec<_>>();
+        self.checked_operations.extend(operation_ids.clone());
+        for (node, node_info) in self.active_nodes.iter_mut() {
+            let new_ops: OperationIds = operation_ids
+                .iter()
+                .filter(|id| !node_info.knows_op(*id))
+                .copied()
+                .collect();
+            node_info.insert_known_ops(
+                new_ops.iter().cloned().collect(),
+                self.protocol_settings.max_known_ops_size,
+            );
+            if !new_ops.is_empty() {
+                self.network_command_sender
+                    .send_operations_batch(*node, new_ops)
+                    .await?;
+            }
+        }
+        let next_tick = Instant::now()
+            .checked_add(self.protocol_settings.get_batch_send_period())
+            .ok_or(TimeError::TimeOverflowError)?;
+        propagate_operations_timer.set(sleep_until(next_tick));
+        Ok(())
+    }
 }

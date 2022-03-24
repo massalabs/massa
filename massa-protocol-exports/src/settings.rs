@@ -2,6 +2,7 @@
 
 use massa_time::MassaTime;
 use serde::Deserialize;
+use std::time::Duration;
 
 /// Protocol Configuration
 #[derive(Debug, Deserialize, Clone, Copy)]
@@ -21,6 +22,19 @@ pub struct ProtocolSettings {
     pub operation_batch_proc_period: u64,
     /// All operations asked are prune each `operation_asked_pruning_period` millisecond
     pub asked_operations_pruning_period: u64,
-    /// Maximum number of batch we accept from a node by second before bannish it.
+    /// Maximum number of batch we accept from a node by second before bannish it
     pub max_op_batch_per_sec_per_node: usize,
+    /// All operations asked are prune each `operation_asked_pruning_period` millisecond
+    pub max_operations_per_message: u64,
+}
+
+impl ProtocolSettings {
+    pub fn get_batch_send_period(&self) -> Duration {
+        if self.max_op_batch_per_sec_per_node == 0 {
+            // panic or what
+            Duration::from_secs(1)
+        } else {
+            Duration::from_millis(1000 / self.max_op_batch_per_sec_per_node as u64)
+        }
+    }
 }

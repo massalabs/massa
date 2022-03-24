@@ -20,7 +20,7 @@ use massa_protocol_exports::{
     ProtocolSettings,
 };
 use massa_time::TimeError;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::time::Duration;
 use tokio::{
     sync::mpsc,
@@ -150,6 +150,8 @@ pub struct ProtocolWorker {
     pub(crate) asked_operations: HashMap<OperationId, (Instant, Vec<NodeId>)>,
     /// Buffer for operations that we want later
     pub(crate) op_batch_buffer: OperationBatchBuffer,
+    /// Buffer for operations that we want later
+    pub(crate) op_ids_to_send: VecDeque<OperationId>,
 }
 
 pub struct ProtocolWorkerChannels {
@@ -205,6 +207,7 @@ impl ProtocolWorker {
             op_batch_buffer: OperationBatchBuffer::with_capacity(
                 protocol_settings.operation_batch_buffer_capacity,
             ),
+            op_ids_to_send: VecDeque::new(),
         }
     }
 
@@ -267,16 +270,17 @@ impl ProtocolWorker {
         tokio::pin!(operation_prune_timer);
         let block_ask_timer = sleep(self.protocol_settings.ask_block_timeout.into());
         tokio::pin!(block_ask_timer);
-        // TODO: Have different values block and operations
         let operation_ask_timer = sleep(self.protocol_settings.ask_block_timeout.into());
         tokio::pin!(operation_ask_timer);
+        let propagate_operations_timer = sleep(self.protocol_settings.get_batch_send_period());
+        tokio::pin!(propagate_operations_timer);
         loop {
             massa_trace!("protocol.protocol_worker.run_loop.begin", {});
             /*
                 select! without the "biased" modifier will randomly select the 1st branch to check,
                 then will check the next ones in the order they are written.
                 We choose this order:
-                    * manager commands: low freq, avoid havign to wait to stop
+                    * manager commands: low freq, avoid having to wait to stop
                     * incoming commands (high frequency): process commands in priority (this is a high-level crate so we prioritize this side to avoid slowing down consensus)
                     * network events (high frequency): process incoming events
                     * ask for blocks (timing not important)
@@ -314,10 +318,17 @@ impl ProtocolWorker {
                     massa_trace!("protocol.protocol_worker.run_loop.operation_ask_timer", { });
                     self.update_ask_operation(&mut operation_ask_timer).await?;
                 }
+
                 // operation prune timer
                 _ = &mut operation_prune_timer => {
                     massa_trace!("protocol.protocol_worker.run_loop.operation_prune_timer", { });
                     self.prune_asked_operations(&mut operation_prune_timer)?;
+                }
+
+                // Propagate the operation ids regulary
+                _ = &mut propagate_operations_timer => {
+                    massa_trace!("protocol.protocol_worker.run_loop.propagate_operations_timer", { });
+                    self.send_operation_ids_batch(&mut propagate_operations_timer).await?;
                 }
             }
             massa_trace!("protocol.protocol_worker.run_loop.end", {});
@@ -499,24 +510,7 @@ impl ProtocolWorker {
                     "protocol.protocol_worker.process_command.propagate_operations.begin",
                     { "operation_ids": operation_ids }
                 );
-                self.checked_operations
-                    .extend(operation_ids.iter().cloned());
-                for (node, node_info) in self.active_nodes.iter_mut() {
-                    let new_ops: OperationIds = operation_ids
-                        .iter()
-                        .filter(|id| !node_info.knows_op(*id))
-                        .copied()
-                        .collect();
-                    node_info.insert_known_ops(
-                        new_ops.iter().cloned().collect(),
-                        self.protocol_settings.max_known_ops_size,
-                    );
-                    if !new_ops.is_empty() {
-                        self.network_command_sender
-                            .send_operations_batch(*node, new_ops)
-                            .await?;
-                    }
-                }
+                self.op_ids_to_send.extend(operation_ids.iter());
             }
             ProtocolCommand::PropagateEndorsements(endorsements) => {
                 massa_trace!(

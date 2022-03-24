@@ -235,6 +235,7 @@ pub fn create_protocol_settings() -> ProtocolSettings {
         operation_batch_proc_period: 200,
         asked_operations_pruning_period: 500,
         max_op_batch_per_sec_per_node: 6,
+        max_operations_per_message: 1024,
     }
 }
 
