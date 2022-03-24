@@ -25,6 +25,24 @@ use tracing::warn;
 impl ProtocolWorker {
     /// On receive a batch of operation ids `op_batch` from another `node_id`
     /// Execute the following algorithm: [redirect to github](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)
+    ///
+    ///```py
+    ///def process_op_batch(op_batch, node_id):
+    ///    ask_set = void HashSet<OperationId>
+    ///    future_set = void HashSet<OperationId>
+    ///    for op_id in op_batch:
+    ///        if not is_op_received(op_id):
+    ///            if (op_id not in asked_ops) or (node_id not in asked_ops(op_id)[1]):
+    ///                if (op_id not in asked_ops) or (asked_ops(op_id)[0] < now - op_batch_proc_period:
+    ///                    ask_set.add(op_id)
+    ///                    asked_ops(op_id)[0] = now
+    ///                    asked_ops(op_id)[1].add(node_id)
+    ///                else:
+    ///                    future_set.add(op_id)
+    ///    if op_batch_buf is not full:
+    ///        op_batch_buf.push(now+op_batch_proc_period, node_id, future_set)
+    ///    ask ask_set to node_id
+    ///```
     pub(crate) async fn on_batch_operations_received(
         &mut self,
         op_batch: OperationIds,
@@ -40,7 +58,7 @@ impl ProtocolWorker {
             if self.checked_operations.contains(&op_id) {
                 continue;
             }
-            let wish = match self.asked_operations.get(&op_id) {
+            let wish = match self.asked_operations.get_mut(&op_id) {
                 Some(wish) => {
                     if wish.1.contains(&node_id) {
                         continue; // already asked to the `node_id`
@@ -50,8 +68,20 @@ impl ProtocolWorker {
                 }
                 None => None,
             };
-            if wish.is_some() && wish.unwrap().0 > now {
-                future_set.insert(op_id);
+            if let Some(wish) = wish {
+                if wish.0
+                    > now
+                        .checked_sub(Duration::from_millis(
+                            self.protocol_settings.operation_batch_proc_period,
+                        ))
+                        .ok_or(TimeError::TimeOverflowError)?
+                {
+                    future_set.insert(op_id);
+                } else {
+                    ask_set.insert(op_id);
+                    wish.0 = now;
+                    wish.1.push(node_id);
+                }
             } else {
                 ask_set.insert(op_id);
                 self.asked_operations.insert(op_id, (now, vec![node_id]));
