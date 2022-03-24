@@ -766,6 +766,10 @@
 <span id="761">761</span>
 <span id="762">762</span>
 <span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! The network worker actually does the job of managing connections</span>
@@ -1296,6 +1300,10 @@
             }
             <span class="ident">NetworkCommand::Unban</span>(<span class="ident">ip</span>) =&gt; <span class="ident">on_unban_cmd</span>(<span class="self">self</span>, <span class="ident">ip</span>).<span class="kw">await</span><span class="question-mark">?</span>,
             <span class="ident">NetworkCommand::GetStats</span> { <span class="ident">response_tx</span> } =&gt; <span class="ident">on_get_stats_cmd</span>(<span class="self">self</span>, <span class="ident">response_tx</span>).<span class="kw">await</span>,
+            <span class="ident">NetworkCommand::Whitelist</span>(<span class="ident">ips</span>) =&gt; <span class="ident">on_whitelist_cmd</span>(<span class="self">self</span>, <span class="ident">ips</span>).<span class="kw">await</span><span class="question-mark">?</span>,
+            <span class="ident">NetworkCommand::RemoveFromWhitelist</span>(<span class="ident">ips</span>) =&gt; {
+                <span class="ident">on_remove_from_whitelist_cmd</span>(<span class="self">self</span>, <span class="ident">ips</span>).<span class="kw">await</span><span class="question-mark">?</span>
+            }
         };
         <span class="prelude-val">Ok</span>(())
     }

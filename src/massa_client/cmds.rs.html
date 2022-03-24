@@ -834,6 +834,44 @@
 <span id="829">829</span>
 <span id="830">830</span>
 <span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
@@ -871,14 +909,14 @@
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
         <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;[IpAddr]&quot;</span>),
-        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;unban a given IP addresses&quot;</span>
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;unban given IP addresses&quot;</span>
     )]</span>
     <span class="ident">unban</span>,
 
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
         <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;[IpAddr]&quot;</span>),
-        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;ban a given IP addresses&quot;</span>
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;ban given IP addresses&quot;</span>
     )]</span>
     <span class="ident">ban</span>,
 
@@ -908,6 +946,20 @@
         <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;generate the testnet rewards program node/staker ownership proof&quot;</span>
     )]</span>
     <span class="ident">node_testnet_rewards_program_ownership_proof</span>,
+
+    <span class="attribute">#[<span class="ident">strum</span>(
+        <span class="ident">ascii_case_insensitive</span>,
+        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;[IpAddr]&quot;</span>),
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;whitelist given IP addresses&quot;</span>
+    )]</span>
+    <span class="ident">node_whitelist</span>,
+
+    <span class="attribute">#[<span class="ident">strum</span>(
+        <span class="ident">ascii_case_insensitive</span>,
+        <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;[IpAddr]&quot;</span>),
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;remove from whitelist given IP addresses&quot;</span>
+    )]</span>
+    <span class="ident">node_remove_from_whitelist</span>,
 
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
@@ -1606,6 +1658,30 @@
                     <span class="prelude-val">Ok</span>(<span class="ident">res</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">res</span>)),
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">rpc_error!</span>(<span class="ident">e</span>),
                 }
+            }
+            <span class="ident">Command::node_whitelist</span> =&gt; {
+                <span class="kw">let</span> <span class="ident">ips</span> <span class="op">=</span> <span class="ident">parse_vec</span>::<span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>(<span class="ident">parameters</span>)<span class="question-mark">?</span>;
+                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">private</span>.<span class="ident">node_whitelist</span>(<span class="ident">ips</span>).<span class="kw">await</span> {
+                    <span class="prelude-val">Ok</span>(()) =&gt; {
+                        <span class="kw">if</span> <span class="op">!</span><span class="ident">json</span> {
+                            <span class="macro">println!</span>(<span class="string">&quot;Request of whitelisting successfully sent!&quot;</span>)
+                        }
+                    }
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">rpc_error!</span>(<span class="ident">e</span>),
+                }
+                <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(()))
+            }
+            <span class="ident">Command::node_remove_from_whitelist</span> =&gt; {
+                <span class="kw">let</span> <span class="ident">ips</span> <span class="op">=</span> <span class="ident">parse_vec</span>::<span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>(<span class="ident">parameters</span>)<span class="question-mark">?</span>;
+                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">private</span>.<span class="ident">node_remove_from_whitelist</span>(<span class="ident">ips</span>).<span class="kw">await</span> {
+                    <span class="prelude-val">Ok</span>(()) =&gt; {
+                        <span class="kw">if</span> <span class="op">!</span><span class="ident">json</span> {
+                            <span class="macro">println!</span>(<span class="string">&quot;Request of removing from whitelist successfully sent!&quot;</span>)
+                        }
+                    }
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">rpc_error!</span>(<span class="ident">e</span>),
+                }
+                <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(()))
             }
         }
     }
