@@ -73,7 +73,7 @@ pub enum ProtocolCommand {
         new: Set<BlockId>,
         remove: Set<BlockId>,
     },
-    /// The response to a ProtocolEvent::GetBlocks.
+    /// The response to a [ProtocolEvent::GetBlocks].
     GetBlocksResults(BlocksResults),
     /// The response to a [ProtocolEvent::GetOperations].
     GetOperationsResults((NodeId, Operations)),
@@ -148,7 +148,7 @@ impl ProtocolCommandSender {
         res
     }
 
-    /// Send the response to a ProtocolEvent::GetBlocks.
+    /// Send the response to a [ProtocolEvent::GetBlocks].
     pub async fn send_get_operations_results(
         &mut self,
         node_id: NodeId,

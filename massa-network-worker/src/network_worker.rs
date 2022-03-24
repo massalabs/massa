@@ -184,7 +184,7 @@ impl NetworkWorker {
                     ).await?
                 },
 
-                // incoming command from client
+                // incoming command
                 Some(cmd) = self.controller_command_rx.recv() => {
                     self.manage_network_command(cmd).await?;
                 },
