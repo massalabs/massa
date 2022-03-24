@@ -24,7 +24,6 @@ members = [
   "massa-time",
   "massa-wallet",
   "massa-ledger",
-  "massa-async-pool",
   "massa-final-state"
 ]
 resolver = "2"

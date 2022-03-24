@@ -408,7 +408,7 @@ impl ExecutionState {
                 .final_state
                 .write()
                 .async_pool
-                .take_batch_to_executte(slot, self.config.max_async_gas);
+                .take_batch_to_execute(slot, self.config.max_async_gas);
             let mut modules: Vec<Vec<u8>> = Vec::with_capacity(messages.len());
             for message in &messages {
                 modules.push(context.get_bytecode(&message.destination).unwrap());
@@ -583,7 +583,7 @@ impl ExecutionState {
                 // https://github.com/massalabs/massa/issues/2335
                 self.active_history
                     .iter()
-                    .filter(|item| item.slot >= start && item.slot < end)
+                    .filter(|item| item.slot >= start && item.slot <= end)
                     .flat_map(|item| {
                         item.events.get_filtered_sc_output_event(
                             start,

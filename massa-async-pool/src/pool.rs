@@ -2,13 +2,13 @@
 
 //! This file defines a finite size final pool of async messages for use in the context of autonomous smart contracts
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, result};
 
 use massa_models::Slot;
 
 use crate::{
     bootstrap::AsyncPoolBootstrap,
-    changes::{AddOrDelete, AsyncPoolChanges},
+    changes::{AsyncPoolChanges, Change},
     config::AsyncPoolConfig,
     message::{AsyncMessage, AsyncMessageId},
 };
@@ -21,8 +21,8 @@ pub struct AsyncPool {
     /// async pool config
     config: AsyncPoolConfig,
 
-    /// messages sorted by increasing ID (increasing priority)
-    messages: BTreeMap<AsyncMessageId, AsyncMessage>,
+    /// messages sorted by decreasing ID (decreasing priority)
+    pub(crate) messages: BTreeMap<AsyncMessageId, AsyncMessage>,
 }
 
 impl AsyncPool {
@@ -65,12 +65,12 @@ impl AsyncPool {
         for change in changes.0 {
             match change {
                 // add a new message to the pool
-                (msg_id, AddOrDelete::Add(msg)) => {
+                Change::Add(msg_id, msg) => {
                     self.messages.insert(msg_id, msg);
                 }
 
                 // delete a message from the pool
-                (msg_id, AddOrDelete::Delete) => {
+                Change::Delete(msg_id) => {
                     self.messages.remove(&msg_id);
                 }
             }
@@ -87,9 +87,9 @@ impl AsyncPool {
     ///
     /// # returns
     /// The list of (message_id, message) that were eliminated from the pool after the changes were applied, sorted in the following order:
-    /// * expired messages from the pool, in priority order (from lowest to highest priority)
+    /// * expired messages from the pool, in priority order (from highest to lowest priority)
     /// * expired messages from new_messages (in the order they appear in new_messages)
-    /// * excess messages after inserting all remaining new_messages, in priority order (from lowest to highest priority)
+    /// * excess messages after inserting all remaining new_messages, in priority order (from highest to lowest priority)
     pub fn settle_slot(
         &mut self,
         slot: Slot,
@@ -100,7 +100,7 @@ impl AsyncPool {
         let mut eliminated: Vec<_> = self
             .messages
             .drain_filter(|_k, v| slot >= v.validity_end)
-            .chain(new_messages.drain_filter(|(_k, v)| slot > v.validity_end))
+            .chain(new_messages.drain_filter(|(_k, v)| slot >= v.validity_end))
             .collect();
 
         // Insert new messages into the pool
@@ -113,7 +113,7 @@ impl AsyncPool {
             .saturating_sub(self.config.max_length as usize);
         eliminated.reserve_exact(excess_count);
         for _ in 0..excess_count {
-            eliminated.push(self.messages.pop_first().unwrap()); // will not panic (checked at excess_count computation)
+            eliminated.push(self.messages.pop_last().unwrap()); // will not panic (checked at excess_count computation)
         }
 
         eliminated
@@ -129,44 +129,58 @@ impl AsyncPool {
     ///
     /// # returns
     /// A vector of messages, sorted from the most prioritary to the least prioritary
-    pub fn take_batch_to_executte(
+    pub fn take_batch_to_execute(
         &mut self,
         slot: Slot,
         mut available_gas: u64,
     ) -> Vec<AsyncMessage> {
-        let mut selected = Vec::new();
-
-        // iterate in decreasing priority order
-        for (msg_id, msg) in self.messages.iter().rev() {
-            // check validity period
-            if slot < msg.validity_start || slot >= msg.validity_end {
-                continue;
-            }
-
-            // check available gas
-            if available_gas < msg.max_gas {
-                continue;
-            }
-
-            // add to selected items
-            selected.push(*msg_id);
-
-            // substract available gas
-            available_gas -= msg.max_gas;
-
-            // if there is no more gas, quit
-            if available_gas == 0 {
-                break;
-            }
-        }
-
         // gather all selected items and remove them from self.messages
-        let mut accumulator = Vec::with_capacity(selected.len());
-        for delete_id in selected {
-            if let Some(v) = self.messages.remove(&delete_id) {
-                accumulator.push(v);
-            }
-        }
-        accumulator
+        // iterate in decreasing priority order
+        self.messages
+            .drain_filter(|_, msg| {
+                // check available gas and validity period
+                if available_gas >= msg.max_gas
+                    && slot >= msg.validity_start
+                    && slot < msg.validity_end
+                {
+                    available_gas -= msg.max_gas;
+                    true
+                } else {
+                    false
+                }
+            })
+            .map(|x| x.1)
+            .collect::<Vec<AsyncMessage>>()
     }
+}
+
+#[test]
+fn test_take_batch() {
+    use massa_hash::hash::Hash;
+    use massa_models::{Address, Amount, Slot};
+
+    let config = AsyncPoolConfig { max_length: 10 };
+    let mut pool = AsyncPool::new(config);
+    let address = Address(Hash::compute_from(b"abc"));
+    for i in 1..10 {
+        pool.messages.insert(
+            (std::cmp::Reverse(Amount::from_raw(i)), Slot::new(0, 0), 0),
+            AsyncMessage {
+                emission_slot: Slot::new(0, 0),
+                emission_index: 0,
+                sender: address,
+                destination: address,
+                handler: "function".to_string(),
+                validity_start: Slot::new(1, 0),
+                validity_end: Slot::new(3, 0),
+                max_gas: i,
+                gas_price: Amount::from_raw(1),
+                coins: Amount::from_raw(0),
+                data: Vec::new(),
+            },
+        );
+    }
+    assert_eq!(pool.messages.len(), 9);
+    pool.take_batch_to_execute(Slot::new(2, 0), 19);
+    assert_eq!(pool.messages.len(), 6);
 }

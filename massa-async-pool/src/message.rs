@@ -1,6 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! This file defines the structure representing an entry in the FinalLedger
+//! This file defines the structure representing an asynchronous message
 
 use massa_models::constants::ADDRESS_SIZE_BYTES;
 use massa_models::{
@@ -10,9 +10,9 @@ use massa_models::{DeserializeCompact, SerializeCompact};
 use serde::{Deserialize, Serialize};
 
 /// Unique identifier of a message.
-/// Also has the property of ordering by priority following the triplet:
-/// (max_gas*gas_price, rev(emission_slot), rev(emission_index))
-pub type AsyncMessageId = (Amount, std::cmp::Reverse<Slot>, std::cmp::Reverse<u64>);
+/// Also has the property of ordering by priority (lowest first) following the triplet:
+/// (rev(max_gas*gas_price), emission_slot, emission_index)
+pub type AsyncMessageId = (std::cmp::Reverse<Amount>, Slot, u64);
 
 /// Structure defining an asynchronous smart contract message
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,7 +41,7 @@ pub struct AsyncMessage {
     pub gas_price: Amount,
 
     /// Coins sent from the sender to the target address of the message.
-    /// Those coins are spent by the sender address when the emessage is sent,
+    /// Those coins are spent by the sender address when the message is sent,
     /// and credited to the destination address when receiving the message.
     /// In case of failure or discard, those coins are reimbursed to the sender.
     pub coins: Amount,
@@ -61,14 +61,13 @@ impl AsyncMessage {
     /// For now, the formula is simply score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))
     pub fn compute_id(&self) -> AsyncMessageId {
         (
-            self.gas_price.saturating_mul_u64(self.max_gas),
-            std::cmp::Reverse(self.emission_slot),
-            std::cmp::Reverse(self.emission_index),
+            std::cmp::Reverse(self.gas_price.saturating_mul_u64(self.max_gas)),
+            self.emission_slot,
+            self.emission_index,
         )
     }
 }
 
-/// Allow serializing the AsyncMessage into a compact binary representation
 impl SerializeCompact for AsyncMessage {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -122,7 +121,6 @@ impl SerializeCompact for AsyncMessage {
     }
 }
 
-/// Allow deserializing a AsyncMessage from its compact binary representation
 impl DeserializeCompact for AsyncMessage {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
         let mut cursor = 0usize;
