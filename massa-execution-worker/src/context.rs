@@ -29,7 +29,6 @@ pub(crate) struct ExecutionContextSnapshot {
     pub ledger_changes: LedgerChanges,
 
     /// speculative async pool changes caused so far in the context
-    // note: re-think what the type of this should be
     pub async_pool_changes: AsyncPoolChanges,
 
     /// counter of newly created addresses so far at this slot during this execution
@@ -381,7 +380,7 @@ impl ExecutionContext {
         self.speculative_ledger.has_data_entry(address, key)
     }
 
-    /// note: define this comment
+    /// note: re-define this comment
     pub fn get_parallel_balance(&self, address: &Address) -> Option<Amount> {
         self.speculative_ledger.get_parallel_balance(address)
     }

@@ -347,7 +347,6 @@ impl ExecutionState {
             context.max_gas = message.max_gas;
             context.gas_price = message.gas_price;
             context.async_coins = message.coins;
-            // note: context value might be missing here
         }
         if let Err(err) = massa_sc_runtime::run_function(
             &module,
@@ -416,6 +415,7 @@ impl ExecutionState {
             }
             messages.into_iter().zip(modules)
         };
+
         // try executing asynchronous messages
         for (message, module) in iter {
             if let Err(err) = self.try_execute_async_message(message, module) {

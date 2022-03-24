@@ -8,8 +8,6 @@ use massa_ledger::LedgerEntry;
 use massa_models::{Address, Slot};
 use std::collections::BTreeMap;
 
-// note: update of test_exports has not been done yet
-
 /// creates a final state bootstrap from components
 pub fn make_bootstrap_state(
     slot: Slot,
