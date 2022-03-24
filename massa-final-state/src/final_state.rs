@@ -100,19 +100,17 @@ impl FinalState {
         // update current slot
         self.slot = slot;
 
+        // apply changes
+        self.ledger.apply(changes.ledger_changes.clone());
+        self.async_pool
+            .apply_changes_unchecked(changes.async_pool_changes.clone());
+
         // push history element and limit history size
         if self.config.final_history_length > 0 {
             while self.changes_history.len() >= self.config.final_history_length {
                 self.changes_history.pop_front();
             }
             self.changes_history.push_back((slot, changes));
-        }
-
-        // iter on the changes history from oldest to newest and apply
-        for (_, change) in std::mem::take(&mut self.changes_history) {
-            self.ledger.apply(change.ledger_changes);
-            self.async_pool
-                .apply_changes_unchecked(change.async_pool_changes);
         }
     }
 }

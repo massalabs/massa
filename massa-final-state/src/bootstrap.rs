@@ -50,6 +50,7 @@ impl DeserializeCompact for FinalStateBootstrap {
         let (ledger, delta) = FinalLedgerBootstrapState::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 
+        // final async pool
         let (async_pool, delta) = AsyncPoolBootstrap::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 

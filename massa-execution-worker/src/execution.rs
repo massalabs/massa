@@ -22,7 +22,7 @@ use massa_models::signed::Signable;
 use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
 use massa_models::{Block, Slot};
 use massa_sc_runtime::Interface;
-use parking_lot::{Mutex, MutexGuard, RwLock};
+use parking_lot::{Mutex, RwLock};
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,
@@ -330,36 +330,69 @@ impl ExecutionState {
     }
 
     /// Tries to execute an asynchronous message
-    /// If the execution failed reimburse the message sender
+    /// If the execution failed reimburse the message sender.
     ///
     /// # Arguments
     /// * message: message information
-    /// * module: web assembly module
-    pub fn try_execute_async_message(
+    /// * bytecode: executable target bytecode, or None if unavailable
+    pub fn execute_async_message(
         &self,
         message: AsyncMessage,
-        module: Vec<u8>,
+        bytecode: Option<Vec<u8>>,
     ) -> Result<(), ExecutionError> {
+        // If there is no target bytecode or if message data is invalid,
+        // directly reimburse sender with coins and quit
+        let (bytecode, data) = match (bytecode, std::str::from_utf8(&message.data)) {
+            (Some(bc), Ok(d)) => (bc, d),
+            (bc, _d) => {
+                let mut context = context_guard!(self);
+                context.cancel_async_message(message);
+                if bc.is_none() {
+                    return Err(ExecutionError::RuntimeError(
+                        "no target bytecode found".into(),
+                    ));
+                }
+                return Err(ExecutionError::RuntimeError(
+                    "message data does not convert to utf-8".into(),
+                ));
+            }
+        };
+
+        // prepare execution context
         let context_snapshot;
         {
             let mut context = context_guard!(self);
             context_snapshot = context.get_snapshot();
             context.max_gas = message.max_gas;
             context.gas_price = message.gas_price;
-            context.async_coins = message.coins;
+            context.stack = vec![
+                ExecutionStackElement {
+                    address: message.sender,
+                    coins: message.coins,
+                    owned_addresses: vec![message.sender],
+                },
+                ExecutionStackElement {
+                    address: message.destination,
+                    coins: message.coins,
+                    owned_addresses: vec![message.destination],
+                },
+            ]
         }
+
+        // run the target function
         if let Err(err) = massa_sc_runtime::run_function(
-            &module,
+            &bytecode,
             message.max_gas,
             &message.handler,
-            std::str::from_utf8(&message.data).unwrap_or_default(),
+            data,
             &*self.execution_interface,
         ) {
+            // execution failed: reset context to snapshot and reimburse sender
             let mut context = context_guard!(self);
-            Self::reimburse_message_sender(&mut context, message);
             context.reset_to_snapshot(context_snapshot);
+            context.cancel_async_message(message);
             Err(ExecutionError::RuntimeError(format!(
-                "bytecode execution error: {}",
+                "async message runtime execution error: {}",
                 err
             )))
         } else {
@@ -396,30 +429,28 @@ impl ExecutionState {
 
         // note that here, some pre-operations (like crediting block producers) can be performed before the lock
 
-        // get asynchronous messages destination bytecode
-        let iter = {
+        // get asynchronous messages destination bytecode (if available, otherwise set it to None)
+        let messages: Vec<_> = {
             // take a lock on the context
             let mut context = context_guard!(self);
 
             // apply the created execution context for slot execution
             *context = execution_context;
 
-            let messages = self
-                .final_state
+            self.final_state
                 .write()
                 .async_pool
-                .take_batch_to_execute(slot, self.config.max_async_gas);
-            let mut modules: Vec<Vec<u8>> = Vec::with_capacity(messages.len());
-            for message in &messages {
-                modules.push(context.get_bytecode(&message.destination).unwrap());
-            }
-            messages.into_iter().zip(modules)
+                .take_batch_to_execute(slot, self.config.max_async_gas)
+                .into_iter()
+                .map(|msg| (context.get_bytecode(&msg.destination), msg))
+                .collect()
         };
 
-        // try executing asynchronous messages
-        for (message, module) in iter {
-            if let Err(err) = self.try_execute_async_message(message, module) {
-                debug!("failed executing message: {}", err);
+        // Try executing asynchronous messages.
+        // Effects are cancelled on failure and the sender is reimbursed.
+        for (opt_bytecode, message) in messages {
+            if let Err(err) = self.execute_async_message(message, opt_bytecode) {
+                debug!("failed executing async message: {}", err);
             }
         }
 
@@ -439,32 +470,8 @@ impl ExecutionState {
             }
         }
 
-        // take a lock on the context
-        let mut context = context_guard!(self);
-
-        // compute new messages and reimburse senders of removed messages
-        let removed_messages = context.compute_slot_messages();
-        for (_, msg) in removed_messages {
-            Self::reimburse_message_sender(&mut context, msg);
-        }
-
-        // return the execution output
-        context.take_execution_output()
-    }
-
-    /// Tooling function used to reimburse the sender of a removed asynchronous message
-    fn reimburse_message_sender(context: &mut MutexGuard<ExecutionContext>, msg: AsyncMessage) {
-        if let Some(amount) = msg
-            .gas_price
-            .checked_mul_u64(msg.max_gas)
-            .and_then(|x| Some(x.saturating_add(msg.coins)))
-        {
-            if let Err(e) = context.transfer_parallel_coins(None, Some(msg.sender), amount) {
-                debug!("reimbursement of {} failed: {}", msg.sender, e);
-            }
-        } else {
-            debug!("the total amount hit the limit overflow, coins transfer will be rejected");
-        }
+        // finish slot and return the execution output
+        context_guard!(self).settle_slot()
     }
 
     /// Executes a read-only execution request.
@@ -504,7 +511,7 @@ impl ExecutionState {
             .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
 
         // return the execution output
-        Ok(context_guard!(self).take_execution_output())
+        Ok(context_guard!(self).settle_slot())
     }
 
     /// Gets a full ledger entry both at the latest final and active executed slots

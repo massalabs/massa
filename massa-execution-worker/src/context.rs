@@ -9,7 +9,7 @@
 
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_ledger::SpeculativeLedger;
-use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncPoolChanges};
+use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest,
 };
@@ -21,6 +21,7 @@ use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
 use std::sync::Arc;
+use tracing::debug;
 
 /// A snapshot taken from an ExecutionContext and that represents its current state.
 /// The ExecutionContext state can then be restored later from this snapshot.
@@ -28,8 +29,8 @@ pub(crate) struct ExecutionContextSnapshot {
     /// speculative ledger changes caused so far in the context
     pub ledger_changes: LedgerChanges,
 
-    /// speculative async pool changes caused so far in the context
-    pub async_pool_changes: AsyncPoolChanges,
+    /// speculative async pool messages emitted so far in the context
+    pub async_pool_changes: Vec<AsyncMessage>,
 
     /// counter of newly created addresses so far at this slot during this execution
     pub created_addr_index: u64,
@@ -67,9 +68,6 @@ pub(crate) struct ExecutionContext {
 
     /// slot at which the execution happens
     pub slot: Slot,
-
-    /// coins available for async messages execution
-    pub async_coins: Amount,
 
     /// counter of newly created addresses so far during this execution
     pub created_addr_index: u64,
@@ -127,7 +125,6 @@ impl ExecutionContext {
             max_gas: Default::default(),
             gas_price: Default::default(),
             slot: Slot::new(0, 0),
-            async_coins: Default::default(),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
             created_message_index: Default::default(),
@@ -250,24 +247,6 @@ impl ExecutionContext {
             opt_block_id,
             unsafe_rng,
             ..ExecutionContext::new(final_state, previous_changes)
-        }
-    }
-
-    /// Moves the output of the execution out of the context,
-    /// resetting some context fields in the process.
-    ///
-    /// This is used to get the output of an execution before discarding the context.
-    /// Note that we are not taking self by value to consume it because the context is shared.
-    pub fn take_execution_output(&mut self) -> ExecutionOutput {
-        let state_changes = StateChanges {
-            ledger_changes: self.speculative_ledger.take(),
-            async_pool_changes: self.speculative_async_pool.take(),
-        };
-        ExecutionOutput {
-            slot: self.slot,
-            block_id: std::mem::take(&mut self.opt_block_id),
-            state_changes,
-            events: std::mem::take(&mut self.events),
         }
     }
 
@@ -447,12 +426,43 @@ impl ExecutionContext {
         self.speculative_async_pool.push_new_message(msg);
     }
 
-    /// Compute the asynchronous message pool at the current slot
+    /// Cancels an async message, reimbursing msg.coins to the sender
     ///
-    /// # Returns
-    /// The deleted messages and their IDs
-    pub fn compute_slot_messages(&mut self) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        self.speculative_async_pool
-            .compute_and_add_changes(self.slot)
+    /// # Arguments
+    /// * msg: the async message to cancel
+    pub fn cancel_async_message(&mut self, msg: AsyncMessage) {
+        if let Err(e) = self.transfer_parallel_coins(None, Some(msg.sender), msg.coins) {
+            debug!(
+                "async message cancel: reimbursment of {} failed: {}",
+                msg.sender, e
+            );
+        }
+    }
+
+    /// Finishes a slot and generates the execution output.
+    /// Settles emitted async messages, reimburse the senders of deleted messages.
+    /// Moves the output of the execution out of the context,
+    /// resetting some context fields in the process.
+    ///
+    /// This is used to get the output of an execution before discarding the context.
+    /// Note that we are not taking self by value to consume it because the context is shared.
+    pub fn settle_slot(&mut self) -> ExecutionOutput {
+        // settle emitted async messages and reimburse the senders of deleted messages
+        let deleted_messages = self.speculative_async_pool.settle_slot(self.slot);
+        for (_msg_id, msg) in deleted_messages {
+            self.cancel_async_message(msg);
+        }
+
+        // generate the execution output
+        let state_changes = StateChanges {
+            ledger_changes: self.speculative_ledger.take(),
+            async_pool_changes: self.speculative_async_pool.take(),
+        };
+        ExecutionOutput {
+            slot: self.slot,
+            block_id: std::mem::take(&mut self.opt_block_id),
+            state_changes,
+            events: std::mem::take(&mut self.events),
+        }
     }
 }

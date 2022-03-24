@@ -2,16 +2,14 @@
 
 //! This file defines a finite size final pool of async messages for use in the context of autonomous smart contracts
 
-use std::collections::BTreeMap;
-
-use massa_models::Slot;
-
 use crate::{
     bootstrap::AsyncPoolBootstrap,
     changes::{AsyncPoolChanges, Change},
     config::AsyncPoolConfig,
     message::{AsyncMessage, AsyncMessageId},
 };
+use massa_models::Slot;
+use std::collections::BTreeMap;
 
 /// Represents a pool of deterministically sorted messages.
 /// The final async pool is attached to the output of the latest final slot within the context of massa-final-state.
@@ -86,15 +84,26 @@ impl AsyncPool {
     /// * new_messages: list of AsyncMessage to add to the pool
     ///
     /// # returns
-    /// The list of (message_id, message) that were eliminated from the pool after the changes were applied, sorted in the following order:
+    ///
+    /// A 2-tuple.
+    ///
+    /// The first tuple element is the compiled list of changes caused to the pool.
+    ///
+    /// The second tuple element is the list of messages that were eliminated from the pool after the changes were applied, sorted in the following order:
     /// * expired messages from the pool, in priority order (from highest to lowest priority)
     /// * expired messages from new_messages (in the order they appear in new_messages)
     /// * excess messages after inserting all remaining new_messages, in priority order (from highest to lowest priority)
     pub fn settle_slot(
         &mut self,
         slot: Slot,
-        mut new_messages: Vec<(AsyncMessageId, AsyncMessage)>,
-    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
+        new_messages: Vec<AsyncMessage>,
+    ) -> (AsyncPoolChanges, Vec<(AsyncMessageId, AsyncMessage)>) {
+        // Compute the IDs of new messages
+        let mut new_messages: Vec<(AsyncMessageId, AsyncMessage)> = new_messages
+            .into_iter()
+            .map(|v| (v.compute_id(), v))
+            .collect();
+
         // Filter out all messages for which the validity end is expired.
         // Note that the validity_end bound is NOT included in the validity interval of the message.
         let mut eliminated: Vec<_> = self
@@ -104,7 +113,7 @@ impl AsyncPool {
             .collect();
 
         // Insert new messages into the pool
-        self.messages.extend(new_messages);
+        self.messages.extend(new_messages.clone());
 
         // Truncate message pool to its max size, removing non-prioritary items
         let excess_count = self
@@ -116,7 +125,16 @@ impl AsyncPool {
             eliminated.push(self.messages.pop_last().unwrap()); // will not panic (checked at excess_count computation)
         }
 
-        eliminated
+        // compile changes without compensations
+        let mut changes = AsyncPoolChanges::default();
+        for (msg_id, msg) in new_messages {
+            changes.push_add(msg_id, msg);
+        }
+        for (msg_id, _msg) in &eliminated {
+            changes.push_delete(*msg_id);
+        }
+
+        (changes, eliminated)
     }
 
     /// Takes the best possible batch of messages to execute, with gas limits and slot validity filtering.
@@ -149,7 +167,7 @@ impl AsyncPool {
                     false
                 }
             })
-            .map(|x| x.1)
+            .map(|(_id, msg)| msg)
             .collect::<Vec<AsyncMessage>>()
     }
 }
