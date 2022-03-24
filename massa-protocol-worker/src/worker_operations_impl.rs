@@ -68,10 +68,14 @@ impl ProtocolWorker {
                 operations_ids: future_set,
             });
         }
-        self.network_command_sender
-            .send_ask_for_operations(node_id, ask_set)
-            .await
-            .map_err(|_| ProtocolError::ChannelError("send ask for operations failed".into()))
+        if !ask_set.is_empty() {
+            self.network_command_sender
+                .send_ask_for_operations(node_id, ask_set)
+                .await
+                .map_err(|_| ProtocolError::ChannelError("send ask for operations failed".into()))
+        } else {
+            Ok(())
+        }
     }
 
     /// On full operations are received from the network,
