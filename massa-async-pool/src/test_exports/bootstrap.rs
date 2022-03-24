@@ -2,8 +2,6 @@
 
 use crate::{AsyncMessage, AsyncPoolBootstrap};
 
-use massa_models::{Address, Slot};
-
 /// This file defines tools to test the async pool bootstrap
 
 /// creates an async pool bootstrap state from components

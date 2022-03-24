@@ -359,7 +359,7 @@ impl ExecutionContext {
         self.speculative_ledger.has_data_entry(address, key)
     }
 
-    /// TODO: this is not what this function does, re-define this comment
+    /// gets the effective parallel balance of an address
     pub fn get_parallel_balance(&self, address: &Address) -> Option<Amount> {
         self.speculative_ledger.get_parallel_balance(address)
     }

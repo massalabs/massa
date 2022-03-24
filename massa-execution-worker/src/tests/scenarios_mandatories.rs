@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use crate::start_execution_worker;
+use massa_async_pool::AsyncPoolConfig;
 use massa_execution_exports::{ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest};
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::hash::Hash;
@@ -35,8 +36,10 @@ fn get_sample_ledger() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile), Ledge
     initial.insert(get_random_address(), Amount::from_str("129").unwrap());
     initial.insert(get_random_address(), Amount::from_str("878").unwrap());
     let (ledger_config, tempfile) = LedgerConfig::sample(&initial);
+    let async_pool_config = AsyncPoolConfig { max_length: 100 };
     let cfg = FinalStateConfig {
         ledger_config,
+        async_pool_config,
         final_history_length: FINAL_HISTORY_LENGTH,
         thread_count: THREAD_COUNT,
     };
