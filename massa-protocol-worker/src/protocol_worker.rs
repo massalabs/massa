@@ -270,7 +270,9 @@ impl ProtocolWorker {
         tokio::pin!(operation_prune_timer);
         let block_ask_timer = sleep(self.protocol_settings.ask_block_timeout.into());
         tokio::pin!(block_ask_timer);
-        let operation_ask_timer = sleep(self.protocol_settings.ask_block_timeout.into());
+        let operation_ask_timer = sleep(Duration::from_millis(
+            self.protocol_settings.operation_batch_proc_period,
+        ));
         tokio::pin!(operation_ask_timer);
         let propagate_operations_timer = sleep(self.protocol_settings.get_batch_send_period());
         tokio::pin!(propagate_operations_timer);
