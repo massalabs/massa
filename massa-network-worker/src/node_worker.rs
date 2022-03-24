@@ -4,11 +4,11 @@ use super::{
     binders::{ReadBinder, WriteBinder},
     messages::Message,
 };
+use itertools::Itertools;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
     node::NodeId,
-    operation::OperationIds,
     signed::Signable,
 };
 use massa_network_exports::{
@@ -320,16 +320,24 @@ impl NodeWorker {
                         },
                         Some(NodeCommand::SendOperationBatch(operation_ids)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendOperationsBatch", {"node": self.node_id, "operation_ids": operation_ids});
-                            for chunk in operation_ids.into_iter().collect::<Vec<_>>().chunks(self.cfg.max_operations_per_message as usize) {
-                                if self.try_send_to_node(&writer_command_tx, Message::OperationsBatch(OperationIds::from_iter(chunk.to_vec()))).is_err() {
+                            for chunk in operation_ids
+                            .into_iter()
+                            .chunks(self.cfg.max_operations_per_message as usize)
+                            .into_iter()
+                            .map(|chunk| chunk.collect()) {
+                                if self.try_send_to_node(&writer_command_tx, Message::OperationsBatch(chunk)).is_err() {
                                     break 'select_loop;
                                 }
                             }
                         }
                         Some(NodeCommand::AskForOperations(operation_ids)) => {
                             massa_trace!("node_worker.run_loop. send Message::AskForOperations", {"node": self.node_id, "operation_ids": operation_ids});
-                            for chunk in operation_ids.into_iter().collect::<Vec<_>>().chunks(self.cfg.max_operations_per_message as usize) {
-                                if self.try_send_to_node(&writer_command_tx, Message::AskForOperations(OperationIds::from_iter(chunk.to_vec()))).is_err() {
+                            for chunk in operation_ids
+                            .into_iter()
+                            .chunks(self.cfg.max_operations_per_message as usize)
+                            .into_iter()
+                            .map(|chunk| chunk.collect()) {
+                                if self.try_send_to_node(&writer_command_tx, Message::AskForOperations(chunk)).is_err() {
                                     break 'select_loop;
                                 }
                             }
