@@ -452,6 +452,17 @@ impl Interface for InterfaceImpl {
         Ok(context_guard!(self).unsafe_rng.sample(distr))
     }
 
+    /// Adds an asynchronous message to the context speculative async pool
+    ///
+    /// # Arguments
+    /// * target_address: Destination address hash in format string
+    /// * target_handler: Name of the message handling function
+    /// * validity_start: Tuple containing the period and thread of the validity start slot
+    /// * validity_end: Tuple containing the period and thread of the validity end slot
+    /// * max_gas: Maximum gas for the message execution
+    /// * gas_price: Price of one gas unit
+    /// * raw_coins: Coins given by the sender
+    /// * data: Message data
     fn send_message(
         &self,
         target_address: &str,
@@ -474,14 +485,8 @@ impl Interface for InterfaceImpl {
             sender,
             destination: Address::from_str(target_address)?,
             handler: target_handler.to_string(),
-            validity_start: Slot {
-                period: validity_start.0,
-                thread: validity_start.1,
-            },
-            validity_end: Slot {
-                period: validity_end.0,
-                thread: validity_end.1,
-            },
+            validity_start: Slot::new(validity_start.0, validity_start.1),
+            validity_end: Slot::new(validity_end.0, validity_end.1),
             max_gas,
             gas_price: Amount::from_raw(gas_price),
             coins: Amount::from_raw(raw_coins),

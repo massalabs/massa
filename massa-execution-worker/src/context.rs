@@ -415,7 +415,7 @@ impl ExecutionContext {
     /// No changes are retained in case of failure.
     /// Spending is only allowed from existing addresses we have write acess on
     ///
-    /// # parameters
+    /// # Arguments
     /// * from_addr: optional spending address (use None for pure coin creation)
     /// * to_addr: optional crediting address (use None for pure coin destruction)
     /// * amount: amount of coins to transfer
@@ -439,12 +439,18 @@ impl ExecutionContext {
             .transfer_parallel_coins(from_addr, to_addr, amount)
     }
 
-    // note: needs doc
+    /// Add a new asynchronous message to speculative pool
+    ///
+    /// # Arguments
+    /// * msg: asynchronous message to add
     pub fn push_new_message(&mut self, msg: AsyncMessage) {
         self.speculative_async_pool.push_new_message(msg);
     }
 
-    // note: needs doc
+    /// Compute the asynchronous message pool at the current slot
+    ///
+    /// # Returns
+    /// The deleted messages and their IDs
     pub fn compute_slot_messages(&mut self) -> Vec<(AsyncMessageId, AsyncMessage)> {
         self.speculative_async_pool
             .compute_and_add_changes(self.slot)

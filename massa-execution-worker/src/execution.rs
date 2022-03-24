@@ -329,8 +329,8 @@ impl ExecutionState {
         Ok(())
     }
 
-    /// Try executing an asynchronous message
-    /// Assumes the execution context was initialized at the beginning of the slot.
+    /// Tries to execute an asynchronous message
+    /// If the execution failed reimburse the message sender
     ///
     /// # Arguments
     /// * message: message information
@@ -356,7 +356,7 @@ impl ExecutionState {
             &*self.execution_interface,
         ) {
             let mut context = context_guard!(self);
-            self.reimburse_message_sender(&mut context, message);
+            Self::reimburse_message_sender(&mut context, message);
             context.reset_to_snapshot(context_snapshot);
             Err(ExecutionError::RuntimeError(format!(
                 "bytecode execution error: {}",
@@ -445,16 +445,15 @@ impl ExecutionState {
         // compute new messages and reimburse senders of removed messages
         let removed_messages = context.compute_slot_messages();
         for (_, msg) in removed_messages {
-            self.reimburse_message_sender(&mut context, msg);
+            Self::reimburse_message_sender(&mut context, msg);
         }
 
         // return the execution output
         context.take_execution_output()
     }
 
-    /// Tooling function used to reimburse the sender of an asynchronous message
+    /// Tooling function used to reimburse the sender of a removed asynchronous message
     fn reimburse_message_sender(
-        &self,
         context: &mut MutexGuard<ExecutionContext>,
         msg: AsyncMessage,
     ) {
