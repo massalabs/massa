@@ -133,6 +133,18 @@ pub trait Endpoints {
     #[rpc(name = "ban")]
     fn ban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
 
+    /// whitelist given IP address.
+    /// No confirmation to expect.
+    /// Note: If the ip was unknown it adds it to the known peers, otherwise it updates the peer type
+    #[rpc(name = "node_whitelist")]
+    fn node_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+
+    /// remove from whitelist given IP address.
+    /// keep it as standard
+    /// No confirmation to expect.
+    #[rpc(name = "node_remove_from_whitelist")]
+    fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+
     /// Unbans given IP address.
     /// No confirmation to expect.
     #[rpc(name = "unban")]

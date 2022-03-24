@@ -331,6 +331,20 @@ pub async fn on_unban_cmd(
     worker.peer_info_db.unban(ips)
 }
 
+pub async fn on_whitelist_cmd(
+    worker: &mut NetworkWorker,
+    ips: Vec<IpAddr>,
+) -> Result<(), NetworkError> {
+    worker.peer_info_db.whitelist(ips).await
+}
+
+pub async fn on_remove_from_whitelist_cmd(
+    worker: &mut NetworkWorker,
+    ips: Vec<IpAddr>,
+) -> Result<(), NetworkError> {
+    worker.peer_info_db.remove_from_whitelist(ips).await
+}
+
 pub async fn on_get_stats_cmd(
     worker: &mut NetworkWorker,
     response_tx: oneshot::Sender<NetworkStats>,

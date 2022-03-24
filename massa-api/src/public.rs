@@ -649,4 +649,12 @@ impl Endpoints for API<Public> {
         let closure = async move || Ok(events);
         Box::pin(closure())
     }
+
+    fn node_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        crate::wrong_api::<()>()
+    }
+
+    fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        crate::wrong_api::<()>()
+    }
 }
