@@ -64,6 +64,13 @@ impl MockProtocolController {
             .expect("could not send protocol event");
     }
 
+    /// Retrieve a block from storage.
+    pub fn get_block(&self, block_id: &BlockId) -> Option<Block> {
+        self.storage
+            .retrieve_block(block_id)
+            .map(|stored_block| stored_block.read().block.clone())
+    }
+
     pub async fn receive_header(&mut self, header: SignedHeader) {
         let block_id = header.content.compute_id().unwrap();
         self.protocol_event_tx

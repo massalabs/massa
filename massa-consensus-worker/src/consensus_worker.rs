@@ -671,30 +671,6 @@ impl ConsensusWorker {
                 }
                 Ok(())
             }
-            // return full block with specified hash
-            ConsensusCommand::GetActiveBlock {
-                block_id,
-                response_tx,
-            } => {
-                massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_active_block",
-                    {}
-                );
-                if response_tx
-                    .send(self.block_db.get_active_block(&block_id).and_then(|v| {
-                        if let Some(block) = self.block_db.storage.retrieve_block(&v.block_id) {
-                            let stored_block = block.read();
-                            Some(stored_block.block.clone())
-                        } else {
-                            None
-                        }
-                    }))
-                    .is_err()
-                {
-                    warn!("consensus: could not send GetBlock answer");
-                }
-                Ok(())
-            }
             // return full block and status with specified hash
             ConsensusCommand::GetBlockStatus {
                 block_id,
