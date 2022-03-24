@@ -39,24 +39,24 @@ macro_rules! context_guard {
 /// and allowing access to them.
 pub(crate) struct ExecutionState {
     // execution config
-    pub config: ExecutionConfig,
+    config: ExecutionConfig,
     // History of the outputs of recently executed slots. Slots should be consecutive, newest at the back.
     // Whenever an active slot is executed, it is appended at the back of active_history.
     // Whenever an executed active slot becomes final,
     // its output is popped from the front of active_history and applied to the final state.
-    pub active_history: VecDeque<ExecutionOutput>,
+    active_history: VecDeque<ExecutionOutput>,
     // a cursor pointing to the highest executed slot
     pub active_cursor: Slot,
     // a cursor pointing to the highest executed final slot
     pub final_cursor: Slot,
     // store containing execution events that became final
-    pub final_events: EventStore,
+    final_events: EventStore,
     // final state with atomic R/W access
-    pub final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<FinalState>>,
     // execution context (see documentation in context.rs)
-    pub execution_context: Arc<Mutex<ExecutionContext>>,
+    execution_context: Arc<Mutex<ExecutionContext>>,
     // execution interface allowing the VM runtime to access the Massa context
-    pub execution_interface: Box<dyn Interface>,
+    execution_interface: Box<dyn Interface>,
 }
 
 impl ExecutionState {
@@ -101,12 +101,24 @@ impl ExecutionState {
         }
     }
 
+    /// Gets out the first (oldest) execution history item, removing it from history.
+    ///
+    /// # Returns
+    /// The earliest ExecutionOutput from the execution history, or None if the history is empty
+    pub fn pop_first_execution_result(&mut self) -> Option<ExecutionOutput> {
+        self.active_history.pop_front()
+    }
+
     /// Applies the output of an execution to the final execution state.
     /// The newly applied final output should be from the slot just after the last executed final slot
     ///
     /// # Arguments
     /// * exec_out: execution output to apply
     pub fn apply_final_execution_output(&mut self, exec_out: ExecutionOutput) {
+        if self.final_cursor >= exec_out.slot {
+            panic!("attempting to apply a final execution output at or before the current final_cursor");
+        }
+
         // apply state changes to the final ledger
         self.final_state
             .write()
@@ -130,6 +142,13 @@ impl ExecutionState {
     /// # Arguments
     /// * exec_out: execution output to apply
     pub fn apply_active_execution_output(&mut self, exec_out: ExecutionOutput) {
+        if self.active_cursor >= exec_out.slot {
+            panic!("attempting to apply an active execution output at or before the current active_cursor");
+        }
+        if exec_out.slot <= self.final_cursor {
+            panic!("attempting to apply an active execution output at or before the current final_cursor");
+        }
+
         // update active cursor to reflect the new latest active slot
         self.active_cursor = exec_out.slot;
 
@@ -190,6 +209,12 @@ impl ExecutionState {
                 .active_history
                 .back()
                 .map_or(self.final_cursor, |out| out.slot);
+            // safety check to ensure that the active cursor cannot go too far back in time
+            if self.active_cursor < self.final_cursor {
+                panic!(
+                    "active_cursor moved before final_cursor after execution history truncation"
+                );
+            }
         }
     }
 
@@ -438,8 +463,15 @@ impl ExecutionState {
         // TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it
         // also we should proceed backwards through history for performance
         // https://github.com/massalabs/massa/issues/2343
+        // Note that get_accumulated_active_changes_at_slot is called at the slot AFTER the active one
+        // in order to take all available active slots into account (and not forget the last one)
+        // and prevent a get_accumulated_active_changes_at_slot crash in the case active_cursor = final_cursor.
+        let next_slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow when getting speculative ledger");
         let active_change = self
-            .get_accumulated_active_changes_at_slot(self.active_cursor)
+            .get_accumulated_active_changes_at_slot(next_slot)
             .ledger_changes
             .get(addr)
             .cloned();
