@@ -2,7 +2,7 @@
 
 //! This file defines a finite size final pool of async messages for use in the context of autonomous smart contracts
 
-use std::{collections::BTreeMap, result};
+use std::collections::BTreeMap;
 
 use massa_models::Slot;
 
@@ -62,7 +62,7 @@ impl AsyncPool {
     /// # arguments
     /// * changes: AsyncPoolChanges listing all async pool changes (message insertions/deletions)
     pub fn apply_changes_unchecked(&mut self, changes: AsyncPoolChanges) {
-        for change in changes.0 {
+        for change in changes.0.into_iter() {
             match change {
                 // add a new message to the pool
                 Change::Add(msg_id, msg) => {

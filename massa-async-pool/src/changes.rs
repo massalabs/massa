@@ -16,7 +16,7 @@ pub enum Change<T, U> {
 
 /// allows applying another AddOrDelete to the current one
 impl<T, U> Change<T, U> {
-    fn apply(&mut self, other: Self) {
+    fn _apply(&mut self, other: Self) {
         *self = other;
     }
 }
