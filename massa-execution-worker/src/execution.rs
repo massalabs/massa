@@ -345,8 +345,7 @@ impl ExecutionState {
         let (bytecode, data) = match (bytecode, std::str::from_utf8(&message.data)) {
             (Some(bc), Ok(d)) => (bc, d),
             (bc, _d) => {
-                let mut context = context_guard!(self);
-                context.cancel_async_message(&message);
+                context_guard!(self).cancel_async_message(&message);
                 if bc.is_none() {
                     return Err(ExecutionError::RuntimeError(
                         "no target bytecode found".into(),
