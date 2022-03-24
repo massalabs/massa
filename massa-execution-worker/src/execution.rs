@@ -313,15 +313,10 @@ impl ExecutionState {
         };
 
         // run the VM on the bytecode contained in the operation
-        tracing::warn!(
-            "EXECUTING OPERATION, MAX_GAS = {}",
-            context_guard!(self).max_gas
-        );
         let run_result = massa_sc_runtime::run_main(bytecode, *max_gas, &*self.execution_interface);
         if let Err(err) = run_result {
             // there was an error during bytecode execution:
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
-            tracing::warn!("OPERATION ERROR: {}", err);
             let mut context = context_guard!(self);
             context.origin_operation_id = None;
             context.reset_to_snapshot(context_snapshot);
@@ -330,7 +325,6 @@ impl ExecutionState {
                 err
             )));
         }
-        tracing::warn!("OPERATION OK");
 
         Ok(())
     }
@@ -346,7 +340,6 @@ impl ExecutionState {
         message: AsyncMessage,
         module: Vec<u8>,
     ) -> Result<(), ExecutionError> {
-        tracing::warn!("TRY EXEC ASYNC MESSAGES");
         let context_snapshot;
         {
             let mut context = context_guard!(self);
@@ -393,7 +386,6 @@ impl ExecutionState {
 
         // accumulate previous active changes from output history
         let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
-        tracing::warn!("HERE IS ACUMULATED CHANGES: {:?}", previous_changes);
 
         // create a new execution context for the whole active slot
         let execution_context = ExecutionContext::active_slot(
@@ -438,7 +430,6 @@ impl ExecutionState {
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
             for (op_idx, operation) in block.operations.iter().enumerate() {
-                tracing::warn!("1 OPERATION");
                 if let Err(err) = self.execute_operation(operation, block_creator_addr) {
                     debug!(
                         "failed executing operation index {} in block {}: {}",

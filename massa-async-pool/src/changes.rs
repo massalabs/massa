@@ -2,8 +2,6 @@
 
 //! This file provides structures representing changes to the async message pool
 
-use std::ops::Add;
-
 use crate::message::{AsyncMessage, AsyncMessageId};
 
 /// Enum representing a add/delete change on a value T

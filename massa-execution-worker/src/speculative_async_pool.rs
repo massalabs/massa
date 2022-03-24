@@ -36,7 +36,6 @@ impl SpeculativeAsyncPool {
     }
 
     pub fn push_new_message(&mut self, msg: AsyncMessage) {
-        tracing::warn!("1 NEW MESSAGE PUSHED: {:?}", msg);
         self.changes.push_add(msg.compute_id(), msg);
     }
 

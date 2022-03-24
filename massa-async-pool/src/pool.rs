@@ -138,18 +138,15 @@ impl AsyncPool {
 
         // iterate in decreasing priority order
         for (msg_id, msg) in self.messages.iter().rev() {
-            tracing::warn!("TAKE BATCH, AVAILABLE GAS = {}", msg.max_gas);
             // check validity period
             if slot < msg.validity_start || slot >= msg.validity_end {
                 continue;
             }
-            tracing::warn!("PASSED VALIDITY CHECK");
 
             // check available gas
             if available_gas < msg.max_gas {
                 continue;
             }
-            tracing::warn!("GOOD GAS CHECK");
 
             // add to selected items
             selected.push(*msg_id);
