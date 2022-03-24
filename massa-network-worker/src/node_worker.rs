@@ -321,15 +321,17 @@ impl NodeWorker {
                         Some(NodeCommand::SendOperationBatch(operation_ids)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendOperationsBatch", {"node": self.node_id, "operation_ids": operation_ids});
                             for chunk in operation_ids.into_iter().collect::<Vec<_>>().chunks(self.cfg.max_operations_per_message as usize) {
-                                if self.try_send_to_node(&writer_command_tx, Message::OperationsBatch(OperationIds::from_iter(chunk.iter().cloned()))).is_err() {
+                                if self.try_send_to_node(&writer_command_tx, Message::OperationsBatch(OperationIds::from_iter(chunk.to_vec()))).is_err() {
                                     break 'select_loop;
                                 }
                             }
                         }
                         Some(NodeCommand::AskForOperations(operation_ids)) => {
                             massa_trace!("node_worker.run_loop. send Message::AskForOperations", {"node": self.node_id, "operation_ids": operation_ids});
-                            if self.try_send_to_node(&writer_command_tx, Message::AskForOperations(operation_ids)).is_err() {
-                                break 'select_loop;
+                            for chunk in operation_ids.into_iter().collect::<Vec<_>>().chunks(self.cfg.max_operations_per_message as usize) {
+                                if self.try_send_to_node(&writer_command_tx, Message::AskForOperations(OperationIds::from_iter(chunk.to_vec()))).is_err() {
+                                    break 'select_loop;
+                                }
                             }
                         }
                         Some(NodeCommand::SendEndorsements(endorsements)) => {
