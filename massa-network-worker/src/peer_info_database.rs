@@ -340,20 +340,17 @@ impl PeerInfoDatabase {
         for ip in ips.into_iter() {
             let old_pt = if let Some(peer) = self.peers.get_mut(&ip) {
                 let pt = peer.peer_type;
-                if pt != PeerType::WhiteListed {
-                    peer.peer_type = PeerType::WhiteListed;
+                if pt == PeerType::WhiteListed {
+                    continue;
                 }
+                peer.peer_type = PeerType::WhiteListed;
                 pt
             } else {
                 let mut p = PeerInfo::new(ip, false);
                 p.peer_type = PeerType::WhiteListed;
                 self.peers.insert(ip, p);
-                PeerType::WhiteListed
-            };
-
-            if old_pt == PeerType::WhiteListed {
                 continue;
-            }
+            };
             // update global connection counts by peer type
             let peer = *self.peers.get(&ip).unwrap(); // filled just before
             if peer.active_out_connection_attempts > 0 {
