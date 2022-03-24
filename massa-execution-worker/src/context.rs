@@ -122,7 +122,7 @@ impl ExecutionContext {
                 previous_changes.ledger_changes,
             ),
             speculative_async_pool: SpeculativeAsyncPool::new(
-                final_state,
+                final_state.read().async_pool.clone(),
                 previous_changes.async_pool_changes,
             ),
             max_gas: Default::default(),

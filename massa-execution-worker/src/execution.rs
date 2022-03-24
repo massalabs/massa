@@ -346,6 +346,7 @@ impl ExecutionState {
         message: AsyncMessage,
         module: Vec<u8>,
     ) -> Result<(), ExecutionError> {
+        tracing::warn!("TRY EXEC ASYNC MESSAGES");
         let context_snapshot;
         {
             let mut context = context_guard!(self);
@@ -392,6 +393,7 @@ impl ExecutionState {
 
         // accumulate previous active changes from output history
         let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
+        tracing::warn!("HERE IS ACUMULATED CHANGES: {:?}", previous_changes);
 
         // create a new execution context for the whole active slot
         let execution_context = ExecutionContext::active_slot(
@@ -435,7 +437,6 @@ impl ExecutionState {
         {
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
-            tracing::warn!("ABOUT TO EXECUTE OPERATIONS");
             for (op_idx, operation) in block.operations.iter().enumerate() {
                 tracing::warn!("1 OPERATION");
                 if let Err(err) = self.execute_operation(operation, block_creator_addr) {

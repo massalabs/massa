@@ -6,24 +6,20 @@
 //! which and keeps track of all the changes that
 //! were applied to it since its creation.
 
-use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncPoolChanges};
-use massa_final_state::FinalState;
+use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolChanges};
 use massa_models::Slot;
-use parking_lot::RwLock;
-use std::sync::Arc;
 
 pub struct SpeculativeAsyncPool {
-    final_state: Arc<RwLock<FinalState>>,
-    previous_changes: AsyncPoolChanges,
+    async_pool: AsyncPool,
     changes: AsyncPoolChanges,
 }
 
 impl SpeculativeAsyncPool {
-    pub fn new(final_state: Arc<RwLock<FinalState>>, previous_changes: AsyncPoolChanges) -> Self {
+    pub fn new(mut async_pool: AsyncPool, previous_changes: AsyncPoolChanges) -> Self {
+        async_pool.apply_changes_unchecked(previous_changes);
         SpeculativeAsyncPool {
-            final_state,
-            previous_changes,
-            changes: Default::default(),
+            async_pool,
+            changes: AsyncPoolChanges::default(),
         }
     }
 
@@ -45,10 +41,7 @@ impl SpeculativeAsyncPool {
     }
 
     pub fn compute_and_add_changes(&mut self, slot: Slot) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        let mut pool_copy = self.final_state.read().async_pool.clone();
-        pool_copy.apply_changes_unchecked(std::mem::take(&mut self.previous_changes));
-
-        let eliminated = pool_copy.settle_slot(slot, self.changes.get_add());
+        let eliminated = self.async_pool.settle_slot(slot, self.changes.get_add());
         for v in &eliminated {
             self.changes.push_delete(v.0);
         }
