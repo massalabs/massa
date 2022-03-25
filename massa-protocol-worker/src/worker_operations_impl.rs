@@ -103,30 +103,32 @@ impl ProtocolWorker {
                     if wish.1.contains(&node_id) {
                         continue; // already asked to the `node_id`
                     } else {
-                        Some(wish)
+                        Some(wish) // already asked but at someone else
                     }
                 }
                 None => None,
             };
             if let Some(wish) = wish {
+                // Ask now if latest ask instant < now - operation_batch_proc_period
+                // otherwise add in future_set
                 if wish.0
-                    > now
+                    < now
                         .checked_sub(Duration::from_millis(
                             self.protocol_settings.operation_batch_proc_period,
                         ))
                         .ok_or(TimeError::TimeOverflowError)?
                 {
-                    future_set.insert(op_id);
-                } else {
                     ask_set.insert(op_id);
                     wish.0 = now;
                     wish.1.push(node_id);
+                } else {
+                    future_set.insert(op_id);
                 }
             } else {
                 ask_set.insert(op_id);
                 self.asked_operations.insert(op_id, (now, vec![node_id]));
             }
-        }
+        } // EndOf for op_id in op_batch:
         if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity {
             self.op_batch_buffer.push_back(OperationBatchItem {
                 instant: now
@@ -192,23 +194,23 @@ impl ProtocolWorker {
 
     pub(crate) async fn update_ask_operation(
         &mut self,
-        ask_operations_timer: &mut std::pin::Pin<&mut Sleep>,
+        operation_batch_proc_period_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
-        let now = Instant::now();
         // init timer
-        let next_tick = now
-            .checked_add(self.protocol_settings.ask_block_timeout.into())
-            .ok_or(TimeError::TimeOverflowError)?;
-        while !self.op_batch_buffer.is_empty()
-        // This unwrap is ok because we checked that it's not empty just before.
-            && Instant::now() > self.op_batch_buffer.front().unwrap().instant
-        {
-            let op_batch_item = self.op_batch_buffer.pop_front().unwrap();
+
+        if let Some(op_batch_item) = self.op_batch_buffer.pop_front() {
             self.on_batch_operations_received(op_batch_item.operations_ids, op_batch_item.node_id)
                 .await?;
         }
         // reset timer
-        ask_operations_timer.set(sleep_until(next_tick));
+        if let Some(item) = self.op_batch_buffer.front() {
+            operation_batch_proc_period_timer.set(sleep_until(item.instant));
+        } else {
+            let next_tick = Instant::now()
+                .checked_add(self.protocol_settings.operation_batch_proc_period.into())
+                .ok_or(TimeError::TimeOverflowError)?;
+            operation_batch_proc_period_timer.set(sleep_until(next_tick));
+        }
         Ok(())
     }
 

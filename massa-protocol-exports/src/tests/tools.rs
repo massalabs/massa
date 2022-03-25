@@ -232,7 +232,7 @@ pub fn create_protocol_settings() -> ProtocolSettings {
         max_known_ops_size: 1000,
         max_known_endorsements_size: 1000,
         operation_batch_buffer_capacity: 1000,
-        operation_batch_proc_period: 200,
+        operation_batch_proc_period: 200.into(),
         asked_operations_pruning_period: 500,
         max_op_batch_per_sec_per_node: 6,
         max_operations_per_message: 1024,
