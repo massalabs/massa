@@ -2836,10 +2836,10 @@ impl BlockGraph {
 
                 // remove from parent's children
                 for (parent_h, _parent_period) in active_block.parents.iter() {
-                    if let Some(BlockStatus::Active(active_block)) =
+                    if let Some(BlockStatus::Active(parent_active_block)) =
                         self.block_statuses.get_mut(parent_h)
                     {
-                        active_block.children
+                        parent_active_block.children
                             [active_block.block.header.content.slot.thread as usize]
                             .remove(&stale_block_hash);
                     }
@@ -3239,10 +3239,10 @@ impl BlockGraph {
 
             // remove from parent's children
             for (parent_h, _parent_period) in discarded_active.parents.iter() {
-                if let Some(BlockStatus::Active(active_block)) =
+                if let Some(BlockStatus::Active(parent_active_block)) =
                     self.block_statuses.get_mut(parent_h)
                 {
-                    active_block.children
+                    parent_active_block.children
                         [discarded_active.block.header.content.slot.thread as usize]
                         .remove(&discard_active_h);
                 }
