@@ -99,6 +99,8 @@ pub const DELTA_F0: u64 = 640;
 pub const MAX_OPERATIONS_PER_BLOCK: u32 = 204800;
 /// Maximum block size in bytes
 pub const MAX_BLOCK_SIZE: u32 = 204800;
+/// Maximum capacity of the asynchronous messages pool
+pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
@@ -135,6 +137,8 @@ pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 
 /// Maximum of GAS allowed for a block
 pub const MAX_GAS_PER_BLOCK: u64 = 100_000_000;
+/// Maximum of GAS allowed for async messages exection on one slot
+pub const MAX_ASYNC_GAS: u64 = 10_000_000;
 
 //
 // Constants used in network

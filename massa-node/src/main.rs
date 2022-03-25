@@ -6,6 +6,7 @@
 extern crate massa_logging;
 use crate::settings::{POOL_CONFIG, SETTINGS};
 use massa_api::{Private, Public, RpcServer, StopHandle, API};
+use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use massa_consensus_exports::{
     events::ConsensusEvent, settings::ConsensusChannels, ConsensusCommandSender, ConsensusConfig,
@@ -19,8 +20,8 @@ use massa_ledger::LedgerConfig;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
-        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, T0,
-        THREAD_COUNT, VERSION,
+        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_GAS_PER_BLOCK,
+        OPERATION_VALIDITY_PERIODS, T0, THREAD_COUNT, VERSION,
     },
     init_serialization_context, SerializationContext,
 };
@@ -135,10 +136,14 @@ async fn launch() -> (
     let ledger_config = LedgerConfig {
         initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
     };
+    let async_pool_config = AsyncPoolConfig {
+        max_length: MAX_ASYNC_POOL_LENGTH,
+    };
     let final_state_config = FinalStateConfig {
         final_history_length: SETTINGS.ledger.final_history_length,
         thread_count,
         ledger_config,
+        async_pool_config,
     };
     let final_state = Arc::new(RwLock::new(match bootstrap_state.final_state {
         Some(l) => FinalState::from_bootstrap_state(final_state_config, l),
@@ -151,6 +156,7 @@ async fn launch() -> (
         readonly_queue_length: SETTINGS.execution.readonly_queue_length,
         cursor_delay: SETTINGS.execution.cursor_delay,
         clock_compensation: bootstrap_state.compensation_millis,
+        max_async_gas: MAX_ASYNC_GAS,
         thread_count,
         t0,
         genesis_timestamp: *GENESIS_TIMESTAMP,

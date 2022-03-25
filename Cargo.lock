@@ -1536,6 +1536,7 @@ dependencies = [
  "futures 0.3.21",
  "lazy_static",
  "massa_api",
+ "massa_async_pool",
  "massa_bootstrap",
  "massa_consensus_exports",
  "massa_consensus_worker",
@@ -1566,7 +1567,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.3.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.4.4#541be5f627b60ab33ac96ef6f86152e5ccaa1541"
+source = "git+https://github.com/massalabs/massa-sc-runtime?tag=v0.5.0#0719439066576b7c3681d9cf95c31722be6a4734"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -1602,6 +1603,28 @@ dependencies = [
  "massa_protocol_exports",
  "massa_signature",
  "massa_time",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "massa_async_pool"
+version = "0.1.0"
+dependencies = [
+ "displaydoc",
+ "futures 0.3.21",
+ "lazy_static",
+ "massa_hash",
+ "massa_logging",
+ "massa_models",
+ "massa_signature",
+ "massa_time",
+ "num",
+ "pretty_assertions",
+ "serde 1.0.136",
+ "serde_json",
+ "serial_test 0.5.1",
  "thiserror",
  "tokio",
  "tracing",
@@ -1730,6 +1753,7 @@ dependencies = [
  "displaydoc",
  "lazy_static",
  "massa-sc-runtime",
+ "massa_async_pool",
  "massa_execution_exports",
  "massa_final_state",
  "massa_hash",
@@ -1755,6 +1779,7 @@ name = "massa_final_state"
 version = "0.1.0"
 dependencies = [
  "displaydoc",
+ "massa_async_pool",
  "massa_ledger",
  "massa_models",
  "pretty_assertions",

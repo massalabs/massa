@@ -22,6 +22,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 # custom modules
 massa_api = { path = "../massa-api" }
+massa_async_pool = { path = "../massa-async-pool" }
 massa_bootstrap = { path = "../massa-bootstrap" }
 massa_consensus_exports = { path = "../massa-consensus-exports" }
 massa_graph = { path = "../massa-graph" }

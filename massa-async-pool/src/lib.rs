@@ -96,9 +96,11 @@ mod config;
 mod message;
 mod pool;
 
-use bootstrap::AsyncPoolBootstrap;
-use message::AsyncMessage;
-use pool::AsyncPool;
+pub use bootstrap::AsyncPoolBootstrap;
+pub use changes::AsyncPoolChanges;
+pub use config::AsyncPoolConfig;
+pub use message::{AsyncMessage, AsyncMessageId};
+pub use pool::AsyncPool;
 
 #[cfg(test)]
 mod tests;

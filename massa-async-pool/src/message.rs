@@ -10,7 +10,7 @@ use massa_models::{DeserializeCompact, SerializeCompact};
 use serde::{Deserialize, Serialize};
 
 /// Unique identifier of a message.
-/// Also has the property of ordering by priority (lowest first) following the triplet:
+/// Also has the property of ordering by priority (highest first) following the triplet:
 /// (rev(max_gas*gas_price), emission_slot, emission_index)
 pub type AsyncMessageId = (std::cmp::Reverse<Amount>, Slot, u64);
 

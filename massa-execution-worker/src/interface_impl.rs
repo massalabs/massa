@@ -7,12 +7,14 @@
 
 use crate::context::ExecutionContext;
 use anyhow::{bail, Result};
+use massa_async_pool::AsyncMessage;
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_hash::hash::Hash;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId},
     timeslots::get_block_slot_timestamp,
+    Address, Amount, Slot,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
@@ -448,5 +450,48 @@ impl Interface for InterfaceImpl {
     fn unsafe_random(&self) -> Result<i64> {
         let distr = rand::distributions::Uniform::new_inclusive(i64::MIN, i64::MAX);
         Ok(context_guard!(self).unsafe_rng.sample(distr))
+    }
+
+    /// Adds an asynchronous message to the context speculative async pool
+    ///
+    /// # Arguments
+    /// * target_address: Destination address hash in format string
+    /// * target_handler: Name of the message handling function
+    /// * validity_start: Tuple containing the period and thread of the validity start slot
+    /// * validity_end: Tuple containing the period and thread of the validity end slot
+    /// * max_gas: Maximum gas for the message execution
+    /// * gas_price: Price of one gas unit
+    /// * raw_coins: Coins given by the sender
+    /// * data: Message data
+    fn send_message(
+        &self,
+        target_address: &str,
+        target_handler: &str,
+        validity_start: (u64, u8),
+        validity_end: (u64, u8),
+        max_gas: u64,
+        gas_price: u64,
+        raw_coins: u64,
+        data: &[u8],
+    ) -> Result<()> {
+        let mut execution_context = context_guard!(self);
+        let emission_slot = execution_context.slot;
+        let emission_index = execution_context.created_message_index;
+        let sender = execution_context.get_current_address()?;
+        execution_context.push_new_message(AsyncMessage {
+            emission_slot,
+            emission_index,
+            sender,
+            destination: Address::from_str(target_address)?,
+            handler: target_handler.to_string(),
+            validity_start: Slot::new(validity_start.0, validity_start.1),
+            validity_end: Slot::new(validity_end.0, validity_end.1),
+            max_gas,
+            gas_price: Amount::from_raw(gas_price),
+            coins: Amount::from_raw(raw_coins),
+            data: data.to_vec(),
+        });
+        execution_context.created_message_index += 1;
+        Ok(())
     }
 }

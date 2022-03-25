@@ -10,6 +10,7 @@
 
 use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;
+use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
     ReadOnlyExecutionRequest,
@@ -122,7 +123,7 @@ impl ExecutionState {
         // apply state changes to the final ledger
         self.final_state
             .write()
-            .settle_slot(exec_out.slot, exec_out.state_changes);
+            .finalize(exec_out.slot, exec_out.state_changes);
         // update the final ledger's slot
         self.final_cursor = exec_out.slot;
 
@@ -253,7 +254,7 @@ impl ExecutionState {
     /// Execute an operation in the context of a block.
     /// Assumes the execution context was initialized at the beginning of the slot.
     ///
-    /// # arguments
+    /// # Arguments
     /// * operation: operation to execute
     /// * block_creator_addr: address of the block creator
     pub fn execute_operation(
@@ -324,7 +325,7 @@ impl ExecutionState {
 
             // Set the call stack to a single element:
             // * the execution will happen in the context of the address of the operation's sender
-            // * the context will signal that `coins` were creditedto the parallel balance of the sender during that call
+            // * the context will signal that `coins` were credited to the parallel balance of the sender during that call
             // * the context will give the operation's sender write access to its own ledger entry
             context.stack = vec![ExecutionStackElement {
                 address: sender_addr,
@@ -337,7 +338,7 @@ impl ExecutionState {
         };
 
         // run the VM on the bytecode contained in the operation
-        let run_result = massa_sc_runtime::run(bytecode, *max_gas, &*self.execution_interface);
+        let run_result = massa_sc_runtime::run_main(bytecode, *max_gas, &*self.execution_interface);
         if let Err(err) = run_result {
             // there was an error during bytecode execution:
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
@@ -351,6 +352,89 @@ impl ExecutionState {
         }
 
         Ok(())
+    }
+
+    /// Tries to execute an asynchronous message
+    /// If the execution failed reimburse the message sender.
+    ///
+    /// # Arguments
+    /// * message: message information
+    /// * bytecode: executable target bytecode, or None if unavailable
+    pub fn execute_async_message(
+        &self,
+        message: AsyncMessage,
+        bytecode: Option<Vec<u8>>,
+    ) -> Result<(), ExecutionError> {
+        // If there is no target bytecode or if message data is invalid,
+        // directly reimburse sender with coins and quit
+        let (bytecode, data) = match (bytecode, std::str::from_utf8(&message.data)) {
+            (Some(bc), Ok(d)) => (bc, d),
+            (bc, _d) => {
+                context_guard!(self).cancel_async_message(&message);
+                if bc.is_none() {
+                    return Err(ExecutionError::RuntimeError(
+                        "no target bytecode found".into(),
+                    ));
+                }
+                return Err(ExecutionError::RuntimeError(
+                    "message data does not convert to utf-8".into(),
+                ));
+            }
+        };
+
+        // prepare execution context
+        let context_snapshot;
+        {
+            let mut context = context_guard!(self);
+            context_snapshot = context.get_snapshot();
+            context.max_gas = message.max_gas;
+            context.gas_price = message.gas_price;
+            context.stack = vec![
+                ExecutionStackElement {
+                    address: message.sender,
+                    coins: message.coins,
+                    owned_addresses: vec![message.sender],
+                },
+                ExecutionStackElement {
+                    address: message.destination,
+                    coins: message.coins,
+                    owned_addresses: vec![message.destination],
+                },
+            ];
+
+            // credit coins to the target address
+            if let Err(err) =
+                context.transfer_parallel_coins(None, Some(message.destination), message.coins)
+            {
+                // coin crediting failed: reset context to snapshot and reimburse sender
+                context.reset_to_snapshot(context_snapshot);
+                context.cancel_async_message(&message);
+                return Err(ExecutionError::RuntimeError(format!(
+                    "could not credit coins to target of async execution: {}",
+                    err
+                )));
+            }
+        }
+
+        // run the target function
+        if let Err(err) = massa_sc_runtime::run_function(
+            &bytecode,
+            message.max_gas,
+            &message.handler,
+            data,
+            &*self.execution_interface,
+        ) {
+            // execution failed: reset context to snapshot and reimburse sender
+            let mut context = context_guard!(self);
+            context.reset_to_snapshot(context_snapshot);
+            context.cancel_async_message(&message);
+            Err(ExecutionError::RuntimeError(format!(
+                "async message runtime execution error: {}",
+                err
+            )))
+        } else {
+            Ok(())
+        }
     }
 
     /// Executes a full slot (with or without a block inside) without causing any changes to the state,
@@ -382,10 +466,34 @@ impl ExecutionState {
 
         // note that here, some pre-operations (like crediting block producers) can be performed before the lock
 
-        // apply the created execution context for slot execution
-        *context_guard!(self) = execution_context;
+        // get asynchronous messages destination bytecode (if available, otherwise set it to None)
+        let messages: Vec<_> = {
+            // take a lock on the context
+            let mut context = context_guard!(self);
 
-        // note that here, async operations should be executed
+            // apply the created execution context for slot execution
+            *context = execution_context;
+
+            let batch = self
+                .final_state
+                .write()
+                .async_pool
+                .take_batch_to_execute(slot, self.config.max_async_gas);
+
+            // important note: combining here will create a deadlock
+            batch
+                .into_iter()
+                .map(|msg| (context.get_bytecode(&msg.destination), msg))
+                .collect()
+        };
+
+        // Try executing asynchronous messages.
+        // Effects are cancelled on failure and the sender is reimbursed.
+        for (opt_bytecode, message) in messages {
+            if let Err(err) = self.execute_async_message(message, opt_bytecode) {
+                debug!("failed executing async message: {}", err);
+            }
+        }
 
         // check if there is a block at this slot
         if let (Some((block_id, block)), Some(block_creator_addr)) =
@@ -403,8 +511,8 @@ impl ExecutionState {
             }
         }
 
-        // return the execution output
-        context_guard!(self).take_execution_output()
+        // finish slot and return the execution output
+        context_guard!(self).settle_slot()
     }
 
     /// Executes a read-only execution request.
@@ -440,11 +548,11 @@ impl ExecutionState {
         *context_guard!(self) = execution_context;
 
         // run the intepreter
-        massa_sc_runtime::run(&bytecode, max_gas, &*self.execution_interface)
+        massa_sc_runtime::run_main(&bytecode, max_gas, &*self.execution_interface)
             .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
 
         // return the execution output
-        Ok(context_guard!(self).take_execution_output())
+        Ok(context_guard!(self).settle_slot())
     }
 
     /// Gets a full ledger entry both at the latest final and active executed slots

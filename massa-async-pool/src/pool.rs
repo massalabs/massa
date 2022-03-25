@@ -2,16 +2,14 @@
 
 //! This file defines a finite size final pool of async messages for use in the context of autonomous smart contracts
 
-use std::{collections::BTreeMap, result};
-
-use massa_models::Slot;
-
 use crate::{
     bootstrap::AsyncPoolBootstrap,
     changes::{AsyncPoolChanges, Change},
     config::AsyncPoolConfig,
     message::{AsyncMessage, AsyncMessageId},
 };
+use massa_models::Slot;
+use std::collections::BTreeMap;
 
 /// Represents a pool of deterministically sorted messages.
 /// The final async pool is attached to the output of the latest final slot within the context of massa-final-state.
@@ -93,14 +91,8 @@ impl AsyncPool {
     pub fn settle_slot(
         &mut self,
         slot: Slot,
-        new_messages: Vec<AsyncMessage>,
+        new_messages: &mut Vec<(AsyncMessageId, AsyncMessage)>,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        // Compute IDs
-        let mut new_messages: Vec<_> = new_messages
-            .into_iter()
-            .map(|v| (v.compute_id(), v))
-            .collect();
-
         // Filter out all messages for which the validity end is expired.
         // Note that the validity_end bound is NOT included in the validity interval of the message.
         let mut eliminated: Vec<_> = self
@@ -110,7 +102,7 @@ impl AsyncPool {
             .collect();
 
         // Insert new messages into the pool
-        self.messages.extend(new_messages);
+        self.messages.extend(new_messages.clone());
 
         // Truncate message pool to its max size, removing non-prioritary items
         let excess_count = self
@@ -121,7 +113,6 @@ impl AsyncPool {
         for _ in 0..excess_count {
             eliminated.push(self.messages.pop_last().unwrap()); // will not panic (checked at excess_count computation)
         }
-
         eliminated
     }
 
@@ -155,7 +146,7 @@ impl AsyncPool {
                     false
                 }
             })
-            .map(|x| x.1)
+            .map(|(_id, msg)| msg)
             .collect::<Vec<AsyncMessage>>()
     }
 }
