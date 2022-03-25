@@ -15,7 +15,7 @@ pub struct SpeculativeAsyncPool {
     async_pool: AsyncPool,
 
     /// List of newly emitted async messages
-    emitted: Vec<AsyncMessage>,
+    emitted: Vec<(AsyncMessageId, AsyncMessage)>,
 
     /// List of changes (additions/deletions) to the pool after settling emitted messages
     settled_changes: AsyncPoolChanges,
@@ -44,18 +44,18 @@ impl SpeculativeAsyncPool {
     }
 
     /// Takes a snapshot (clone) of the emitted messages
-    pub fn get_snapshot(&self) -> Vec<AsyncMessage> {
+    pub fn get_snapshot(&self) -> Vec<(AsyncMessageId, AsyncMessage)> {
         self.emitted.clone()
     }
 
     /// Resets the SpeculativeAsyncPool emitted messages to a snapshot (see get_snapshot method)
-    pub fn reset_to_snapshot(&mut self, snapshot: Vec<AsyncMessage>) {
+    pub fn reset_to_snapshot(&mut self, snapshot: Vec<(AsyncMessageId, AsyncMessage)>) {
         self.emitted = snapshot;
     }
 
     /// Add a new message to the list of changes of this SpeculativeAsyncPool
     pub fn push_new_message(&mut self, msg: AsyncMessage) {
-        self.emitted.push(msg);
+        self.emitted.push((msg.compute_id(), msg));
     }
 
     /// Settle a slot.
@@ -67,10 +67,13 @@ impl SpeculativeAsyncPool {
     /// # Returns
     /// the list of deleted (message_id, message), used for reimbursement
     pub fn settle_slot(&mut self, slot: Slot) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        let (settled_changes, deleted_messages) = self
-            .async_pool
-            .settle_slot(slot, std::mem::take(&mut self.emitted));
-        self.settled_changes = settled_changes;
+        let deleted_messages = self.async_pool.settle_slot(slot, &mut self.emitted);
+        for (msg_id, msg) in std::mem::take(&mut self.emitted) {
+            self.settled_changes.push_add(msg_id, msg);
+        }
+        for (msg_id, _msg) in deleted_messages.iter() {
+            self.settled_changes.push_delete(*msg_id);
+        }
         deleted_messages
     }
 }

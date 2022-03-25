@@ -96,14 +96,8 @@ impl AsyncPool {
     pub fn settle_slot(
         &mut self,
         slot: Slot,
-        new_messages: Vec<AsyncMessage>,
-    ) -> (AsyncPoolChanges, Vec<(AsyncMessageId, AsyncMessage)>) {
-        // Compute the IDs of new messages
-        let mut new_messages: Vec<(AsyncMessageId, AsyncMessage)> = new_messages
-            .into_iter()
-            .map(|v| (v.compute_id(), v))
-            .collect();
-
+        new_messages: &mut Vec<(AsyncMessageId, AsyncMessage)>,
+    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         // Filter out all messages for which the validity end is expired.
         // Note that the validity_end bound is NOT included in the validity interval of the message.
         let mut eliminated: Vec<_> = self
@@ -124,17 +118,7 @@ impl AsyncPool {
         for _ in 0..excess_count {
             eliminated.push(self.messages.pop_last().unwrap()); // will not panic (checked at excess_count computation)
         }
-
-        // compile changes without compensations
-        let mut changes = AsyncPoolChanges::default();
-        for (msg_id, msg) in new_messages {
-            changes.push_add(msg_id, msg);
-        }
-        for (msg_id, _msg) in &eliminated {
-            changes.push_delete(*msg_id);
-        }
-
-        (changes, eliminated)
+        eliminated
     }
 
     /// Takes the best possible batch of messages to execute, with gas limits and slot validity filtering.

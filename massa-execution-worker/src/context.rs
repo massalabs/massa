@@ -9,7 +9,7 @@
 
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_ledger::SpeculativeLedger;
-use massa_async_pool::AsyncMessage;
+use massa_async_pool::{AsyncMessage, AsyncMessageId};
 use massa_execution_exports::{
     EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest,
 };
@@ -30,7 +30,7 @@ pub(crate) struct ExecutionContextSnapshot {
     pub ledger_changes: LedgerChanges,
 
     /// speculative async pool messages emitted so far in the context
-    pub async_pool_changes: Vec<AsyncMessage>,
+    pub async_pool_changes: Vec<(AsyncMessageId, AsyncMessage)>,
 
     /// counter of newly created addresses so far at this slot during this execution
     pub created_addr_index: u64,
