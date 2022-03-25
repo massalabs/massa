@@ -20,7 +20,7 @@ use massa_protocol_exports::{ProtocolError, ProtocolPoolEvent};
 use massa_time::TimeError;
 use std::time::Duration;
 use tokio::time::{sleep_until, Instant, Sleep};
-use tracing::warn;
+use tracing::{debug, warn};
 
 impl ProtocolWorker {
     /// On receive a batch of operation ids `op_batch` from another `node_id`
@@ -76,6 +76,7 @@ impl ProtocolWorker {
                         .checked_sub(self.protocol_settings.operation_batch_proc_period.into())
                         .ok_or(TimeError::TimeOverflowError)?
                 {
+                    debug!("re-ask operation");
                     ask_set.insert(op_id);
                     wish.0 = now;
                     wish.1.push(node_id);
@@ -95,6 +96,8 @@ impl ProtocolWorker {
                 node_id,
                 operations_ids: future_set,
             });
+        } else {
+            debug!("buffer full");
         }
         if !ask_set.is_empty() {
             self.network_command_sender
