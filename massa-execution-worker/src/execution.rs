@@ -340,6 +340,7 @@ impl ExecutionState {
         message: AsyncMessage,
         bytecode: Option<Vec<u8>>,
     ) -> Result<(), ExecutionError> {
+        tracing::warn!("EXECUTE ASYNC MESSAGE: BYTECODE = {}", bytecode.is_some());
         // If there is no target bytecode or if message data is invalid,
         // directly reimburse sender with coins and quit
         let (bytecode, data) = match (bytecode, std::str::from_utf8(&message.data)) {
@@ -391,6 +392,7 @@ impl ExecutionState {
             }
         }
 
+        tracing::warn!("ABOUT TO RUN HANDLER");
         // run the target function
         if let Err(err) = massa_sc_runtime::run_function(
             &bytecode,
@@ -399,6 +401,7 @@ impl ExecutionState {
             data,
             &*self.execution_interface,
         ) {
+            tracing::warn!("RUN HANDLER ERROR");
             // execution failed: reset context to snapshot and reimburse sender
             let mut context = context_guard!(self);
             context.reset_to_snapshot(context_snapshot);
@@ -408,6 +411,7 @@ impl ExecutionState {
                 err
             )))
         } else {
+            tracing::warn!("RUN HANDLER OK");
             Ok(())
         }
     }
@@ -431,6 +435,11 @@ impl ExecutionState {
         // accumulate previous active changes from output history
         let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
 
+        tracing::warn!(
+            "ACCUMULATED CHANGES LEN: {}",
+            previous_changes.async_pool_changes.0.len()
+        );
+
         // create a new execution context for the whole active slot
         let execution_context = ExecutionContext::active_slot(
             slot,
@@ -439,32 +448,58 @@ impl ExecutionState {
             self.final_state.clone(),
         );
 
+        tracing::warn!("1");
+
         // note that here, some pre-operations (like crediting block producers) can be performed before the lock
 
         // get asynchronous messages destination bytecode (if available, otherwise set it to None)
-        let messages: Vec<_> = {
+        // let messages: Vec<_> = {
+        //     // take a lock on the context
+        //     let mut context = context_guard!(self);
+
+        //     // apply the created execution context for slot execution
+        //     *context = execution_context;
+
+        //     self.final_state
+        //         .write()
+        //         .async_pool
+        //         .take_batch_to_execute(slot, self.config.max_async_gas)
+        //         .into_iter()
+        //         .map(|msg| (context.get_bytecode(&msg.destination), msg))
+        //         .collect()
+        // };
+
+        let iter = {
             // take a lock on the context
             let mut context = context_guard!(self);
 
             // apply the created execution context for slot execution
             *context = execution_context;
 
-            self.final_state
+            let messages = self
+                .final_state
                 .write()
                 .async_pool
-                .take_batch_to_execute(slot, self.config.max_async_gas)
-                .into_iter()
-                .map(|msg| (context.get_bytecode(&msg.destination), msg))
-                .collect()
+                .take_batch_to_execute(slot, self.config.max_async_gas);
+            let mut modules: Vec<Option<Vec<u8>>> = Vec::with_capacity(messages.len());
+            for message in &messages {
+                modules.push(context.get_bytecode(&message.destination));
+            }
+            messages.into_iter().zip(modules)
         };
+
+        tracing::warn!("2");
 
         // Try executing asynchronous messages.
         // Effects are cancelled on failure and the sender is reimbursed.
-        for (opt_bytecode, message) in messages {
+        for (message, opt_bytecode) in iter {
+            tracing::warn!("2.5");
             if let Err(err) = self.execute_async_message(message, opt_bytecode) {
                 debug!("failed executing async message: {}", err);
             }
         }
+
+        tracing::warn!("3");
 
         // check if there is a block at this slot
         if let (Some((block_id, block)), Some(block_creator_addr)) =
