@@ -1,0 +1,105 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Copyright (c) 2022 MASSA LABS info@massa.net"><meta name="keywords" content="rust, rustlang, rust-lang, massa_async_pool"><title>massa_async_pool - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../dark.css" disabled><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../storage.js"></script><script src="../crates.js"></script><script defer src="../main.js"></script>
+    <noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../massa_async_pool/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../massa_async_pool/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"><a href="#">Crate massa_async_pool</a></h2><div class="sidebar-elems"><div class="block"><ul><li class="version">Version 0.1.0</li><li><a id="all-types" href="all.html">All Items</a></li></div></ul><section><div class="block"><ul><li><a href="#structs">Structs</a></li><li><a href="#types">Type Definitions</a></li></ul></div></section><div id="sidebar-vars" data-name="massa_async_pool" data-ty="mod" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../massa_async_pool/index.html"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+    <h1 class="fqn"><span class="in-band">Crate <a class="mod" href="#">massa_async_pool</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../src/massa_async_pool/lib.rs.html#1-109">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Copyright (c) 2022 MASSA LABS <a href="mailto:info@massa.net">info@massa.net</a></p>
+<h2 id="general-description"><a href="#general-description">General description</a></h2>
+<p>This crate implements a consensual/deterministic pool of asynchronous messages (AsyncPool) within the context of autonomous smart contracts.</p>
+<p>AsyncPool is used in conjunction with FinalLedger within the FinalState, but also as a speculative copy for speculative execution.</p>
+<h3 id="goal"><a href="#goal">Goal</a></h3>
+<p>Allow a smart contract to send a message to trigger another smart contract’s handler asynchronously.</p>
+<p>Note that all the “coins” mentioned here are SCE coins.</p>
+<h3 id="message-format"><a href="#message-format">Message format</a></h3><div class="example-wrap"><pre class="language-json"><code>{
+    &quot;sender&quot;: &quot;xxxx&quot;,  // address that sent the message and spent max_gas*gas_price+coins on emission
+    &quot;slot&quot;: {&quot;period&quot;: 123455, &quot;thread&quot;: 11},  // slto at which the message was emitted
+    &quot;emission_index&quot;: 212,  // index of the message emitted in this slot
+    &quot;destination&quot;: &quot;xxxx&quot;,  // target address
+    &quot;handler&quot;: &quot;handle_message&quot;,  // name of the handler function to call in the target SC
+    &quot;validity_start&quot;: {&quot;period&quot;: 123456, &quot;thread&quot;: 12},  // the message can be handled starting from the validity_start slot (included)
+    &quot;validity_end&quot;: {&quot;period&quot;: 123457, &quot;thread&quot;: 16},  // the message can be handled until the validity_end slot (excluded)
+    &quot;max_gas&quot;: 12334,  // max gas available when the handler is called
+    &quot;gas_price&quot;: &quot;124.23&quot;,  // gas price for the handler call
+    &quot;coins&quot;: &quot;1111.11&quot;,  // amount of coins to transfer to the destination address when calling its handler
+    &quot;data&quot;: { ... any object ... }  // data payload of the message, passed as the sole parameter of the destination handler when called
+}</code></pre></div><h3 id="how-to-send-a-message-during-bytecode-execution"><a href="#how-to-send-a-message-during-bytecode-execution">How to send a message during bytecode execution</a></h3>
+<ul>
+<li>messages are sent using an ABI: <code>send_message(target_addrress, target_handler, validity_start, validity_end, max_gas, gas_price, coins, data: JSON string) -&gt; Result&lt;(), ABIReturnError&gt;</code>. Note that data has a config defined max_async_message_data_size.</li>
+<li>when called, this ABI does this:
+<ul>
+<li>it consumes <code>compute_gas_cost_of_message_storage(context.current_slot, validity_end_slot)</code> of gas in the current execution. This allows making the message emission more gas-consuming when it requires storing the message in queue for longer</li>
+<li>it consumes <code>max_gas * gas_price + coins</code> coins from the sender</li>
+<li>it generates an AsyncMessage and stores it in an Async pool</li>
+</ul>
+</li>
+</ul>
+<p>Note that <code>max_gas*gas_price</code> coins are burned when sending the message.</p>
+<h3 id="how-is-the-asyncpool-handled"><a href="#how-is-the-asyncpool-handled">How is the AsyncPool handled</a></h3>
+<ul>
+<li>
+<p>In the AsyncPool, Messages are kept sorted by <code>priority = AsyncMessageId(msg.max_gas * msg.gas_price, rev(msg.slot), rev(msg.emission_index))</code></p>
+</li>
+<li>
+<p>when an AsyncMessage is added to the AsyncPool:</p>
+<ul>
+<li>if the AsyncPool length has exceeded config.max_async_pool_length:
+<ul>
+<li>remove the lowest-priority message and reimburse “coins” to the message sender</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>At every slot S :</p>
+<ul>
+<li>expired messages are deleted, and “coins” are credited back to the message sender</li>
+<li>messages that are valid at slot S (in terms of validity_start, validity end) are popped in highest-to-lowest priority order until they accumulate max_async_gas_per_slot. For each selected message M in decreasing priority order:
+<ul>
+<li>make sure that M.target_address exists and has a method called M.target_handler with the right signature, otherwise fail the execution</li>
+<li>credit target_address with M.coins</li>
+<li>run the target handler function with M.payload as parameter and the context:
+<ul>
+<li>max_gas = M.max_gas</li>
+<li>gas_price = M.gas_price</li>
+<li>slot = S</li>
+<li>call_stack = [M.target_address, M.sender_address]</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>on any failure, cancel all the effects of execution and credit M.coins back to the sender</li>
+<li>if there is a block at slot S, the execution of the block happens here</li>
+</ul>
+</li>
+</ul>
+<h3 id="how-to-receive-a-message-inside-the-smart-contract"><a href="#how-to-receive-a-message-inside-the-smart-contract">How to receive a message (inside the smart contract)</a></h3>
+<ul>
+<li>define a public exported handler function taking 1 parameter (the message data)</li>
+<li>this function will be called when a message is processed with the right <code>destination</code> and <code>handler</code></li>
+</ul>
+<h2 id="architecture"><a href="#architecture">Architecture</a></h2><h3 id="messagers"><a href="#messagers">message.rs</a></h3>
+<p>Defines AsyncMessage that represents an asynchronous message.</p>
+<h3 id="poolrs"><a href="#poolrs">pool.rs</a></h3>
+<p>Defines the AsyncPool that manipulates a list of AsyncMessages sorted by priority.</p>
+<h3 id="changesrs"><a href="#changesrs">changes.rs</a></h3>
+<p>Represents and manipulates changes (message additions/deletions) in the AsyncPool.</p>
+<h3 id="bootstraprs"><a href="#bootstraprs">bootstrap.rs</a></h3>
+<p>Provides serializable strucutres and tools for bootstrapping the async pool.</p>
+<h3 id="test-exports"><a href="#test-exports">Test exports</a></h3>
+<p>When the crate feature <code>testing</code> is enabled, tooling useful for testing purposes is exported.
+See test_exports/mod.rs for details.</p>
+</div></details><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.AsyncMessage.html" title="massa_async_pool::AsyncMessage struct">AsyncMessage</a></div><div class="item-right docblock-short"><p>Structure defining an asynchronous smart contract message</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.AsyncPool.html" title="massa_async_pool::AsyncPool struct">AsyncPool</a></div><div class="item-right docblock-short"><p>Represents a pool of deterministically sorted messages.
+The final async pool is attached to the output of the latest final slot within the context of massa-final-state.
+Nodes must bootstrap the final message pool when they join the network.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.AsyncPoolBootstrap.html" title="massa_async_pool::AsyncPoolBootstrap struct">AsyncPoolBootstrap</a></div><div class="item-right docblock-short"><p>Represents a snapshot of the async pool aimed at bootstrapping an AsyncPool</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.AsyncPoolChanges.html" title="massa_async_pool::AsyncPoolChanges struct">AsyncPoolChanges</a></div><div class="item-right docblock-short"><p>represents a list of additions and deletions to the async message pool</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.AsyncPoolConfig.html" title="massa_async_pool::AsyncPoolConfig struct">AsyncPoolConfig</a></div><div class="item-right docblock-short"><p>Async pool configuration</p>
+</div></div></div><h2 id="types" class="small-section-header"><a href="#types">Type Definitions</a></h2>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="type" href="type.AsyncMessageId.html" title="massa_async_pool::AsyncMessageId type">AsyncMessageId</a></div><div class="item-right docblock-short"><p>Unique identifier of a message.
+Also has the property of ordering by priority (highest first) following the triplet:
+(rev(max_gas*gas_price), emission_slot, emission_index)</p>
+</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="massa_async_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (63b8f01bb 2022-03-24)" ></div>
+</body></html>

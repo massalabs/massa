@@ -52,10 +52,28 @@
 <span id="47">47</span>
 <span id="48">48</span>
 <span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! Provides serializable strucutres for bootstrapping the FinalState</span>
 
+<span class="kw">use</span> <span class="ident">massa_async_pool::AsyncPoolBootstrap</span>;
 <span class="kw">use</span> <span class="ident">massa_ledger::FinalLedgerBootstrapState</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">DeserializeCompact</span>, <span class="ident">SerializeCompact</span>, <span class="ident">Slot</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -68,6 +86,8 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">slot</span>: <span class="ident">Slot</span>,
     <span class="doccomment">/// final ledger</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">ledger</span>: <span class="ident">FinalLedgerBootstrapState</span>,
+    <span class="doccomment">/// aysnc pool</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">async_pool</span>: <span class="ident">AsyncPoolBootstrap</span>,
 }
 
 <span class="doccomment">/// Allows serializing the FinalStateBootstrap to a compact binary representation</span>
@@ -80,6 +100,9 @@
 
         <span class="comment">// final ledger</span>
         <span class="ident">res</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">ledger</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
+
+        <span class="comment">// final async pool</span>
+        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">async_pool</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
 
         <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
     }
@@ -98,9 +121,20 @@
         <span class="kw">let</span> (<span class="ident">ledger</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">FinalLedgerBootstrapState::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
         <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
 
-        <span class="prelude-val">Ok</span>((<span class="ident">FinalStateBootstrap</span> { <span class="ident">slot</span>, <span class="ident">ledger</span> }, <span class="ident">cursor</span>))
+        <span class="comment">// final async pool</span>
+        <span class="kw">let</span> (<span class="ident">async_pool</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">AsyncPoolBootstrap::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
+        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+
+        <span class="prelude-val">Ok</span>((
+            <span class="ident">FinalStateBootstrap</span> {
+                <span class="ident">slot</span>,
+                <span class="ident">ledger</span>,
+                <span class="ident">async_pool</span>,
+            },
+            <span class="ident">cursor</span>,
+        ))
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9f4dc0b4d 2022-03-23)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (63b8f01bb 2022-03-24)" ></div>
 </body></html>

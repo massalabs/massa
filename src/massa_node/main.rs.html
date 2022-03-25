@@ -399,6 +399,12 @@
 <span id="394">394</span>
 <span id="395">395</span>
 <span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
@@ -407,6 +413,7 @@
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">massa_logging</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>::{<span class="ident">POOL_CONFIG</span>, <span class="ident">SETTINGS</span>};
 <span class="kw">use</span> <span class="ident">massa_api</span>::{<span class="ident">Private</span>, <span class="ident">Public</span>, <span class="ident">RpcServer</span>, <span class="ident">StopHandle</span>, <span class="ident">API</span>};
+<span class="kw">use</span> <span class="ident">massa_async_pool::AsyncPoolConfig</span>;
 <span class="kw">use</span> <span class="ident">massa_bootstrap</span>::{<span class="ident">get_state</span>, <span class="ident">start_bootstrap_server</span>, <span class="ident">BootstrapManager</span>};
 <span class="kw">use</span> <span class="ident">massa_consensus_exports</span>::{
     <span class="ident">events::ConsensusEvent</span>, <span class="ident">settings::ConsensusChannels</span>, <span class="ident">ConsensusCommandSender</span>, <span class="ident">ConsensusConfig</span>,
@@ -420,8 +427,8 @@
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">constants</span>::{
-        <span class="ident">END_TIMESTAMP</span>, <span class="ident">GENESIS_TIMESTAMP</span>, <span class="ident">MAX_GAS_PER_BLOCK</span>, <span class="ident">OPERATION_VALIDITY_PERIODS</span>, <span class="ident">T0</span>,
-        <span class="ident">THREAD_COUNT</span>, <span class="ident">VERSION</span>,
+        <span class="ident">END_TIMESTAMP</span>, <span class="ident">GENESIS_TIMESTAMP</span>, <span class="ident">MAX_ASYNC_GAS</span>, <span class="ident">MAX_ASYNC_POOL_LENGTH</span>, <span class="ident">MAX_GAS_PER_BLOCK</span>,
+        <span class="ident">OPERATION_VALIDITY_PERIODS</span>, <span class="ident">T0</span>, <span class="ident">THREAD_COUNT</span>, <span class="ident">VERSION</span>,
     },
     <span class="ident">init_serialization_context</span>, <span class="ident">SerializationContext</span>,
 };
@@ -536,10 +543,14 @@
     <span class="kw">let</span> <span class="ident">ledger_config</span> <span class="op">=</span> <span class="ident">LedgerConfig</span> {
         <span class="ident">initial_sce_ledger_path</span>: <span class="ident">SETTINGS</span>.<span class="ident">ledger</span>.<span class="ident">initial_sce_ledger_path</span>.<span class="ident">clone</span>(),
     };
+    <span class="kw">let</span> <span class="ident">async_pool_config</span> <span class="op">=</span> <span class="ident">AsyncPoolConfig</span> {
+        <span class="ident">max_length</span>: <span class="ident">MAX_ASYNC_POOL_LENGTH</span>,
+    };
     <span class="kw">let</span> <span class="ident">final_state_config</span> <span class="op">=</span> <span class="ident">FinalStateConfig</span> {
         <span class="ident">final_history_length</span>: <span class="ident">SETTINGS</span>.<span class="ident">ledger</span>.<span class="ident">final_history_length</span>,
         <span class="ident">thread_count</span>,
         <span class="ident">ledger_config</span>,
+        <span class="ident">async_pool_config</span>,
     };
     <span class="kw">let</span> <span class="ident">final_state</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="kw">match</span> <span class="ident">bootstrap_state</span>.<span class="ident">final_state</span> {
         <span class="prelude-val">Some</span>(<span class="ident">l</span>) =&gt; <span class="ident">FinalState::from_bootstrap_state</span>(<span class="ident">final_state_config</span>, <span class="ident">l</span>),
@@ -552,6 +563,7 @@
         <span class="ident">readonly_queue_length</span>: <span class="ident">SETTINGS</span>.<span class="ident">execution</span>.<span class="ident">readonly_queue_length</span>,
         <span class="ident">cursor_delay</span>: <span class="ident">SETTINGS</span>.<span class="ident">execution</span>.<span class="ident">cursor_delay</span>,
         <span class="ident">clock_compensation</span>: <span class="ident">bootstrap_state</span>.<span class="ident">compensation_millis</span>,
+        <span class="ident">max_async_gas</span>: <span class="ident">MAX_ASYNC_GAS</span>,
         <span class="ident">thread_count</span>,
         <span class="ident">t0</span>,
         <span class="ident">genesis_timestamp</span>: <span class="kw-2">*</span><span class="ident">GENESIS_TIMESTAMP</span>,
@@ -796,5 +808,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9f4dc0b4d 2022-03-23)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (63b8f01bb 2022-03-24)" ></div>
 </body></html>

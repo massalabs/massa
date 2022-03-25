@@ -142,6 +142,8 @@
 <span id="137">137</span>
 <span id="138">138</span>
 <span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALISE DIVERS CONFIGURATIONS STRUCTURES</span>
 <span class="doccomment">//! Same as default constants but in testing mode. You can access to them with</span>
 <span class="doccomment">//! the `testing` feature activated.</span>
@@ -214,6 +216,7 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ADVERTISE_LENGTH</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">10</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASK_BLOCKS_PER_MESSAGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">3</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BLOCK_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">3145728</span>; <span class="comment">// 3 * 1024 * 1024</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASYNC_POOL_LENGTH</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10_000</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_BLOCKS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">100</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_CHILDREN</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">10</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_CLIQUES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">100</span>;
@@ -224,6 +227,7 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_POS_ENTRIES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_POS_CYCLES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_GAS_PER_BLOCK</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">100_000_000</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASYNC_GAS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10_000_000</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_MESSAGE_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">3145728</span>; <span class="comment">// 3 * 1024 * 1024</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATIONS_PER_BLOCK</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1024</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1024</span>;
@@ -282,5 +286,5 @@
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">STATS_TIMESPAN</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="number">60000</span>.<span class="ident">into</span>();
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9f4dc0b4d 2022-03-23)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (63b8f01bb 2022-03-24)" ></div>
 </body></html>

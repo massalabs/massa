@@ -1,0 +1,226 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../massa_async_pool/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../../massa_async_pool/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../massa_async_pool/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+
+<span class="doccomment">//! # General description</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! This crate implements a consensual/deterministic pool of asynchronous messages (AsyncPool) within the context of autonomous smart contracts.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! AsyncPool is used in conjunction with FinalLedger within the FinalState, but also as a speculative copy for speculative execution.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## Goal</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Allow a smart contract to send a message to trigger another smart contract&#39;s handler asynchronously.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Note that all the &quot;coins&quot; mentioned here are SCE coins.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## Message format</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ```json</span>
+<span class="doccomment">//! {</span>
+<span class="doccomment">//!     &quot;sender&quot;: &quot;xxxx&quot;,  // address that sent the message and spent max_gas*gas_price+coins on emission</span>
+<span class="doccomment">//!     &quot;slot&quot;: {&quot;period&quot;: 123455, &quot;thread&quot;: 11},  // slto at which the message was emitted</span>
+<span class="doccomment">//!     &quot;emission_index&quot;: 212,  // index of the message emitted in this slot</span>
+<span class="doccomment">//!     &quot;destination&quot;: &quot;xxxx&quot;,  // target address</span>
+<span class="doccomment">//!     &quot;handler&quot;: &quot;handle_message&quot;,  // name of the handler function to call in the target SC</span>
+<span class="doccomment">//!     &quot;validity_start&quot;: {&quot;period&quot;: 123456, &quot;thread&quot;: 12},  // the message can be handled starting from the validity_start slot (included)</span>
+<span class="doccomment">//!     &quot;validity_end&quot;: {&quot;period&quot;: 123457, &quot;thread&quot;: 16},  // the message can be handled until the validity_end slot (excluded)</span>
+<span class="doccomment">//!     &quot;max_gas&quot;: 12334,  // max gas available when the handler is called</span>
+<span class="doccomment">//!     &quot;gas_price&quot;: &quot;124.23&quot;,  // gas price for the handler call</span>
+<span class="doccomment">//!     &quot;coins&quot;: &quot;1111.11&quot;,  // amount of coins to transfer to the destination address when calling its handler</span>
+<span class="doccomment">//!     &quot;data&quot;: { ... any object ... }  // data payload of the message, passed as the sole parameter of the destination handler when called</span>
+<span class="doccomment">//! }</span>
+<span class="doccomment">//! ```</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## How to send a message during bytecode execution</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! * messages are sent using an ABI: `send_message(target_addrress, target_handler, validity_start, validity_end, max_gas, gas_price, coins, data: JSON string) -&gt; Result&lt;(), ABIReturnError&gt;`. Note that data has a config defined max_async_message_data_size.</span>
+<span class="doccomment">//! * when called, this ABI does this:</span>
+<span class="doccomment">//!   * it consumes `compute_gas_cost_of_message_storage(context.current_slot, validity_end_slot)` of gas in the current execution. This allows making the message emission more gas-consuming when it requires storing the message in queue for longer</span>
+<span class="doccomment">//!   * it consumes `max_gas * gas_price + coins` coins from the sender</span>
+<span class="doccomment">//!   * it generates an AsyncMessage and stores it in an Async pool</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Note that `max_gas*gas_price` coins are burned when sending the message.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## How is the AsyncPool handled</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! * In the AsyncPool, Messages are kept sorted by `priority = AsyncMessageId(msg.max_gas * msg.gas_price, rev(msg.slot), rev(msg.emission_index))`</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! * when an AsyncMessage is added to the AsyncPool:</span>
+<span class="doccomment">//!   * if the AsyncPool length has exceeded config.max_async_pool_length:</span>
+<span class="doccomment">//!     * remove the lowest-priority message and reimburse &quot;coins&quot; to the message sender</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! * At every slot S :</span>
+<span class="doccomment">//!   * expired messages are deleted, and &quot;coins&quot; are credited back to the message sender</span>
+<span class="doccomment">//!   * messages that are valid at slot S (in terms of validity_start, validity end) are popped in highest-to-lowest priority order until they accumulate max_async_gas_per_slot. For each selected message M in decreasing priority order:</span>
+<span class="doccomment">//!     * make sure that M.target_address exists and has a method called M.target_handler with the right signature, otherwise fail the execution</span>
+<span class="doccomment">//!     * credit target_address with M.coins</span>
+<span class="doccomment">//!     * run the target handler function with M.payload as parameter and the context:</span>
+<span class="doccomment">//!       * max_gas = M.max_gas</span>
+<span class="doccomment">//!       * gas_price = M.gas_price</span>
+<span class="doccomment">//!       * slot = S</span>
+<span class="doccomment">//!       * call_stack = [M.target_address, M.sender_address]</span>
+<span class="doccomment">//!   * on any failure, cancel all the effects of execution and credit M.coins back to the sender</span>
+<span class="doccomment">//!   * if there is a block at slot S, the execution of the block happens here</span>
+<span class="doccomment">//!  </span>
+<span class="doccomment">//! ## How to receive a message (inside the smart contract)</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! * define a public exported handler function taking 1 parameter (the message data)</span>
+<span class="doccomment">//! * this function will be called when a message is processed with the right `destination` and `handler`</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! # Architecture</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## message.rs</span>
+<span class="doccomment">//! Defines AsyncMessage that represents an asynchronous message.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## pool.rs</span>
+<span class="doccomment">//! Defines the AsyncPool that manipulates a list of AsyncMessages sorted by priority.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## changes.rs</span>
+<span class="doccomment">//! Represents and manipulates changes (message additions/deletions) in the AsyncPool.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## bootstrap.rs</span>
+<span class="doccomment">//! Provides serializable strucutres and tools for bootstrapping the async pool.  </span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## Test exports</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.</span>
+<span class="doccomment">//! See test_exports/mod.rs for details.</span>
+
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">map_first_last</span>)]</span>
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">btree_drain_filter</span>)]</span>
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">drain_filter</span>)]</span>
+
+<span class="kw">mod</span> <span class="ident">bootstrap</span>;
+<span class="kw">mod</span> <span class="ident">changes</span>;
+<span class="kw">mod</span> <span class="ident">config</span>;
+<span class="kw">mod</span> <span class="ident">message</span>;
+<span class="kw">mod</span> <span class="ident">pool</span>;
+
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">bootstrap::AsyncPoolBootstrap</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">changes::AsyncPoolChanges</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">config::AsyncPoolConfig</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">message</span>::{<span class="ident">AsyncMessage</span>, <span class="ident">AsyncMessageId</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">pool::AsyncPool</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">mod</span> <span class="ident">tests</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_exports</span>;
+</code></pre></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_async_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (63b8f01bb 2022-03-24)" ></div>
+</body></html>

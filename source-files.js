@@ -1,11 +1,12 @@
 var N = null;var sourcesIndex = {};
 sourcesIndex["massa_api"] = {"name":"","files":["error.rs","lib.rs","private.rs","public.rs"]};
+sourcesIndex["massa_async_pool"] = {"name":"","files":["bootstrap.rs","changes.rs","config.rs","lib.rs","message.rs","pool.rs"]};
 sourcesIndex["massa_bootstrap"] = {"name":"","files":["client_binder.rs","error.rs","establisher.rs","lib.rs","messages.rs","server_binder.rs","settings.rs"]};
 sourcesIndex["massa_client"] = {"name":"","files":["cmds.rs","main.rs","repl.rs","settings.rs","utils.rs"]};
 sourcesIndex["massa_consensus_exports"] = {"name":"","files":["commands.rs","consensus_controller.rs","error.rs","events.rs","lib.rs","settings.rs","tools.rs"]};
 sourcesIndex["massa_consensus_worker"] = {"name":"","files":["consensus_worker.rs","lib.rs","tools.rs"]};
 sourcesIndex["massa_execution_exports"] = {"name":"","files":["controller_traits.rs","error.rs","event_store.rs","lib.rs","settings.rs","types.rs"]};
-sourcesIndex["massa_execution_worker"] = {"name":"","files":["context.rs","controller.rs","execution.rs","interface_impl.rs","lib.rs","request_queue.rs","speculative_ledger.rs","worker.rs"]};
+sourcesIndex["massa_execution_worker"] = {"name":"","files":["context.rs","controller.rs","execution.rs","interface_impl.rs","lib.rs","request_queue.rs","speculative_async_pool.rs","speculative_ledger.rs","worker.rs"]};
 sourcesIndex["massa_final_state"] = {"name":"","files":["bootstrap.rs","config.rs","error.rs","final_state.rs","lib.rs","state_changes.rs"]};
 sourcesIndex["massa_graph"] = {"name":"","files":["block_graph.rs","bootstrapable_graph.rs","error.rs","export_active_block.rs","ledger.rs","lib.rs","settings.rs"]};
 sourcesIndex["massa_hash"] = {"name":"","files":["error.rs","hash.rs","lib.rs","settings.rs"]};

@@ -102,6 +102,23 @@
 <span id="97">97</span>
 <span id="98">98</span>
 <span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file defines the final state of the node, which includes</span>
@@ -113,7 +130,8 @@
     <span class="ident">bootstrap::FinalStateBootstrap</span>, <span class="ident">config::FinalStateConfig</span>, <span class="ident">error::FinalStateError</span>,
     <span class="ident">state_changes::StateChanges</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_ledger::FinalLedger</span>;
+<span class="kw">use</span> <span class="ident">massa_async_pool::AsyncPool</span>;
+<span class="kw">use</span> <span class="ident">massa_ledger</span>::{<span class="ident">Applicable</span>, <span class="ident">FinalLedger</span>};
 <span class="kw">use</span> <span class="ident">massa_models::Slot</span>;
 <span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
 
@@ -125,6 +143,8 @@
     <span class="kw">pub</span> <span class="ident">slot</span>: <span class="ident">Slot</span>,
     <span class="doccomment">/// final ledger associating addresses to their balance, executable bytecode and data</span>
     <span class="kw">pub</span> <span class="ident">ledger</span>: <span class="ident">FinalLedger</span>,
+    <span class="comment">// async pool containing messages sorted by priority and their data</span>
+    <span class="kw">pub</span> <span class="ident">async_pool</span>: <span class="ident">AsyncPool</span>,
     <span class="doccomment">/// history of recent final state changes, useful for streaming bootstrap</span>
     <span class="doccomment">/// front = oldest, back = newest</span>
     <span class="ident">changes_history</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span>(<span class="ident">Slot</span>, <span class="ident">StateChanges</span>)<span class="op">&gt;</span>,
@@ -144,10 +164,14 @@
             <span class="ident">FinalStateError::LedgerError</span>(<span class="macro">format!</span>(<span class="string">&quot;could not initialize ledger: {}&quot;</span>, <span class="ident">err</span>))
         })<span class="question-mark">?</span>;
 
+        <span class="comment">// create the async pool</span>
+        <span class="kw">let</span> <span class="ident">async_pool</span> <span class="op">=</span> <span class="ident">AsyncPool::new</span>(<span class="ident">config</span>.<span class="ident">async_pool_config</span>.<span class="ident">clone</span>());
+
         <span class="comment">// generate the final ledger</span>
         <span class="prelude-val">Ok</span>(<span class="ident">FinalState</span> {
             <span class="ident">slot</span>,
             <span class="ident">ledger</span>,
+            <span class="ident">async_pool</span>,
             <span class="ident">config</span>,
             <span class="ident">changes_history</span>: <span class="ident">Default::default</span>(), <span class="comment">// no changes in history</span>
         })
@@ -162,6 +186,10 @@
         <span class="ident">FinalState</span> {
             <span class="ident">slot</span>: <span class="ident">state</span>.<span class="ident">slot</span>,
             <span class="ident">ledger</span>: <span class="ident">FinalLedger::from_bootstrap_state</span>(<span class="ident">config</span>.<span class="ident">ledger_config</span>.<span class="ident">clone</span>(), <span class="ident">state</span>.<span class="ident">ledger</span>),
+            <span class="ident">async_pool</span>: <span class="ident">AsyncPool::from_bootstrap_snapshot</span>(
+                <span class="ident">config</span>.<span class="ident">async_pool_config</span>.<span class="ident">clone</span>(),
+                <span class="ident">state</span>.<span class="ident">async_pool</span>,
+            ),
             <span class="ident">config</span>,
             <span class="ident">changes_history</span>: <span class="ident">Default::default</span>(), <span class="comment">// no changes in history</span>
         }
@@ -171,6 +199,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_bootstrap_state</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">FinalStateBootstrap</span> {
         <span class="ident">FinalStateBootstrap</span> {
             <span class="ident">slot</span>: <span class="self">self</span>.<span class="ident">slot</span>,
+            <span class="ident">async_pool</span>: <span class="self">self</span>.<span class="ident">async_pool</span>.<span class="ident">get_bootstrap_snapshot</span>(),
             <span class="ident">ledger</span>: <span class="self">self</span>.<span class="ident">ledger</span>.<span class="ident">get_bootstrap_state</span>(),
         }
     }
@@ -179,7 +208,7 @@
     <span class="doccomment">/// Once this is called, the state is attached at the output of the provided slot.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Panics if the new slot is not the one coming just after the current one.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">settle_slot</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>, <span class="ident">changes</span>: <span class="ident">StateChanges</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">finalize</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>, <span class="ident">changes</span>: <span class="ident">StateChanges</span>) {
         <span class="comment">// check slot consistency</span>
         <span class="kw">let</span> <span class="ident">next_slot</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">slot</span>
@@ -192,6 +221,11 @@
         <span class="comment">// update current slot</span>
         <span class="self">self</span>.<span class="ident">slot</span> <span class="op">=</span> <span class="ident">slot</span>;
 
+        <span class="comment">// apply changes</span>
+        <span class="self">self</span>.<span class="ident">ledger</span>.<span class="ident">apply</span>(<span class="ident">changes</span>.<span class="ident">ledger_changes</span>.<span class="ident">clone</span>());
+        <span class="self">self</span>.<span class="ident">async_pool</span>
+            .<span class="ident">apply_changes_unchecked</span>(<span class="ident">changes</span>.<span class="ident">async_pool_changes</span>.<span class="ident">clone</span>());
+
         <span class="comment">// push history element and limit history size</span>
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">final_history_length</span> <span class="op">&gt;</span> <span class="number">0</span> {
             <span class="kw">while</span> <span class="self">self</span>.<span class="ident">changes_history</span>.<span class="ident">len</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">final_history_length</span> {
@@ -202,5 +236,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9f4dc0b4d 2022-03-23)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_final_state" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (63b8f01bb 2022-03-24)" ></div>
 </body></html>
