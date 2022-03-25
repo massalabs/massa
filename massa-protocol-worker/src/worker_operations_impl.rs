@@ -155,7 +155,7 @@ impl ProtocolWorker {
         let now = Instant::now();
         while !self.op_batch_buffer.is_empty()
         // This unwrap is ok because we checked that it's not empty just before.
-            && now > self.op_batch_buffer.front().unwrap().instant
+            && now >= self.op_batch_buffer.front().unwrap().instant
         {
             let op_batch_item = self.op_batch_buffer.pop_front().unwrap();
             self.on_batch_operations_received(op_batch_item.operations_ids, op_batch_item.node_id)
