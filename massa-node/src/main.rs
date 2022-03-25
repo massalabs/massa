@@ -20,7 +20,7 @@ use massa_ledger::LedgerConfig;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
-        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS, MAX_GAS_PER_BLOCK,
+        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_GAS_PER_BLOCK,
         OPERATION_VALIDITY_PERIODS, T0, THREAD_COUNT, VERSION,
     },
     init_serialization_context, SerializationContext,
@@ -137,8 +137,7 @@ async fn launch() -> (
         initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
     };
     let async_pool_config = AsyncPoolConfig {
-        // TODO: define max_length value, it musn't come from a settings file
-        max_length: 100,
+        max_length: MAX_ASYNC_POOL_LENGTH,
     };
     let final_state_config = FinalStateConfig {
         final_history_length: SETTINGS.ledger.final_history_length,
