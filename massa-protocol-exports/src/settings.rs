@@ -26,6 +26,8 @@ pub struct ProtocolSettings {
     pub max_op_batch_per_sec_per_node: usize,
     /// All operations asked are prune each `operation_asked_pruning_period` millisecond
     pub max_operations_per_message: u64,
+    /// Pruning asked op timer
+    pub asked_ops_lifetime: MassaTime,
 }
 
 impl ProtocolSettings {

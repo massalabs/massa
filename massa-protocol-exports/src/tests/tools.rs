@@ -236,6 +236,7 @@ pub fn create_protocol_settings() -> ProtocolSettings {
         asked_operations_pruning_period: 500,
         max_op_batch_per_sec_per_node: 6,
         max_operations_per_message: 1024,
+        asked_ops_lifetime: 100000.into(),
     }
 }
 

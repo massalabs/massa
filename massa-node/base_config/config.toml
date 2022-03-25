@@ -102,6 +102,8 @@
     max_operations_per_message = 1024
     # Max number of operation ids batches a node is allowed to send in a second
     max_op_batch_per_sec_per_node = 6
+    # Pruning asked op timer in millisecond
+    asked_ops_lifetime = 100000
     
 [network]
     # port on which to listen for protocol communication
