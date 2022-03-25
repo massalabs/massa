@@ -213,6 +213,8 @@ pub enum NetworkCommand {
         to_node: NodeId,
         wishlist: OperationIds,
     },
+    Whitelist(Vec<IpAddr>),
+    RemoveFromWhitelist(Vec<IpAddr>),
 }
 
 #[derive(Debug)]

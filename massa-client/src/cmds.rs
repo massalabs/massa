@@ -35,14 +35,14 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(args = "[IpAddr]"),
-        message = "unban a given IP addresses"
+        message = "unban given IP addresses"
     )]
     unban,
 
     #[strum(
         ascii_case_insensitive,
         props(args = "[IpAddr]"),
-        message = "ban a given IP addresses"
+        message = "ban given IP addresses"
     )]
     ban,
 
@@ -72,6 +72,20 @@ pub enum Command {
         message = "generate the testnet rewards program node/staker ownership proof"
     )]
     node_testnet_rewards_program_ownership_proof,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "[IpAddr]"),
+        message = "whitelist given IP addresses"
+    )]
+    node_whitelist,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "[IpAddr]"),
+        message = "remove from whitelist given IP addresses"
+    )]
+    node_remove_from_whitelist,
 
     #[strum(
         ascii_case_insensitive,
@@ -770,6 +784,30 @@ impl Command {
                     Ok(res) => Ok(Box::new(res)),
                     Err(e) => rpc_error!(e),
                 }
+            }
+            Command::node_whitelist => {
+                let ips = parse_vec::<IpAddr>(parameters)?;
+                match client.private.node_whitelist(ips).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of whitelisting successfully sent!")
+                        }
+                    }
+                    Err(e) => rpc_error!(e),
+                }
+                Ok(Box::new(()))
+            }
+            Command::node_remove_from_whitelist => {
+                let ips = parse_vec::<IpAddr>(parameters)?;
+                match client.private.node_remove_from_whitelist(ips).await {
+                    Ok(()) => {
+                        if !json {
+                            println!("Request of removing from whitelist successfully sent!")
+                        }
+                    }
+                    Err(e) => rpc_error!(e),
+                }
+                Ok(Box::new(()))
             }
         }
     }

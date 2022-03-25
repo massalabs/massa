@@ -540,6 +540,10 @@ impl NetworkWorker {
             }
             NetworkCommand::Unban(ip) => on_unban_cmd(self, ip).await?,
             NetworkCommand::GetStats { response_tx } => on_get_stats_cmd(self, response_tx).await,
+            NetworkCommand::Whitelist(ips) => on_whitelist_cmd(self, ips).await?,
+            NetworkCommand::RemoveFromWhitelist(ips) => {
+                on_remove_from_whitelist_cmd(self, ips).await?
+            }
         };
         Ok(())
     }
