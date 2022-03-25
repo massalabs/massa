@@ -12,7 +12,6 @@ impl Default for ExecutionConfig {
         ExecutionConfig {
             readonly_queue_length: 10,
             max_final_events: 10,
-            // TODO: define max_async_gas value
             max_async_gas: 10_000_000,
             thread_count: 2,
             cursor_delay: 0.into(),
