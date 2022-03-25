@@ -270,8 +270,6 @@ impl ProtocolWorker {
         let operation_batch_proc_period_timer =
             sleep(self.protocol_settings.operation_batch_proc_period.into());
         tokio::pin!(operation_batch_proc_period_timer);
-        let propagate_operations_timer = sleep(self.protocol_settings.get_batch_send_period());
-        tokio::pin!(propagate_operations_timer);
         loop {
             massa_trace!("protocol.protocol_worker.run_loop.begin", {});
             /*
