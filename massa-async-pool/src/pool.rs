@@ -84,12 +84,7 @@ impl AsyncPool {
     /// * new_messages: list of AsyncMessage to add to the pool
     ///
     /// # returns
-    ///
-    /// A 2-tuple.
-    ///
-    /// The first tuple element is the compiled list of changes caused to the pool.
-    ///
-    /// The second tuple element is the list of messages that were eliminated from the pool after the changes were applied, sorted in the following order:
+    /// The list of (message_id, message) that were eliminated from the pool after the changes were applied, sorted in the following order:
     /// * expired messages from the pool, in priority order (from highest to lowest priority)
     /// * expired messages from new_messages (in the order they appear in new_messages)
     /// * excess messages after inserting all remaining new_messages, in priority order (from highest to lowest priority)

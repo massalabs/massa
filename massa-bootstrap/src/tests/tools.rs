@@ -69,7 +69,6 @@ pub fn get_random_final_state_bootstrap(thread_count: u8) -> FinalStateBootstrap
     let mut rng = rand::thread_rng();
 
     let mut sorted_ledger = BTreeMap::new();
-    // TODO: generate messages
     let messages = Vec::new();
 
     for _ in 0usize..rng.gen_range(0..10) {
