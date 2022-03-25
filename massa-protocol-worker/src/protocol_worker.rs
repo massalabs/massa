@@ -265,7 +265,7 @@ impl ProtocolWorker {
             self.protocol_settings.asked_operations_pruning_period,
         ));
         tokio::pin!(operation_prune_timer);
-        let block_ask_timer = sleep(self.protocol_settings.ask_block_timeout.into());
+        let block_ask_timer = sleep(self.protocol_settings.asked_ops_lifetime.into());
         tokio::pin!(block_ask_timer);
         let operation_batch_proc_period_timer =
             sleep(self.protocol_settings.operation_batch_proc_period.into());

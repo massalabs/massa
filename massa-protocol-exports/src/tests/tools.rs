@@ -234,6 +234,8 @@ pub fn create_protocol_settings() -> ProtocolSettings {
         operation_batch_buffer_capacity: 1000,
         operation_batch_proc_period: 200.into(),
         asked_operations_pruning_period: 500,
+        max_operations_per_message: 1024,
+        asked_ops_lifetime: 100000.into(),
     }
 }
 

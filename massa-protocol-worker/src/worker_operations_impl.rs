@@ -73,9 +73,7 @@ impl ProtocolWorker {
                 // otherwise add in future_set
                 if wish.0
                     < now
-                        .checked_sub(Duration::from_millis(
-                            self.protocol_settings.operation_batch_proc_period,
-                        ))
+                        .checked_sub(self.protocol_settings.operation_batch_proc_period.into())
                         .ok_or(TimeError::TimeOverflowError)?
                 {
                     ask_set.insert(op_id);
@@ -92,9 +90,7 @@ impl ProtocolWorker {
         if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity {
             self.op_batch_buffer.push_back(OperationBatchItem {
                 instant: now
-                    .checked_add(Duration::from_millis(
-                        self.protocol_settings.operation_batch_proc_period,
-                    ))
+                    .checked_add(self.protocol_settings.operation_batch_proc_period.into())
                     .ok_or(TimeError::TimeOverflowError)?,
                 node_id,
                 operations_ids: future_set,
@@ -156,9 +152,12 @@ impl ProtocolWorker {
         &mut self,
         operation_batch_proc_period_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
-        // init timer
-
-        if let Some(op_batch_item) = self.op_batch_buffer.pop_front() {
+        let now = Instant::now();
+        while !self.op_batch_buffer.is_empty()
+        // This unwrap is ok because we checked that it's not empty just before.
+            && now > self.op_batch_buffer.front().unwrap().instant
+        {
+            let op_batch_item = self.op_batch_buffer.pop_front().unwrap();
             self.on_batch_operations_received(op_batch_item.operations_ids, op_batch_item.node_id)
                 .await?;
         }
@@ -166,7 +165,7 @@ impl ProtocolWorker {
         if let Some(item) = self.op_batch_buffer.front() {
             operation_batch_proc_period_timer.set(sleep_until(item.instant));
         } else {
-            let next_tick = Instant::now()
+            let next_tick = now
                 .checked_add(self.protocol_settings.operation_batch_proc_period.into())
                 .ok_or(TimeError::TimeOverflowError)?;
             operation_batch_proc_period_timer.set(sleep_until(next_tick));
