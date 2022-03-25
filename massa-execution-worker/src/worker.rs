@@ -22,6 +22,7 @@ use massa_models::{
 use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::{collections::HashMap, sync::Arc};
+use tracing::info;
 
 /// Structure gathering all elements needed by the execution thread
 pub(crate) struct ExecutionThread {
@@ -266,6 +267,7 @@ impl ExecutionThread {
         }
 
         // speculative cache mismatch
+        info!("speculative execution cache mismatch: resetting the cache");
 
         // clear the speculative execution output cache completely
         exec_state.clear_history();
