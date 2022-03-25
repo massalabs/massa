@@ -1,6 +1,6 @@
 [submodule "massa-deploy"]
 	path = massa-deploy
 	url = https://github.com/massalabs/massa-deploy.git
-[submodule "docs"]
-	path = docs
+[submodule "wiki"]
+	path = wiki
 	url = https://github.com/massalabs/massa.wiki.git
