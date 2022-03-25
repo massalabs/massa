@@ -18,7 +18,7 @@ pub struct ProtocolSettings {
     /// Dismiss the new batches if overflow
     pub operation_batch_buffer_capacity: usize,
     /// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
-    pub operation_batch_proc_period: u64,
+    pub operation_batch_proc_period: MassaTime,
     /// All operations asked are prune each `operation_asked_pruning_period` millisecond
     pub asked_operations_pruning_period: u64,
 }

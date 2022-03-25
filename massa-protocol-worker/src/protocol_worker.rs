@@ -267,9 +267,11 @@ impl ProtocolWorker {
         tokio::pin!(operation_prune_timer);
         let block_ask_timer = sleep(self.protocol_settings.ask_block_timeout.into());
         tokio::pin!(block_ask_timer);
-        // TODO: Have different values block and operations
-        let operation_ask_timer = sleep(self.protocol_settings.ask_block_timeout.into());
-        tokio::pin!(operation_ask_timer);
+        let operation_batch_proc_period_timer =
+            sleep(self.protocol_settings.operation_batch_proc_period.into());
+        tokio::pin!(operation_batch_proc_period_timer);
+        let propagate_operations_timer = sleep(self.protocol_settings.get_batch_send_period());
+        tokio::pin!(propagate_operations_timer);
         loop {
             massa_trace!("protocol.protocol_worker.run_loop.begin", {});
             /*
@@ -310,9 +312,9 @@ impl ProtocolWorker {
                 }
 
                 // operation ask timer
-                _ = &mut operation_ask_timer => {
+                _ = &mut operation_batch_proc_period_timer => {
                     massa_trace!("protocol.protocol_worker.run_loop.operation_ask_timer", { });
-                    self.update_ask_operation(&mut operation_ask_timer).await?;
+                    self.update_ask_operation(&mut operation_batch_proc_period_timer).await?;
                 }
                 // operation prune timer
                 _ = &mut operation_prune_timer => {
