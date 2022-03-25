@@ -88,6 +88,7 @@ impl ProtocolWorker {
                 self.asked_operations.insert(op_id, (now, vec![node_id]));
             }
         } // EndOf for op_id in op_batch:
+        debug!("Size of op batch buffer {:?}", self.op_batch_buffer.len());
         if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity {
             self.op_batch_buffer.push_back(OperationBatchItem {
                 instant: now
