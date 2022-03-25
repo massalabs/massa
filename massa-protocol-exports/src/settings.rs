@@ -26,14 +26,3 @@ pub struct ProtocolSettings {
     /// Pruning asked op timer
     pub asked_ops_lifetime: MassaTime,
 }
-
-impl ProtocolSettings {
-    pub fn get_batch_send_period(&self) -> Duration {
-        if self.max_op_batch_per_sec_per_node == 0 {
-            // panic or what
-            Duration::from_secs(1)
-        } else {
-            Duration::from_millis(1000 / self.max_op_batch_per_sec_per_node as u64)
-        }
-    }
-}
