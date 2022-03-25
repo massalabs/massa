@@ -143,9 +143,11 @@ impl ProtocolWorker {
         self.asked_operations.clear();
         // reset timer
         let instant = Instant::now()
-            .checked_add(Duration::from_millis(
-                self.protocol_settings.asked_operations_pruning_period,
-            ))
+            .checked_add(
+                self.protocol_settings
+                    .asked_operations_pruning_period
+                    .into(),
+            )
             .ok_or(TimeError::TimeOverflowError)?;
         ask_operations_timer.set(sleep_until(instant));
         Ok(())

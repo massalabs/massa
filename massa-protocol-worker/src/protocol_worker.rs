@@ -261,11 +261,13 @@ impl ProtocolWorker {
     /// It's mostly a tokio::select within a loop.
     pub async fn run_loop(mut self) -> Result<NetworkEventReceiver, ProtocolError> {
         // TODO: Config variable for the moment 10000 (prune) (100 seconds)
-        let operation_prune_timer = sleep(Duration::from_millis(
-            self.protocol_settings.asked_operations_pruning_period,
-        ));
+        let operation_prune_timer = sleep(
+            self.protocol_settings
+                .asked_operations_pruning_period
+                .into(),
+        );
         tokio::pin!(operation_prune_timer);
-        let block_ask_timer = sleep(self.protocol_settings.asked_ops_lifetime.into());
+        let block_ask_timer = sleep(self.protocol_settings.ask_block_timeout.into());
         tokio::pin!(block_ask_timer);
         let operation_batch_proc_period_timer =
             sleep(self.protocol_settings.operation_batch_proc_period.into());
