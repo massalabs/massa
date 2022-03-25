@@ -89,7 +89,7 @@ impl ProtocolWorker {
             }
         } // EndOf for op_id in op_batch:
         debug!("Size of op batch buffer {:?}", self.op_batch_buffer.len());
-        if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity {
+        if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity && !future_set.is_empty() {
             self.op_batch_buffer.push_back(OperationBatchItem {
                 instant: now
                     .checked_add(self.protocol_settings.operation_batch_proc_period.into())
