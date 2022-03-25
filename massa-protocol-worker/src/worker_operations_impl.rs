@@ -164,6 +164,7 @@ impl ProtocolWorker {
             && now >= self.op_batch_buffer.front().unwrap().instant
         {
             let op_batch_item = self.op_batch_buffer.pop_front().unwrap();
+            debug!("depile");
             self.on_batch_operations_received(op_batch_item.operations_ids, op_batch_item.node_id)
                 .await?;
         }
