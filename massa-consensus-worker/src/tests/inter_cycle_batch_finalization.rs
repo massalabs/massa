@@ -67,7 +67,7 @@ async fn test_inter_cycle_batch_finalization() {
         roll_price,
         t0,
         genesis_timestamp: MassaTime::now().unwrap().saturating_add(warmup_time),
-        ..ConsensusConfig::default_with_staking_keys_and_ledger(&vec![staking_key], &initial_ledger)
+        ..ConsensusConfig::default_with_staking_keys_and_ledger(&[staking_key], &initial_ledger)
     };
 
     consensus_without_pool_test(
