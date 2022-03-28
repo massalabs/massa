@@ -526,7 +526,7 @@ impl NetworkWorker {
             NetworkCommand::SendOperations { node, operations } => {
                 on_send_operations_cmd(self, node, operations).await
             }
-            NetworkCommand::SendOperationBatch { to_node, batch } => {
+            NetworkCommand::SendOperationAnnouncements { to_node, batch } => {
                 on_send_operation_batches_cmd(self, to_node, batch).await
             }
             NetworkCommand::AskForOperations { to_node, wishlist } => {
@@ -773,8 +773,8 @@ impl NetworkWorker {
             NodeEvent(node, NodeEventType::ReceivedEndorsements(endorsements)) => {
                 event_impl::on_received_endorsements(self, node, endorsements).await
             }
-            NodeEvent(node, NodeEventType::ReceivedOperationBatch(operation_ids)) => {
-                event_impl::on_received_operations_batch(self, node, operation_ids).await
+            NodeEvent(node, NodeEventType::ReceivedOperationAnnouncements(operation_ids)) => {
+                event_impl::on_received_operations_annoncement(self, node, operation_ids).await
             }
             NodeEvent(node, NodeEventType::ReceivedAskForOperations(operation_ids)) => {
                 event_impl::on_received_ask_for_operations(self, node, operation_ids).await

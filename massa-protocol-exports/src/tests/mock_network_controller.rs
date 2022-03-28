@@ -99,7 +99,7 @@ impl MockNetworkController {
         operation_ids: OperationIds,
     ) {
         self.network_event_tx
-            .send(NetworkEvent::ReceivedOperationBatch {
+            .send(NetworkEvent::ReceivedOperationAnnouncements {
                 node: source_node_id,
                 operation_ids,
             })

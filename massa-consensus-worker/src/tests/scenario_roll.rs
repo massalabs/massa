@@ -758,7 +758,7 @@ async fn test_roll_deactivation() {
         periods_per_cycle: 5,
         pos_lookback_cycles: 1,
         t0: 400.into(),
-        operation_batch_size: 500,
+        operations_announcement_size: 500,
         roll_price: Amount::from_raw(10),
         pos_miss_rate_deactivation_threshold: Ratio::new(50, 100),
         ..Default::default()

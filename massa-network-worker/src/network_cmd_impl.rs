@@ -374,7 +374,7 @@ pub async fn on_send_operations_cmd(
         .await;
 }
 
-/// On the command [massa_network_exports::NetworkCommand::SendOperationBatch] is called,
+/// On the command [massa_network_exports::NetworkCommand::SendOperationAnnouncements] is called,
 /// Forward (and split) the command to the `NodeWorker` and propagate to the network
 pub async fn on_send_operation_batches_cmd(
     worker: &mut NetworkWorker,
@@ -382,14 +382,14 @@ pub async fn on_send_operation_batches_cmd(
     batch: OperationIds,
 ) {
     massa_trace!(
-        "network_worker.manage_network_command receive NetworkCommand::SendOperationBatch",
+        "network_worker.manage_network_command receive NetworkCommand::SendOperationAnnouncements",
         { "batch": batch }
     );
     let mut futs = FuturesUnordered::new();
     let fut = worker.event.forward(
         to_node,
         worker.active_nodes.get(&to_node),
-        NodeCommand::SendOperationBatch(batch),
+        NodeCommand::SendOperationAnnouncements(batch),
     );
     futs.push(fut);
     while futs.next().await.is_some() {}
@@ -413,7 +413,7 @@ pub async fn on_ask_for_operations_cmd(
     wishlist: OperationIds,
 ) {
     massa_trace!(
-        "network_worker.manage_network_command receive NetworkCommand::SendOperationBatch",
+        "network_worker.manage_network_command receive NetworkCommand::SendOperationAnnouncements",
         { "wishlist": wishlist }
     );
     worker

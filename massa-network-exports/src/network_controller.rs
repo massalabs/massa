@@ -183,10 +183,12 @@ impl NetworkCommandSender {
         batch: OperationIds,
     ) -> Result<(), NetworkError> {
         self.0
-            .send(NetworkCommand::SendOperationBatch { to_node, batch })
+            .send(NetworkCommand::SendOperationAnnouncements { to_node, batch })
             .await
             .map_err(|_| {
-                NetworkError::ChannelError("could not send SendOperationBatch command".into())
+                NetworkError::ChannelError(
+                    "could not send SendOperationAnnouncements command".into(),
+                )
             })?;
         Ok(())
     }

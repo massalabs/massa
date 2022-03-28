@@ -235,18 +235,18 @@ pub mod event_impl {
 
     /// The node worker signal that he received a bach of operation ids
     /// from another node.
-    pub async fn on_received_operations_batch(
+    pub async fn on_received_operations_annoncement(
         worker: &mut NetworkWorker,
         from: NodeId,
         operation_ids: OperationIds,
     ) {
         massa_trace!(
-            "network_worker.on_node_event receive NetworkEvent::ReceivedOperationBatch",
+            "network_worker.on_node_event receive NetworkEvent::ReceivedOperationAnnouncements",
             { "operations": operation_ids }
         );
         if let Err(err) = worker
             .event
-            .send(NetworkEvent::ReceivedOperationBatch {
+            .send(NetworkEvent::ReceivedOperationAnnouncements {
                 node: from,
                 operation_ids,
             })

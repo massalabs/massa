@@ -512,7 +512,7 @@ async fn test_block_filling() {
         endorsement_count: 10,
         max_block_size: 2000,
         max_operations_per_block: 5000,
-        operation_batch_size: 500,
+        operations_announcement_size: 500,
         operation_validity_periods: 10,
         periods_per_cycle: 3,
         t0: 1000.into(),

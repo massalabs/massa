@@ -50,7 +50,7 @@ pub enum Message {
     /// Block not found
     BlockNotFound(BlockId),
     /// Batch of operation ids
-    OperationsBatch(OperationIds),
+    OperationsAnnouncement(OperationIds),
     /// Someone ask for operations.
     AskForOperations(OperationIds),
     /// A list of operations
@@ -73,7 +73,7 @@ enum MessageTypeId {
     Operations = 8,
     Endorsements = 9,
     AskForOperation = 10,
-    OperationsBatch = 11,
+    OperationsAnnouncement = 11,
 }
 
 /// For more details on how incoming objects are checked for validity at this stage,
@@ -134,8 +134,8 @@ impl SerializeCompact for Message {
                 res.extend(u32::from(MessageTypeId::AskForOperation).to_varint_bytes());
                 serialize_operation_ids(&mut res, operation_ids)?;
             }
-            Message::OperationsBatch(operation_ids) => {
-                res.extend(u32::from(MessageTypeId::OperationsBatch).to_varint_bytes());
+            Message::OperationsAnnouncement(operation_ids) => {
+                res.extend(u32::from(MessageTypeId::OperationsAnnouncement).to_varint_bytes());
                 serialize_operation_ids(&mut res, operation_ids)?;
             }
             Message::Operations(operations) => {
@@ -258,110 +258,109 @@ impl DeserializeCompact for Message {
             .try_into()
             .map_err(|_| ModelsError::DeserializeError("invalid message type ID".into()))?;
 
-        let res =
-            match type_id {
-                MessageTypeId::HandshakeInitiation => {
-                    // public key
-                    let public_key = PublicKey::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                    cursor += PUBLIC_KEY_SIZE_BYTES;
-                    // random bytes
-                    let random_bytes: [u8; HANDSHAKE_RANDOMNESS_SIZE_BYTES] =
-                        array_from_slice(&buffer[cursor..])?;
-                    cursor += HANDSHAKE_RANDOMNESS_SIZE_BYTES;
+        let res = match type_id {
+            MessageTypeId::HandshakeInitiation => {
+                // public key
+                let public_key = PublicKey::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += PUBLIC_KEY_SIZE_BYTES;
+                // random bytes
+                let random_bytes: [u8; HANDSHAKE_RANDOMNESS_SIZE_BYTES] =
+                    array_from_slice(&buffer[cursor..])?;
+                cursor += HANDSHAKE_RANDOMNESS_SIZE_BYTES;
 
-                    // version
-                    let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
-                    cursor += delta;
+                // version
+                let (version, delta) = Version::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
 
-                    // return message
-                    Message::HandshakeInitiation {
-                        public_key,
-                        random_bytes,
-                        version,
-                    }
+                // return message
+                Message::HandshakeInitiation {
+                    public_key,
+                    random_bytes,
+                    version,
                 }
-                MessageTypeId::HandshakeReply => {
-                    let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                    cursor += SIGNATURE_SIZE_BYTES;
-                    Message::HandshakeReply { signature }
-                }
-                MessageTypeId::Block => {
-                    let (block, delta) = Block::from_bytes_compact(&buffer[cursor..])?;
-                    cursor += delta;
-                    Message::Block(block)
-                }
-                MessageTypeId::BlockHeader => {
-                    let (header, delta) =
-                        Signed::<BlockHeader, BlockId>::from_bytes_compact(&buffer[cursor..])?;
-                    cursor += delta;
-                    Message::BlockHeader(header)
-                }
-                MessageTypeId::AskForBlocks => {
-                    let (length, delta) = u32::from_varint_bytes_bounded(
-                        &buffer[cursor..],
-                        max_ask_blocks_per_message,
-                    )?;
-                    cursor += delta;
-                    // hash list
-                    let mut list: Vec<BlockId> = Vec::with_capacity(length as usize);
-                    for _ in 0..length {
-                        let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
-                        cursor += BLOCK_ID_SIZE_BYTES;
-                        list.push(b_id);
-                    }
-                    Message::AskForBlocks(list)
-                }
-                MessageTypeId::AskPeerList => Message::AskPeerList,
-                MessageTypeId::PeerList => {
-                    // length
-                    let (length, delta) =
-                        u32::from_varint_bytes_bounded(&buffer[cursor..], max_peer_list_length)?;
-                    cursor += delta;
-                    // peer list
-                    let mut peers: Vec<IpAddr> = Vec::with_capacity(length as usize);
-                    for _ in 0..length {
-                        let (ip, delta) = IpAddr::from_bytes_compact(&buffer[cursor..])?;
-                        cursor += delta;
-                        peers.push(ip);
-                    }
-                    Message::PeerList(peers)
-                }
-                MessageTypeId::BlockNotFound => {
+            }
+            MessageTypeId::HandshakeReply => {
+                let signature = Signature::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += SIGNATURE_SIZE_BYTES;
+                Message::HandshakeReply { signature }
+            }
+            MessageTypeId::Block => {
+                let (block, delta) = Block::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+                Message::Block(block)
+            }
+            MessageTypeId::BlockHeader => {
+                let (header, delta) =
+                    Signed::<BlockHeader, BlockId>::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+                Message::BlockHeader(header)
+            }
+            MessageTypeId::AskForBlocks => {
+                let (length, delta) =
+                    u32::from_varint_bytes_bounded(&buffer[cursor..], max_ask_blocks_per_message)?;
+                cursor += delta;
+                // hash list
+                let mut list: Vec<BlockId> = Vec::with_capacity(length as usize);
+                for _ in 0..length {
                     let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
                     cursor += BLOCK_ID_SIZE_BYTES;
-                    Message::BlockNotFound(b_id)
+                    list.push(b_id);
                 }
-                MessageTypeId::Operations => Message::Operations(deserialize_operations(
-                    buffer,
-                    &mut cursor,
-                    max_operations_per_message,
-                )?),
-                MessageTypeId::AskForOperation => Message::AskForOperations(
-                    deserialize_operation_ids(buffer, &mut cursor, max_operations_per_message)?,
-                ),
-                MessageTypeId::OperationsBatch => Message::OperationsBatch(
-                    deserialize_operation_ids(buffer, &mut cursor, max_operations_per_message)?,
-                ),
-                MessageTypeId::Endorsements => {
-                    // length
-                    let (length, delta) = u32::from_varint_bytes_bounded(
-                        &buffer[cursor..],
-                        max_endorsements_per_message,
-                    )?;
+                Message::AskForBlocks(list)
+            }
+            MessageTypeId::AskPeerList => Message::AskPeerList,
+            MessageTypeId::PeerList => {
+                // length
+                let (length, delta) =
+                    u32::from_varint_bytes_bounded(&buffer[cursor..], max_peer_list_length)?;
+                cursor += delta;
+                // peer list
+                let mut peers: Vec<IpAddr> = Vec::with_capacity(length as usize);
+                for _ in 0..length {
+                    let (ip, delta) = IpAddr::from_bytes_compact(&buffer[cursor..])?;
                     cursor += delta;
-                    // operations
-                    let mut endorsements = Vec::with_capacity(length as usize);
-                    for _ in 0..length {
-                        let (endorsement, delta) =
-                            Signed::<Endorsement, EndorsementId>::from_bytes_compact(
-                                &buffer[cursor..],
-                            )?;
-                        cursor += delta;
-                        endorsements.push(endorsement);
-                    }
-                    Message::Endorsements(endorsements)
+                    peers.push(ip);
                 }
-            };
+                Message::PeerList(peers)
+            }
+            MessageTypeId::BlockNotFound => {
+                let b_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += BLOCK_ID_SIZE_BYTES;
+                Message::BlockNotFound(b_id)
+            }
+            MessageTypeId::Operations => Message::Operations(deserialize_operations(
+                buffer,
+                &mut cursor,
+                max_operations_per_message,
+            )?),
+            MessageTypeId::AskForOperation => Message::AskForOperations(deserialize_operation_ids(
+                buffer,
+                &mut cursor,
+                max_operations_per_message,
+            )?),
+            MessageTypeId::OperationsAnnouncement => Message::OperationsAnnouncement(
+                deserialize_operation_ids(buffer, &mut cursor, max_operations_per_message)?,
+            ),
+            MessageTypeId::Endorsements => {
+                // length
+                let (length, delta) = u32::from_varint_bytes_bounded(
+                    &buffer[cursor..],
+                    max_endorsements_per_message,
+                )?;
+                cursor += delta;
+                // operations
+                let mut endorsements = Vec::with_capacity(length as usize);
+                for _ in 0..length {
+                    let (endorsement, delta) =
+                        Signed::<Endorsement, EndorsementId>::from_bytes_compact(
+                            &buffer[cursor..],
+                        )?;
+                    cursor += delta;
+                    endorsements.push(endorsement);
+                }
+                Message::Endorsements(endorsements)
+            }
+        };
         Ok((res, cursor))
     }
 }

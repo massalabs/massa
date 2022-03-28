@@ -1,11 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
 use crate::prehash::{PreHashed, Set};
 use crate::signed::{Id, Signable, Signed};
-use crate::{
-    constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES},
-    node::NodeId,
-};
 use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
@@ -16,10 +13,9 @@ use massa_hash::hash::Hash;
 use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 use std::fmt::Formatter;
-use std::{collections::VecDeque, convert::TryInto};
 use std::{ops::RangeInclusive, str::FromStr};
-use tokio::time::Instant;
 
 const OPERATION_ID_STRING_PREFIX: &str = "OPE";
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
@@ -486,38 +482,6 @@ impl Operation {
 pub type OperationIds = Set<OperationId>;
 /// Set of self containing signed operations.
 pub type Operations = Vec<SignedOperation>;
-
-/// Structure containing a Batch of `operation_ids` we would like to ask
-/// to a `node_id` now or later. Mainly used in protocol and translated into
-/// simple combination of a `node_id` and `operations_ids`
-pub struct OperationBatchItem {
-    pub instant: Instant,
-    pub node_id: NodeId,
-    pub operations_ids: OperationIds,
-}
-
-/// Queue containing every [OperationsBatchItem] we want to ask now or later.
-#[derive(Default)]
-pub struct OperationBatchBuffer(VecDeque<OperationBatchItem>);
-
-impl OperationBatchBuffer {
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self(VecDeque::with_capacity(capacity))
-    }
-}
-
-impl std::ops::Deref for OperationBatchBuffer {
-    type Target = VecDeque<OperationBatchItem>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for OperationBatchBuffer {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
 
 #[cfg(test)]
 mod tests {

@@ -259,9 +259,9 @@ impl NodeWorker {
                                 //massa_trace!("node_worker.run_loop. receive Message::AskForOperations", {"node": self.node_id, "operations": operation_ids});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedAskForOperations(operation_ids))).await;
                             }
-                            Message::OperationsBatch(operation_ids) => {
+                            Message::OperationsAnnouncement(operation_ids) => {
                                 massa_trace!("node_worker.run_loop. receive Message::OperationsBatch", {"node": self.node_id, "operations": operation_ids});
-                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperationBatch(operation_ids))).await;
+                                self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperationAnnouncements(operation_ids))).await;
                             }
                             Message::Endorsements(endorsements) => {
                                 massa_trace!("node_worker.run_loop. receive Message::Endorsement", {"node": self.node_id, "endorsements": endorsements});
@@ -333,14 +333,14 @@ impl NodeWorker {
                                 }
                             }
                         },
-                        Some(NodeCommand::SendOperationBatch(operation_ids)) => {
+                        Some(NodeCommand::SendOperationAnnouncements(operation_ids)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendOperationsBatch", {"node": self.node_id, "operation_ids": operation_ids});
                             for chunk in operation_ids
                             .into_iter()
                             .chunks(self.cfg.max_operations_per_message as usize)
                             .into_iter()
                             .map(|chunk| chunk.collect()) {
-                                if self.try_send_to_node(&writer_command_tx, Message::OperationsBatch(chunk)).is_err() {
+                                if self.try_send_to_node(&writer_command_tx, Message::OperationsAnnouncement(chunk)).is_err() {
                                     break 'select_loop;
                                 }
                             }

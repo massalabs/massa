@@ -171,12 +171,12 @@ async fn test_protocol_propagates_operations_to_active_nodes() {
             loop {
                 match network_controller
                     .wait_command(1000.into(), |cmd| match cmd {
-                        cmd @ NetworkCommand::SendOperationBatch { .. } => Some(cmd),
+                        cmd @ NetworkCommand::SendOperationAnnouncements { .. } => Some(cmd),
                         _ => None,
                     })
                     .await
                 {
-                    Some(NetworkCommand::SendOperationBatch { to_node, batch }) => {
+                    Some(NetworkCommand::SendOperationAnnouncements { to_node, batch }) => {
                         assert_eq!(batch.len(), 1);
                         assert!(batch.contains(&expected_operation_id));
                         assert_eq!(nodes[1].id, to_node);
@@ -253,12 +253,12 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             loop {
                 match network_controller
                     .wait_command(1000.into(), |cmd| match cmd {
-                        cmd @ NetworkCommand::SendOperationBatch { .. } => Some(cmd),
+                        cmd @ NetworkCommand::SendOperationAnnouncements { .. } => Some(cmd),
                         _ => None,
                     })
                     .await
                 {
-                    Some(NetworkCommand::SendOperationBatch { to_node, batch }) => {
+                    Some(NetworkCommand::SendOperationAnnouncements { to_node, batch }) => {
                         assert_eq!(batch.len(), 1);
                         assert!(batch.contains(&expected_operation_id));
                         assert_eq!(new_nodes[0].id, to_node);
@@ -471,12 +471,12 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             match network_controller
                 .wait_command(1000.into(), |cmd| match cmd {
-                    cmd @ NetworkCommand::SendOperationBatch { .. } => Some(cmd),
+                    cmd @ NetworkCommand::SendOperationAnnouncements { .. } => Some(cmd),
                     _ => None,
                 })
                 .await
             {
-                Some(NetworkCommand::SendOperationBatch { to_node, batch }) => {
+                Some(NetworkCommand::SendOperationAnnouncements { to_node, batch }) => {
                     panic!(
                         "Unexpected propagated of operation to node {to_node} of {:?}.",
                         batch
@@ -560,12 +560,12 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             match network_controller
                 .wait_command(1000.into(), |cmd| match cmd {
-                    cmd @ NetworkCommand::SendOperationBatch { .. } => Some(cmd),
+                    cmd @ NetworkCommand::SendOperationAnnouncements { .. } => Some(cmd),
                     _ => None,
                 })
                 .await
             {
-                Some(NetworkCommand::SendOperationBatch { to_node, batch }) => {
+                Some(NetworkCommand::SendOperationAnnouncements { to_node, batch }) => {
                     panic!(
                         "Unexpected propagated of operation to node {to_node} of {:?}.",
                         batch
@@ -657,12 +657,12 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             match network_controller
                 .wait_command(1000.into(), |cmd| match cmd {
-                    cmd @ NetworkCommand::SendOperationBatch { .. } => Some(cmd),
+                    cmd @ NetworkCommand::SendOperationAnnouncements { .. } => Some(cmd),
                     _ => None,
                 })
                 .await
             {
-                Some(NetworkCommand::SendOperationBatch { to_node, batch }) => {
+                Some(NetworkCommand::SendOperationAnnouncements { to_node, batch }) => {
                     assert_eq!(batch.len(), 1);
                     assert!(batch.contains(&operation_id_2));
                     assert_eq!(nodes[0].id, to_node);

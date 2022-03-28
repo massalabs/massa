@@ -520,10 +520,10 @@ impl ConsensusWorker {
             let operation_batch = self
                 .channels
                 .pool_command_sender
-                .send_get_operation_batch(
+                .send_get_operations_announcement(
                     cur_slot,
                     exclude_operations.clone(),
-                    self.cfg.operation_batch_size,
+                    self.cfg.operations_announcement_size,
                     remaining_block_space,
                 )
                 .await?;
@@ -532,7 +532,7 @@ impl ConsensusWorker {
 
             // Finish once we receive a batch that isn't full,
             // or if the maximum number of attempts has been reached.
-            finished = operation_batch.len() < self.cfg.operation_batch_size
+            finished = operation_batch.len() < self.cfg.operations_announcement_size
                 || self.cfg.max_operations_fill_attempts == attempts;
 
             for (op_id, op, op_size) in operation_batch.into_iter() {

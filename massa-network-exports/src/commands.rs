@@ -7,31 +7,28 @@
 //!
 //! Other modules has the access to all commands but the usage if they want to
 //! send operation that they just noticed, they should use the command
-//! [NetworkCommand::SendOperationBatch].
+//! [NetworkCommand::SendOperationAnnouncements].
 //!
 //! ```txt
-//! OurNode      NetworkWorker      NodeWorker
+//! OurNode      ProtocolWorker      Network & NodeWorker
 //!    |               |                |
 //!    +------------------------------------------- Creation of some operations
-//!    #               |                |           Extends the pool ect...
+//!    #               |                |           Extends the pool and
 //!    #               |                |
-//!    +-------------->|                |           Use NetworkCommand::SendOperationBatch(Vec<OperationId>)
-//!    |               +--------------->|           Use NodeCommand::SendOperationBatch(Vec<OperationId>)
+//!    +-------------->|                |           Forward to Protocol
+//!    |               +--------------->|           Forward to Network, then Node
 //!    |               |                #
-//!    |               |                #           Propagate the batch through the network
+//!    |               |                #           Propagate the batch of OperationIds through the network
 //! ```
 //!
 //! When receiving an operation batch from the network, the `NodeWorker` will
-//! inform the `NetworkWorker` that some potentials new operations are in
+//! inform the `ProtocolWorker` that some potentials new operations are in
 //! transit and can be requested.
 //!
-//! The event used for receiving informations from the newtork are
-//! `ReceivedOperations`, `ReceivedAskForBlocks` and `ReceivedOperationBatch`.
-//!
 //! The network will inform the node that new operations can transites with
-//! the propagation method `SendOperationBatch` that we defined just before.
+//! the propagation method `SendOperationAnnouncements` that we defined just before.
 //! Then, the node will manage if he ask or not the operations inside the
-//! `NetworkWorker` on node-worker event `ReceivedOperationBatch`
+//! `ProtocolWorker` on node-worker event `ReceivedOperationAnnouncements`
 //!
 //! ```txt
 //! Asking for operations
@@ -39,60 +36,38 @@
 //!
 //! NodeWorker      NetworkWorker          ProtocolWorker
 //!    |               |                         |
-//!    +------------------------------------------------------- Receive a batch (NodeEvent...ReceivedOperationBatch)  
+//!    +------------------------------------------------------- Receive a batch of annoucemnt
 //!    .               |                         |              
-//!    +-------------->|                         |              NetworkWorker react on previous event.
+//!    +-------------->|                         |              NetworkWorker react on previous event. Forward to protocol.
 //!    |               +------------------------>#              - Check in the protocol if we already have operations
 //!    |               |                         #              or not. Build the vector of requirement.
 //!    |               |                         #              - Update the `NodeInfo` of the sender.
-//!    |               |                         #
-//!    |               |<------------------------+              `NetworkCommand::AskForOperations(WantedOperations)`
-//!    |<--------------+                         |              `NodeCommand::AskForOperations(Vec<OperationId>)`
+//!    |               |                         #              - Use the propagation algorithm
+//!    |               |<------------------------+
+//!    |<--------------+                         |
 //!    |               |                         |
-//!    |               |                         |              > Use the `WantOperations` structure.
+//!    |               |                         |
 //!    |               |                         |              > Ask to the node that sent the batch a list of operations
 //!    |               |                         |              > that we don't already know with `NodeCommand::AskForOperations`.
 //!    |               |                         |                 
-//!    +-------------->|                         |              `NodeEvent::ReceivedOperations`
-//!    |               +------------------------>#              `NetworkEvent::ReceivedOperations`
+//!    +-------------->|                         |
+//!    |               +------------------------>#
 //!    |               |                         #              
 //!    |               |                         #              > Receive the full operations inside the structure
 //!    |               |                         #              > `AskedOperation`.
 //!    |               |                         #              
 //!    |               |                         #              Update local state and the `NodeInfo` of the sender if required.
 //!    |               |                         |
-//!    |               |<------------------------+              `NetworkCommand::SendOperationBatch`
-//!    |<--------------+                         |              `NodeCommand::SendOperationBatch`
+//!    |               |<------------------------+              Once we received and store the operation, we can propagate it.
+//!    |<--------------+                         |
 //!    |               |                         |
 //!    |               |                         |              > Propagate the batch through the network (send to nodes
 //!    |               |                         |              > that don't already know the local operations (we suppose that
 //!    |               |                         |              > from previous discussions with distant node)
 //! ```
 //!
-//! See also: [WantOperations], [AskedOperations]
 //! Look at `massa-protocol-worker/src/node-info.rs` to look further how we
 //! remember wich node know what.
-//!
-//! On receive the command from the network
-//! `NodeEvent(..ReceivedAskForOperations)` the `NetworkWorker` will build a
-//! wanted operation structure with None or Some depending the node has it.
-//!
-//! ```txt
-//! NodeWorker      NetworkWorker          ProtocolWorker
-//!    |               |                         |
-//!    +------------------------------------------------------ Receive an "ReceivedAskForOperations" event
-//!    .               |                         |
-//!    +-------------->|                         |             `NodeEvent::ReceivedAskForOperations`
-//!    |               +------------------------>#             `NetworkEvent::ReceivedAskForOperations`
-//!    |               |                         #
-//!    |               |                         #             > Build a `WantedOperation` structure for the required
-//!    |               |                         #             > operation
-//!    |               |                         #             > Update the `NodeInfo` of the sender
-//!    |               |                         #            
-//!    |               |<------------------------+             `NetworkCommand::SendOperations`
-//!    |<--------------+                         |             `NodeCommand::SendOperations`
-//!    |               |                         |
-//! ```
 
 use crate::{BootstrapPeers, ConnectionClosureReason, Peers};
 use massa_models::{
@@ -122,7 +97,7 @@ pub enum NodeCommand {
     /// Send full Operations (send to a node that previously asked for)
     SendOperations(Operations),
     /// Send a batch of operation ids
-    SendOperationBatch(OperationIds),
+    SendOperationAnnouncements(OperationIds),
     /// Ask for a set of operations
     AskForOperations(OperationIds),
     /// Endorsements
@@ -146,10 +121,10 @@ pub enum NodeEventType {
     ReceivedAskForBlocks(Vec<BlockId>),
     /// Didn't found given block,
     BlockNotFound(BlockId),
-    /// Operation
+    /// Received full operation
     ReceivedOperations(Operations),
-    /// Received operation batch
-    ReceivedOperationBatch(OperationIds),
+    /// Received an operation id batch announcing new operations
+    ReceivedOperationAnnouncements(OperationIds),
     /// Receive a list of wanted operations
     ReceivedAskForOperations(OperationIds),
     /// Receive a set of endorsement
@@ -204,7 +179,7 @@ pub enum NetworkCommand {
         operations: Operations,
     },
     /// Send operation ids batch to a node
-    SendOperationBatch {
+    SendOperationAnnouncements {
         to_node: NodeId,
         batch: OperationIds,
     },
@@ -246,7 +221,7 @@ pub enum NetworkEvent {
         node: NodeId,
         operations: Operations,
     },
-    ReceivedOperationBatch {
+    ReceivedOperationAnnouncements {
         node: NodeId,
         operation_ids: OperationIds,
     },

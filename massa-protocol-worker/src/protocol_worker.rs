@@ -1,13 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::node_info::NodeInfo;
+use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use itertools::Itertools;
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
-    operation::{OperationBatchBuffer, OperationIds, Operations},
+    operation::{OperationIds, Operations},
     prehash::{BuildMap, Map, Set},
     signed::Signable,
     Address, Block, BlockId, EndorsementId, OperationId, OperationType, SignedEndorsement,
@@ -21,7 +21,6 @@ use massa_protocol_exports::{
 };
 use massa_time::TimeError;
 use std::collections::{HashMap, HashSet};
-use std::time::Duration;
 use tokio::{
     sync::mpsc,
     sync::mpsc::error::SendTimeoutError,
@@ -1313,12 +1312,12 @@ impl ProtocolWorker {
                     let _ = self.ban_node(&node).await;
                 }
             }
-            NetworkEvent::ReceivedOperationBatch {
+            NetworkEvent::ReceivedOperationAnnouncements {
                 node,
                 operation_ids,
             } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.received_operation_batch", { "node": node, "operation_ids": operation_ids});
-                self.on_batch_operations_received(operation_ids, node)
+                massa_trace!("protocol.protocol_worker.on_network_event.received_operation_batch_announcements", { "node": node, "operation_ids": operation_ids});
+                self.on_operations_announcements_received(operation_ids, node)
                     .await?;
             }
             NetworkEvent::ReceiveAskForOperations {

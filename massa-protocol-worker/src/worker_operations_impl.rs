@@ -8,19 +8,32 @@
 //! 3) send batches
 //! 4) answer operations
 
+use std::collections::VecDeque;
+
 use crate::protocol_worker::ProtocolWorker;
 use massa_models::{
     node::NodeId,
-    operation::{OperationBatchItem, OperationIds, Operations},
+    operation::{OperationIds, Operations},
     prehash::BuildMap,
     signed::Signable,
 };
 use massa_network_exports::NetworkError;
 use massa_protocol_exports::{ProtocolError, ProtocolPoolEvent};
 use massa_time::TimeError;
-use std::time::Duration;
 use tokio::time::{sleep_until, Instant, Sleep};
 use tracing::{debug, warn};
+
+/// Structure containing a Batch of `operation_ids` we would like to ask
+/// to a `node_id` now or later. Mainly used in protocol and translated into
+/// simple combination of a `node_id` and `operations_ids`
+pub struct OperationBatchItem {
+    pub instant: Instant,
+    pub node_id: NodeId,
+    pub operations_ids: OperationIds,
+}
+
+/// Queue containing every [OperationsBatchItem] we want to ask now or later.
+pub type OperationBatchBuffer = VecDeque<OperationBatchItem>;
 
 impl ProtocolWorker {
     /// On receive a batch of operation ids `op_batch` from another `node_id`
@@ -43,7 +56,7 @@ impl ProtocolWorker {
     ///        op_batch_buf.push(now+op_batch_proc_period, node_id, future_set)
     ///    ask ask_set to node_id
     ///```
-    pub(crate) async fn on_batch_operations_received(
+    pub(crate) async fn on_operations_announcements_received(
         &mut self,
         op_batch: OperationIds,
         node_id: NodeId,
@@ -167,8 +180,11 @@ impl ProtocolWorker {
             && now >= self.op_batch_buffer.front().unwrap().instant
         {
             let op_batch_item = self.op_batch_buffer.pop_front().unwrap();
-            self.on_batch_operations_received(op_batch_item.operations_ids, op_batch_item.node_id)
-                .await?;
+            self.on_operations_announcements_received(
+                op_batch_item.operations_ids,
+                op_batch_item.node_id,
+            )
+            .await?;
         }
         // reset timer
         if let Some(item) = self.op_batch_buffer.front() {
