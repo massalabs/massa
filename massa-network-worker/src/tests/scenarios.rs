@@ -3,7 +3,7 @@
 // To start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::tools;
 use crate::messages::Message;
-use crate::node_worker::{NodeCommand, NodeEvent, NodeWorker};
+use crate::node_worker::NodeWorker;
 use crate::tests::tools::{get_dummy_block_id, get_transaction};
 use crate::NetworkError;
 use crate::NetworkEvent;
@@ -21,7 +21,7 @@ use massa_models::{
     storage::Storage,
 };
 use massa_models::{BlockId, Endorsement, Slot};
-use massa_network_exports::settings::PeerTypeConnectionConfig;
+use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
 };
@@ -1008,8 +1008,8 @@ async fn test_operation_messages() {
                 .await
             {
                 assert_eq!(operations.len(), 1);
-                let res_id = operations[0].verify_integrity().unwrap();
-                assert_eq!(ref_id, res_id);
+                assert!(operations[0].verify_integrity().is_ok());
+                assert_eq!(operations[0].verify_integrity().unwrap(), ref_id);
                 assert_eq!(node, conn1_id);
             } else {
                 panic!("Timeout while waiting for asked for block event");
@@ -1034,8 +1034,8 @@ async fn test_operation_messages() {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::Operations(op) = evt {
                             assert_eq!(op.len(), 1);
-                            let res_id = op[0].verify_integrity().unwrap();
-                            assert_eq!(ref_id2, res_id);
+                            assert!(op[0].verify_integrity().is_ok());
+                            assert_eq!(op[0].verify_integrity().unwrap(), ref_id2);
                             break;
                         }
                     },

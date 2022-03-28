@@ -298,7 +298,10 @@ impl OperationPool {
                         .contains(&block_slot.period) || w_op.byte_count > max_size {
                             massa_trace!("pool get_operation_batch not added to batch w_op.op.content.get_validity_range incorrect not added", {
                                 "range": w_op.op.content.get_validity_range(self.cfg.operation_validity_periods),
-                                "block_slot.period": block_slot.period
+                                "block_slot.period": block_slot.period,
+                                "operation_id": id,
+                                "max_size_overflow": w_op.byte_count > max_size,
+                                "byte_count": w_op.byte_count,
                             });
                         return None;
                     }

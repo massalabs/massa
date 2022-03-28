@@ -3,10 +3,11 @@
 use massa_models::{
     array_from_slice,
     constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
+    operation::{OperationIds, Operations},
     signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
-    Endorsement, EndorsementId, ModelsError, Operation, OperationId, SerializeCompact,
-    SerializeVarInt, SignedEndorsement, SignedHeader, SignedOperation, Version,
+    Endorsement, EndorsementId, ModelsError, SerializeCompact, SerializeVarInt, SignedEndorsement,
+    SignedHeader, Version,
 };
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -46,8 +47,12 @@ pub enum Message {
     PeerList(Vec<IpAddr>),
     /// Block not found
     BlockNotFound(BlockId),
-    /// Operations
-    Operations(Vec<SignedOperation>),
+    /// Batch of operation ids
+    OperationsAnnouncement(OperationIds),
+    /// Someone ask for operations.
+    AskForOperations(OperationIds),
+    /// A list of operations
+    Operations(Operations),
     /// Endorsements
     Endorsements(Vec<SignedEndorsement>),
 }
@@ -91,6 +96,8 @@ pub(crate) enum MessageTypeId {
     BlockNotFound = 7,
     Operations = 8,
     Endorsements = 9,
+    AskForOperations = 10,
+    OperationsAnnouncement = 11,
 }
 
 /// For more details on how incoming objects are checked for validity at this stage,
@@ -147,12 +154,17 @@ impl SerializeCompact for Message {
                 res.extend(u32::from(MessageTypeId::BlockNotFound).to_varint_bytes());
                 res.extend(&hash.to_bytes());
             }
+            Message::AskForOperations(operation_ids) => {
+                res.extend(u32::from(MessageTypeId::AskForOperations).to_varint_bytes());
+                res.extend(operation_ids.to_bytes_compact()?);
+            }
+            Message::OperationsAnnouncement(operation_ids) => {
+                res.extend(u32::from(MessageTypeId::OperationsAnnouncement).to_varint_bytes());
+                res.extend(operation_ids.to_bytes_compact()?);
+            }
             Message::Operations(operations) => {
                 res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());
-                res.extend((operations.len() as u64).to_varint_bytes());
-                for op in operations.iter() {
-                    res.extend(op.to_bytes_compact()?);
-                }
+                res.extend(operations.to_bytes_compact()?);
             }
             Message::Endorsements(endorsements) => {
                 res.extend(u32::from(MessageTypeId::Endorsements).to_varint_bytes());
@@ -172,19 +184,14 @@ impl DeserializeCompact for Message {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
-        let (
-            max_ask_blocks_per_message,
-            max_peer_list_length,
-            max_operations_per_message,
-            max_endorsements_per_message,
-        ) = with_serialization_context(|context| {
-            (
-                context.max_ask_blocks_per_message,
-                context.max_advertise_length,
-                context.max_operations_per_message,
-                context.max_endorsements_per_message,
-            )
-        });
+        let (max_ask_blocks_per_message, max_peer_list_length, max_endorsements_per_message) =
+            with_serialization_context(|context| {
+                (
+                    context.max_ask_blocks_per_message,
+                    context.max_advertise_length,
+                    context.max_endorsements_per_message,
+                )
+            });
 
         let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
@@ -264,19 +271,19 @@ impl DeserializeCompact for Message {
                 Message::BlockNotFound(b_id)
             }
             MessageTypeId::Operations => {
-                // length
-                let (length, delta) =
-                    u32::from_varint_bytes_bounded(&buffer[cursor..], max_operations_per_message)?;
+                let (operations, delta) = Operations::from_bytes_compact(&buffer[cursor..])?;
                 cursor += delta;
-                // operations
-                let mut ops: Vec<SignedOperation> = Vec::with_capacity(length as usize);
-                for _ in 0..length {
-                    let (op, delta) =
-                        Signed::<Operation, OperationId>::from_bytes_compact(&buffer[cursor..])?;
-                    cursor += delta;
-                    ops.push(op);
-                }
-                Message::Operations(ops)
+                Message::Operations(operations)
+            }
+            MessageTypeId::AskForOperations => {
+                let (operation_ids, delta) = OperationIds::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+                Message::AskForOperations(operation_ids)
+            }
+            MessageTypeId::OperationsAnnouncement => {
+                let (operation_ids, delta) = OperationIds::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+                Message::OperationsAnnouncement(operation_ids)
             }
             MessageTypeId::Endorsements => {
                 // length

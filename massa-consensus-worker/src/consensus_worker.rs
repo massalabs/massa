@@ -520,7 +520,7 @@ impl ConsensusWorker {
             let operation_batch = self
                 .channels
                 .pool_command_sender
-                .get_operation_batch(
+                .send_get_operations_announcement(
                     cur_slot,
                     exclude_operations.clone(),
                     self.cfg.operation_batch_size,

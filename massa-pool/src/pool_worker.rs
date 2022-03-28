@@ -157,7 +157,7 @@ impl PoolWorker {
                 operations.retain(|op_id, _op| newly_added.contains(op_id));
                 if !operations.is_empty() {
                     self.protocol_command_sender
-                        .propagate_operations(operations)
+                        .propagate_operations(operations.keys().cloned().collect())
                         .await?;
                 }
             }
@@ -297,7 +297,7 @@ impl PoolWorker {
                     operations.retain(|op_id, _op| newly_added.contains(op_id));
                     if !operations.is_empty() {
                         self.protocol_command_sender
-                            .propagate_operations(operations)
+                            .propagate_operations(operations.keys().cloned().collect())
                             .await?;
                     }
                 } else {
@@ -321,6 +321,12 @@ impl PoolWorker {
                 } else {
                     self.endorsement_pool.add_endorsements(endorsements)?;
                 }
+            }
+            ProtocolPoolEvent::GetOperations((node_id, operation_ids)) => {
+                let operations = self.operation_pool.get_operations(&operation_ids);
+                self.protocol_command_sender
+                    .send_get_operations_results(node_id, operations.into_values().collect())
+                    .await?;
             }
         }
         Ok(())
