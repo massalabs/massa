@@ -8,6 +8,8 @@ use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, usize};
 
+/// configuration for the old ledger
+/// TODO remove after unification
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct LedgerConfig {
     /// Number of threads
@@ -65,7 +67,7 @@ pub struct GraphConfig {
     pub force_keep_final_periods: u64,
     /// target number of endorsement per block
     pub endorsement_count: u32,
-    //pub block_db_prune_interval: MassaTime,
+    /// pub block_db_prune_interval: MassaTime,
     pub max_item_return_count: usize,
     // TODO: put this in an accessible config? It seems that all can be static
     /// path to ledger db (todo: static thing?)

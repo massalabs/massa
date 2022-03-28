@@ -1,5 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-
+//! protocol component exports
 #![feature(async_closure)]
 #![feature(drain_filter)]
 #![feature(ip)]
@@ -15,4 +15,5 @@ pub use protocol_controller::{
 };
 pub use settings::ProtocolSettings;
 
+/// test exports
 pub mod tests;

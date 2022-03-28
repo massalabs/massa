@@ -1,4 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Protocol component
+//! High level management of communications between nodes
 
 #![feature(async_closure)]
 #![feature(drain_filter)]

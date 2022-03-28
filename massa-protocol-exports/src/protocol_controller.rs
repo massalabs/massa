@@ -19,14 +19,20 @@ use tracing::debug;
 pub enum ProtocolEvent {
     /// A block with a valid signature has been received.
     ReceivedBlock {
+        /// corresponding id
         block_id: BlockId,
+        /// the block
         block: Block,
-        operation_set: Map<OperationId, (usize, u64)>, // (index, validity end period)
+        /// operations in the block by (index, validity end period)
+        operation_set: Map<OperationId, (usize, u64)>,
+        /// endorsements in the block with index
         endorsement_ids: Map<EndorsementId, u32>,
     },
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader {
+        /// its id
         block_id: BlockId,
+        /// The header
         header: SignedHeader,
     },
     /// Ask for a list of blocks from consensus.
@@ -37,13 +43,17 @@ pub enum ProtocolEvent {
 pub enum ProtocolPoolEvent {
     /// Operations were received
     ReceivedOperations {
+        /// the operations
         operations: Map<OperationId, SignedOperation>,
-        propagate: bool, // whether or not to propagate operations
+        /// whether or not to propagate operations
+        propagate: bool,
     },
     /// Endorsements were received
     ReceivedEndorsements {
+        /// the endorsements
         endorsements: Map<EndorsementId, SignedEndorsement>,
-        propagate: bool, // whether or not to propagate endorsements
+        /// whether or not to propagate endorsements
+        propagate: bool,
     },
 }
 
@@ -55,16 +65,22 @@ type BlocksResults =
 pub enum ProtocolCommand {
     /// Notify block integration of a given block.
     IntegratedBlock {
+        /// block id
         block_id: BlockId,
+        /// the block
         block: Box<Block>,
+        /// operations ids in the block
         operation_ids: Set<OperationId>,
+        /// endorsement ids in the block
         endorsement_ids: Vec<EndorsementId>,
     },
     /// A block, or it's header, amounted to an attempted attack.
     AttackBlockDetected(BlockId),
     /// Wishlist delta
     WishlistDelta {
+        /// add to wishlist
         new: Set<BlockId>,
+        /// remove from wishlist
         remove: Set<BlockId>,
     },
     /// The response to a ProtocolEvent::GetBlocks.
@@ -75,9 +91,11 @@ pub enum ProtocolCommand {
     PropagateEndorsements(Map<EndorsementId, SignedEndorsement>),
 }
 
+/// protocol management commands
 #[derive(Debug, Serialize)]
 pub enum ProtocolManagementCommand {}
 
+/// protocol command sender
 #[derive(Clone)]
 pub struct ProtocolCommandSender(pub mpsc::Sender<ProtocolCommand>);
 
@@ -140,6 +158,7 @@ impl ProtocolCommandSender {
         res
     }
 
+    /// update the block wishlist
     pub async fn send_wishlist_delta(
         &mut self,
         new: Set<BlockId>,
@@ -156,6 +175,7 @@ impl ProtocolCommandSender {
         res
     }
 
+    /// propagate operations to connected nodes
     pub async fn propagate_operations(
         &mut self,
         operations: Map<OperationId, SignedOperation>,
@@ -173,6 +193,7 @@ impl ProtocolCommandSender {
         res
     }
 
+    /// propagate endorsements to connected node
     pub async fn propagate_endorsements(
         &mut self,
         endorsements: Map<EndorsementId, SignedEndorsement>,
@@ -191,6 +212,7 @@ impl ProtocolCommandSender {
     }
 }
 
+/// Protocol event receiver
 pub struct ProtocolEventReceiver(pub mpsc::Receiver<ProtocolEvent>);
 
 impl ProtocolEventReceiver {
@@ -220,6 +242,8 @@ impl ProtocolEventReceiver {
         remaining_events
     }
 }
+
+/// Protocol pool event receiver
 pub struct ProtocolPoolEventReceiver(pub mpsc::Receiver<ProtocolPoolEvent>);
 
 impl ProtocolPoolEventReceiver {
@@ -250,12 +274,14 @@ impl ProtocolPoolEventReceiver {
     }
 }
 
+/// protocol manager used to stop the protocol
 pub struct ProtocolManager {
     join_handle: JoinHandle<Result<NetworkEventReceiver, ProtocolError>>,
     manager_tx: mpsc::Sender<ProtocolManagementCommand>,
 }
 
 impl ProtocolManager {
+    /// new protocol manager
     pub fn new(
         join_handle: JoinHandle<Result<NetworkEventReceiver, ProtocolError>>,
         manager_tx: mpsc::Sender<ProtocolManagementCommand>,

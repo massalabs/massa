@@ -16,39 +16,69 @@ use tracing::warn;
 /// Commands that can be processed by pool.
 #[derive(Debug)]
 pub enum PoolCommand {
+    /// Add operations to the pool
     AddOperations(Map<OperationId, SignedOperation>),
+    /// current slot update
     UpdateCurrentSlot(Slot),
+    /// Latest final periods update
     UpdateLatestFinalPeriods(Vec<u64>),
+    /// Get an operation batch for block creation
     GetOperationBatch {
+        /// target slot
         target_slot: Slot,
+        /// list of operation ids to exclude  from the batch
         exclude: Set<OperationId>,
+        /// expected batch size
         batch_size: usize,
+        /// max size of an operation in bytes
         max_size: u64,
+        /// response channel
         response_tx: oneshot::Sender<Vec<(OperationId, SignedOperation, u64)>>,
     },
+    /// get operations by id
     GetOperations {
+        /// ids
         operation_ids: Set<OperationId>,
+        /// response channel
         response_tx: oneshot::Sender<Map<OperationId, SignedOperation>>,
     },
+    /// Get operations by involved address
     GetRecentOperations {
+        /// address
         address: Address,
+        /// response channel
         response_tx: oneshot::Sender<Map<OperationId, OperationSearchResult>>,
     },
-    FinalOperations(Map<OperationId, (u64, u8)>), // (end of validity period, thread)
+    /// mark operations as final
+    /// by end of validity period, thread
+    FinalOperations(Map<OperationId, (u64, u8)>),
+    /// Get endorsements for block creation
     GetEndorsements {
+        /// target slot
         target_slot: Slot,
+        /// expected parent
         parent: BlockId,
+        /// expected creators
         creators: Vec<Address>,
+        /// response channel
         response_tx: oneshot::Sender<Vec<(EndorsementId, SignedEndorsement)>>,
     },
+    /// add endorsements to pool
     AddEndorsements(Map<EndorsementId, SignedEndorsement>),
+    /// get pool stats
     GetStats(oneshot::Sender<PoolStats>),
+    /// get endorsements by address
     GetEndorsementsByAddress {
+        /// address
         address: Address,
+        /// response channel
         response_tx: oneshot::Sender<Map<EndorsementId, SignedEndorsement>>,
     },
+    /// get endorsements by id
     GetEndorsementsById {
+        /// ids
         endorsements: Set<EndorsementId>,
+        /// response channel
         response_tx: oneshot::Sender<Map<EndorsementId, SignedEndorsement>>,
     },
 }

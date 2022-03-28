@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-
+//! Standalone massa wallet
+//! private key management
 #![warn(missing_docs)]
 
 pub use error::WalletError;
