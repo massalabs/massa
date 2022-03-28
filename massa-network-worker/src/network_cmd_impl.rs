@@ -36,7 +36,7 @@ use std::{
     net::IpAddr,
 };
 use tokio::sync::oneshot;
-use tracing::warn;
+use tracing::{debug, warn};
 
 /// Remove the `ids` from the `worker`
 /// - clean `worker.running_handshakes`
@@ -103,6 +103,7 @@ async fn ban_node(worker: &mut NetworkWorker, node: NodeId) -> Result<(), Networ
         }
     }
     ban_connection_ids(worker, ids).await;
+    debug!("Banned node (node_id: {})", node);
     Ok(())
 }
 
