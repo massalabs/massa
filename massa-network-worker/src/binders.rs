@@ -27,10 +27,10 @@ impl WriteBinder {
         }
     }
 
-    /// Serializes and sends message.
+    /// Sends a serialized message.
     ///
     /// # Argument
-    /// * msg: date to transmit.
+    /// * buf: data to transmit.
     pub async fn send(&mut self, buf: &[u8]) -> Result<u64, NetworkError> {
         //        massa_trace!("binder.send", { "msg": msg });
         let msg_size: u32 = buf
@@ -81,6 +81,7 @@ impl ReadBinder {
     }
 
     /// Awaits the next incoming message and deserializes it. Async cancel-safe.
+    /// Returns the message, as well as the serialized object in the case of a block.
     ///
     /// This function must be async cancel-safe.
     /// This means that the function can restart from the beginning at any "await" point and we need to avoid losing any data,

@@ -80,6 +80,7 @@ impl EventSender {
 pub mod event_impl {
     use crate::{network_worker::NetworkWorker, node_worker::NodeCommand};
     use massa_logging::massa_trace;
+    use massa_models::signed::Signable;
     use massa_models::{
         node::NodeId, Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation,
     };
@@ -115,7 +116,7 @@ pub mod event_impl {
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlock",
-            {"block": block, "node": from}
+            {"block_id": block.header.content.compute_id()?, "block": block, "node": from}
         );
         if let Err(err) = worker
             .event

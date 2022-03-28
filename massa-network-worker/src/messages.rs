@@ -52,6 +52,9 @@ pub enum Message {
     Endorsements(Vec<SignedEndorsement>),
 }
 
+/// Deserialize, and return, a message.
+/// In the case of a block,
+/// also return the serialized object.
 pub fn deserialize_message_with_optional_serialized_object(
     buffer: &[u8],
 ) -> Result<(Message, Option<Vec<u8>>), ModelsError> {

@@ -86,7 +86,7 @@ impl NetworkCommandSender {
 
     /// Send the order to send block header.
     ///
-    /// Note: with the current use of shared storage, 
+    /// Note: with the current use of shared storage,
     /// sending a header requires having the block stored.
     /// This matches the current use of send_block_header,
     /// which is only used after a block has been integrated in the graph.

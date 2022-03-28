@@ -195,7 +195,6 @@ impl NodeWorker {
                         let bytes_vec: Vec<u8> = match to_send {
                             ToSend::Msg(msg) => msg.to_bytes_compact().unwrap(),
                             ToSend::Block(block_id) => {
-                                // TODO: precisely allocate?
                                 let mut res: Vec<u8> = Vec::new();
                                 res.extend(u32::from(MessageTypeId::Block).to_varint_bytes());
                                 let block = storage
@@ -206,7 +205,6 @@ impl NodeWorker {
                                 res
                             }
                             ToSend::Header(block_id) => {
-                                // TODO: precisely allocate?
                                 let mut res: Vec<u8> = Vec::new();
                                 res.extend(u32::from(MessageTypeId::BlockHeader).to_varint_bytes());
 
