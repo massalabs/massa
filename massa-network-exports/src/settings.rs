@@ -50,7 +50,7 @@ pub struct NetworkSettings {
     pub peer_list_send_timeout: MassaTime,
     /// Max number of in connection overflowed managed by the handshake that send a list of peers
     pub max_in_connection_overflow: usize,
-    /// Max operations per message (included operations batches)
+    /// Max operations per message in the network to avoid sending to big data packet.
     pub max_operations_per_message: u32,
 }
 
