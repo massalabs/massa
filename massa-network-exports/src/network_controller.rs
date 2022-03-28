@@ -171,7 +171,7 @@ impl NetworkCommandSender {
         Ok(())
     }
 
-    /// Create a new call to the network, sending a `batch` of operations to a
+    /// Create a new call to the network, sending a announcement of OperationIds to a
     /// target node (`to_node`)
     ///
     /// # Returns
