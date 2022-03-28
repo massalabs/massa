@@ -370,6 +370,7 @@
 <span id="365">365</span>
 <span id="366">366</span>
 <span id="367">367</span>
+<span id="368">368</span>
 </pre><pre class="rust"><code><span class="doccomment">//! On `NetworkWorker` receive a command behaviors implementation</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! All following function take by default a reference to the `NetworkWorker`</span>
@@ -408,7 +409,7 @@
     <span class="ident">net::IpAddr</span>,
 };
 <span class="kw">use</span> <span class="ident">tokio::sync::oneshot</span>;
-<span class="kw">use</span> <span class="ident">tracing::warn</span>;
+<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">info</span>, <span class="ident">warn</span>};
 
 <span class="doccomment">/// Remove the `ids` from the `worker`</span>
 <span class="doccomment">/// - clean `worker.running_handshakes`</span>
@@ -475,6 +476,7 @@
         }
     }
     <span class="ident">ban_connection_ids</span>(<span class="ident">worker</span>, <span class="ident">ids</span>).<span class="kw">await</span>;
+    <span class="macro">info!</span>(<span class="string">&quot;Banned node (node_id: {})&quot;</span>, <span class="ident">node</span>);
     <span class="prelude-val">Ok</span>(())
 }
 
