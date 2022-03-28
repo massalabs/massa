@@ -1638,6 +1638,7 @@ dependencies = [
  "displaydoc",
  "futures 0.3.21",
  "lazy_static",
+ "massa_async_pool",
  "massa_consensus_exports",
  "massa_final_state",
  "massa_graph",

@@ -36,6 +36,7 @@ pretty_assertions = "1.0"
 serial_test = "0.5"
 massa_final_state = { path = "../massa-final-state", features=["testing"] }
 massa_ledger = { path = "../massa-ledger", features=["testing"] }
+massa_async_pool = { path = "../massa-async-pool", features=["testing"] }
 
 
 [features]

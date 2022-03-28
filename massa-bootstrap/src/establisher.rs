@@ -2,13 +2,13 @@
 
 #[cfg(test)]
 pub mod types {
-    pub type Duplex = super::tests::mock_establisher::Duplex;
+    pub type Duplex = crate::tests::mock_establisher::Duplex;
 
-    pub type Listener = super::tests::mock_establisher::MockListener;
+    pub type Listener = crate::tests::mock_establisher::MockListener;
 
-    pub type Connector = super::tests::mock_establisher::MockConnector;
+    pub type Connector = crate::tests::mock_establisher::MockConnector;
 
-    pub type Establisher = super::tests::mock_establisher::MockEstablisher;
+    pub type Establisher = crate::tests::mock_establisher::MockEstablisher;
 }
 
 #[cfg(not(test))]

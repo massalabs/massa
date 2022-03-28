@@ -44,6 +44,9 @@ mod settings;
 pub use establisher::types;
 pub use settings::BootstrapSettings;
 
+#[cfg(test)]
+pub mod tests;
+
 /// a collection of the bootstrap state snapshots of all relevant modules
 #[derive(Default, Debug)]
 pub struct GlobalBootstrapState {
@@ -534,6 +537,3 @@ async fn send_state_timeout(
         Ok(Ok(_)) => Ok(()),
     }
 }
-
-#[cfg(test)]
-pub mod tests;
