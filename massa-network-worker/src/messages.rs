@@ -1,15 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::prehash::BuildMap;
 use massa_models::{
     array_from_slice,
-    constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES},
+    constants::{BLOCK_ID_SIZE_BYTES, HANDSHAKE_RANDOMNESS_SIZE_BYTES},
     operation::{OperationIds, Operations},
-    prehash::Set,
     signed::Signed,
     with_serialization_context, Block, BlockHeader, BlockId, DeserializeCompact, DeserializeVarInt,
-    Endorsement, EndorsementId, ModelsError, OperationId, SerializeCompact, SerializeVarInt,
-    SignedEndorsement, SignedHeader, SignedOperation, Version,
+    Endorsement, EndorsementId, ModelsError, SerializeCompact, SerializeVarInt, SignedEndorsement,
+    SignedHeader, Version,
 };
 use massa_signature::{PublicKey, Signature, PUBLIC_KEY_SIZE_BYTES, SIGNATURE_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -72,7 +70,7 @@ enum MessageTypeId {
     BlockNotFound = 7,
     Operations = 8,
     Endorsements = 9,
-    AskForOperation = 10,
+    AskForOperations = 10,
     OperationsAnnouncement = 11,
 }
 
@@ -131,16 +129,16 @@ impl SerializeCompact for Message {
                 res.extend(&hash.to_bytes());
             }
             Message::AskForOperations(operation_ids) => {
-                res.extend(u32::from(MessageTypeId::AskForOperation).to_varint_bytes());
-                serialize_operation_ids(&mut res, operation_ids)?;
+                res.extend(u32::from(MessageTypeId::AskForOperations).to_varint_bytes());
+                res.extend(operation_ids.to_bytes_compact()?);
             }
             Message::OperationsAnnouncement(operation_ids) => {
                 res.extend(u32::from(MessageTypeId::OperationsAnnouncement).to_varint_bytes());
-                serialize_operation_ids(&mut res, operation_ids)?;
+                res.extend(operation_ids.to_bytes_compact()?);
             }
             Message::Operations(operations) => {
                 res.extend(u32::from(MessageTypeId::Operations).to_varint_bytes());
-                serialize_operations(&mut res, operations)?;
+                res.extend(operations.to_bytes_compact()?);
             }
             Message::Endorsements(endorsements) => {
                 res.extend(u32::from(MessageTypeId::Endorsements).to_varint_bytes());
@@ -154,108 +152,20 @@ impl SerializeCompact for Message {
     }
 }
 
-/// Tooling for the serialization of [Operations]
-/// Order of the serialized data
-/// - 32 bit: size T of the complete hashmap
-/// - for each in the range `0..T`
-///     - [SignedOperation] in bytes compact
-///
-/// We don't use [SerializeCompact] as it's not ready for [Vec] see documentation on [deserialize_operations].
-fn serialize_operations(res: &mut Vec<u8>, operations: &Operations) -> Result<(), ModelsError> {
-    res.extend((operations.len() as u32).to_varint_bytes());
-    for op in operations.iter() {
-        res.extend(op.to_bytes_compact()?);
-    }
-    Ok(())
-}
-
-/// Deserialize [Operations] from a `buffer` starting from `cursor` position,
-/// serialized by [serialize_operations].
-///
-/// We don't use [DeserializeCompact] trait because as [Operations] is a [Vec] we need the maximum bound
-/// to decode his length. So we take this value as parameter which is not allowed in the trait [DeserializeCompact].
-/// If we don't implement [DeserializeCompact] we shouldn't implement [SerializeCompact].
-fn deserialize_operations(
-    buffer: &[u8],
-    cursor: &mut usize,
-    max_operations_per_message: u32,
-) -> Result<Operations, ModelsError> {
-    let (length, delta) =
-        u32::from_varint_bytes_bounded(&buffer[*cursor..], max_operations_per_message)?;
-    *cursor += delta;
-    let mut ops: Operations = Operations::with_capacity(length as usize);
-    for _ in 0..length {
-        let (operation, delta) = SignedOperation::from_bytes_compact(&buffer[*cursor..])?;
-        *cursor += delta;
-        ops.push(operation);
-    }
-    Ok(ops)
-}
-
-/// Tooling for serialization of operation ids
-/// * res [in|out]: the serialized vector to extends
-/// * operation_ids [in]: the operation ids to serialize
-fn serialize_operation_ids(
-    res: &mut Vec<u8>,
-    operation_ids: &OperationIds,
-) -> Result<(), ModelsError> {
-    let list_len: u32 = operation_ids.len().try_into().map_err(|_| {
-        ModelsError::SerializeError("could not encode AskForBlocks list length as u32".into())
-    })?;
-    res.extend(list_len.to_varint_bytes());
-    for hash in operation_ids {
-        res.extend(&hash.to_bytes());
-    }
-    Ok(())
-}
-
-/// Tooling for the deserialization of the operations_id
-/// Deserialize from the given `buffer` starting from `cursor` position.
-///
-/// You know that the maximum number of ids is `max_operations_per_message` taken
-/// from the node configuration.
-///
-/// # Return
-/// A result that return the deserialized Vec of `OperationId`
-fn deserialize_operation_ids(
-    buffer: &[u8],
-    cursor: &mut usize,
-    max_operations_per_message: u32,
-) -> Result<OperationIds, ModelsError> {
-    let mut c = *cursor;
-    let (length, delta) = u32::from_varint_bytes_bounded(&buffer[c..], max_operations_per_message)?;
-    c += delta;
-    // hash list
-    let mut list: OperationIds =
-        Set::with_capacity_and_hasher(length as usize, BuildMap::default());
-    for _ in 0..length {
-        let b_id = OperationId::from_bytes(&array_from_slice(&buffer[c..])?)?;
-        c += OPERATION_ID_SIZE_BYTES;
-        list.insert(b_id);
-    }
-    *cursor = c;
-    Ok(list)
-}
-
 /// For more details on how incoming objects are checked for validity at this stage,
 /// see their implementation of `from_bytes_compact` in `models`.
 impl DeserializeCompact for Message {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let mut cursor = 0usize;
 
-        let (
-            max_ask_blocks_per_message,
-            max_peer_list_length,
-            max_operations_per_message,
-            max_endorsements_per_message,
-        ) = with_serialization_context(|context| {
-            (
-                context.max_ask_blocks_per_message,
-                context.max_advertise_length,
-                context.max_operations_per_message,
-                context.max_endorsements_per_message,
-            )
-        });
+        let (max_ask_blocks_per_message, max_peer_list_length, max_endorsements_per_message) =
+            with_serialization_context(|context| {
+                (
+                    context.max_ask_blocks_per_message,
+                    context.max_advertise_length,
+                    context.max_endorsements_per_message,
+                )
+            });
 
         let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
         cursor += delta;
@@ -334,19 +244,21 @@ impl DeserializeCompact for Message {
                 cursor += BLOCK_ID_SIZE_BYTES;
                 Message::BlockNotFound(b_id)
             }
-            MessageTypeId::Operations => Message::Operations(deserialize_operations(
-                buffer,
-                &mut cursor,
-                max_operations_per_message,
-            )?),
-            MessageTypeId::AskForOperation => Message::AskForOperations(deserialize_operation_ids(
-                buffer,
-                &mut cursor,
-                max_operations_per_message,
-            )?),
-            MessageTypeId::OperationsAnnouncement => Message::OperationsAnnouncement(
-                deserialize_operation_ids(buffer, &mut cursor, max_operations_per_message)?,
-            ),
+            MessageTypeId::Operations => {
+                let (operations, delta) = Operations::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+                Message::Operations(operations)
+            }
+            MessageTypeId::AskForOperations => {
+                let (operation_ids, delta) = OperationIds::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+                Message::AskForOperations(operation_ids)
+            }
+            MessageTypeId::OperationsAnnouncement => {
+                let (operation_ids, delta) = OperationIds::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+                Message::OperationsAnnouncement(operation_ids)
+            }
             MessageTypeId::Endorsements => {
                 // length
                 let (length, delta) = u32::from_varint_bytes_bounded(
