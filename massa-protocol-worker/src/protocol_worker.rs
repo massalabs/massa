@@ -1317,11 +1317,7 @@ impl ProtocolWorker {
                 node,
                 operation_ids,
             } => {
-                //massa_trace!("protocol.protocol_worker.on_network_event.received_operation_batch", { "node": node, "operation_ids": operation_ids});
-                debug!(
-                    "protocol.protocol_worker.on_network_event.received_operation_batch:{}",
-                    serde_json::json!({ "node": node, "operation_ids": operation_ids})
-                );
+                massa_trace!("protocol.protocol_worker.on_network_event.received_operation_batch", { "node": node, "operation_ids": operation_ids});
                 self.on_batch_operations_received(operation_ids, node)
                     .await?;
             }

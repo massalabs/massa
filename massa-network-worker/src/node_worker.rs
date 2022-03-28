@@ -106,13 +106,11 @@ impl NodeWorker {
                 Ok(())
             }
             Err(TrySendError::Closed(_)) => {
-                debug!("failed sending message deconnected {}.",
-                    self.node_id
-                );
+                debug!("failed sending message deconnected {}.", self.node_id);
                 Err(NetworkError::ChannelError(
                     "failed sending message to node: channel closed".into(),
                 ))
-            },
+            }
             Ok(_) => Ok(()),
         }
     }
@@ -134,9 +132,9 @@ impl NodeWorker {
                     Some(msg) => {
                         match timeout(write_timeout.to_duration(), socket_writer.send(&msg)).await {
                             Err(_err) => {
-                                debug!("node_worker.run_loop.loop.writer_command_rx.recv.send.timeout {}", serde_json::json!({
+                                massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.timeout", {
                                     "node": node_id_copy, "msg": msg
-                                }));
+                                });
                                 return Err(std::io::Error::new(
                                     std::io::ErrorKind::TimedOut,
                                     "node data writing timed out",
@@ -144,9 +142,9 @@ impl NodeWorker {
                                 .into());
                             }
                             Ok(Err(err)) => {
-                                debug!("node_worker.run_loop.loop.writer_command_rx.recv.send.error {}", serde_json::json!({
+                                massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv.send.error", {
                                     "node": node_id_copy, "err":  format!("{}", err), "msg": msg
-                                }));
+                                });
                                 return Err(err);
                             }
                             Ok(Ok(id)) => {
@@ -157,7 +155,7 @@ impl NodeWorker {
                         }
                     }
                     None => {
-                        debug!("node_worker.run_loop.loop.writer_command_rx.recv. None");
+                        massa_trace!("node_worker.run_loop.loop.writer_command_rx.recv. None", {});
                         break;
                     }
                 };
@@ -246,17 +244,17 @@ impl NodeWorker {
                                 for operation in operations.iter() {
                                     ids.push(operation.content.compute_id().unwrap());
                                 }
-                                debug!(
-                                    "node_worker.run_loop. receive Message::Operations:{}",
-                                    serde_json::json!({"node": self.node_id, "ids": ids, "operations": operations})
+                                massa_trace!(
+                                    "node_worker.run_loop. receive Message::Operations: ",
+                                    {"node": self.node_id, "ids": ids, "operations": operations}
                                 );
                                 //massa_trace!("node_worker.run_loop. receive Message::Operations", {"node": self.node_id, "operations": operations});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedOperations(operations))).await;
                             }
                             Message::AskForOperations(operation_ids) => {
-                                debug!(
-                                    "node_worker.run_loop. receive Message::AskForOperations:{}",
-                                    serde_json::json!({"node": self.node_id, "operations": operation_ids})
+                                massa_trace!(
+                                    "node_worker.run_loop. receive Message::AskForOperations: ",
+                                    {"node": self.node_id, "operations": operation_ids}
                                 );
                                 //massa_trace!("node_worker.run_loop. receive Message::AskForOperations", {"node": self.node_id, "operations": operation_ids});
                                 self.send_node_event(NodeEvent(self.node_id, NodeEventType::ReceivedAskForOperations(operation_ids))).await;
@@ -330,15 +328,9 @@ impl NodeWorker {
                         Some(NodeCommand::SendOperations(operations)) => {
                             massa_trace!("node_worker.run_loop. send Message::SendOperations", {"node": self.node_id, "operations": operations});
                             for chunk in operations.chunks(self.cfg.max_operations_per_message as usize) {
-                                let mut ids = vec![];
-                                for operation in chunk.iter() {
-                                    ids.push(operation.content.compute_id().unwrap());
-                                }
-                                debug!("node_worker.run_loop. try send chunk Message::SendOperations:{}", serde_json::json!({"node": self.node_id, "ids": ids, "operations": chunk}));
                                 if self.try_send_to_node(&writer_command_tx, Message::Operations(chunk.into())).is_err() {
                                     break 'select_loop;
                                 }
-                                debug!("node_worker.run_loop. sended chunk Message::SendOperations:{}", serde_json::json!({"node": self.node_id, "ids": ids, "operations": chunk}));
                             }
                         },
                         Some(NodeCommand::SendOperationBatch(operation_ids)) => {
@@ -355,9 +347,9 @@ impl NodeWorker {
                         }
                         Some(NodeCommand::AskForOperations(operation_ids)) => {
                             //massa_trace!("node_worker.run_loop. send Message::AskForOperations", {"node": self.node_id, "operation_ids": operation_ids});
-                            debug!(
-                                "node_worker.run_loop. send Message::AskForOperations:{}",
-                                serde_json::json!({"node": self.node_id, "operation_ids": operation_ids})
+                            massa_trace!(
+                                "node_worker.run_loop. send Message::AskForOperations",
+                                {"node": self.node_id, "operation_ids": operation_ids}
                             );
                             for chunk in operation_ids
                             .into_iter()

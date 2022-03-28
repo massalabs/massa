@@ -473,7 +473,6 @@ impl ConsensusWorker {
                     serialized_block.len()
                 ))
             })?;
-        massa_trace!("remaining block space {}", remaining_block_space);
         let mut remaining_operation_count = self.cfg.max_operations_per_block as usize;
 
         // exclude operations that were used in block ancestry

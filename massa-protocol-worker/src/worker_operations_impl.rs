@@ -76,7 +76,11 @@ impl ProtocolWorker {
                         .checked_sub(self.protocol_settings.operation_batch_proc_period.into())
                         .ok_or(TimeError::TimeOverflowError)?
                 {
-                    debug!("re-ask operation {:?} asked for the first time {:?} millis ago.", op_id, wish.0.elapsed().as_millis());
+                    debug!(
+                        "re-ask operation {:?} asked for the first time {:?} millis ago.",
+                        op_id,
+                        wish.0.elapsed().as_millis()
+                    );
                     ask_set.insert(op_id);
                     wish.0 = now;
                     wish.1.push(node_id);
@@ -88,8 +92,9 @@ impl ProtocolWorker {
                 self.asked_operations.insert(op_id, (now, vec![node_id]));
             }
         } // EndOf for op_id in op_batch:
-        debug!("Size of op batch buffer {:?}", self.op_batch_buffer.len());
-        if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity && !future_set.is_empty() {
+        if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity
+            && !future_set.is_empty()
+        {
             self.op_batch_buffer.push_back(OperationBatchItem {
                 instant: now
                     .checked_add(self.protocol_settings.operation_batch_proc_period.into())
@@ -97,12 +102,6 @@ impl ProtocolWorker {
                 node_id,
                 operations_ids: future_set,
             });
-        } else {
-            if self.op_batch_buffer.len() > self.protocol_settings.operation_batch_buffer_capacity {
-                debug!("buffer full");
-            } else if future_set.is_empty() {
-                debug!("try send empty batch");
-            }
         }
         if !ask_set.is_empty() {
             self.network_command_sender
@@ -168,7 +167,6 @@ impl ProtocolWorker {
             && now >= self.op_batch_buffer.front().unwrap().instant
         {
             let op_batch_item = self.op_batch_buffer.pop_front().unwrap();
-            debug!("depile");
             self.on_batch_operations_received(op_batch_item.operations_ids, op_batch_item.node_id)
                 .await?;
         }
