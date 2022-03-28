@@ -20,7 +20,7 @@
 //!         ...
 //! ```
 use crate::{network_worker::NetworkWorker, node_worker::NodeCommand};
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::signed::Signable;
 use massa_models::{

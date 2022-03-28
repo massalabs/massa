@@ -1,7 +1,7 @@
 use std::collections::{hash_map, BTreeMap, HashMap, VecDeque};
 
 use bitvec::{order::Lsb0, prelude::BitVec};
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::{
     active_block::ActiveBlock,
     prehash::{Map, Set},

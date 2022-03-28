@@ -6,7 +6,7 @@ use crate::ledger_changes::LedgerChanges;
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
 use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::{Address, Amount};
 use std::collections::BTreeMap;
 

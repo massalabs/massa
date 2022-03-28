@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use itertools::Itertools;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::CHANNEL_SIZE,

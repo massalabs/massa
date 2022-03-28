@@ -9,7 +9,7 @@ use crate::{
     },
     with_serialization_context, BlockId, ModelsError, Slot,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};

@@ -29,7 +29,7 @@ impl SerializeCompact for Clique {
     /// ```rust
     /// use massa_models::clique::Clique;
     /// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, BlockId};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
     /// # massa_models::init_serialization_context(massa_models::SerializationContext::default());
     /// # pub fn get_dummy_block_id(s: &str) -> BlockId {

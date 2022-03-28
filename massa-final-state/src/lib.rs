@@ -22,7 +22,7 @@
 //! It can be modified, combined or applied to the final ledger.
 //!
 //! ## bootstrap.rs
-//! Provides serializable strucutres and tools for bootstrapping the final state.  
+//! Provides serializable strucutres and tools for bootstrapping the final state.
 //!
 //! ## Test exports
 //!

@@ -3,7 +3,7 @@
 use crate::tests::tools::{self, create_endorsement, create_roll_transaction, create_transaction};
 use massa_consensus_exports::{tools::*, ConsensusConfig};
 use massa_graph::ledger::LedgerSubset;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
 use massa_models::signed::{Signable, Signed};
 use massa_models::SerializeCompact;

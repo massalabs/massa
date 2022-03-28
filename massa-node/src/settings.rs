@@ -3,7 +3,7 @@
 //! Build here the default node settings from the config file toml
 use std::path::PathBuf;
 
-use massa_bootstrap::settings::BootstrapSettings;
+use massa_bootstrap::BootstrapSettings;
 use massa_consensus_exports::ConsensusSettings;
 use massa_models::{
     api::APISettings,

@@ -9,7 +9,7 @@ use crate::{
     OperationId, SerializeCompact, SerializeMinBEInt, SerializeVarInt, SignedEndorsement,
     SignedOperation, Slot,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use serde::{Deserialize, Serialize};

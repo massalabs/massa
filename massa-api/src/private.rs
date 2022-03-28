@@ -21,6 +21,7 @@ use massa_signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Private> {
+    /// generate a new private api
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         network_command_sender: NetworkCommandSender,

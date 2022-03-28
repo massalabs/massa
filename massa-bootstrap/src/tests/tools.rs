@@ -10,7 +10,7 @@ use massa_final_state::{
 use massa_graph::{
     export_active_block::ExportActiveBlock, ledger::LedgerSubset, BootstrapableGraph,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_ledger::LedgerEntry;
 use massa_models::{
     clique::Clique,

@@ -8,7 +8,7 @@ use super::{
     mock_protocol_controller::MockProtocolController,
     tools::{validate_notpropagate_block, validate_propagate_block},
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::{
     signed::{Signable, Signed},
     Block, BlockHeader, BlockId, SignedEndorsement, SignedOperation, Slot,

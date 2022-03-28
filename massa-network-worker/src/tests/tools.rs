@@ -9,7 +9,7 @@ use crate::NetworkError;
 use crate::NetworkEvent;
 use crate::NetworkSettings;
 
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::Signed;
 use massa_models::{Address, Amount, BlockId, Operation, OperationType, SignedOperation, Version};

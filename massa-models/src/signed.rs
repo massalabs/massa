@@ -1,7 +1,7 @@
 use std::{fmt::Display, marker::PhantomData};
 
 use crate::{array_from_slice, DeserializeCompact, ModelsError, SerializeCompact};
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_signature::{
     sign, verify_signature, PrivateKey, PublicKey, Signature, SIGNATURE_SIZE_BYTES,
 };

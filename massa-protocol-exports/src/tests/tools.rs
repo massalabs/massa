@@ -5,7 +5,7 @@ use crate::{
     ProtocolEvent, ProtocolEventReceiver, ProtocolPoolEvent, ProtocolPoolEventReceiver,
     ProtocolSettings,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::{Signable, Signed};
 use massa_models::{

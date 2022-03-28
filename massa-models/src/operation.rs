@@ -9,7 +9,7 @@ use crate::{
     },
     Address, Amount, ModelsError,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};

@@ -1,5 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-
+//! Unsigned time management
 #![warn(missing_docs)]
 
 mod error;

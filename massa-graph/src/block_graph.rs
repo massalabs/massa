@@ -9,7 +9,7 @@ use crate::{
     settings::GraphConfig,
     LedgerConfig,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_logging::massa_trace;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::{

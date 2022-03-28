@@ -76,7 +76,7 @@ async fn launch() -> (
         },
         res = get_state(
             &SETTINGS.bootstrap,
-            massa_bootstrap::establisher::Establisher::new(),
+            massa_bootstrap::types::Establisher::new(),
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,

@@ -8,7 +8,7 @@ use super::{
 };
 use crate::constants::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, convert::TryInto};
 

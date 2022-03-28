@@ -10,7 +10,7 @@ use massa_consensus_exports::ConsensusConfig;
 use massa_execution_exports::test_exports::MockExecutionController;
 
 use massa_consensus_exports::settings::ConsensusChannels;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::{BlockId, Slot};
 use massa_signature::{generate_random_private_key, PrivateKey};
 use serial_test::serial;

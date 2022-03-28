@@ -3,7 +3,7 @@
 #![warn(missing_docs)]
 
 pub use error::WalletError;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::composite::PubkeySig;
 use massa_models::prehash::{Map, Set};

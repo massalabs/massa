@@ -2,7 +2,7 @@ use crate::{
     node_configuration::EVENT_ID_SIZE_BYTES, prehash::PreHashed, Address, BlockId, ModelsError,
     OperationId, Slot,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use serde::{Deserialize, Serialize};
 use std::{collections::VecDeque, fmt::Display, str::FromStr};
 
@@ -73,7 +73,7 @@ impl SCOutputEventId {
     /// ```rust
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::output_event::SCOutputEventId;
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
     /// # let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let event = SCOutputEventId(hash);
@@ -89,7 +89,7 @@ impl SCOutputEventId {
     /// ```rust
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::output_event::SCOutputEventId;
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
     /// # let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let event = SCOutputEventId(hash);
@@ -105,7 +105,7 @@ impl SCOutputEventId {
     /// ```rust
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::output_event::SCOutputEventId;
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
     /// # let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let event = SCOutputEventId(hash);
@@ -123,7 +123,7 @@ impl SCOutputEventId {
     /// ```rust
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::output_event::SCOutputEventId;
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
     /// # let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let event = SCOutputEventId(hash);
@@ -141,7 +141,7 @@ impl SCOutputEventId {
     /// ```rust
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::output_event::SCOutputEventId;
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
     /// # let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let event = SCOutputEventId(hash);

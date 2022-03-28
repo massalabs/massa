@@ -6,7 +6,7 @@ use crate::{
     api::{LedgerInfo, RollsInfo},
     constants::ADDRESS_SIZE_BYTES,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_signature::PublicKey;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -67,7 +67,7 @@ impl Address {
     /// ```rust
     /// # use massa_signature::{PublicKey, PrivateKey, Signature,
     /// #       generate_random_private_key, derive_public_key};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
     /// # let private_key = generate_random_private_key();
@@ -85,7 +85,7 @@ impl Address {
     /// ```rust
     /// # use massa_signature::{PublicKey, PrivateKey, Signature,
     /// #       generate_random_private_key, derive_public_key};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
     /// # let private_key = generate_random_private_key();
@@ -103,7 +103,7 @@ impl Address {
     /// ```rust
     /// # use massa_signature::{PublicKey, PrivateKey, Signature,
     /// #       generate_random_private_key, derive_public_key};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
     /// # let private_key = generate_random_private_key();
@@ -123,7 +123,7 @@ impl Address {
     /// ```rust
     /// # use massa_signature::{PublicKey, PrivateKey, Signature,
     /// #       generate_random_private_key, derive_public_key};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
     /// # let private_key = generate_random_private_key();
@@ -143,7 +143,7 @@ impl Address {
     /// ```rust
     /// # use massa_signature::{PublicKey, PrivateKey, Signature,
     /// #       generate_random_private_key, derive_public_key};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// # use massa_models::Address;
     /// # let private_key = generate_random_private_key();
