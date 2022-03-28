@@ -122,9 +122,6 @@ fn send_and_receive_async_message() {
 
     let (sender_address, sender_private_key, sender_public_key) = get_random_address_full();
     let bytecode = include_bytes!("./wasm/send_message.wasm");
-
-    let finalized_blocks: Map<BlockId, Block> = Default::default();
-    let mut blockclique: Map<BlockId, Block> = Default::default();
     let (block_id, block) = create_block(vec![create_execute_sc_operation(
         sender_private_key,
         sender_public_key,
@@ -132,11 +129,24 @@ fn send_and_receive_async_message() {
     )
     .unwrap()])
     .unwrap();
+
+    let finalized_blocks: Map<BlockId, Block> = Default::default();
+    let mut blockclique: Map<BlockId, Block> = Default::default();
     blockclique.insert(block_id, block);
 
     controller.update_blockclique_status(finalized_blocks, blockclique);
-    std::thread::sleep(Duration::from_millis(200));
-    manager.stop()
+
+    std::thread::sleep(Duration::from_millis(500));
+    manager.stop();
+    let events = controller.get_filtered_sc_output_event(
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+    println!("events len: {}", events.len());
+    assert!(!events.is_empty(), "Failed")
 }
 
 #[test]
