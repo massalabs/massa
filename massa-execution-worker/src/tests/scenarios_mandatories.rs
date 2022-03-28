@@ -1,5 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-use crate::start_execution_worker;
+use crate::{start_execution_worker, controller};
 use massa_async_pool::AsyncPoolConfig;
 use massa_execution_exports::{ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest};
 use massa_final_state::{FinalState, FinalStateConfig};
@@ -84,7 +84,7 @@ fn test_sending_read_only_execution_command() {
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 1_000_000,
             simulated_gas_price: Amount::from_raw(1_000_000 * AMOUNT_DECIMAL_FACTOR),
-            bytecode: include_bytes!("./event_test.wasm").to_vec(),
+            bytecode: include_bytes!("./wasm/event_test.wasm").to_vec(),
             call_stack: vec![],
         })
         .unwrap();
@@ -113,17 +113,29 @@ fn test_sending_read_only_execution_command() {
 #[test]
 #[serial]
 fn send_and_receive_message() {
+    let exec_cfg = ExecutionConfig {
+        t0: 10.into(),
+        ..ExecutionConfig::default()
+    };
     let (sample_state, _keep) = get_sample_state().unwrap();
-    let (mut manager, controller) =
-        start_execution_worker(ExecutionConfig::default(), sample_state);
-    controller
-        .execute_readonly_request(ReadOnlyExecutionRequest {
-            max_gas: 1_000_000,
-            simulated_gas_price: Amount::from_raw(1_000_000 * AMOUNT_DECIMAL_FACTOR),
-            bytecode: include_bytes!("./event_test.wasm").to_vec(),
-            call_stack: vec![],
-        })
-        .unwrap();
+    let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state);
+
+    let (sender_address, sender_private_key, sender_public_key) = get_random_address_full();
+    let event_test_data = include_bytes!("./wasm/send_message.wasm");
+    let (block_id, block) = create_block(vec![create_execute_sc_operation(
+        sender_private_key,
+        sender_public_key,
+        event_test_data,
+    )
+    .unwrap()])
+    .unwrap();
+
+    let finalized_blocks: Map<BlockId, Block> = Default::default();
+    let mut blockclique: Map<BlockId, Block> = Default::default();
+    let slot = block.header.content.slot;
+    blockclique.insert(block_id, block);
+
+    controller.update_blockclique_status(finalized_blocks, blockclique);
     manager.stop()
 }
 
@@ -140,7 +152,7 @@ fn generate_events() {
     let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state);
 
     let (sender_address, sender_private_key, sender_public_key) = get_random_address_full();
-    let event_test_data = include_bytes!("./event_test.wasm");
+    let event_test_data = include_bytes!("./wasm/event_test.wasm");
     let (block_id, block) = create_block(vec![create_execute_sc_operation(
         sender_private_key,
         sender_public_key,
