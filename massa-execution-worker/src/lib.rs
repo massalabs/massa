@@ -74,6 +74,7 @@ mod controller;
 mod execution;
 mod interface_impl;
 mod request_queue;
+mod speculative_async_pool;
 mod speculative_ledger;
 mod worker;
 

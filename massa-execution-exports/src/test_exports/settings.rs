@@ -14,6 +14,7 @@ impl Default for ExecutionConfig {
         Self {
             readonly_queue_length: READONLY_QUEUE_LENGTH,
             max_final_events: MAX_FINAL_EVENTS,
+            max_async_gas: MAX_ASYNC_GAS,
             thread_count: THREAD_COUNT,
             cursor_delay: CURSOR_DELAY,
             clock_compensation: Default::default(),

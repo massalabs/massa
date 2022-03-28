@@ -117,6 +117,11 @@ impl Block {
         Ok(self.to_bytes_compact()?.len() as u64)
     }
 
+    /// Computes the fitness of the block
+    pub fn fitness(&self) -> u64 {
+        1 + self.header.content.endorsements.len() as u64
+    }
+
     /// Retrieve roll involving addresses
     pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut roll_involved_addrs = Set::<Address>::default();
