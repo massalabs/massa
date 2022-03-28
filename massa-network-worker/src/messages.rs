@@ -155,10 +155,12 @@ impl SerializeCompact for Message {
 }
 
 /// Tooling for the serialization of [Operations]
-/// Order of th serialized data
+/// Order of the serialized data
 /// - 32 bit: size T of the complete hashmap
 /// - for each in the range `0..T`
-///     - [SignedOperation] in bytes compact (if option state != 0)
+///     - [SignedOperation] in bytes compact
+///
+/// We don't use [SerializeCompact] as it's not ready for [Vec] see documentation on [deserialize_operations].
 fn serialize_operations(res: &mut Vec<u8>, operations: &Operations) -> Result<(), ModelsError> {
     res.extend((operations.len() as u32).to_varint_bytes());
     for op in operations.iter() {
@@ -169,6 +171,10 @@ fn serialize_operations(res: &mut Vec<u8>, operations: &Operations) -> Result<()
 
 /// Deserialize [Operations] from a `buffer` starting from `cursor` position,
 /// serialized by [serialize_operations].
+///
+/// We don't use [DeserializeCompact] trait because as [Operations] is a [Vec] we need the maximum bound
+/// to decode his length. So we take this value as parameter which is not allowed in the trait [DeserializeCompact].
+/// If we don't implement [DeserializeCompact] we shouldn't implement [SerializeCompact].
 fn deserialize_operations(
     buffer: &[u8],
     cursor: &mut usize,
