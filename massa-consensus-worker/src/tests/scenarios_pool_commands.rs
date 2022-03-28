@@ -248,7 +248,7 @@ async fn test_max_attempts_get_operations() {
         genesis_timestamp: MassaTime::now().unwrap().checked_sub(1000.into()).unwrap(),
         delta_f0: 2,
         disable_block_creation: false,
-        operations_announcement_size: 1,
+        operation_batch_size: 1,
         ..ConsensusConfig::default_with_paths()
     };
     // define addresses use for the test
@@ -343,7 +343,7 @@ async fn test_max_batch_size_get_operations() {
         genesis_timestamp: MassaTime::now().unwrap().checked_sub(1000.into()).unwrap(),
         delta_f0: 2,
         disable_block_creation: false,
-        operations_announcement_size: 10,
+        operation_batch_size: 10,
         ..ConsensusConfig::default_with_paths()
     };
     // define addresses use for the test

@@ -124,7 +124,7 @@ pub const MAX_FINAL_EVENTS: usize = 10; // normally in config.toml
 pub const MAX_FUTURE_PROCESSING_BLOCK: usize = 10; // normally in config.toml
 pub const MAX_ITEM_RETURN_COUNT: usize = 1000; // normally in config.toml
 pub const MAX_OPERATION_FILL_ATTEMPTS: u32 = 6; // normally in config.toml
-pub const OPERATION_BATCH_ANNOUNCEMENT_SIZE: usize = 3; // normally in config.toml
+pub const OPERATION_BATCH_SIZE: usize = 3; // normally in config.toml
 pub const POS_DRAW_CACHED_CYCLE: usize = 10; // normally in config.toml
 pub const READONLY_QUEUE_LENGTH: usize = 10; // normally in config.toml
 

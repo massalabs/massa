@@ -35,7 +35,7 @@ async fn test_reward_split() {
         genesis_timestamp: MassaTime::now().unwrap().saturating_add(init_time),
         max_block_size: 2000,
         max_operations_per_block: 5000,
-        operations_announcement_size: 500,
+        operation_batch_size: 500,
         operation_validity_periods: 10,
         periods_per_cycle: 3,
         t0: 500.into(),
