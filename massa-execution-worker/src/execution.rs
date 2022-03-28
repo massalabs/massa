@@ -184,7 +184,7 @@ impl ExecutionState {
         let mut truncate_at = None;
         // iterate over the output history, in chronological order
         for (hist_index, exec_output) in self.active_history.iter().enumerate() {
-            // try to find the corresponding slot in active_slots
+            // try to find the corresponding slot in active_slots or ready_final_slots.
             let found_block_id = active_slots
                 .get(&exec_output.slot)
                 .or_else(|| ready_final_slots.get(&exec_output.slot));
