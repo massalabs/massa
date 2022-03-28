@@ -31,7 +31,7 @@ pub fn get_random_address() -> Address {
     get_random_address_full().0
 }
 
-fn get_sample_ledger() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile), LedgerError> {
+fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile), LedgerError> {
     let mut initial: BTreeMap<Address, Amount> = Default::default();
     initial.insert(get_random_address(), Amount::from_str("129").unwrap());
     initial.insert(get_random_address(), Amount::from_str("878").unwrap());
@@ -52,24 +52,24 @@ fn get_sample_ledger() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile), Ledge
 #[test]
 #[serial]
 fn test_execution_basic() {
-    let (sample_ledger, _keep) = get_sample_ledger().unwrap();
-    let (_, _) = start_execution_worker(ExecutionConfig::default(), sample_ledger);
+    let (sample_state, _keep) = get_sample_state().unwrap();
+    let (_, _) = start_execution_worker(ExecutionConfig::default(), sample_state);
 }
 
 #[test]
 #[serial]
 fn test_execution_shutdown() {
-    let (sample_ledger, _keep) = get_sample_ledger().unwrap();
-    let (mut manager, _) = start_execution_worker(ExecutionConfig::default(), sample_ledger);
+    let (sample_state, _keep) = get_sample_state().unwrap();
+    let (mut manager, _) = start_execution_worker(ExecutionConfig::default(), sample_state);
     manager.stop()
 }
 
 #[test]
 #[serial]
 fn test_sending_command() {
-    let (sample_ledger, _keep) = get_sample_ledger().unwrap();
+    let (sample_state, _keep) = get_sample_state().unwrap();
     let (mut manager, controller) =
-        start_execution_worker(ExecutionConfig::default(), sample_ledger);
+        start_execution_worker(ExecutionConfig::default(), sample_state);
     controller.update_blockclique_status(Default::default(), Default::default());
     manager.stop()
 }
@@ -77,9 +77,9 @@ fn test_sending_command() {
 #[test]
 #[serial]
 fn test_sending_read_only_execution_command() {
-    let (sample_ledger, _keep) = get_sample_ledger().unwrap();
+    let (sample_state, _keep) = get_sample_state().unwrap();
     let (mut manager, controller) =
-        start_execution_worker(ExecutionConfig::default(), sample_ledger);
+        start_execution_worker(ExecutionConfig::default(), sample_state);
     controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 1_000_000,
@@ -96,7 +96,7 @@ fn test_sending_read_only_execution_command() {
 //fn test_execution_with_bootstrap() {
 //    let bootstrap_state = crate::BootstrapExecutionState {
 //        final_slot: Slot::new(12, 5),
-//        final_ledger: get_sample_ledger(),
+//        final_ledger: get_sample_state(),
 //    };
 //    let (_config_file_keepalive, settings) = get_sample_settings();
 //    let (command_sender, _event_receiver, manager) =
@@ -112,6 +112,23 @@ fn test_sending_read_only_execution_command() {
 
 #[test]
 #[serial]
+fn send_and_receive_message() {
+    let (sample_state, _keep) = get_sample_state().unwrap();
+    let (mut manager, controller) =
+        start_execution_worker(ExecutionConfig::default(), sample_state);
+    controller
+        .execute_readonly_request(ReadOnlyExecutionRequest {
+            max_gas: 1_000_000,
+            simulated_gas_price: Amount::from_raw(1_000_000 * AMOUNT_DECIMAL_FACTOR),
+            bytecode: include_bytes!("./event_test.wasm").to_vec(),
+            call_stack: vec![],
+        })
+        .unwrap();
+    manager.stop()
+}
+
+#[test]
+#[serial]
 fn generate_events() {
     // Compile the `./wasm_tests` and generate a block with `event_test.wasm`
     // as data. Then we check if we get an event as expected.
@@ -119,8 +136,8 @@ fn generate_events() {
         t0: 10.into(),
         ..ExecutionConfig::default()
     };
-    let (sample_ledger, _keep) = get_sample_ledger().unwrap();
-    let (mut manager, controller) = start_execution_worker(exec_cfg, sample_ledger);
+    let (sample_state, _keep) = get_sample_state().unwrap();
+    let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state);
 
     let (sender_address, sender_private_key, sender_public_key) = get_random_address_full();
     let event_test_data = include_bytes!("./event_test.wasm");
