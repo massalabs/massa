@@ -178,6 +178,10 @@
 <span id="173">173</span>
 <span id="174">174</span>
 <span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">enum_map::EnumMap</span>;
@@ -230,6 +234,8 @@
     <span class="kw">pub</span> <span class="ident">peer_list_send_timeout</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// Max number of in connection overflowed managed by the handshake that send a list of peers</span>
     <span class="kw">pub</span> <span class="ident">max_in_connection_overflow</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// Max operations per message in the network to avoid sending to big data packet.</span>
+    <span class="kw">pub</span> <span class="ident">max_operations_per_message</span>: <span class="ident">u32</span>,
 }
 
 <span class="doccomment">/// Connection config for a peer type</span>
@@ -249,7 +255,7 @@
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::NetworkSettings</span>;
     <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">test_exports::tools::get_temp_private_key_file</span>, <span class="ident">PeerType</span>};
     <span class="kw">use</span> <span class="ident">enum_map::enum_map</span>;
-    <span class="kw">use</span> <span class="ident">massa_models::constants::default_testing::BASE_NETWORK_CONTROLLER_IP</span>;
+    <span class="kw">use</span> <span class="ident">massa_models::constants</span>::{<span class="ident">BASE_NETWORK_CONTROLLER_IP</span>, <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>};
     <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
     <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">Ipv4Addr</span>, <span class="ident">SocketAddr</span>};
 
@@ -294,6 +300,7 @@
                 <span class="ident">peer_list_send_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">500</span>),
                 <span class="ident">max_in_connection_overflow</span>: <span class="number">2</span>,
                 <span class="ident">peer_types_config</span>,
+                <span class="ident">max_operations_per_message</span>: <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>,
             }
         }
     }
@@ -349,6 +356,7 @@
                 <span class="ident">peer_list_send_timeout</span>: <span class="ident">MassaTime::from</span>(<span class="number">50</span>),
                 <span class="ident">max_in_connection_overflow</span>: <span class="number">10</span>,
                 <span class="ident">peer_types_config</span>,
+                <span class="ident">max_operations_per_message</span>: <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>,
             }
         }
     }

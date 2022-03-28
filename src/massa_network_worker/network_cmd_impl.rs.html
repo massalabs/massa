@@ -371,6 +371,66 @@
 <span id="366">366</span>
 <span id="367">367</span>
 <span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
 </pre><pre class="rust"><code><span class="doccomment">//! On `NetworkWorker` receive a command behaviors implementation</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! All following function take by default a reference to the `NetworkWorker`</span>
@@ -392,16 +452,17 @@
 <span class="doccomment">//!         NetworkCommand::GetBootstrapPeers(response_tx) =&gt; on_get_bootstrap_peers_cmd(self, response_tx).await,</span>
 <span class="doccomment">//!         ...</span>
 <span class="doccomment">//! ```</span>
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">network_worker::NetworkWorker</span>, <span class="ident">node_worker::NodeCommand</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::network_worker::NetworkWorker</span>;
+<span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">stream::FuturesUnordered</span>, <span class="ident">StreamExt</span>};
 <span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
-<span class="kw">use</span> <span class="ident">massa_models::signed::Signable</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">composite::PubkeySig</span>, <span class="ident">node::NodeId</span>, <span class="ident">stats::NetworkStats</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">SignedEndorsement</span>,
-    <span class="ident">SignedHeader</span>, <span class="ident">SignedOperation</span>,
+    <span class="ident">composite::PubkeySig</span>, <span class="ident">node::NodeId</span>, <span class="ident">operation::OperationIds</span>, <span class="ident">stats::NetworkStats</span>, <span class="ident">Block</span>,
+    <span class="ident">BlockId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>,
 };
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">operation::Operations</span>, <span class="ident">signed::Signable</span>};
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{
-    <span class="ident">BootstrapPeers</span>, <span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>, <span class="ident">NetworkError</span>, <span class="ident">Peer</span>, <span class="ident">Peers</span>,
+    <span class="ident">BootstrapPeers</span>, <span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>, <span class="ident">NetworkError</span>, <span class="ident">NodeCommand</span>, <span class="ident">Peer</span>, <span class="ident">Peers</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">sign</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{
@@ -555,7 +616,7 @@
     <span class="ident">worker</span>
         .<span class="ident">event</span>
         .<span class="ident">forward</span>(
-            <span class="kw-2">&amp;</span><span class="ident">node</span>,
+            <span class="ident">node</span>,
             <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>),
             <span class="ident">NodeCommand::SendBlockHeader</span>(<span class="ident">header</span>),
         )
@@ -563,7 +624,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_ask_bfor_block_cmd</span>(<span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>, <span class="ident">map</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_ask_for_block_cmd</span>(<span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>, <span class="ident">map</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
     <span class="kw">for</span> (<span class="ident">node</span>, <span class="ident">hash_list</span>) <span class="kw">in</span> <span class="ident">map</span>.<span class="ident">into_iter</span>() {
         <span class="macro">massa_trace!</span>(
             <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::AskForBlocks&quot;</span>,
@@ -572,7 +633,7 @@
         <span class="ident">worker</span>
             .<span class="ident">event</span>
             .<span class="ident">forward</span>(
-                <span class="kw-2">&amp;</span><span class="ident">node</span>,
+                <span class="ident">node</span>,
                 <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>),
                 <span class="ident">NodeCommand::AskForBlocks</span>(<span class="ident">hash_list</span>.<span class="ident">clone</span>()),
             )
@@ -592,7 +653,7 @@
     <span class="ident">worker</span>
         .<span class="ident">event</span>
         .<span class="ident">forward</span>(
-            <span class="kw-2">&amp;</span><span class="ident">node</span>,
+            <span class="ident">node</span>,
             <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>),
             <span class="ident">NodeCommand::SendBlock</span>(<span class="ident">block</span>),
         )
@@ -630,28 +691,9 @@
     <span class="ident">worker</span>
         .<span class="ident">event</span>
         .<span class="ident">forward</span>(
-            <span class="kw-2">&amp;</span><span class="ident">node</span>,
+            <span class="ident">node</span>,
             <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>),
             <span class="ident">NodeCommand::BlockNotFound</span>(<span class="ident">block_id</span>),
-        )
-        .<span class="kw">await</span>;
-}
-
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_send_operation_cmd</span>(
-    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
-    <span class="ident">node</span>: <span class="ident">NodeId</span>,
-    <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedOperation</span><span class="op">&gt;</span>,
-) {
-    <span class="macro">massa_trace!</span>(
-        <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::SendOperations&quot;</span>,
-        { <span class="string">&quot;node&quot;</span>: <span class="ident">node</span>, <span class="string">&quot;operations&quot;</span>: <span class="ident">operations</span> }
-    );
-    <span class="ident">worker</span>
-        .<span class="ident">event</span>
-        .<span class="ident">forward</span>(
-            <span class="kw-2">&amp;</span><span class="ident">node</span>,
-            <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>),
-            <span class="ident">NodeCommand::SendOperations</span>(<span class="ident">operations</span>),
         )
         .<span class="kw">await</span>;
 }
@@ -668,7 +710,7 @@
     <span class="ident">worker</span>
         .<span class="ident">event</span>
         .<span class="ident">forward</span>(
-            <span class="kw-2">&amp;</span><span class="ident">node</span>,
+            <span class="ident">node</span>,
             <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>),
             <span class="ident">NodeCommand::SendEndorsements</span>(<span class="ident">endorsements</span>),
         )
@@ -738,6 +780,84 @@
     <span class="kw">if</span> <span class="ident">response_tx</span>.<span class="ident">send</span>(<span class="ident">res</span>).<span class="ident">is_err</span>() {
         <span class="macro">warn!</span>(<span class="string">&quot;network: could not send NodeSignMessage response upstream&quot;</span>);
     }
+}
+
+<span class="doccomment">/// Network worker received the command `NetworkCommand::SendOperations` from</span>
+<span class="doccomment">/// the controller. Happen when the program has received a new set of operation</span>
+<span class="doccomment">/// or run a kind of &quot;send operations&quot; loop.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// todo: precise the documentation in followup</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// Forward to the node worker to be propagate in the network.</span>
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_send_operations_cmd</span>(
+    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
+    <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
+    <span class="ident">operations</span>: <span class="ident">Operations</span>,
+) {
+    <span class="macro">massa_trace!</span>(
+        <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::SendOperations&quot;</span>,
+        { <span class="string">&quot;node&quot;</span>: <span class="ident">to_node</span>, <span class="string">&quot;operations&quot;</span>: <span class="ident">operations</span> }
+    );
+    <span class="ident">worker</span>
+        .<span class="ident">event</span>
+        .<span class="ident">forward</span>(
+            <span class="ident">to_node</span>,
+            <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">to_node</span>),
+            <span class="ident">NodeCommand::SendOperations</span>(<span class="ident">operations</span>),
+        )
+        .<span class="kw">await</span>;
+}
+
+<span class="doccomment">/// On the command [massa_network_exports::NetworkCommand::SendOperationAnnouncements] is called,</span>
+<span class="doccomment">/// Forward (and split) the command to the `NodeWorker` and propagate to the network</span>
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_send_operation_batches_cmd</span>(
+    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
+    <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
+    <span class="ident">batch</span>: <span class="ident">OperationIds</span>,
+) {
+    <span class="macro">massa_trace!</span>(
+        <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::SendOperationAnnouncements&quot;</span>,
+        { <span class="string">&quot;batch&quot;</span>: <span class="ident">batch</span> }
+    );
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">futs</span> <span class="op">=</span> <span class="ident">FuturesUnordered::new</span>();
+    <span class="kw">let</span> <span class="ident">fut</span> <span class="op">=</span> <span class="ident">worker</span>.<span class="ident">event</span>.<span class="ident">forward</span>(
+        <span class="ident">to_node</span>,
+        <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">to_node</span>),
+        <span class="ident">NodeCommand::SendOperationAnnouncements</span>(<span class="ident">batch</span>),
+    );
+    <span class="ident">futs</span>.<span class="ident">push</span>(<span class="ident">fut</span>);
+    <span class="kw">while</span> <span class="ident">futs</span>.<span class="ident">next</span>().<span class="kw">await</span>.<span class="ident">is_some</span>() {}
+}
+
+<span class="doccomment">/// Network worker received the command `NetworkCommand::AskForOperations` from</span>
+<span class="doccomment">/// the controller. Happen when the program run a kind of &quot;ask operations&quot; loop</span>
+<span class="doccomment">/// or received a new batch.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// # See also</span>
+<span class="doccomment">/// [massa_models::operation::OperationBatchItem]</span>
+<span class="doccomment">/// [massa_models::operation::OperationBatchBuffer]</span>
+<span class="doccomment">/// todo: add the link to the function tha process the buffer</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// # What it does</span>
+<span class="doccomment">/// When the command [massa_network_exports::NetworkCommand::AskForOperations] is called,</span>
+<span class="doccomment">/// Forward the command to the `NodeWorker` and propagate to the network</span>
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_ask_for_operations_cmd</span>(
+    <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
+    <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
+    <span class="ident">wishlist</span>: <span class="ident">OperationIds</span>,
+) {
+    <span class="macro">massa_trace!</span>(
+        <span class="string">&quot;network_worker.manage_network_command receive NetworkCommand::SendOperationAnnouncements&quot;</span>,
+        { <span class="string">&quot;wishlist&quot;</span>: <span class="ident">wishlist</span> }
+    );
+    <span class="ident">worker</span>
+        .<span class="ident">event</span>
+        .<span class="ident">forward</span>(
+            <span class="ident">to_node</span>,
+            <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">to_node</span>),
+            <span class="ident">NodeCommand::AskForOperations</span>(<span class="ident">wishlist</span>),
+        )
+        .<span class="kw">await</span>;
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>

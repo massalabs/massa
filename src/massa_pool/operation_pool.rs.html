@@ -361,6 +361,9 @@
 <span id="356">356</span>
 <span id="357">357</span>
 <span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">settings::PoolConfig</span>, <span class="ident">PoolError</span>};
@@ -661,7 +664,10 @@
                         .<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">block_slot</span>.<span class="ident">period</span>) <span class="op">|</span><span class="op">|</span> <span class="ident">w_op</span>.<span class="ident">byte_count</span> <span class="op">&gt;</span> <span class="ident">max_size</span> {
                             <span class="macro">massa_trace!</span>(<span class="string">&quot;pool get_operation_batch not added to batch w_op.op.content.get_validity_range incorrect not added&quot;</span>, {
                                 <span class="string">&quot;range&quot;</span>: <span class="ident">w_op</span>.<span class="ident">op</span>.<span class="ident">content</span>.<span class="ident">get_validity_range</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">operation_validity_periods</span>),
-                                <span class="string">&quot;block_slot.period&quot;</span>: <span class="ident">block_slot</span>.<span class="ident">period</span>
+                                <span class="string">&quot;block_slot.period&quot;</span>: <span class="ident">block_slot</span>.<span class="ident">period</span>,
+                                <span class="string">&quot;operation_id&quot;</span>: <span class="ident">id</span>,
+                                <span class="string">&quot;max_size_overflow&quot;</span>: <span class="ident">w_op</span>.<span class="ident">byte_count</span> <span class="op">&gt;</span> <span class="ident">max_size</span>,
+                                <span class="string">&quot;byte_count&quot;</span>: <span class="ident">w_op</span>.<span class="ident">byte_count</span>,
                             });
                         <span class="kw">return</span> <span class="prelude-val">None</span>;
                     }

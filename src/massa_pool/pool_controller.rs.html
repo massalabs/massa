@@ -488,7 +488,7 @@
 
     <span class="doccomment">/// Returns a batch of operations ordered from highest to lowest rentability</span>
     <span class="doccomment">/// Return value: vector of (OperationId, Operation, operation_size: u64)</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_operation_batch</span>(
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_get_operations_announcement</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">target_slot</span>: <span class="ident">Slot</span>,
         <span class="ident">exclude</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,

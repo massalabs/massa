@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["OperationType",""]],"struct":[["Operation",""],["OperationId",""]],"type":[["SignedOperation",""]]});
+initSidebarItems({"enum":[["OperationType",""]],"struct":[["Operation",""],["OperationId",""]],"type":[["OperationIds","Set of operation ids"],["Operations","Set of self containing signed operations."],["SignedOperation",""]]});

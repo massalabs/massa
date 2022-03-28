@@ -770,13 +770,29 @@
 <span id="765">765</span>
 <span id="766">766</span>
 <span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! The network worker actually does the job of managing connections</span>
 <span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">handshake_worker::HandshakeReturnType</span>,
-    <span class="ident">node_worker</span>::{<span class="ident">NodeCommand</span>, <span class="ident">NodeEvent</span>, <span class="ident">NodeEventType</span>, <span class="ident">NodeWorker</span>},
-    <span class="ident">peer_info_database</span>::<span class="kw-2">*</span>,
+    <span class="ident">handshake_worker::HandshakeReturnType</span>, <span class="ident">node_worker::NodeWorker</span>, <span class="ident">peer_info_database</span>::<span class="kw-2">*</span>,
 };
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">binders</span>::{<span class="ident">ReadBinder</span>, <span class="ident">WriteBinder</span>},
@@ -788,10 +804,11 @@
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">constants::CHANNEL_SIZE</span>, <span class="ident">node::NodeId</span>, <span class="ident">Version</span>};
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{
-    <span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>, <span class="ident">Establisher</span>, <span class="ident">Listener</span>, <span class="ident">NetworkCommand</span>, <span class="ident">NetworkError</span>,
-    <span class="ident">NetworkEvent</span>, <span class="ident">NetworkManagementCommand</span>, <span class="ident">NetworkSettings</span>, <span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>,
+    <span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>, <span class="ident">Establisher</span>, <span class="ident">HandshakeErrorType</span>, <span class="ident">Listener</span>,
+    <span class="ident">NetworkCommand</span>, <span class="ident">NetworkConnectionErrorType</span>, <span class="ident">NetworkError</span>, <span class="ident">NetworkEvent</span>,
+    <span class="ident">NetworkManagementCommand</span>, <span class="ident">NetworkSettings</span>, <span class="ident">NodeCommand</span>, <span class="ident">NodeEvent</span>, <span class="ident">NodeEventType</span>, <span class="ident">ReadHalf</span>,
+    <span class="ident">WriteHalf</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">HandshakeErrorType</span>, <span class="ident">NetworkConnectionErrorType</span>};
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">PrivateKey</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">collections</span>::{<span class="ident">hash_map</span>, <span class="ident">HashMap</span>, <span class="ident">HashSet</span>},
@@ -1264,11 +1281,18 @@
     <span class="doccomment">/// # Arguments</span>
     <span class="doccomment">/// * cmd : command to process.</span>
     <span class="doccomment">/// * peer_info_db: Database with peer information.</span>
-    <span class="doccomment">/// * active_connections: hashmap linking connection id to ipAddr to whether connection is outgoing (true)</span>
+    <span class="doccomment">/// * active_connections: hashmap linking connection id to ipAddr to</span>
+    <span class="doccomment">///   whether connection is outgoing (true)</span>
     <span class="doccomment">/// * event_tx: channel to send network events out.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Command implementation</span>
-    <span class="doccomment">/// The network commands are root to functions in `network_cmd_impl`</span>
+    <span class="doccomment">/// Some of the commands are just forwarded to the NodeWorker that manage</span>
+    <span class="doccomment">/// the real connection between nodes. Some other commands has an impact on</span>
+    <span class="doccomment">/// the current worker.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Whatever the behavior of the command, we better have to look at</span>
+    <span class="doccomment">/// `network_cmd_impl.rs` where the commands are implemented.</span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// ex: NetworkCommand::AskForBlocks =&gt; on_ask_bfor_block_cmd(...)</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">manage_network_command</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cmd</span>: <span class="ident">NetworkCommand</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::network_cmd_impl</span>::<span class="kw-2">*</span>;
@@ -1278,7 +1302,7 @@
             <span class="ident">NetworkCommand::SendBlockHeader</span> { <span class="ident">node</span>, <span class="ident">header</span> } =&gt; {
                 <span class="ident">on_send_block_header_cmd</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">header</span>).<span class="kw">await</span><span class="question-mark">?</span>
             }
-            <span class="ident">NetworkCommand::AskForBlocks</span> { <span class="ident">list</span> } =&gt; <span class="ident">on_ask_bfor_block_cmd</span>(<span class="self">self</span>, <span class="ident">list</span>).<span class="kw">await</span>,
+            <span class="ident">NetworkCommand::AskForBlocks</span> { <span class="ident">list</span> } =&gt; <span class="ident">on_ask_for_block_cmd</span>(<span class="self">self</span>, <span class="ident">list</span>).<span class="kw">await</span>,
             <span class="ident">NetworkCommand::SendBlock</span> { <span class="ident">node</span>, <span class="ident">block</span> } =&gt; {
                 <span class="ident">on_send_block_cmd</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">block</span>).<span class="kw">await</span><span class="question-mark">?</span>
             }
@@ -1290,7 +1314,13 @@
                 <span class="ident">on_block_not_found_cmd</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">block_id</span>).<span class="kw">await</span>
             }
             <span class="ident">NetworkCommand::SendOperations</span> { <span class="ident">node</span>, <span class="ident">operations</span> } =&gt; {
-                <span class="ident">on_send_operation_cmd</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">operations</span>).<span class="kw">await</span>
+                <span class="ident">on_send_operations_cmd</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">operations</span>).<span class="kw">await</span>
+            }
+            <span class="ident">NetworkCommand::SendOperationAnnouncements</span> { <span class="ident">to_node</span>, <span class="ident">batch</span> } =&gt; {
+                <span class="ident">on_send_operation_batches_cmd</span>(<span class="self">self</span>, <span class="ident">to_node</span>, <span class="ident">batch</span>).<span class="kw">await</span>
+            }
+            <span class="ident">NetworkCommand::AskForOperations</span> { <span class="ident">to_node</span>, <span class="ident">wishlist</span> } =&gt; {
+                <span class="ident">on_ask_for_operations_cmd</span>(<span class="self">self</span>, <span class="ident">to_node</span>, <span class="ident">wishlist</span>).<span class="kw">await</span>
             }
             <span class="ident">NetworkCommand::SendEndorsements</span> { <span class="ident">node</span>, <span class="ident">endorsements</span> } =&gt; {
                 <span class="ident">on_send_endorsements_cmd</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">endorsements</span>).<span class="kw">await</span>
@@ -1532,6 +1562,12 @@
             }
             <span class="ident">NodeEvent</span>(<span class="ident">node</span>, <span class="ident">NodeEventType::ReceivedEndorsements</span>(<span class="ident">endorsements</span>)) =&gt; {
                 <span class="ident">event_impl::on_received_endorsements</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">endorsements</span>).<span class="kw">await</span>
+            }
+            <span class="ident">NodeEvent</span>(<span class="ident">node</span>, <span class="ident">NodeEventType::ReceivedOperationAnnouncements</span>(<span class="ident">operation_ids</span>)) =&gt; {
+                <span class="ident">event_impl::on_received_operations_annoncement</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">operation_ids</span>).<span class="kw">await</span>
+            }
+            <span class="ident">NodeEvent</span>(<span class="ident">node</span>, <span class="ident">NodeEventType::ReceivedAskForOperations</span>(<span class="ident">operation_ids</span>)) =&gt; {
+                <span class="ident">event_impl::on_received_ask_for_operations</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">operation_ids</span>).<span class="kw">await</span>
             }
         }
         <span class="prelude-val">Ok</span>(())

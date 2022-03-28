@@ -20,6 +20,15 @@
 <span id="15">15</span>
 <span id="16">16</span>
 <span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
@@ -36,6 +45,15 @@
     <span class="kw">pub</span> <span class="ident">max_simultaneous_ask_blocks_per_node</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// Max wait time for sending a Network or Node event.</span>
     <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">MassaTime</span>,
+    <span class="doccomment">/// Maximum number of batches in the memory buffer.</span>
+    <span class="doccomment">/// Dismiss the new batches if overflow</span>
+    <span class="kw">pub</span> <span class="ident">operation_batch_buffer_capacity</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// Start processing batches in the buffer each `operation_batch_proc_period` in millisecond</span>
+    <span class="kw">pub</span> <span class="ident">operation_batch_proc_period</span>: <span class="ident">MassaTime</span>,
+    <span class="doccomment">/// All operations asked are prune each `operation_asked_pruning_period` millisecond</span>
+    <span class="kw">pub</span> <span class="ident">asked_operations_pruning_period</span>: <span class="ident">MassaTime</span>,
+    <span class="doccomment">/// Maximum of operations sent in one message.</span>
+    <span class="kw">pub</span> <span class="ident">max_operations_per_message</span>: <span class="ident">u64</span>,
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>

@@ -252,9 +252,61 @@
 <span id="247">247</span>
 <span id="248">248</span>
 <span id="249">249</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::node_worker</span>::{<span class="ident">NodeCommand</span>, <span class="ident">NodeEvent</span>};
-<span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
-<span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">ConnectionId</span>, <span class="ident">NetworkError</span>, <span class="ident">NetworkEvent</span>};
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
+<span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">ConnectionId</span>, <span class="ident">NetworkError</span>, <span class="ident">NetworkEvent</span>, <span class="ident">NodeCommand</span>, <span class="ident">NodeEvent</span>};
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>::{<span class="self">self</span>, <span class="ident">error::SendTimeoutError</span>};
 <span class="kw">use</span> <span class="ident">tracing::debug</span>;
@@ -303,8 +355,8 @@
 
     <span class="doccomment">/// Forward a message to a node worker. If it fails, notify upstream about connection closure.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">forward</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">node_id</span>: <span class="kw-2">&amp;</span><span class="ident">NodeId</span>,
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
         <span class="ident">node</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>(<span class="ident">ConnectionId</span>, <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">NodeCommand</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
         <span class="ident">message</span>: <span class="ident">NodeCommand</span>,
     ) {
@@ -318,7 +370,7 @@
         } <span class="kw">else</span> {
             <span class="comment">// We probably weren&#39;t able to send this event previously,</span>
             <span class="comment">// retry it now.</span>
-            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">send</span>(<span class="ident">NetworkEvent::ConnectionClosed</span>(<span class="kw-2">*</span><span class="ident">node_id</span>)).<span class="kw">await</span>;
+            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">send</span>(<span class="ident">NetworkEvent::ConnectionClosed</span>(<span class="ident">node_id</span>)).<span class="kw">await</span>;
         }
     }
 
@@ -332,12 +384,15 @@
 }
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">event_impl</span> {
-    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">network_worker::NetworkWorker</span>, <span class="ident">node_worker::NodeCommand</span>};
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::network_worker::NetworkWorker</span>;
     <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
     <span class="kw">use</span> <span class="ident">massa_models::signed::Signable</span>;
     <span class="kw">use</span> <span class="ident">massa_models</span>::{
-        <span class="ident">node::NodeId</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>, <span class="ident">SignedOperation</span>,
+        <span class="ident">node::NodeId</span>,
+        <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">Operations</span>},
+        <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>,
     };
+    <span class="kw">use</span> <span class="ident">massa_network_exports::NodeCommand</span>;
     <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">NetworkError</span>, <span class="ident">NetworkEvent</span>};
     <span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
     <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">debug</span>, <span class="ident">info</span>};
@@ -459,10 +514,15 @@
         }
     }
 
+    <span class="doccomment">/// The node worker signal that he received some full `operations` from a</span>
+    <span class="doccomment">/// node.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Forward the event by sending a [NetworkEvent::ReceivedOperations].</span>
+    <span class="doccomment">/// See also [massa_network_exports::NodeEventType::ReceivedOperations]</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_received_operations</span>(
         <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
         <span class="ident">from</span>: <span class="ident">NodeId</span>,
-        <span class="ident">operations</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedOperation</span><span class="op">&gt;</span>,
+        <span class="ident">operations</span>: <span class="ident">Operations</span>,
     ) {
         <span class="macro">massa_trace!</span>(
             <span class="string">&quot;network_worker.on_node_event receive NetworkEvent::ReceivedOperations&quot;</span>,
@@ -473,6 +533,52 @@
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceivedOperations</span> {
                 <span class="ident">node</span>: <span class="ident">from</span>,
                 <span class="ident">operations</span>,
+            })
+            .<span class="kw">await</span>
+        {
+            <span class="macro">evt_failed!</span>(<span class="ident">err</span>)
+        }
+    }
+
+    <span class="doccomment">/// The node worker signal that he received a bach of operation ids</span>
+    <span class="doccomment">/// from another node.</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_received_operations_annoncement</span>(
+        <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
+        <span class="ident">from</span>: <span class="ident">NodeId</span>,
+        <span class="ident">operation_ids</span>: <span class="ident">OperationIds</span>,
+    ) {
+        <span class="macro">massa_trace!</span>(
+            <span class="string">&quot;network_worker.on_node_event receive NetworkEvent::ReceivedOperationAnnouncements&quot;</span>,
+            { <span class="string">&quot;operations&quot;</span>: <span class="ident">operation_ids</span> }
+        );
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">worker</span>
+            .<span class="ident">event</span>
+            .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceivedOperationAnnouncements</span> {
+                <span class="ident">node</span>: <span class="ident">from</span>,
+                <span class="ident">operation_ids</span>,
+            })
+            .<span class="kw">await</span>
+        {
+            <span class="macro">evt_failed!</span>(<span class="ident">err</span>)
+        }
+    }
+
+    <span class="doccomment">/// The node worker signal that he received a list of operations required</span>
+    <span class="doccomment">/// from another node.</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_received_ask_for_operations</span>(
+        <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
+        <span class="ident">from</span>: <span class="ident">NodeId</span>,
+        <span class="ident">operation_ids</span>: <span class="ident">OperationIds</span>,
+    ) {
+        <span class="macro">massa_trace!</span>(
+            <span class="string">&quot;network_worker.on_node_event receive NetworkEvent::ReceiveAskForOperations&quot;</span>,
+            { <span class="string">&quot;operations&quot;</span>: <span class="ident">operation_ids</span> }
+        );
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">worker</span>
+            .<span class="ident">event</span>
+            .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceiveAskForOperations</span> {
+                <span class="ident">node</span>: <span class="ident">from</span>,
+                <span class="ident">operation_ids</span>,
             })
             .<span class="kw">await</span>
         {

@@ -331,6 +331,12 @@
 <span id="326">326</span>
 <span id="327">327</span>
 <span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::error::PoolError</span>;
@@ -490,7 +496,7 @@
                 <span class="ident">operations</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">op_id</span>, <span class="ident">_op</span><span class="op">|</span> <span class="ident">newly_added</span>.<span class="ident">contains</span>(<span class="ident">op_id</span>));
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">operations</span>.<span class="ident">is_empty</span>() {
                     <span class="self">self</span>.<span class="ident">protocol_command_sender</span>
-                        .<span class="ident">propagate_operations</span>(<span class="ident">operations</span>)
+                        .<span class="ident">propagate_operations</span>(<span class="ident">operations</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>())
                         .<span class="kw">await</span><span class="question-mark">?</span>;
                 }
             }
@@ -630,7 +636,7 @@
                     <span class="ident">operations</span>.<span class="ident">retain</span>(<span class="op">|</span><span class="ident">op_id</span>, <span class="ident">_op</span><span class="op">|</span> <span class="ident">newly_added</span>.<span class="ident">contains</span>(<span class="ident">op_id</span>));
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">operations</span>.<span class="ident">is_empty</span>() {
                         <span class="self">self</span>.<span class="ident">protocol_command_sender</span>
-                            .<span class="ident">propagate_operations</span>(<span class="ident">operations</span>)
+                            .<span class="ident">propagate_operations</span>(<span class="ident">operations</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>())
                             .<span class="kw">await</span><span class="question-mark">?</span>;
                     }
                 } <span class="kw">else</span> {
@@ -654,6 +660,12 @@
                 } <span class="kw">else</span> {
                     <span class="self">self</span>.<span class="ident">endorsement_pool</span>.<span class="ident">add_endorsements</span>(<span class="ident">endorsements</span>)<span class="question-mark">?</span>;
                 }
+            }
+            <span class="ident">ProtocolPoolEvent::GetOperations</span>((<span class="ident">node_id</span>, <span class="ident">operation_ids</span>)) =&gt; {
+                <span class="kw">let</span> <span class="ident">operations</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">operation_pool</span>.<span class="ident">get_operations</span>(<span class="kw-2">&amp;</span><span class="ident">operation_ids</span>);
+                <span class="self">self</span>.<span class="ident">protocol_command_sender</span>
+                    .<span class="ident">send_get_operations_results</span>(<span class="ident">node_id</span>, <span class="ident">operations</span>.<span class="ident">into_values</span>().<span class="ident">collect</span>())
+                    .<span class="kw">await</span><span class="question-mark">?</span>;
             }
         }
         <span class="prelude-val">Ok</span>(())

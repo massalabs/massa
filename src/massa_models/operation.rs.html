@@ -562,11 +562,96 @@
 <span id="557">557</span>
 <span id="558">558</span>
 <span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::{<span class="ident">ADDRESS_SIZE_BYTES</span>, <span class="ident">OPERATION_ID_SIZE_BYTES</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash</span>::{<span class="ident">PreHashed</span>, <span class="ident">Set</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">PreHashed</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::signed</span>::{<span class="ident">Id</span>, <span class="ident">Signable</span>, <span class="ident">Signed</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::with_serialization_context</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">serialization</span>::{
         <span class="ident">array_from_slice</span>, <span class="ident">DeserializeCompact</span>, <span class="ident">DeserializeVarInt</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
@@ -1039,6 +1124,89 @@
             <span class="ident">OperationType::ExecuteSC</span> { .. } =&gt; {}
         }
         <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+    }
+}
+
+<span class="doccomment">/// Set of operation ids</span>
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">OperationIds</span> <span class="op">=</span> <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>;
+
+<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">OperationIds</span> {
+    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">list_len</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+            <span class="ident">ModelsError::SerializeError</span>(<span class="string">&quot;could not encode AskForBlocks list length as u32&quot;</span>.<span class="ident">into</span>())
+        })<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">list_len</span>.<span class="ident">to_varint_bytes</span>());
+        <span class="kw">for</span> <span class="ident">hash</span> <span class="kw">in</span> <span class="self">self</span> {
+            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>.<span class="ident">to_bytes</span>());
+        }
+        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+    }
+}
+
+<span class="doccomment">/// Deserialize from the given `buffer`.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// You know that the maximum number of ids is `max_operations_per_message` taken</span>
+<span class="doccomment">/// from the node configuration.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// # Return</span>
+<span class="doccomment">/// A result that return the deserialized Vec of `OperationId`</span>
+<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">OperationIds</span> {
+    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">max_operations_per_message</span> <span class="op">=</span>
+            <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">max_operations_per_message</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
+        <span class="kw">let</span> (<span class="ident">length</span>, <span class="ident">delta</span>) <span class="op">=</span>
+            <span class="ident">u32::from_varint_bytes_bounded</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..], <span class="ident">max_operations_per_message</span>)<span class="question-mark">?</span>;
+        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+        <span class="comment">// hash list</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">list</span>: <span class="ident">OperationIds</span> <span class="op">=</span>
+            <span class="ident">Set::with_capacity_and_hasher</span>(<span class="ident">length</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">BuildMap::default</span>());
+        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">length</span> {
+            <span class="kw">let</span> <span class="ident">b_id</span> <span class="op">=</span> <span class="ident">OperationId::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">array_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">OPERATION_ID_SIZE_BYTES</span>;
+            <span class="ident">list</span>.<span class="ident">insert</span>(<span class="ident">b_id</span>);
+        }
+        <span class="prelude-val">Ok</span>((<span class="ident">list</span>, <span class="ident">cursor</span>))
+    }
+}
+
+<span class="doccomment">/// Set of self containing signed operations.</span>
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">Operations</span> <span class="op">=</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedOperation</span><span class="op">&gt;</span>;
+
+<span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">Operations</span> {
+    <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="ident">res</span>.<span class="ident">extend</span>((<span class="self">self</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_varint_bytes</span>());
+        <span class="kw">for</span> <span class="ident">op</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">iter</span>() {
+            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">op</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>);
+        }
+        <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+    }
+}
+
+<span class="doccomment">/// Deserialize from the given `buffer`.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// You know that the maximum number of ids is `max_operations_per_message` taken</span>
+<span class="doccomment">/// from the node configuration.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// # Return</span>
+<span class="doccomment">/// A result that return the deserialized Vec of `Operation`</span>
+<span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">Operations</span> {
+    <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">max_operations_per_message</span> <span class="op">=</span>
+            <span class="ident">with_serialization_context</span>(<span class="op">|</span><span class="ident">context</span><span class="op">|</span> <span class="ident">context</span>.<span class="ident">max_operations_per_message</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;
+        <span class="kw">let</span> (<span class="ident">length</span>, <span class="ident">delta</span>) <span class="op">=</span>
+            <span class="ident">u32::from_varint_bytes_bounded</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..], <span class="ident">max_operations_per_message</span>)<span class="question-mark">?</span>;
+        <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ops</span>: <span class="ident">Operations</span> <span class="op">=</span> <span class="ident">Operations::with_capacity</span>(<span class="ident">length</span> <span class="kw">as</span> <span class="ident">usize</span>);
+        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">length</span> {
+            <span class="kw">let</span> (<span class="ident">operation</span>, <span class="ident">delta</span>) <span class="op">=</span> <span class="ident">SignedOperation::from_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="ident">buffer</span>[<span class="ident">cursor</span>..])<span class="question-mark">?</span>;
+            <span class="ident">cursor</span> <span class="op">+</span><span class="op">=</span> <span class="ident">delta</span>;
+            <span class="ident">ops</span>.<span class="ident">push</span>(<span class="ident">operation</span>);
+        }
+        <span class="prelude-val">Ok</span>((<span class="ident">ops</span>, <span class="ident">cursor</span>))
     }
 }
 

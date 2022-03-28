@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["start_protocol_controller","start a new ProtocolController from a ProtocolConfig"]]});
+initSidebarItems({"mod":[["protocol_worker",""],["worker_operations_impl","Contains the implementation of the life cycle of operations"]]});

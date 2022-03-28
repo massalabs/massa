@@ -22,8 +22,12 @@
 <span id="17">17</span>
 <span id="18">18</span>
 <span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Manages a connection with a node</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">commands</span>::{<span class="ident">NetworkCommand</span>, <span class="ident">NetworkEvent</span>, <span class="ident">NetworkManagementCommand</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">commands</span>::{
+    <span class="ident">NetworkCommand</span>, <span class="ident">NetworkEvent</span>, <span class="ident">NetworkManagementCommand</span>, <span class="ident">NodeCommand</span>, <span class="ident">NodeEvent</span>, <span class="ident">NodeEventType</span>,
+};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">common</span>::{<span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error</span>::{<span class="ident">HandshakeErrorType</span>, <span class="ident">NetworkConnectionErrorType</span>, <span class="ident">NetworkError</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">establisher</span>::{<span class="ident">Establisher</span>, <span class="ident">Listener</span>, <span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>};

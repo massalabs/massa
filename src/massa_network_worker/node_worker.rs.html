@@ -424,25 +424,23 @@
 <span id="419">419</span>
 <span id="420">420</span>
 <span id="421">421</span>
+<span id="422">422</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">binders</span>::{<span class="ident">ReadBinder</span>, <span class="ident">WriteBinder</span>},
     <span class="ident">messages::Message</span>,
 };
-
+<span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">constants</span>::{
-        <span class="ident">MAX_ASK_BLOCKS_PER_MESSAGE</span>, <span class="ident">MAX_ENDORSEMENTS_PER_MESSAGE</span>, <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>,
-        <span class="ident">NODE_SEND_CHANNEL_SIZE</span>,
-    },
+    <span class="ident">constants</span>::{<span class="ident">MAX_ASK_BLOCKS_PER_MESSAGE</span>, <span class="ident">MAX_ENDORSEMENTS_PER_MESSAGE</span>, <span class="ident">NODE_SEND_CHANNEL_SIZE</span>},
     <span class="ident">node::NodeId</span>,
     <span class="ident">signed::Signable</span>,
-    <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>, <span class="ident">SignedOperation</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">ConnectionClosureReason</span>, <span class="ident">NetworkError</span>, <span class="ident">NetworkSettings</span>};
-<span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
+<span class="kw">use</span> <span class="ident">massa_network_exports</span>::{
+    <span class="ident">ConnectionClosureReason</span>, <span class="ident">NetworkError</span>, <span class="ident">NetworkSettings</span>, <span class="ident">NodeCommand</span>, <span class="ident">NodeEvent</span>, <span class="ident">NodeEventType</span>,
+};
 <span class="kw">use</span> <span class="ident">tokio</span>::{
     <span class="ident">sync::mpsc</span>,
     <span class="ident">sync::mpsc</span>::{
@@ -452,52 +450,6 @@
     <span class="ident">time::timeout</span>,
 };
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>, <span class="ident">warn</span>};
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NodeCommand</span> {
-    <span class="doccomment">/// Send given peer list to node.</span>
-    <span class="ident">SendPeerList</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Send that block to node.</span>
-    <span class="ident">SendBlock</span>(<span class="ident">Block</span>),
-    <span class="doccomment">/// Send the header of a block to a node.</span>
-    <span class="ident">SendBlockHeader</span>(<span class="ident">SignedHeader</span>),
-    <span class="doccomment">/// Ask for a block from that node.</span>
-    <span class="ident">AskForBlocks</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Close the node worker.</span>
-    <span class="ident">Close</span>(<span class="ident">ConnectionClosureReason</span>),
-    <span class="doccomment">/// Block not found</span>
-    <span class="ident">BlockNotFound</span>(<span class="ident">BlockId</span>),
-    <span class="doccomment">/// Operation</span>
-    <span class="ident">SendOperations</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedOperation</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Endorsements</span>
-    <span class="ident">SendEndorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedEndorsement</span><span class="op">&gt;</span>),
-}
-
-<span class="doccomment">/// Event types that node worker can emit</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NodeEventType</span> {
-    <span class="doccomment">/// Node we are connected to asked for advertised peers</span>
-    <span class="ident">AskedPeerList</span>,
-    <span class="doccomment">/// Node we are connected to sent peer list</span>
-    <span class="ident">ReceivedPeerList</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Node we are connected to sent block</span>
-    <span class="ident">ReceivedBlock</span>(<span class="ident">Block</span>),
-    <span class="doccomment">/// Node we are connected to sent block header</span>
-    <span class="ident">ReceivedBlockHeader</span>(<span class="ident">SignedHeader</span>),
-    <span class="doccomment">/// Node we are connected to asks for a block.</span>
-    <span class="ident">ReceivedAskForBlocks</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Didn&#39;t found given block,</span>
-    <span class="ident">BlockNotFound</span>(<span class="ident">BlockId</span>),
-    <span class="doccomment">/// Operation</span>
-    <span class="ident">ReceivedOperations</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedOperation</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Operation</span>
-    <span class="ident">ReceivedEndorsements</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedEndorsement</span><span class="op">&gt;</span>),
-}
-
-<span class="doccomment">/// Events node worker can emit.</span>
-<span class="doccomment">/// Events are a tuple linking a node id to an event type</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeEvent</span>(<span class="kw">pub</span> <span class="ident">NodeId</span>, <span class="kw">pub</span> <span class="ident">NodeEventType</span>);
 
 <span class="doccomment">/// Manages connections</span>
 <span class="doccomment">/// One worker per node.</span>
@@ -580,9 +532,12 @@
                 );
                 <span class="prelude-val">Ok</span>(())
             }
-            <span class="prelude-val">Err</span>(<span class="ident">TrySendError::Closed</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Err</span>(<span class="ident">NetworkError::ChannelError</span>(
-                <span class="string">&quot;failed sending message to node: channel closed&quot;</span>.<span class="ident">into</span>(),
-            )),
+            <span class="prelude-val">Err</span>(<span class="ident">TrySendError::Closed</span>(<span class="kw">_</span>)) =&gt; {
+                <span class="macro">debug!</span>(<span class="string">&quot;failed sending message deconnected {}.&quot;</span>, <span class="self">self</span>.<span class="ident">node_id</span>);
+                <span class="prelude-val">Err</span>(<span class="ident">NetworkError::ChannelError</span>(
+                    <span class="string">&quot;failed sending message to node: channel closed&quot;</span>.<span class="ident">into</span>(),
+                ))
+            }
             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
         }
     }
@@ -712,8 +667,28 @@
                                 <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::BlockNotFound</span>(<span class="ident">hash</span>))).<span class="kw">await</span>;
                             }
                             <span class="ident">Message::Operations</span>(<span class="ident">operations</span>) =&gt; {
-                                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::Operation&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operations&quot;</span>: <span class="ident">operations</span>});
+                                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ids</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+                                <span class="kw">for</span> <span class="ident">operation</span> <span class="kw">in</span> <span class="ident">operations</span>.<span class="ident">iter</span>() {
+                                    <span class="ident">ids</span>.<span class="ident">push</span>(<span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>().<span class="ident">unwrap</span>());
+                                }
+                                <span class="macro">massa_trace!</span>(
+                                    <span class="string">&quot;node_worker.run_loop. receive Message::Operations: &quot;</span>,
+                                    {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;ids&quot;</span>: <span class="ident">ids</span>, <span class="string">&quot;operations&quot;</span>: <span class="ident">operations</span>}
+                                );
+                                <span class="comment">//massa_trace!(&quot;node_worker.run_loop. receive Message::Operations&quot;, {&quot;node&quot;: self.node_id, &quot;operations&quot;: operations});</span>
                                 <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedOperations</span>(<span class="ident">operations</span>))).<span class="kw">await</span>;
+                            }
+                            <span class="ident">Message::AskForOperations</span>(<span class="ident">operation_ids</span>) =&gt; {
+                                <span class="macro">massa_trace!</span>(
+                                    <span class="string">&quot;node_worker.run_loop. receive Message::AskForOperations: &quot;</span>,
+                                    {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operations&quot;</span>: <span class="ident">operation_ids</span>}
+                                );
+                                <span class="comment">//massa_trace!(&quot;node_worker.run_loop. receive Message::AskForOperations&quot;, {&quot;node&quot;: self.node_id, &quot;operations&quot;: operation_ids});</span>
+                                <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedAskForOperations</span>(<span class="ident">operation_ids</span>))).<span class="kw">await</span>;
+                            }
+                            <span class="ident">Message::OperationsAnnouncement</span>(<span class="ident">operation_ids</span>) =&gt; {
+                                <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::OperationsBatch&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operations&quot;</span>: <span class="ident">operation_ids</span>});
+                                <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedOperationAnnouncements</span>(<span class="ident">operation_ids</span>))).<span class="kw">await</span>;
                             }
                             <span class="ident">Message::Endorsements</span>(<span class="ident">endorsements</span>) =&gt; {
                                 <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. receive Message::Endorsement&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>});
@@ -779,13 +754,40 @@
                         },
                         <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendOperations</span>(<span class="ident">operations</span>)) =&gt; {
                             <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::SendOperations&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operations&quot;</span>: <span class="ident">operations</span>});
-                            <span class="comment">// cut operation list if it exceed max_operations_per_message</span>
-                            <span class="kw">for</span> <span class="ident">to_send_list</span> <span class="kw">in</span> <span class="ident">operations</span>.<span class="ident">chunks</span>(<span class="ident">MAX_OPERATIONS_PER_MESSAGE</span> <span class="kw">as</span> <span class="ident">usize</span>) {
-                                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::Operations</span>(<span class="ident">to_send_list</span>.<span class="ident">to_vec</span>())).<span class="ident">is_err</span>() {
+                            <span class="kw">for</span> <span class="ident">chunk</span> <span class="kw">in</span> <span class="ident">operations</span>.<span class="ident">chunks</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_operations_per_message</span> <span class="kw">as</span> <span class="ident">usize</span>) {
+                                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::Operations</span>(<span class="ident">chunk</span>.<span class="ident">into</span>())).<span class="ident">is_err</span>() {
                                     <span class="kw">break</span> <span class="lifetime">&#39;select_loop</span>;
                                 }
                             }
                         },
+                        <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendOperationAnnouncements</span>(<span class="ident">operation_ids</span>)) =&gt; {
+                            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::OperationsAnnouncement&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operation_ids&quot;</span>: <span class="ident">operation_ids</span>});
+                            <span class="kw">for</span> <span class="ident">chunk</span> <span class="kw">in</span> <span class="ident">operation_ids</span>
+                            .<span class="ident">into_iter</span>()
+                            .<span class="ident">chunks</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_operations_per_message</span> <span class="kw">as</span> <span class="ident">usize</span>)
+                            .<span class="ident">into_iter</span>()
+                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">chunk</span><span class="op">|</span> <span class="ident">chunk</span>.<span class="ident">collect</span>()) {
+                                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::OperationsAnnouncement</span>(<span class="ident">chunk</span>)).<span class="ident">is_err</span>() {
+                                    <span class="kw">break</span> <span class="lifetime">&#39;select_loop</span>;
+                                }
+                            }
+                        }
+                        <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::AskForOperations</span>(<span class="ident">operation_ids</span>)) =&gt; {
+                            <span class="comment">//massa_trace!(&quot;node_worker.run_loop. send Message::AskForOperations&quot;, {&quot;node&quot;: self.node_id, &quot;operation_ids&quot;: operation_ids});</span>
+                            <span class="macro">massa_trace!</span>(
+                                <span class="string">&quot;node_worker.run_loop. send Message::AskForOperations&quot;</span>,
+                                {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operation_ids&quot;</span>: <span class="ident">operation_ids</span>}
+                            );
+                            <span class="kw">for</span> <span class="ident">chunk</span> <span class="kw">in</span> <span class="ident">operation_ids</span>
+                            .<span class="ident">into_iter</span>()
+                            .<span class="ident">chunks</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_operations_per_message</span> <span class="kw">as</span> <span class="ident">usize</span>)
+                            .<span class="ident">into_iter</span>()
+                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">chunk</span><span class="op">|</span> <span class="ident">chunk</span>.<span class="ident">collect</span>()) {
+                                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::AskForOperations</span>(<span class="ident">chunk</span>)).<span class="ident">is_err</span>() {
+                                    <span class="kw">break</span> <span class="lifetime">&#39;select_loop</span>;
+                                }
+                            }
+                        }
                         <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendEndorsements</span>(<span class="ident">endorsements</span>)) =&gt; {
                             <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::SendEndorsements&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>});
                             <span class="comment">// cut endorsement list if it exceed max_endorsements_per_message</span>

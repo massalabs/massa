@@ -1905,7 +1905,7 @@
             <span class="kw">let</span> <span class="ident">operation_batch</span> <span class="op">=</span> <span class="self">self</span>
                 .<span class="ident">channels</span>
                 .<span class="ident">pool_command_sender</span>
-                .<span class="ident">get_operation_batch</span>(
+                .<span class="ident">send_get_operations_announcement</span>(
                     <span class="ident">cur_slot</span>,
                     <span class="ident">exclude_operations</span>.<span class="ident">clone</span>(),
                     <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">operation_batch_size</span>,
