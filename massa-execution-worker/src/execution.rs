@@ -447,6 +447,7 @@ impl ExecutionState {
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
     pub fn execute_slot(&self, slot: Slot, opt_block: Option<(BlockId, Block)>) -> ExecutionOutput {
+        println!("execute_slot, slot = (p: {}, t: {})", slot.period, slot.thread);
         // get optional block ID and creator address
         let (opt_block_id, opt_block_creator_addr) = opt_block
             .as_ref()

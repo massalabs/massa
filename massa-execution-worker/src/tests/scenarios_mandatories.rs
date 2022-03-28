@@ -1,5 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-use crate::{start_execution_worker, controller};
+use crate::start_execution_worker;
 use massa_async_pool::AsyncPoolConfig;
 use massa_execution_exports::{ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest};
 use massa_final_state::{FinalState, FinalStateConfig};
@@ -112,7 +112,7 @@ fn test_sending_read_only_execution_command() {
 
 #[test]
 #[serial]
-fn send_and_receive_message() {
+fn send_and_receive_async_message() {
     let exec_cfg = ExecutionConfig {
         t0: 10.into(),
         ..ExecutionConfig::default()
@@ -121,21 +121,21 @@ fn send_and_receive_message() {
     let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state);
 
     let (sender_address, sender_private_key, sender_public_key) = get_random_address_full();
-    let event_test_data = include_bytes!("./wasm/send_message.wasm");
-    let (block_id, block) = create_block(vec![create_execute_sc_operation(
-        sender_private_key,
-        sender_public_key,
-        event_test_data,
-    )
-    .unwrap()])
-    .unwrap();
+    let bytecode = include_bytes!("./wasm/send_message.wasm");
 
     let finalized_blocks: Map<BlockId, Block> = Default::default();
     let mut blockclique: Map<BlockId, Block> = Default::default();
-    let slot = block.header.content.slot;
+    let (block_id, block) = create_block(vec![create_execute_sc_operation(
+        sender_private_key,
+        sender_public_key,
+        bytecode,
+    )
+    .unwrap()])
+    .unwrap();
     blockclique.insert(block_id, block);
 
     controller.update_blockclique_status(finalized_blocks, blockclique);
+    std::thread::sleep(Duration::from_millis(200));
     manager.stop()
 }
 
