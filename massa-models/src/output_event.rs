@@ -27,6 +27,7 @@ impl Display for SCOutputEvent {
 
 const SC_OUTPUT_EVENT_ID_STRING_PREFIX: &str = "SCE";
 
+/// event generated during a smart contract execution
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct SCOutputEventId(pub Hash);
 

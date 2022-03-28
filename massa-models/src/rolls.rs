@@ -16,7 +16,9 @@ pub struct RollCompensation(pub u64);
 /// roll sales and purchases
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RollUpdate {
+    /// roll purchases
     pub roll_purchases: u64,
+    /// roll sales
     pub roll_sales: u64,
     // Here is space for registering any denunciations/resets
 }

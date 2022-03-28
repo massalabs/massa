@@ -14,7 +14,9 @@ where
     T: SerializeCompact + DeserializeCompact + Signable<U> + Display,
     U: Id,
 {
+    /// content
     pub content: T,
+    /// signature
     pub signature: Signature,
     #[serde(skip_deserializing)]
     phantom: PhantomData<U>,
@@ -22,6 +24,7 @@ where
 
 /// Used by signed struct
 pub trait Id {
+    /// new id from hash
     fn new(hash: Hash) -> Self;
 }
 
@@ -36,6 +39,8 @@ where
         Ok(())
     }
 }
+
+/// impl if you want that struct to be signed
 pub trait Signable<U>
 where
     U: Id,

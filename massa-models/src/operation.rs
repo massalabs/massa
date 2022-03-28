@@ -18,6 +18,8 @@ use std::fmt::Formatter;
 use std::{ops::RangeInclusive, str::FromStr};
 
 const OPERATION_ID_STRING_PREFIX: &str = "OPE";
+
+/// operation id
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationId(Hash);
 
@@ -81,20 +83,24 @@ impl Id for OperationId {
 }
 
 impl OperationId {
+    /// op id into bytes
     pub fn to_bytes(&self) -> [u8; OPERATION_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
+    /// op id into bytes
     pub fn into_bytes(self) -> [u8; OPERATION_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
+    /// op id from bytes
     pub fn from_bytes(data: &[u8; OPERATION_ID_SIZE_BYTES]) -> Result<OperationId, ModelsError> {
         Ok(OperationId(
             Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
         ))
     }
 
+    /// op id from bs58 check
     pub fn from_bs58_check(data: &str) -> Result<OperationId, ModelsError> {
         Ok(OperationId(
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
@@ -136,6 +142,7 @@ impl std::fmt::Display for Operation {
 
 impl Signable<OperationId> for Operation {}
 
+/// signed operation
 pub type SignedOperation = Signed<Operation, OperationId>;
 
 /// Type specific operation content
@@ -143,13 +150,21 @@ pub type SignedOperation = Signed<Operation, OperationId>;
 pub enum OperationType {
     /// transfer coins from sender to recipient
     Transaction {
+        /// recipient address
         recipient_address: Address,
+        /// amount
         amount: Amount,
     },
     /// the sender buys roll_count rolls. Roll price is config defined
-    RollBuy { roll_count: u64 },
+    RollBuy {
+        /// roll count
+        roll_count: u64,
+    },
     /// the sender sells roll_count rolls. Roll price is config defined
-    RollSell { roll_count: u64 },
+    RollSell {
+        /// roll count
+        roll_count: u64,
+    },
     /// Execute a smart contract.
     ExecuteSC {
         /// Smart contract bytecode.

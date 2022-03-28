@@ -27,25 +27,38 @@ pub use version::Version;
 pub mod active_block;
 pub mod address;
 pub mod amount;
+/// struct use by the api
 pub mod api;
 mod block;
+/// clique
 pub mod clique;
 pub mod composite;
 mod endorsement;
+/// models error
 pub mod error;
+/// execution related structs
 pub mod execution;
+/// ledger related structs
 pub mod ledger_models;
 pub mod node;
 mod node_configuration;
+/// operations
 pub mod operation;
+/// smart contract output events
 pub mod output_event;
+/// prehashed trait, for hash less hashmap/set
 pub mod prehash;
+/// rolls
 pub mod rolls;
 mod serialization;
 mod serialization_context;
+/// trait for signed struct
 pub mod signed;
+/// slots
 pub mod slot;
+/// various statistics
 pub mod stats;
+/// management of the relation between time and slots
 pub mod timeslots;
 mod version;
 pub use node_configuration::CompactConfig;

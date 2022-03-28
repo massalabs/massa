@@ -15,7 +15,9 @@ use std::{cmp::Ordering, convert::TryInto};
 /// a point in time where a block is expected
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Slot {
+    /// period
     pub period: u64,
+    /// thread
     pub thread: u8,
 }
 
@@ -39,6 +41,7 @@ impl std::fmt::Display for Slot {
 }
 
 impl Slot {
+    /// new slot from period and thread
     pub fn new(period: u64, thread: u8) -> Slot {
         Slot { period, thread }
     }

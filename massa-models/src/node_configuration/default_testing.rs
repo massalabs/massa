@@ -134,8 +134,12 @@ pub const READONLY_QUEUE_LENGTH: usize = 10; // normally in config.toml
 // `massa-network` crate.
 
 lazy_static::lazy_static! {
+    /// blocks are pruned every BLOCK_DB_PRUNE_INTERVAL millis
     pub static ref BLOCK_DB_PRUNE_INTERVAL: MassaTime = 1000.into();
+    /// ledger is saved on disk every LEDGER_FLUSH_INTERVAL millis
     pub static ref LEDGER_FLUSH_INTERVAL: Option<MassaTime> = Some(200.into());
+    /// we wait MAX_SEND_WAIT millis to send a message
     pub static ref MAX_SEND_WAIT: MassaTime = 500.into();
+    /// stats are considered for STATS_TIMESPAN millis
     pub static ref STATS_TIMESPAN: MassaTime = 60000.into();
 }
