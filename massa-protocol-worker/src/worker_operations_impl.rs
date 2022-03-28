@@ -76,7 +76,7 @@ impl ProtocolWorker {
                         .checked_sub(self.protocol_settings.operation_batch_proc_period.into())
                         .ok_or(TimeError::TimeOverflowError)?
                 {
-                    debug!("re-ask operation");
+                    debug!("re-ask operation {:?} asked for the first time {:?} millis ago.", op_id, wish.0.elapsed().as_millis());
                     ask_set.insert(op_id);
                     wish.0 = now;
                     wish.1.push(node_id);
@@ -98,7 +98,11 @@ impl ProtocolWorker {
                 operations_ids: future_set,
             });
         } else {
-            debug!("buffer full");
+            if self.op_batch_buffer.len() > self.protocol_settings.operation_batch_buffer_capacity {
+                debug!("buffer full");
+            } else if future_set.is_empty() {
+                debug!("try send empty batch");
+            }
         }
         if !ask_set.is_empty() {
             self.network_command_sender
