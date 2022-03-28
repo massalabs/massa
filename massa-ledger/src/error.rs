@@ -5,10 +5,11 @@
 use displaydoc::Display;
 use thiserror::Error;
 
+/// ledger error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum LedgerError {
-    /// container iconsistency: {0}
+    /// container inconsistency: {0}
     ContainerInconsistency(String),
     /// missing entry: {0}
     MissingEntry(String),

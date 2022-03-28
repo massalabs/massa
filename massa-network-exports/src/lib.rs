@@ -15,6 +15,8 @@ mod error;
 mod establisher;
 mod network_controller;
 mod peers;
+
+/// network settings
 pub mod settings;
 
 #[cfg(feature = "testing")]

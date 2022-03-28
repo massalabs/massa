@@ -5,6 +5,7 @@ use massa_signature::PrivateKey;
 use num::rational::Ratio;
 use serde::{Deserialize, Serialize};
 
+/// Proof of stake config
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ProofOfStakeConfig {
     /// Number of threads
@@ -21,8 +22,12 @@ pub struct ProofOfStakeConfig {
     pub pos_draw_cached_cycles: usize,
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub pos_miss_rate_deactivation_threshold: Ratio<u64>,
+    /// path to initial rolls
     pub initial_rolls_path: PathBuf,
+    /// initial seed
     pub initial_draw_seed: String,
+    /// price for one roll
     pub roll_price: Amount,
+    /// target number of endorsement per block
     pub endorsement_count: u32,
 }

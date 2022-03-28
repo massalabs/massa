@@ -17,9 +17,13 @@ mod types {
         time::timeout,
     };
 
+    /// read half
     pub type ReadHalf = tokio::net::tcp::OwnedReadHalf;
+    /// Write half
     pub type WriteHalf = tokio::net::tcp::OwnedWriteHalf;
+    /// Connection listener
     pub type Listener = DefaultListener;
+    /// Connection establisher
     pub type Establisher = DefaultEstablisher;
 
     /// The listener we are using

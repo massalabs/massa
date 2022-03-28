@@ -17,10 +17,12 @@ use tokio::{
     task::JoinHandle,
 };
 
+/// Network command sender
 #[derive(Clone)]
 pub struct NetworkCommandSender(pub mpsc::Sender<NetworkCommand>);
 
 impl NetworkCommandSender {
+    /// ban by node
     pub async fn ban(&self, node_id: NodeId) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::Ban(node_id))
@@ -29,6 +31,7 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    /// ban ip
     pub async fn ban_ip(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::BanIp(ips))
@@ -37,6 +40,7 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    /// add ip to whitelist
     pub async fn whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::Whitelist(ips))
@@ -45,6 +49,7 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    /// remove ip from whitelist
     pub async fn remove_from_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::RemoveFromWhitelist(ips))
@@ -55,6 +60,7 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    /// remove from banned nodes
     pub async fn unban(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::Unban(ips))
@@ -113,6 +119,7 @@ impl NetworkCommandSender {
         })
     }
 
+    /// get network stats
     pub async fn get_network_stats(&self) -> Result<NetworkStats, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0
@@ -140,6 +147,7 @@ impl NetworkCommandSender {
         })
     }
 
+    /// send block not found to node
     pub async fn block_not_found(
         &self,
         node: NodeId,
@@ -154,6 +162,7 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    /// send operations to node
     pub async fn send_operations(
         &self,
         node: NodeId,
@@ -168,6 +177,7 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    /// send endorsements to node id
     pub async fn send_endorsements(
         &self,
         node: NodeId,
@@ -197,9 +207,11 @@ impl NetworkCommandSender {
     }
 }
 
+/// network event receiver
 pub struct NetworkEventReceiver(pub mpsc::Receiver<NetworkEvent>);
 
 impl NetworkEventReceiver {
+    /// wait network event
     pub async fn wait_event(&mut self) -> Result<NetworkEvent, NetworkError> {
         let res = self
             .0
@@ -220,12 +232,16 @@ impl NetworkEventReceiver {
     }
 }
 
+/// Network manager
 pub struct NetworkManager {
+    /// network handle
     pub join_handle: JoinHandle<Result<(), NetworkError>>,
+    /// management commands
     pub manager_tx: mpsc::Sender<NetworkManagementCommand>,
 }
 
 impl NetworkManager {
+    /// stop network
     pub async fn stop(
         self,
         network_event_receiver: NetworkEventReceiver,

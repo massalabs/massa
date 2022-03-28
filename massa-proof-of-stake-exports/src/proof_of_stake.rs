@@ -20,6 +20,7 @@ use crate::{
 };
 type DrawCache = HashMap<u64, (usize, HashMap<Slot, (Address, Vec<Address>)>)>;
 
+/// Proof of stake management
 pub struct ProofOfStake {
     /// Config
     cfg: ProofOfStakeConfig,
@@ -27,6 +28,7 @@ pub struct ProofOfStake {
     pub(crate) cycle_states: Vec<VecDeque<ThreadCycleState>>,
     /// Cycle draw cache: cycle_number => (counter, map(slot => (block_creator_addr, vec<endorsement_creator_addr>)))
     draw_cache: DrawCache,
+    /// how many cycle are kept in memory
     draw_cache_counter: usize,
     /// Initial rolls: we keep them as long as negative cycle draws are needed
     initial_rolls: Option<Vec<RollCounts>>,
@@ -39,6 +41,7 @@ pub struct ProofOfStake {
 }
 
 impl ProofOfStake {
+    /// new proof of stake component
     pub async fn new(
         cfg: ProofOfStakeConfig,
         genesis_block_ids: &[BlockId],
@@ -101,6 +104,7 @@ impl ProofOfStake {
         })
     }
 
+    /// set watched addresses
     pub fn set_watched_addresses(&mut self, addrs: Set<Address>) {
         self.watched_addresses = addrs;
     }
@@ -135,6 +139,7 @@ impl ProofOfStake {
         initial_seeds
     }
 
+    /// next slot at which address is selected to produce a block
     pub fn get_next_selected_slot(&mut self, from_slot: Slot, address: Address) -> Option<Slot> {
         let mut cur_cycle = from_slot.get_cycle(self.cfg.periods_per_cycle);
         loop {
@@ -316,10 +321,12 @@ impl ProofOfStake {
             .1)
     }
 
+    /// draw endorsement producer at slot
     pub fn draw_endorsement_producers(&mut self, slot: Slot) -> POSResult<Vec<Address>> {
         Ok(self.draw(slot)?.1)
     }
 
+    /// draw block producer at slot
     pub fn draw_block_producer(&mut self, slot: Slot) -> POSResult<Address> {
         Ok(self.draw(slot)?.0)
     }
@@ -463,6 +470,7 @@ impl ProofOfStake {
         Ok(())
     }
 
+    /// get production stats for addresses
     pub fn get_stakers_production_stats(
         &self,
         addrs: &Set<Address>,
@@ -512,6 +520,7 @@ impl ProofOfStake {
         res.into_values().collect()
     }
 
+    /// get cycle at last final block
     pub fn get_last_final_block_cycle(&self, thread: u8) -> u64 {
         self.cycle_states[thread as usize][0].cycle
     }
@@ -521,6 +530,7 @@ impl ProofOfStake {
         self.cycle_states[thread as usize][0].last_final_slot
     }
 
+    /// get roll data at latest final blocks
     pub fn get_final_roll_data(&self, cycle: u64, thread: u8) -> Option<&ThreadCycleState> {
         let last_final_block_cycle = self.get_last_final_block_cycle(thread);
         if let Some(neg_relative_cycle) = last_final_block_cycle.checked_sub(cycle) {

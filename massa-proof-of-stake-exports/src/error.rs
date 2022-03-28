@@ -3,8 +3,10 @@ use displaydoc::Display;
 use massa_models::ModelsError;
 use thiserror::Error;
 
+/// Proof of stake result
 pub type POSResult<T, E = ProofOfStakeError> = core::result::Result<T, E>;
 
+/// proof of stake error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum ProofOfStakeError {
