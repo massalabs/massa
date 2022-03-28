@@ -21,6 +21,7 @@ use massa_models::{
 use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::{collections::HashMap, sync::Arc};
+use tracing::info;
 
 /// Structure gathering all elements needed by the execution thread
 pub(crate) struct ExecutionThread {
@@ -252,7 +253,7 @@ impl ExecutionThread {
             .expect("the SCE final slot list skipped a slot");
 
         // check if the final slot is cached at the front of the speculative execution history
-        if let Some(exec_out) = exec_state.active_history.pop_front() {
+        if let Some(exec_out) = exec_state.pop_first_execution_result() {
             if exec_out.slot == slot
                 && exec_out.block_id == exec_target.as_ref().map(|(b_id, _)| *b_id)
             {
@@ -265,6 +266,7 @@ impl ExecutionThread {
         }
 
         // speculative cache mismatch
+        info!("speculative execution cache mismatch: resetting the cache");
 
         // clear the speculative execution output cache completely
         exec_state.clear_history();
@@ -394,6 +396,50 @@ impl ExecutionThread {
         false
     }
 
+    /// Internal function tool used in `self.wait_loop_event()`, check in the
+    /// first place the content of `input_data` set by the controller.
+    ///
+    /// # Returns
+    /// Return if the wait_loop has to break, early return, or pass.
+    /// - None: pass
+    /// - Some(true): break (will stop the worker)
+    /// - Some(false): early return (will continue to execute the input data)
+    ///
+    /// # Test case
+    /// With the test config, the behavior is slightly different and we prefer
+    /// to execute all `readonly_requests`, `new_blockclique`, and
+    /// `finalized_blocks` before he thread join
+    fn check_input_data(&self, input_data: &ExecutionInputData) -> Option<bool> {
+        #[cfg(test)]
+        {
+            if (!input_data.readonly_requests.is_empty()
+                || input_data.new_blockclique.is_some()
+                || !input_data.finalized_blocks.is_empty())
+                && !input_data.stop
+            {
+                return Some(false);
+            }
+            if input_data.stop {
+                return Some(true);
+            }
+        }
+        #[cfg(not(test))]
+        {
+            if input_data.stop {
+                return Some(true);
+            }
+            // Check for readonly requests, new blockclique or final slot changes
+            // The most frequent triggers are checked first.
+            if !input_data.readonly_requests.is_empty()
+                || input_data.new_blockclique.is_some()
+                || !input_data.finalized_blocks.is_empty()
+            {
+                return Some(false);
+            }
+        }
+        None
+    }
+
     /// Waits for an event to trigger a new iteration in the excution main loop.
     ///
     /// # Returns
@@ -406,18 +452,15 @@ impl ExecutionThread {
             // take current input data, resetting it
             let input_data: ExecutionInputData = input_data_lock.take();
 
-            // check for stop signal
-            if input_data.stop {
-                break input_data;
-            }
-
+            // check for stop signal (in testing mode we wait for all
             // Check for readonly requests, new blockclique or final slot changes
             // The most frequent triggers are checked first.
-            if !input_data.readonly_requests.is_empty()
-                || input_data.new_blockclique.is_some()
-                || !input_data.finalized_blocks.is_empty()
-            {
-                return Some(input_data);
+            if let Some(should_break) = self.check_input_data(&input_data) {
+                if should_break {
+                    break input_data;
+                } else {
+                    return Some(input_data);
+                }
             }
 
             // Check for slots to execute.

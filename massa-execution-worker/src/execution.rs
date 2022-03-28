@@ -10,6 +10,7 @@
 
 use crate::context::ExecutionContext;
 use crate::interface_impl::InterfaceImpl;
+use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
     ReadOnlyExecutionRequest,
@@ -39,24 +40,24 @@ macro_rules! context_guard {
 /// and allowing access to them.
 pub(crate) struct ExecutionState {
     // execution config
-    pub config: ExecutionConfig,
+    config: ExecutionConfig,
     // History of the outputs of recently executed slots. Slots should be consecutive, newest at the back.
     // Whenever an active slot is executed, it is appended at the back of active_history.
     // Whenever an executed active slot becomes final,
     // its output is popped from the front of active_history and applied to the final state.
-    pub active_history: VecDeque<ExecutionOutput>,
+    active_history: VecDeque<ExecutionOutput>,
     // a cursor pointing to the highest executed slot
     pub active_cursor: Slot,
     // a cursor pointing to the highest executed final slot
     pub final_cursor: Slot,
     // store containing execution events that became final
-    pub final_events: EventStore,
+    final_events: EventStore,
     // final state with atomic R/W access
-    pub final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<FinalState>>,
     // execution context (see documentation in context.rs)
-    pub execution_context: Arc<Mutex<ExecutionContext>>,
+    execution_context: Arc<Mutex<ExecutionContext>>,
     // execution interface allowing the VM runtime to access the Massa context
-    pub execution_interface: Box<dyn Interface>,
+    execution_interface: Box<dyn Interface>,
 }
 
 impl ExecutionState {
@@ -101,16 +102,28 @@ impl ExecutionState {
         }
     }
 
+    /// Gets out the first (oldest) execution history item, removing it from history.
+    ///
+    /// # Returns
+    /// The earliest ExecutionOutput from the execution history, or None if the history is empty
+    pub fn pop_first_execution_result(&mut self) -> Option<ExecutionOutput> {
+        self.active_history.pop_front()
+    }
+
     /// Applies the output of an execution to the final execution state.
     /// The newly applied final output should be from the slot just after the last executed final slot
     ///
     /// # Arguments
     /// * exec_out: execution output to apply
     pub fn apply_final_execution_output(&mut self, exec_out: ExecutionOutput) {
+        if self.final_cursor >= exec_out.slot {
+            panic!("attempting to apply a final execution output at or before the current final_cursor");
+        }
+
         // apply state changes to the final ledger
         self.final_state
             .write()
-            .settle_slot(exec_out.slot, exec_out.state_changes);
+            .finalize(exec_out.slot, exec_out.state_changes);
         // update the final ledger's slot
         self.final_cursor = exec_out.slot;
 
@@ -130,6 +143,13 @@ impl ExecutionState {
     /// # Arguments
     /// * exec_out: execution output to apply
     pub fn apply_active_execution_output(&mut self, exec_out: ExecutionOutput) {
+        if self.active_cursor >= exec_out.slot {
+            panic!("attempting to apply an active execution output at or before the current active_cursor");
+        }
+        if exec_out.slot <= self.final_cursor {
+            panic!("attempting to apply an active execution output at or before the current final_cursor");
+        }
+
         // update active cursor to reflect the new latest active slot
         self.active_cursor = exec_out.slot;
 
@@ -190,6 +210,12 @@ impl ExecutionState {
                 .active_history
                 .back()
                 .map_or(self.final_cursor, |out| out.slot);
+            // safety check to ensure that the active cursor cannot go too far back in time
+            if self.active_cursor < self.final_cursor {
+                panic!(
+                    "active_cursor moved before final_cursor after execution history truncation"
+                );
+            }
         }
     }
 
@@ -228,7 +254,7 @@ impl ExecutionState {
     /// Execute an operation in the context of a block.
     /// Assumes the execution context was initialized at the beginning of the slot.
     ///
-    /// # arguments
+    /// # Arguments
     /// * operation: operation to execute
     /// * block_creator_addr: address of the block creator
     pub fn execute_operation(
@@ -299,7 +325,7 @@ impl ExecutionState {
 
             // Set the call stack to a single element:
             // * the execution will happen in the context of the address of the operation's sender
-            // * the context will signal that `coins` were creditedto the parallel balance of the sender during that call
+            // * the context will signal that `coins` were credited to the parallel balance of the sender during that call
             // * the context will give the operation's sender write access to its own ledger entry
             context.stack = vec![ExecutionStackElement {
                 address: sender_addr,
@@ -312,7 +338,7 @@ impl ExecutionState {
         };
 
         // run the VM on the bytecode contained in the operation
-        let run_result = massa_sc_runtime::run(bytecode, *max_gas, &*self.execution_interface);
+        let run_result = massa_sc_runtime::run_main(bytecode, *max_gas, &*self.execution_interface);
         if let Err(err) = run_result {
             // there was an error during bytecode execution:
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
@@ -326,6 +352,89 @@ impl ExecutionState {
         }
 
         Ok(())
+    }
+
+    /// Tries to execute an asynchronous message
+    /// If the execution failed reimburse the message sender.
+    ///
+    /// # Arguments
+    /// * message: message information
+    /// * bytecode: executable target bytecode, or None if unavailable
+    pub fn execute_async_message(
+        &self,
+        message: AsyncMessage,
+        bytecode: Option<Vec<u8>>,
+    ) -> Result<(), ExecutionError> {
+        // If there is no target bytecode or if message data is invalid,
+        // directly reimburse sender with coins and quit
+        let (bytecode, data) = match (bytecode, std::str::from_utf8(&message.data)) {
+            (Some(bc), Ok(d)) => (bc, d),
+            (bc, _d) => {
+                context_guard!(self).cancel_async_message(&message);
+                if bc.is_none() {
+                    return Err(ExecutionError::RuntimeError(
+                        "no target bytecode found".into(),
+                    ));
+                }
+                return Err(ExecutionError::RuntimeError(
+                    "message data does not convert to utf-8".into(),
+                ));
+            }
+        };
+
+        // prepare execution context
+        let context_snapshot;
+        {
+            let mut context = context_guard!(self);
+            context_snapshot = context.get_snapshot();
+            context.max_gas = message.max_gas;
+            context.gas_price = message.gas_price;
+            context.stack = vec![
+                ExecutionStackElement {
+                    address: message.sender,
+                    coins: message.coins,
+                    owned_addresses: vec![message.sender],
+                },
+                ExecutionStackElement {
+                    address: message.destination,
+                    coins: message.coins,
+                    owned_addresses: vec![message.destination],
+                },
+            ];
+
+            // credit coins to the target address
+            if let Err(err) =
+                context.transfer_parallel_coins(None, Some(message.destination), message.coins)
+            {
+                // coin crediting failed: reset context to snapshot and reimburse sender
+                context.reset_to_snapshot(context_snapshot);
+                context.cancel_async_message(&message);
+                return Err(ExecutionError::RuntimeError(format!(
+                    "could not credit coins to target of async execution: {}",
+                    err
+                )));
+            }
+        }
+
+        // run the target function
+        if let Err(err) = massa_sc_runtime::run_function(
+            &bytecode,
+            message.max_gas,
+            &message.handler,
+            data,
+            &*self.execution_interface,
+        ) {
+            // execution failed: reset context to snapshot and reimburse sender
+            let mut context = context_guard!(self);
+            context.reset_to_snapshot(context_snapshot);
+            context.cancel_async_message(&message);
+            Err(ExecutionError::RuntimeError(format!(
+                "async message runtime execution error: {}",
+                err
+            )))
+        } else {
+            Ok(())
+        }
     }
 
     /// Executes a full slot (with or without a block inside) without causing any changes to the state,
@@ -357,10 +466,34 @@ impl ExecutionState {
 
         // note that here, some pre-operations (like crediting block producers) can be performed before the lock
 
-        // apply the created execution context for slot execution
-        *context_guard!(self) = execution_context;
+        // get asynchronous messages destination bytecode (if available, otherwise set it to None)
+        let messages: Vec<_> = {
+            // take a lock on the context
+            let mut context = context_guard!(self);
 
-        // note that here, async operations should be executed
+            // apply the created execution context for slot execution
+            *context = execution_context;
+
+            let batch = self
+                .final_state
+                .write()
+                .async_pool
+                .take_batch_to_execute(slot, self.config.max_async_gas);
+
+            // important note: combining here will create a deadlock
+            batch
+                .into_iter()
+                .map(|msg| (context.get_bytecode(&msg.destination), msg))
+                .collect()
+        };
+
+        // Try executing asynchronous messages.
+        // Effects are cancelled on failure and the sender is reimbursed.
+        for (opt_bytecode, message) in messages {
+            if let Err(err) = self.execute_async_message(message, opt_bytecode) {
+                debug!("failed executing async message: {}", err);
+            }
+        }
 
         // check if there is a block at this slot
         if let (Some((block_id, block)), Some(block_creator_addr)) =
@@ -378,8 +511,8 @@ impl ExecutionState {
             }
         }
 
-        // return the execution output
-        context_guard!(self).take_execution_output()
+        // finish slot and return the execution output
+        context_guard!(self).settle_slot()
     }
 
     /// Executes a read-only execution request.
@@ -415,11 +548,11 @@ impl ExecutionState {
         *context_guard!(self) = execution_context;
 
         // run the intepreter
-        massa_sc_runtime::run(&bytecode, max_gas, &*self.execution_interface)
+        massa_sc_runtime::run_main(&bytecode, max_gas, &*self.execution_interface)
             .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
 
         // return the execution output
-        Ok(context_guard!(self).take_execution_output())
+        Ok(context_guard!(self).settle_slot())
     }
 
     /// Gets a full ledger entry both at the latest final and active executed slots
@@ -438,8 +571,15 @@ impl ExecutionState {
         // TODO there is a lot of overhead here: we only need to compute the changes for one entry and no need to clone it
         // also we should proceed backwards through history for performance
         // https://github.com/massalabs/massa/issues/2343
+        // Note that get_accumulated_active_changes_at_slot is called at the slot AFTER the active one
+        // in order to take all available active slots into account (and not forget the last one)
+        // and prevent a get_accumulated_active_changes_at_slot crash in the case active_cursor = final_cursor.
+        let next_slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow when getting speculative ledger");
         let active_change = self
-            .get_accumulated_active_changes_at_slot(self.active_cursor)
+            .get_accumulated_active_changes_at_slot(next_slot)
             .ledger_changes
             .get(addr)
             .cloned();
@@ -494,7 +634,7 @@ impl ExecutionState {
                 // https://github.com/massalabs/massa/issues/2335
                 self.active_history
                     .iter()
-                    .filter(|item| item.slot >= start && item.slot < end)
+                    .filter(|item| item.slot >= start && item.slot <= end)
                     .flat_map(|item| {
                         item.events.get_filtered_sc_output_event(
                             start,

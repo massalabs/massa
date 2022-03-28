@@ -4,7 +4,7 @@ use displaydoc::Display;
 use thiserror::Error;
 
 #[non_exhaustive]
-#[derive(Display, Error, Debug)]
+#[derive(Display, Error, Debug, Clone)]
 pub enum MassaHashError {
     /// parsing error : {0}
     ParsingError(String),

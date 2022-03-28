@@ -117,6 +117,15 @@ impl RpcClient {
         self.call_method("unban", "()", vec![ips]).await
     }
 
+    pub async fn node_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.call_method("node_whitelist", "()", vec![ips]).await
+    }
+
+    pub async fn node_remove_from_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
+        self.call_method("node_remove_from_whitelist", "()", vec![ips])
+            .await
+    }
+
     /// execute read only bytecode
     pub async fn execute_read_only_request(
         &self,

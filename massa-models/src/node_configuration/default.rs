@@ -69,14 +69,26 @@ lazy_static::lazy_static! {
     };
 }
 
+#[cfg(feature = "sandbox")]
+lazy_static::lazy_static! {
+    pub static ref T0: MassaTime = std::env::var("T0").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
+        MassaTime::from(16000)
+    );
+    pub static ref THREAD_COUNT: u8 = std::env::var("THREAD_COUNT").map(|timestamp| timestamp.parse::<u8>().unwrap().into()).unwrap_or_else(|_|
+        32
+    );
+}
+
 /// Price of a roll in the network
 pub const ROLL_PRICE: Amount = Amount::from_raw(100 * AMOUNT_DECIMAL_FACTOR);
 /// Block reward is given for each block creation
 pub const BLOCK_REWARD: Amount = Amount::from_raw((0.3 * AMOUNT_DECIMAL_FACTOR as f64) as u64);
+#[cfg(not(feature = "sandbox"))]
 /// Time between the periods in the same thread.
 pub const T0: MassaTime = MassaTime::from(16000);
 /// Proof of stake seed for the initial draw
 pub const INITIAL_DRAW_SEED: &str = "massa_genesis_seed";
+#[cfg(not(feature = "sandbox"))]
 /// Number of threads
 pub const THREAD_COUNT: u8 = 32;
 /// Number of endorsement
@@ -87,6 +99,8 @@ pub const DELTA_F0: u64 = 640;
 pub const MAX_OPERATIONS_PER_BLOCK: u32 = 204800;
 /// Maximum block size in bytes
 pub const MAX_BLOCK_SIZE: u32 = 204800;
+/// Maximum capacity of the asynchronous messages pool
+pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
@@ -123,6 +137,8 @@ pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 
 /// Maximum of GAS allowed for a block
 pub const MAX_GAS_PER_BLOCK: u64 = 100_000_000;
+/// Maximum of GAS allowed for async messages exection on one slot
+pub const MAX_ASYNC_GAS: u64 = 10_000_000;
 
 //
 // Constants used in network
@@ -148,6 +164,7 @@ pub const SLOT_KEY_SIZE: usize = 9;
 /// Size of the event id hash used in execution module, safe to import
 pub const EVENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
 
+#[cfg(not(feature = "sandbox"))]
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
 const _: () = {

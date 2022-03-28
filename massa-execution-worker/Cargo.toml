@@ -15,6 +15,7 @@ rand_xoshiro = "0.6"
 parking_lot = "0.12"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+tempfile = "3.2"
 thiserror = "1.0"
 tokio = { version = "1.15", features = ["full"] }
 tracing = "0.1"
@@ -22,16 +23,19 @@ tracing = "0.1"
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_models = { path = "../massa-models" }
 massa_hash = { path = "../massa-hash" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", tag = "v0.4.4" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", tag = "v0.5.0" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_final_state = { path = "../massa-final-state" }
+massa_async_pool = { path = "../massa-async-pool" }
 massa_ledger = { path = "../massa-ledger" }
 
 [dev-dependencies]
 pretty_assertions = "1.0"
 serial_test = "0.5"
-tempfile = "3.2"
 
 # custom modules with testing enabled
-massa_execution_exports = { path = "../massa-execution-exports", features = ["testing"] }
+massa_execution_exports = { path = "../massa-execution-exports", features = [
+    "testing",
+] }
+massa_ledger = { path = "../massa-ledger", features = ["testing"] }

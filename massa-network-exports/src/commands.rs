@@ -49,6 +49,8 @@ pub enum NetworkCommand {
     GetStats {
         response_tx: oneshot::Sender<NetworkStats>,
     },
+    Whitelist(Vec<IpAddr>),
+    RemoveFromWhitelist(Vec<IpAddr>),
 }
 
 #[derive(Debug)]

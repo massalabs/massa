@@ -70,6 +70,7 @@ pub const IP_LIST_MAX_SIZE: usize = 10000;
 pub const MAX_ADVERTISE_LENGTH: u32 = 10;
 pub const MAX_ASK_BLOCKS_PER_MESSAGE: u32 = 3;
 pub const MAX_BLOCK_SIZE: u32 = 3145728; // 3 * 1024 * 1024
+pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 pub const MAX_BOOTSTRAP_BLOCKS: u32 = 100;
 pub const MAX_BOOTSTRAP_CHILDREN: u32 = 10;
 pub const MAX_BOOTSTRAP_CLIQUES: u32 = 100;
@@ -80,6 +81,7 @@ pub const MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = 100_000_000;
 pub const MAX_BOOTSTRAP_POS_ENTRIES: u32 = 1000;
 pub const MAX_BOOTSTRAP_POS_CYCLES: u32 = 5;
 pub const MAX_GAS_PER_BLOCK: u64 = 100_000_000;
+pub const MAX_ASYNC_GAS: u64 = 10_000_000;
 pub const MAX_MESSAGE_SIZE: u32 = 3145728; // 3 * 1024 * 1024
 pub const MAX_OPERATIONS_PER_BLOCK: u32 = 1024;
 pub const MAX_OPERATIONS_PER_MESSAGE: u32 = 1024;
@@ -92,7 +94,7 @@ pub const POS_LOOKBACK_CYCLES: u64 = 2;
 pub const ROLL_PRICE: Amount = Amount::from_raw(100 * AMOUNT_DECIMAL_FACTOR);
 pub const SLOT_KEY_SIZE: usize = 9;
 pub const THREAD_COUNT: u8 = 2;
-pub const T0: MassaTime = MassaTime::from(32000);
+pub const T0: MassaTime = MassaTime::from(32000); // sometimes overriden in config.rs or setting.rs
 
 /*************************
 * Mocked constant section
@@ -111,18 +113,22 @@ pub const T0: MassaTime = MassaTime::from(32000);
 * };
 */
 
-pub const DISABLE_BLOCK_CREATION: bool = true;
-pub const FORCE_KEEP_FINAL_PERIOD: u64 = 0;
-pub const FUTURE_BLOCK_PROCESSING_MAX_PERIODS: u64 = 10;
-pub const LEDGER_CACHE_CAPACITY: u64 = 1_000_000;
-pub const LEDGER_RESET_AT_STARTUP: bool = true;
-pub const MAX_DEPENDENCY_BLOCK: usize = 10;
-pub const MAX_DISCARED_BLOCKS: usize = 10;
-pub const MAX_FUTURE_PROCESSING_BLOCK: usize = 10;
-pub const MAX_ITEM_RETURN_COUNT: usize = 1000;
-pub const MAX_OPERATION_FILL_ATTEMPTS: u32 = 6;
-pub const OPERATION_BATCH_SIZE: usize = 3;
-pub const POS_DRAW_CACHED_CYCLE: usize = 10;
+pub const CURSOR_DELAY: MassaTime = MassaTime::from(0); // normally in config.toml
+pub const DISABLE_BLOCK_CREATION: bool = true; // normally in config.toml
+pub const FINAL_HISTORY_LENGTH: usize = 10; // normally in config.toml
+pub const FORCE_KEEP_FINAL_PERIOD: u64 = 0; // normally in config.toml
+pub const FUTURE_BLOCK_PROCESSING_MAX_PERIODS: u64 = 10; // normally in config.toml
+pub const LEDGER_CACHE_CAPACITY: u64 = 1_000_000; // normally in config.toml
+pub const LEDGER_RESET_AT_STARTUP: bool = true; // normally in config.toml
+pub const MAX_DEPENDENCY_BLOCK: usize = 10; // normally in config.toml
+pub const MAX_DISCARED_BLOCKS: usize = 10; // normally in config.toml
+pub const MAX_FINAL_EVENTS: usize = 10; // normally in config.toml
+pub const MAX_FUTURE_PROCESSING_BLOCK: usize = 10; // normally in config.toml
+pub const MAX_ITEM_RETURN_COUNT: usize = 1000; // normally in config.toml
+pub const MAX_OPERATION_FILL_ATTEMPTS: u32 = 6; // normally in config.toml
+pub const OPERATION_BATCH_SIZE: usize = 3; // normally in config.toml
+pub const POS_DRAW_CACHED_CYCLE: usize = 10; // normally in config.toml
+pub const READONLY_QUEUE_LENGTH: usize = 10; // normally in config.toml
 
 // Note: In the `massa-network`, the default values are defined in the `settings.rs` of the
 // `massa-network` crate.

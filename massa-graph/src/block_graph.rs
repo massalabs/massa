@@ -2720,7 +2720,7 @@ impl BlockGraph {
                         .checked_add(
                             BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
                                 .ok_or_else(|| GraphError::ContainerInconsistency(format!("inconsistency inside block statuses computing fitness while adding {} - missing {}", add_block_id, block_h)))?
-                                .fitness(),
+                                .block.fitness(),
                         )
                         .ok_or(GraphError::FitnessOverflow)?;
                     sum_hash -=
@@ -2817,7 +2817,7 @@ impl BlockGraph {
                 }
 
                 // remove from cliques
-                let stale_block_fitness = active_block.fitness();
+                let stale_block_fitness = active_block.block.fitness();
                 self.max_cliques.iter_mut().for_each(|c| {
                     if c.block_ids.remove(&stale_block_hash) {
                         c.fitness -= stale_block_fitness;
@@ -2835,10 +2835,10 @@ impl BlockGraph {
 
                 // remove from parent's children
                 for (parent_h, _parent_period) in active_block.parents.iter() {
-                    if let Some(BlockStatus::Active(active_block)) =
+                    if let Some(BlockStatus::Active(parent_active_block)) =
                         self.block_statuses.get_mut(parent_h)
                     {
-                        active_block.children
+                        parent_active_block.children
                             [active_block.block.header.content.slot.thread as usize]
                             .remove(&stale_block_hash);
                     }
@@ -2919,7 +2919,7 @@ impl BlockGraph {
                             .intersection(&clique.block_ids)
                             .map(|h| {
                                 if let Some(BlockStatus::Active(ab)) = self.block_statuses.get(h) {
-                                    return ab.fitness();
+                                    return ab.block.fitness();
                                 }
                                 0
                             })
@@ -2961,7 +2961,7 @@ impl BlockGraph {
                 });
                 final_block.is_final = true;
                 // remove from cliques
-                let final_block_fitness = final_block.fitness();
+                let final_block_fitness = final_block.block.fitness();
                 self.max_cliques.iter_mut().for_each(|c| {
                     if c.block_ids.remove(&final_block_hash) {
                         c.fitness -= final_block_fitness;
@@ -3238,10 +3238,10 @@ impl BlockGraph {
 
             // remove from parent's children
             for (parent_h, _parent_period) in discarded_active.parents.iter() {
-                if let Some(BlockStatus::Active(active_block)) =
+                if let Some(BlockStatus::Active(parent_active_block)) =
                     self.block_statuses.get_mut(parent_h)
                 {
-                    active_block.children
+                    parent_active_block.children
                         [discarded_active.block.header.content.slot.thread as usize]
                         .remove(&discard_active_h);
                 }
