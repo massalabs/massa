@@ -881,7 +881,7 @@ impl BlockGraph {
                 let block = self
                     .storage
                     .retrieve_block(&same_thread_parent.block_id)
-                    .unwrap();
+                    .ok_or(GraphError::MissingBlock)?;
                 let stored_block = block.read();
                 stored_block.block.header.content.creator
             };
