@@ -17,9 +17,6 @@ use tokio::time::Instant;
 
 /// Information about a node we are connected to,
 /// essentially our view of its state.
-///
-/// Note: should we prune the set of known and wanted blocks during lifetime of a node connection?
-/// Currently it would only be dropped alongside the rest when the node becomes inactive.
 #[derive(Debug, Clone)]
 pub(crate) struct NodeInfo {
     /// The blocks the node "knows about",
