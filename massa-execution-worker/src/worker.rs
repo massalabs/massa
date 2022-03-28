@@ -256,7 +256,7 @@ impl ExecutionThread {
             .expect("the SCE final slot list skipped a slot");
 
         // check if the final slot is cached at the front of the speculative execution history
-        if let Some(exec_out) = exec_state.active_history.pop_front() {
+        if let Some(exec_out) = exec_state.pop_first_execution_result() {
             if exec_out.slot == slot && exec_out.block_id == exec_target.as_ref().copied() {
                 // speculative execution front result matches what we want to compute
 
