@@ -333,7 +333,7 @@ impl std::fmt::Display for CompactAddressInfo {
     }
 }
 
-/// All you wanna know about
+/// All you wanna know about an endorsement
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct EndorsementInfo {
     /// the id
