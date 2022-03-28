@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{export_active_block::ExportActiveBlock, ledger::LedgerSubset};
 
+/// Bootstrap graph
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BootstrapableGraph {
     /// Map of active blocks, were blocks are in their exported version.
