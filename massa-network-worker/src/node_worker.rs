@@ -334,7 +334,7 @@ impl NodeWorker {
                             }
                         },
                         Some(NodeCommand::SendOperationAnnouncements(operation_ids)) => {
-                            massa_trace!("node_worker.run_loop. send Message::SendOperationsBatch", {"node": self.node_id, "operation_ids": operation_ids});
+                            massa_trace!("node_worker.run_loop. send Message::OperationsAnnouncement", {"node": self.node_id, "operation_ids": operation_ids});
                             for chunk in operation_ids
                             .into_iter()
                             .chunks(self.cfg.max_operations_per_message as usize)
