@@ -1160,16 +1160,17 @@ impl BlockGraph {
         'outer: for b_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(b_id) {
                 if let Some(ops) = active_block.addresses_to_operations.get(address) {
-                    let block = self
+                    let stored_block = self
                         .storage
                         .retrieve_block(b_id)
                         .ok_or(GraphError::MissingBlock)?;
+                    let stored_block = stored_block.read();
                     for op in ops.iter() {
                         let (idx, _) = active_block.operation_set.get(op).ok_or_else(|| {
                             GraphError::ContainerInconsistency(format!("op {} should be here", op))
                         })?;
                         let search = OperationSearchResult {
-                            op: block.read().block.operations[*idx].clone(),
+                            op: stored_block.block.operations[*idx].clone(),
                             in_pool: false,
                             in_blocks: vec![(*b_id, (*idx, active_block.is_final))]
                                 .into_iter()
@@ -1237,18 +1238,18 @@ impl BlockGraph {
         // for each active block
         for block_id in self.active_index.iter() {
             if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(block_id) {
-                // TODO: clone operations in one go as in `get_operations_involving_address`.
-                let block = self
+                let stored_block = self
                     .storage
                     .retrieve_block(block_id)
                     .expect("Missing block in storage.");
+                let stored_block = stored_block.read();
 
                 // check the intersection with the wanted operation ids, and update/insert into results
                 operation_ids
                     .iter()
                     .filter_map(|op_id| {
                         active_block.operation_set.get(op_id).map(|(idx, _)| {
-                            (op_id, idx, block.read().block.operations[*idx].clone())
+                            (op_id, idx, stored_block.block.operations[*idx].clone())
                         })
                     })
                     .for_each(|(op_id, idx, op)| {
