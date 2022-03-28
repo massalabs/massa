@@ -2,7 +2,7 @@
 
 #![feature(ip)]
 #![doc = include_str!("../../README.md")]
-
+#![warn(missing_docs)]
 extern crate massa_logging;
 use crate::settings::{POOL_CONFIG, SETTINGS};
 use massa_api::{Private, Public, RpcServer, StopHandle, API};

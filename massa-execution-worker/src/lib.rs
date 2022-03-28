@@ -66,6 +66,7 @@
 //! It handles requests that come with an MPSC to send back the result of their execution once it's done.
 //!
 
+#![warn(missing_docs)]
 #![feature(map_first_last)]
 #![feature(unzip_option)]
 

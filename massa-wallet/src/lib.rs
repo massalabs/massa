@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+#![warn(missing_docs)]
+
 pub use error::WalletError;
 use massa_hash::hash::Hash;
 use massa_models::address::Address;

@@ -42,6 +42,7 @@
 //! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
 //! See test_exports/mod.rs for details.
 
+#![warn(missing_docs)]
 mod config;
 mod controller_traits;
 mod error;

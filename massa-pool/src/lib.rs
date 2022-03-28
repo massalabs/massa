@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+#![warn(missing_docs)]
 #![feature(map_first_last)]
 #![feature(async_closure)]
 

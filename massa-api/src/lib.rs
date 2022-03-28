@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 #![feature(async_closure)]
-
+#![warn(missing_docs)]
 use crate::error::ApiError::WrongAPI;
 use error::ApiError;
 use jsonrpc_core::{BoxFuture, IoHandler, Value};

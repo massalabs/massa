@@ -3,6 +3,7 @@
 #![feature(async_closure)]
 #![feature(drain_filter)]
 #![feature(ip)]
+#![warn(missing_docs)]
 
 mod protocol_worker;
 

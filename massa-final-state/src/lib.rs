@@ -29,6 +29,7 @@
 //! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
 //! See test_exports/mod.rs for details.
 
+#![warn(missing_docs)]
 #![feature(map_first_last)]
 #![feature(async_closure)]
 

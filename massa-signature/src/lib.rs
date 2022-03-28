@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+#![warn(missing_docs)]
 pub mod signature_impl;
 pub use signature_impl::{
     derive_public_key, generate_random_private_key, sign, verify_signature, PrivateKey, PublicKey,

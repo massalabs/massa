@@ -1,5 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+#![warn(missing_docs)]
+
 mod error;
 pub use error::TimeError;
 use serde::{Deserialize, Serialize};

@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 #![feature(int_roundings)]
-
+#![warn(missing_docs)]
 pub mod error;
 mod export_pos;
 mod settings;
