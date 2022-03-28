@@ -174,8 +174,8 @@ impl NetworkCommandSender {
     /// Create a new call to the network, sending a `batch` of operations to a
     /// target node (`to_node`)
     ///
-    /// # Result
-    /// Can return an error that must be managed by the direct caller of the
+    /// # Returns
+    /// Can return a [NetworkError::ChannelError] that must be managed by the direct caller of the
     /// function.
     pub async fn send_operations_batch(
         &self,
@@ -193,6 +193,12 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    /// Create a new call to the network, sending a `wishlist` of operationIds to a
+    /// target node (`to_node`) in order to receive the full operations in the future.
+    ///
+    /// # Returns
+    /// Can return a [NetworkError::ChannelError] that must be managed by the direct caller of the
+    /// function.
     pub async fn send_ask_for_operations(
         &self,
         to_node: NodeId,
