@@ -23,11 +23,11 @@ use crate::network_worker::NetworkWorker;
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
+use massa_models::operation::Operations;
 use massa_models::{
-    composite::PubkeySig, node::NodeId, stats::NetworkStats, BlockId, SignedEndorsement,
-    operation::OperationIds
+    composite::PubkeySig, node::NodeId, operation::OperationIds, stats::NetworkStats, BlockId,
+    SignedEndorsement,
 };
-use massa_models::{operation::Operations};
 use massa_network_exports::{
     BootstrapPeers, ConnectionClosureReason, ConnectionId, NetworkError, NodeCommand, Peer, Peers,
 };

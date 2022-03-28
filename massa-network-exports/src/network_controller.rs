@@ -5,9 +5,11 @@ use crate::{
     NetworkEvent, Peers,
 };
 use massa_models::{
-    node::NodeId, stats::NetworkStats, BlockId, SignedEndorsement,
     composite::PubkeySig,
+    node::NodeId,
     operation::{OperationIds, Operations},
+    stats::NetworkStats,
+    BlockId, SignedEndorsement,
 };
 use std::{
     collections::{HashMap, VecDeque},

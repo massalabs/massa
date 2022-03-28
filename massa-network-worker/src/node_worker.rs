@@ -12,11 +12,11 @@ use massa_models::{
     node::NodeId,
     signed::Signable,
 };
-use massa_models::{SerializeCompact, SerializeVarInt, BlockId};
-use std::mem;
+use massa_models::{BlockId, SerializeCompact, SerializeVarInt};
 use massa_network_exports::{
     ConnectionClosureReason, NetworkError, NetworkSettings, NodeCommand, NodeEvent, NodeEventType,
 };
+use std::mem;
 use tokio::{
     sync::mpsc,
     sync::mpsc::{
