@@ -40,3 +40,10 @@ pub struct ActiveBlock {
     /// Slot of the block.
     pub slot: Slot,
 }
+
+impl ActiveBlock {
+    /// Computes the fitness of the block
+    pub fn fitness(&self) -> u64 {
+        1 + self.endorsement_ids.len() as u64
+    }
+}

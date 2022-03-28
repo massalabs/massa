@@ -2795,7 +2795,7 @@ impl BlockGraph {
                         .checked_add(
                             BlockGraph::get_full_active_block(&self.block_statuses, *block_h)
                                 .ok_or_else(|| GraphError::ContainerInconsistency(format!("inconsistency inside block statuses computing fitness while adding {} - missing {}", add_block_id, block_h)))?
-                                .block.fitness(),
+                                .fitness(),
                         )
                         .ok_or(GraphError::FitnessOverflow)?;
                     sum_hash -=
@@ -2892,7 +2892,7 @@ impl BlockGraph {
                 }
 
                 // remove from cliques
-                let stale_block_fitness = active_block.block.fitness();
+                let stale_block_fitness = active_block.fitness();
                 self.max_cliques.iter_mut().for_each(|c| {
                     if c.block_ids.remove(&stale_block_hash) {
                         c.fitness -= stale_block_fitness;
@@ -3001,7 +3001,7 @@ impl BlockGraph {
                             .intersection(&clique.block_ids)
                             .map(|h| {
                                 if let Some(BlockStatus::Active(ab)) = self.block_statuses.get(h) {
-                                    return ab.block.fitness();
+                                    return ab.fitness();
                                 }
                                 0
                             })
@@ -3043,7 +3043,7 @@ impl BlockGraph {
                 });
                 final_block.is_final = true;
                 // remove from cliques
-                let final_block_fitness = final_block.block.fitness();
+                let final_block_fitness = final_block.fitness();
                 self.max_cliques.iter_mut().for_each(|c| {
                     if c.block_ids.remove(&final_block_hash) {
                         c.fitness -= final_block_fitness;
