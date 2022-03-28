@@ -3,7 +3,11 @@
 use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
-use massa_models::prehash::{Map, Set};
+use massa_models::{
+    node::NodeId,
+    operation::{OperationIds, Operations},
+    prehash::{Map, Set},
+};
 
 use massa_models::{
     Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
@@ -45,6 +49,8 @@ pub enum ProtocolPoolEvent {
         endorsements: Map<EndorsementId, SignedEndorsement>,
         propagate: bool, // whether or not to propagate endorsements
     },
+    /// Get operations for a node
+    GetOperations((NodeId, OperationIds)),
 }
 
 type BlocksResults =
@@ -57,7 +63,7 @@ pub enum ProtocolCommand {
     IntegratedBlock {
         block_id: BlockId,
         block: Box<Block>,
-        operation_ids: Set<OperationId>,
+        operation_ids: OperationIds,
         endorsement_ids: Vec<EndorsementId>,
     },
     /// A block, or it's header, amounted to an attempted attack.
@@ -67,10 +73,12 @@ pub enum ProtocolCommand {
         new: Set<BlockId>,
         remove: Set<BlockId>,
     },
-    /// The response to a ProtocolEvent::GetBlocks.
+    /// The response to a [ProtocolEvent::GetBlocks].
     GetBlocksResults(BlocksResults),
-    /// Propagate operations
-    PropagateOperations(Map<OperationId, SignedOperation>),
+    /// The response to a [ProtocolEvent::GetOperations].
+    GetOperationsResults((NodeId, Operations)),
+    /// Propagate operations ids (send batches)
+    PropagateOperations(OperationIds),
     /// Propagate endorsements
     PropagateEndorsements(Map<EndorsementId, SignedEndorsement>),
 }
@@ -140,6 +148,25 @@ impl ProtocolCommandSender {
         res
     }
 
+    /// Send the response to a [ProtocolEvent::GetBlocks].
+    pub async fn send_get_operations_results(
+        &mut self,
+        node_id: NodeId,
+        results: Operations,
+    ) -> Result<(), ProtocolError> {
+        massa_trace!("protocol.command_sender.send_get_operations_results", {
+            "results": results
+        });
+        let res = self
+            .0
+            .send(ProtocolCommand::GetOperationsResults((node_id, results)))
+            .await
+            .map_err(|_| {
+                ProtocolError::ChannelError("send_get_operations_results command send error".into())
+            });
+        res
+    }
+
     pub async fn send_wishlist_delta(
         &mut self,
         new: Set<BlockId>,
@@ -156,16 +183,17 @@ impl ProtocolCommandSender {
         res
     }
 
+    /// Propagate a batch of operation ids from pool.
     pub async fn propagate_operations(
         &mut self,
-        operations: Map<OperationId, SignedOperation>,
+        operation_ids: OperationIds,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
-            "operations": operations
+            "operations": operation_ids
         });
         let res = self
             .0
-            .send(ProtocolCommand::PropagateOperations(operations))
+            .send(ProtocolCommand::PropagateOperations(operation_ids))
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_operation command send error".into())
