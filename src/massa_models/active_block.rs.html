@@ -43,13 +43,6 @@
 <span id="38">38</span>
 <span id="39">39</span>
 <span id="40">40</span>
-<span id="41">41</span>
-<span id="42">42</span>
-<span id="43">43</span>
-<span id="44">44</span>
-<span id="45">45</span>
-<span id="46">46</span>
-<span id="47">47</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ledger_models::LedgerChanges</span>,
     <span class="ident">prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>},
@@ -90,13 +83,6 @@
     <span class="doccomment">/// list of (period, address, did_create) for all block/endorsement creation events</span>
     <span class="kw">pub</span> <span class="ident">production_events</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">Address</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>,
 }
-
-<span class="kw">impl</span> <span class="ident">ActiveBlock</span> {
-    <span class="doccomment">/// Computes the fitness of the block</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fitness</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
-        <span class="number">1</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">endorsements</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>
-    }
-}
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (63b8f01bb 2022-03-24)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
 </body></html>
