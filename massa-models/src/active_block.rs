@@ -38,10 +38,3 @@ pub struct ActiveBlock {
     /// list of (period, address, did_create) for all block/endorsement creation events
     pub production_events: Vec<(u64, Address, bool)>,
 }
-
-impl ActiveBlock {
-    /// Computes the fitness of the block
-    pub fn fitness(&self) -> u64 {
-        1 + self.block.header.content.endorsements.len() as u64
-    }
-}
