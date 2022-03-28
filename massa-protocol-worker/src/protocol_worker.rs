@@ -1316,7 +1316,7 @@ impl ProtocolWorker {
                 node,
                 operation_ids,
             } => {
-                massa_trace!("protocol.protocol_worker.on_network_event.received_operation_batch_announcements", { "node": node, "operation_ids": operation_ids});
+                massa_trace!("protocol.protocol_worker.on_network_event.received_operation_announcements", { "node": node, "operation_ids": operation_ids});
                 self.on_operations_announcements_received(operation_ids, node)
                     .await?;
             }
