@@ -156,13 +156,18 @@ pub enum NetworkCommand {
     // (PeerInfo, Vec <(NodeId, bool)>) peer info + list of associated Id nodes in connection out (true)
     GetPeers(oneshot::Sender<Peers>),
     GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
+    /// Ban a peer by his node id
     Ban(NodeId),
+    /// Ban a list of peer by their ip address
     BanIp(Vec<IpAddr>),
+    /// Unban a list of peer by their ip address
     Unban(Vec<IpAddr>),
+    /// Send a message that a block is not found to a node
     BlockNotFound {
         node: NodeId,
         block_id: BlockId,
     },
+    /// Send endorsements to a node
     SendEndorsements {
         node: NodeId,
         endorsements: Vec<SignedEndorsement>,
@@ -174,6 +179,7 @@ pub enum NetworkCommand {
     GetStats {
         response_tx: oneshot::Sender<NetworkStats>,
     },
+    /// Send a batch of full operations
     SendOperations {
         node: NodeId,
         operations: Operations,
@@ -188,7 +194,9 @@ pub enum NetworkCommand {
         to_node: NodeId,
         wishlist: OperationIds,
     },
+    /// Whitelist a list of IpAddr
     Whitelist(Vec<IpAddr>),
+    /// Remove from whitelist a list of IpAddr
     RemoveFromWhitelist(Vec<IpAddr>),
 }
 
@@ -221,6 +229,7 @@ pub enum NetworkEvent {
         node: NodeId,
         operations: Operations,
     },
+    /// Receive a list of OperationId
     ReceivedOperationAnnouncements {
         node: NodeId,
         operation_ids: OperationIds,
