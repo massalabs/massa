@@ -23,4 +23,5 @@ mod peers;
 pub mod settings;
 
 #[cfg(feature = "testing")]
+/// test exports
 pub mod test_exports;

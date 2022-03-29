@@ -66,6 +66,7 @@ pub struct PeerTypeConnectionConfig {
     pub max_out_attempts: usize,
 }
 
+/// setting tests
 #[cfg(feature = "testing")]
 pub mod tests {
     use crate::NetworkSettings;
@@ -122,6 +123,7 @@ pub mod tests {
     }
 
     impl NetworkSettings {
+        /// default network settings from port and peer file path
         pub fn scenarios_default(port: u16, peers_file: &std::path::Path) -> Self {
             // Init the serialization context with a default,
             // can be overwritten with a more specific one in the test.

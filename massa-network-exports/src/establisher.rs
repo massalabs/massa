@@ -3,9 +3,13 @@
 mod types {
     use crate::test_exports::mock_establisher;
 
+    /// read half
     pub type ReadHalf = mock_establisher::ReadHalf;
+    /// write half
     pub type WriteHalf = mock_establisher::WriteHalf;
+    /// connection listener
     pub type Listener = mock_establisher::MockListener;
+    /// connection establisher
     pub type Establisher = mock_establisher::MockEstablisher;
 }
 #[cfg(not(feature = "testing"))]

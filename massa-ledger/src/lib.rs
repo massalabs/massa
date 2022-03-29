@@ -68,4 +68,5 @@ pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 mod tests;
 
 #[cfg(feature = "testing")]
+/// test exports
 pub mod test_exports;

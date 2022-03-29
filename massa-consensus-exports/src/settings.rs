@@ -114,6 +114,7 @@ pub struct ConsensusSettings {
 #[derive(Debug)]
 pub struct ConsensusConfig {
     #[cfg(feature = "testing")]
+    /// temps files
     pub temp_files: TempFiles,
     /// Time in millis when the blockclique started.
     pub genesis_timestamp: MassaTime,
@@ -616,12 +617,13 @@ impl Default for ConsensusConfig {
 /**
  * The following implementation correspond to tools used in unit tests
  * It allow you to get a default `ConsensusConfig` (that isn't possible without
- * the feature *testing*) with already setted/default `initial_ledger_path`,
+ * the feature *testing*) with already set/default `initial_ledger_path`,
  * `staking_keys_path` and `initial_rolls_path`.
  *
  * Used to radically reduce code duplication in unit tests of Consensus.
  */
 impl ConsensusConfig {
+    /// default consensus config
     pub fn default_with_paths() -> Self {
         use crate::tools::*;
         let staking_keys: Vec<PrivateKey> = (0..1)
@@ -641,6 +643,8 @@ impl ConsensusConfig {
             ..Default::default()
         }
     }
+
+    /// Default consensus config from private staking keys
     pub fn default_with_staking_keys(staking_keys: &[PrivateKey]) -> Self {
         use crate::tools::*;
         let ledger_file = generate_ledger_file(&std::collections::HashMap::new());
@@ -657,6 +661,8 @@ impl ConsensusConfig {
             ..Default::default()
         }
     }
+
+    /// Default consensus config from staking private keys and ledger
     pub fn default_with_staking_keys_and_ledger(
         staking_keys: &[PrivateKey],
         ledger: &std::collections::HashMap<
