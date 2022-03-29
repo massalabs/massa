@@ -262,7 +262,6 @@ impl ExecutionState {
         operation: &SignedOperation,
         block_creator_addr: Address,
     ) -> Result<(), ExecutionError> {
-        println!("==> execute_operation <==");
         // process ExecuteSC operations only, ignore other types of operations
         let (bytecode, max_gas, coins, gas_price) = match &operation.content.op {
             OperationType::ExecuteSC {
@@ -366,7 +365,6 @@ impl ExecutionState {
         message: AsyncMessage,
         bytecode: Option<Vec<u8>>,
     ) -> Result<(), ExecutionError> {
-        println!("==> execute_async_message <==");
         // If there is no target bytecode or if message data is invalid,
         // directly reimburse sender with coins and quit
         let (bytecode, data) = match (bytecode, std::str::from_utf8(&message.data)) {
@@ -449,7 +447,6 @@ impl ExecutionState {
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
     pub fn execute_slot(&self, slot: Slot, opt_block: Option<(BlockId, Block)>) -> ExecutionOutput {
-        println!("execute_slot, slot = (p: {}, t: {})", slot.period, slot.thread);
         // get optional block ID and creator address
         let (opt_block_id, opt_block_creator_addr) = opt_block
             .as_ref()
@@ -458,8 +455,6 @@ impl ExecutionState {
 
         // accumulate previous active changes from output history
         let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
-
-        println!("pool size: {}", previous_changes.async_pool_changes.0.len());
 
         // create a new execution context for the whole active slot
         let execution_context = ExecutionContext::active_slot(

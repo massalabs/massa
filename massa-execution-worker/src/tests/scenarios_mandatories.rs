@@ -115,12 +115,13 @@ fn test_sending_read_only_execution_command() {
 fn send_and_receive_async_message() {
     let exec_cfg = ExecutionConfig {
         t0: 10.into(),
+        max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
     let (sample_state, _keep) = get_sample_state().unwrap();
     let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state);
 
-    let (sender_address, sender_private_key, sender_public_key) = get_random_address_full();
+    let (_, sender_private_key, sender_public_key) = get_random_address_full();
     let bytecode = include_bytes!("./wasm/send_message.wasm");
     let (block_id, block) = create_block(vec![create_execute_sc_operation(
         sender_private_key,
@@ -130,23 +131,21 @@ fn send_and_receive_async_message() {
     .unwrap()])
     .unwrap();
 
-    let finalized_blocks: Map<BlockId, Block> = Default::default();
-    let mut blockclique: Map<BlockId, Block> = Default::default();
-    blockclique.insert(block_id, block);
+    let mut finalized_blocks: Map<BlockId, Block> = Default::default();
+    finalized_blocks.insert(block_id, block.clone());
+    controller.update_blockclique_status(finalized_blocks, Default::default());
 
-    controller.update_blockclique_status(finalized_blocks, blockclique);
-
-    std::thread::sleep(Duration::from_millis(500));
+    std::thread::sleep(Duration::from_millis(300));
     manager.stop();
     let events = controller.get_filtered_sc_output_event(
-        None,
-        None,
+        Some(Slot::new(1, 1)),
+        Some(Slot::new(20, 1)),
         None,
         None,
         None,
     );
-    println!("events len: {}", events.len());
-    assert!(!events.is_empty(), "Failed")
+    assert!(!events.is_empty(), "One event was expected");
+    assert_eq!(events[0].data, "message received: hello my good friend!")
 }
 
 #[test]
