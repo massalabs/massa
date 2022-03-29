@@ -1,6 +1,5 @@
-use crate::node_worker::{NodeCommand, NodeEvent};
 use massa_models::node::NodeId;
-use massa_network_exports::{ConnectionId, NetworkError, NetworkEvent};
+use massa_network_exports::{ConnectionId, NetworkError, NetworkEvent, NodeCommand, NodeEvent};
 use std::time::Duration;
 use tokio::sync::mpsc::{self, error::SendTimeoutError};
 use tracing::debug;
@@ -49,8 +48,8 @@ impl EventSender {
 
     /// Forward a message to a node worker. If it fails, notify upstream about connection closure.
     pub async fn forward(
-        &mut self,
-        node_id: &NodeId,
+        &self,
+        node_id: NodeId,
         node: Option<&(ConnectionId, mpsc::Sender<NodeCommand>)>,
         message: NodeCommand,
     ) {
@@ -64,7 +63,7 @@ impl EventSender {
         } else {
             // We probably weren't able to send this event previously,
             // retry it now.
-            let _ = self.send(NetworkEvent::ConnectionClosed(*node_id)).await;
+            let _ = self.send(NetworkEvent::ConnectionClosed(node_id)).await;
         }
     }
 
@@ -78,12 +77,15 @@ impl EventSender {
 }
 
 pub mod event_impl {
-    use crate::{network_worker::NetworkWorker, node_worker::NodeCommand};
+    use crate::network_worker::NetworkWorker;
     use massa_logging::massa_trace;
     use massa_models::signed::Signable;
     use massa_models::{
-        node::NodeId, Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation,
+        node::NodeId,
+        operation::{OperationIds, Operations},
+        Block, BlockId, SignedEndorsement, SignedHeader,
     };
+    use massa_network_exports::NodeCommand;
     use massa_network_exports::{NetworkError, NetworkEvent};
     use std::net::IpAddr;
     use tracing::{debug, info};
@@ -205,10 +207,15 @@ pub mod event_impl {
         }
     }
 
+    /// The node worker signal that he received some full `operations` from a
+    /// node.
+    ///
+    /// Forward the event by sending a [NetworkEvent::ReceivedOperations].
+    /// See also [massa_network_exports::NodeEventType::ReceivedOperations]
     pub async fn on_received_operations(
         worker: &mut NetworkWorker,
         from: NodeId,
-        operations: Vec<SignedOperation>,
+        operations: Operations,
     ) {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedOperations",
@@ -219,6 +226,52 @@ pub mod event_impl {
             .send(NetworkEvent::ReceivedOperations {
                 node: from,
                 operations,
+            })
+            .await
+        {
+            evt_failed!(err)
+        }
+    }
+
+    /// The node worker signal that he received a bach of operation ids
+    /// from another node.
+    pub async fn on_received_operations_annoncement(
+        worker: &mut NetworkWorker,
+        from: NodeId,
+        operation_ids: OperationIds,
+    ) {
+        massa_trace!(
+            "network_worker.on_node_event receive NetworkEvent::ReceivedOperationAnnouncements",
+            { "operations": operation_ids }
+        );
+        if let Err(err) = worker
+            .event
+            .send(NetworkEvent::ReceivedOperationAnnouncements {
+                node: from,
+                operation_ids,
+            })
+            .await
+        {
+            evt_failed!(err)
+        }
+    }
+
+    /// The node worker signal that he received a list of operations required
+    /// from another node.
+    pub async fn on_received_ask_for_operations(
+        worker: &mut NetworkWorker,
+        from: NodeId,
+        operation_ids: OperationIds,
+    ) {
+        massa_trace!(
+            "network_worker.on_node_event receive NetworkEvent::ReceiveAskForOperations",
+            { "operations": operation_ids }
+        );
+        if let Err(err) = worker
+            .event
+            .send(NetworkEvent::ReceiveAskForOperations {
+                node: from,
+                operation_ids,
             })
             .await
         {

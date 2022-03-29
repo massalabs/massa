@@ -1,8 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
-use crate::prehash::{PreHashed, Set};
+use crate::prehash::{BuildMap, PreHashed, Set};
 use crate::signed::{Id, Signable, Signed};
+use crate::with_serialization_context;
 use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
@@ -473,6 +474,89 @@ impl Operation {
             OperationType::ExecuteSC { .. } => {}
         }
         Ok(res)
+    }
+}
+
+/// Set of operation ids
+pub type OperationIds = Set<OperationId>;
+
+impl SerializeCompact for OperationIds {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
+        let list_len: u32 = self.len().try_into().map_err(|_| {
+            ModelsError::SerializeError("could not encode AskForBlocks list length as u32".into())
+        })?;
+        let mut res = Vec::new();
+        res.extend(list_len.to_varint_bytes());
+        for hash in self {
+            res.extend(&hash.to_bytes());
+        }
+        Ok(res)
+    }
+}
+
+/// Deserialize from the given `buffer`.
+///
+/// You know that the maximum number of ids is `max_operations_per_message` taken
+/// from the node configuration.
+///
+/// # Return
+/// A result that return the deserialized Vec of `OperationId`
+impl DeserializeCompact for OperationIds {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        let max_operations_per_message =
+            with_serialization_context(|context| context.max_operations_per_message);
+        let mut cursor = 0usize;
+        let (length, delta) =
+            u32::from_varint_bytes_bounded(&buffer[cursor..], max_operations_per_message)?;
+        cursor += delta;
+        // hash list
+        let mut list: OperationIds =
+            Set::with_capacity_and_hasher(length as usize, BuildMap::default());
+        for _ in 0..length {
+            let b_id = OperationId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += OPERATION_ID_SIZE_BYTES;
+            list.insert(b_id);
+        }
+        Ok((list, cursor))
+    }
+}
+
+/// Set of self containing signed operations.
+pub type Operations = Vec<SignedOperation>;
+
+impl SerializeCompact for Operations {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
+        let mut res = Vec::new();
+        res.extend((self.len() as u32).to_varint_bytes());
+        for op in self.iter() {
+            res.extend(op.to_bytes_compact()?);
+        }
+        Ok(res)
+    }
+}
+
+/// Deserialize from the given `buffer`.
+///
+/// You know that the maximum number of ids is `max_operations_per_message` taken
+/// from the node configuration.
+///
+/// # Return
+/// A result that return the deserialized Vec of `Operation`
+impl DeserializeCompact for Operations {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        let max_operations_per_message =
+            with_serialization_context(|context| context.max_operations_per_message);
+        let mut cursor = 0usize;
+        let (length, delta) =
+            u32::from_varint_bytes_bounded(&buffer[cursor..], max_operations_per_message)?;
+        cursor += delta;
+        let mut ops: Operations = Operations::with_capacity(length as usize);
+        for _ in 0..length {
+            let (operation, delta) = SignedOperation::from_bytes_compact(&buffer[cursor..])?;
+            cursor += delta;
+            ops.push(operation);
+        }
+        Ok((ops, cursor))
     }
 }
 

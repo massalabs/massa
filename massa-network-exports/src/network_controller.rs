@@ -5,8 +5,11 @@ use crate::{
     NetworkEvent, Peers,
 };
 use massa_models::{
-    composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId, SignedEndorsement,
-    SignedHeader, SignedOperation,
+    composite::PubkeySig,
+    node::NodeId,
+    operation::{OperationIds, Operations},
+    stats::NetworkStats,
+    Block, BlockId, SignedEndorsement, SignedHeader,
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -166,13 +169,55 @@ impl NetworkCommandSender {
     pub async fn send_operations(
         &self,
         node: NodeId,
-        operations: Vec<SignedOperation>,
+        operations: Operations,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendOperations { node, operations })
             .await
             .map_err(|_| {
                 NetworkError::ChannelError("could not send SendOperations command".into())
+            })?;
+        Ok(())
+    }
+
+    /// Create a new call to the network, sending a announcement of OperationIds to a
+    /// target node (`to_node`)
+    ///
+    /// # Returns
+    /// Can return a [NetworkError::ChannelError] that must be managed by the direct caller of the
+    /// function.
+    pub async fn send_operations_batch(
+        &self,
+        to_node: NodeId,
+        batch: OperationIds,
+    ) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::SendOperationAnnouncements { to_node, batch })
+            .await
+            .map_err(|_| {
+                NetworkError::ChannelError(
+                    "could not send SendOperationAnnouncements command".into(),
+                )
+            })?;
+        Ok(())
+    }
+
+    /// Create a new call to the network, sending a `wishlist` of operationIds to a
+    /// target node (`to_node`) in order to receive the full operations in the future.
+    ///
+    /// # Returns
+    /// Can return a [NetworkError::ChannelError] that must be managed by the direct caller of the
+    /// function.
+    pub async fn send_ask_for_operations(
+        &self,
+        to_node: NodeId,
+        wishlist: OperationIds,
+    ) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::AskForOperations { to_node, wishlist })
+            .await
+            .map_err(|_| {
+                NetworkError::ChannelError("could not send AskForOperations command".into())
             })?;
         Ok(())
     }

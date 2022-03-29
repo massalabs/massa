@@ -50,6 +50,8 @@ pub struct NetworkSettings {
     pub peer_list_send_timeout: MassaTime,
     /// Max number of in connection overflowed managed by the handshake that send a list of peers
     pub max_in_connection_overflow: usize,
+    /// Max operations per message in the network to avoid sending to big data packet.
+    pub max_operations_per_message: u32,
 }
 
 /// Connection config for a peer type
@@ -69,7 +71,7 @@ pub mod tests {
     use crate::NetworkSettings;
     use crate::{test_exports::tools::get_temp_private_key_file, PeerType};
     use enum_map::enum_map;
-    use massa_models::constants::default_testing::BASE_NETWORK_CONTROLLER_IP;
+    use massa_models::constants::{BASE_NETWORK_CONTROLLER_IP, MAX_OPERATIONS_PER_MESSAGE};
     use massa_time::MassaTime;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
@@ -114,6 +116,7 @@ pub mod tests {
                 peer_list_send_timeout: MassaTime::from(500),
                 max_in_connection_overflow: 2,
                 peer_types_config,
+                max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
             }
         }
     }
@@ -169,6 +172,7 @@ pub mod tests {
                 peer_list_send_timeout: MassaTime::from(50),
                 max_in_connection_overflow: 10,
                 peer_types_config,
+                max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
             }
         }
     }

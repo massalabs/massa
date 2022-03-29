@@ -2,9 +2,7 @@
 
 //! The network worker actually does the job of managing connections
 use super::{
-    handshake_worker::HandshakeReturnType,
-    node_worker::{NodeCommand, NodeEvent, NodeEventType, NodeWorker},
-    peer_info_database::*,
+    handshake_worker::HandshakeReturnType, node_worker::NodeWorker, peer_info_database::*,
 };
 use crate::{
     binders::{ReadBinder, WriteBinder},
@@ -16,10 +14,11 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use massa_logging::massa_trace;
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
 use massa_network_exports::{
-    ConnectionClosureReason, ConnectionId, Establisher, Listener, NetworkCommand, NetworkError,
-    NetworkEvent, NetworkManagementCommand, NetworkSettings, ReadHalf, WriteHalf,
+    ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener,
+    NetworkCommand, NetworkConnectionErrorType, NetworkError, NetworkEvent,
+    NetworkManagementCommand, NetworkSettings, NodeCommand, NodeEvent, NodeEventType, ReadHalf,
+    WriteHalf,
 };
-use massa_network_exports::{HandshakeErrorType, NetworkConnectionErrorType};
 use massa_signature::{derive_public_key, PrivateKey};
 use std::{
     collections::{hash_map, HashMap, HashSet},
@@ -492,11 +491,18 @@ impl NetworkWorker {
     /// # Arguments
     /// * cmd : command to process.
     /// * peer_info_db: Database with peer information.
-    /// * active_connections: hashmap linking connection id to ipAddr to whether connection is outgoing (true)
+    /// * active_connections: hashmap linking connection id to ipAddr to
+    ///   whether connection is outgoing (true)
     /// * event_tx: channel to send network events out.
     ///
     /// # Command implementation
-    /// The network commands are root to functions in `network_cmd_impl`
+    /// Some of the commands are just forwarded to the NodeWorker that manage
+    /// the real connection between nodes. Some other commands has an impact on
+    /// the current worker.
+    ///
+    /// Whatever the behavior of the command, we better have to look at
+    /// `network_cmd_impl.rs` where the commands are implemented.
+    ///
     /// ex: NetworkCommand::AskForBlocks => on_ask_bfor_block_cmd(...)
     async fn manage_network_command(&mut self, cmd: NetworkCommand) -> Result<(), NetworkError> {
         use crate::network_cmd_impl::*;
@@ -506,7 +512,7 @@ impl NetworkWorker {
             NetworkCommand::SendBlockHeader { node, header } => {
                 on_send_block_header_cmd(self, node, header).await?
             }
-            NetworkCommand::AskForBlocks { list } => on_ask_bfor_block_cmd(self, list).await,
+            NetworkCommand::AskForBlocks { list } => on_ask_for_block_cmd(self, list).await,
             NetworkCommand::SendBlock { node, block } => {
                 on_send_block_cmd(self, node, block).await?
             }
@@ -518,7 +524,13 @@ impl NetworkWorker {
                 on_block_not_found_cmd(self, node, block_id).await
             }
             NetworkCommand::SendOperations { node, operations } => {
-                on_send_operation_cmd(self, node, operations).await
+                on_send_operations_cmd(self, node, operations).await
+            }
+            NetworkCommand::SendOperationAnnouncements { to_node, batch } => {
+                on_send_operation_batches_cmd(self, to_node, batch).await
+            }
+            NetworkCommand::AskForOperations { to_node, wishlist } => {
+                on_ask_for_operations_cmd(self, to_node, wishlist).await
             }
             NetworkCommand::SendEndorsements { node, endorsements } => {
                 on_send_endorsements_cmd(self, node, endorsements).await
@@ -760,6 +772,12 @@ impl NetworkWorker {
             }
             NodeEvent(node, NodeEventType::ReceivedEndorsements(endorsements)) => {
                 event_impl::on_received_endorsements(self, node, endorsements).await
+            }
+            NodeEvent(node, NodeEventType::ReceivedOperationAnnouncements(operation_ids)) => {
+                event_impl::on_received_operations_annoncement(self, node, operation_ids).await
+            }
+            NodeEvent(node, NodeEventType::ReceivedAskForOperations(operation_ids)) => {
+                event_impl::on_received_ask_for_operations(self, node, operation_ids).await
             }
         }
         Ok(())
