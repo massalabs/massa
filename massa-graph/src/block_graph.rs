@@ -876,17 +876,7 @@ impl BlockGraph {
             .slot
             .get_cycle(self.cfg.periods_per_cycle);
 
-        let same_thread_parent_creator = {
-            let creator = {
-                let block = self
-                    .storage
-                    .retrieve_block(&same_thread_parent.block_id)
-                    .ok_or(GraphError::MissingBlock)?;
-                let stored_block = block.read();
-                stored_block.block.header.content.creator
-            };
-            Address::from_public_key(&creator)
-        };
+        let same_thread_parent_creator = same_thread_parent.creator_address;
 
         let endorsers_addresses: Vec<Address> = header
             .content
@@ -1357,6 +1347,7 @@ impl BlockGraph {
     pub fn incoming_block(
         &mut self,
         block_id: BlockId,
+        slot: Slot,
         operation_set: Map<OperationId, (usize, u64)>,
         endorsement_ids: Map<EndorsementId, u32>,
         pos: &mut ProofOfStake,
@@ -1366,18 +1357,6 @@ impl BlockGraph {
         if self.genesis_hashes.contains(&block_id) {
             return Ok(());
         }
-
-        let slot = {
-            let stored_block = self
-                .storage
-                .retrieve_block(&block_id)
-                .ok_or(GraphError::MissingBlock)?;
-            let stored_block = stored_block.read();
-            let slot = stored_block.block.header.content.slot;
-            debug!("received block {} for slot {}", block_id, slot);
-            massa_trace!("consensus.block_graph.incoming_block", {"block_id": block_id, "block": stored_block.block});
-            slot
-        };
 
         let mut to_ack: BTreeSet<(Slot, BlockId)> = BTreeSet::new();
         match self.block_statuses.entry(block_id) {
@@ -2500,14 +2479,7 @@ impl BlockGraph {
         for thread in involved_threads.into_iter() {
             match self.block_statuses.get(&parents[thread as usize]) {
                 Some(BlockStatus::Active(b)) => {
-                    let block = self
-                        .storage
-                        .retrieve_block(&b.block_id)
-                        .ok_or(GraphError::MissingBlock)?;
-                    let stored_block = block.read();
-                    if stored_block.block.header.content.slot.period
-                        < self.latest_final_blocks_periods[thread as usize].1
-                    {
+                    if b.slot.period < self.latest_final_blocks_periods[thread as usize].1 {
                         return Err(GraphError::ContainerInconsistency(format!(
                             "asking for operations in thread {}, for which the given parent is older than the latest final block of that thread",
                             thread
@@ -3197,13 +3169,8 @@ impl BlockGraph {
             let mut current_block_id = *id;
             while let Some(current_block) = self.get_active_block(&current_block_id) {
                 let parent_id = {
-                    let block = self
-                        .storage
-                        .retrieve_block(&current_block_id)
-                        .ok_or(GraphError::MissingBlock)?;
-                    let stored_block = block.read();
-                    if !stored_block.block.header.content.parents.is_empty() {
-                        Some(stored_block.block.header.content.parents[thread as usize])
+                    if !current_block.parents.is_empty() {
+                        Some(current_block.parents[thread as usize].0)
                     } else {
                         None
                     }

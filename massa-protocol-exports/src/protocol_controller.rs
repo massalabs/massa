@@ -7,6 +7,7 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, Operations},
     prehash::{Map, Set},
+    Slot,
 };
 
 use massa_models::{
@@ -24,6 +25,7 @@ pub enum ProtocolEvent {
     /// A block with a valid signature has been received.
     ReceivedBlock {
         block_id: BlockId,
+        slot: Slot,
         operation_set: Map<OperationId, (usize, u64)>, // (index, validity end period)
         endorsement_ids: Map<EndorsementId, u32>,
     },
