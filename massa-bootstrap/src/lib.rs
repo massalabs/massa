@@ -9,6 +9,7 @@
 //!
 #![feature(async_closure)]
 #![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 use crate::client_binder::BootstrapClientBinder;
 use crate::establisher::types::Duplex;
 use crate::server_binder::BootstrapServerBinder;

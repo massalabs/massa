@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! All the structs that are used everywhere
 #![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 #[macro_use]
 extern crate lazy_static;
 

@@ -2,6 +2,7 @@
 //! Json rpc api for a massa-node
 #![feature(async_closure)]
 #![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 use crate::error::ApiError::WrongAPI;
 use error::ApiError;
 use jsonrpc_core::{BoxFuture, IoHandler, Value};

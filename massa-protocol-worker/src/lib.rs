@@ -6,6 +6,7 @@
 #![feature(drain_filter)]
 #![feature(ip)]
 #![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 
 /// protocol worker
 pub mod protocol_worker;

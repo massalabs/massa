@@ -7,16 +7,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bitvec = { version = "0.22", features = ["serde"] }
 displaydoc = "0.2"
-futures = "0.3"
-lazy_static = "1.4"
 num = { version = "0.4", features = ["serde"] }
-rand = "0.8"
-rand_xoshiro = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-sled = "0.34"
 thiserror = "1.0"
 tokio = { version = "1.15", features = ["full"] }
 tracing = "0.1"
@@ -24,7 +18,6 @@ tempfile = "3.2"
 # custom modules
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_graph = { path = "../massa-graph" }
-massa_hash = { path = "../massa-hash" }
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
 massa_pool = { path = "../massa-pool" }
@@ -34,8 +27,6 @@ massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 
 [dev-dependencies]
-pretty_assertions = "1.0"
-serial_test = "0.5"
 massa_models = { path = "../massa-models", features = ["testing"] }
 
 # for more information on what are the following features used for, see the cargo.toml at workspace level
