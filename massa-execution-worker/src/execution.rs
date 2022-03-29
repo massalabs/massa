@@ -452,8 +452,7 @@ impl ExecutionState {
     ) -> ExecutionOutput {
         // get optional block ID and creator address
         let (opt_block_id, opt_block_creator_addr) = opt_block
-            .as_ref()
-            .map(|(b_id, b)| (*b_id, Address::from_public_key(&b.header.content.creator)))
+            .map(|(b_id, b)| (b_id, Address::from_public_key(&b.header.content.creator)))
             .unzip();
 
         // accumulate previous active changes from output history
