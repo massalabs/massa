@@ -116,6 +116,7 @@ impl BlockInfo {
     }
 }
 
+/// protocol worker
 pub struct ProtocolWorker {
     /// Protocol configuration.
     pub(crate) protocol_settings: &'static ProtocolSettings,
@@ -151,12 +152,19 @@ pub struct ProtocolWorker {
     pub(crate) op_batch_buffer: OperationBatchBuffer,
 }
 
+/// channels used by the protocol worker
 pub struct ProtocolWorkerChannels {
+    /// network command sender
     pub network_command_sender: NetworkCommandSender,
+    /// network event receiver
     pub network_event_receiver: NetworkEventReceiver,
+    /// protocol event sender
     pub controller_event_tx: mpsc::Sender<ProtocolEvent>,
+    /// protocol pool event sender
     pub controller_pool_event_tx: mpsc::Sender<ProtocolPoolEvent>,
+    /// protocol command receiver
     pub controller_command_rx: mpsc::Receiver<ProtocolCommand>,
+    /// protocol management command receiver
     pub controller_manager_rx: mpsc::Receiver<ProtocolManagementCommand>,
 }
 

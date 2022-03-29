@@ -7,6 +7,7 @@
 #![feature(ip)]
 #![warn(missing_docs)]
 
+/// protocol worker
 pub mod protocol_worker;
 pub mod worker_operations_impl;
 pub use protocol_worker::start_protocol_controller;

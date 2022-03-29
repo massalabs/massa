@@ -80,6 +80,7 @@ use massa_models::{
 use std::{collections::HashMap, net::IpAddr};
 use tokio::sync::oneshot;
 
+/// network command
 #[derive(Clone, Debug)]
 pub enum NodeCommand {
     /// Send given peer list to node.
@@ -197,17 +198,23 @@ pub enum NetworkCommand {
     },
     /// Send a batch of full operations
     SendOperations {
+        /// to node id
         node: NodeId,
+        /// operations
         operations: Operations,
     },
     /// Send operation ids batch to a node
     SendOperationAnnouncements {
+        /// to node id
         to_node: NodeId,
+        /// batch of operation ids
         batch: OperationIds,
     },
     /// Ask for operation
     AskForOperations {
+        /// to node id
         to_node: NodeId,
+        /// operation ids in the wishlist
         wishlist: OperationIds,
     },
     /// Whitelist a list of IpAddr
@@ -255,16 +262,21 @@ pub enum NetworkEvent {
     ReceivedOperations {
         /// node id
         node: NodeId,
+        /// operations
         operations: Operations,
     },
     /// Receive a list of OperationId
     ReceivedOperationAnnouncements {
+        /// from node id
         node: NodeId,
+        /// operation ids
         operation_ids: OperationIds,
     },
     /// Receive a list of asked operations from `node`
     ReceiveAskForOperations {
+        /// from node id
         node: NodeId,
+        /// operation ids
         operation_ids: OperationIds,
     },
     /// received endorsements from node
