@@ -236,6 +236,7 @@ pub enum NetworkEvent {
         node: NodeId,
         /// block
         block: Block,
+        /// serialized block
         serialized: Vec<u8>,
     },
     /// A block header was received

@@ -81,6 +81,7 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
 }
 
 impl ExportActiveBlock {
+    /// try conversion from active block to export active block
     pub fn try_from_active_block(a_block: &ActiveBlock, storage: Storage) -> Result<Self> {
         let block = storage
             .retrieve_block(&a_block.block_id)
