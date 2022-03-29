@@ -16,6 +16,7 @@ use std::{fmt::Display, str::FromStr};
 
 const ENDORSEMENT_ID_STRING_PREFIX: &str = "END";
 
+/// endorsement id
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct EndorsementId(Hash);
 
@@ -65,14 +66,17 @@ impl FromStr for EndorsementId {
 }
 
 impl EndorsementId {
+    /// endorsement ids to bytes
     pub fn to_bytes(&self) -> [u8; ENDORSEMENT_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
+    /// endorsement ids into bytes
     pub fn into_bytes(self) -> [u8; ENDORSEMENT_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
+    /// endorsement id from bytes
     pub fn from_bytes(
         data: &[u8; ENDORSEMENT_ID_SIZE_BYTES],
     ) -> Result<EndorsementId, ModelsError> {
@@ -80,6 +84,8 @@ impl EndorsementId {
             Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
         ))
     }
+
+    /// endorsement id from bs58 check
     pub fn from_bs58_check(data: &str) -> Result<EndorsementId, ModelsError> {
         Ok(EndorsementId(
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
@@ -119,6 +125,7 @@ pub struct Endorsement {
 
 impl Signable<EndorsementId> for Endorsement {}
 
+/// Signed endorsement
 pub type SignedEndorsement = Signed<Endorsement, EndorsementId>;
 
 /// Checks performed:

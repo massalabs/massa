@@ -1,5 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-
+//! All the structs that are used everywhere
 #![warn(missing_docs)]
 #[macro_use]
 extern crate lazy_static;
@@ -24,14 +24,18 @@ pub use serialization_context::{
 };
 pub use slot::Slot;
 pub use version::Version;
+/// active blocks related structs
 pub mod active_block;
+/// address related structs
 pub mod address;
+/// amount related structs
 pub mod amount;
 /// struct use by the api
 pub mod api;
 mod block;
 /// clique
 pub mod clique;
+/// various structs
 pub mod composite;
 mod endorsement;
 /// models error
@@ -40,6 +44,7 @@ pub mod error;
 pub mod execution;
 /// ledger related structs
 pub mod ledger_models;
+/// node related struct
 pub mod node;
 mod node_configuration;
 /// operations

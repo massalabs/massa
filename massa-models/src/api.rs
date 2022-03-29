@@ -16,19 +16,33 @@ use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, SocketAddr};
+
+/// node status
 #[derive(Debug, Deserialize, Serialize)]
 pub struct NodeStatus {
+    /// our node id
     pub node_id: NodeId,
+    /// optional node ip
     pub node_ip: Option<IpAddr>,
+    /// node version
     pub version: Version,
+    /// now
     pub current_time: MassaTime,
+    /// current cycle
     pub current_cycle: u64,
+    /// connected nodes (node id, ip address)
     pub connected_nodes: HashMap<NodeId, IpAddr>,
+    /// latest slot, none if now is before genesis timestamp
     pub last_slot: Option<Slot>,
+    /// next slot
     pub next_slot: Slot,
+    /// consensus stats
     pub consensus_stats: ConsensusStats,
+    /// pool stats
     pub pool_stats: PoolStats,
+    /// network stats
     pub network_stats: NetworkStats,
+    /// compact config
     pub config: CompactConfig,
 }
 
@@ -290,7 +304,9 @@ impl AddressInfo {
 /// When an address is drawn to create an endorsement it is selected for a specific index
 #[derive(Debug, Deserialize, Serialize, Hash, PartialEq, Eq)]
 pub struct IndexedSlot {
+    /// slot
     pub slot: Slot,
+    /// endorsement index in the slot
     pub index: usize,
 }
 
@@ -368,7 +384,9 @@ impl std::fmt::Display for EndorsementInfo {
 /// refactor to delete
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BlockInfo {
+    /// block id
     pub id: BlockId,
+    /// optional block info content
     pub content: Option<BlockInfoContent>,
 }
 
@@ -455,7 +473,9 @@ fn display_if_true(value: bool, text: &str) -> String {
 /// Just a wrapper with a optional beginning and end
 #[derive(Debug, Deserialize, Clone, Copy, Serialize)]
 pub struct TimeInterval {
+    /// optional start slot
     pub start: Option<MassaTime>,
+    /// optional end slot
     pub end: Option<MassaTime>,
 }
 
@@ -476,18 +496,27 @@ pub struct APISettings {
 /// filter used when retrieving sc output events
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct EventFilter {
+    /// optional start slot
     pub start: Option<Slot>,
+    /// optional end slot
     pub end: Option<Slot>,
+    /// optional emitter address
     pub emitter_address: Option<Address>,
+    /// optional caller address
     pub original_caller_address: Option<Address>,
+    /// optional operation id
     pub original_operation_id: Option<OperationId>,
 }
 
 /// read only execution request
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct ReadOnlyExecution {
+    /// max available gas
     pub max_gas: u64,
+    /// gas price
     pub simulated_gas_price: Amount,
+    /// byte code
     pub bytecode: Vec<u8>,
+    /// caller's address, optional
     pub address: Option<Address>,
 }

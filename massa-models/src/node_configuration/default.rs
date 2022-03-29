@@ -29,9 +29,9 @@ pub const MAX_OPERATIONS_PER_MESSAGE: u32 = 1024;
 /// Length of the handshake random signature
 pub const HANDSHAKE_RANDOMNESS_SIZE_BYTES: usize = 32;
 
-// Consensus static parameters (defined by protocol used)
-// Changing one of the following values is considered as a breaking change
-// Values differ in `test` flavor building for faster CI and simpler scenarios
+/// Consensus static parameters (defined by protocol used)
+/// Changing one of the following values is considered as a breaking change
+/// Values differ in `test` flavor building for faster CI and simpler scenarios
 pub const CHANNEL_SIZE: usize = 256;
 
 lazy_static::lazy_static! {
@@ -58,6 +58,7 @@ lazy_static::lazy_static! {
         .unwrap();
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(7, 10);
+    /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
@@ -71,9 +72,11 @@ lazy_static::lazy_static! {
 
 #[cfg(feature = "sandbox")]
 lazy_static::lazy_static! {
+    /// t0
     pub static ref T0: MassaTime = std::env::var("T0").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
         MassaTime::from(16000)
     );
+    /// thread count
     pub static ref THREAD_COUNT: u8 = std::env::var("THREAD_COUNT").map(|timestamp| timestamp.parse::<u8>().unwrap().into()).unwrap_or_else(|_|
         32
     );
@@ -118,7 +121,9 @@ pub const POS_LOCK_CYCLES: u64 = 1;
 pub const MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = 1048576000;
 /// Max number of blocks we provide/ take into account while bootstrapping
 pub const MAX_BOOTSTRAP_BLOCKS: u32 = 1000000;
+/// max bootstrapped cliques
 pub const MAX_BOOTSTRAP_CLIQUES: u32 = 1000;
+/// max bootstrapped dependencies
 pub const MAX_BOOTSTRAP_DEPS: u32 = 1000;
 /// Max number of child nodes
 pub const MAX_BOOTSTRAP_CHILDREN: u32 = 1000;
@@ -146,19 +151,26 @@ pub const MAX_ASYNC_GAS: u64 = 10_000_000;
 
 /// Max number of endorsements per message
 pub const MAX_ENDORSEMENTS_PER_MESSAGE: u32 = 1024;
+/// node send channel size
 pub const NODE_SEND_CHANNEL_SIZE: usize = 1024;
+/// max duplex buffer size
 pub const MAX_DUPLEX_BUFFER_SIZE: usize = 1024;
 
 //
 // Divers constants
 //
 
+/// address size
 pub const ADDRESS_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
-/// Safe to import
+/// Safe to import, amount decimal factor
 pub const AMOUNT_DECIMAL_FACTOR: u64 = 1_000_000_000;
+/// block id size
 pub const BLOCK_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+/// endorsement id size
 pub const ENDORSEMENT_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+/// operation id size
 pub const OPERATION_ID_SIZE_BYTES: usize = massa_hash::HASH_SIZE_BYTES;
+/// slot as a key size
 pub const SLOT_KEY_SIZE: usize = 9;
 
 /// Size of the event id hash used in execution module, safe to import

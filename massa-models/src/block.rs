@@ -19,6 +19,7 @@ use std::str::FromStr;
 
 const BLOCK_ID_STRING_PREFIX: &str = "BLO";
 
+/// block id
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct BlockId(pub Hash);
 
@@ -73,19 +74,24 @@ impl FromStr for BlockId {
 }
 
 impl BlockId {
+    /// block id to bytes
     pub fn to_bytes(&self) -> [u8; BLOCK_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
+    /// block id into bytes
     pub fn into_bytes(self) -> [u8; BLOCK_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
+    /// block id from bytes
     pub fn from_bytes(data: &[u8; BLOCK_ID_SIZE_BYTES]) -> Result<BlockId, ModelsError> {
         Ok(BlockId(
             Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
         ))
     }
+
+    /// block id fro bs58 check
     pub fn from_bs58_check(data: &str) -> Result<BlockId, ModelsError> {
         Ok(BlockId(
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
@@ -98,9 +104,12 @@ impl BlockId {
     }
 }
 
+/// block
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Block {
+    /// signed header
     pub header: SignedHeader,
+    /// operations
     pub operations: Vec<SignedOperation>,
 }
 
@@ -207,12 +216,18 @@ impl std::fmt::Display for Block {
     }
 }
 
+/// block header
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockHeader {
+    /// creator's public key
     pub creator: PublicKey,
+    /// slot
     pub slot: Slot,
+    /// parents
     pub parents: Vec<BlockId>,
-    pub operation_merkle_root: Hash, // all operations hash
+    /// all operations hash
+    pub operation_merkle_root: Hash,
+    /// endorsements
     pub endorsements: Vec<SignedEndorsement>,
 }
 
@@ -227,6 +242,7 @@ impl Signable<BlockId> for BlockHeader {
     }
 }
 
+/// signed header
 pub type SignedHeader = Signed<BlockHeader, BlockId>;
 
 impl std::fmt::Display for BlockHeader {
@@ -344,6 +360,7 @@ impl DeserializeCompact for Block {
 }
 
 impl BlockHeader {
+    /// compute hash from block header
     pub fn compute_hash(&self) -> Result<Hash, ModelsError> {
         Ok(Hash::compute_from(&self.to_bytes_compact()?))
     }
