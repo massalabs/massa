@@ -2,6 +2,7 @@
 //! proof of stake exports
 #![feature(int_roundings)]
 #![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 
 /// proof of stake errors
 pub mod error;

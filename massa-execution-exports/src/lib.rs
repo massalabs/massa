@@ -43,6 +43,7 @@
 //! See test_exports/mod.rs for details.
 
 #![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 mod controller_traits;
 mod error;
 mod event_store;

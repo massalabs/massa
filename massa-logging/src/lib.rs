@@ -2,6 +2,7 @@
 //! Log utilities
 
 #![warn(missing_docs)]
+// #![warn(unused_crate_dependencies)]
 #[macro_export]
 /// tracing with some context
 macro_rules! massa_trace {

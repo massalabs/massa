@@ -4,7 +4,7 @@
 use crate::LedgerConfig;
 use massa_models::{Address, Amount};
 use std::collections::BTreeMap;
-use std::io::prelude::*;
+use std::io::Seek;
 use tempfile::NamedTempFile;
 
 /// Default value of LedgerConfig used for tests

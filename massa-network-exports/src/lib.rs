@@ -1,6 +1,7 @@
 //! Manages a connection with a node
 
 #![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 
 pub use commands::{
     NetworkCommand, NetworkEvent, NetworkManagementCommand, NodeCommand, NodeEvent, NodeEventType,

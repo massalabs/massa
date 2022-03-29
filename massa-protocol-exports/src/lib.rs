@@ -4,6 +4,7 @@
 #![feature(drain_filter)]
 #![feature(ip)]
 #![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 mod error;
 mod protocol_controller;
 mod settings;

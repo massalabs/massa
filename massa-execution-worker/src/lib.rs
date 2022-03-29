@@ -67,6 +67,7 @@
 //!
 
 #![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 #![feature(map_first_last)]
 #![feature(unzip_option)]
 

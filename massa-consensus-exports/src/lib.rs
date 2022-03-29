@@ -6,6 +6,7 @@
 #![feature(map_first_last)]
 #![feature(int_roundings)]
 #![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 #[macro_use]
 extern crate massa_logging;
 

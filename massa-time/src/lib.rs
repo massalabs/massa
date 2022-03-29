@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 //! Unsigned time management
 #![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 
 mod error;
 pub use error::TimeError;
