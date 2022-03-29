@@ -15,8 +15,9 @@ use massa_models::{
     signed::Signed,
     Address, Block, BlockHeader, BlockId, DeserializeCompact, SerializeCompact, Slot,
 };
-use massa_models::{storage::Storage, Amount, Endorsement};
+use massa_models::{Amount, Endorsement};
 use massa_signature::{generate_random_private_key, PublicKey};
+use massa_storage::Storage;
 use serial_test::serial;
 use std::str::FromStr;
 use tempfile::NamedTempFile;

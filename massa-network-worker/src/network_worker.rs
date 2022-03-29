@@ -12,7 +12,6 @@ use crate::{
 };
 use futures::{stream::FuturesUnordered, StreamExt};
 use massa_logging::massa_trace;
-use massa_models::storage::Storage;
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId, SerializeCompact, Version};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener,
@@ -21,6 +20,7 @@ use massa_network_exports::{
     WriteHalf,
 };
 use massa_signature::{derive_public_key, PrivateKey};
+use massa_storage::Storage;
 use std::{
     collections::{hash_map, HashMap, HashSet},
     net::{IpAddr, SocketAddr},

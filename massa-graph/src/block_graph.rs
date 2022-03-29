@@ -14,7 +14,6 @@ use massa_logging::massa_trace;
 use massa_models::ledger_models::LedgerChange;
 use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::signed::{Signable, Signed};
-use massa_models::storage::Storage;
 use massa_models::{
     active_block::ActiveBlock,
     api::EndorsementInfo,
@@ -30,6 +29,7 @@ use massa_proof_of_stake_exports::{
     error::ProofOfStakeError, OperationRollInterface, ProofOfStake,
 };
 use massa_signature::{derive_public_key, PublicKey};
+use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
 use std::mem;
 use std::{collections::HashSet, usize};

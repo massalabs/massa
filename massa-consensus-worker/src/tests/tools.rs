@@ -12,7 +12,6 @@ use massa_consensus_exports::{
 use massa_execution_exports::test_exports::MockExecutionController;
 use massa_graph::{export_active_block::ExportActiveBlock, BlockGraphExport, BootstrapableGraph};
 use massa_hash::hash::Hash;
-use massa_models::storage::Storage;
 use massa_models::{
     prehash::Set,
     signed::{Signable, Signed},
@@ -23,6 +22,7 @@ use massa_pool::PoolCommand;
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_protocol_exports::ProtocolCommand;
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::{collections::HashSet, future::Future};
 use std::{

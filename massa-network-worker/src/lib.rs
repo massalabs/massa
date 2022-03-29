@@ -11,12 +11,13 @@ use crate::{
     peer_info_database::PeerInfoDatabase,
 };
 use massa_logging::massa_trace;
-use massa_models::{constants::CHANNEL_SIZE, node::NodeId, storage::Storage, Version};
+use massa_models::{constants::CHANNEL_SIZE, node::NodeId, Version};
 use massa_network_exports::{
     BootstrapPeers, Establisher, NetworkCommand, NetworkCommandSender, NetworkError, NetworkEvent,
     NetworkEventReceiver, NetworkManagementCommand, NetworkManager, NetworkSettings,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
+use massa_storage::Storage;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 

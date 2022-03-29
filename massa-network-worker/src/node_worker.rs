@@ -6,7 +6,6 @@ use super::{
 };
 use itertools::Itertools;
 use massa_logging::massa_trace;
-use massa_models::storage::Storage;
 use massa_models::{
     constants::{MAX_ASK_BLOCKS_PER_MESSAGE, MAX_ENDORSEMENTS_PER_MESSAGE, NODE_SEND_CHANNEL_SIZE},
     node::NodeId,
@@ -16,6 +15,7 @@ use massa_models::{BlockId, SerializeCompact, SerializeVarInt};
 use massa_network_exports::{
     ConnectionClosureReason, NetworkError, NetworkSettings, NodeCommand, NodeEvent, NodeEventType,
 };
+use massa_storage::Storage;
 use std::mem;
 use tokio::{
     sync::mpsc,

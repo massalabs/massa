@@ -1,5 +1,5 @@
-use crate::prehash::Map;
-use crate::{Block, BlockId};
+use massa_models::prehash::Map;
+use massa_models::{Block, BlockId};
 use parking_lot::RwLock;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;

@@ -12,7 +12,6 @@ use crate::NetworkSettings;
 use massa_hash::hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::Signed;
-use massa_models::storage::Storage;
 use massa_models::{
     Address, Amount, BlockId, Operation, OperationType, SerializeCompact, SignedOperation, Version,
 };
@@ -21,6 +20,7 @@ use massa_network_exports::{
     ConnectionId, NetworkCommandSender, NetworkEventReceiver, NetworkManager, PeerInfo,
 };
 use massa_signature::{derive_public_key, generate_random_private_key};
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use std::str::FromStr;
 use std::{

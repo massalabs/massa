@@ -18,13 +18,13 @@ use massa_models::SerializeCompact;
 use massa_models::{
     node::NodeId,
     signed::{Signable, Signed},
-    storage::Storage,
 };
 use massa_models::{BlockId, Endorsement, Slot};
 use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
 };
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;

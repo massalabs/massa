@@ -13,12 +13,12 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
-use massa_models::storage::Storage;
 use massa_models::BlockId;
 use massa_models::{
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
     Slot,
 };
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::{collections::HashMap, sync::Arc};

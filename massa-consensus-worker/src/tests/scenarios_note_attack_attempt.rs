@@ -11,8 +11,9 @@ use massa_execution_exports::test_exports::MockExecutionController;
 
 use massa_consensus_exports::settings::ConsensusChannels;
 use massa_hash::hash::Hash;
-use massa_models::{storage::Storage, BlockId, Slot};
+use massa_models::{BlockId, Slot};
 use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_storage::Storage;
 use serial_test::serial;
 
 #[tokio::test]

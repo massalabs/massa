@@ -1,12 +1,12 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::{
-    constants::CHANNEL_SIZE, signed::Signable, storage::Storage, Block, BlockId, SerializeCompact,
-    SignedHeader,
+    constants::CHANNEL_SIZE, signed::Signable, Block, BlockId, SerializeCompact, SignedHeader,
 };
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
 

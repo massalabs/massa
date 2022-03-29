@@ -1,10 +1,10 @@
 use crate::start_protocol_controller;
 use futures::Future;
-use massa_models::storage::Storage;
 use massa_protocol_exports::{
     tests::mock_network_controller::MockNetworkController, ProtocolCommandSender,
     ProtocolEventReceiver, ProtocolManager, ProtocolPoolEventReceiver, ProtocolSettings,
 };
+use massa_storage::Storage;
 
 pub async fn protocol_test<F, V>(protocol_settings: &'static ProtocolSettings, test: F)
 where

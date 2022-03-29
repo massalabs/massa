@@ -4,7 +4,6 @@ use crate::{node_info::NodeInfo, worker_operations_impl::OperationBatchBuffer};
 use itertools::Itertools;
 use massa_hash::hash::Hash;
 use massa_logging::massa_trace;
-use massa_models::storage::Storage;
 use massa_models::{
     constants::CHANNEL_SIZE,
     node::NodeId,
@@ -20,6 +19,7 @@ use massa_protocol_exports::{
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
     ProtocolSettings,
 };
+use massa_storage::Storage;
 use massa_time::TimeError;
 use std::collections::{HashMap, HashSet};
 use tokio::{

@@ -1552,6 +1552,7 @@ dependencies = [
  "massa_pool",
  "massa_protocol_exports",
  "massa_protocol_worker",
+ "massa_storage",
  "massa_time",
  "parking_lot 0.12.0",
  "pretty_assertions",
@@ -1712,6 +1713,7 @@ dependencies = [
  "massa_proof_of_stake_exports",
  "massa_protocol_exports",
  "massa_signature",
+ "massa_storage",
  "massa_time",
  "num",
  "pretty_assertions",
@@ -1762,6 +1764,7 @@ dependencies = [
  "massa_ledger",
  "massa_models",
  "massa_signature",
+ "massa_storage",
  "massa_time",
  "parking_lot 0.12.0",
  "pretty_assertions",
@@ -1805,6 +1808,7 @@ dependencies = [
  "massa_models",
  "massa_proof_of_stake_exports",
  "massa_signature",
+ "massa_storage",
  "massa_time",
  "num",
  "pretty_assertions",
@@ -1929,6 +1933,7 @@ dependencies = [
  "massa_models",
  "massa_network_exports",
  "massa_signature",
+ "massa_storage",
  "massa_time",
  "num_enum",
  "pretty_assertions",
@@ -2028,6 +2033,7 @@ dependencies = [
  "massa_network_exports",
  "massa_protocol_exports",
  "massa_signature",
+ "massa_storage",
  "massa_time",
  "num_enum",
  "pretty_assertions",
@@ -2067,6 +2073,14 @@ dependencies = [
  "serde_json",
  "serial_test 0.5.1",
  "thiserror",
+]
+
+[[package]]
+name = "massa_storage"
+version = "0.1.0"
+dependencies = [
+ "massa_models",
+ "parking_lot 0.12.0",
 ]
 
 [[package]]

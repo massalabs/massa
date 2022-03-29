@@ -18,7 +18,6 @@ use massa_execution_worker::start_execution_worker;
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_ledger::LedgerConfig;
 use massa_logging::massa_trace;
-use massa_models::storage::Storage;
 use massa_models::{
     constants::{
         END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_GAS_PER_BLOCK,
@@ -31,6 +30,7 @@ use massa_network_worker::start_network_controller;
 use massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use massa_protocol_exports::ProtocolManager;
 use massa_protocol_worker::start_protocol_controller;
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::{process, sync::Arc};

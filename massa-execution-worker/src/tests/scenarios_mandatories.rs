@@ -7,12 +7,12 @@ use massa_hash::hash::Hash;
 use massa_ledger::{LedgerConfig, LedgerError};
 use massa_models::{
     constants::{AMOUNT_DECIMAL_FACTOR, FINAL_HISTORY_LENGTH, THREAD_COUNT},
-    storage::Storage,
     Block, BlockHeader, BlockId, Operation, OperationType, SerializeCompact, SignedHeader,
     SignedOperation,
 };
 use massa_models::{Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
+use massa_storage::Storage;
 use parking_lot::RwLock;
 use serial_test::serial;
 use std::{

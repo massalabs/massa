@@ -16,6 +16,7 @@ members = [
   "massa-network-exports",
   "massa-node",
   "massa-sdk",
+  "massa-storage",
   "massa-pool",
   "massa-proof-of-stake-exports",
   "massa-protocol-exports",

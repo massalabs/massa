@@ -6,9 +6,9 @@ use massa_models::{
     prehash::{BuildMap, Map, Set},
     rolls::{RollUpdate, RollUpdates},
     signed::Signable,
-    storage::Storage,
     *,
 };
+use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
 
 /// Exportable version of ActiveBlock
