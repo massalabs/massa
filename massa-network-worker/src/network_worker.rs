@@ -16,10 +16,9 @@ use massa_models::storage::Storage;
 use massa_models::{constants::CHANNEL_SIZE, node::NodeId, SerializeCompact, Version};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, Establisher, HandshakeErrorType, Listener,
-    NetworkConnectionErrorType, NetworkError, NetworkSettings,
-    NetworkCommand, NetworkEvent,
-    NetworkManagementCommand, NodeCommand, NodeEvent, NodeEventType, ReadHalf,
-    WriteHalf
+    NetworkCommand, NetworkConnectionErrorType, NetworkError, NetworkEvent,
+    NetworkManagementCommand, NetworkSettings, NodeCommand, NodeEvent, NodeEventType, ReadHalf,
+    WriteHalf,
 };
 use massa_signature::{derive_public_key, PrivateKey};
 use std::{
