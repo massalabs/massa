@@ -185,11 +185,12 @@ impl ExecutionState {
         let mut truncate_at = None;
         // iterate over the output history, in chronological order
         for (hist_index, exec_output) in self.active_history.iter().enumerate() {
-            // try to find the corresponding slot in active_slots or ready_final_slots.
+            // try to find the corresponding slot in active_slots or ready_final_slots
             let found_block_id = active_slots
                 .get(&exec_output.slot)
-                .or_else(|| ready_final_slots.get(&exec_output.slot));
-            if found_block_id == Some(&exec_output.block_id) {
+                .or_else(|| ready_final_slots.get(&exec_output.slot))
+                .map(|b_id| *b_id);
+            if found_block_id == Some(exec_output.block_id) {
                 // the slot number and block ID still match. Continue scanning
                 continue;
             }
@@ -445,11 +446,8 @@ impl ExecutionState {
     ///
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
-    pub fn execute_slot(
-        &self,
-        slot: Slot,
-        opt_block: Option<(BlockId, &Block)>,
-    ) -> ExecutionOutput {
+    pub fn execute_slot(&self, slot: Slot, opt_block: Option<(BlockId, Block)>) -> ExecutionOutput {
+        // HERE: remove block and get storage
         // get optional block ID and creator address
         let (opt_block_id, opt_block_creator_addr) = opt_block
             .as_ref()

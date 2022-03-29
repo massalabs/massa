@@ -7,20 +7,15 @@ use massa_hash::hash::Hash;
 use massa_ledger::{LedgerConfig, LedgerError};
 use massa_models::{
     constants::{AMOUNT_DECIMAL_FACTOR, FINAL_HISTORY_LENGTH, THREAD_COUNT},
+    prehash::Map,
     Block, BlockHeader, BlockId, Operation, OperationType, SerializeCompact, SignedHeader,
     SignedOperation,
 };
 use massa_models::{Address, Amount, Slot};
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey, PublicKey};
-use massa_storage::Storage;
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::{
-    collections::{BTreeMap, HashMap},
-    str::FromStr,
-    sync::Arc,
-    time::Duration,
-};
+use std::{collections::BTreeMap, str::FromStr, sync::Arc, time::Duration};
 use tempfile::NamedTempFile;
 
 /// Same as `get_random_address()` and return priv_key and pub_key associated
@@ -58,22 +53,14 @@ fn get_sample_ledger() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile), Ledge
 #[serial]
 fn test_execution_basic() {
     let (sample_ledger, _keep) = get_sample_ledger().unwrap();
-    let (_, _) = start_execution_worker(
-        ExecutionConfig::default(),
-        sample_ledger,
-        Default::default(),
-    );
+    let (_, _) = start_execution_worker(ExecutionConfig::default(), sample_ledger);
 }
 
 #[test]
 #[serial]
 fn test_execution_shutdown() {
     let (sample_ledger, _keep) = get_sample_ledger().unwrap();
-    let (mut manager, _) = start_execution_worker(
-        ExecutionConfig::default(),
-        sample_ledger,
-        Default::default(),
-    );
+    let (mut manager, _) = start_execution_worker(ExecutionConfig::default(), sample_ledger);
     manager.stop()
 }
 
@@ -81,11 +68,8 @@ fn test_execution_shutdown() {
 #[serial]
 fn test_sending_command() {
     let (sample_ledger, _keep) = get_sample_ledger().unwrap();
-    let (mut manager, controller) = start_execution_worker(
-        ExecutionConfig::default(),
-        sample_ledger,
-        Default::default(),
-    );
+    let (mut manager, controller) =
+        start_execution_worker(ExecutionConfig::default(), sample_ledger);
     controller.update_blockclique_status(Default::default(), Default::default());
     manager.stop()
 }
@@ -94,11 +78,8 @@ fn test_sending_command() {
 #[serial]
 fn test_sending_read_only_execution_command() {
     let (sample_ledger, _keep) = get_sample_ledger().unwrap();
-    let (mut manager, controller) = start_execution_worker(
-        ExecutionConfig::default(),
-        sample_ledger,
-        Default::default(),
-    );
+    let (mut manager, controller) =
+        start_execution_worker(ExecutionConfig::default(), sample_ledger);
     controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 1_000_000,
@@ -132,17 +113,14 @@ fn test_sending_read_only_execution_command() {
 #[test]
 #[serial]
 fn generate_events() {
-    massa_models::init_serialization_context(massa_models::SerializationContext::default());
     // Compile the `./wasm_tests` and generate a block with `event_test.wasm`
     // as data. Then we check if we get an event as expected.
     let exec_cfg = ExecutionConfig {
         t0: 10.into(),
         ..ExecutionConfig::default()
     };
-    let storage: Storage = Default::default();
     let (sample_ledger, _keep) = get_sample_ledger().unwrap();
-    let (mut manager, controller) =
-        start_execution_worker(exec_cfg, sample_ledger, storage.clone());
+    let (mut manager, controller) = start_execution_worker(exec_cfg, sample_ledger);
 
     let (sender_address, sender_private_key, sender_public_key) = get_random_address_full();
     let event_test_data = include_bytes!("./event_test.wasm");
@@ -153,14 +131,11 @@ fn generate_events() {
     )
     .unwrap()])
     .unwrap();
+
+    let finalized_blocks: Map<BlockId, Block> = Default::default();
+    let mut blockclique: Map<BlockId, Block> = Default::default();
     let slot = block.header.content.slot;
-
-    storage.store_block(block_id, block, Default::default());
-
-    let finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    let mut blockclique: HashMap<Slot, BlockId> = Default::default();
-
-    blockclique.insert(slot, block_id);
+    blockclique.insert(block_id, block);
 
     controller.update_blockclique_status(finalized_blocks, blockclique);
 

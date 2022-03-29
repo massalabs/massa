@@ -11,6 +11,7 @@ use massa_execution_exports::{
 };
 use massa_ledger::LedgerEntry;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::Map;
 use massa_models::Address;
 use massa_models::OperationId;
 use massa_models::{BlockId, Slot};
@@ -72,13 +73,23 @@ impl ExecutionController for ExecutionControllerImpl {
     /// * blockclique: new blockclique, replaces the current one in the input
     fn update_blockclique_status(
         &self,
-        finalized_blocks: HashMap<Slot, BlockId>,
-        new_blockclique: HashMap<Slot, BlockId>,
+        finalized_blocks: Map<BlockId, Slot>,
+        blockclique: Map<BlockId, Slot>,
     ) {
+        // index newly finalized blocks by slot
+        let mapped_finalized_blocks: HashMap<_, _> = finalized_blocks
+            .into_iter()
+            .map(|(b_id, slot)| (slot, b_id))
+            .collect();
+        // index blockclique by slot
+        let mapped_blockclique = blockclique
+            .into_iter()
+            .map(|(b_id, slot)| (slot, b_id))
+            .collect();
         // update input data
         let mut input_data = self.input_data.1.lock();
-        input_data.new_blockclique = Some(new_blockclique); // replace blockclique
-        input_data.finalized_blocks.extend(finalized_blocks); // append finalized blocks
+        input_data.new_blockclique = Some(mapped_blockclique); // replace blockclique
+        input_data.finalized_blocks.extend(mapped_finalized_blocks); // append finalized blocks
         self.input_data.0.notify_one(); // wake up VM loop
     }
 

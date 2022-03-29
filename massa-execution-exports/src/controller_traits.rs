@@ -7,11 +7,11 @@ use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
 use massa_ledger::LedgerEntry;
 use massa_models::output_event::SCOutputEvent;
+use massa_models::prehash::Map;
 use massa_models::Address;
 use massa_models::BlockId;
 use massa_models::OperationId;
 use massa_models::Slot;
-use std::collections::HashMap;
 
 /// interface that communicates with the execution worker thread
 pub trait ExecutionController: Send + Sync {
@@ -22,8 +22,8 @@ pub trait ExecutionController: Send + Sync {
     /// * blockclique: new blockclique
     fn update_blockclique_status(
         &self,
-        finalized_blocks: HashMap<Slot, BlockId>,
-        blockclique: HashMap<Slot, BlockId>,
+        finalized_blocks: Map<BlockId, Slot>,
+        blockclique: Map<BlockId, Slot>,
     );
 
     /// Get execution events optionnally filtered by:

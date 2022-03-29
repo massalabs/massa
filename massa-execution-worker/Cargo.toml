@@ -22,7 +22,6 @@ tracing = "0.1"
 # custom modules
 massa_execution_exports = { path = "../massa-execution-exports" }
 massa_models = { path = "../massa-models" }
-massa_storage = { path = "../massa-storage" }
 massa_hash = { path = "../massa-hash" }
 massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", tag = "v0.5.0" }
 massa_signature = { path = "../massa-signature" }

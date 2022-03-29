@@ -155,7 +155,7 @@ impl ConsensusWorker {
                 .filter_map(|block_id| {
                     block_db
                         .get_active_block(&block_id)
-                        .map(|a_block| (a_block.slot, block_id))
+                        .map(|a_block| (block_id, a_block.slot))
                 })
                 .collect(),
         );
@@ -1187,7 +1187,7 @@ impl ConsensusWorker {
                     .filter_map(|b_id| {
                         if let Some(a_b) = self.block_db.get_active_block(&b_id) {
                             if a_b.is_final {
-                                return Some((a_b.slot, b_id));
+                                return Some((b_id, a_b.slot));
                             }
                         }
                         None
@@ -1199,7 +1199,7 @@ impl ConsensusWorker {
                     .filter_map(|block_id| {
                         self.block_db
                             .get_active_block(&block_id)
-                            .map(|a_block| (a_block.slot, block_id))
+                            .map(|a_block| (block_id, a_block.slot))
                     })
                     .collect(),
             );
