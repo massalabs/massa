@@ -118,15 +118,14 @@ fn send_and_receive_async_message() {
         max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
-    let (sample_state, _keep) = get_sample_state().unwrap();
+    let (sample_state, _) = get_sample_state().unwrap();
     let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state);
 
-    let (_, sender_private_key, sender_public_key) = get_random_address_full();
+    let (_, priv_key, pub_key) = get_random_address_full();
+    // you can check the source code of the following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/send_message.wasm");
     let (block_id, block) = create_block(vec![create_execute_sc_operation(
-        sender_private_key,
-        sender_public_key,
-        bytecode,
+        priv_key, pub_key, bytecode,
     )
     .unwrap()])
     .unwrap();
