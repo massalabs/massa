@@ -10,7 +10,7 @@ use massa_models::{
 };
 
 use massa_models::{
-    Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
+    BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
 };
 use massa_network_exports::NetworkEventReceiver;
 use serde::Serialize;
@@ -25,8 +25,6 @@ pub enum ProtocolEvent {
     ReceivedBlock {
         /// corresponding id
         block_id: BlockId,
-        /// the block
-        block: Block,
         /// operations in the block by (index, validity end period)
         operation_set: Map<OperationId, (usize, u64)>,
         /// endorsements in the block with index
@@ -63,8 +61,8 @@ pub enum ProtocolPoolEvent {
     GetOperations((NodeId, OperationIds)),
 }
 
-type BlocksResults =
-    Map<BlockId, Option<(Block, Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
+pub type BlocksResults =
+    Map<BlockId, Option<(Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
 
 /// Commands that protocol worker can process
 #[derive(Debug, Serialize)]
@@ -73,8 +71,6 @@ pub enum ProtocolCommand {
     IntegratedBlock {
         /// block id
         block_id: BlockId,
-        /// the block
-        block: Box<Block>,
         /// operations ids in the block
         operation_ids: OperationIds,
         /// endorsement ids in the block
@@ -115,16 +111,16 @@ impl ProtocolCommandSender {
     pub async fn integrated_block(
         &mut self,
         block_id: BlockId,
-        block: Block,
         operation_ids: Set<OperationId>,
         endorsement_ids: Vec<EndorsementId>,
     ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.command_sender.integrated_block", { "block_id": block_id, "block": block });
+        massa_trace!("protocol.command_sender.integrated_block", {
+            "block_id": block_id
+        });
         let res = self
             .0
             .send(ProtocolCommand::IntegratedBlock {
                 block_id,
-                block: Box::new(block),
                 operation_ids,
                 endorsement_ids,
             })

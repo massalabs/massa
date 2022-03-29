@@ -5,8 +5,7 @@ use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Statu
 use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_models::{
-    Address, Block, BlockId, OperationSearchResult, SignedEndorsement, Slot,
-    StakersCycleProductionStats,
+    Address, BlockId, OperationSearchResult, SignedEndorsement, Slot, StakersCycleProductionStats,
 };
 
 use massa_proof_of_stake_exports::ExportProofOfStake;
@@ -28,13 +27,6 @@ pub enum ConsensusCommand {
         slot_end: Option<Slot>,
         /// response channel
         response_tx: oneshot::Sender<BlockGraphExport>,
-    },
-    /// Returns through a channel full block with specified hash.
-    GetActiveBlock {
-        /// wanted id
-        block_id: BlockId,
-        /// response channel
-        response_tx: oneshot::Sender<Option<Block>>,
     },
     /// Returns through a channel full block and status with specified hash.
     GetBlockStatus {

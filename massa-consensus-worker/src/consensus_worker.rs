@@ -152,14 +152,14 @@ impl ConsensusWorker {
         // we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync
         // because the two modules run concurrently and out of sync
         channels.execution_controller.update_blockclique_status(
-            block_db.clone_all_final_blocks(),
+            block_db.get_all_final_blocks(),
             block_db
                 .get_blockclique()
                 .into_iter()
                 .filter_map(|block_id| {
                     block_db
                         .get_active_block(&block_id)
-                        .map(|a_block| (block_id, a_block.block.clone()))
+                        .map(|a_block| (a_block.slot, block_id))
                 })
                 .collect(),
         );
@@ -506,7 +506,7 @@ impl ConsensusWorker {
                         ancestor_id
                     ))
                 })?;
-            if ancestor.block.header.content.slot.period < stop_period {
+            if ancestor.slot.period < stop_period {
                 break;
             }
             exclude_operations.extend(ancestor.operation_set.keys());
@@ -608,8 +608,15 @@ impl ConsensusWorker {
             creator_private_key,
         )?;
         let block = Block { header, operations };
-
         massa_trace!("create block", { "block": block });
+
+        let serialized_block = block.to_bytes_compact()?;
+
+        // Add to shared storage
+        self.block_db
+            .storage
+            .store_block(block_id, block, serialized_block);
+
         info!(
             "Staked block {} with address {}, at cycle {}, period {}, thread {}",
             block_id,
@@ -622,7 +629,6 @@ impl ConsensusWorker {
         // add block to db
         self.block_db.incoming_block(
             block_id,
-            block,
             operation_set,
             endorsement_ids,
             &mut self.pos,
@@ -682,27 +688,6 @@ impl ConsensusWorker {
                     .is_err()
                 {
                     warn!("consensus: could not send GetBlockGraphStatus answer");
-                }
-                Ok(())
-            }
-            // return full block with specified hash
-            ConsensusCommand::GetActiveBlock {
-                block_id,
-                response_tx,
-            } => {
-                massa_trace!(
-                    "consensus.consensus_worker.process_consensus_command.get_active_block",
-                    {}
-                );
-                if response_tx
-                    .send(
-                        self.block_db
-                            .get_active_block(&block_id)
-                            .map(|v| v.block.clone()),
-                    )
-                    .is_err()
-                {
-                    warn!("consensus: could not send GetBlock answer");
                 }
                 Ok(())
             }
@@ -1124,14 +1109,15 @@ impl ConsensusWorker {
         match event {
             ProtocolEvent::ReceivedBlock {
                 block_id,
-                block,
                 operation_set,
                 endorsement_ids,
             } => {
-                massa_trace!("consensus.consensus_worker.process_protocol_event.received_block", { "block_id": block_id, "block": block });
+                massa_trace!(
+                    "consensus.consensus_worker.process_protocol_event.received_block",
+                    { "block_id": block_id }
+                );
                 self.block_db.incoming_block(
                     block_id,
-                    block,
                     operation_set,
                     endorsement_ids,
                     &mut self.pos,
@@ -1161,7 +1147,6 @@ impl ConsensusWorker {
                         results.insert(
                             block_hash,
                             Some((
-                                a_block.block.clone(),
                                 Some(a_block.operation_set.keys().copied().collect()),
                                 Some(a_block.endorsement_ids.keys().copied().collect()),
                             )),
@@ -1210,13 +1195,13 @@ impl ConsensusWorker {
         massa_trace!("consensus.consensus_worker.block_db_changed", {});
 
         // Propagate new blocks
-        for (block_id, (block, op_ids, endo_ids)) in
-            self.block_db.get_blocks_to_propagate().into_iter()
-        {
-            massa_trace!("consensus.consensus_worker.block_db_changed.integrated", { "block_id": block_id, "block": block });
+        for (block_id, (op_ids, endo_ids)) in self.block_db.get_blocks_to_propagate().into_iter() {
+            massa_trace!("consensus.consensus_worker.block_db_changed.integrated", {
+                "block_id": block_id
+            });
             self.channels
                 .protocol_command_sender
-                .integrated_block(block_id, block, op_ids, endo_ids)
+                .integrated_block(block_id, op_ids, endo_ids)
                 .await?;
         }
 
@@ -1237,28 +1222,32 @@ impl ConsensusWorker {
         // get blockclique
         let blockclique_set = self.block_db.get_blockclique();
 
-        // notify Execution
-        {
-            let finalized_blocks = new_final_block_ids
-                .iter()
-                .filter_map(|b_id| {
-                    self.block_db
-                        .get_active_block(b_id)
-                        .map(|b| (*b_id, b.block.clone()))
-                })
-                .collect();
-            let blockclique = blockclique_set
-                .iter()
-                .filter_map(|b_id| {
-                    self.block_db
-                        .get_active_block(b_id)
-                        .map(|b| (*b_id, b.block.clone()))
-                })
-                .collect();
-            self.channels
-                .execution_controller
-                .update_blockclique_status(finalized_blocks, blockclique);
-        }
+        // notify execution
+        self.channels
+            .execution_controller
+            .update_blockclique_status(
+                new_final_block_ids
+                    .clone()
+                    .into_iter()
+                    .filter_map(|b_id| {
+                        if let Some(a_b) = self.block_db.get_active_block(&b_id) {
+                            if a_b.is_final {
+                                return Some((a_b.slot, b_id));
+                            }
+                        }
+                        None
+                    })
+                    .collect(),
+                blockclique_set
+                    .clone()
+                    .into_iter()
+                    .filter_map(|block_id| {
+                        self.block_db
+                            .get_active_block(&block_id)
+                            .map(|a_block| (a_block.slot, block_id))
+                    })
+                    .collect(),
+            );
 
         // Process new final blocks
         let mut new_final_ops: Map<OperationId, (u64, u8)> = Map::default();
@@ -1269,9 +1258,10 @@ impl ConsensusWorker {
             if let Some(a_block) = self.block_db.get_active_block(&b_id) {
                 // List new final ops
                 new_final_ops.extend(
-                    a_block.operation_set.iter().map(|(id, (_, exp))| {
-                        (*id, (*exp, a_block.block.header.content.slot.thread))
-                    }),
+                    a_block
+                        .operation_set
+                        .iter()
+                        .map(|(id, (_, exp))| (*id, (*exp, a_block.slot.thread))),
                 );
                 // List final block
                 new_final_blocks.insert(b_id, a_block);
@@ -1279,7 +1269,7 @@ impl ConsensusWorker {
                 self.final_block_stats.push_back((
                     timestamp,
                     a_block.operation_set.len() as u64,
-                    Address::from_public_key(&a_block.block.header.content.creator),
+                    a_block.creator_address,
                 ));
             }
         }
@@ -1334,7 +1324,7 @@ impl ConsensusWorker {
             // iterate on all blockclique blocks
             for block_id in blockclique_set.into_iter() {
                 let block_slot = match self.block_db.get_active_block(&block_id) {
-                    Some(b) => b.block.header.content.slot,
+                    Some(b) => b.slot,
                     None => continue,
                 };
                 if self.endorsed_slots.contains(&block_slot) {

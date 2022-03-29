@@ -13,6 +13,7 @@ use massa_consensus_exports::settings::ConsensusChannels;
 use massa_hash::Hash;
 use massa_models::{BlockId, Slot};
 use massa_signature::{generate_random_private_key, PrivateKey};
+use massa_storage::Storage;
 use serial_test::serial;
 
 #[tokio::test]
@@ -25,13 +26,14 @@ async fn test_invalid_block_notified_as_attack_attempt() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
+    let storage: Storage = Default::default();
+
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(storage.clone());
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
-
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -44,6 +46,7 @@ async fn test_invalid_block_notified_as_attack_attempt() {
             },
             None,
             None,
+            storage,
             0,
         )
         .await
@@ -90,13 +93,15 @@ async fn test_invalid_header_notified_as_attack_attempt() {
         ..ConsensusConfig::default_with_staking_keys(&staking_keys)
     };
 
+    let storage: Storage = Default::default();
+
     // mock protocol & pool
     let (mut protocol_controller, protocol_command_sender, protocol_event_receiver) =
-        MockProtocolController::new();
+        MockProtocolController::new(storage.clone());
     let (pool_controller, pool_command_sender) = MockPoolController::new();
     let (execution_controller, _execution_rx) = MockExecutionController::new_with_receiver();
     let pool_sink = PoolCommandSink::new(pool_controller).await;
-
+    let storage: Storage = Default::default();
     // launch consensus controller
     let (consensus_command_sender, consensus_event_receiver, consensus_manager) =
         start_consensus_controller(
@@ -109,6 +114,7 @@ async fn test_invalid_header_notified_as_attack_attempt() {
             },
             None,
             None,
+            storage,
             0,
         )
         .await

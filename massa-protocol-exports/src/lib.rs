@@ -10,10 +10,10 @@ mod settings;
 
 pub use error::ProtocolError;
 pub use protocol_controller::{
-    ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
+    BlocksResults, ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
     ProtocolManagementCommand, ProtocolManager, ProtocolPoolEvent, ProtocolPoolEventReceiver,
 };
 pub use settings::ProtocolSettings;
 
-/// test exports
+/// TODO: Add only if test. Removed the cfg test because don't work if running cargo test on an other sub-crate.
 pub mod tests;

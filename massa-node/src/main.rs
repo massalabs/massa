@@ -30,6 +30,7 @@ use massa_network_worker::start_network_controller;
 use massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use massa_protocol_exports::ProtocolManager;
 use massa_protocol_worker::start_protocol_controller;
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::{process, sync::Arc};
@@ -63,6 +64,9 @@ async fn launch() -> (
         }
     }
 
+    // Storage shared by multiple components.
+    let shared_storage: Storage = Default::default();
+
     // Init the global serialization context
     init_serialization_context(SerializationContext::default());
 
@@ -93,6 +97,7 @@ async fn launch() -> (
             Establisher::new(),
             bootstrap_state.compensation_millis,
             bootstrap_state.peers,
+            shared_storage.clone(),
             *VERSION,
         )
         .await
@@ -110,6 +115,7 @@ async fn launch() -> (
         MAX_GAS_PER_BLOCK,
         network_command_sender.clone(),
         network_event_receiver,
+        shared_storage.clone(),
     )
     .await
     .expect("could not start protocol controller");
@@ -161,8 +167,11 @@ async fn launch() -> (
         t0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
     };
-    let (execution_manager, execution_controller) =
-        start_execution_worker(execution_config, final_state.clone());
+    let (execution_manager, execution_controller) = start_execution_worker(
+        execution_config,
+        final_state.clone(),
+        shared_storage.clone(),
+    );
 
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
     // launch consensus controller
@@ -177,6 +186,7 @@ async fn launch() -> (
             },
             bootstrap_state.pos,
             bootstrap_state.graph,
+            shared_storage.clone(),
             bootstrap_state.compensation_millis,
         )
         .await

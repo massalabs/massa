@@ -8,6 +8,7 @@ use crate::{
 use massa_hash::Hash;
 use massa_models::node::NodeId;
 use massa_models::signed::{Signable, Signed};
+use massa_models::SerializeCompact;
 use massa_models::{
     Address, Amount, Block, BlockHeader, BlockId, SignedEndorsement, SignedOperation, Slot,
 };
@@ -152,9 +153,12 @@ pub async fn send_and_propagate_block(
     protocol_event_receiver: &mut ProtocolEventReceiver,
 ) {
     let expected_hash = block.header.content.compute_id().unwrap();
+    let serialized = block.to_bytes_compact().unwrap();
 
     // Send block to protocol.
-    network_controller.send_block(source_node_id, block).await;
+    network_controller
+        .send_block(source_node_id, block, serialized)
+        .await;
 
     // Check protocol sends block to consensus.
     let hash = match wait_protocol_event(protocol_event_receiver, 1000.into(), |evt| match evt {
@@ -168,10 +172,7 @@ pub async fn send_and_propagate_block(
         _ => panic!("Unexpected or no protocol event."),
     };
     if valid {
-        assert_eq!(
-            expected_hash,
-            hash.expect("block not propagated before timeout")
-        );
+        assert_eq!(expected_hash, hash.unwrap());
     } else {
         assert!(hash.is_none(), "unexpected protocol event")
     }

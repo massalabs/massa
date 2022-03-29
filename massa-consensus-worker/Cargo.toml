@@ -27,6 +27,7 @@ massa_graph = { path = "../massa-graph" }
 massa_hash = { path = "../massa-hash" }
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
+massa_storage = { path = "../massa-storage" }
 massa_pool = { path = "../massa-pool" }
 massa_proof_of_stake_exports = { path = "../massa-proof-of-stake-exports" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
@@ -40,6 +41,8 @@ tempfile = "3.2"
 massa_models = { path = "../massa-models", features = ["testing"] }
 massa_execution_exports = { path = "../massa-execution-exports", features = ["testing"] }
 massa_consensus_exports = { path = "../massa-consensus-exports", features = ["testing"] }
+test-log = {version = "0.2.8", features = ["trace"]}
+console-subscriber = "0.1.1"
 
 [features]
 instrument = ["tokio/tracing", "massa_consensus_exports/instrument", "massa_graph/instrument", "massa_models/instrument", "massa_pool/instrument", "massa_proof_of_stake_exports/instrument", "massa_protocol_exports/instrument", "massa_time/instrument"]

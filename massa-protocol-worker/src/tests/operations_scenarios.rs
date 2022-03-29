@@ -8,7 +8,7 @@ use massa_models::{operation::OperationIds, prehash::Set};
 use massa_models::{prehash::Map, signed::Signable};
 use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
-use massa_protocol_exports::{ProtocolEvent, ProtocolPoolEvent};
+use massa_protocol_exports::{BlocksResults, ProtocolEvent, ProtocolPoolEvent};
 use serial_test::serial;
 use std::str::FromStr;
 use std::time::Duration;
@@ -328,7 +328,6 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             protocol_command_sender
                 .integrated_block(
                     block_id,
-                    block,
                     vec![operation_id].into_iter().collect(),
                     Default::default(),
                 )
@@ -342,9 +341,16 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 })
                 .await
             {
-                Some(NetworkCommand::SendBlock { node, block }) => {
+                Some(NetworkCommand::SendBlock { node, block_id }) => {
                     assert_eq!(node, nodes[0].id);
-                    assert_eq!(block.header.content.compute_id().unwrap(), block_id);
+                    assert_eq!(
+                        block
+                            .header
+                            .content
+                            .compute_id()
+                            .expect("Fail to get block id"),
+                        block_id
+                    );
                 }
                 Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),
@@ -417,10 +423,10 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 Slot::new(1, thread),
                 vec![operation.clone()],
             );
-            let block_id = block.header.content.compute_id().unwrap();
+            let expected_block_id = block.header.content.compute_id().unwrap();
 
             network_controller
-                .send_ask_for_block(nodes[0].id, vec![block_id])
+                .send_ask_for_block(nodes[0].id, vec![expected_block_id])
                 .await;
 
             // Wait for the event to be sure that the node is connected,
@@ -434,10 +440,10 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             .await;
 
             // Send the block as search results.
-            let mut results = Map::default();
+            let mut results: BlocksResults = Map::default();
             let mut ops = OperationIds::default();
             ops.insert(operation_id);
-            results.insert(block_id, Some((block.clone(), Some(ops), None)));
+            results.insert(expected_block_id, Some((Some(ops), None)));
 
             protocol_command_sender
                 .send_get_blocks_results(results)
@@ -451,9 +457,9 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
                 })
                 .await
             {
-                Some(NetworkCommand::SendBlock { node, block }) => {
+                Some(NetworkCommand::SendBlock { node, block_id }) => {
                     assert_eq!(node, nodes[0].id);
-                    assert_eq!(block.header.content.compute_id().unwrap(), block_id);
+                    assert_eq!(block_id, expected_block_id);
                 }
                 Some(_) => panic!("Unexpected network command.."),
                 None => panic!("Block not sent."),
@@ -529,7 +535,7 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
 
             // Node 2 sends block, resulting in operations and endorsements noted in block info.
             network_controller
-                .send_block(nodes[1].id, block.clone())
+                .send_block(nodes[1].id, block.clone(), Default::default())
                 .await;
 
             // Node 1 sends header, resulting in protocol using the block info to determine
@@ -624,12 +630,12 @@ async fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_
             // Node 2 sends block, not resulting in operations and endorsements noted in block info,
             // because of the invalid root hash.
             network_controller
-                .send_block(nodes[1].id, block.clone())
+                .send_block(nodes[1].id, block.clone(), Default::default())
                 .await;
 
             // Node 3 sends block, resulting in operations and endorsements noted in block info.
             network_controller
-                .send_block(nodes[2].id, block.clone())
+                .send_block(nodes[2].id, block.clone(), Default::default())
                 .await;
 
             // Node 1 sends header, but the block is empty.
@@ -717,7 +723,7 @@ async fn test_protocol_does_not_propagates_operations_when_receiving_those_insid
 
             // 4. Send block to protocol.
             network_controller
-                .send_block(creator_node.id, block.clone())
+                .send_block(creator_node.id, block, Default::default())
                 .await;
 
             // 5. Check that the operation included in the block is not propagated.

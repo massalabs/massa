@@ -4,12 +4,13 @@
 
 use crate::{ExecutionController, ExecutionError, ExecutionOutput, ReadOnlyExecutionRequest};
 use massa_ledger::LedgerEntry;
-use massa_models::{
-    output_event::SCOutputEvent, prehash::Map, Address, Block, BlockId, OperationId, Slot,
-};
-use std::sync::{
-    mpsc::{self, Receiver},
-    Arc, Mutex,
+use massa_models::{output_event::SCOutputEvent, Address, BlockId, OperationId, Slot};
+use std::{
+    collections::HashMap,
+    sync::{
+        mpsc::{self, Receiver},
+        Arc, Mutex,
+    },
 };
 
 /// List of possible messages coming from the mock.
@@ -22,9 +23,9 @@ pub enum MockExecutionControllerMessage {
     /// update blockclique status
     UpdateBlockcliqueStatus {
         /// newly finalized blocks
-        finalized_blocks: Map<BlockId, Block>,
+        finalized_blocks: HashMap<Slot, BlockId>,
         /// block clique (clique of higher fitness)
-        blockclique: Map<BlockId, Block>,
+        blockclique: HashMap<Slot, BlockId>,
     },
     /// filter for smart contract output event request
     GetFilteredScOutputEvent {
@@ -87,8 +88,8 @@ impl MockExecutionController {
 impl ExecutionController for MockExecutionController {
     fn update_blockclique_status(
         &self,
-        finalized_blocks: Map<BlockId, Block>,
-        blockclique: Map<BlockId, Block>,
+        finalized_blocks: HashMap<Slot, BlockId>,
+        blockclique: HashMap<Slot, BlockId>,
     ) {
         self.0
             .lock()

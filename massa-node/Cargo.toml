@@ -38,6 +38,7 @@ massa_network_worker = { path = "../massa-network-worker" }
 massa_pool = { path = "../massa-pool" }
 massa_protocol_exports = { path = "../massa-protocol-exports" }
 massa_protocol_worker = { path = "../massa-protocol-worker" }
+massa_storage = { path = "../massa-storage" }
 massa_time = { path = "../massa-time" }
 
 [dev-dependencies]

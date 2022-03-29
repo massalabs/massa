@@ -57,9 +57,35 @@ pub enum Message {
     Endorsements(Vec<SignedEndorsement>),
 }
 
+/// Deserialize, and return, a message.
+/// In the case of a block,
+/// also return the serialized object.
+pub fn deserialize_message_with_optional_serialized_object(
+    buffer: &[u8],
+) -> Result<(Message, Option<Vec<u8>>), ModelsError> {
+    let mut cursor = 0usize;
+
+    let (type_id_raw, delta) = u32::from_varint_bytes(&buffer[cursor..])?;
+    cursor += delta;
+
+    let type_id: MessageTypeId = type_id_raw
+        .try_into()
+        .map_err(|_| ModelsError::DeserializeError("invalid message type ID".into()))?;
+
+    match type_id {
+        MessageTypeId::Block => {
+            let mut serialized = Vec::new();
+            serialized.extend_from_slice(&buffer[cursor..]);
+            let (block, _) = Block::from_bytes_compact(&buffer[cursor..])?;
+            Ok((Message::Block(block), Some(serialized)))
+        }
+        _ => Message::from_bytes_compact(buffer).map(|result| (result.0, None)),
+    }
+}
+
 #[derive(IntoPrimitive, Debug, Eq, PartialEq, TryFromPrimitive)]
 #[repr(u32)]
-enum MessageTypeId {
+pub(crate) enum MessageTypeId {
     HandshakeInitiation = 0u32,
     HandshakeReply = 1,
     Block = 2,
