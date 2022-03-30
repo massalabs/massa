@@ -110,32 +110,59 @@ fn test_sending_read_only_execution_command() {
 //    manager.stop().await.expect("Failed to stop execution.");
 //}
 
+/// # Context
+/// 
+/// Functional test for async messages sending and handling
+/// 
+/// 1. a block is created containing an execute_sc operation
+/// 2. this operation executes the send_message SC
+/// 3. send_message stores the receive_message SC on the block
+/// 4. receive_message contains the message handler function
+/// 5. send_message sends a message to the receive_message address
+/// 6. we set the created block as finalized so the message is actually sent
+/// 7. we execute the following slots for 300ms to reach the message execution period
+/// 8. once the execution period is over we stop the execution controller
+/// 9. we retrieve the events emitted by SCs, filtered by the message execution period
+/// 10. receive_message handler function should have emitted an event
+/// 11. we check if they are events
+/// 12. if they are some, we verify that the data has the correct value
+/// 
 #[test]
 #[serial]
 fn send_and_receive_async_message() {
+    // setup the period duration and the maximum gas for
+    // asynchronous messages execution
     let exec_cfg = ExecutionConfig {
         t0: 10.into(),
         max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
+    // get a sample final state
     let (sample_state, _) = get_sample_state().unwrap();
+    // start the execution worker
     let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state);
-
+    // get random private and public keys
     let (_, priv_key, pub_key) = get_random_address_full();
-    // you can check the source code of the following wasm file in massa-sc-examples
+    // load send_message bytecode you can check the source code of the
+    // following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/send_message.wasm");
+    // create the block contaning the smart contract execution operation
     let (block_id, block) = create_block(vec![create_execute_sc_operation(
         priv_key, pub_key, bytecode,
     )
     .unwrap()])
     .unwrap();
 
+    // set our block as a final block so the message is sent
     let mut finalized_blocks: Map<BlockId, Block> = Default::default();
     finalized_blocks.insert(block_id, block.clone());
     controller.update_blockclique_status(finalized_blocks, Default::default());
 
+    // sleep for 300ms to reach the message execution period
     std::thread::sleep(Duration::from_millis(300));
+    // stop the execution controller
     manager.stop();
+    // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(
         Some(Slot::new(1, 1)),
         Some(Slot::new(20, 1)),
@@ -143,6 +170,7 @@ fn send_and_receive_async_message() {
         None,
         None,
     );
+    // match the events
     assert!(!events.is_empty(), "One event was expected");
     assert_eq!(events[0].data, "message received: hello my good friend!")
 }
