@@ -478,8 +478,18 @@ impl BlockGraph {
                 block_statuses: boot_graph
                     .active_blocks
                     .into_iter()
-                    .map(|(b_id, block)| {
-                        Ok((b_id, BlockStatus::Active(Box::new(block.try_into()?))))
+                    .map(|(b_id, exported_active_block)| {
+                        // TODO: remove clone by doing a manual `into` below.
+                        let block = exported_active_block.block.clone();
+
+                        // Store in shared storage.
+                        let serialized = block.to_bytes_compact()?;
+                        storage.store_block(b_id, block.clone(), serialized);
+
+                        Ok((
+                            b_id,
+                            BlockStatus::Active(Box::new(exported_active_block.try_into()?)),
+                        ))
                     })
                     .collect::<Result<_>>()?,
                 incoming_index: Default::default(),
