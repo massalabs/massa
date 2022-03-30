@@ -18,3 +18,4 @@ shell.nix
 !massa-client/config/info.md
 !massa-node/config/info.md
 !massa-node/storage/info.md
+docs/_build

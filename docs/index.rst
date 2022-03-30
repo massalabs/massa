@@ -17,7 +17,7 @@ even in a fully decentralized network with thousands of nodes.
 An easy-to-read blog post introduction with videos is written
 `here <https://massa.net/blog/post/0/>`_.
 
-We are now releasing the **Massa testnet** in this Gitlab repository,
+We are now releasing the **Massa testnet** in this Github repository,
 with its explorer available at https://test.massa.net.
 
 Testnet
@@ -76,7 +76,27 @@ Technical documentation
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Smart-contracts
+
+   smart-contracts/massa-sc-by-example.rst
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Testnet
+
+   testnet/install.rst
+   testnet/running.rst
+   testnet/wallet.rst
+   testnet/staking.rst
+   testnet/routability.rst
+   testnet/rewards.rst
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Technical documentation
+
+   technical-doc/api.rst
+
 
 * :ref:`genindex`
 * :ref:`modindex`
