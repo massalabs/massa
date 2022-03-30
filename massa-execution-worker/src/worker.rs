@@ -47,9 +47,7 @@ pub(crate) struct ExecutionThread {
     // Execution state (see execution.rs) to which execution requests are sent
     execution_state: Arc<RwLock<ExecutionState>>,
     /// queue for readonly execution requests and response mpscs to send back their outputs
-    readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
-    /// Shared storage
-    storage: Storage,
+    readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>
 }
 
 impl ExecutionThread {
@@ -64,7 +62,6 @@ impl ExecutionThread {
         config: ExecutionConfig,
         input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
         execution_state: Arc<RwLock<ExecutionState>>,
-        storage: Storage,
     ) -> Self {
         // get the latest executed final slot, at the output of which the final ledger is attached
         let final_cursor = execution_state.read().final_cursor;
@@ -80,8 +77,7 @@ impl ExecutionThread {
             active_slots: Default::default(),
             readonly_requests: RequestQueue::new(config.readonly_queue_length),
             config,
-            execution_state,
-            storage,
+            execution_state
         }
     }
 
@@ -257,7 +253,7 @@ impl ExecutionThread {
 
         // check if the final slot is cached at the front of the speculative execution history
         if let Some(exec_out) = exec_state.pop_first_execution_result() {
-            if exec_out.slot == slot && exec_out.block_id == exec_target.as_ref().copied() {
+            if exec_out.slot == slot && exec_out.block_id == exec_target {
                 // speculative execution front result matches what we want to compute
 
                 // apply the cached output and return
@@ -273,16 +269,7 @@ impl ExecutionThread {
         exec_state.clear_history();
 
         // execute slot
-        let exec_out = if let Some(exec_target) = exec_target {
-            let block = self
-                .storage
-                .retrieve_block(&exec_target)
-                .expect("Missing block in storage.");
-            let stored_block = block.read();
-            exec_state.execute_slot(slot, Some((exec_target, &stored_block.block)))
-        } else {
-            exec_state.execute_slot(slot, None)
-        };
+        let exec_out = exec_state.execute_slot(slot, exec_target);
 
         // apply execution output to final state
         exec_state.apply_final_execution_output(exec_out);
@@ -319,20 +306,12 @@ impl ExecutionThread {
 
         // choose the execution target
         let exec_target = match self.active_slots.get(&slot) {
-            Some(Some(b_id)) => *b_id,
+            Some(b_id) => *b_id,
             _ => return false,
         };
 
-        let exec_out = {
-            let block = self
-                .storage
-                .retrieve_block(&exec_target)
-                .expect("Missing block in storage.");
-            let stored_block = block.read();
-
-            // execute the slot
-            exec_state.execute_slot(slot, Some((exec_target, &stored_block.block)))
-        };
+        // execute the slot
+        let exec_out = exec_state.execute_slot(slot, exec_target);
 
         // apply execution output to active state
         exec_state.apply_active_execution_output(exec_out);
@@ -583,6 +562,7 @@ impl ExecutionThread {
 /// # parameters
 /// * config: execution config
 /// * final_state: a thread-safe shared access to the final state for reading and writing
+/// * storage:A shared storage between all modules to have shared data.
 ///
 /// # Returns
 /// A pair (execution_manager, execution_controller) where:
@@ -597,6 +577,7 @@ pub fn start_execution_worker(
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
         final_state,
+        storage
     )));
 
     // define the input data interface
@@ -614,7 +595,7 @@ pub fn start_execution_worker(
     // launch the execution thread
     let input_data_clone = input_data.clone();
     let thread_handle = std::thread::spawn(move || {
-        ExecutionThread::new(config, input_data_clone, execution_state, storage).main_loop();
+        ExecutionThread::new(config, input_data_clone, execution_state).main_loop();
     });
 
     // create a manager
