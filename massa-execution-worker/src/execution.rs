@@ -19,8 +19,8 @@ use massa_final_state::{FinalState, StateChanges};
 use massa_ledger::{Applicable, LedgerEntry, SetUpdateOrDelete};
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
-use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
 use massa_models::Slot;
+use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
 use massa_sc_runtime::Interface;
 use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
@@ -60,7 +60,7 @@ pub(crate) struct ExecutionState {
     // execution interface allowing the VM runtime to access the Massa context
     execution_interface: Box<dyn Interface>,
     /// Shared storage across all modules
-    storage: Storage
+    storage: Storage,
 }
 
 impl ExecutionState {
@@ -73,7 +73,11 @@ impl ExecutionState {
     ///
     /// # returns
     /// A new ExecutionState
-    pub fn new(config: ExecutionConfig, final_state: Arc<RwLock<FinalState>>, storage: Storage) -> ExecutionState {
+    pub fn new(
+        config: ExecutionConfig,
+        final_state: Arc<RwLock<FinalState>>,
+        storage: Storage,
+    ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
         let last_final_slot = final_state.read().slot;
@@ -103,7 +107,7 @@ impl ExecutionState {
             // no active slots executed yet: set active_cursor to the last final block
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
-            storage
+            storage,
         }
     }
 
@@ -450,12 +454,7 @@ impl ExecutionState {
     ///
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
-    pub fn execute_slot(
-        &self,
-        slot: Slot,
-        opt_block_id: Option<BlockId>,
-    ) -> ExecutionOutput {
-
+    pub fn execute_slot(&self, slot: Slot, opt_block_id: Option<BlockId>) -> ExecutionOutput {
         // accumulate previous active changes from output history
         let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
 
@@ -499,17 +498,19 @@ impl ExecutionState {
         }
 
         // check if there is a block at this slot
-        if let Some(block_id) = opt_block_id
-        {
+        if let Some(block_id) = opt_block_id {
             let block = self
                 .storage
                 .retrieve_block(&block_id)
                 .expect("Missing block in storage.");
-                let stored_block = block.read();
+            let stored_block = block.read();
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
             for (op_idx, operation) in stored_block.block.operations.iter().enumerate() {
-                if let Err(err) = self.execute_operation(operation, Address::from_public_key(&stored_block.block.header.content.creator)) {
+                if let Err(err) = self.execute_operation(
+                    operation,
+                    Address::from_public_key(&stored_block.block.header.content.creator),
+                ) {
                     debug!(
                         "failed executing operation index {} in block {}: {}",
                         op_idx, block_id, err

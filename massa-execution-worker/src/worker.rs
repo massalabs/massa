@@ -47,7 +47,7 @@ pub(crate) struct ExecutionThread {
     // Execution state (see execution.rs) to which execution requests are sent
     execution_state: Arc<RwLock<ExecutionState>>,
     /// queue for readonly execution requests and response mpscs to send back their outputs
-    readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>
+    readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
 }
 
 impl ExecutionThread {
@@ -77,7 +77,7 @@ impl ExecutionThread {
             active_slots: Default::default(),
             readonly_requests: RequestQueue::new(config.readonly_queue_length),
             config,
-            execution_state
+            execution_state,
         }
     }
 
@@ -577,7 +577,7 @@ pub fn start_execution_worker(
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
         final_state,
-        storage
+        storage,
     )));
 
     // define the input data interface
