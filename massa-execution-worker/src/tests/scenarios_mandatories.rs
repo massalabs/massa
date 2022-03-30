@@ -58,22 +58,16 @@ fn get_sample_state() -> Result<(Arc<RwLock<FinalState>>, NamedTempFile), Ledger
 #[serial]
 fn test_execution_basic() {
     let (sample_state, _keep) = get_sample_state().unwrap();
-    let (_, _) = start_execution_worker(
-        ExecutionConfig::default(),
-        sample_state,
-        Default::default(),
-    );
+    let (_, _) =
+        start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
 }
 
 #[test]
 #[serial]
 fn test_execution_shutdown() {
     let (sample_state, _keep) = get_sample_state().unwrap();
-    let (mut manager, _) = start_execution_worker(
-        ExecutionConfig::default(),
-        sample_state,
-        Default::default(),
-    );
+    let (mut manager, _) =
+        start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
     manager.stop()
 }
 
@@ -81,11 +75,8 @@ fn test_execution_shutdown() {
 #[serial]
 fn test_sending_command() {
     let (sample_state, _keep) = get_sample_state().unwrap();
-    let (mut manager, controller) = start_execution_worker(
-        ExecutionConfig::default(),
-        sample_state,
-        Default::default(),
-    );
+    let (mut manager, controller) =
+        start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
     controller.update_blockclique_status(Default::default(), Default::default());
     manager.stop()
 }
@@ -94,11 +85,8 @@ fn test_sending_command() {
 #[serial]
 fn test_sending_read_only_execution_command() {
     let (sample_state, _keep) = get_sample_state().unwrap();
-    let (mut manager, controller) = start_execution_worker(
-        ExecutionConfig::default(),
-        sample_state,
-        Default::default(),
-    );
+    let (mut manager, controller) =
+        start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
     controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 1_000_000,
@@ -130,9 +118,9 @@ fn test_sending_read_only_execution_command() {
 //}
 
 /// # Context
-/// 
+///
 /// Functional test for async messages sending and handling
-/// 
+///
 /// 1. a block is created containing an execute_sc operation
 /// 2. this operation executes the send_message SC
 /// 3. send_message stores the receive_message SC on the block
@@ -145,7 +133,7 @@ fn test_sending_read_only_execution_command() {
 /// 10. receive_message handler function should have emitted an event
 /// 11. we check if they are events
 /// 12. if they are some, we verify that the data has the correct value
-/// 
+///
 #[test]
 #[serial]
 fn send_and_receive_async_message() {
@@ -158,8 +146,10 @@ fn send_and_receive_async_message() {
     };
     // get a sample final state
     let (sample_state, _) = get_sample_state().unwrap();
+    // init the storage
+    let storage = Storage::default();
     // start the execution worker
-    let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state);
+    let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state, storage.clone());
     // get random private and public keys
     let (_, priv_key, pub_key) = get_random_address_full();
     // load send_message bytecode you can check the source code of the
@@ -171,10 +161,12 @@ fn send_and_receive_async_message() {
     )
     .unwrap()])
     .unwrap();
+    // store the block in storage
+    storage.store_block(block_id, block.clone(), Vec::new());
 
     // set our block as a final block so the message is sent
-    let mut finalized_blocks: Map<BlockId, Block> = Default::default();
-    finalized_blocks.insert(block_id, block.clone());
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.header.content.slot, block_id);
     controller.update_blockclique_status(finalized_blocks, Default::default());
 
     // sleep for 300ms to reach the message execution period
@@ -206,8 +198,7 @@ fn generate_events() {
     };
     let storage: Storage = Default::default();
     let (sample_state, _keep) = get_sample_state().unwrap();
-    let (mut manager, controller) =
-        start_execution_worker(exec_cfg, sample_state, storage.clone());
+    let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state, storage.clone());
 
     let (sender_address, sender_private_key, sender_public_key) = get_random_address_full();
     let event_test_data = include_bytes!("./wasm/event_test.wasm");
