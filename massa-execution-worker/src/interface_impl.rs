@@ -494,4 +494,16 @@ impl Interface for InterfaceImpl {
         execution_context.created_message_index += 1;
         Ok(())
     }
+
+    /// Returns the period of the current execution slot
+    fn get_current_period(&self) -> Result<u64> {
+        let slot = context_guard!(self).slot;
+        Ok(slot.period)
+    }
+
+    /// Returns the thread of the current execution slot
+    fn get_current_thread(&self) -> Result<u8> {
+        let slot = context_guard!(self).slot;
+        Ok(slot.thread)
+    }
 }
