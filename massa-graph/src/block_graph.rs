@@ -3502,6 +3502,9 @@ impl BlockGraph {
                 };
                 massa_trace!("consensus.block_graph.prune_waiting_for_dependencies", {"hash": block_id, "reason": reason_opt});
 
+                // Prune shared storage
+                self.storage.remove_blocks(&[block_id]);
+
                 if let Some(reason) = reason_opt {
                     // add to stats if reason is Stale
                     if reason == DiscardReason::Stale {
