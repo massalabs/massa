@@ -10,7 +10,7 @@ use massa_network_exports::NetworkCommand;
 use massa_protocol_exports::tests::tools;
 use massa_protocol_exports::{
     tests::tools::{create_and_connect_nodes, create_block, wait_protocol_event},
-    ProtocolEvent,
+    BlocksResults, ProtocolEvent,
 };
 use serial_test::serial;
 use std::collections::HashSet;
@@ -163,8 +163,8 @@ async fn test_protocol_sends_blocks_when_asked_for() {
             }
 
             // 4. Simulate consensus sending block.
-            let mut results = Map::default();
-            results.insert(expected_hash, Some((block, None, None)));
+            let mut results: BlocksResults = Map::default();
+            results.insert(expected_hash, Some((None, None)));
             protocol_command_sender
                 .send_get_blocks_results(results)
                 .await
@@ -179,9 +179,8 @@ async fn test_protocol_sends_blocks_when_asked_for() {
                     .wait_command(1000.into(), send_block_or_header_cmd_filter)
                     .await
                 {
-                    Some(NetworkCommand::SendBlock { node, block }) => {
-                        let hash = block.header.content.compute_id().unwrap();
-                        assert_eq!(expected_hash, hash);
+                    Some(NetworkCommand::SendBlock { node, block_id }) => {
+                        assert_eq!(block_id, expected_hash);
                         assert!(expecting_block.remove(&node));
                     }
                     Some(NetworkCommand::SendBlockHeader { .. }) => {
@@ -296,7 +295,7 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                 .map(|endo| endo.content.compute_id().unwrap())
                 .collect();
             protocol_command_sender
-                .integrated_block(ref_hash, ref_block, op_ids, endo_ids)
+                .integrated_block(ref_hash, op_ids, endo_ids)
                 .await
                 .expect("Failed to ask for block.");
 
@@ -320,15 +319,13 @@ async fn test_protocol_propagates_block_to_node_who_asked_for_it_and_only_header
                     })
                     .await
                 {
-                    Some(NetworkCommand::SendBlockHeader { node, header }) => {
+                    Some(NetworkCommand::SendBlockHeader { node, block_id }) => {
                         assert!(expected_headers.remove(&node));
-                        let sent_header_hash = header.content.compute_id().unwrap();
-                        assert_eq!(sent_header_hash, ref_hash);
+                        assert_eq!(block_id, ref_hash);
                     }
-                    Some(NetworkCommand::SendBlock { node, block }) => {
+                    Some(NetworkCommand::SendBlock { node, block_id }) => {
                         assert!(expected_full_blocks.remove(&node));
-                        let sent_header_hash = block.header.content.compute_id().unwrap();
-                        assert_eq!(sent_header_hash, ref_hash);
+                        assert_eq!(block_id, ref_hash);
                     }
                     _ => panic!("Unexpected or no network command."),
                 };
@@ -372,24 +369,25 @@ async fn test_protocol_sends_full_blocks_it_receives_to_consensus() {
             let expected_hash = block.header.content.compute_id().unwrap();
 
             // 3. Send block to protocol.
-            network_controller.send_block(creator_node.id, block).await;
+            network_controller
+                .send_block(creator_node.id, block.clone(), Default::default())
+                .await;
 
             // Check protocol sends block to consensus.
-            let hash =
-                match wait_protocol_event(
-                    &mut protocol_event_receiver,
-                    1000.into(),
-                    |evt| match evt {
-                        evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
-                        _ => None,
-                    },
-                )
-                .await
-                {
-                    Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block_id,
-                    _ => panic!("Unexpected or no protocol event."),
-                };
-            assert_eq!(expected_hash, hash);
+            let block_id = match wait_protocol_event(
+                &mut protocol_event_receiver,
+                1000.into(),
+                |evt| match evt {
+                    evt @ ProtocolEvent::ReceivedBlock { .. } => Some(evt),
+                    _ => None,
+                },
+            )
+            .await
+            {
+                Some(ProtocolEvent::ReceivedBlock { block_id, .. }) => block_id,
+                _ => panic!("Unexpected or no protocol event."),
+            };
+            assert_eq!(expected_hash, block_id);
 
             (
                 network_controller,

@@ -141,7 +141,7 @@ impl PoolCommandSender {
 
     /// Returns a batch of operations ordered from highest to lowest rentability
     /// Return value: vector of (OperationId, Operation, operation_size: u64)
-    pub async fn get_operation_batch(
+    pub async fn send_get_operations_announcement(
         &mut self,
         target_slot: Slot,
         exclude: Set<OperationId>,

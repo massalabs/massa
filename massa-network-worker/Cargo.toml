@@ -23,6 +23,7 @@ massa_hash = { path = "../massa-hash" }
 massa_network_exports = { path = "../massa-network-exports" }
 massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
+massa_storage = { path = "../massa-storage" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 

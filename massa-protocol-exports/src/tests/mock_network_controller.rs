@@ -1,7 +1,11 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{constants::CHANNEL_SIZE, node::NodeId};
-use massa_models::{Block, BlockId, SignedEndorsement, SignedHeader, SignedOperation};
+use massa_models::{
+    constants::CHANNEL_SIZE,
+    node::NodeId,
+    operation::{OperationIds, Operations},
+};
+use massa_models::{Block, BlockId, SignedEndorsement, SignedHeader};
 use massa_network_exports::{
     NetworkCommand, NetworkCommandSender, NetworkEvent, NetworkEventReceiver,
 };
@@ -69,25 +73,50 @@ impl MockNetworkController {
             .expect("Couldn't send header to protocol.");
     }
 
-    pub async fn send_block(&mut self, source_node_id: NodeId, block: Block) {
+    pub async fn send_block(&mut self, source_node_id: NodeId, block: Block, serialized: Vec<u8>) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedBlock {
                 node: source_node_id,
                 block,
+                serialized,
             })
             .await
             .expect("Couldn't send block to protocol.");
     }
 
-    pub async fn send_operations(
-        &mut self,
-        source_node_id: NodeId,
-        operations: Vec<SignedOperation>,
-    ) {
+    pub async fn send_operations(&mut self, source_node_id: NodeId, operations: Operations) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedOperations {
                 node: source_node_id,
                 operations,
+            })
+            .await
+            .expect("Couldn't send operations to protocol.");
+    }
+
+    pub async fn send_operation_batch(
+        &mut self,
+        source_node_id: NodeId,
+        operation_ids: OperationIds,
+    ) {
+        self.network_event_tx
+            .send(NetworkEvent::ReceivedOperationAnnouncements {
+                node: source_node_id,
+                operation_ids,
+            })
+            .await
+            .expect("Couldn't send operations to protocol.");
+    }
+
+    pub async fn send_ask_for_operation(
+        &mut self,
+        source_node_id: NodeId,
+        operation_ids: OperationIds,
+    ) {
+        self.network_event_tx
+            .send(NetworkEvent::ReceiveAskForOperations {
+                node: source_node_id,
+                operation_ids,
             })
             .await
             .expect("Couldn't send operations to protocol.");

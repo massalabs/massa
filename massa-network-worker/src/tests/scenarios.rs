@@ -3,7 +3,7 @@
 // To start alone RUST_BACKTRACE=1 cargo test -- --nocapture --test-threads=1
 use super::tools;
 use crate::messages::Message;
-use crate::node_worker::{NodeCommand, NodeEvent, NodeWorker};
+use crate::node_worker::NodeWorker;
 use crate::tests::tools::{get_dummy_block_id, get_transaction};
 use crate::NetworkError;
 use crate::NetworkEvent;
@@ -14,15 +14,17 @@ use crate::{
 use enum_map::enum_map;
 use enum_map::EnumMap;
 use massa_hash::{self, hash::Hash};
+use massa_models::SerializeCompact;
 use massa_models::{
     node::NodeId,
     signed::{Signable, Signed},
 };
 use massa_models::{BlockId, Endorsement, Slot};
-use massa_network_exports::settings::PeerTypeConnectionConfig;
+use massa_network_exports::{settings::PeerTypeConnectionConfig, NodeCommand, NodeEvent};
 use massa_network_exports::{
     ConnectionClosureReason, ConnectionId, HandshakeErrorType, PeerInfo, PeerType,
 };
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use serial_test::serial;
 use std::collections::HashMap;
@@ -74,6 +76,8 @@ async fn test_node_worker_shutdown() {
     let private_key = massa_signature::generate_random_private_key();
     let public_key = massa_signature::derive_public_key(&private_key);
     let mock_node_id = NodeId(public_key);
+    let storage: Storage = Default::default();
+
     let node_fn_handle = tokio::spawn(async move {
         NodeWorker::new(
             network_conf,
@@ -82,6 +86,7 @@ async fn test_node_worker_shutdown() {
             writer,
             node_command_rx,
             node_event_tx,
+            storage,
         )
         .run_loop()
         .await
@@ -688,7 +693,11 @@ async fn test_block_not_found() {
             // Send ask for block message from connected peer
             let wanted_hash = get_dummy_block_id("default_val");
             conn1_w
-                .send(&Message::AskForBlocks(vec![wanted_hash]))
+                .send(
+                    &Message::AskForBlocks(vec![wanted_hash])
+                        .to_bytes_compact()
+                        .expect("Fail to serialize message"),
+                )
                 .await
                 .unwrap();
 
@@ -782,12 +791,16 @@ async fn test_block_not_found() {
             let wanted_hash3 = get_dummy_block_id("default_val3");
             let wanted_hash4 = get_dummy_block_id("default_val4");
             conn1_w
-                .send(&Message::AskForBlocks(vec![
-                    wanted_hash1,
-                    wanted_hash2,
-                    wanted_hash3,
-                    wanted_hash4,
-                ]))
+                .send(
+                    &Message::AskForBlocks(vec![
+                        wanted_hash1,
+                        wanted_hash2,
+                        wanted_hash3,
+                        wanted_hash4,
+                    ])
+                    .to_bytes_compact()
+                    .expect("Fail to serialize message"),
+                )
                 .await
                 .unwrap();
             // assert it is sent to protocol
@@ -975,7 +988,11 @@ async fn test_operation_messages() {
             let (transaction, _) = get_transaction(50, 10);
             let ref_id = transaction.verify_integrity().unwrap();
             conn1_w
-                .send(&Message::Operations(vec![transaction.clone()]))
+                .send(
+                    &Message::Operations(vec![transaction.clone()])
+                        .to_bytes_compact()
+                        .expect("Fail to serialize message"),
+                )
                 .await
                 .unwrap();
 
@@ -991,8 +1008,8 @@ async fn test_operation_messages() {
                 .await
             {
                 assert_eq!(operations.len(), 1);
-                let res_id = operations[0].verify_integrity().unwrap();
-                assert_eq!(ref_id, res_id);
+                assert!(operations[0].verify_integrity().is_ok());
+                assert_eq!(operations[0].verify_integrity().unwrap(), ref_id);
                 assert_eq!(node, conn1_id);
             } else {
                 panic!("Timeout while waiting for asked for block event");
@@ -1017,8 +1034,8 @@ async fn test_operation_messages() {
                         let evt = evt.unwrap().unwrap().1;
                         if let Message::Operations(op) = evt {
                             assert_eq!(op.len(), 1);
-                            let res_id = op[0].verify_integrity().unwrap();
-                            assert_eq!(ref_id2, res_id);
+                            assert!(op[0].verify_integrity().is_ok());
+                            assert_eq!(op[0].verify_integrity().unwrap(), ref_id2);
                             break;
                         }
                     },
@@ -1105,7 +1122,11 @@ async fn test_endorsements_messages() {
             let endorsement = Signed::new_signed(content.clone(), &sender_priv).unwrap().1;
             let ref_id = endorsement.content.compute_id().unwrap();
             conn1_w
-                .send(&Message::Endorsements(vec![endorsement]))
+                .send(
+                    &Message::Endorsements(vec![endorsement])
+                        .to_bytes_compact()
+                        .expect("Fail to serialize message"),
+                )
                 .await
                 .unwrap();
 
