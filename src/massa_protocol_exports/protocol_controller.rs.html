@@ -321,10 +321,11 @@
     <span class="ident">node::NodeId</span>,
     <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">Operations</span>},
     <span class="ident">prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>},
+    <span class="ident">Slot</span>,
 };
 
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>, <span class="ident">SignedOperation</span>,
+    <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>, <span class="ident">SignedOperation</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_network_exports::NetworkEventReceiver</span>;
 <span class="kw">use</span> <span class="ident">serde::Serialize</span>;
@@ -338,7 +339,7 @@
     <span class="doccomment">/// A block with a valid signature has been received.</span>
     <span class="ident">ReceivedBlock</span> {
         <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-        <span class="ident">block</span>: <span class="ident">Block</span>,
+        <span class="ident">slot</span>: <span class="ident">Slot</span>,
         <span class="ident">operation_set</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>, <span class="comment">// (index, validity end period)</span>
         <span class="ident">endorsement_ids</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
     },
@@ -367,8 +368,8 @@
     <span class="ident">GetOperations</span>((<span class="ident">NodeId</span>, <span class="ident">OperationIds</span>)),
 }
 
-<span class="kw">type</span> <span class="ident">BlocksResults</span> <span class="op">=</span>
-    <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Block</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span><span class="op">&gt;</span>;
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">BlocksResults</span> <span class="op">=</span>
+    <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span><span class="op">&gt;</span>;
 
 <span class="doccomment">/// Commands that protocol worker can process</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
@@ -376,7 +377,6 @@
     <span class="doccomment">/// Notify block integration of a given block.</span>
     <span class="ident">IntegratedBlock</span> {
         <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-        <span class="ident">block</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span>,
         <span class="ident">operation_ids</span>: <span class="ident">OperationIds</span>,
         <span class="ident">endorsement_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
     },
@@ -411,16 +411,16 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">integrated_block</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-        <span class="ident">block</span>: <span class="ident">Block</span>,
         <span class="ident">operation_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
         <span class="ident">endorsement_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.integrated_block&quot;</span>, { <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">block</span> });
+        <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.command_sender.integrated_block&quot;</span>, {
+            <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>
+        });
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">ProtocolCommand::IntegratedBlock</span> {
                 <span class="ident">block_id</span>,
-                <span class="ident">block</span>: <span class="ident">Box::new</span>(<span class="ident">block</span>),
                 <span class="ident">operation_ids</span>,
                 <span class="ident">endorsement_ids</span>,
             })
@@ -622,5 +622,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

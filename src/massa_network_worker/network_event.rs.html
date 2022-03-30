@@ -305,6 +305,11 @@
 <span id="300">300</span>
 <span id="301">301</span>
 <span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">ConnectionId</span>, <span class="ident">NetworkError</span>, <span class="ident">NetworkEvent</span>, <span class="ident">NodeCommand</span>, <span class="ident">NodeEvent</span>};
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
@@ -421,6 +426,7 @@
         <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
         <span class="ident">from</span>: <span class="ident">NodeId</span>,
         <span class="ident">block</span>: <span class="ident">Block</span>,
+        <span class="ident">serialized</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(
             <span class="string">&quot;network_worker.on_node_event receive NetworkEvent::ReceivedBlock&quot;</span>,
@@ -428,7 +434,11 @@
         );
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">worker</span>
             .<span class="ident">event</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceivedBlock</span> { <span class="ident">node</span>: <span class="ident">from</span>, <span class="ident">block</span> })
+            .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceivedBlock</span> {
+                <span class="ident">node</span>: <span class="ident">from</span>,
+                <span class="ident">block</span>,
+                <span class="ident">serialized</span>,
+            })
             .<span class="kw">await</span>
         {
             <span class="macro">evt_failed!</span>(<span class="ident">err</span>)
@@ -608,5 +618,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

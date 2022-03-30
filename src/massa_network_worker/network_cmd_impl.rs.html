@@ -456,11 +456,11 @@
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">stream::FuturesUnordered</span>, <span class="ident">StreamExt</span>};
 <span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
+<span class="kw">use</span> <span class="ident">massa_models::operation::Operations</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">composite::PubkeySig</span>, <span class="ident">node::NodeId</span>, <span class="ident">operation::OperationIds</span>, <span class="ident">stats::NetworkStats</span>, <span class="ident">Block</span>,
-    <span class="ident">BlockId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>,
+    <span class="ident">composite::PubkeySig</span>, <span class="ident">node::NodeId</span>, <span class="ident">operation::OperationIds</span>, <span class="ident">stats::NetworkStats</span>, <span class="ident">BlockId</span>,
+    <span class="ident">SignedEndorsement</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">operation::Operations</span>, <span class="ident">signed::Signable</span>};
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{
     <span class="ident">BootstrapPeers</span>, <span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>, <span class="ident">NetworkError</span>, <span class="ident">NodeCommand</span>, <span class="ident">Peer</span>, <span class="ident">Peers</span>,
 };
@@ -610,15 +610,15 @@
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_send_block_header_cmd</span>(
     <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
     <span class="ident">node</span>: <span class="ident">NodeId</span>,
-    <span class="ident">header</span>: <span class="ident">SignedHeader</span>,
+    <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
-    <span class="macro">massa_trace!</span>(<span class="string">&quot;network_worker.manage_network_command send NodeCommand::SendBlockHeader&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: <span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;node&quot;</span>: <span class="ident">node</span>});
+    <span class="macro">massa_trace!</span>(<span class="string">&quot;network_worker.manage_network_command send NodeCommand::SendBlockHeader&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>, <span class="string">&quot;node&quot;</span>: <span class="ident">node</span>});
     <span class="ident">worker</span>
         .<span class="ident">event</span>
         .<span class="ident">forward</span>(
             <span class="ident">node</span>,
             <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>),
-            <span class="ident">NodeCommand::SendBlockHeader</span>(<span class="ident">header</span>),
+            <span class="ident">NodeCommand::SendBlockHeader</span>(<span class="ident">block_id</span>),
         )
         .<span class="kw">await</span>;
     <span class="prelude-val">Ok</span>(())
@@ -644,18 +644,18 @@
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_send_block_cmd</span>(
     <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
     <span class="ident">node</span>: <span class="ident">NodeId</span>,
-    <span class="ident">block</span>: <span class="ident">Block</span>,
+    <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
     <span class="macro">massa_trace!</span>(
         <span class="string">&quot;network_worker.manage_network_command send NodeCommand::SendBlock&quot;</span>,
-        {<span class="string">&quot;hash&quot;</span>: <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">compute_hash</span>()<span class="question-mark">?</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">block</span>, <span class="string">&quot;node&quot;</span>: <span class="ident">node</span>}
+        {<span class="string">&quot;hash&quot;</span>: <span class="ident">block_id</span>, <span class="string">&quot;node&quot;</span>: <span class="ident">node</span>}
     );
     <span class="ident">worker</span>
         .<span class="ident">event</span>
         .<span class="ident">forward</span>(
             <span class="ident">node</span>,
             <span class="ident">worker</span>.<span class="ident">active_nodes</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>),
-            <span class="ident">NodeCommand::SendBlock</span>(<span class="ident">block</span>),
+            <span class="ident">NodeCommand::SendBlock</span>(<span class="ident">block_id</span>),
         )
         .<span class="kw">await</span>;
     <span class="prelude-val">Ok</span>(())
@@ -860,5 +860,5 @@
         .<span class="kw">await</span>;
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

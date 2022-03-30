@@ -630,8 +630,9 @@
 <span class="kw">use</span> <span class="ident">massa_models::BlockId</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">timeslots</span>::{<span class="ident">get_block_slot_timestamp</span>, <span class="ident">get_latest_block_slot_at_timestamp</span>},
-    <span class="ident">Block</span>, <span class="ident">Slot</span>,
+    <span class="ident">Slot</span>,
 };
+<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">parking_lot</span>::{<span class="ident">Condvar</span>, <span class="ident">Mutex</span>, <span class="ident">RwLock</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashMap</span>, <span class="ident">sync::Arc</span>};
@@ -645,16 +646,16 @@
     <span class="ident">input_data</span>: <span class="ident">Arc</span><span class="op">&lt;</span>(<span class="ident">Condvar</span>, <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionInputData</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
     <span class="comment">// Map of final slots not executed yet but ready for execution</span>
     <span class="comment">// See lib.rs for an explanation on final execution ordering.</span>
-    <span class="ident">ready_final_slots</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">Block</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">ready_final_slots</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="comment">// Highest final slot that is ready to be executed</span>
     <span class="ident">last_ready_final_slot</span>: <span class="ident">Slot</span>,
     <span class="comment">// Map of final blocks that are not yet ready to be executed</span>
     <span class="comment">// See lib.rs for an explanation on final execution ordering.</span>
-    <span class="ident">pending_final_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, (<span class="ident">BlockId</span>, <span class="ident">Block</span>)<span class="op">&gt;</span>,
+    <span class="ident">pending_final_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="comment">// Current blockclique, indexed by slot number</span>
-    <span class="ident">blockclique</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, (<span class="ident">BlockId</span>, <span class="ident">Block</span>)<span class="op">&gt;</span>,
+    <span class="ident">blockclique</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="comment">// Map of all active slots</span>
-    <span class="ident">active_slots</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">Block</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">active_slots</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="comment">// Highest active slot</span>
     <span class="ident">last_active_slot</span>: <span class="ident">Slot</span>,
     <span class="comment">// Execution state (see execution.rs) to which execution requests are sent</span>
@@ -699,7 +700,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
     <span class="doccomment">/// * new_final_blocks: a map of newly finalized blocks</span>
-    <span class="kw">fn</span> <span class="ident">update_final_slots</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">new_final_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, (<span class="ident">BlockId</span>, <span class="ident">Block</span>)<span class="op">&gt;</span>) {
+    <span class="kw">fn</span> <span class="ident">update_final_slots</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">new_final_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>) {
         <span class="comment">// if there are no new final blocks, exit and do nothing</span>
         <span class="kw">if</span> <span class="ident">new_final_blocks</span>.<span class="ident">is_empty</span>() {
             <span class="kw">return</span>;
@@ -726,10 +727,10 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;final slot overflow in VM&quot;</span>);
 
             <span class="comment">// try to remove that slot out of pending_final_blocks</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">block_id</span>, <span class="ident">block</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">pending_final_blocks</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">slot</span>) {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block_id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">pending_final_blocks</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">slot</span>) {
                 <span class="comment">// pending final block found at slot:</span>
                 <span class="comment">// add block to the ready_final_slots list of final slots ready for execution</span>
-                <span class="self">self</span>.<span class="ident">ready_final_slots</span>.<span class="ident">insert</span>(<span class="ident">slot</span>, <span class="prelude-val">Some</span>((<span class="ident">block_id</span>, <span class="ident">block</span>)));
+                <span class="self">self</span>.<span class="ident">ready_final_slots</span>.<span class="ident">insert</span>(<span class="ident">slot</span>, <span class="prelude-val">Some</span>(<span class="ident">block_id</span>));
                 <span class="self">self</span>.<span class="ident">last_ready_final_slot</span> <span class="op">=</span> <span class="ident">slot</span>;
                 <span class="comment">// continue the loop</span>
                 <span class="kw">continue</span>;
@@ -794,7 +795,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Arguments:</span>
     <span class="doccomment">/// * new_blockclique: optionally provide a new blockclique</span>
-    <span class="kw">fn</span> <span class="ident">update_active_slots</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">new_blockclique</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, (<span class="ident">BlockId</span>, <span class="ident">Block</span>)<span class="op">&gt;</span><span class="op">&gt;</span>) {
+    <span class="kw">fn</span> <span class="ident">update_active_slots</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">new_blockclique</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
         <span class="comment">// Update the current blockclique if it has changed</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">blockclique</span>) <span class="op">=</span> <span class="ident">new_blockclique</span> {
             <span class="self">self</span>.<span class="ident">blockclique</span> <span class="op">=</span> <span class="ident">blockclique</span>;
@@ -822,17 +823,15 @@
                 .<span class="ident">get_next_slot</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">thread_count</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;active slot overflow in VM&quot;</span>);
             <span class="comment">// look for a block at that slot among the ones that are final but not ready for final execution yet</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">block_id</span>, <span class="ident">block</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">pending_final_blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">slot</span>) {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block_id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">pending_final_blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">slot</span>) {
                 <span class="comment">// A block at that slot was found in pending_final_blocks.</span>
                 <span class="comment">// Add it to the sequence of active slots.</span>
-                <span class="self">self</span>.<span class="ident">active_slots</span>
-                    .<span class="ident">insert</span>(<span class="ident">slot</span>, <span class="prelude-val">Some</span>((<span class="kw-2">*</span><span class="ident">block_id</span>, <span class="ident">block</span>.<span class="ident">clone</span>())));
+                <span class="self">self</span>.<span class="ident">active_slots</span>.<span class="ident">insert</span>(<span class="ident">slot</span>, <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="ident">block_id</span>));
                 <span class="self">self</span>.<span class="ident">last_active_slot</span> <span class="op">=</span> <span class="ident">slot</span>;
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">block_id</span>, <span class="ident">block</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">blockclique</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">slot</span>) {
+            } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block_id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">blockclique</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">slot</span>) {
                 <span class="comment">// A block at that slot was found in the current blockclique.</span>
                 <span class="comment">// Add it to the sequence of active slots.</span>
-                <span class="self">self</span>.<span class="ident">active_slots</span>
-                    .<span class="ident">insert</span>(<span class="ident">slot</span>, <span class="prelude-val">Some</span>((<span class="kw-2">*</span><span class="ident">block_id</span>, <span class="ident">block</span>.<span class="ident">clone</span>())));
+                <span class="self">self</span>.<span class="ident">active_slots</span>.<span class="ident">insert</span>(<span class="ident">slot</span>, <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="ident">block_id</span>));
                 <span class="self">self</span>.<span class="ident">last_active_slot</span> <span class="op">=</span> <span class="ident">slot</span>;
             } <span class="kw">else</span> {
                 <span class="comment">// No block was found at that slot: it&#39;s a miss</span>
@@ -868,9 +867,7 @@
 
         <span class="comment">// check if the final slot is cached at the front of the speculative execution history</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">exec_out</span>) <span class="op">=</span> <span class="ident">exec_state</span>.<span class="ident">pop_first_execution_result</span>() {
-            <span class="kw">if</span> <span class="ident">exec_out</span>.<span class="ident">slot</span> <span class="op">==</span> <span class="ident">slot</span>
-                <span class="op">&amp;&amp;</span> <span class="ident">exec_out</span>.<span class="ident">block_id</span> <span class="op">==</span> <span class="ident">exec_target</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">b_id</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">b_id</span>)
-            {
+            <span class="kw">if</span> <span class="ident">exec_out</span>.<span class="ident">slot</span> <span class="op">==</span> <span class="ident">slot</span> <span class="op">&amp;&amp;</span> <span class="ident">exec_out</span>.<span class="ident">block_id</span> <span class="op">==</span> <span class="ident">exec_target</span> {
                 <span class="comment">// speculative execution front result matches what we want to compute</span>
 
                 <span class="comment">// apply the cached output and return</span>
@@ -923,8 +920,8 @@
 
         <span class="comment">// choose the execution target</span>
         <span class="kw">let</span> <span class="ident">exec_target</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">active_slots</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">slot</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">b</span>) =&gt; <span class="ident">b</span>.<span class="ident">clone</span>(), <span class="comment">//TODO get rid of that clone on storage refactorig https://github.com/massalabs/massa/issues/2178</span>
-            <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="bool-val">false</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">b_id</span>) =&gt; <span class="kw-2">*</span><span class="ident">b_id</span>,
+            <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="bool-val">false</span>,
         };
 
         <span class="comment">// execute the slot</span>
@@ -1179,6 +1176,7 @@
 <span class="doccomment">/// # parameters</span>
 <span class="doccomment">/// * config: execution config</span>
 <span class="doccomment">/// * final_state: a thread-safe shared access to the final state for reading and writing</span>
+<span class="doccomment">/// * storage:A shared storage between all modules to have shared data.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Returns</span>
 <span class="doccomment">/// A pair (execution_manager, execution_controller) where:</span>
@@ -1187,11 +1185,13 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">start_execution_worker</span>(
     <span class="ident">config</span>: <span class="ident">ExecutionConfig</span>,
     <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">storage</span>: <span class="ident">Storage</span>,
 ) -&gt; (<span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionManager</span><span class="op">&gt;</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>) {
     <span class="comment">// create an execution state</span>
     <span class="kw">let</span> <span class="ident">execution_state</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">ExecutionState::new</span>(
         <span class="ident">config</span>.<span class="ident">clone</span>(),
         <span class="ident">final_state</span>,
+        <span class="ident">storage</span>,
     )));
 
     <span class="comment">// define the input data interface</span>
@@ -1222,5 +1222,5 @@
     (<span class="ident">Box::new</span>(<span class="ident">manager</span>), <span class="ident">Box::new</span>(<span class="ident">controller</span>))
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

@@ -21,6 +21,7 @@
 <span id="16">16</span>
 <span id="17">17</span>
 <span id="18">18</span>
+<span id="19">19</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
@@ -33,12 +34,13 @@
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error::ProtocolError</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">protocol_controller</span>::{
-    <span class="ident">ProtocolCommand</span>, <span class="ident">ProtocolCommandSender</span>, <span class="ident">ProtocolEvent</span>, <span class="ident">ProtocolEventReceiver</span>,
+    <span class="ident">BlocksResults</span>, <span class="ident">ProtocolCommand</span>, <span class="ident">ProtocolCommandSender</span>, <span class="ident">ProtocolEvent</span>, <span class="ident">ProtocolEventReceiver</span>,
     <span class="ident">ProtocolManagementCommand</span>, <span class="ident">ProtocolManager</span>, <span class="ident">ProtocolPoolEvent</span>, <span class="ident">ProtocolPoolEventReceiver</span>,
 };
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::ProtocolSettings</span>;
 
+<span class="comment">//TODO: Add only if test. Removed the cfg test because don&#39;t work if running cargo test on an other sub-crate.</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span>;
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

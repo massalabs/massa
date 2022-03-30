@@ -788,6 +788,17 @@
 <span id="783">783</span>
 <span id="784">784</span>
 <span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! The network worker actually does the job of managing connections</span>
@@ -802,7 +813,7 @@
 };
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">stream::FuturesUnordered</span>, <span class="ident">StreamExt</span>};
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">constants::CHANNEL_SIZE</span>, <span class="ident">node::NodeId</span>, <span class="ident">Version</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">constants::CHANNEL_SIZE</span>, <span class="ident">node::NodeId</span>, <span class="ident">SerializeCompact</span>, <span class="ident">Version</span>};
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{
     <span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>, <span class="ident">Establisher</span>, <span class="ident">HandshakeErrorType</span>, <span class="ident">Listener</span>,
     <span class="ident">NetworkCommand</span>, <span class="ident">NetworkConnectionErrorType</span>, <span class="ident">NetworkError</span>, <span class="ident">NetworkEvent</span>,
@@ -810,6 +821,7 @@
     <span class="ident">WriteHalf</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">PrivateKey</span>};
+<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">collections</span>::{<span class="ident">hash_map</span>, <span class="ident">HashMap</span>, <span class="ident">HashSet</span>},
     <span class="ident">net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>},
@@ -851,6 +863,8 @@
         <span class="ident">FuturesUnordered</span><span class="op">&lt;</span><span class="ident">JoinHandle</span><span class="op">&lt;</span>(<span class="ident">NodeId</span>, <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConnectionClosureReason</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Map of connection to ip, is_outgoing.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">active_connections</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ConnectionId</span>, (<span class="ident">IpAddr</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>,
+    <span class="doccomment">/// Shared storage.</span>
+    <span class="ident">storage</span>: <span class="ident">Storage</span>,
     <span class="doccomment">/// Node version</span>
     <span class="ident">version</span>: <span class="ident">Version</span>,
     <span class="doccomment">/// Event sender</span>
@@ -874,6 +888,7 @@
     <span class="doccomment">/// * controller_command_rx: Channel receiving network commands.</span>
     <span class="doccomment">/// * controller_event_tx: Channel sending out network events.</span>
     <span class="doccomment">/// * controller_manager_rx: Channel receiving network management commands.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">cfg</span>: <span class="ident">NetworkSettings</span>,
         <span class="ident">private_key</span>: <span class="ident">PrivateKey</span>,
@@ -885,6 +900,7 @@
             <span class="ident">controller_event_tx</span>,
             <span class="ident">controller_manager_rx</span>,
         }: <span class="ident">NetworkWorkerChannels</span>,
+        <span class="ident">storage</span>: <span class="ident">Storage</span>,
         <span class="ident">version</span>: <span class="ident">Version</span>,
     ) -&gt; <span class="ident">NetworkWorker</span> {
         <span class="kw">let</span> <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">derive_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">private_key</span>);
@@ -909,6 +925,7 @@
             <span class="ident">active_nodes</span>: <span class="ident">HashMap::new</span>(),
             <span class="ident">node_worker_handles</span>: <span class="ident">FuturesUnordered::new</span>(),
             <span class="ident">active_connections</span>: <span class="ident">HashMap::new</span>(),
+            <span class="ident">storage</span>,
             <span class="ident">version</span>,
         }
     }
@@ -1175,6 +1192,7 @@
                             <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NodeCommand</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
                         <span class="kw">let</span> <span class="ident">node_event_tx_clone</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">event</span>.<span class="ident">clone_node_sender</span>();
                         <span class="kw">let</span> <span class="ident">cfg_copy</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">clone</span>();
+                        <span class="kw">let</span> <span class="ident">storage</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">clone</span>();
                         <span class="kw">let</span> <span class="ident">node_fn_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
                             <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">NodeWorker::new</span>(
                                 <span class="ident">cfg_copy</span>,
@@ -1183,6 +1201,7 @@
                                 <span class="ident">socket_writer</span>,
                                 <span class="ident">node_command_rx</span>,
                                 <span class="ident">node_event_tx_clone</span>,
+                                <span class="ident">storage</span>,
                             )
                             .<span class="ident">run_loop</span>()
                             .<span class="kw">await</span>;
@@ -1299,12 +1318,12 @@
         <span class="kw">match</span> <span class="ident">cmd</span> {
             <span class="ident">NetworkCommand::BanIp</span>(<span class="ident">ips</span>) =&gt; <span class="ident">on_ban_ip_cmd</span>(<span class="self">self</span>, <span class="ident">ips</span>).<span class="kw">await</span><span class="question-mark">?</span>,
             <span class="ident">NetworkCommand::Ban</span>(<span class="ident">node</span>) =&gt; <span class="ident">on_ban_cmd</span>(<span class="self">self</span>, <span class="ident">node</span>).<span class="kw">await</span><span class="question-mark">?</span>,
-            <span class="ident">NetworkCommand::SendBlockHeader</span> { <span class="ident">node</span>, <span class="ident">header</span> } =&gt; {
-                <span class="ident">on_send_block_header_cmd</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">header</span>).<span class="kw">await</span><span class="question-mark">?</span>
+            <span class="ident">NetworkCommand::SendBlockHeader</span> { <span class="ident">node</span>, <span class="ident">block_id</span> } =&gt; {
+                <span class="ident">on_send_block_header_cmd</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">block_id</span>).<span class="kw">await</span><span class="question-mark">?</span>
             }
             <span class="ident">NetworkCommand::AskForBlocks</span> { <span class="ident">list</span> } =&gt; <span class="ident">on_ask_for_block_cmd</span>(<span class="self">self</span>, <span class="ident">list</span>).<span class="kw">await</span>,
-            <span class="ident">NetworkCommand::SendBlock</span> { <span class="ident">node</span>, <span class="ident">block</span> } =&gt; {
-                <span class="ident">on_send_block_cmd</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">block</span>).<span class="kw">await</span><span class="question-mark">?</span>
+            <span class="ident">NetworkCommand::SendBlock</span> { <span class="ident">node</span>, <span class="ident">block_id</span> } =&gt; {
+                <span class="ident">on_send_block_cmd</span>(<span class="self">self</span>, <span class="ident">node</span>, <span class="ident">block_id</span>).<span class="kw">await</span><span class="question-mark">?</span>
             }
             <span class="ident">NetworkCommand::GetPeers</span>(<span class="ident">response_tx</span>) =&gt; <span class="ident">on_get_peers_cmd</span>(<span class="self">self</span>, <span class="ident">response_tx</span>).<span class="kw">await</span>,
             <span class="ident">NetworkCommand::GetBootstrapPeers</span>(<span class="ident">response_tx</span>) =&gt; {
@@ -1489,7 +1508,10 @@
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">reader</span> <span class="op">=</span> <span class="ident">ReadBinder::new</span>(<span class="ident">reader</span>);
                     <span class="kw">match</span> <span class="ident">tokio::time::timeout</span>(
                         <span class="ident">timeout</span>,
-                        <span class="ident">futures::future::try_join</span>(<span class="ident">writer</span>.<span class="ident">send</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>), <span class="ident">reader</span>.<span class="ident">next</span>()),
+                        <span class="ident">futures::future::try_join</span>(
+                            <span class="ident">writer</span>.<span class="ident">send</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>.<span class="ident">to_bytes_compact</span>().<span class="ident">unwrap</span>()),
+                            <span class="ident">reader</span>.<span class="ident">next</span>(),
+                        ),
                     )
                     .<span class="kw">await</span>
                     {
@@ -1542,8 +1564,8 @@
             <span class="ident">NodeEvent</span>(<span class="ident">from_node_id</span>, <span class="ident">NodeEventType::ReceivedPeerList</span>(<span class="ident">lst</span>)) =&gt; {
                 <span class="ident">event_impl::on_received_peer_list</span>(<span class="self">self</span>, <span class="ident">from_node_id</span>, <span class="kw-2">&amp;</span><span class="ident">lst</span>)<span class="question-mark">?</span>
             }
-            <span class="ident">NodeEvent</span>(<span class="ident">from_node_id</span>, <span class="ident">NodeEventType::ReceivedBlock</span>(<span class="ident">data</span>)) =&gt; {
-                <span class="ident">event_impl::on_received_block</span>(<span class="self">self</span>, <span class="ident">from_node_id</span>, <span class="ident">data</span>).<span class="kw">await</span><span class="question-mark">?</span>
+            <span class="ident">NodeEvent</span>(<span class="ident">from_node_id</span>, <span class="ident">NodeEventType::ReceivedBlock</span>(<span class="ident">block</span>, <span class="ident">serialized</span>)) =&gt; {
+                <span class="ident">event_impl::on_received_block</span>(<span class="self">self</span>, <span class="ident">from_node_id</span>, <span class="ident">block</span>, <span class="ident">serialized</span>).<span class="kw">await</span><span class="question-mark">?</span>
             }
             <span class="ident">NodeEvent</span>(<span class="ident">from_node_id</span>, <span class="ident">NodeEventType::ReceivedAskForBlocks</span>(<span class="ident">list</span>)) =&gt; {
                 <span class="ident">event_impl::on_received_ask_for_blocks</span>(<span class="self">self</span>, <span class="ident">from_node_id</span>, <span class="ident">list</span>).<span class="kw">await</span>
@@ -1574,5 +1596,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

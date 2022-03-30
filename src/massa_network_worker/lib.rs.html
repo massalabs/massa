@@ -161,6 +161,9 @@
 <span id="156">156</span>
 <span id="157">157</span>
 <span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
@@ -180,6 +183,7 @@
     <span class="ident">NetworkEventReceiver</span>, <span class="ident">NetworkManagementCommand</span>, <span class="ident">NetworkManager</span>, <span class="ident">NetworkSettings</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_signature</span>::{<span class="ident">derive_public_key</span>, <span class="ident">generate_random_private_key</span>, <span class="ident">PrivateKey</span>};
+<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>;
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">debug</span>, <span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">warn</span>};
 
@@ -205,6 +209,7 @@
     <span class="kw-2">mut</span> <span class="ident">establisher</span>: <span class="ident">Establisher</span>,
     <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
     <span class="ident">initial_peers</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BootstrapPeers</span><span class="op">&gt;</span>,
+    <span class="ident">storage</span>: <span class="ident">Storage</span>,
     <span class="ident">version</span>: <span class="ident">Version</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>
     (
@@ -290,6 +295,7 @@
                 <span class="ident">controller_event_tx</span>,
                 <span class="ident">controller_manager_rx</span>,
             },
+            <span class="ident">storage</span>,
             <span class="ident">version</span>,
         )
         .<span class="ident">run_loop</span>()
@@ -320,5 +326,5 @@
     ))
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

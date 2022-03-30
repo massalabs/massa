@@ -1376,13 +1376,6 @@
 <span id="1371">1371</span>
 <span id="1372">1372</span>
 <span id="1373">1373</span>
-<span id="1374">1374</span>
-<span id="1375">1375</span>
-<span id="1376">1376</span>
-<span id="1377">1377</span>
-<span id="1378">1378</span>
-<span id="1379">1379</span>
-<span id="1380">1380</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="kw">use</span> <span class="ident">massa_consensus_exports</span>::{
     <span class="ident">commands::ConsensusCommand</span>,
@@ -1533,14 +1526,14 @@
         <span class="comment">// we need to do this because the bootstrap snapshots of the executor vs the consensus may not have been taken in sync</span>
         <span class="comment">// because the two modules run concurrently and out of sync</span>
         <span class="ident">channels</span>.<span class="ident">execution_controller</span>.<span class="ident">update_blockclique_status</span>(
-            <span class="ident">block_db</span>.<span class="ident">clone_all_final_blocks</span>(),
+            <span class="ident">block_db</span>.<span class="ident">get_all_final_blocks</span>(),
             <span class="ident">block_db</span>
                 .<span class="ident">get_blockclique</span>()
                 .<span class="ident">into_iter</span>()
                 .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">block_id</span><span class="op">|</span> {
                     <span class="ident">block_db</span>
                         .<span class="ident">get_active_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_id</span>)
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">a_block</span><span class="op">|</span> (<span class="ident">block_id</span>, <span class="ident">a_block</span>.<span class="ident">block</span>.<span class="ident">clone</span>()))
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">a_block</span><span class="op">|</span> (<span class="ident">a_block</span>.<span class="ident">slot</span>, <span class="ident">block_id</span>))
                 })
                 .<span class="ident">collect</span>(),
         );
@@ -1876,7 +1869,7 @@
                         <span class="ident">ancestor_id</span>
                     ))
                 })<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="ident">ancestor</span>.<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">period</span> <span class="op">&lt;</span> <span class="ident">stop_period</span> {
+            <span class="kw">if</span> <span class="ident">ancestor</span>.<span class="ident">slot</span>.<span class="ident">period</span> <span class="op">&lt;</span> <span class="ident">stop_period</span> {
                 <span class="kw">break</span>;
             }
             <span class="ident">exclude_operations</span>.<span class="ident">extend</span>(<span class="ident">ancestor</span>.<span class="ident">operation_set</span>.<span class="ident">keys</span>());
@@ -1978,8 +1971,15 @@
             <span class="ident">creator_private_key</span>,
         )<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block</span> { <span class="ident">header</span>, <span class="ident">operations</span> };
-
         <span class="macro">massa_trace!</span>(<span class="string">&quot;create block&quot;</span>, { <span class="string">&quot;block&quot;</span>: <span class="ident">block</span> });
+
+        <span class="kw">let</span> <span class="ident">serialized_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>;
+
+        <span class="comment">// Add to shared storage</span>
+        <span class="self">self</span>.<span class="ident">block_db</span>
+            .<span class="ident">storage</span>
+            .<span class="ident">store_block</span>(<span class="ident">block_id</span>, <span class="ident">block</span>.<span class="ident">clone</span>(), <span class="ident">serialized_block</span>);
+
         <span class="macro">info!</span>(
             <span class="string">&quot;Staked block {} with address {}, at cycle {}, period {}, thread {}&quot;</span>,
             <span class="ident">block_id</span>,
@@ -1992,7 +1992,7 @@
         <span class="comment">// add block to db</span>
         <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">incoming_block</span>(
             <span class="ident">block_id</span>,
-            <span class="ident">block</span>,
+            <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>,
             <span class="ident">operation_set</span>,
             <span class="ident">endorsement_ids</span>,
             <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pos</span>,
@@ -2047,27 +2047,6 @@
                     .<span class="ident">is_err</span>()
                 {
                     <span class="macro">warn!</span>(<span class="string">&quot;consensus: could not send GetBlockGraphStatus answer&quot;</span>);
-                }
-                <span class="prelude-val">Ok</span>(())
-            }
-            <span class="comment">// return full block with specified hash</span>
-            <span class="ident">ConsensusCommand::GetActiveBlock</span> {
-                <span class="ident">block_id</span>,
-                <span class="ident">response_tx</span>,
-            } =&gt; {
-                <span class="macro">massa_trace!</span>(
-                    <span class="string">&quot;consensus.consensus_worker.process_consensus_command.get_active_block&quot;</span>,
-                    {}
-                );
-                <span class="kw">if</span> <span class="ident">response_tx</span>
-                    .<span class="ident">send</span>(
-                        <span class="self">self</span>.<span class="ident">block_db</span>
-                            .<span class="ident">get_active_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_id</span>)
-                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">block</span>.<span class="ident">clone</span>()),
-                    )
-                    .<span class="ident">is_err</span>()
-                {
-                    <span class="macro">warn!</span>(<span class="string">&quot;consensus: could not send GetBlock answer&quot;</span>);
                 }
                 <span class="prelude-val">Ok</span>(())
             }
@@ -2480,14 +2459,17 @@
         <span class="kw">match</span> <span class="ident">event</span> {
             <span class="ident">ProtocolEvent::ReceivedBlock</span> {
                 <span class="ident">block_id</span>,
-                <span class="ident">block</span>,
+                <span class="ident">slot</span>,
                 <span class="ident">operation_set</span>,
                 <span class="ident">endorsement_ids</span>,
             } =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.process_protocol_event.received_block&quot;</span>, { <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">block</span> });
+                <span class="macro">massa_trace!</span>(
+                    <span class="string">&quot;consensus.consensus_worker.process_protocol_event.received_block&quot;</span>,
+                    { <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span> }
+                );
                 <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">incoming_block</span>(
                     <span class="ident">block_id</span>,
-                    <span class="ident">block</span>,
+                    <span class="ident">slot</span>,
                     <span class="ident">operation_set</span>,
                     <span class="ident">endorsement_ids</span>,
                     <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">pos</span>,
@@ -2517,7 +2499,6 @@
                         <span class="ident">results</span>.<span class="ident">insert</span>(
                             <span class="ident">block_hash</span>,
                             <span class="prelude-val">Some</span>((
-                                <span class="ident">a_block</span>.<span class="ident">block</span>.<span class="ident">clone</span>(),
                                 <span class="prelude-val">Some</span>(<span class="ident">a_block</span>.<span class="ident">operation_set</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>()),
                                 <span class="prelude-val">Some</span>(<span class="ident">a_block</span>.<span class="ident">endorsement_ids</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>()),
                             )),
@@ -2550,13 +2531,13 @@
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed&quot;</span>, {});
 
         <span class="comment">// Propagate new blocks</span>
-        <span class="kw">for</span> (<span class="ident">block_id</span>, (<span class="ident">block</span>, <span class="ident">op_ids</span>, <span class="ident">endo_ids</span>)) <span class="kw">in</span>
-            <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_blocks_to_propagate</span>().<span class="ident">into_iter</span>()
-        {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed.integrated&quot;</span>, { <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">block</span> });
+        <span class="kw">for</span> (<span class="ident">block_id</span>, (<span class="ident">op_ids</span>, <span class="ident">endo_ids</span>)) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_blocks_to_propagate</span>().<span class="ident">into_iter</span>() {
+            <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed.integrated&quot;</span>, {
+                <span class="string">&quot;block_id&quot;</span>: <span class="ident">block_id</span>
+            });
             <span class="self">self</span>.<span class="ident">channels</span>
                 .<span class="ident">protocol_command_sender</span>
-                .<span class="ident">integrated_block</span>(<span class="ident">block_id</span>, <span class="ident">block</span>, <span class="ident">op_ids</span>, <span class="ident">endo_ids</span>)
+                .<span class="ident">integrated_block</span>(<span class="ident">block_id</span>, <span class="ident">op_ids</span>, <span class="ident">endo_ids</span>)
                 .<span class="kw">await</span><span class="question-mark">?</span>;
         }
 
@@ -2577,28 +2558,32 @@
         <span class="comment">// get blockclique</span>
         <span class="kw">let</span> <span class="ident">blockclique_set</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_blockclique</span>();
 
-        <span class="comment">// notify Execution</span>
-        {
-            <span class="kw">let</span> <span class="ident">finalized_blocks</span> <span class="op">=</span> <span class="ident">new_final_block_ids</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">b_id</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">block_db</span>
-                        .<span class="ident">get_active_block</span>(<span class="ident">b_id</span>)
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">b_id</span>, <span class="ident">b</span>.<span class="ident">block</span>.<span class="ident">clone</span>()))
-                })
-                .<span class="ident">collect</span>();
-            <span class="kw">let</span> <span class="ident">blockclique</span> <span class="op">=</span> <span class="ident">blockclique_set</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">b_id</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">block_db</span>
-                        .<span class="ident">get_active_block</span>(<span class="ident">b_id</span>)
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">b_id</span>, <span class="ident">b</span>.<span class="ident">block</span>.<span class="ident">clone</span>()))
-                })
-                .<span class="ident">collect</span>();
-            <span class="self">self</span>.<span class="ident">channels</span>
-                .<span class="ident">execution_controller</span>
-                .<span class="ident">update_blockclique_status</span>(<span class="ident">finalized_blocks</span>, <span class="ident">blockclique</span>);
-        }
+        <span class="comment">// notify execution</span>
+        <span class="self">self</span>.<span class="ident">channels</span>
+            .<span class="ident">execution_controller</span>
+            .<span class="ident">update_blockclique_status</span>(
+                <span class="ident">new_final_block_ids</span>
+                    .<span class="ident">clone</span>()
+                    .<span class="ident">into_iter</span>()
+                    .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">b_id</span><span class="op">|</span> {
+                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">a_b</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_active_block</span>(<span class="kw-2">&amp;</span><span class="ident">b_id</span>) {
+                            <span class="kw">if</span> <span class="ident">a_b</span>.<span class="ident">is_final</span> {
+                                <span class="kw">return</span> <span class="prelude-val">Some</span>((<span class="ident">a_b</span>.<span class="ident">slot</span>, <span class="ident">b_id</span>));
+                            }
+                        }
+                        <span class="prelude-val">None</span>
+                    })
+                    .<span class="ident">collect</span>(),
+                <span class="ident">blockclique_set</span>
+                    .<span class="ident">clone</span>()
+                    .<span class="ident">into_iter</span>()
+                    .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">block_id</span><span class="op">|</span> {
+                        <span class="self">self</span>.<span class="ident">block_db</span>
+                            .<span class="ident">get_active_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_id</span>)
+                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">a_block</span><span class="op">|</span> (<span class="ident">a_block</span>.<span class="ident">slot</span>, <span class="ident">block_id</span>))
+                    })
+                    .<span class="ident">collect</span>(),
+            );
 
         <span class="comment">// Process new final blocks</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_final_ops</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">u64</span>, <span class="ident">u8</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::default</span>();
@@ -2609,9 +2594,10 @@
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">a_block</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_active_block</span>(<span class="kw-2">&amp;</span><span class="ident">b_id</span>) {
                 <span class="comment">// List new final ops</span>
                 <span class="ident">new_final_ops</span>.<span class="ident">extend</span>(
-                    <span class="ident">a_block</span>.<span class="ident">operation_set</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">id</span>, (<span class="kw">_</span>, <span class="ident">exp</span>))<span class="op">|</span> {
-                        (<span class="kw-2">*</span><span class="ident">id</span>, (<span class="kw-2">*</span><span class="ident">exp</span>, <span class="ident">a_block</span>.<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">thread</span>))
-                    }),
+                    <span class="ident">a_block</span>
+                        .<span class="ident">operation_set</span>
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">id</span>, (<span class="kw">_</span>, <span class="ident">exp</span>))<span class="op">|</span> (<span class="kw-2">*</span><span class="ident">id</span>, (<span class="kw-2">*</span><span class="ident">exp</span>, <span class="ident">a_block</span>.<span class="ident">slot</span>.<span class="ident">thread</span>))),
                 );
                 <span class="comment">// List final block</span>
                 <span class="ident">new_final_blocks</span>.<span class="ident">insert</span>(<span class="ident">b_id</span>, <span class="ident">a_block</span>);
@@ -2619,7 +2605,7 @@
                 <span class="self">self</span>.<span class="ident">final_block_stats</span>.<span class="ident">push_back</span>((
                     <span class="ident">timestamp</span>,
                     <span class="ident">a_block</span>.<span class="ident">operation_set</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>,
-                    <span class="ident">Address::from_public_key</span>(<span class="kw-2">&amp;</span><span class="ident">a_block</span>.<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">creator</span>),
+                    <span class="ident">a_block</span>.<span class="ident">creator_address</span>,
                 ));
             }
         }
@@ -2674,7 +2660,7 @@
             <span class="comment">// iterate on all blockclique blocks</span>
             <span class="kw">for</span> <span class="ident">block_id</span> <span class="kw">in</span> <span class="ident">blockclique_set</span>.<span class="ident">into_iter</span>() {
                 <span class="kw">let</span> <span class="ident">block_slot</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">block_db</span>.<span class="ident">get_active_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_id</span>) {
-                    <span class="prelude-val">Some</span>(<span class="ident">b</span>) =&gt; <span class="ident">b</span>.<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>,
+                    <span class="prelude-val">Some</span>(<span class="ident">b</span>) =&gt; <span class="ident">b</span>.<span class="ident">slot</span>,
                     <span class="prelude-val">None</span> =&gt; <span class="kw">continue</span>,
                 };
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">endorsed_slots</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">block_slot</span>) {
@@ -2764,5 +2750,5 @@
     <span class="prelude-val">Ok</span>((<span class="ident">e_id</span>, <span class="ident">endorsement</span>))
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

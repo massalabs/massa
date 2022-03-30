@@ -286,6 +286,11 @@
 <span id="281">281</span>
 <span id="282">282</span>
 <span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -297,7 +302,7 @@
     <span class="ident">node::NodeId</span>,
     <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">Operations</span>},
     <span class="ident">stats::NetworkStats</span>,
-    <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>,
+    <span class="ident">BlockId</span>, <span class="ident">SignedEndorsement</span>,
 };
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">collections</span>::{<span class="ident">HashMap</span>, <span class="ident">VecDeque</span>},
@@ -355,9 +360,9 @@
     }
 
     <span class="doccomment">/// Send the order to send block.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node</span>: <span class="ident">NodeId</span>, <span class="ident">block</span>: <span class="ident">Block</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node</span>: <span class="ident">NodeId</span>, <span class="ident">block_id</span>: <span class="ident">BlockId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::SendBlock</span> { <span class="ident">node</span>, <span class="ident">block</span> })
+            .<span class="ident">send</span>(<span class="ident">NetworkCommand::SendBlock</span> { <span class="ident">node</span>, <span class="ident">block_id</span> })
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send SendBlock command&quot;</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -376,13 +381,18 @@
     }
 
     <span class="doccomment">/// Send the order to send block header.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Note: with the current use of shared storage,</span>
+    <span class="doccomment">/// sending a header requires having the block stored.</span>
+    <span class="doccomment">/// This matches the current use of send_block_header,</span>
+    <span class="doccomment">/// which is only used after a block has been integrated in the graph.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_block_header</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">header</span>: <span class="ident">SignedHeader</span>,
+        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">NetworkCommand::SendBlockHeader</span> { <span class="ident">node</span>, <span class="ident">header</span> })
+            .<span class="ident">send</span>(<span class="ident">NetworkCommand::SendBlockHeader</span> { <span class="ident">node</span>, <span class="ident">block_id</span> })
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;could not send SendBlockHeader command&quot;</span>.<span class="ident">into</span>())
@@ -570,5 +580,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

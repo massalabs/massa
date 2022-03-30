@@ -181,6 +181,9 @@
 <span id="176">176</span>
 <span id="177">177</span>
 <span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! Here are happening handshakes.</span>
@@ -193,6 +196,7 @@
 <span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
+<span class="kw">use</span> <span class="ident">massa_models::SerializeCompact</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Version</span>;
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{
     <span class="ident">throw_handshake_error</span> <span class="kw">as</span> <span class="ident">throw</span>, <span class="ident">ConnectionId</span>, <span class="ident">HandshakeErrorType</span>, <span class="ident">NetworkError</span>, <span class="ident">ReadHalf</span>,
@@ -286,7 +290,8 @@
             <span class="ident">random_bytes</span>: <span class="ident">self_random_bytes</span>,
             <span class="ident">version</span>: <span class="self">self</span>.<span class="ident">version</span>,
         };
-        <span class="kw">let</span> <span class="ident">send_init_fut</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">writer</span>.<span class="ident">send</span>(<span class="kw-2">&amp;</span><span class="ident">send_init_msg</span>);
+        <span class="kw">let</span> <span class="ident">bytes_vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">send_init_msg</span>.<span class="ident">to_bytes_compact</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">send_init_fut</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">writer</span>.<span class="ident">send</span>(<span class="kw-2">&amp;</span><span class="ident">bytes_vec</span>);
 
         <span class="comment">// receive handshake init future</span>
         <span class="kw">let</span> <span class="ident">recv_init_fut</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">reader</span>.<span class="ident">next</span>();
@@ -301,7 +306,7 @@
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">throw!</span>(<span class="ident">HandshakeTimeout</span>),
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">None</span>))) =&gt; <span class="macro">throw!</span>(<span class="ident">HandshakeInterruption</span>, <span class="string">&quot;init&quot;</span>.<span class="ident">into</span>()),
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">msg</span>))))) =&gt; <span class="kw">match</span> <span class="ident">msg</span> {
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">msg</span>, <span class="kw">_</span>))))) =&gt; <span class="kw">match</span> <span class="ident">msg</span> {
                 <span class="ident">Message::HandshakeInitiation</span> {
                     <span class="ident">public_key</span>: <span class="ident">pk</span>,
                     <span class="ident">random_bytes</span>: <span class="ident">rb</span>,
@@ -330,7 +335,8 @@
         <span class="kw">let</span> <span class="ident">send_reply_msg</span> <span class="op">=</span> <span class="ident">Message::HandshakeReply</span> {
             <span class="ident">signature</span>: <span class="ident">self_signature</span>,
         };
-        <span class="kw">let</span> <span class="ident">send_reply_fut</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">writer</span>.<span class="ident">send</span>(<span class="kw-2">&amp;</span><span class="ident">send_reply_msg</span>);
+        <span class="kw">let</span> <span class="ident">bytes_vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">send_reply_msg</span>.<span class="ident">to_bytes_compact</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">send_reply_fut</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">writer</span>.<span class="ident">send</span>(<span class="kw-2">&amp;</span><span class="ident">bytes_vec</span>);
 
         <span class="comment">// receive handshake reply future</span>
         <span class="kw">let</span> <span class="ident">recv_reply_fut</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">reader</span>.<span class="ident">next</span>();
@@ -345,7 +351,7 @@
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">throw!</span>(<span class="ident">HandshakeTimeout</span>),
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">None</span>))) =&gt; <span class="macro">throw!</span>(<span class="ident">HandshakeInterruption</span>, <span class="string">&quot;repl&quot;</span>.<span class="ident">into</span>()),
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">msg</span>))))) =&gt; <span class="kw">match</span> <span class="ident">msg</span> {
+            <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>((<span class="kw">_</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">msg</span>, <span class="kw">_</span>))))) =&gt; <span class="kw">match</span> <span class="ident">msg</span> {
                 <span class="ident">Message::HandshakeReply</span> { <span class="ident">signature</span>: <span class="ident">sig</span> } =&gt; <span class="ident">sig</span>,
                 <span class="kw">_</span> =&gt; <span class="macro">throw!</span>(<span class="ident">HandshakeWrongMessage</span>),
             },
@@ -360,5 +366,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

@@ -84,12 +84,6 @@
 <span id="79">79</span>
 <span id="80">80</span>
 <span id="81">81</span>
-<span id="82">82</span>
-<span id="83">83</span>
-<span id="84">84</span>
-<span id="85">85</span>
-<span id="86">86</span>
-<span id="87">87</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! Contains definitions of commands used by the controller</span>
@@ -97,8 +91,7 @@
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">address::AddressState</span>, <span class="ident">api::EndorsementInfo</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">clique::Clique</span>, <span class="ident">stats::ConsensusStats</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">Slot</span>,
-    <span class="ident">StakersCycleProductionStats</span>,
+    <span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">Slot</span>, <span class="ident">StakersCycleProductionStats</span>,
 };
 
 <span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports::ExportProofOfStake</span>;
@@ -117,11 +110,6 @@
         <span class="ident">slot_start</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
         <span class="ident">slot_end</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
         <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">BlockGraphExport</span><span class="op">&gt;</span>,
-    },
-    <span class="doccomment">/// Returns through a channel full block with specified hash.</span>
-    <span class="ident">GetActiveBlock</span> {
-        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
-        <span class="ident">response_tx</span>: <span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// Returns through a channel full block and status with specified hash.</span>
     <span class="ident">GetBlockStatus</span> {
@@ -178,5 +166,5 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ConsensusManagementCommand</span> {}
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

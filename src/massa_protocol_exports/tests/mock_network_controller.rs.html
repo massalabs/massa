@@ -160,6 +160,7 @@
 <span id="155">155</span>
 <span id="156">156</span>
 <span id="157">157</span>
+<span id="158">158</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
@@ -235,11 +236,12 @@
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t send header to protocol.&quot;</span>);
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_block</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>, <span class="ident">block</span>: <span class="ident">Block</span>) {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_block</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>, <span class="ident">block</span>: <span class="ident">Block</span>, <span class="ident">serialized</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
         <span class="self">self</span>.<span class="ident">network_event_tx</span>
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceivedBlock</span> {
                 <span class="ident">node</span>: <span class="ident">source_node_id</span>,
                 <span class="ident">block</span>,
+                <span class="ident">serialized</span>,
             })
             .<span class="kw">await</span>
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t send block to protocol.&quot;</span>);
@@ -318,5 +320,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

@@ -22,6 +22,7 @@ sourcesIndex["massa_protocol_exports"] = {"name":"","dirs":[{"name":"tests","fil
 sourcesIndex["massa_protocol_worker"] = {"name":"","files":["lib.rs","node_info.rs","protocol_worker.rs","worker_operations_impl.rs"]};
 sourcesIndex["massa_sdk"] = {"name":"","files":["lib.rs"]};
 sourcesIndex["massa_signature"] = {"name":"","files":["lib.rs","signature_impl.rs"]};
+sourcesIndex["massa_storage"] = {"name":"","files":["lib.rs"]};
 sourcesIndex["massa_time"] = {"name":"","files":["error.rs","lib.rs"]};
 sourcesIndex["massa_wallet"] = {"name":"","files":["error.rs","lib.rs"]};
 createSourceSidebar();

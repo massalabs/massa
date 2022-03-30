@@ -350,6 +350,7 @@
 <span id="345">345</span>
 <span id="346">346</span>
 <span id="347">347</span>
+<span id="348">348</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::mock_network_controller::MockNetworkController</span>;
@@ -360,6 +361,7 @@
 <span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_models::node::NodeId</span>;
 <span class="kw">use</span> <span class="ident">massa_models::signed</span>::{<span class="ident">Signable</span>, <span class="ident">Signed</span>};
+<span class="kw">use</span> <span class="ident">massa_models::SerializeCompact</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedOperation</span>, <span class="ident">Slot</span>,
 };
@@ -485,9 +487,12 @@
     <span class="ident">protocol_event_receiver</span>: <span class="kw-2">&amp;mut</span> <span class="ident">ProtocolEventReceiver</span>,
 ) {
     <span class="kw">let</span> <span class="ident">expected_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>().<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">to_bytes_compact</span>().<span class="ident">unwrap</span>();
 
     <span class="comment">// Send block to protocol.</span>
-    <span class="ident">network_controller</span>.<span class="ident">send_block</span>(<span class="ident">source_node_id</span>, <span class="ident">block</span>).<span class="kw">await</span>;
+    <span class="ident">network_controller</span>
+        .<span class="ident">send_block</span>(<span class="ident">source_node_id</span>, <span class="ident">block</span>, <span class="ident">serialized</span>)
+        .<span class="kw">await</span>;
 
     <span class="comment">// Check protocol sends block to consensus.</span>
     <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">wait_protocol_event</span>(<span class="ident">protocol_event_receiver</span>, <span class="number">1000</span>.<span class="ident">into</span>(), <span class="op">|</span><span class="ident">evt</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">evt</span> {
@@ -501,10 +506,7 @@
         <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected or no protocol event.&quot;</span>),
     };
     <span class="kw">if</span> <span class="ident">valid</span> {
-        <span class="macro">assert_eq!</span>(
-            <span class="ident">expected_hash</span>,
-            <span class="ident">hash</span>.<span class="ident">expect</span>(<span class="string">&quot;block not propagated before timeout&quot;</span>)
-        );
+        <span class="macro">assert_eq!</span>(<span class="ident">expected_hash</span>, <span class="ident">hash</span>.<span class="ident">unwrap</span>());
     } <span class="kw">else</span> {
         <span class="macro">assert!</span>(<span class="ident">hash</span>.<span class="ident">is_none</span>(), <span class="string">&quot;unexpected protocol event&quot;</span>)
     }
@@ -698,5 +700,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

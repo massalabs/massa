@@ -89,7 +89,6 @@
 <span id="84">84</span>
 <span id="85">85</span>
 <span id="86">86</span>
-<span id="87">87</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This module exports generic traits representing interfaces for interacting with the Execution worker</span>
@@ -99,12 +98,11 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident">massa_ledger::LedgerEntry</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
-<span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Address</span>;
-<span class="kw">use</span> <span class="ident">massa_models::Block</span>;
 <span class="kw">use</span> <span class="ident">massa_models::BlockId</span>;
 <span class="kw">use</span> <span class="ident">massa_models::OperationId</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Slot</span>;
+<span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 
 <span class="doccomment">/// interface that communicates with the execution worker thread</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ExecutionController</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> {
@@ -115,8 +113,8 @@
     <span class="doccomment">/// * blockclique: new blockclique</span>
     <span class="kw">fn</span> <span class="ident">update_blockclique_status</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">finalized_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
-        <span class="ident">blockclique</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
+        <span class="ident">finalized_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
+        <span class="ident">blockclique</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
     );
 
     <span class="doccomment">/// Get execution events optionnally filtered by:</span>
@@ -178,5 +176,5 @@
     <span class="kw">fn</span> <span class="ident">stop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>);
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

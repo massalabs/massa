@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Storage","A storage of block, shared by various components."],["StoredBlock",""]]});

@@ -425,11 +425,61 @@
 <span id="420">420</span>
 <span id="421">421</span>
 <span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">binders</span>::{<span class="ident">ReadBinder</span>, <span class="ident">WriteBinder</span>},
-    <span class="ident">messages::Message</span>,
+    <span class="ident">messages</span>::{<span class="ident">Message</span>, <span class="ident">MessageTypeId</span>},
 };
 <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
@@ -438,9 +488,12 @@
     <span class="ident">node::NodeId</span>,
     <span class="ident">signed::Signable</span>,
 };
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">BlockId</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>};
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{
     <span class="ident">ConnectionClosureReason</span>, <span class="ident">NetworkError</span>, <span class="ident">NetworkSettings</span>, <span class="ident">NodeCommand</span>, <span class="ident">NodeEvent</span>, <span class="ident">NodeEventType</span>,
 };
+<span class="kw">use</span> <span class="ident">massa_storage::Storage</span>;
+<span class="kw">use</span> <span class="ident">std::mem</span>;
 <span class="kw">use</span> <span class="ident">tokio</span>::{
     <span class="ident">sync::mpsc</span>,
     <span class="ident">sync::mpsc</span>::{
@@ -466,6 +519,16 @@
     <span class="ident">node_command_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">NodeCommand</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Channel to send node events.</span>
     <span class="ident">node_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">NodeEvent</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Shared storage.</span>
+    <span class="ident">storage</span>: <span class="ident">Storage</span>,
+}
+
+<span class="comment">//TODO: Find a consensus on &quot;do we need to resolve that&quot;.</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::large_enum_variant</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ToSend</span> {
+    <span class="ident">Msg</span>(<span class="ident">Message</span>),
+    <span class="ident">Block</span>(<span class="ident">BlockId</span>),
+    <span class="ident">Header</span>(<span class="ident">BlockId</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">NodeWorker</span> {
@@ -486,6 +549,7 @@
         <span class="ident">socket_writer</span>: <span class="ident">WriteBinder</span>,
         <span class="ident">node_command_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">NodeCommand</span><span class="op">&gt;</span>,
         <span class="ident">node_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">NodeEvent</span><span class="op">&gt;</span>,
+        <span class="ident">storage</span>: <span class="ident">Storage</span>,
     ) -&gt; <span class="ident">NodeWorker</span> {
         <span class="ident">NodeWorker</span> {
             <span class="ident">cfg</span>,
@@ -494,6 +558,7 @@
             <span class="ident">socket_writer_opt</span>: <span class="prelude-val">Some</span>(<span class="ident">socket_writer</span>),
             <span class="ident">node_command_rx</span>,
             <span class="ident">node_event_tx</span>,
+            <span class="ident">storage</span>,
         }
     }
 
@@ -521,8 +586,8 @@
     <span class="doccomment">/// If the channel dropped, return an error</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_send_to_node</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">sender</span>: <span class="kw-2">&amp;</span><span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;</span>,
-        <span class="ident">msg</span>: <span class="ident">Message</span>,
+        <span class="ident">sender</span>: <span class="kw-2">&amp;</span><span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">ToSend</span><span class="op">&gt;</span>,
+        <span class="ident">msg</span>: <span class="ident">ToSend</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">sender</span>.<span class="ident">try_send</span>(<span class="ident">msg</span>) {
             <span class="prelude-val">Err</span>(<span class="ident">TrySendError::Full</span>(<span class="kw">_</span>)) =&gt; {
@@ -545,7 +610,7 @@
     <span class="doccomment">/// node event loop. Consumes self.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run_loop</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConnectionClosureReason</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">writer_command_tx</span>, <span class="kw-2">mut</span> <span class="ident">writer_command_rx</span>) <span class="op">=</span>
-            <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">Message</span><span class="op">&gt;</span>(<span class="ident">NODE_SEND_CHANNEL_SIZE</span>);
+            <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">ToSend</span><span class="op">&gt;</span>(<span class="ident">NODE_SEND_CHANNEL_SIZE</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">socket_writer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">socket_writer_opt</span>.<span class="ident">take</span>().<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
             <span class="ident">NetworkError::GeneralProtocolError</span>(
                 <span class="string">&quot;NodeWorker call run_loop more than once&quot;</span>.<span class="ident">to_string</span>(),
@@ -553,14 +618,49 @@
         })<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">write_timeout</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">message_timeout</span>;
         <span class="kw">let</span> <span class="ident">node_id_copy</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">node_id</span>;
+        <span class="kw">let</span> <span class="ident">storage</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">storage</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">node_writer_handle</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
             <span class="kw">loop</span> {
                 <span class="kw">match</span> <span class="ident">writer_command_rx</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">msg</span>) =&gt; {
-                        <span class="kw">match</span> <span class="ident">timeout</span>(<span class="ident">write_timeout</span>.<span class="ident">to_duration</span>(), <span class="ident">socket_writer</span>.<span class="ident">send</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>)).<span class="kw">await</span> {
+                    <span class="prelude-val">Some</span>(<span class="ident">to_send</span>) =&gt; {
+                        <span class="kw">let</span> <span class="ident">bytes_vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">to_send</span> {
+                            <span class="ident">ToSend::Msg</span>(<span class="ident">msg</span>) =&gt; <span class="ident">msg</span>.<span class="ident">to_bytes_compact</span>().<span class="ident">unwrap</span>(),
+                            <span class="ident">ToSend::Block</span>(<span class="ident">block_id</span>) =&gt; {
+                                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+                                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::Block</span>).<span class="ident">to_varint_bytes</span>());
+                                <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">storage</span>
+                                    .<span class="ident">retrieve_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_id</span>)
+                                    .<span class="ident">ok_or</span>(<span class="ident">NetworkError::MissingBlock</span>)<span class="question-mark">?</span>;
+                                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stored_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">write</span>();
+                                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="ident">stored_block</span>.<span class="ident">serialized</span>));
+                                <span class="ident">res</span>
+                            }
+                            <span class="ident">ToSend::Header</span>(<span class="ident">block_id</span>) =&gt; {
+                                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+                                <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">u32::from</span>(<span class="ident">MessageTypeId::BlockHeader</span>).<span class="ident">to_varint_bytes</span>());
+
+                                <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">storage</span>
+                                    .<span class="ident">retrieve_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_id</span>)
+                                    .<span class="ident">ok_or</span>(<span class="ident">NetworkError::MissingBlock</span>)<span class="question-mark">?</span>;
+                                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stored_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">write</span>();
+                                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">serialized</span>) <span class="op">=</span> <span class="ident">stored_block</span>.<span class="ident">serialized_header</span>.<span class="ident">as_ref</span>() {
+                                    <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">serialized</span>);
+                                } <span class="kw">else</span> {
+                                    <span class="kw">let</span> <span class="ident">serialized</span> <span class="op">=</span>
+                                        <span class="ident">stored_block</span>.<span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">to_bytes_compact</span>()<span class="question-mark">?</span>;
+                                    <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">serialized</span>);
+                                    <span class="ident">stored_block</span>.<span class="ident">serialized_header</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">serialized</span>);
+                                }
+
+                                <span class="ident">res</span>
+                            }
+                        };
+                        <span class="kw">match</span> <span class="ident">timeout</span>(<span class="ident">write_timeout</span>.<span class="ident">to_duration</span>(), <span class="ident">socket_writer</span>.<span class="ident">send</span>(<span class="kw-2">&amp;</span><span class="ident">bytes_vec</span>))
+                            .<span class="kw">await</span>
+                        {
                             <span class="prelude-val">Err</span>(<span class="ident">_err</span>) =&gt; {
                                 <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.loop.writer_command_rx.recv.send.timeout&quot;</span>, {
-                                    <span class="string">&quot;node&quot;</span>: <span class="ident">node_id_copy</span>, <span class="string">&quot;msg&quot;</span>: <span class="ident">msg</span>
+                                    <span class="string">&quot;node&quot;</span>: <span class="ident">node_id_copy</span>,
                                 });
                                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">std::io::Error::new</span>(
                                     <span class="ident">std::io::ErrorKind::TimedOut</span>,
@@ -570,13 +670,13 @@
                             }
                             <span class="prelude-val">Ok</span>(<span class="prelude-val">Err</span>(<span class="ident">err</span>)) =&gt; {
                                 <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.loop.writer_command_rx.recv.send.error&quot;</span>, {
-                                    <span class="string">&quot;node&quot;</span>: <span class="ident">node_id_copy</span>, <span class="string">&quot;err&quot;</span>:  <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">err</span>), <span class="string">&quot;msg&quot;</span>: <span class="ident">msg</span>
+                                    <span class="string">&quot;node&quot;</span>: <span class="ident">node_id_copy</span>, <span class="string">&quot;err&quot;</span>:  <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">err</span>),
                                 });
                                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>);
                             }
                             <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="ident">id</span>)) =&gt; {
                                 <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.loop.writer_command_rx.recv.send.ok&quot;</span>, {
-                                    <span class="string">&quot;node&quot;</span>: <span class="ident">node_id_copy</span>, <span class="string">&quot;msg_id&quot;</span>: <span class="ident">id</span>, <span class="string">&quot;msg&quot;</span>: <span class="ident">msg</span>
+                                    <span class="string">&quot;node&quot;</span>: <span class="ident">node_id_copy</span>, <span class="string">&quot;msg_id&quot;</span>: <span class="ident">id</span>,
                                 })
                             }
                         }
@@ -633,7 +733,7 @@
 
                 <span class="comment">// incoming socket data</span>
                 <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">socket_reader</span>.<span class="ident">next</span>() =&gt; <span class="kw">match</span> <span class="ident">res</span> {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((<span class="ident">index</span>, <span class="ident">msg</span>))) =&gt; {
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>((<span class="ident">index</span>, <span class="ident">msg</span>, <span class="ident">serialized</span>))) =&gt; {
                         <span class="macro">massa_trace!</span>(
                             <span class="string">&quot;node_worker.run_loop. receive self.socket_reader.next()&quot;</span>, {<span class="string">&quot;index&quot;</span>: <span class="ident">index</span>});
                         <span class="kw">match</span> <span class="ident">msg</span> {
@@ -642,7 +742,7 @@
                                     <span class="string">&quot;node_worker.run_loop. receive Message::Block&quot;</span>,
                                     {<span class="string">&quot;block_id&quot;</span>: <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">block</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>}
                                 );
-                                <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedBlock</span>(<span class="ident">block</span>))).<span class="kw">await</span>;
+                                <span class="self">self</span>.<span class="ident">send_node_event</span>(<span class="ident">NodeEvent</span>(<span class="self">self</span>.<span class="ident">node_id</span>, <span class="ident">NodeEventType::ReceivedBlock</span>(<span class="ident">block</span>, <span class="ident">serialized</span>.<span class="ident">expect</span>(<span class="string">&quot;Block should come with its serialized form.&quot;</span>)))).<span class="kw">await</span>;
                             },
                             <span class="ident">Message::BlockHeader</span>(<span class="ident">header</span>) =&gt; {
                                 <span class="macro">massa_trace!</span>(
@@ -720,19 +820,19 @@
                         },
                         <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendPeerList</span>(<span class="ident">ip_vec</span>)) =&gt; {
                             <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::PeerList&quot;</span>, {<span class="string">&quot;peerlist&quot;</span>: <span class="ident">ip_vec</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>});
-                            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::PeerList</span>(<span class="ident">ip_vec</span>)).<span class="ident">is_err</span>() {
+                            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">ToSend::Msg</span>(<span class="ident">Message::PeerList</span>(<span class="ident">ip_vec</span>))).<span class="ident">is_err</span>() {
                                 <span class="kw">break</span>;
                             }
                         },
-                        <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendBlockHeader</span>(<span class="ident">header</span>)) =&gt; {
-                            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::BlockHeader&quot;</span>, {<span class="string">&quot;hash&quot;</span>: <span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>});
-                            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::BlockHeader</span>(<span class="ident">header</span>)).<span class="ident">is_err</span>() {
+                        <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendBlockHeader</span>(<span class="ident">block_id</span>)) =&gt; {
+                            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::BlockHeader&quot;</span>, {<span class="string">&quot;hash&quot;</span>: <span class="ident">block_id</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>});
+                            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">ToSend::Header</span>(<span class="ident">block_id</span>)).<span class="ident">is_err</span>() {
                                 <span class="kw">break</span>;
                             }
                         },
-                        <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendBlock</span>(<span class="ident">block</span>)) =&gt; {
-                            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::Block&quot;</span>, {<span class="string">&quot;hash&quot;</span>: <span class="ident">block</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">compute_id</span>()<span class="question-mark">?</span>, <span class="string">&quot;block&quot;</span>: <span class="ident">block</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>});
-                            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::Block</span>(<span class="ident">block</span>)).<span class="ident">is_err</span>() {
+                        <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendBlock</span>(<span class="ident">block_id</span>)) =&gt; {
+                            <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::Block&quot;</span>, {<span class="string">&quot;hash&quot;</span>: <span class="ident">block_id</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>});
+                            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">ToSend::Block</span>(<span class="ident">block_id</span>)).<span class="ident">is_err</span>() {
                                 <span class="kw">break</span>;
                             }
                             <span class="macro">trace!</span>(<span class="string">&quot;after sending Message::Block from writer_command_tx in node_worker run_loop&quot;</span>);
@@ -741,21 +841,21 @@
                             <span class="comment">// cut hash list on sub list if exceed max_ask_blocks_per_message</span>
                             <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::AskForBlocks&quot;</span>, {<span class="string">&quot;hashlist&quot;</span>: <span class="ident">list</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>});
                             <span class="kw">for</span> <span class="ident">to_send_list</span> <span class="kw">in</span> <span class="ident">list</span>.<span class="ident">chunks</span>(<span class="ident">MAX_ASK_BLOCKS_PER_MESSAGE</span> <span class="kw">as</span> <span class="ident">usize</span>) {
-                                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::AskForBlocks</span>(<span class="ident">to_send_list</span>.<span class="ident">to_vec</span>())).<span class="ident">is_err</span>() {
+                                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">ToSend::Msg</span>(<span class="ident">Message::AskForBlocks</span>(<span class="ident">to_send_list</span>.<span class="ident">to_vec</span>()))).<span class="ident">is_err</span>() {
                                     <span class="kw">break</span> <span class="lifetime">&#39;select_loop</span>;
                                 }
                             }
                         },
                         <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::BlockNotFound</span>(<span class="ident">hash</span>)) =&gt; {
                             <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::BlockNotFound&quot;</span>, {<span class="string">&quot;hash&quot;</span>: <span class="ident">hash</span>, <span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>});
-                            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::BlockNotFound</span>(<span class="ident">hash</span>)).<span class="ident">is_err</span>() {
+                            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">ToSend::Msg</span>(<span class="ident">Message::BlockNotFound</span>(<span class="ident">hash</span>))).<span class="ident">is_err</span>() {
                                 <span class="kw">break</span>;
                             }
                         },
                         <span class="prelude-val">Some</span>(<span class="ident">NodeCommand::SendOperations</span>(<span class="ident">operations</span>)) =&gt; {
                             <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::SendOperations&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;operations&quot;</span>: <span class="ident">operations</span>});
                             <span class="kw">for</span> <span class="ident">chunk</span> <span class="kw">in</span> <span class="ident">operations</span>.<span class="ident">chunks</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_operations_per_message</span> <span class="kw">as</span> <span class="ident">usize</span>) {
-                                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::Operations</span>(<span class="ident">chunk</span>.<span class="ident">into</span>())).<span class="ident">is_err</span>() {
+                                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">ToSend::Msg</span>(<span class="ident">Message::Operations</span>(<span class="ident">chunk</span>.<span class="ident">into</span>()))).<span class="ident">is_err</span>() {
                                     <span class="kw">break</span> <span class="lifetime">&#39;select_loop</span>;
                                 }
                             }
@@ -767,7 +867,7 @@
                             .<span class="ident">chunks</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_operations_per_message</span> <span class="kw">as</span> <span class="ident">usize</span>)
                             .<span class="ident">into_iter</span>()
                             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">chunk</span><span class="op">|</span> <span class="ident">chunk</span>.<span class="ident">collect</span>()) {
-                                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::OperationsAnnouncement</span>(<span class="ident">chunk</span>)).<span class="ident">is_err</span>() {
+                                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">ToSend::Msg</span>(<span class="ident">Message::OperationsAnnouncement</span>(<span class="ident">chunk</span>))).<span class="ident">is_err</span>() {
                                     <span class="kw">break</span> <span class="lifetime">&#39;select_loop</span>;
                                 }
                             }
@@ -783,7 +883,7 @@
                             .<span class="ident">chunks</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_operations_per_message</span> <span class="kw">as</span> <span class="ident">usize</span>)
                             .<span class="ident">into_iter</span>()
                             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">chunk</span><span class="op">|</span> <span class="ident">chunk</span>.<span class="ident">collect</span>()) {
-                                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::AskForOperations</span>(<span class="ident">chunk</span>)).<span class="ident">is_err</span>() {
+                                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">ToSend::Msg</span>(<span class="ident">Message::AskForOperations</span>(<span class="ident">chunk</span>))).<span class="ident">is_err</span>() {
                                     <span class="kw">break</span> <span class="lifetime">&#39;select_loop</span>;
                                 }
                             }
@@ -792,7 +892,7 @@
                             <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. send Message::SendEndorsements&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>, <span class="string">&quot;endorsements&quot;</span>: <span class="ident">endorsements</span>});
                             <span class="comment">// cut endorsement list if it exceed max_endorsements_per_message</span>
                             <span class="kw">for</span> <span class="ident">to_send_list</span> <span class="kw">in</span> <span class="ident">endorsements</span>.<span class="ident">chunks</span>(<span class="ident">MAX_ENDORSEMENTS_PER_MESSAGE</span> <span class="kw">as</span> <span class="ident">usize</span>) {
-                                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">Message::Endorsements</span>(<span class="ident">to_send_list</span>.<span class="ident">to_vec</span>())).<span class="ident">is_err</span>() {
+                                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">try_send_to_node</span>(<span class="kw-2">&amp;</span><span class="ident">writer_command_tx</span>, <span class="ident">ToSend::Msg</span>(<span class="ident">Message::Endorsements</span>(<span class="ident">to_send_list</span>.<span class="ident">to_vec</span>()))).<span class="ident">is_err</span>() {
                                     <span class="kw">break</span> <span class="lifetime">&#39;select_loop</span>;
                                 }
                             }
@@ -810,7 +910,7 @@
                     <span class="macro">debug!</span>(<span class="string">&quot;timer-based asking node_id={} for peer list&quot;</span>, <span class="self">self</span>.<span class="ident">node_id</span>);
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop. timer_ask_peer_list&quot;</span>, {<span class="string">&quot;node_id&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>});
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;node_worker.run_loop.select.timer send Message::AskPeerList&quot;</span>, {<span class="string">&quot;node&quot;</span>: <span class="self">self</span>.<span class="ident">node_id</span>});
-                    <span class="ident">writer_command_tx</span>.<span class="ident">send</span>(<span class="ident">Message::AskPeerList</span>).<span class="kw">await</span>.<span class="ident">map_err</span>(
+                    <span class="ident">writer_command_tx</span>.<span class="ident">send</span>(<span class="ident">ToSend::Msg</span>(<span class="ident">Message::AskPeerList</span>)).<span class="kw">await</span>.<span class="ident">map_err</span>(
                         <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">NetworkError::ChannelError</span>(<span class="string">&quot;writer send ask peer list failed&quot;</span>.<span class="ident">into</span>())
                     )<span class="question-mark">?</span>;
                     <span class="macro">trace!</span>(<span class="string">&quot;after sending Message::AskPeerList from writer_command_tx in node_worker run_loop&quot;</span>);
@@ -848,5 +948,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

@@ -252,6 +252,7 @@
 <span id="247">247</span>
 <span id="248">248</span>
 <span id="249">249</span>
+<span id="250">250</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Declaration of the public and internal Events and Commands used by</span>
 <span class="doccomment">//! `massa-network` that allow external communication with other nodes.</span>
 <span class="doccomment">//!</span>
@@ -339,9 +340,9 @@
     <span class="doccomment">/// Send given peer list to node.</span>
     <span class="ident">SendPeerList</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Send that block to node.</span>
-    <span class="ident">SendBlock</span>(<span class="ident">Block</span>),
+    <span class="ident">SendBlock</span>(<span class="ident">BlockId</span>),
     <span class="doccomment">/// Send the header of a block to a node.</span>
-    <span class="ident">SendBlockHeader</span>(<span class="ident">SignedHeader</span>),
+    <span class="ident">SendBlockHeader</span>(<span class="ident">BlockId</span>),
     <span class="doccomment">/// Ask for a block from that node.</span>
     <span class="ident">AskForBlocks</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Close the node worker.</span>
@@ -368,7 +369,7 @@
     <span class="doccomment">/// Node we are connected to sent peer list</span>
     <span class="ident">ReceivedPeerList</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Node we are connected to sent block</span>
-    <span class="ident">ReceivedBlock</span>(<span class="ident">Block</span>),
+    <span class="ident">ReceivedBlock</span>(<span class="ident">Block</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Node we are connected to sent block header</span>
     <span class="ident">ReceivedBlockHeader</span>(<span class="ident">SignedHeader</span>),
     <span class="doccomment">/// Node we are connected to asks for a block.</span>
@@ -400,12 +401,12 @@
     <span class="doccomment">/// Send that block to node.</span>
     <span class="ident">SendBlock</span> {
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">block</span>: <span class="ident">Block</span>,
+        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
     },
     <span class="doccomment">/// Send a header to a node.</span>
     <span class="ident">SendBlockHeader</span> {
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
-        <span class="ident">header</span>: <span class="ident">SignedHeader</span>,
+        <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
     },
     <span class="comment">// (PeerInfo, Vec &lt;(NodeId, bool)&gt;) peer info + list of associated Id nodes in connection out (true)</span>
     <span class="ident">GetPeers</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Peers</span><span class="op">&gt;</span>),
@@ -462,6 +463,7 @@
     <span class="ident">ReceivedBlock</span> {
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
         <span class="ident">block</span>: <span class="ident">Block</span>,
+        <span class="ident">serialized</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// A block header was received</span>
     <span class="ident">ReceivedBlockHeader</span> {
@@ -502,5 +504,5 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NetworkManagementCommand</span> {}
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

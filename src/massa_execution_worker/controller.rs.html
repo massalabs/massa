@@ -201,17 +201,6 @@
 <span id="196">196</span>
 <span id="197">197</span>
 <span id="198">198</span>
-<span id="199">199</span>
-<span id="200">200</span>
-<span id="201">201</span>
-<span id="202">202</span>
-<span id="203">203</span>
-<span id="204">204</span>
-<span id="205">205</span>
-<span id="206">206</span>
-<span id="207">207</span>
-<span id="208">208</span>
-<span id="209">209</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This module implements an execution controller.</span>
@@ -225,10 +214,9 @@
 };
 <span class="kw">use</span> <span class="ident">massa_ledger::LedgerEntry</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
-<span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Address</span>;
 <span class="kw">use</span> <span class="ident">massa_models::OperationId</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">Slot</span>};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">BlockId</span>, <span class="ident">Slot</span>};
 <span class="kw">use</span> <span class="ident">parking_lot</span>::{<span class="ident">Condvar</span>, <span class="ident">Mutex</span>, <span class="ident">RwLock</span>};
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
@@ -239,9 +227,9 @@
     <span class="doccomment">/// set stop to true to stop the thread</span>
     <span class="kw">pub</span> <span class="ident">stop</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// list of newly finalized blocks, indexed by slot</span>
-    <span class="kw">pub</span> <span class="ident">finalized_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, (<span class="ident">BlockId</span>, <span class="ident">Block</span>)<span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">finalized_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// new blockclique (if there is a new one), blocks indexed by slot</span>
-    <span class="kw">pub</span> <span class="ident">new_blockclique</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, (<span class="ident">BlockId</span>, <span class="ident">Block</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">new_blockclique</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// queue for readonly execution requests and response mpscs to send back their outputs</span>
     <span class="kw">pub</span> <span class="ident">readonly_requests</span>: <span class="ident">RequestQueue</span><span class="op">&lt;</span><span class="ident">ReadOnlyExecutionRequest</span>, <span class="ident">ExecutionOutput</span><span class="op">&gt;</span>,
 }
@@ -287,23 +275,13 @@
     <span class="doccomment">/// * blockclique: new blockclique, replaces the current one in the input</span>
     <span class="kw">fn</span> <span class="ident">update_blockclique_status</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">finalized_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
-        <span class="ident">blockclique</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
+        <span class="ident">finalized_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
+        <span class="ident">new_blockclique</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
     ) {
-        <span class="comment">// index newly finalized blocks by slot</span>
-        <span class="kw">let</span> <span class="ident">mapped_finalized_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">finalized_blocks</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">b_id</span>, <span class="ident">b</span>)<span class="op">|</span> (<span class="ident">b</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>, (<span class="ident">b_id</span>, <span class="ident">b</span>)))
-            .<span class="ident">collect</span>();
-        <span class="comment">// index blockclique by slot</span>
-        <span class="kw">let</span> <span class="ident">mapped_blockclique</span> <span class="op">=</span> <span class="ident">blockclique</span>
-            .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">b_id</span>, <span class="ident">b</span>)<span class="op">|</span> (<span class="ident">b</span>.<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>, (<span class="ident">b_id</span>, <span class="ident">b</span>)))
-            .<span class="ident">collect</span>();
         <span class="comment">// update input data</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input_data</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">input_data</span>.<span class="number">1</span>.<span class="ident">lock</span>();
-        <span class="ident">input_data</span>.<span class="ident">new_blockclique</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">mapped_blockclique</span>); <span class="comment">// replace blockclique</span>
-        <span class="ident">input_data</span>.<span class="ident">finalized_blocks</span>.<span class="ident">extend</span>(<span class="ident">mapped_finalized_blocks</span>); <span class="comment">// append finalized blocks</span>
+        <span class="ident">input_data</span>.<span class="ident">new_blockclique</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">new_blockclique</span>); <span class="comment">// replace blockclique</span>
+        <span class="ident">input_data</span>.<span class="ident">finalized_blocks</span>.<span class="ident">extend</span>(<span class="ident">finalized_blocks</span>); <span class="comment">// append finalized blocks</span>
         <span class="self">self</span>.<span class="ident">input_data</span>.<span class="number">0</span>.<span class="ident">notify_one</span>(); <span class="comment">// wake up VM loop</span>
     }
 
@@ -422,5 +400,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>
