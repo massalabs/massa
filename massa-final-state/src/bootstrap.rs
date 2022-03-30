@@ -1,6 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Provides serializable strucutres for bootstrapping the FinalState
+//! Provides serializable structures for bootstrapping the FinalState
 
 use massa_async_pool::AsyncPoolBootstrap;
 use massa_ledger::FinalLedgerBootstrapState;
@@ -15,7 +15,7 @@ pub struct FinalStateBootstrap {
     pub(crate) slot: Slot,
     /// final ledger
     pub(crate) ledger: FinalLedgerBootstrapState,
-    /// aysnc pool
+    /// async pool
     pub(crate) async_pool: AsyncPoolBootstrap,
 }
 

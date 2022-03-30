@@ -3,7 +3,7 @@
 //! know in the network.
 //!
 //! # Operations
-//! Same as for wanted/known blocks, we remember here in cache wich node asked
+//! Same as for wanted/known blocks, we remember here in cache which node asked
 //! for operations and which operations he seem to already know.
 
 use massa_models::{

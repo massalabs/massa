@@ -1,6 +1,6 @@
 //! Contains the implementation of the life cycle of operations
 //!
-//! Impement the propagation algorithm written here [redirect to github]
+//! Implement the propagation algorithm written here [redirect to github]
 //! (https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779).
 //!
 //! 1) get batches of operations ids
@@ -127,7 +127,7 @@ impl ProtocolWorker {
     }
 
     /// On full operations are received from the network,
-    /// - Uptate the cache `received_operations` ids and each
+    /// - Update the cache `received_operations` ids and each
     ///   `node_info.known_operations`
     /// - Notify the operations to he local node, to be propagated
     pub(crate) async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {

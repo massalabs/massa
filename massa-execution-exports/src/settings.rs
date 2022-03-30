@@ -4,7 +4,7 @@
 
 use massa_time::MassaTime;
 
-/// Executio module configuration
+/// Execution module configuration
 #[derive(Debug, Clone)]
 pub struct ExecutionConfig {
     /// read-only execution request queue length

@@ -7,7 +7,7 @@
 //!
 //! * setting: read from user settings file
 //! * config: merge of settings and hardcoded configuration that shouldn't be
-//!           modifyed by user.
+//!           modified by user.
 //!
 //! This file is allowed to use a lot of constants from `massa-models` as all
 //! other files named `settings.rs` or `config.rs`.
@@ -16,7 +16,7 @@
 //! node. You can get almost every configuration from that one.
 //!
 //! `From<ConsensusSettings> impl *`:
-//! - `ConsensusConfig`: Create a config merging user settings andhardcoded values
+//! - `ConsensusConfig`: Create a config merging user settings and hardcoded values
 //!                      (see `/massa-models/node_configuration/*)
 //!
 //! `From<&ConsensusConfig> impl *`:
@@ -153,7 +153,7 @@ pub struct ConsensusConfig {
     pub ledger_cache_capacity: u64,
     pub ledger_flush_interval: Option<MassaTime>,
     pub ledger_reset_at_startup: bool,
-    /// Inital file path that describe the ledger to merge in `ledger_path` after starting
+    /// Initial file path that describe the ledger to merge in `ledger_path` after starting
     pub initial_ledger_path: PathBuf,
     /// Reward for the creation of a block
     pub block_reward: Amount,
@@ -180,7 +180,7 @@ pub struct ConsensusConfig {
 
 #[cfg(feature = "testing")]
 #[derive(Default, Debug)]
-/// In testing mode if you create a conguration with tempfiles
+/// In testing mode if you create a configuration with tempfiles
 /// we need to keep inside this structure the `TempDir` and
 /// `NamedTempFile` here since the end of the test.
 /// We don't need to move or clone, only the main cfg need that and
@@ -328,7 +328,7 @@ impl From<&ConsensusSettings> for ConsensusConfig {
     fn from(settings: &ConsensusSettings) -> Self {
         #[cfg(feature = "testing")]
         /// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialisation.
+        /// test values to be used for a default initialization.
         use massa_models::constants::default_testing::*;
         #[cfg(not(feature = "testing"))]
         use massa_models::constants::*;
@@ -389,7 +389,7 @@ impl From<ConsensusSettings> for ConsensusConfig {
     fn from(settings: ConsensusSettings) -> Self {
         #[cfg(feature = "testing")]
         /// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialisation.
+        /// test values to be used for a default initialization.
         use massa_models::constants::default_testing::*;
         #[cfg(not(feature = "testing"))]
         use massa_models::constants::*;
@@ -451,12 +451,12 @@ impl From<ConsensusSettings> for ConsensusConfig {
 ///
 /// Use the feature testing to load mocked default variable
 /// This is default variable but the configuration is a dynamic
-/// configuration passed as dependences with no particular lifetime
+/// configuration passed as dependencies with no particular lifetime
 #[cfg(feature = "testing")]
 impl Default for ConsensusSettings {
     fn default() -> Self {
         /// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialisation.
+        /// test values to be used for a default initialization.
         use massa_models::constants::default_testing::*;
         Self {
             staking_keys_path: Default::default(),
@@ -529,10 +529,10 @@ impl From<&std::path::Path> for ConsensusConfig {
  * ```
  *
  * You can also look at the divers `default()` implementation bellow. For example that
- * one is used to initialise the _default paths_ :
+ * one is used to initialize the _default paths_ :
  *
  * ```ignore
- * let cfg = ConensusConfig {
+ * let cfg = ConsensusConfig {
  *     max_discarded_blocks: 21,
  *     ..ConsensusConfig::default_with_paths(),
  * };
@@ -594,9 +594,9 @@ impl Default for ConsensusConfig {
 
 #[cfg(feature = "testing")]
 /**
- * The following implementation correspond to tools used in unit tests
- * It allow you to get a default `ConsensusConfig` (that isn't possible without
- * the feature *testing*) with already setted/default `initial_ledger_path`,
+ * The following implementation corresponds to tools used in unit tests
+ * It allows you to get a default `ConsensusConfig` (that isn't possible without
+ * the feature *testing*) with already set/default `initial_ledger_path`,
  * `staking_keys_path` and `initial_rolls_path`.
  *
  * Used to radically reduce code duplication in unit tests of Consensus.

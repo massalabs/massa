@@ -54,7 +54,7 @@ impl AsyncPool {
         }
     }
 
-    /// Applies precompiled AsyncPoolChanges to the pool without checking for overflows.
+    /// Applies pre-compiled AsyncPoolChanges to the pool without checking for overflows.
     /// This function is used when applying pre-compiled AsyncPoolChanges to an AsyncPool.
     ///
     /// # arguments

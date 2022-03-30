@@ -2,10 +2,10 @@
 
 //! This module represents the context in which the VM executes bytecode.
 //! It provides information such as the current call stack.
-//! It also maintians a "speculative" ledger state which is a virtual ledger
+//! It also maintains a "speculative" ledger state which is a virtual ledger
 //! as seen after applying everything that happened so far in the context.
 //! More generally, the context acts only on its own state
-//! and does not write anything persistent to the conensus state.
+//! and does not write anything persistent to the consensus state.
 
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_ledger::SpeculativeLedger;
@@ -392,7 +392,7 @@ impl ExecutionContext {
 
     /// Transfers parallel coins from one address to another.
     /// No changes are retained in case of failure.
-    /// Spending is only allowed from existing addresses we have write acess on
+    /// Spending is only allowed from existing addresses we have write access on
     ///
     /// # Arguments
     /// * from_addr: optional spending address (use None for pure coin creation)
@@ -433,7 +433,7 @@ impl ExecutionContext {
     pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
         if let Err(e) = self.transfer_parallel_coins(None, Some(msg.sender), msg.coins) {
             debug!(
-                "async message cancel: reimbursment of {} failed: {}",
+                "async message cancel: reimbursement of {} failed: {}",
                 msg.sender, e
             );
         }

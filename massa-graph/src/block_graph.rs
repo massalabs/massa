@@ -113,7 +113,7 @@ enum BlockStatus {
         /// Used to limit and sort the number of blocks/headers wainting for dependencies
         sequence_number: u64,
     },
-    /// The block was checked and incluced in the blockgraph
+    /// The block was checked and included in the blockgraph
     Active(Box<ActiveBlock>),
     /// The block was discarded and is kept to avoid reprocessing it
     Discarded {
@@ -268,7 +268,7 @@ pub struct BlockGraph {
     sequence_counter: u64,
     /// Every block we know about
     block_statuses: Map<BlockId, BlockStatus>,
-    /// Ids of incomming blocks/headers
+    /// Ids of incoming blocks/headers
     incoming_index: Set<BlockId>,
     /// ids of waiting for slot blocks/headers
     waiting_for_slot_index: Set<BlockId>,
@@ -387,7 +387,7 @@ enum BlockOperationsCheckOutcome {
 /// # Arguments
 /// * cfg: consensus configuration
 /// * serialization_context: ref to a SerializationContext instance
-/// * thread_number: thread in wich we want a genesis block
+/// * thread_number: thread in which we want a genesis block
 pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> Result<(BlockId, Block)> {
     let private_key = cfg.genesis_key;
     let public_key = derive_public_key(&private_key);
@@ -3266,7 +3266,7 @@ impl BlockGraph {
         let mut retain_active = self.list_required_active_blocks()?;
 
         // retain extra history according to the config
-        // this is useful to avoid desync on temporary connection loss
+        // this is useful to avoid desynchronization on temporary connection loss
         for a_block in self.active_index.iter() {
             if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(a_block) {
                 let (_b_id, latest_final_period) =

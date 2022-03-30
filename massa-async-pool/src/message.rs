@@ -37,7 +37,7 @@ pub struct AsyncMessage {
     pub max_gas: u64,
 
     /// Gas price to take into account when executing the message.
-    /// max_gas * gas_price are burned by the sender when the emessage is sent.
+    /// max_gas * gas_price are burned by the sender when the the message is sent.
     pub gas_price: Amount,
 
     /// Coins sent from the sender to the target address of the message.

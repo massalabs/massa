@@ -58,7 +58,7 @@ pub struct NetworkSettings {
 /// Limit the current connections for a given peer type as a whole
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct PeerTypeConnectionConfig {
-    /// max number of incomming connection
+    /// max number of incoming connection
     pub max_in_connections: usize,
     /// target number of outgoing connections
     pub target_out_connections: usize,

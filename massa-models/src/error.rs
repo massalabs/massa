@@ -27,7 +27,7 @@ pub enum ModelsError {
     /// checked operation error
     CheckedOperationError(String),
     /// invalid version identifier: {0}
-    InavalidVersionError(String),
+    InvalidVersionError(String),
     /// invalid ledger change: {0}
     InvalidLedgerChange(String),
     /// Time overflow error

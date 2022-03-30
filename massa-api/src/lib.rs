@@ -197,7 +197,7 @@ pub trait Endpoints {
         _: Vec<SignedOperation>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>>;
 
-    /// Get events optionnally filtered by:
+    /// Get events optionally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address

@@ -36,7 +36,7 @@
 //!
 //! NodeWorker      NetworkWorker          ProtocolWorker
 //!    |               |                         |
-//!    +------------------------------------------------------- Receive a batch of annoucemnt
+//!    +------------------------------------------------------- Receive a batch of announcement
 //!    .               |                         |              
 //!    +-------------->|                         |              NetworkWorker react on previous event. Forward to protocol.
 //!    |               +------------------------>#              - Check in the protocol if we already have operations
@@ -67,7 +67,7 @@
 //! ```
 //!
 //! Look at `massa-protocol-worker/src/node-info.rs` to look further how we
-//! remember wich node know what.
+//! remember which node know what.
 
 use crate::{BootstrapPeers, ConnectionClosureReason, Peers};
 use massa_models::{

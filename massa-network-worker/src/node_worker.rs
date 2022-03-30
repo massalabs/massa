@@ -121,7 +121,7 @@ impl NodeWorker {
                 Ok(())
             }
             Err(TrySendError::Closed(_)) => {
-                debug!("failed sending message deconnected {}.", self.node_id);
+                debug!("failed sending message disconnected {}.", self.node_id);
                 Err(NetworkError::ChannelError(
                     "failed sending message to node: channel closed".into(),
                 ))

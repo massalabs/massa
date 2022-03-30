@@ -185,7 +185,7 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(args = "PathToBytecode MaxGas GasPrice Address",),
-        message = "execute byte code, address is optionnal. Nothing is really executed on chain"
+        message = "execute byte code, address is optional. Nothing is really executed on chain"
     )]
     read_only_smart_contract,
 
@@ -550,7 +550,7 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            client_warning!("this operation may be rejected due to insuffisant balance");
+                                            client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
                                     None => {
@@ -590,7 +590,7 @@ impl Command {
                                 if info.ledger_info.candidate_ledger_info.balance < fee
                                     || roll_count > info.rolls.candidate_rolls
                                 {
-                                    client_warning!("this operation may be rejected due to insuffisant balance or roll count");
+                                    client_warning!("this operation may be rejected due to insufficient balance or roll count");
                                 }
                             }
                             None => client_warning!(format!("address {} not found", addr)),
@@ -627,7 +627,7 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            client_warning!("this operation may be rejected due to insuffisant balance");
+                                            client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
                                     None => {
@@ -705,7 +705,7 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            client_warning!("this operation may be rejected due to insuffisant balance");
+                                            client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
                                     None => {
@@ -726,7 +726,7 @@ impl Command {
                         Err(e) => bail!("RpcError: {}", e),
                     };
                     if data.len() > max_block_size as usize / 2 {
-                        client_warning!("bytecode size exeeded half of the maximum size of a block, operation will certainly be rejected");
+                        client_warning!("bytecode size exceeded half of the maximum size of a block, operation will certainly be rejected");
                     }
                 }
 

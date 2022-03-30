@@ -76,7 +76,7 @@ pub struct OperationPool {
     /// one vec per thread
     ops_by_thread_and_interest:
         Vec<BTreeSet<(std::cmp::Reverse<num::rational::Ratio<u64>>, OperationId)>>, // [thread][order by: (rev rentability, OperationId)]
-    /// Maps Addres -> Op id
+    /// Maps Address -> Op id
     ops_by_address: OperationIndex,
     /// latest final blocks periods
     last_final_periods: Vec<u64>,

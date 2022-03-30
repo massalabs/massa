@@ -19,7 +19,7 @@
     max_final_events = 100
     # maximum length of the read-only execution requests queue
     readonly_queue_length = 10
-    # by how many milliseconds shoud the execution lag behind real time
+    # by how many milliseconds should the execution lag behind real time
     # higher values increase speculative execution lag but improve performance
     cursor_delay = 0
 
@@ -50,14 +50,14 @@
     ledger_path = "storage/ledger"
     # size of the ledger kept in cache
     ledger_cache_capacity = 1048576
-    # [optionnal] the ledger is saved on disk every ledger_flush_interval
+    # [optional] the ledger is saved on disk every ledger_flush_interval
     ledger_flush_interval = 10000
     # whether to overwrite the ledger at start
     ledger_reset_at_startup = true
     # path to the initial consensus balance ledger
     initial_ledger_path = "base_config/initial_ledger.json"
 
-    # max millis to wait while sending an event before dropping it
+    # max milliseconds to wait while sending an event before dropping it
     max_send_wait = 500
     # useless blocks are pruned every block_db_prune_interval ms
     block_db_prune_interval = 5000
@@ -75,9 +75,9 @@
     max_item_return_count = 100
 
 [protocol]
-    # timeout after which without answer a hanshake is ended
+    # timeout after which without answer a handshake is ended
     message_timeout = 5000
-    # timeout after whick we consider a node does not have the block we asked for
+    # timeout after which we consider a node does not have the block we asked for
     ask_block_timeout = 10000
     # max cache size for which blocks a foreign node knows about
     max_node_known_blocks_size = 1024
@@ -85,7 +85,7 @@
     max_node_wanted_blocks_size = 1024
     # max number of blocks we can ask simultaneously per node
     max_simultaneous_ask_blocks_per_node = 2048
-    # max millis to wait while sending an event before dropping it
+    # max milliseconds to wait while sending an event before dropping it
     max_send_wait = 500
     # max cache size for which operations a foreign node knows about
     max_known_ops_size = 10024
@@ -122,7 +122,7 @@
     max_banned_peers = 100
     # max number of advertized peers
     max_advertise_length = 10000
-    # peers are dumped to file every peers_file_dump_interval millis
+    # peers are dumped to file every peers_file_dump_interval milliseconds
     peers_file_dump_interval = 10000
     # max size of sent messages
     max_message_size = 1048576000
@@ -162,13 +162,13 @@
         ["158.69.120.215:31245", "5QbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c"],
         ["158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"]
     ]
-    # [optionnal] port on which to listen for incoming bootstrap requests
+    # [optional] port on which to listen for incoming bootstrap requests
     bind = "[::]:31245"
     # timeout to establish a bootstrap connection
     connect_timeout = 15000
     # delay in milliseconds to wait between consecutive bootstrap attempts
     retry_delay = 5000
-    # if ping is too high bootstrap will be inturrupted after max_ping milliseconds
+    # if ping is too high bootstrap will be interrupted after max_ping milliseconds
     max_ping = 10000
     # timeout for incoming message readout
     read_timeout = 10000
@@ -176,9 +176,9 @@
     write_timeout = 10000
     # when enabled, apply a correction to the local computer clock to match bootstrap server time
     enable_clock_synchronization = false
-    # [server] data is cached for cache duration millis
+    # [server] data is cached for cache duration milliseconds
     cache_duration = 15000
-    # max number of simulataneous bootstraps for server
+    # max number of simultaneous bootstraps for server
     max_simultaneous_bootstraps = 2
     # max size of recently bootstrapped IP cache
     ip_list_max_size = 10000

@@ -52,7 +52,7 @@ pub fn get_block_slot_timestamp(
         .or(Err(ModelsError::TimeOverflowError))
 }
 
-/// Returns the thread and block period index of the latest block slot at a given timstamp (inclusive), if any happened
+/// Returns the thread and block period index of the latest block slot at a given timestamp (inclusive), if any happened
 ///
 /// # Arguments
 /// * thread_count: number of threads.

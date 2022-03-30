@@ -22,7 +22,7 @@ pub mod commands;
 
 pub mod events;
 
-// Usefull defined types
+// Useful defined types
 type SelectionDraws = Vec<(Slot, (Address, Vec<Address>))>;
 
 pub mod tools;

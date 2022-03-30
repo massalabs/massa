@@ -64,7 +64,7 @@ pub(crate) struct ExecutionState {
 }
 
 impl ExecutionState {
-    /// Create a new execution state. This should be called only once at the start of the executon worker.
+    /// Create a new execution state. This should be called only once at the start of the execution worker.
     ///
     /// # arguments
     /// * config: execution config
@@ -88,7 +88,7 @@ impl ExecutionState {
             Default::default(),
         )));
 
-        // Instantiate the interface providing ABI access to the VM, share the execution contex with it
+        // Instantiate the interface providing ABI access to the VM, share the execution context with it
         let execution_interface = Box::new(InterfaceImpl::new(
             config.clone(),
             execution_context.clone(),
@@ -202,7 +202,7 @@ impl ExecutionState {
                 // the slot number and block ID still match. Continue scanning
                 continue;
             }
-            // mismatch found: stop scannig and return the cutoff index
+            // mismatch found: stop scanning and return the cutoff index
             truncate_at = Some(hist_index);
             break;
         }
@@ -555,7 +555,7 @@ impl ExecutionState {
         // set the execution context for execution
         *context_guard!(self) = execution_context;
 
-        // run the intepreter
+        // run the interpreter
         massa_sc_runtime::run_main(&bytecode, max_gas, &*self.execution_interface)
             .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
 
@@ -610,7 +610,7 @@ impl ExecutionState {
         (final_entry, active_entry)
     }
 
-    /// Gets execution events optionnally filtered by:
+    /// Gets execution events optionally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address

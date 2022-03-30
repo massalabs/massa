@@ -700,7 +700,7 @@ impl PeerInfoDatabase {
             .or_insert_with(|| PeerInfo::new(*ip, false))
             .peer_type;
 
-        // we need to first check if there is a global slot avaible
+        // we need to first check if there is a global slot available
         if self.is_max_in_connection_count_reached(peer_type) {
             return Err(NetworkError::PeerConnectionError(
                 NetworkConnectionErrorType::MaxPeersConnectionReached(*ip),
@@ -714,7 +714,7 @@ impl PeerInfoDatabase {
                 )
             })?; // peer was inserted just before
 
-            // is there a attempt slot avaible
+            // is there a attempt slot available
             if peer.banned {
                 massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
                 peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);

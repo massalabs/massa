@@ -36,7 +36,7 @@ use tracing::{debug, info, warn};
 pub struct ConsensusWorker {
     /// Consensus Configuration
     cfg: ConsensusConfig,
-    /// Genesis blocks werecreated with that public key.
+    /// Genesis blocks were created with that public key.
     genesis_public_key: PublicKey,
     // Associated channels, sender and receivers
     channels: ConsensusWorkerChannels,
@@ -648,7 +648,7 @@ impl ConsensusWorker {
     /// Manages given consensus command.
     ///
     /// # Argument
-    /// * cmd: consens command to process
+    /// * cmd: consensus command to process
     async fn process_consensus_command(&mut self, cmd: ConsensusCommand) -> Result<()> {
         match cmd {
             ConsensusCommand::GetBlockGraphStatus {
@@ -1127,7 +1127,7 @@ impl ConsensusWorker {
                         );
                     } else {
                         // not found in consensus
-                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensu_not_found", { "hash": block_hash});
+                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_not_found", { "hash": block_hash});
                         results.insert(block_hash, None);
                     }
                 }
@@ -1286,7 +1286,7 @@ impl ConsensusWorker {
                     None => continue,
                 };
                 if self.endorsed_slots.contains(&block_slot) {
-                    // skip already endorsed (to prevent double stake pernalty)
+                    // skip already endorsed (to prevent double stake penalty)
                     continue;
                 }
                 // check that the block to endorse is at most one period before the last slot

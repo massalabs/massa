@@ -82,7 +82,7 @@ impl ExecutionController for ExecutionControllerImpl {
         self.input_data.0.notify_one(); // wake up VM loop
     }
 
-    /// Get the generated execution events, optionnally filtered by:
+    /// Get the generated execution events, optionally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address
@@ -119,7 +119,7 @@ impl ExecutionController for ExecutionControllerImpl {
     }
 
     /// Executes a readonly request
-    /// Read-only requests do not modify consesnsus state
+    /// Read-only requests do not modify consensus state
     fn execute_readonly_request(
         &self,
         req: ReadOnlyExecutionRequest,
@@ -127,7 +127,7 @@ impl ExecutionController for ExecutionControllerImpl {
         let resp_rx = {
             let mut input_data = self.input_data.1.lock();
 
-            // if the read-onlyi queue is already full, return an error
+            // if the read-only queue is already full, return an error
             if input_data.readonly_requests.is_full() {
                 return Err(ExecutionError::ChannelError(
                     "too many queued readonly requests".into(),

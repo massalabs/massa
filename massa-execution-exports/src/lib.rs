@@ -28,7 +28,7 @@
 //! ## controller_traits.rs
 //! Defines the ExecutionManager and ExecutionController traits for interacting with the execution worker.
 //!
-//! ## erorrs.rs
+//! ## error.rs
 //! Defines error types for the crate.
 //!
 //! ## event_store.rs

@@ -17,7 +17,7 @@
 //! ```json
 //! {
 //!     "sender": "xxxx",  // address that sent the message and spent max_gas*gas_price+coins on emission
-//!     "slot": {"period": 123455, "thread": 11},  // slto at which the message was emitted
+//!     "slot": {"period": 123455, "thread": 11},  // slot at which the message was emitted
 //!     "emission_index": 212,  // index of the message emitted in this slot
 //!     "destination": "xxxx",  // target address
 //!     "handler": "handle_message",  // name of the handler function to call in the target SC
@@ -32,7 +32,7 @@
 //!
 //! ## How to send a message during bytecode execution
 //!
-//! * messages are sent using an ABI: `send_message(target_addrress, target_handler, validity_start, validity_end, max_gas, gas_price, coins, data: JSON string) -> Result<(), ABIReturnError>`. Note that data has a config defined max_async_message_data_size.
+//! * messages are sent using an ABI: `send_message(target_address, target_handler, validity_start, validity_end, max_gas, gas_price, coins, data: JSON string) -> Result<(), ABIReturnError>`. Note that data has a config defined max_async_message_data_size.
 //! * when called, this ABI does this:
 //!   * it consumes `compute_gas_cost_of_message_storage(context.current_slot, validity_end_slot)` of gas in the current execution. This allows making the message emission more gas-consuming when it requires storing the message in queue for longer
 //!   * it consumes `max_gas * gas_price + coins` coins from the sender
@@ -79,7 +79,7 @@
 //! Represents and manipulates changes (message additions/deletions) in the AsyncPool.
 //!
 //! ## bootstrap.rs
-//! Provides serializable strucutres and tools for bootstrapping the async pool.  
+//! Provides serializable structures and tools for bootstrapping the async pool.  
 //!
 //! ## Test exports
 //!

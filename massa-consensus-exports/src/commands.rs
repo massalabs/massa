@@ -16,7 +16,7 @@ use tokio::sync::oneshot;
 
 use crate::{error::ConsensusResult as Result, ConsensusError, SelectionDraws};
 
-/// Commands that can be proccessed by consensus.
+/// Commands that can be processed by consensus.
 #[derive(Debug)]
 pub enum ConsensusCommand {
     /// Returns through a channel current blockgraph without block operations.
