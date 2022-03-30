@@ -500,6 +500,18 @@
 <span id="495">495</span>
 <span id="496">496</span>
 <span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.</span>
@@ -995,6 +1007,18 @@
         });
         <span class="ident">execution_context</span>.<span class="ident">created_message_index</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
         <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Returns the period of the current execution slot</span>
+    <span class="kw">fn</span> <span class="ident">get_current_period</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">slot</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">slot</span>.<span class="ident">period</span>)
+    }
+
+    <span class="doccomment">/// Returns the thread of the current execution slot</span>
+    <span class="kw">fn</span> <span class="ident">get_current_thread</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">slot</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">slot</span>.<span class="ident">thread</span>)
     }
 }
 </code></pre></div>
