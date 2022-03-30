@@ -7,6 +7,7 @@ use massa_models::{
     node::NodeId,
     operation::{OperationIds, Operations},
     prehash::{Map, Set},
+    Slot,
 };
 
 use massa_models::{
@@ -25,6 +26,8 @@ pub enum ProtocolEvent {
     ReceivedBlock {
         /// corresponding id
         block_id: BlockId,
+        /// slot
+        slot: Slot,
         /// operations in the block by (index, validity end period)
         operation_set: Map<OperationId, (usize, u64)>,
         /// endorsements in the block with index

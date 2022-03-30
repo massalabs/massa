@@ -615,7 +615,7 @@ impl ConsensusWorker {
         // Add to shared storage
         self.block_db
             .storage
-            .store_block(block_id, block, serialized_block);
+            .store_block(block_id, block.clone(), serialized_block);
 
         info!(
             "Staked block {} with address {}, at cycle {}, period {}, thread {}",
@@ -629,6 +629,7 @@ impl ConsensusWorker {
         // add block to db
         self.block_db.incoming_block(
             block_id,
+            block.header.content.slot,
             operation_set,
             endorsement_ids,
             &mut self.pos,
@@ -1109,6 +1110,7 @@ impl ConsensusWorker {
         match event {
             ProtocolEvent::ReceivedBlock {
                 block_id,
+                slot,
                 operation_set,
                 endorsement_ids,
             } => {
@@ -1118,6 +1120,7 @@ impl ConsensusWorker {
                 );
                 self.block_db.incoming_block(
                     block_id,
+                    slot,
                     operation_set,
                     endorsement_ids,
                     &mut self.pos,

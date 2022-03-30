@@ -53,10 +53,12 @@ impl MockProtocolController {
     pub async fn receive_block(&mut self, block: Block) {
         let block_id = block.header.content.compute_id().unwrap();
         let serialize_block = block.to_bytes_compact().expect("Fail to serialize block.");
-        self.storage.store_block(block_id, block, serialize_block);
+        self.storage
+            .store_block(block_id, block.clone(), serialize_block);
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlock {
                 block_id,
+                slot: block.header.content.slot,
                 operation_set: Default::default(),
                 endorsement_ids: Default::default(),
             })

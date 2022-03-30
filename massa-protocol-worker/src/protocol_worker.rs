@@ -1258,6 +1258,7 @@ impl ProtocolWorker {
                     self.stop_asking_blocks(set)?;
                     self.send_protocol_event(ProtocolEvent::ReceivedBlock {
                         block_id,
+                        slot: block.header.content.slot,
                         operation_set,
                         endorsement_ids,
                     })
