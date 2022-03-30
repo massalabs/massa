@@ -3,8 +3,7 @@ use massa_graph::{BlockGraphExport, BootstrapableGraph, ExportBlockStatus, Statu
 use massa_models::{address::AddressState, api::EndorsementInfo, EndorsementId, OperationId};
 use massa_models::{clique::Clique, stats::ConsensusStats};
 use massa_models::{
-    Address, Block, BlockId, OperationSearchResult, SignedEndorsement, Slot,
-    StakersCycleProductionStats,
+    Address, BlockId, OperationSearchResult, SignedEndorsement, Slot, StakersCycleProductionStats,
 };
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_protocol_exports::ProtocolEventReceiver;
@@ -29,7 +28,7 @@ use crate::{
 pub struct ConsensusCommandSender(pub mpsc::Sender<ConsensusCommand>);
 
 impl ConsensusCommandSender {
-    /// Gets all the aviable information on the block graph returning a Blockgraphexport.
+    /// Gets all the available information on the block graph returning a Blockgraphexport.
     ///
     /// # Arguments
     /// * slot_start: optional slot start for slot-based filtering (included).
@@ -104,34 +103,6 @@ impl ConsensusCommandSender {
         response_rx.await.map_err(|_| {
             ConsensusError::ReceiveChannelError(
                 "consensus command get_block_status response read error".to_string(),
-            )
-        })
-    }
-
-    /// Gets the whole block corresponding to given hash.
-    ///
-    /// # Arguments
-    /// * hash: hash corresponding to the block we want.
-    pub async fn get_active_block(
-        &self,
-        block_id: BlockId,
-    ) -> Result<Option<Block>, ConsensusError> {
-        let (response_tx, response_rx) = oneshot::channel::<Option<Block>>();
-        massa_trace!("consensus.consensus_controller.get_active_block", {});
-        self.0
-            .send(ConsensusCommand::GetActiveBlock {
-                block_id,
-                response_tx,
-            })
-            .await
-            .map_err(|_| {
-                ConsensusError::SendChannelError(
-                    "send error consensus command get_active_block".to_string(),
-                )
-            })?;
-        response_rx.await.map_err(|_| {
-            ConsensusError::ReceiveChannelError(
-                "consensus command get_active_block response read error".to_string(),
             )
         })
     }

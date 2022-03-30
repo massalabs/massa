@@ -85,9 +85,9 @@ pub enum NodeCommand {
     /// Send given peer list to node.
     SendPeerList(Vec<IpAddr>),
     /// Send that block to node.
-    SendBlock(Block),
+    SendBlock(BlockId),
     /// Send the header of a block to a node.
-    SendBlockHeader(SignedHeader),
+    SendBlockHeader(BlockId),
     /// Ask for a block from that node.
     AskForBlocks(Vec<BlockId>),
     /// Close the node worker.
@@ -114,7 +114,7 @@ pub enum NodeEventType {
     /// Node we are connected to sent peer list
     ReceivedPeerList(Vec<IpAddr>),
     /// Node we are connected to sent block
-    ReceivedBlock(Block),
+    ReceivedBlock(Block, Vec<u8>),
     /// Node we are connected to sent block header
     ReceivedBlockHeader(SignedHeader),
     /// Node we are connected to asks for a block.
@@ -146,12 +146,12 @@ pub enum NetworkCommand {
     /// Send that block to node.
     SendBlock {
         node: NodeId,
-        block: Block,
+        block_id: BlockId,
     },
     /// Send a header to a node.
     SendBlockHeader {
         node: NodeId,
-        header: SignedHeader,
+        block_id: BlockId,
     },
     // (PeerInfo, Vec <(NodeId, bool)>) peer info + list of associated Id nodes in connection out (true)
     GetPeers(oneshot::Sender<Peers>),
@@ -208,6 +208,7 @@ pub enum NetworkEvent {
     ReceivedBlock {
         node: NodeId,
         block: Block,
+        serialized: Vec<u8>,
     },
     /// A block header was received
     ReceivedBlockHeader {

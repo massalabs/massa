@@ -19,9 +19,10 @@ use massa_final_state::{FinalState, StateChanges};
 use massa_ledger::{Applicable, LedgerEntry, SetUpdateOrDelete};
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
+use massa_models::Slot;
 use massa_models::{Address, BlockId, OperationId, OperationType, SignedOperation};
-use massa_models::{Block, Slot};
 use massa_sc_runtime::Interface;
+use massa_storage::Storage;
 use parking_lot::{Mutex, RwLock};
 use std::{
     collections::{HashMap, VecDeque},
@@ -58,6 +59,8 @@ pub(crate) struct ExecutionState {
     execution_context: Arc<Mutex<ExecutionContext>>,
     // execution interface allowing the VM runtime to access the Massa context
     execution_interface: Box<dyn Interface>,
+    /// Shared storage across all modules
+    storage: Storage,
 }
 
 impl ExecutionState {
@@ -66,10 +69,15 @@ impl ExecutionState {
     /// # arguments
     /// * config: execution config
     /// * final_state: atomic access to the final state
+    /// * storage: Shared storage with data shared all across the modules
     ///
     /// # returns
     /// A new ExecutionState
-    pub fn new(config: ExecutionConfig, final_state: Arc<RwLock<FinalState>>) -> ExecutionState {
+    pub fn new(
+        config: ExecutionConfig,
+        final_state: Arc<RwLock<FinalState>>,
+        storage: Storage,
+    ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
         let last_final_slot = final_state.read().slot;
@@ -99,6 +107,7 @@ impl ExecutionState {
             // no active slots executed yet: set active_cursor to the last final block
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
+            storage,
         }
     }
 
@@ -178,19 +187,18 @@ impl ExecutionState {
     /// * ready_final_slots:  A HashMap mapping each ready-to-execute final slot to a block or None if the slot is a miss
     pub fn truncate_history(
         &mut self,
-        active_slots: &HashMap<Slot, Option<(BlockId, Block)>>,
-        ready_final_slots: &HashMap<Slot, Option<(BlockId, Block)>>,
+        active_slots: &HashMap<Slot, Option<BlockId>>,
+        ready_final_slots: &HashMap<Slot, Option<BlockId>>,
     ) {
         // find mismatch point (included)
         let mut truncate_at = None;
         // iterate over the output history, in chronological order
         for (hist_index, exec_output) in self.active_history.iter().enumerate() {
-            // try to find the corresponding slot in active_slots or ready_final_slots
+            // try to find the corresponding slot in active_slots or ready_final_slots.
             let found_block_id = active_slots
                 .get(&exec_output.slot)
-                .or_else(|| ready_final_slots.get(&exec_output.slot))
-                .map(|opt_b| opt_b.as_ref().map(|(b_id, _b)| *b_id));
-            if found_block_id == Some(exec_output.block_id) {
+                .or_else(|| ready_final_slots.get(&exec_output.slot));
+            if found_block_id == Some(&exec_output.block_id) {
                 // the slot number and block ID still match. Continue scanning
                 continue;
             }
@@ -446,13 +454,7 @@ impl ExecutionState {
     ///
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
-    pub fn execute_slot(&self, slot: Slot, opt_block: Option<(BlockId, Block)>) -> ExecutionOutput {
-        // get optional block ID and creator address
-        let (opt_block_id, opt_block_creator_addr) = opt_block
-            .as_ref()
-            .map(|(b_id, b)| (*b_id, Address::from_public_key(&b.header.content.creator)))
-            .unzip();
-
+    pub fn execute_slot(&self, slot: Slot, opt_block_id: Option<BlockId>) -> ExecutionOutput {
         // accumulate previous active changes from output history
         let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
 
@@ -496,13 +498,19 @@ impl ExecutionState {
         }
 
         // check if there is a block at this slot
-        if let (Some((block_id, block)), Some(block_creator_addr)) =
-            (opt_block, opt_block_creator_addr)
-        {
+        if let Some(block_id) = opt_block_id {
+            let block = self
+                .storage
+                .retrieve_block(&block_id)
+                .expect("Missing block in storage.");
+            let stored_block = block.read();
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
-            for (op_idx, operation) in block.operations.iter().enumerate() {
-                if let Err(err) = self.execute_operation(operation, block_creator_addr) {
+            for (op_idx, operation) in stored_block.block.operations.iter().enumerate() {
+                if let Err(err) = self.execute_operation(
+                    operation,
+                    Address::from_public_key(&stored_block.block.header.content.creator),
+                ) {
                     debug!(
                         "failed executing operation index {} in block {}: {}",
                         op_idx, block_id, err

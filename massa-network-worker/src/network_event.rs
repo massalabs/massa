@@ -114,6 +114,7 @@ pub mod event_impl {
         worker: &mut NetworkWorker,
         from: NodeId,
         block: Block,
+        serialized: Vec<u8>,
     ) -> Result<(), NetworkError> {
         massa_trace!(
             "network_worker.on_node_event receive NetworkEvent::ReceivedBlock",
@@ -121,7 +122,11 @@ pub mod event_impl {
         );
         if let Err(err) = worker
             .event
-            .send(NetworkEvent::ReceivedBlock { node: from, block })
+            .send(NetworkEvent::ReceivedBlock {
+                node: from,
+                block,
+                serialized,
+            })
             .await
         {
             evt_failed!(err)

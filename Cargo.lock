@@ -1552,6 +1552,7 @@ dependencies = [
  "massa_pool",
  "massa_protocol_exports",
  "massa_protocol_worker",
+ "massa_storage",
  "massa_time",
  "parking_lot 0.12.0",
  "pretty_assertions",
@@ -1698,6 +1699,7 @@ name = "massa_consensus_worker"
 version = "0.1.0"
 dependencies = [
  "bitvec",
+ "console-subscriber",
  "displaydoc",
  "futures 0.3.21",
  "lazy_static",
@@ -1711,6 +1713,7 @@ dependencies = [
  "massa_proof_of_stake_exports",
  "massa_protocol_exports",
  "massa_signature",
+ "massa_storage",
  "massa_time",
  "num",
  "pretty_assertions",
@@ -1721,6 +1724,7 @@ dependencies = [
  "serial_test 0.5.1",
  "sled",
  "tempfile",
+ "test-log",
  "thiserror",
  "tokio",
  "tracing",
@@ -1760,6 +1764,7 @@ dependencies = [
  "massa_ledger",
  "massa_models",
  "massa_signature",
+ "massa_storage",
  "massa_time",
  "parking_lot 0.12.0",
  "pretty_assertions",
@@ -1803,6 +1808,7 @@ dependencies = [
  "massa_models",
  "massa_proof_of_stake_exports",
  "massa_signature",
+ "massa_storage",
  "massa_time",
  "num",
  "pretty_assertions",
@@ -1877,16 +1883,19 @@ dependencies = [
  "integer-encoding",
  "lazy_static",
  "massa_hash",
+ "massa_logging",
  "massa_signature",
  "massa_time",
  "num",
  "num-traits 0.2.14",
  "num_enum",
+ "parking_lot 0.11.2",
  "pretty_assertions",
  "rand 0.8.5",
  "reqwest",
  "rust_decimal",
  "serde 1.0.136",
+ "serde_json",
  "serial_test 0.5.1",
  "thiserror",
  "tokio",
@@ -1924,6 +1933,7 @@ dependencies = [
  "massa_models",
  "massa_network_exports",
  "massa_signature",
+ "massa_storage",
  "massa_time",
  "num_enum",
  "pretty_assertions",
@@ -2023,6 +2033,7 @@ dependencies = [
  "massa_network_exports",
  "massa_protocol_exports",
  "massa_signature",
+ "massa_storage",
  "massa_time",
  "num_enum",
  "pretty_assertions",
@@ -2062,6 +2073,14 @@ dependencies = [
  "serde_json",
  "serial_test 0.5.1",
  "thiserror",
+]
+
+[[package]]
+name = "massa_storage"
+version = "0.1.0"
+dependencies = [
+ "massa_models",
+ "parking_lot 0.12.0",
 ]
 
 [[package]]
@@ -3567,6 +3586,17 @@ name = "termtree"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "507e9898683b6c43a9aa55b64259b721b52ba226e0f3779137e50ad114a4c90b"
+
+[[package]]
+name = "test-log"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb78caec569a40f42c078c798c0e35b922d9054ec28e166f0d6ac447563d91a4"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "textwrap"
