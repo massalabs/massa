@@ -484,7 +484,7 @@ impl BlockGraph {
 
                         // Store in shared storage.
                         let serialized = block.to_bytes_compact()?;
-                        storage.store_block(b_id, block.clone(), serialized);
+                        storage.store_block(b_id, block, serialized);
 
                         Ok((
                             b_id,
