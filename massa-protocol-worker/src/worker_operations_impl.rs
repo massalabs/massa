@@ -27,8 +27,11 @@ use tracing::{debug, warn};
 /// to a `node_id` now or later. Mainly used in protocol and translated into
 /// simple combination of a `node_id` and `operations_ids`
 pub struct OperationBatchItem {
+    /// last updated at instant
     pub instant: Instant,
+    /// node id
     pub node_id: NodeId,
+    /// operation ids
     pub operations_ids: OperationIds,
 }
 

@@ -24,6 +24,8 @@ use crate::{
     ConsensusError,
 };
 
+/// Consensus commands sender
+/// TODO Make private
 #[derive(Clone)]
 pub struct ConsensusCommandSender(pub mpsc::Sender<ConsensusCommand>);
 
@@ -110,7 +112,7 @@ impl ConsensusCommandSender {
     /// Gets (slot, public_key) were the staker with public_key was selected for slot, between start_slot and end_slot.
     ///
     /// # Arguments
-    /// * start_slot: begining of the considered interval.
+    /// * start_slot: beginning of the considered interval.
     /// * end_slot: end of the considered interval.
     pub async fn get_selection_draws(
         &self,
@@ -139,6 +141,7 @@ impl ConsensusCommandSender {
         res
     }
 
+    /// get bootstrap snapshot
     pub async fn get_bootstrap_state(
         &self,
     ) -> Result<(ExportProofOfStake, BootstrapableGraph), ConsensusError> {
@@ -159,6 +162,8 @@ impl ConsensusCommandSender {
             )
         })
     }
+
+    /// get block ids for one creator address
     pub async fn get_block_ids_by_creator(
         &self,
         address: Address,
@@ -184,6 +189,7 @@ impl ConsensusCommandSender {
         })
     }
 
+    /// get operation info by operation id
     pub async fn get_operations(
         &self,
         operation_ids: Set<OperationId>,
@@ -266,6 +272,7 @@ impl ConsensusCommandSender {
         })
     }
 
+    /// get current consensus stats
     pub async fn get_stats(&self) -> Result<ConsensusStats, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_stats", {});
@@ -284,6 +291,7 @@ impl ConsensusCommandSender {
         })
     }
 
+    /// get all stakers with roll count
     pub async fn get_active_stakers(&self) -> Result<Map<Address, u64>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_active_stakers", {});
@@ -302,6 +310,7 @@ impl ConsensusCommandSender {
         })
     }
 
+    /// Add some staking keys
     pub async fn register_staking_private_keys(
         &self,
         keys: Vec<PrivateKey>,
@@ -318,6 +327,9 @@ impl ConsensusCommandSender {
             })
     }
 
+    /// remove some keys from staking keys by associated address
+    /// the node won't be able to stake with these keys anymore
+    /// They wil be erased from the staking keys file
     pub async fn remove_staking_addresses(
         &self,
         addresses: Set<Address>,
@@ -332,6 +344,7 @@ impl ConsensusCommandSender {
             })
     }
 
+    /// get staking addresses
     pub async fn get_staking_addresses(&self) -> Result<Set<Address>, ConsensusError> {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_staking_addresses", {});
@@ -350,6 +363,7 @@ impl ConsensusCommandSender {
         })
     }
 
+    /// get production stats for a set of stakers
     pub async fn get_stakers_production_stats(
         &self,
         addrs: Set<Address>,
@@ -374,6 +388,7 @@ impl ConsensusCommandSender {
         })
     }
 
+    /// get endorsements info by involved address
     pub async fn get_endorsements_by_address(
         &self,
         address: Address,
@@ -401,6 +416,7 @@ impl ConsensusCommandSender {
         })
     }
 
+    /// get endorsements info by ids
     pub async fn get_endorsements_by_id(
         &self,
         endorsements: Set<EndorsementId>,
@@ -426,16 +442,16 @@ impl ConsensusCommandSender {
     }
 }
 
+/// channel to receive consensus events
 pub struct ConsensusEventReceiver(pub mpsc::Receiver<ConsensusEvent>);
 
 impl ConsensusEventReceiver {
+    /// wait for the next event
     pub async fn wait_event(&mut self) -> Result<ConsensusEvent, ConsensusError> {
-        let evt = self
-            .0
+        self.0
             .recv()
             .await
-            .ok_or(ConsensusError::ControllerEventError);
-        evt
+            .ok_or(ConsensusError::ControllerEventError)
     }
 
     /// drains remaining events and returns them in a VecDeque
@@ -450,13 +466,16 @@ impl ConsensusEventReceiver {
     }
 }
 
+/// Consensus manager
 pub struct ConsensusManager {
+    /// protocol handler
     pub join_handle: JoinHandle<Result<ProtocolEventReceiver, ConsensusError>>,
-
+    /// consensus management sender
     pub manager_tx: mpsc::Sender<ConsensusManagementCommand>,
 }
 
 impl ConsensusManager {
+    /// stop consensus
     pub async fn stop(
         self,
         consensus_event_receiver: ConsensusEventReceiver,

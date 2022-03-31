@@ -9,13 +9,13 @@ use massa_models::{Address, Amount, BlockId, Slot};
 /// structure describing the output of a single execution
 #[derive(Debug, Clone)]
 pub struct ExecutionOutput {
-    // slot
+    /// slot
     pub slot: Slot,
-    // optional block ID at that slot (None if miss)
+    /// optional block ID at that slot (None if miss)
     pub block_id: Option<BlockId>,
-    // state changes caused by the execution step
+    /// state changes caused by the execution step
     pub state_changes: StateChanges,
-    // events emitted by the execution step
+    /// events emitted by the execution step
     pub events: EventStore,
 }
 
@@ -49,7 +49,7 @@ pub struct ExecutionStackElement {
     /// to allow write access on newly created addresses in order to set them up,
     /// but only within the scope of the current stack element.
     /// That way, only the current scope and neither its caller not the functions it calls gain this write access,
-    /// which is important for security.  
+    /// which is important for security.
     /// Note that we use a Vec instead of a prehashed set to ensure order determinism,
     /// the performance hit of linear search remains minimal because owned_addreses will always contain very few elements.
     pub owned_addresses: Vec<Address>,

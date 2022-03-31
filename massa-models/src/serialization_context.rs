@@ -55,21 +55,37 @@ where
 /// a context for model serialization/deserialization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerializationContext {
+    /// max operations per block
     pub max_operations_per_block: u32,
+    /// target endorsement count
     pub endorsement_count: u32,
+    /// thread count
     pub thread_count: u8,
+    /// max block size
     pub max_block_size: u32,
+    /// max advertised peers length
     pub max_advertise_length: u32,
+    /// max message size
     pub max_message_size: u32,
+    /// max ask block per message
     pub max_ask_blocks_per_message: u32,
+    /// max operations per message
     pub max_operations_per_message: u32,
+    /// max endorsements per message
     pub max_endorsements_per_message: u32,
+    /// max bootstrapped blocks
     pub max_bootstrap_blocks: u32,
+    /// max bootstrapped cliques
     pub max_bootstrap_cliques: u32,
+    /// max bootstrapped block dependencies
     pub max_bootstrap_deps: u32,
+    /// max bootstrapped block children bootstrapped
     pub max_bootstrap_children: u32,
+    /// max bootstrapped proof of stake cycle
     pub max_bootstrap_pos_cycles: u32,
+    /// max bootstrap proof of stake entries
     pub max_bootstrap_pos_entries: u32,
+    /// max bootstrap message size
     pub max_bootstrap_message_size: u32,
 }
 #[cfg(not(feature = "sandbox"))]
@@ -85,7 +101,7 @@ impl Default for SerializationContext {
 impl Default for SerializationContext {
     fn default() -> Self {
         #[cfg(feature = "testing")]
-        // Overide normal constants on testing
+        // Override normal constants on testing
         use crate::constants::default_testing::*;
         #[cfg(not(feature = "testing"))]
         use crate::constants::*;
@@ -112,9 +128,10 @@ impl Default for SerializationContext {
 
 #[cfg(not(feature = "sandbox"))]
 impl SerializationContext {
+    /// default constants
     pub const fn const_default() -> Self {
         #[cfg(feature = "testing")]
-        // Overide normal constants on testing
+        // Override normal constants on testing
         use crate::constants::default_testing::*;
         #[cfg(not(feature = "testing"))]
         use crate::constants::*;

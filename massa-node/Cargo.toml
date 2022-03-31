@@ -45,8 +45,8 @@ massa_time = { path = "../massa-time" }
 pretty_assertions = "1.0"
 serial_test = "0.5"
 
+# for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
-# nightly = ["beta"]
 beta = []
 instrument = ["tokio/tracing", "massa_api/instrument", "massa_bootstrap/instrument", "massa_consensus_exports/instrument", "massa_consensus_worker/instrument", "massa_network_exports/instrument", "massa_pool/instrument", "massa_protocol_exports/instrument", "massa_protocol_worker/instrument","massa_network_worker/instrument"]
 sandbox = ["massa_consensus_exports/sandbox", "massa_consensus_worker/sandbox", "massa_models/sandbox"]

@@ -3,7 +3,7 @@ use crate::start_execution_worker;
 use massa_async_pool::AsyncPoolConfig;
 use massa_execution_exports::{ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest};
 use massa_final_state::{FinalState, FinalStateConfig};
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_ledger::{LedgerConfig, LedgerError};
 use massa_models::{
     constants::{AMOUNT_DECIMAL_FACTOR, FINAL_HISTORY_LENGTH, THREAD_COUNT},

@@ -78,23 +78,31 @@ pub struct ConsensusSettings {
     pub max_dependency_blocks: usize,
     /// Maximum tries to fill a block with operations
     pub max_operations_fill_attempts: u32,
-    // number of cached draw cycles for PoS
+    /// number of cached draw cycles for PoS
     pub pos_draw_cached_cycles: usize,
     /// path to ledger db
     pub ledger_path: PathBuf,
+    /// Cache capacity allowed to the ledger
     pub ledger_cache_capacity: u64,
+    /// the ledger is flushed to the disk every `ledger_flush_interval`
     pub ledger_flush_interval: Option<MassaTime>,
+    /// if ledger need a reset at start up
     pub ledger_reset_at_startup: bool,
+    /// Initial file path that describe the ledger to merge in `ledger_path` after starting
     pub initial_ledger_path: PathBuf,
+    /// size of an operation batch when creating a block
     pub operation_batch_size: usize,
+    /// path to the initial rolls
     pub initial_rolls_path: PathBuf,
-    // stats timespan
+    /// stats timespan
     pub stats_timespan: MassaTime,
-    // max event send wait
+    /// max event send wait
     pub max_send_wait: MassaTime,
-    // force keep at least this number of final periods in RAM for each thread
+    /// force keep at least this number of final periods in RAM for each thread
     pub force_keep_final_periods: u64,
+    /// old blocks are pruned every block_db_prune_interval
     pub block_db_prune_interval: MassaTime,
+    /// max number of items returned while querying
     pub max_item_return_count: usize,
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.
@@ -106,6 +114,7 @@ pub struct ConsensusSettings {
 #[derive(Debug)]
 pub struct ConsensusConfig {
     #[cfg(feature = "testing")]
+    /// temps files
     pub temp_files: TempFiles,
     /// Time in millis when the blockclique started.
     pub genesis_timestamp: MassaTime,
@@ -151,14 +160,19 @@ pub struct ConsensusConfig {
     pub ledger_path: PathBuf,
     /// Cache capacity allowed to the ledger
     pub ledger_cache_capacity: u64,
+    /// the ledger is flushed to the disk every `ledger_flush_interval`
     pub ledger_flush_interval: Option<MassaTime>,
+    /// if ledger need a reset at start up
     pub ledger_reset_at_startup: bool,
-    /// Inital file path that describe the ledger to merge in `ledger_path` after starting
+    /// Initial file path that describe the ledger to merge in `ledger_path` after starting
     pub initial_ledger_path: PathBuf,
     /// Reward for the creation of a block
     pub block_reward: Amount,
+    /// size of an operation batch when creating a block
     pub operation_batch_size: usize,
+    /// path to the initial rolls
     pub initial_rolls_path: PathBuf,
+    /// initial seed
     pub initial_draw_seed: String,
     /// Price of a roll inside the network
     pub roll_price: Amount,
@@ -168,13 +182,16 @@ pub struct ConsensusConfig {
     pub max_send_wait: MassaTime,
     /// force keep at least this number of final periods in RAM for each thread
     pub force_keep_final_periods: u64,
+    /// target number of endorsement per block
     pub endorsement_count: u32,
+    /// old blocks are pruned every block_db_prune_interval
     pub block_db_prune_interval: MassaTime,
+    /// max number of items returned while querying
     pub max_item_return_count: usize,
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.
     pub disable_block_creation: bool,
-    // Max gas per block for the execution config
+    /// Max gas per block for the execution config
     pub max_gas_per_block: u64,
 }
 
@@ -318,9 +335,13 @@ pub struct ConsensusWorkerChannels {
 /// Public channels associated to the consensus module.
 /// Execution & Protocol Sender/Receiver
 pub struct ConsensusChannels {
+    /// outgoing link to execution component
     pub execution_controller: Box<dyn ExecutionController>,
+    /// outgoing link to protocol component
     pub protocol_command_sender: ProtocolCommandSender,
+    /// incoming link to protocol component
     pub protocol_event_receiver: ProtocolEventReceiver,
+    /// outgoing link to pool component
     pub pool_command_sender: PoolCommandSender,
 }
 
@@ -596,12 +617,13 @@ impl Default for ConsensusConfig {
 /**
  * The following implementation correspond to tools used in unit tests
  * It allow you to get a default `ConsensusConfig` (that isn't possible without
- * the feature *testing*) with already setted/default `initial_ledger_path`,
+ * the feature *testing*) with already set/default `initial_ledger_path`,
  * `staking_keys_path` and `initial_rolls_path`.
  *
  * Used to radically reduce code duplication in unit tests of Consensus.
  */
 impl ConsensusConfig {
+    /// default consensus config
     pub fn default_with_paths() -> Self {
         use crate::tools::*;
         let staking_keys: Vec<PrivateKey> = (0..1)
@@ -621,6 +643,8 @@ impl ConsensusConfig {
             ..Default::default()
         }
     }
+
+    /// Default consensus config from private staking keys
     pub fn default_with_staking_keys(staking_keys: &[PrivateKey]) -> Self {
         use crate::tools::*;
         let ledger_file = generate_ledger_file(&std::collections::HashMap::new());
@@ -637,6 +661,8 @@ impl ConsensusConfig {
             ..Default::default()
         }
     }
+
+    /// Default consensus config from staking private keys and ledger
     pub fn default_with_staking_keys_and_ledger(
         staking_keys: &[PrivateKey],
         ledger: &std::collections::HashMap<

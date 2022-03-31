@@ -1,4 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Utilities for a massa client
+
+#![warn(missing_docs)]
 
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcError, RpcResult, TypedClient};
@@ -15,12 +18,17 @@ use massa_signature::PrivateKey;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::net::{IpAddr, SocketAddr};
+
+/// Client
 pub struct Client {
+    /// public component
     pub public: RpcClient,
+    /// private component
     pub private: RpcClient,
 }
 
 impl Client {
+    /// creates a new client
     pub async fn new(ip: IpAddr, public_port: u16, private_port: u16) -> Client {
         let public_socket_addr = SocketAddr::new(ip, public_port);
         let private_socket_addr = SocketAddr::new(ip, private_port);
@@ -33,6 +41,7 @@ impl Client {
     }
 }
 
+/// TODO ask @yvan-sraka
 pub struct RpcClient {
     client: TypedClient,
     timeout: u64,
@@ -116,10 +125,13 @@ impl RpcClient {
         self.call_method("unban", "()", vec![ips]).await
     }
 
+    /// add ips to whitelist
+    /// create peer if it was unknown
     pub async fn node_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.call_method("node_whitelist", "()", vec![ips]).await
     }
 
+    /// remove ips from whitelist
     pub async fn node_remove_from_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.call_method("node_remove_from_whitelist", "()", vec![ips])
             .await
@@ -172,6 +184,7 @@ impl RpcClient {
             .await
     }
 
+    /// get info on endorsements by ids
     pub async fn get_endorsements(
         &self,
         endorsement_ids: Vec<EndorsementId>,
@@ -200,6 +213,7 @@ impl RpcClient {
             .await
     }
 
+    /// Get info by addresses
     pub async fn get_addresses(&self, addresses: Vec<Address>) -> RpcResult<Vec<AddressInfo>> {
         self.call_method("get_addresses", "Vec<AddressInfo>", vec![addresses])
             .await

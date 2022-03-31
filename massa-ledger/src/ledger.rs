@@ -6,7 +6,7 @@ use crate::ledger_changes::LedgerChanges;
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
 use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::{Address, Amount};
 use std::collections::BTreeMap;
 
@@ -100,7 +100,7 @@ impl FinalLedger {
         })
     }
 
-    /// Intiialize a FinalLedger from a bootstrap state
+    /// Initialize a FinalLedger from a bootstrap state
     ///
     /// TODO: This loads the whole ledger in RAM. Switch to streaming in the future
     ///

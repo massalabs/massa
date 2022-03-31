@@ -23,6 +23,9 @@ use std::process;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
 
+/// All the client commands
+/// the order they are defined is the order they are displayed in so be careful
+/// Maybe it would be worth renaming some of them for consistency
 #[allow(non_camel_case_types)]
 #[derive(Debug, PartialEq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
 pub enum Command {
@@ -185,7 +188,7 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(args = "PathToBytecode MaxGas GasPrice Address",),
-        message = "execute byte code, address is optionnal. Nothing is really executed on chain"
+        message = "execute byte code, address is optional. Nothing is really executed on chain"
     )]
     read_only_smart_contract,
 
@@ -199,27 +202,35 @@ pub enum Command {
     when_moon,
 }
 
+/// Display the help of all commands
 pub(crate) fn help() {
     println!("HELP of Massa client (list of available commands):");
     Command::iter().map(|c| c.help()).collect()
 }
 
+/// bail a shinny rpc error
 macro_rules! rpc_error {
     ($e:expr) => {
         bail!("check if your node is running: {}", $e)
     };
 }
 
+/// print a yellow warning
 macro_rules! client_warning {
     ($e:expr) => {
         println!("{}: {}", style("WARNING").yellow(), $e)
     };
 }
 
-#[derive(Serialize)]
+/// Used to have a shinny json output
+/// TODO refactor me
+#[derive(Debug, Serialize)]
 struct ExtendedWalletEntry {
+    /// the private key
     pub private_key: PrivateKey,
+    /// corresponding pub key
     pub public_key: PublicKey,
+    /// address and balance information
     pub address_info: CompactAddressInfo,
 }
 
@@ -233,10 +244,13 @@ impl Display for ExtendedWalletEntry {
     }
 }
 
-#[derive(Serialize)]
+/// Aggregation of the local, with some useful information as the balance, etc
+/// to be printed by the client.
+#[derive(Debug, Serialize)]
 pub struct ExtendedWallet(Map<Address, ExtendedWalletEntry>);
 
 impl ExtendedWallet {
+    /// Reorganize everything into an extended wallet
     fn new(wallet: &Wallet, addresses_info: &[AddressInfo]) -> Result<Self> {
         Ok(ExtendedWallet(
             addresses_info
@@ -270,6 +284,8 @@ impl Display for ExtendedWallet {
 }
 
 impl Command {
+    /// Display the help of the command
+    /// with fancy colors and so on
     pub(crate) fn help(&self) {
         println!(
             "- {} {}: {}{}",
@@ -288,6 +304,14 @@ impl Command {
         )
     }
 
+    /// run a given command
+    ///
+    /// # parameters
+    /// - client: the rpc client
+    /// - wallet: an access to the wallet
+    /// - parameters: the parsed parameters
+    /// - json: true if --json was passed as an option
+    ///     it means that we don't want to print anything we just want the json output
     pub(crate) async fn run(
         &self,
         client: &Client,
@@ -813,6 +837,7 @@ impl Command {
     }
 }
 
+/// helper to wrap and send an operation with proper validity period
 async fn send_operation(
     client: &Client,
     wallet: &Wallet,
@@ -859,11 +884,13 @@ async fn send_operation(
     }
 }
 
-// TODO: ugly utilities functions
+/// TODO: ugly utilities functions
+/// takes a slice of string and makes it into a vec<T>
 pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, T::Err> {
     args.iter().map(|x| x.parse::<T>()).collect()
 }
 
+/// reads a file
 async fn get_file_as_byte_vec(filename: &std::path::Path) -> Result<Vec<u8>> {
     Ok(tokio::fs::read(filename).await?)
 }

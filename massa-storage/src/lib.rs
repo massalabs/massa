@@ -1,9 +1,14 @@
+//! This crate is used to share blocks across the node
+
+#![warn(missing_docs)]
+
 use massa_models::prehash::Map;
 use massa_models::{Block, BlockId};
 use parking_lot::RwLock;
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
 
+/// Stored block: block + serialized block + (serialized header)
 #[derive(Debug)]
 pub struct StoredBlock {
     /// The block.

@@ -14,7 +14,7 @@ use massa_execution_exports::{
     EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest,
 };
 use massa_final_state::{FinalState, StateChanges};
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_ledger::LedgerChanges;
 use massa_models::{Address, Amount, BlockId, OperationId, Slot};
 use parking_lot::RwLock;
@@ -190,7 +190,7 @@ impl ExecutionContext {
         // Add a marker to the seed indicating that we are in read-only mode
         // to prevent random draw collisions with active executions
         seed.push(0u8); // 0u8 = read-only
-        let seed = massa_hash::hash::Hash::compute_from(&seed).to_bytes();
+        let seed = massa_hash::Hash::compute_from(&seed).to_bytes();
         // We use Xoshiro256PlusPlus because it is very fast,
         // has a period long enough to ensure no repetitions will ever happen,
         // of decent quality (given the unsafe constraints)
@@ -238,7 +238,7 @@ impl ExecutionContext {
         if let Some(block_id) = &opt_block_id {
             seed.extend(block_id.to_bytes()); // append block ID
         }
-        let seed = massa_hash::hash::Hash::compute_from(&seed).to_bytes();
+        let seed = massa_hash::Hash::compute_from(&seed).to_bytes();
         let unsafe_rng = Xoshiro256PlusPlus::from_seed(seed);
 
         // return active slot execution context
@@ -317,7 +317,7 @@ impl ExecutionContext {
             data.push(1u8);
         }
         // hash the seed to get a unique address
-        let address = Address(massa_hash::hash::Hash::compute_from(&data));
+        let address = Address(massa_hash::Hash::compute_from(&data));
 
         // add this address with its bytecode to the speculative ledger
         self.speculative_ledger

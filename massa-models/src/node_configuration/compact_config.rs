@@ -21,7 +21,7 @@ pub struct CompactConfig {
     pub operation_validity_periods: u64,
     /// cycle duration in periods
     pub periods_per_cycle: u64,
-    /// PoS lookback cycles: when drawing for cycle N, we use the rolls from cycle N - pos_lookback_cycles - 1
+    /// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - pos_look back_cycles - 1
     pub pos_lookback_cycles: u64,
     /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles
     pub pos_lock_cycles: u64,
@@ -81,7 +81,7 @@ impl Display for CompactConfig {
         writeln!(f, "    Periods per cycle: {}", self.periods_per_cycle)?;
         writeln!(
             f,
-            "    Proof of stake lookback cycles: {}",
+            "    Proof of stake look back cycles: {}",
             self.pos_lookback_cycles
         )?;
         writeln!(

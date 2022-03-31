@@ -153,7 +153,7 @@ impl AsyncPool {
 
 #[test]
 fn test_take_batch() {
-    use massa_hash::hash::Hash;
+    use massa_hash::Hash;
     use massa_models::{Address, Amount, Slot};
 
     let config = AsyncPoolConfig { max_length: 10 };

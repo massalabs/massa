@@ -5,7 +5,7 @@ use crate::{
     Address, BlockId, EndorsementId, OperationId, Slot,
 };
 
-/// Block that was checked as final, with some useful precomputed data
+/// Block that was checked as valid, with some useful precomputed data
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ActiveBlock {
     /// The creator's address

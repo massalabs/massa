@@ -68,10 +68,12 @@ pub async fn start_pool_controller(
     ))
 }
 
+/// Pool command sender
 #[derive(Clone)]
 pub struct PoolCommandSender(pub mpsc::Sender<PoolCommand>);
 
 impl PoolCommandSender {
+    /// add operations to pool
     pub async fn add_operations(
         &mut self,
         operations: Map<OperationId, SignedOperation>,
@@ -85,6 +87,7 @@ impl PoolCommandSender {
         res
     }
 
+    /// update current slots
     pub async fn update_current_slot(&mut self, slot: Slot) -> Result<(), PoolError> {
         massa_trace!("pool.command_sender.update_current_slot", { "slot": slot });
         let res = self
@@ -95,6 +98,7 @@ impl PoolCommandSender {
         res
     }
 
+    /// get pool stats
     pub async fn get_pool_stats(&mut self) -> Result<PoolStats, PoolError> {
         massa_trace!("pool.command_sender.get_pool_stats", {});
         let (response_tx, response_rx) = oneshot::channel();
@@ -111,6 +115,7 @@ impl PoolCommandSender {
         })
     }
 
+    /// mark operations as final
     pub async fn final_operations(
         &mut self,
         ops: Map<OperationId, (u64, u8)>,
@@ -122,6 +127,7 @@ impl PoolCommandSender {
             .map_err(|_| PoolError::ChannelError("final_operations command send error".into()))
     }
 
+    /// update latest final periods
     pub async fn update_latest_final_periods(
         &mut self,
         periods: Vec<u64>,
@@ -174,6 +180,7 @@ impl PoolCommandSender {
         })
     }
 
+    /// get endorsements for block creation
     pub async fn get_endorsements(
         &mut self,
         target_slot: Slot,
@@ -203,6 +210,7 @@ impl PoolCommandSender {
         })
     }
 
+    /// get operations by ids
     pub async fn get_operations(
         &mut self,
         operation_ids: Set<OperationId>,
@@ -228,6 +236,7 @@ impl PoolCommandSender {
         })
     }
 
+    /// get operation by involved addresses
     pub async fn get_operations_involving_address(
         &mut self,
         address: Address,
@@ -257,6 +266,7 @@ impl PoolCommandSender {
         })
     }
 
+    /// add endorsements to pool
     pub async fn add_endorsements(
         &mut self,
         endorsements: Map<EndorsementId, SignedEndorsement>,
@@ -272,6 +282,7 @@ impl PoolCommandSender {
         res
     }
 
+    /// get endorsements by address
     pub async fn get_endorsements_by_address(
         &self,
         address: Address,
@@ -299,6 +310,7 @@ impl PoolCommandSender {
         })
     }
 
+    /// get endorsements by id
     pub async fn get_endorsements_by_id(
         &self,
         endorsements: Set<EndorsementId>,
@@ -327,12 +339,14 @@ impl PoolCommandSender {
     }
 }
 
+/// pool management handle
 pub struct PoolManager {
     join_handle: JoinHandle<Result<ProtocolPoolEventReceiver, PoolError>>,
     manager_tx: mpsc::Sender<PoolManagementCommand>,
 }
 
 impl PoolManager {
+    /// stop pool
     pub async fn stop(self) -> Result<ProtocolPoolEventReceiver, PoolError> {
         massa_trace!("pool.pool_controller.stop", {});
         drop(self.manager_tx);

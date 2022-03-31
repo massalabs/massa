@@ -3,8 +3,10 @@
 use displaydoc::Display;
 use thiserror::Error;
 
+/// models error
 pub type ModelsResult<T, E = ModelsError> = core::result::Result<T, E>;
 
+/// models error
 #[non_exhaustive]
 #[derive(Display, Error, Debug, Clone)]
 pub enum ModelsError {
@@ -27,7 +29,7 @@ pub enum ModelsError {
     /// checked operation error
     CheckedOperationError(String),
     /// invalid version identifier: {0}
-    InavalidVersionError(String),
+    InvalidVersionError(String),
     /// invalid ledger change: {0}
     InvalidLedgerChange(String),
     /// Time overflow error

@@ -36,7 +36,7 @@
 //! This crate is meant to be included only at the binary level to launch the worker,
 //! not by the lib crates that will interact with it.
 //! It depends on the massa-execution-exports crate that contains all the publicly exposed elements
-//! and throuh which users will actually interact with the worker.
+//! and through which users will actually interact with the worker.
 //!
 //! ## worker.rs
 //! This module runs the main loop of the worker thread.
@@ -66,6 +66,7 @@
 //! It handles requests that come with an MPSC to send back the result of their execution once it's done.
 //!
 
+#![warn(missing_docs)]
 #![feature(map_first_last)]
 #![feature(unzip_option)]
 

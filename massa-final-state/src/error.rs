@@ -5,6 +5,7 @@
 use displaydoc::Display;
 use thiserror::Error;
 
+/// Final state error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum FinalStateError {

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{proof_of_stake::ProofOfStake, thread_cycle_state::ThreadCycleState};
 
+/// serializable version of the proof of stake
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportProofOfStake {
     /// Index by thread and cycle number

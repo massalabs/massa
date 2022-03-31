@@ -8,7 +8,9 @@ use massa_ledger::LedgerChanges;
 /// represents changes that can be applied to the execution state
 #[derive(Default, Debug, Clone)]
 pub struct StateChanges {
+    /// ledger changes
     pub ledger_changes: LedgerChanges,
+    /// async pool changes
     pub async_pool_changes: AsyncPoolChanges,
 }
 

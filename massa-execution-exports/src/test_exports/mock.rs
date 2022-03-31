@@ -20,24 +20,40 @@ use std::{
 /// See the documentation of ExecutionController for details on parameters and return values.
 #[derive(Clone)]
 pub enum MockExecutionControllerMessage {
+    /// update blockclique status
     UpdateBlockcliqueStatus {
+        /// newly finalized blocks
         finalized_blocks: HashMap<Slot, BlockId>,
+        /// current clique of higher fitness
         blockclique: HashMap<Slot, BlockId>,
     },
+    /// filter for smart contract output event request
     GetFilteredScOutputEvent {
+        /// start slot
         start: Option<Slot>,
+        /// end slot
         end: Option<Slot>,
+        /// emitter address
         emitter_address: Option<Address>,
+        /// original caller address
         original_caller_address: Option<Address>,
+        /// original operation id
         original_operation_id: Option<OperationId>,
+        /// response channel
         response_tx: mpsc::Sender<Vec<SCOutputEvent>>,
     },
+    /// get full ledger entry
     GetFullLedgerEntry {
+        /// addresss
         addr: Address,
+        /// response channel
         response_tx: mpsc::Sender<(Option<LedgerEntry>, Option<LedgerEntry>)>,
     },
+    /// read only execution request
     ExecuteReadonlyRequest {
+        /// read only execution request
         req: ReadOnlyExecutionRequest,
+        /// response channel
         response_tx: mpsc::Sender<Result<ExecutionOutput, ExecutionError>>,
     },
 }

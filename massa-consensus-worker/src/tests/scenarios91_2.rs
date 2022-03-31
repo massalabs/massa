@@ -3,7 +3,7 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::Slot;
 use massa_signature::{generate_random_private_key, PrivateKey};
 use massa_time::MassaTime;

@@ -19,6 +19,7 @@ impl Default for LedgerConfig {
 }
 
 impl LedgerConfig {
+    /// get ledger and ledger config
     pub fn sample(ledger: &BTreeMap<Address, Amount>) -> (Self, NamedTempFile) {
         let ledger_file_named = NamedTempFile::new().expect("cannot create temp file");
         serde_json::to_writer_pretty(ledger_file_named.as_file(), &ledger)

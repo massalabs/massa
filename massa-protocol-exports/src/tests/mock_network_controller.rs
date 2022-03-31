@@ -12,12 +12,14 @@ use massa_network_exports::{
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
 
+/// mock network controller
 pub struct MockNetworkController {
     network_command_rx: mpsc::Receiver<NetworkCommand>,
     network_event_tx: mpsc::Sender<NetworkEvent>,
 }
 
 impl MockNetworkController {
+    /// new mock network controller
     pub fn new() -> (Self, NetworkCommandSender, NetworkEventReceiver) {
         let (network_command_tx, network_command_rx) =
             mpsc::channel::<NetworkCommand>(CHANNEL_SIZE);
@@ -32,6 +34,7 @@ impl MockNetworkController {
         )
     }
 
+    /// wait command
     pub async fn wait_command<F, T>(&mut self, timeout: MassaTime, filter_map: F) -> Option<T>
     where
         F: Fn(NetworkCommand) -> Option<T>,
@@ -49,6 +52,7 @@ impl MockNetworkController {
         }
     }
 
+    /// new connection
     pub async fn new_connection(&mut self, new_node_id: NodeId) {
         self.network_event_tx
             .send(NetworkEvent::NewConnection(new_node_id))
@@ -56,6 +60,7 @@ impl MockNetworkController {
             .expect("Couldn't connect node to protocol.");
     }
 
+    /// close connection
     pub async fn close_connection(&mut self, node_id: NodeId) {
         self.network_event_tx
             .send(NetworkEvent::ConnectionClosed(node_id))
@@ -63,6 +68,8 @@ impl MockNetworkController {
             .expect("Couldn't connect node to protocol.");
     }
 
+    /// send header
+    /// todo inconsistency with names
     pub async fn send_header(&mut self, source_node_id: NodeId, header: SignedHeader) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedBlockHeader {
@@ -73,6 +80,8 @@ impl MockNetworkController {
             .expect("Couldn't send header to protocol.");
     }
 
+    /// send block
+    /// todo inconsistency with names
     pub async fn send_block(&mut self, source_node_id: NodeId, block: Block, serialized: Vec<u8>) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedBlock {
@@ -84,6 +93,8 @@ impl MockNetworkController {
             .expect("Couldn't send block to protocol.");
     }
 
+    /// send operations
+    /// todo inconsistency with names
     pub async fn send_operations(&mut self, source_node_id: NodeId, operations: Operations) {
         self.network_event_tx
             .send(NetworkEvent::ReceivedOperations {
@@ -94,6 +105,8 @@ impl MockNetworkController {
             .expect("Couldn't send operations to protocol.");
     }
 
+    /// send operation ids
+    /// todo inconsistency with names
     pub async fn send_operation_batch(
         &mut self,
         source_node_id: NodeId,
@@ -108,6 +121,8 @@ impl MockNetworkController {
             .expect("Couldn't send operations to protocol.");
     }
 
+    /// received aks for operation from node
+    /// todo inconsistency with names
     pub async fn send_ask_for_operation(
         &mut self,
         source_node_id: NodeId,
@@ -122,6 +137,8 @@ impl MockNetworkController {
             .expect("Couldn't send operations to protocol.");
     }
 
+    /// send endorsements
+    /// todo inconsistency with names
     pub async fn send_endorsements(
         &mut self,
         source_node_id: NodeId,
@@ -136,6 +153,7 @@ impl MockNetworkController {
             .expect("Couldn't send endorsements to protocol.");
     }
 
+    ///ask for block
     pub async fn send_ask_for_block(&mut self, source_node_id: NodeId, list: Vec<BlockId>) {
         self.network_event_tx
             .send(NetworkEvent::AskedForBlocks {
@@ -146,6 +164,7 @@ impl MockNetworkController {
             .expect("Couldn't send ask for block to protocol.");
     }
 
+    /// block not found
     pub async fn send_block_not_found(&mut self, source_node_id: NodeId, block_id: BlockId) {
         self.network_event_tx
             .send(NetworkEvent::BlockNotFound {

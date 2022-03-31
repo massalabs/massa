@@ -12,6 +12,7 @@ use crate::events::ConsensusEvent;
 /// Consensus
 pub type ConsensusResult<T, E = ConsensusError> = core::result::Result<T, E>;
 
+/// Internal error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum InternalError {
@@ -19,6 +20,7 @@ pub enum InternalError {
     TransactionError(String),
 }
 
+/// Consensus errors
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum ConsensusError {

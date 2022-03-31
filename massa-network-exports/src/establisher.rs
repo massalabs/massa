@@ -3,9 +3,13 @@
 mod types {
     use crate::test_exports::mock_establisher;
 
+    /// read half of the duplex stream
     pub type ReadHalf = mock_establisher::ReadHalf;
+    /// write half of the duplex stream
     pub type WriteHalf = mock_establisher::WriteHalf;
+    /// connection listener
     pub type Listener = mock_establisher::MockListener;
+    /// connection establisher
     pub type Establisher = mock_establisher::MockEstablisher;
 }
 #[cfg(not(feature = "testing"))]
@@ -17,9 +21,13 @@ mod types {
         time::timeout,
     };
 
+    /// read half of the tcp stream
     pub type ReadHalf = tokio::net::tcp::OwnedReadHalf;
+    /// Write half of the tcp stream
     pub type WriteHalf = tokio::net::tcp::OwnedWriteHalf;
+    /// Connection listener
     pub type Listener = DefaultListener;
+    /// Connection establisher
     pub type Establisher = DefaultEstablisher;
 
     /// The listener we are using

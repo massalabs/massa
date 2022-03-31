@@ -3,7 +3,7 @@
 #![feature(async_closure)]
 #![feature(drain_filter)]
 #![feature(ip)]
-
+#![warn(missing_docs)]
 //! Manages a connection with a node
 
 use crate::{
