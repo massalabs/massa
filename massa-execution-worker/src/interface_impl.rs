@@ -474,6 +474,12 @@ impl Interface for InterfaceImpl {
         raw_coins: u64,
         data: &[u8],
     ) -> Result<()> {
+        if validity_start.1 >= self.config.thread_count {
+            bail!("validity start thread exceeds the configuration thread count")
+        }
+        if validity_end.1 >= self.config.thread_count {
+            bail!("validity end thread exceeds the configuration thread count")
+        }
         let mut execution_context = context_guard!(self);
         let emission_slot = execution_context.slot;
         let emission_index = execution_context.created_message_index;
