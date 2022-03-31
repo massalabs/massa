@@ -17,9 +17,9 @@
 //! The distinctions between the parallel and the sequential balance of a ledger entry are the following:
 //! * the parallel balance can be credited or spent in any slot
 //! * the sequential balance can be credited in any slot but only spent in slots form the address' thread
-//! * block produers are credited fees from the sequential balance,
+//! * block producers are credited fees from the sequential balance,
 //!   and they can ensure that this balance will be available for their block simply
-//!   by looking for sequential balance spendings within the block's thread.
+//!   by looking for sequential balance spending within the block's thread.
 //!
 //! # Architecture
 //!
@@ -37,7 +37,7 @@
 //! can be modified, combined or applied to the final ledger.
 //!
 //! ## bootstrap.rs
-//! Provides serializable strucutres and tools for bootstrapping the final ledger.
+//! Provides serializable structures and tools for bootstrapping the final ledger.  
 //!
 //! ## Test exports
 //!
@@ -45,6 +45,7 @@
 //! See test_exports/mod.rs for details.
 
 #![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 #![feature(map_first_last)]
 #![feature(async_closure)]
 

@@ -2,6 +2,7 @@
 //! Standalone massa wallet
 //! private key management
 #![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 
 pub use error::WalletError;
 use massa_hash::Hash;

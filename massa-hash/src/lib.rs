@@ -2,6 +2,7 @@
 
 //! Hash management crate
 #![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 pub use error::MassaHashError;
 pub use settings::HASH_SIZE_BYTES;
 
