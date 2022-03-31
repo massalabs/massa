@@ -16,7 +16,6 @@ use massa_network_exports::{
     ConnectionClosureReason, NetworkError, NetworkSettings, NodeCommand, NodeEvent, NodeEventType,
 };
 use massa_storage::Storage;
-use std::mem;
 use tokio::{
     sync::mpsc,
     sync::mpsc::{
@@ -154,8 +153,8 @@ impl NodeWorker {
                                 let block = storage
                                     .retrieve_block(&block_id)
                                     .ok_or(NetworkError::MissingBlock)?;
-                                let mut stored_block = block.write();
-                                res.extend(mem::take(&mut stored_block.serialized));
+                                let stored_block = block.read();
+                                res.extend(&stored_block.serialized);
                                 res
                             }
                             ToSend::Header(block_id) => {
