@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["ConsensusError",""],["InternalError",""]],"type":[["ConsensusResult","Consensus"]]});
+initSidebarItems({"enum":[["ConsensusError","Consensus errors"],["InternalError","Internal error"]],"type":[["ConsensusResult","Consensus"]]});

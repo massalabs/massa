@@ -1521,11 +1521,19 @@
 <span id="1516">1516</span>
 <span id="1517">1517</span>
 <span id="1518">1518</span>
+<span id="1519">1519</span>
+<span id="1520">1520</span>
+<span id="1521">1521</span>
+<span id="1522">1522</span>
+<span id="1523">1523</span>
+<span id="1524">1524</span>
+<span id="1525">1525</span>
+<span id="1526">1526</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">node_info::NodeInfo</span>, <span class="ident">worker_operations_impl::OperationBatchBuffer</span>};
 <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
-<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
+<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_logging::massa_trace</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">constants::CHANNEL_SIZE</span>,
@@ -1642,6 +1650,7 @@
     }
 }
 
+<span class="doccomment">/// protocol worker</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolWorker</span> {
     <span class="doccomment">/// Protocol configuration.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">protocol_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ProtocolSettings</span>,
@@ -1679,12 +1688,19 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">op_batch_buffer</span>: <span class="ident">OperationBatchBuffer</span>,
 }
 
+<span class="doccomment">/// channels used by the protocol worker</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolWorkerChannels</span> {
+    <span class="doccomment">/// network command sender</span>
     <span class="kw">pub</span> <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
+    <span class="doccomment">/// network event receiver</span>
     <span class="kw">pub</span> <span class="ident">network_event_receiver</span>: <span class="ident">NetworkEventReceiver</span>,
+    <span class="doccomment">/// protocol event sender</span>
     <span class="kw">pub</span> <span class="ident">controller_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// protocol pool event sender</span>
     <span class="kw">pub</span> <span class="ident">controller_pool_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// protocol command receiver</span>
     <span class="kw">pub</span> <span class="ident">controller_command_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ProtocolCommand</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// protocol management command receiver</span>
     <span class="kw">pub</span> <span class="ident">controller_manager_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ProtocolManagementCommand</span><span class="op">&gt;</span>,
 }
 
@@ -3040,5 +3056,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

@@ -24,10 +24,19 @@
 <span id="19">19</span>
 <span id="20">20</span>
 <span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Manages a connection with a node</span>
+
+<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">commands</span>::{
     <span class="ident">NetworkCommand</span>, <span class="ident">NetworkEvent</span>, <span class="ident">NetworkManagementCommand</span>, <span class="ident">NodeCommand</span>, <span class="ident">NodeEvent</span>, <span class="ident">NodeEventType</span>,
 };
+
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">common</span>::{<span class="ident">ConnectionClosureReason</span>, <span class="ident">ConnectionId</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error</span>::{<span class="ident">HandshakeErrorType</span>, <span class="ident">NetworkConnectionErrorType</span>, <span class="ident">NetworkError</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">establisher</span>::{<span class="ident">Establisher</span>, <span class="ident">Listener</span>, <span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>};
@@ -41,10 +50,13 @@
 <span class="kw">mod</span> <span class="ident">establisher</span>;
 <span class="kw">mod</span> <span class="ident">network_controller</span>;
 <span class="kw">mod</span> <span class="ident">peers</span>;
+
+<span class="doccomment">/// network settings</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">settings</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
+<span class="doccomment">/// test exports</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_exports</span>;
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

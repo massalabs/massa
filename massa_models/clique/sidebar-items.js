@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Clique",""]]});
+initSidebarItems({"struct":[["Clique","Mutually compatible blocks in the graph"]]});

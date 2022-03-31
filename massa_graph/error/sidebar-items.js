@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["GraphError",""],["InternalError",""],["LedgerError",""]],"type":[["GraphResult","Result used in the graph"],["LedgerResult","Result used in the ledger"]]});
+initSidebarItems({"enum":[["GraphError","Graph error"],["InternalError","Internal error"],["LedgerError","Ledger error"]],"type":[["GraphResult","Result used in the graph"],["LedgerResult","Result used in the ledger"]]});

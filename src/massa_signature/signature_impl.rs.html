@@ -869,15 +869,63 @@
 <span id="864">864</span>
 <span id="865">865</span>
 <span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
+<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_hash::MassaHashError</span>;
 <span class="kw">use</span> <span class="ident">secp256k1</span>::{<span class="ident">Message</span>, <span class="ident">Secp256k1</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert::TryInto</span>, <span class="ident">str::FromStr</span>};
 
+<span class="doccomment">/// Size of a private key</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PRIVATE_KEY_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
+<span class="doccomment">/// Size of a public key</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PUBLIC_KEY_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">33</span>;
+<span class="doccomment">/// size of a signature</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SIGNATURE_SIZE_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">64</span>;
 <span class="kw">const</span> <span class="ident">PRIVATE_KEY_STRING_PREFIX</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;PRI&quot;</span>;
 <span class="kw">const</span> <span class="ident">PUBLIC_KEY_STRING_PREFIX</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;PUB&quot;</span>;
@@ -929,7 +977,7 @@
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
     <span class="doccomment">/// # use massa_signature::generate_random_private_key;</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let serialized: String = private_key.to_bs58_check();</span>
@@ -943,7 +991,7 @@
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
     <span class="doccomment">/// # use massa_signature::generate_random_private_key;</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let serialized = private_key.to_bytes();</span>
@@ -957,7 +1005,7 @@
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
     <span class="doccomment">/// # use massa_signature::generate_random_private_key;</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let serialized = private_key.into_bytes();</span>
@@ -971,7 +1019,7 @@
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
     <span class="doccomment">/// # use massa_signature::{PrivateKey, generate_random_private_key};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let serialized: String = private_key.to_bs58_check();</span>
@@ -1002,7 +1050,7 @@
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
     <span class="doccomment">/// # use massa_signature::{PrivateKey, generate_random_private_key};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let serialized = private_key.to_bytes();</span>
@@ -1390,7 +1438,7 @@
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
     <span class="doccomment">/// # use massa_signature::{generate_random_private_key, sign};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
@@ -1407,7 +1455,7 @@
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
     <span class="doccomment">/// # use massa_signature::{generate_random_private_key, sign};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
@@ -1424,7 +1472,7 @@
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
     <span class="doccomment">/// # use massa_signature::{generate_random_private_key, sign};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
@@ -1441,7 +1489,7 @@
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
     <span class="doccomment">/// # use massa_signature::{generate_random_private_key, sign, Signature};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
@@ -1472,7 +1520,7 @@
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
     <span class="doccomment">/// # use massa_signature::{generate_random_private_key, sign, Signature};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
@@ -1501,7 +1549,7 @@
     <span class="doccomment">/// Human readable serialization :</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_signature::{generate_random_private_key, sign};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
@@ -1530,7 +1578,7 @@
     <span class="doccomment">/// Human readable deserialization :</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_signature::{generate_random_private_key, sign, Signature};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
@@ -1621,7 +1669,7 @@
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
     <span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key, sign, PublicKey};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let public_key: PublicKey = derive_public_key(&amp;private_key);</span>
@@ -1639,7 +1687,7 @@
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
     <span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key, sign, verify_signature, PublicKey};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// let private_key = generate_random_private_key();</span>
     <span class="doccomment">/// let public_key: PublicKey = derive_public_key(&amp;private_key);</span>
@@ -1659,20 +1707,62 @@
 }
 
 <span class="doccomment">/// Generate a random private key from a RNG.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// # Example</span>
+<span class="doccomment">/// ```</span>
+<span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key};</span>
+<span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
+<span class="doccomment">/// let private_key = generate_random_private_key();</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_random_private_key</span>() -&gt; <span class="ident">PrivateKey</span> {
     <span class="kw">use</span> <span class="ident">secp256k1::rand::rngs::OsRng</span>;
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">OsRng::new</span>().<span class="ident">expect</span>(<span class="string">&quot;OsRng&quot;</span>);
     <span class="ident">PrivateKey</span>(<span class="ident">secp256k1::key::SecretKey::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rng</span>))
 }
 
+<span class="doccomment">/// Derives a PublicKey from a PrivateKey.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// # Example</span>
+<span class="doccomment">/// ```</span>
+<span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key};</span>
+<span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
+<span class="doccomment">/// let private_key = generate_random_private_key();</span>
+<span class="doccomment">/// let public_key = derive_public_key(&amp;private_key);</span>
+<span class="doccomment">/// ```</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">derive_public_key</span>(<span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>) -&gt; <span class="ident">PublicKey</span> {
     <span class="ident">SIGNATURE_ENGINE</span>.<span class="ident">with</span>(<span class="op">|</span><span class="ident">signature_engine</span><span class="op">|</span> <span class="ident">signature_engine</span>.<span class="ident">derive_public_key</span>(<span class="ident">private_key</span>))
 }
 
+<span class="doccomment">/// Returns the Signature produced by signing</span>
+<span class="doccomment">/// data bytes with a PrivateKey.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// # Example</span>
+<span class="doccomment">///  ```</span>
+<span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key, sign, PublicKey};</span>
+<span class="doccomment">/// # use massa_hash::Hash;</span>
+<span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
+<span class="doccomment">/// let private_key = generate_random_private_key();</span>
+<span class="doccomment">/// let public_key: PublicKey = derive_public_key(&amp;private_key);</span>
+<span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
+<span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
+<span class="doccomment">/// ```</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="ident">hash</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>, <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">MassaHashError</span><span class="op">&gt;</span> {
     <span class="ident">SIGNATURE_ENGINE</span>.<span class="ident">with</span>(<span class="op">|</span><span class="ident">signature_engine</span><span class="op">|</span> <span class="ident">signature_engine</span>.<span class="ident">sign</span>(<span class="ident">hash</span>, <span class="ident">private_key</span>))
 }
 
+<span class="doccomment">/// Checks if the Signature associated with data bytes</span>
+<span class="doccomment">/// was produced with the PrivateKey associated to given PublicKey</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// # Example</span>
+<span class="doccomment">///  ```</span>
+<span class="doccomment">/// # use massa_signature::{derive_public_key, generate_random_private_key, sign, verify_signature, PublicKey};</span>
+<span class="doccomment">/// # use massa_hash::Hash;</span>
+<span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
+<span class="doccomment">/// let private_key = generate_random_private_key();</span>
+<span class="doccomment">/// let public_key: PublicKey = derive_public_key(&amp;private_key);</span>
+<span class="doccomment">/// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());</span>
+<span class="doccomment">/// let signature = sign(&amp;data, &amp;private_key).unwrap();</span>
+<span class="doccomment">/// let verification: bool = verify_signature(&amp;data, &amp;signature, &amp;public_key).is_ok();</span>
+<span class="doccomment">/// ```</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_signature</span>(
     <span class="ident">hash</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>,
     <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">Signature</span>,
@@ -1684,7 +1774,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
+    <span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
     <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
@@ -1736,5 +1826,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_signature" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_signature" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

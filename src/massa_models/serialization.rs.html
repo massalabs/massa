@@ -337,6 +337,17 @@
 <span id="332">332</span>
 <span id="333">333</span>
 <span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ModelsError</span>;
@@ -346,6 +357,7 @@
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 <span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
 
+<span class="doccomment">/// varint serialization</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">SerializeVarInt</span> {
     <span class="doccomment">/// Serialize as varint bytes</span>
     <span class="kw">fn</span> <span class="ident">to_varint_bytes</span>(<span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>;
@@ -363,6 +375,7 @@
     }
 }
 
+<span class="doccomment">/// var int deserialization</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">DeserializeVarInt</span>: <span class="ident">Sized</span> {
     <span class="doccomment">/// Deserialize variable size integer to Self from the provided buffer.</span>
     <span class="doccomment">/// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.</span>
@@ -418,6 +431,7 @@
     }
 }
 
+<span class="doccomment">/// Serialize min big endian integer</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">SerializeMinBEInt</span> {
     <span class="doccomment">/// serializes with the minimal amount of big endian bytes</span>
     <span class="kw">fn</span> <span class="ident">to_be_bytes_min</span>(<span class="self">self</span>, <span class="ident">max_value</span>: <span class="self">Self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span>;
@@ -443,7 +457,9 @@
     }
 }
 
+<span class="doccomment">/// Deserialize min big endian</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">DeserializeMinBEInt</span>: <span class="ident">Sized</span> {
+    <span class="doccomment">/// min big endian integer base size</span>
     <span class="kw">const</span> <span class="ident">MIN_BE_INT_BASE_SIZE</span>: <span class="ident">usize</span>;
 
     <span class="doccomment">/// Compute the minimal big endian deserialization size</span>
@@ -504,6 +520,7 @@
     }
 }
 
+<span class="doccomment">/// array from slice</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">array_from_slice</span><span class="op">&lt;</span><span class="kw">const</span> <span class="ident">ARRAY_SIZE</span>: <span class="ident">usize</span><span class="op">&gt;</span>(
     <span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="ident">ARRAY_SIZE</span>], <span class="ident">ModelsError</span><span class="op">&gt;</span> {
@@ -517,6 +534,7 @@
     })
 }
 
+<span class="doccomment">/// u8 from slice</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">u8_from_slice</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u8</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
     <span class="kw">if</span> <span class="ident">buffer</span>.<span class="ident">is_empty</span>() {
         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ModelsError::BufferError</span>(
@@ -526,11 +544,15 @@
     <span class="prelude-val">Ok</span>(<span class="ident">buffer</span>[<span class="number">0</span>])
 }
 
+<span class="doccomment">/// custom serialization trait</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">SerializeCompact</span> {
+    <span class="doccomment">/// serialization</span>
     <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span>;
 }
 
+<span class="doccomment">/// custom deserialization trait</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">DeserializeCompact</span>: <span class="ident">Sized</span> {
+    <span class="doccomment">/// deserialization</span>
     <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span>;
 }
 
@@ -672,5 +694,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

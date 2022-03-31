@@ -872,6 +872,33 @@
 <span id="867">867</span>
 <span id="868">868</span>
 <span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
@@ -897,6 +924,9 @@
 <span class="kw">use</span> <span class="ident">strum</span>::{<span class="ident">EnumMessage</span>, <span class="ident">EnumProperty</span>, <span class="ident">IntoEnumIterator</span>};
 <span class="kw">use</span> <span class="ident">strum_macros</span>::{<span class="ident">Display</span>, <span class="ident">EnumIter</span>, <span class="ident">EnumMessage</span>, <span class="ident">EnumProperty</span>, <span class="ident">EnumString</span>};
 
+<span class="doccomment">/// All the client commands</span>
+<span class="doccomment">/// the order they are defined is the order they are displayed in so be careful</span>
+<span class="doccomment">/// Maybe it would be worth renaming some of them for consistency</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">non_camel_case_types</span>)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">EnumIter</span>, <span class="ident">EnumMessage</span>, <span class="ident">EnumString</span>, <span class="ident">EnumProperty</span>, <span class="ident">Display</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Command</span> {
@@ -1059,7 +1089,7 @@
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
         <span class="ident">props</span>(<span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;PathToBytecode MaxGas GasPrice Address&quot;</span>,),
-        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;execute byte code, address is optionnal. Nothing is really executed on chain&quot;</span>
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;execute byte code, address is optional. Nothing is really executed on chain&quot;</span>
     )]</span>
     <span class="ident">read_only_smart_contract</span>,
 
@@ -1073,27 +1103,35 @@
     <span class="ident">when_moon</span>,
 }
 
+<span class="doccomment">/// Display the help of all commands</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">help</span>() {
     <span class="macro">println!</span>(<span class="string">&quot;HELP of Massa client (list of available commands):&quot;</span>);
     <span class="ident">Command::iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">help</span>()).<span class="ident">collect</span>()
 }
 
+<span class="doccomment">/// bail a shinny rpc error</span>
 <span class="macro">macro_rules!</span> <span class="ident">rpc_error</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; {
         <span class="macro">bail!</span>(<span class="string">&quot;check if your node is running: {}&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
     };
 }
 
+<span class="doccomment">/// print a yellow warning</span>
 <span class="macro">macro_rules!</span> <span class="ident">client_warning</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; {
         <span class="macro">println!</span>(<span class="string">&quot;{}: {}&quot;</span>, <span class="ident">style</span>(<span class="string">&quot;WARNING&quot;</span>).<span class="ident">yellow</span>(), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
     };
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>)]</span>
+<span class="doccomment">/// Used to have a shinny json output</span>
+<span class="doccomment">/// TODO refactor me</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">struct</span> <span class="ident">ExtendedWalletEntry</span> {
+    <span class="doccomment">/// the private key</span>
     <span class="kw">pub</span> <span class="ident">private_key</span>: <span class="ident">PrivateKey</span>,
+    <span class="doccomment">/// corresponding pub key</span>
     <span class="kw">pub</span> <span class="ident">public_key</span>: <span class="ident">PublicKey</span>,
+    <span class="doccomment">/// address and balance information</span>
     <span class="kw">pub</span> <span class="ident">address_info</span>: <span class="ident">CompactAddressInfo</span>,
 }
 
@@ -1107,10 +1145,13 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>)]</span>
+<span class="doccomment">/// Aggregation of the local, with some useful information as the balance, etc</span>
+<span class="doccomment">/// to be printed by the client.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExtendedWallet</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">ExtendedWalletEntry</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">ExtendedWallet</span> {
+    <span class="doccomment">/// Reorganize everything into an extended wallet</span>
     <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">wallet</span>: <span class="kw-2">&amp;</span><span class="ident">Wallet</span>, <span class="ident">addresses_info</span>: <span class="kw-2">&amp;</span>[<span class="ident">AddressInfo</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">ExtendedWallet</span>(
             <span class="ident">addresses_info</span>
@@ -1144,6 +1185,8 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Command</span> {
+    <span class="doccomment">/// Display the help of the command</span>
+    <span class="doccomment">/// with fancy colors and so on</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">help</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(
             <span class="string">&quot;- {} {}: {}{}&quot;</span>,
@@ -1162,6 +1205,14 @@
         )
     }
 
+    <span class="doccomment">/// run a given command</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # parameters</span>
+    <span class="doccomment">/// - client: the rpc client</span>
+    <span class="doccomment">/// - wallet: an access to the wallet</span>
+    <span class="doccomment">/// - parameters: the parsed parameters</span>
+    <span class="doccomment">/// - json: true if --json was passed as an option</span>
+    <span class="doccomment">///     it means that we don&#39;t want to print anything we just want the json output</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">client</span>: <span class="kw-2">&amp;</span><span class="ident">Client</span>,
@@ -1687,6 +1738,7 @@
     }
 }
 
+<span class="doccomment">/// helper to wrap and send an operation with proper validity period</span>
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_operation</span>(
     <span class="ident">client</span>: <span class="kw-2">&amp;</span><span class="ident">Client</span>,
     <span class="ident">wallet</span>: <span class="kw-2">&amp;</span><span class="ident">Wallet</span>,
@@ -1733,14 +1785,16 @@
     }
 }
 
-<span class="comment">// TODO: ugly utilities functions</span>
+<span class="doccomment">/// TODO: ugly utilities functions</span>
+<span class="doccomment">/// takes a slice of string and makes it into a vec&lt;T&gt;</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parse_vec</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">std::str::FromStr</span><span class="op">&gt;</span>(<span class="ident">args</span>: <span class="kw-2">&amp;</span>[<span class="ident">String</span>]) -&gt; <span class="ident">anyhow::Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">T::Err</span><span class="op">&gt;</span> {
     <span class="ident">args</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>()).<span class="ident">collect</span>()
 }
 
+<span class="doccomment">/// reads a file</span>
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_file_as_byte_vec</span>(<span class="ident">filename</span>: <span class="kw-2">&amp;</span><span class="ident">std::path::Path</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
     <span class="prelude-val">Ok</span>(<span class="ident">tokio::fs::read</span>(<span class="ident">filename</span>).<span class="kw">await</span><span class="question-mark">?</span>)
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

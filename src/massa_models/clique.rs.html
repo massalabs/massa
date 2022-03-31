@@ -123,6 +123,11 @@
 <span id="118">118</span>
 <span id="119">119</span>
 <span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">core::usize</span>;
@@ -137,10 +142,15 @@
     <span class="ident">DeserializeVarInt</span>, <span class="ident">ModelsError</span>, <span class="ident">SerializeCompact</span>, <span class="ident">SerializeVarInt</span>,
 };
 
+<span class="doccomment">/// Mutually compatible blocks in the graph</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Clique</span> {
+    <span class="doccomment">/// the block ids of the blocks in that clique</span>
     <span class="kw">pub</span> <span class="ident">block_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Fitness used to compute finality</span>
+    <span class="doccomment">/// Depends on descendants and endorsement count</span>
     <span class="kw">pub</span> <span class="ident">fitness</span>: <span class="ident">u64</span>,
+    <span class="doccomment">/// True if it is the clique of higher fitness</span>
     <span class="kw">pub</span> <span class="ident">is_blockclique</span>: <span class="ident">bool</span>,
 }
 
@@ -149,7 +159,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// use massa_models::clique::Clique;</span>
     <span class="doccomment">/// # use massa_models::{SerializeCompact, DeserializeCompact, SerializationContext, BlockId};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use std::str::FromStr;</span>
     <span class="doccomment">/// # massa_models::init_serialization_context(massa_models::SerializationContext::default());</span>
     <span class="doccomment">/// # pub fn get_dummy_block_id(s: &amp;str) -&gt; BlockId {</span>
@@ -244,5 +254,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

@@ -87,6 +87,7 @@
 <span id="82">82</span>
 <span id="83">83</span>
 <span id="84">84</span>
+<span id="85">85</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! # General description</span>
@@ -125,7 +126,7 @@
 <span class="doccomment">//! This crate is meant to be included only at the binary level to launch the worker,</span>
 <span class="doccomment">//! not by the lib crates that will interact with it.</span>
 <span class="doccomment">//! It depends on the massa-execution-exports crate that contains all the publicly exposed elements</span>
-<span class="doccomment">//! and throuh which users will actually interact with the worker.</span>
+<span class="doccomment">//! and through which users will actually interact with the worker.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## worker.rs</span>
 <span class="doccomment">//! This module runs the main loop of the worker thread.</span>
@@ -155,6 +156,7 @@
 <span class="doccomment">//! It handles requests that come with an MPSC to send back the result of their execution once it&#39;s done.</span>
 <span class="doccomment">//!</span>
 
+<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">map_first_last</span>)]</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">unzip_option</span>)]</span>
 
@@ -172,5 +174,5 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span>;
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

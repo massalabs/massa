@@ -528,15 +528,36 @@
 <span id="523">523</span>
 <span id="524">524</span>
 <span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-
+<span class="doccomment">//! Bootstrap crate</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! At start up, if now is after genesis timestamp,</span>
+<span class="doccomment">//! the node will bootstrap from one of the provided bootstrap servers.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! On server side, the server will query consensus for the graph and the ledger,</span>
+<span class="doccomment">//! execution for execution related data and network for the peer list.</span>
+<span class="doccomment">//!</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
-
+<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::client_binder::BootstrapClientBinder</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::establisher::Duplex</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::establisher::types::Duplex</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::server_binder::BootstrapServerBinder</span>;
 <span class="kw">use</span> <span class="ident">error::BootstrapError</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">establisher::Establisher</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">establisher::types::Establisher</span>;
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">stream::FuturesUnordered</span>, <span class="ident">StreamExt</span>};
 <span class="kw">use</span> <span class="ident">massa_consensus_exports::ConsensusCommandSender</span>;
 <span class="kw">use</span> <span class="ident">massa_final_state</span>::{<span class="ident">FinalState</span>, <span class="ident">FinalStateBootstrap</span>};
@@ -550,7 +571,6 @@
 <span class="kw">use</span> <span class="ident">messages::BootstrapMessage</span>;
 <span class="kw">use</span> <span class="ident">parking_lot::RwLock</span>;
 <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">prelude::SliceRandom</span>, <span class="ident">rngs::StdRng</span>, <span class="ident">SeedableRng</span>};
-<span class="kw">use</span> <span class="ident">settings::BootstrapSettings</span>;
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">hash_map</span>, <span class="ident">HashMap</span>};
 <span class="kw">use</span> <span class="ident">std::net::SocketAddr</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
@@ -561,10 +581,15 @@
 
 <span class="kw">mod</span> <span class="ident">client_binder</span>;
 <span class="kw">mod</span> <span class="ident">error</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">establisher</span>;
+<span class="kw">mod</span> <span class="ident">establisher</span>;
 <span class="kw">mod</span> <span class="ident">messages</span>;
 <span class="kw">mod</span> <span class="ident">server_binder</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">settings</span>;
+<span class="kw">mod</span> <span class="ident">settings</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">establisher::types</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::BootstrapSettings</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span>;
 
 <span class="doccomment">/// a collection of the bootstrap state snapshots of all relevant modules</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>)]</span>
@@ -786,12 +811,14 @@
     }
 }
 
+<span class="doccomment">/// handle on the bootstrap server</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BootstrapManager</span> {
     <span class="ident">join_handle</span>: <span class="ident">JoinHandle</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">BootstrapError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">manager_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">BootstrapManager</span> {
+    <span class="doccomment">/// stop the bootstrap server</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">BootstrapError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.stop&quot;</span>, {});
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">manager_tx</span>.<span class="ident">send</span>(()).<span class="kw">await</span>.<span class="ident">is_err</span>() {
@@ -803,6 +830,10 @@
 }
 
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
+<span class="doccomment">/// TODO merging the command senders into one channel struct may allow removing that allow</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// start a bootstrap server.</span>
+<span class="doccomment">/// Once your node will be ready, you may want other to bootstrap from you.</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">start_bootstrap_server</span>(
     <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
     <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
@@ -1050,9 +1081,6 @@
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(()),
     }
 }
-
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span>;
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

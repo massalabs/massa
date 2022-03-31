@@ -123,7 +123,7 @@
     <span class="kw">pub</span> <span class="ident">operation_validity_periods</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// cycle duration in periods</span>
     <span class="kw">pub</span> <span class="ident">periods_per_cycle</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// PoS lookback cycles: when drawing for cycle N, we use the rolls from cycle N - pos_lookback_cycles - 1</span>
+    <span class="doccomment">/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - pos_look back_cycles - 1</span>
     <span class="kw">pub</span> <span class="ident">pos_lookback_cycles</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles</span>
     <span class="kw">pub</span> <span class="ident">pos_lock_cycles</span>: <span class="ident">u64</span>,
@@ -183,7 +183,7 @@
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;    Periods per cycle: {}&quot;</span>, <span class="self">self</span>.<span class="ident">periods_per_cycle</span>)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
             <span class="ident">f</span>,
-            <span class="string">&quot;    Proof of stake lookback cycles: {}&quot;</span>,
+            <span class="string">&quot;    Proof of stake look back cycles: {}&quot;</span>,
             <span class="self">self</span>.<span class="ident">pos_lookback_cycles</span>
         )<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
@@ -198,5 +198,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

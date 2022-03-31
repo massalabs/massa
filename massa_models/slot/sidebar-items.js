@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Slot",""]]});
+initSidebarItems({"struct":[["Slot","a point in time where a block is expected"]]});

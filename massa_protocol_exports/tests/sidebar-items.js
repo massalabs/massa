@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["mock_network_controller",""],["tools",""]]});
+initSidebarItems({"mod":[["mock_network_controller","mock network controller"],["tools","test utilities"]]});

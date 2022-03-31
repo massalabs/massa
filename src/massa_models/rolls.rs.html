@@ -249,6 +249,17 @@
 <span id="244">244</span>
 <span id="245">245</span>
 <span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::collections::hash_map</span>;
 
@@ -260,12 +271,16 @@
 
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">btree_map</span>, <span class="ident">BTreeMap</span>};
 
+<span class="doccomment">/// just a u64 to keep track of the roll sells and buys during a cycle</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RollCompensation</span>(<span class="kw">pub</span> <span class="ident">u64</span>);
 
+<span class="doccomment">/// roll sales and purchases</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RollUpdate</span> {
+    <span class="doccomment">/// roll purchases</span>
     <span class="kw">pub</span> <span class="ident">roll_purchases</span>: <span class="ident">u64</span>,
+    <span class="doccomment">/// roll sales</span>
     <span class="kw">pub</span> <span class="ident">roll_sales</span>: <span class="ident">u64</span>,
     <span class="comment">// Here is space for registering any denunciations/resets</span>
 }
@@ -307,15 +322,18 @@
         <span class="ident">RollCompensation</span>(<span class="ident">compensation</span>)
     }
 
+    <span class="doccomment">/// true if the update has no effect</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_nil</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">roll_purchases</span> <span class="op">==</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">roll_sales</span> <span class="op">==</span> <span class="number">0</span>
     }
 }
 
+<span class="doccomment">/// maps addresses to roll updates</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RollUpdates</span>(<span class="kw">pub</span> <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">RollUpdate</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">RollUpdates</span> {
+    <span class="doccomment">/// the addresses impacted by the updates</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_involved_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">keys</span>().<span class="ident">copied</span>().<span class="ident">collect</span>()
     }
@@ -411,18 +429,22 @@
     }
 }
 
+<span class="doccomment">/// counts the roll for each address</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RollCounts</span>(<span class="kw">pub</span> <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">RollCounts</span> {
+    <span class="doccomment">/// Makes a new, empty RollCounts.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">RollCounts</span>(<span class="ident">BTreeMap::new</span>())
     }
 
+    <span class="doccomment">/// Returns the number of elements in the RollCounts.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">len</span>()
     }
 
+    <span class="doccomment">/// Returns true if the RollCounts contains no elements.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_empty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">is_empty</span>()
     }
@@ -496,5 +518,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

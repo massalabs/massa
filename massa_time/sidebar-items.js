@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["TimeError",""]],"struct":[["MassaTime","Time structure used every where. Millis since 01/01/1970."]]});
+initSidebarItems({"enum":[["TimeError","Time related errors"]],"struct":[["MassaTime","Time structure used everywhere. Millis since 01/01/1970."]]});

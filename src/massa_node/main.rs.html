@@ -419,7 +419,7 @@
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
 <span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]</span>
-
+<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">massa_logging</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>::{<span class="ident">POOL_CONFIG</span>, <span class="ident">SETTINGS</span>};
 <span class="kw">use</span> <span class="ident">massa_api</span>::{<span class="ident">Private</span>, <span class="ident">Public</span>, <span class="ident">RpcServer</span>, <span class="ident">StopHandle</span>, <span class="ident">API</span>};
@@ -497,7 +497,7 @@
         },
         <span class="ident">res</span> <span class="op">=</span> <span class="ident">get_state</span>(
             <span class="kw-2">&amp;</span><span class="ident">SETTINGS</span>.<span class="ident">bootstrap</span>,
-            <span class="ident">massa_bootstrap::establisher::Establisher::new</span>(),
+            <span class="ident">massa_bootstrap::types::Establisher::new</span>(),
             <span class="kw-2">*</span><span class="ident">VERSION</span>,
             <span class="kw-2">*</span><span class="ident">GENESIS_TIMESTAMP</span>,
             <span class="kw-2">*</span><span class="ident">END_TIMESTAMP</span>,
@@ -828,5 +828,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_node" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

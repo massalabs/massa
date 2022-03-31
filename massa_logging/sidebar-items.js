@@ -1,1 +1,1 @@
-initSidebarItems({"macro":[["massa_trace",""]]});
+initSidebarItems({"macro":[["massa_trace","tracing with some context"]]});

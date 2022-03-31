@@ -230,7 +230,7 @@
 
 <span class="doccomment">/// A structure representing a decimal Amount of coins with safe operations</span>
 <span class="doccomment">/// this allows ensuring that there is never an uncontrolled overflow or precision loss</span>
-<span class="doccomment">/// while providig a convenient decimal interface for users</span>
+<span class="doccomment">/// while providing a convenient decimal interface for users</span>
 <span class="doccomment">/// The underlying u64 raw representation if a fixed-point value with factor AMOUNT_DECIMAL_FACTOR</span>
 <span class="doccomment">/// The minimal value is 0 and the maximal value is 18446744073.709551615</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Default</span>)]</span>
@@ -263,7 +263,7 @@
         <span class="ident">Amount</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_add</span>(<span class="ident">amount</span>.<span class="number">0</span>))
     }
 
-    <span class="doccomment">/// safely substact another amount from self, saturating the result on udnerflow</span>
+    <span class="doccomment">/// safely subtract another amount from self, saturating the result on underflow</span>
     <span class="attribute">#[<span class="ident">must_use</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">saturating_sub</span>(<span class="self">self</span>, <span class="ident">amount</span>: <span class="ident">Amount</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">Amount</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">saturating_sub</span>(<span class="ident">amount</span>.<span class="number">0</span>))
@@ -274,7 +274,7 @@
         <span class="self">self</span>.<span class="number">0</span> <span class="op">==</span> <span class="number">0</span>
     }
 
-    <span class="doccomment">/// safely substact another amount from self, returning None on underflow</span>
+    <span class="doccomment">/// safely subtract another amount from self, returning None on underflow</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_models::Amount;</span>
     <span class="doccomment">/// # use std::str::FromStr;</span>
@@ -436,5 +436,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["ProofOfStakeError",""]],"type":[["POSResult",""]]});
+initSidebarItems({"enum":[["ProofOfStakeError","proof of stake error"]],"type":[["POSResult","Proof of stake result"]]});

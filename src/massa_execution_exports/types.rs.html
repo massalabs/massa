@@ -70,13 +70,13 @@
 <span class="doccomment">/// structure describing the output of a single execution</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExecutionOutput</span> {
-    <span class="comment">// slot</span>
+    <span class="doccomment">/// slot</span>
     <span class="kw">pub</span> <span class="ident">slot</span>: <span class="ident">Slot</span>,
-    <span class="comment">// optional block ID at that slot (None if miss)</span>
+    <span class="doccomment">/// optional block ID at that slot (None if miss)</span>
     <span class="kw">pub</span> <span class="ident">block_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
-    <span class="comment">// state changes caused by the execution step</span>
+    <span class="doccomment">/// state changes caused by the execution step</span>
     <span class="kw">pub</span> <span class="ident">state_changes</span>: <span class="ident">StateChanges</span>,
-    <span class="comment">// events emitted by the execution step</span>
+    <span class="doccomment">/// events emitted by the execution step</span>
     <span class="kw">pub</span> <span class="ident">events</span>: <span class="ident">EventStore</span>,
 }
 
@@ -110,11 +110,11 @@
     <span class="doccomment">/// to allow write access on newly created addresses in order to set them up,</span>
     <span class="doccomment">/// but only within the scope of the current stack element.</span>
     <span class="doccomment">/// That way, only the current scope and neither its caller not the functions it calls gain this write access,</span>
-    <span class="doccomment">/// which is important for security.  </span>
+    <span class="doccomment">/// which is important for security.</span>
     <span class="doccomment">/// Note that we use a Vec instead of a prehashed set to ensure order determinism,</span>
     <span class="doccomment">/// the performance hit of linear search remains minimal because owned_addreses will always contain very few elements.</span>
     <span class="kw">pub</span> <span class="ident">owned_addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

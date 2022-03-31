@@ -206,11 +206,12 @@
 <span id="201">201</span>
 <span id="202">202</span>
 <span id="203">203</span>
+<span id="204">204</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">node_configuration::EVENT_ID_SIZE_BYTES</span>, <span class="ident">prehash::PreHashed</span>, <span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">ModelsError</span>,
     <span class="ident">OperationId</span>, <span class="ident">Slot</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
+<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::VecDeque</span>, <span class="ident">fmt::Display</span>, <span class="ident">str::FromStr</span>};
 
@@ -235,6 +236,7 @@
 
 <span class="kw">const</span> <span class="ident">SC_OUTPUT_EVENT_ID_STRING_PREFIX</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;SCE&quot;</span>;
 
+<span class="doccomment">/// event generated during a smart contract execution</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Ord</span>, <span class="ident">PartialEq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SCOutputEventId</span>(<span class="kw">pub</span> <span class="ident">Hash</span>);
 
@@ -281,7 +283,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use massa_models::output_event::SCOutputEventId;</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use std::str::FromStr;</span>
     <span class="doccomment">/// # let hash = Hash::compute_from(&amp;&quot;hello world&quot;.as_bytes());</span>
     <span class="doccomment">/// let event = SCOutputEventId(hash);</span>
@@ -297,7 +299,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use massa_models::output_event::SCOutputEventId;</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use std::str::FromStr;</span>
     <span class="doccomment">/// # let hash = Hash::compute_from(&amp;&quot;hello world&quot;.as_bytes());</span>
     <span class="doccomment">/// let event = SCOutputEventId(hash);</span>
@@ -313,7 +315,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use massa_models::output_event::SCOutputEventId;</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use std::str::FromStr;</span>
     <span class="doccomment">/// # let hash = Hash::compute_from(&amp;&quot;hello world&quot;.as_bytes());</span>
     <span class="doccomment">/// let event = SCOutputEventId(hash);</span>
@@ -331,7 +333,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use massa_models::output_event::SCOutputEventId;</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use std::str::FromStr;</span>
     <span class="doccomment">/// # let hash = Hash::compute_from(&amp;&quot;hello world&quot;.as_bytes());</span>
     <span class="doccomment">/// let event = SCOutputEventId(hash);</span>
@@ -349,7 +351,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use massa_models::output_event::SCOutputEventId;</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use std::str::FromStr;</span>
     <span class="doccomment">/// # let hash = Hash::compute_from(&amp;&quot;hello world&quot;.as_bytes());</span>
     <span class="doccomment">/// let event = SCOutputEventId(hash);</span>
@@ -410,5 +412,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

@@ -181,19 +181,26 @@
 <span id="176">176</span>
 <span id="177">177</span>
 <span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash</span>::{<span class="ident">PreHashed</span>, <span class="ident">Set</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prehash::PreHashed</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ModelsError</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">api</span>::{<span class="ident">LedgerInfo</span>, <span class="ident">RollsInfo</span>},
     <span class="ident">constants::ADDRESS_SIZE_BYTES</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
+<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_signature::PublicKey</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 
+<span class="doccomment">/// Derived from a public key</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Ord</span>, <span class="ident">PartialEq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Address</span>(<span class="kw">pub</span> <span class="ident">Hash</span>);
 <span class="kw">const</span> <span class="ident">ADDRESS_STRING_PREFIX</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;ADR&quot;</span>;
@@ -249,7 +256,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use massa_signature::{PublicKey, PrivateKey, Signature,</span>
     <span class="doccomment">/// #       generate_random_private_key, derive_public_key};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use massa_models::Address;</span>
     <span class="doccomment">/// # let private_key = generate_random_private_key();</span>
@@ -267,7 +274,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use massa_signature::{PublicKey, PrivateKey, Signature,</span>
     <span class="doccomment">/// #       generate_random_private_key, derive_public_key};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use massa_models::Address;</span>
     <span class="doccomment">/// # let private_key = generate_random_private_key();</span>
@@ -285,7 +292,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use massa_signature::{PublicKey, PrivateKey, Signature,</span>
     <span class="doccomment">/// #       generate_random_private_key, derive_public_key};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use massa_models::Address;</span>
     <span class="doccomment">/// # let private_key = generate_random_private_key();</span>
@@ -305,7 +312,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use massa_signature::{PublicKey, PrivateKey, Signature,</span>
     <span class="doccomment">/// #       generate_random_private_key, derive_public_key};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use massa_models::Address;</span>
     <span class="doccomment">/// # let private_key = generate_random_private_key();</span>
@@ -325,7 +332,7 @@
     <span class="doccomment">/// ```rust</span>
     <span class="doccomment">/// # use massa_signature::{PublicKey, PrivateKey, Signature,</span>
     <span class="doccomment">/// #       generate_random_private_key, derive_public_key};</span>
-    <span class="doccomment">/// # use massa_hash::hash::Hash;</span>
+    <span class="doccomment">/// # use massa_hash::Hash;</span>
     <span class="doccomment">/// # use serde::{Deserialize, Serialize};</span>
     <span class="doccomment">/// # use massa_models::Address;</span>
     <span class="doccomment">/// # let private_key = generate_random_private_key();</span>
@@ -340,25 +347,30 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Addresses</span> {
-    <span class="kw">pub</span> <span class="ident">addrs</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-}
-
+<span class="doccomment">/// Production stats for a given address during a given cycle</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AddressCycleProductionStats</span> {
+    <span class="doccomment">/// cycle number</span>
     <span class="kw">pub</span> <span class="ident">cycle</span>: <span class="ident">u64</span>,
+    <span class="doccomment">/// true if that cycle is final</span>
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// ok_count blocks were created by this address during that cycle</span>
     <span class="kw">pub</span> <span class="ident">ok_count</span>: <span class="ident">u64</span>,
+    <span class="doccomment">/// ok_count blocks were missed by this address during that cycle</span>
     <span class="kw">pub</span> <span class="ident">nok_count</span>: <span class="ident">u64</span>,
 }
 
+<span class="doccomment">/// Address state as know by consensus</span>
+<span class="doccomment">/// Used to answer to api</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AddressState</span> {
+    <span class="doccomment">/// Parallel balance information</span>
     <span class="kw">pub</span> <span class="ident">ledger_info</span>: <span class="ident">LedgerInfo</span>,
+    <span class="doccomment">/// Rolls information</span>
     <span class="kw">pub</span> <span class="ident">rolls</span>: <span class="ident">RollsInfo</span>,
+    <span class="doccomment">/// stats for still in memory cycles</span>
     <span class="kw">pub</span> <span class="ident">production_stats</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AddressCycleProductionStats</span><span class="op">&gt;</span>,
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

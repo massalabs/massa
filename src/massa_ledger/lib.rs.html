@@ -73,6 +73,8 @@
 <span id="68">68</span>
 <span id="69">69</span>
 <span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! # General description</span>
@@ -112,13 +114,14 @@
 <span class="doccomment">//! can be modified, combined or applied to the final ledger.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## bootstrap.rs</span>
-<span class="doccomment">//! Provides serializable strucutres and tools for bootstrapping the final ledger.  </span>
+<span class="doccomment">//! Provides serializable strucutres and tools for bootstrapping the final ledger.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## Test exports</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.</span>
 <span class="doccomment">//! See test_exports/mod.rs for details.</span>
 
+<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">map_first_last</span>)]</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
 
@@ -142,7 +145,8 @@
 <span class="kw">mod</span> <span class="ident">tests</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
+<span class="doccomment">/// test exports</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_exports</span>;
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_ledger" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

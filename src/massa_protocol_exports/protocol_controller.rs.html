@@ -312,6 +312,34 @@
 <span id="307">307</span>
 <span id="308">308</span>
 <span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ProtocolError</span>;
@@ -338,14 +366,20 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProtocolEvent</span> {
     <span class="doccomment">/// A block with a valid signature has been received.</span>
     <span class="ident">ReceivedBlock</span> {
+        <span class="doccomment">/// corresponding id</span>
         <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
+        <span class="doccomment">/// the slot</span>
         <span class="ident">slot</span>: <span class="ident">Slot</span>,
-        <span class="ident">operation_set</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>, <span class="comment">// (index, validity end period)</span>
+        <span class="doccomment">/// operations in the block by (index, validity end period)</span>
+        <span class="ident">operation_set</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">usize</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
+        <span class="doccomment">/// endorsements in the block with index</span>
         <span class="ident">endorsement_ids</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// A block header with a valid signature has been received.</span>
     <span class="ident">ReceivedBlockHeader</span> {
+        <span class="doccomment">/// its id</span>
         <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
+        <span class="doccomment">/// The header</span>
         <span class="ident">header</span>: <span class="ident">SignedHeader</span>,
     },
     <span class="doccomment">/// Ask for a list of blocks from consensus.</span>
@@ -356,18 +390,26 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProtocolPoolEvent</span> {
     <span class="doccomment">/// Operations were received</span>
     <span class="ident">ReceivedOperations</span> {
+        <span class="doccomment">/// the operations</span>
         <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">SignedOperation</span><span class="op">&gt;</span>,
-        <span class="ident">propagate</span>: <span class="ident">bool</span>, <span class="comment">// whether or not to propagate operations</span>
+        <span class="doccomment">/// whether or not to propagate operations</span>
+        <span class="ident">propagate</span>: <span class="ident">bool</span>,
     },
     <span class="doccomment">/// Endorsements were received</span>
     <span class="ident">ReceivedEndorsements</span> {
+        <span class="doccomment">/// the endorsements</span>
         <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span>,
-        <span class="ident">propagate</span>: <span class="ident">bool</span>, <span class="comment">// whether or not to propagate endorsements</span>
+        <span class="doccomment">/// whether or not to propagate endorsements</span>
+        <span class="ident">propagate</span>: <span class="ident">bool</span>,
     },
     <span class="doccomment">/// Get operations for a node</span>
     <span class="ident">GetOperations</span>((<span class="ident">NodeId</span>, <span class="ident">OperationIds</span>)),
 }
 
+<span class="doccomment">/// block result: map block id to option (</span>
+<span class="doccomment">///     option(set(operation id)),</span>
+<span class="doccomment">///     option(vec(endorsement id))</span>
+<span class="doccomment">/// )</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">BlocksResults</span> <span class="op">=</span>
     <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span><span class="op">&gt;</span>;
 
@@ -376,15 +418,20 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProtocolCommand</span> {
     <span class="doccomment">/// Notify block integration of a given block.</span>
     <span class="ident">IntegratedBlock</span> {
+        <span class="doccomment">/// block id</span>
         <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
+        <span class="doccomment">/// operations ids in the block</span>
         <span class="ident">operation_ids</span>: <span class="ident">OperationIds</span>,
+        <span class="doccomment">/// endorsement ids in the block</span>
         <span class="ident">endorsement_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// A block, or it&#39;s header, amounted to an attempted attack.</span>
     <span class="ident">AttackBlockDetected</span>(<span class="ident">BlockId</span>),
     <span class="doccomment">/// Wishlist delta</span>
     <span class="ident">WishlistDelta</span> {
+        <span class="doccomment">/// add to wishlist</span>
         <span class="ident">new</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
+        <span class="doccomment">/// remove from wishlist</span>
         <span class="ident">remove</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// The response to a [ProtocolEvent::GetBlocks].</span>
@@ -397,9 +444,11 @@
     <span class="ident">PropagateEndorsements</span>(<span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span>),
 }
 
+<span class="doccomment">/// protocol management commands</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProtocolManagementCommand</span> {}
 
+<span class="doccomment">/// protocol command sender</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolCommandSender</span>(<span class="kw">pub</span> <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ProtocolCommand</span><span class="op">&gt;</span>);
 
@@ -481,6 +530,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="doccomment">/// update the block wishlist</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_wishlist_delta</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">new</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
@@ -515,6 +565,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="doccomment">/// propagate endorsements to connected node</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">propagate_endorsements</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span>,
@@ -533,6 +584,7 @@
     }
 }
 
+<span class="doccomment">/// Protocol event receiver</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolEventReceiver</span>(<span class="kw">pub</span> <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">ProtocolEventReceiver</span> {
@@ -562,6 +614,8 @@
         <span class="ident">remaining_events</span>
     }
 }
+
+<span class="doccomment">/// Protocol pool event receiver</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolPoolEventReceiver</span>(<span class="kw">pub</span> <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">ProtocolPoolEventReceiver</span> {
@@ -592,12 +646,14 @@
     }
 }
 
+<span class="doccomment">/// protocol manager used to stop the protocol</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolManager</span> {
     <span class="ident">join_handle</span>: <span class="ident">JoinHandle</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NetworkEventReceiver</span>, <span class="ident">ProtocolError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">manager_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ProtocolManagementCommand</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">ProtocolManager</span> {
+    <span class="doccomment">/// new protocol manager</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">join_handle</span>: <span class="ident">JoinHandle</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NetworkEventReceiver</span>, <span class="ident">ProtocolError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">manager_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ProtocolManagementCommand</span><span class="op">&gt;</span>,
@@ -622,5 +678,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

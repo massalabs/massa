@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Address",""],["AddressCycleProductionStats",""],["AddressState",""],["Addresses",""]]});
+initSidebarItems({"struct":[["Address","Derived from a public key"],["AddressCycleProductionStats","Production stats for a given address during a given cycle"],["AddressState","Address state as know by consensus Used to answer to api"]]});

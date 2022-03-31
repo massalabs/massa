@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Client",""],["RpcClient",""]]});
+initSidebarItems({"struct":[["Client","Client"],["RpcClient","TODO ask @yvan-sraka"]]});

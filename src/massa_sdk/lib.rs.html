@@ -221,7 +221,24 @@
 <span id="216">216</span>
 <span id="217">217</span>
 <span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
+<span class="doccomment">//! Utilities for a massa client</span>
+
+<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 
 <span class="kw">use</span> <span class="ident">jsonrpc_core_client::transports::http</span>;
 <span class="kw">use</span> <span class="ident">jsonrpc_core_client</span>::{<span class="ident">RpcChannel</span>, <span class="ident">RpcError</span>, <span class="ident">RpcResult</span>, <span class="ident">TypedClient</span>};
@@ -238,12 +255,17 @@
 <span class="kw">use</span> <span class="ident">serde::de::DeserializeOwned</span>;
 <span class="kw">use</span> <span class="ident">serde::Serialize</span>;
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
+
+<span class="doccomment">/// Client</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Client</span> {
+    <span class="doccomment">/// public component</span>
     <span class="kw">pub</span> <span class="ident">public</span>: <span class="ident">RpcClient</span>,
+    <span class="doccomment">/// private component</span>
     <span class="kw">pub</span> <span class="ident">private</span>: <span class="ident">RpcClient</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Client</span> {
+    <span class="doccomment">/// creates a new client</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ip</span>: <span class="ident">IpAddr</span>, <span class="ident">public_port</span>: <span class="ident">u16</span>, <span class="ident">private_port</span>: <span class="ident">u16</span>) -&gt; <span class="ident">Client</span> {
         <span class="kw">let</span> <span class="ident">public_socket_addr</span> <span class="op">=</span> <span class="ident">SocketAddr::new</span>(<span class="ident">ip</span>, <span class="ident">public_port</span>);
         <span class="kw">let</span> <span class="ident">private_socket_addr</span> <span class="op">=</span> <span class="ident">SocketAddr::new</span>(<span class="ident">ip</span>, <span class="ident">private_port</span>);
@@ -256,6 +278,7 @@
     }
 }
 
+<span class="doccomment">/// TODO ask @yvan-sraka</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RpcClient</span> {
     <span class="ident">client</span>: <span class="ident">TypedClient</span>,
     <span class="ident">timeout</span>: <span class="ident">u64</span>,
@@ -339,10 +362,13 @@
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;unban&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
     }
 
+    <span class="doccomment">/// add ips to whitelist</span>
+    <span class="doccomment">/// create peer if it was unknown</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_whitelist&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
     }
 
+    <span class="doccomment">/// remove ips from whitelist</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_remove_from_whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_remove_from_whitelist&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>])
             .<span class="kw">await</span>
@@ -395,6 +421,7 @@
             .<span class="kw">await</span>
     }
 
+    <span class="doccomment">/// get info on endorsements by ids</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_endorsements</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">endorsement_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
@@ -423,6 +450,7 @@
             .<span class="kw">await</span>
     }
 
+    <span class="doccomment">/// Get info by addresses</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AddressInfo</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_addresses&quot;</span>, <span class="string">&quot;Vec&lt;AddressInfo&gt;&quot;</span>, <span class="macro">vec!</span>[<span class="ident">addresses</span>])
             .<span class="kw">await</span>
@@ -440,5 +468,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_sdk" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_sdk" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

@@ -656,6 +656,8 @@
 <span id="651">651</span>
 <span id="652">652</span>
 <span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">massa_models::Operation</span>;
 <span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="kw">use</span> <span class="ident">massa_models::ledger_models</span>::{<span class="ident">LedgerChange</span>, <span class="ident">LedgerChanges</span>, <span class="ident">LedgerData</span>};
@@ -1108,6 +1110,8 @@
     }
 }
 
+<span class="doccomment">/// address to ledger data map</span>
+<span class="doccomment">/// Only part of a ledger</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerSubset</span>(<span class="kw">pub</span> <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">LedgerData</span><span class="op">&gt;</span>);
 
@@ -1310,5 +1314,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

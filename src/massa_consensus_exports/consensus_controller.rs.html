@@ -474,6 +474,25 @@
 <span id="469">469</span>
 <span id="470">470</span>
 <span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="kw">use</span> <span class="ident">massa_graph</span>::{<span class="ident">BlockGraphExport</span>, <span class="ident">BootstrapableGraph</span>, <span class="ident">ExportBlockStatus</span>, <span class="ident">Status</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">address::AddressState</span>, <span class="ident">api::EndorsementInfo</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>};
@@ -500,6 +519,8 @@
     <span class="ident">ConsensusError</span>,
 };
 
+<span class="doccomment">/// Consensus commands sender</span>
+<span class="doccomment">/// TODO Make private</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusCommandSender</span>(<span class="kw">pub</span> <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ConsensusCommand</span><span class="op">&gt;</span>);
 
@@ -586,7 +607,7 @@
     <span class="doccomment">/// Gets (slot, public_key) were the staker with public_key was selected for slot, between start_slot and end_slot.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * start_slot: begining of the considered interval.</span>
+    <span class="doccomment">/// * start_slot: beginning of the considered interval.</span>
     <span class="doccomment">/// * end_slot: end of the considered interval.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_selection_draws</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -615,6 +636,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="doccomment">/// get bootstrap snapshot</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_bootstrap_state</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">ExportProofOfStake</span>, <span class="ident">BootstrapableGraph</span>), <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
@@ -635,6 +657,8 @@
             )
         })
     }
+
+    <span class="doccomment">/// get block ids for one creator address</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_block_ids_by_creator</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">address</span>: <span class="ident">Address</span>,
@@ -660,6 +684,7 @@
         })
     }
 
+    <span class="doccomment">/// get operation info by operation id</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_operations</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">operation_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
@@ -742,6 +767,7 @@
         })
     }
 
+    <span class="doccomment">/// get current consensus stats</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_stats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsensusStats</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_controller.get_stats&quot;</span>, {});
@@ -760,6 +786,7 @@
         })
     }
 
+    <span class="doccomment">/// get all stakers with roll count</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_active_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_controller.get_active_stakers&quot;</span>, {});
@@ -778,6 +805,7 @@
         })
     }
 
+    <span class="doccomment">/// Add some staking keys</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">register_staking_private_keys</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span>,
@@ -794,6 +822,9 @@
             })
     }
 
+    <span class="doccomment">/// remove some keys from staking keys by associated address</span>
+    <span class="doccomment">/// the node won&#39;t be able to stake with these keys anymore</span>
+    <span class="doccomment">/// They wil be erased from the staking keys file</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">remove_staking_addresses</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">addresses</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
@@ -808,6 +839,7 @@
             })
     }
 
+    <span class="doccomment">/// get staking addresses</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_controller.get_staking_addresses&quot;</span>, {});
@@ -826,6 +858,7 @@
         })
     }
 
+    <span class="doccomment">/// get production stats for a set of stakers</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_stakers_production_stats</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">addrs</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
@@ -850,6 +883,7 @@
         })
     }
 
+    <span class="doccomment">/// get endorsements info by involved address</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_endorsements_by_address</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">address</span>: <span class="ident">Address</span>,
@@ -877,6 +911,7 @@
         })
     }
 
+    <span class="doccomment">/// get endorsements info by ids</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_endorsements_by_id</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
@@ -902,16 +937,16 @@
     }
 }
 
+<span class="doccomment">/// channel to receive consensus events</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusEventReceiver</span>(<span class="kw">pub</span> <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ConsensusEvent</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">ConsensusEventReceiver</span> {
+    <span class="doccomment">/// wait for the next event</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_event</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsensusEvent</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">evt</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="number">0</span>
+        <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">recv</span>()
             .<span class="kw">await</span>
-            .<span class="ident">ok_or</span>(<span class="ident">ConsensusError::ControllerEventError</span>);
-        <span class="ident">evt</span>
+            .<span class="ident">ok_or</span>(<span class="ident">ConsensusError::ControllerEventError</span>)
     }
 
     <span class="doccomment">/// drains remaining events and returns them in a VecDeque</span>
@@ -926,13 +961,16 @@
     }
 }
 
+<span class="doccomment">/// Consensus manager</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusManager</span> {
+    <span class="doccomment">/// protocol handler</span>
     <span class="kw">pub</span> <span class="ident">join_handle</span>: <span class="ident">JoinHandle</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProtocolEventReceiver</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-
+    <span class="doccomment">/// consensus management sender</span>
     <span class="kw">pub</span> <span class="ident">manager_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ConsensusManagementCommand</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">ConsensusManager</span> {
+    <span class="doccomment">/// stop consensus</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop</span>(
         <span class="self">self</span>,
         <span class="ident">consensus_event_receiver</span>: <span class="ident">ConsensusEventReceiver</span>,
@@ -946,5 +984,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

@@ -143,6 +143,23 @@
 <span id="138">138</span>
 <span id="139">139</span>
 <span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -200,21 +217,37 @@
 <span class="doccomment">/// a context for model serialization/deserialization</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SerializationContext</span> {
+    <span class="doccomment">/// max operations per block</span>
     <span class="kw">pub</span> <span class="ident">max_operations_per_block</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// target endorsement count</span>
     <span class="kw">pub</span> <span class="ident">endorsement_count</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// thread count</span>
     <span class="kw">pub</span> <span class="ident">thread_count</span>: <span class="ident">u8</span>,
+    <span class="doccomment">/// max block size</span>
     <span class="kw">pub</span> <span class="ident">max_block_size</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// max advertised peers length</span>
     <span class="kw">pub</span> <span class="ident">max_advertise_length</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// max message size</span>
     <span class="kw">pub</span> <span class="ident">max_message_size</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// max ask block per message</span>
     <span class="kw">pub</span> <span class="ident">max_ask_blocks_per_message</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// max operations per message</span>
     <span class="kw">pub</span> <span class="ident">max_operations_per_message</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// max endorsements per message</span>
     <span class="kw">pub</span> <span class="ident">max_endorsements_per_message</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// max bootstrapped blocks</span>
     <span class="kw">pub</span> <span class="ident">max_bootstrap_blocks</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// max bootstrapped cliques</span>
     <span class="kw">pub</span> <span class="ident">max_bootstrap_cliques</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// max bootstrapped block dependencies</span>
     <span class="kw">pub</span> <span class="ident">max_bootstrap_deps</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// max bootstrapped block children bootstrapped</span>
     <span class="kw">pub</span> <span class="ident">max_bootstrap_children</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// max bootstrapped proof of stake cycle</span>
     <span class="kw">pub</span> <span class="ident">max_bootstrap_pos_cycles</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// max bootstrap proof of stake entries</span>
     <span class="kw">pub</span> <span class="ident">max_bootstrap_pos_entries</span>: <span class="ident">u32</span>,
+    <span class="doccomment">/// max bootstrap message size</span>
     <span class="kw">pub</span> <span class="ident">max_bootstrap_message_size</span>: <span class="ident">u32</span>,
 }
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
@@ -230,7 +263,7 @@
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">SerializationContext</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-        <span class="comment">// Overide normal constants on testing</span>
+        <span class="comment">// Override normal constants on testing</span>
         <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::default_testing</span>::<span class="kw-2">*</span>;
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>))]</span>
         <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::<span class="kw-2">*</span>;
@@ -257,9 +290,10 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>))]</span>
 <span class="kw">impl</span> <span class="ident">SerializationContext</span> {
+    <span class="doccomment">/// default constants</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">const_default</span>() -&gt; <span class="self">Self</span> {
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
-        <span class="comment">// Overide normal constants on testing</span>
+        <span class="comment">// Override normal constants on testing</span>
         <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::default_testing</span>::<span class="kw-2">*</span>;
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>))]</span>
         <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants</span>::<span class="kw-2">*</span>;
@@ -284,5 +318,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

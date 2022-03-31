@@ -242,6 +242,9 @@
 <span id="237">237</span>
 <span id="238">238</span>
 <span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Contains the implementation of the life cycle of operations</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Impement the propagation algorithm written here [redirect to github]</span>
@@ -271,8 +274,11 @@
 <span class="doccomment">/// to a `node_id` now or later. Mainly used in protocol and translated into</span>
 <span class="doccomment">/// simple combination of a `node_id` and `operations_ids`</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OperationBatchItem</span> {
+    <span class="doccomment">/// last updated at instant</span>
     <span class="kw">pub</span> <span class="ident">instant</span>: <span class="ident">Instant</span>,
+    <span class="doccomment">/// node id</span>
     <span class="kw">pub</span> <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
+    <span class="doccomment">/// operation ids</span>
     <span class="kw">pub</span> <span class="ident">operations_ids</span>: <span class="ident">OperationIds</span>,
 }
 
@@ -482,5 +488,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

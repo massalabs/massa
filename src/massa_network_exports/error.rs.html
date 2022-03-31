@@ -102,6 +102,16 @@
 <span id="97">97</span>
 <span id="98">98</span>
 <span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">peers::PeerType</span>, <span class="ident">ConnectionId</span>};
@@ -110,6 +120,7 @@
 <span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
+<span class="doccomment">/// Network error</span>
 <span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NetworkError</span> {
@@ -153,19 +164,28 @@
     <span class="ident">ContainerInconsistencyError</span>(<span class="ident">String</span>),
 }
 
+<span class="doccomment">/// Handshake error type</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">HandshakeErrorType</span> {
+    <span class="doccomment">/// Id already exist</span>
     <span class="ident">HandshakeIdAlreadyExist</span>(<span class="ident">String</span>),
+    <span class="doccomment">/// timeout</span>
     <span class="ident">HandshakeTimeout</span>,
+    <span class="doccomment">/// Unexpected interruption</span>
     <span class="ident">HandshakeInterruption</span>(<span class="ident">String</span>),
+    <span class="doccomment">/// wrong handshake message</span>
     <span class="ident">HandshakeWrongMessage</span>,
+    <span class="doccomment">/// if remote id is the same as ours</span>
     <span class="ident">HandshakeKey</span>,
+    <span class="doccomment">/// Invalid signature</span>
     <span class="ident">HandshakeInvalidSignature</span>,
+    <span class="doccomment">/// Incompatible version</span>
     <span class="ident">IncompatibleVersion</span>,
     <span class="doccomment">/// Outgoing connection returned a bootstrapable peer list: {0:?}</span>
     <span class="ident">PeerListReceived</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
 }
 
+<span class="doccomment">/// return handshake error</span>
 <span class="attribute">#[<span class="ident">macro_export</span>]</span>
 <span class="macro">macro_rules!</span> <span class="ident">throw_handshake_error</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">err</span>:<span class="ident">ident</span>) =&gt; {
@@ -202,5 +222,5 @@
     <span class="ident">UnexpectedError</span>,
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

@@ -345,6 +345,20 @@
 <span id="340">340</span>
 <span id="341">341</span>
 <span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::PoolConfig</span>;
@@ -415,10 +429,12 @@
     ))
 }
 
+<span class="doccomment">/// Pool command sender</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PoolCommandSender</span>(<span class="kw">pub</span> <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">PoolCommand</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">PoolCommandSender</span> {
+    <span class="doccomment">/// add operations to pool</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_operations</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">SignedOperation</span><span class="op">&gt;</span>,
@@ -432,6 +448,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="doccomment">/// update current slots</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">update_current_slot</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.update_current_slot&quot;</span>, { <span class="string">&quot;slot&quot;</span>: <span class="ident">slot</span> });
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
@@ -442,6 +459,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="doccomment">/// get pool stats</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_pool_stats</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PoolStats</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.command_sender.get_pool_stats&quot;</span>, {});
         <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
@@ -458,6 +476,7 @@
         })
     }
 
+    <span class="doccomment">/// mark operations as final</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">final_operations</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">ops</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">u64</span>, <span class="ident">u8</span>)<span class="op">&gt;</span>,
@@ -469,6 +488,7 @@
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PoolError::ChannelError</span>(<span class="string">&quot;final_operations command send error&quot;</span>.<span class="ident">into</span>()))
     }
 
+    <span class="doccomment">/// update latest final periods</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">update_latest_final_periods</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
@@ -521,6 +541,7 @@
         })
     }
 
+    <span class="doccomment">/// get endorsements for block creation</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_endorsements</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">target_slot</span>: <span class="ident">Slot</span>,
@@ -550,6 +571,7 @@
         })
     }
 
+    <span class="doccomment">/// get operations by ids</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_operations</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">operation_ids</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
@@ -575,6 +597,7 @@
         })
     }
 
+    <span class="doccomment">/// get operation by involved addresses</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_operations_involving_address</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">address</span>: <span class="ident">Address</span>,
@@ -604,6 +627,7 @@
         })
     }
 
+    <span class="doccomment">/// add endorsements to pool</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_endorsements</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">EndorsementId</span>, <span class="ident">SignedEndorsement</span><span class="op">&gt;</span>,
@@ -619,6 +643,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="doccomment">/// get endorsements by address</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_endorsements_by_address</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">address</span>: <span class="ident">Address</span>,
@@ -646,6 +671,7 @@
         })
     }
 
+    <span class="doccomment">/// get endorsements by id</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_endorsements_by_id</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
@@ -674,12 +700,14 @@
     }
 }
 
+<span class="doccomment">/// pool management handle</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PoolManager</span> {
     <span class="ident">join_handle</span>: <span class="ident">JoinHandle</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEventReceiver</span>, <span class="ident">PoolError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">manager_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">PoolManagementCommand</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">PoolManager</span> {
+    <span class="doccomment">/// stop pool</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEventReceiver</span>, <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;pool.pool_controller.stop&quot;</span>, {});
         <span class="ident">drop</span>(<span class="self">self</span>.<span class="ident">manager_tx</span>);
@@ -688,5 +716,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

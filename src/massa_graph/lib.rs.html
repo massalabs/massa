@@ -27,8 +27,15 @@
 <span id="22">22</span>
 <span id="23">23</span>
 <span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-
+<span class="doccomment">//! graph management</span>
+<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">bool_to_option</span>)]</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">hash_drain_filter</span>)]</span>
@@ -39,6 +46,7 @@
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::LedgerConfig</span>;
 
+<span class="doccomment">/// useful structs</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">export_active_block</span>;
 
 <span class="kw">mod</span> <span class="ident">bootstrapable_graph</span>;
@@ -47,10 +55,14 @@
 <span class="kw">mod</span> <span class="ident">block_graph</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">block_graph</span>::<span class="kw-2">*</span>;
 
+<span class="doccomment">/// parallel ledger (TODO remove after unification)</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">ledger</span>;
 
+<span class="doccomment">/// graph errors</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
+
+<span class="doccomment">/// graph settings</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">settings</span>;
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_graph" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

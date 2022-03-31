@@ -161,6 +161,25 @@
 <span id="156">156</span>
 <span id="157">157</span>
 <span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
@@ -175,12 +194,14 @@
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">tokio</span>::{<span class="ident">sync::mpsc</span>, <span class="ident">time::sleep</span>};
 
+<span class="doccomment">/// mock network controller</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MockNetworkController</span> {
     <span class="ident">network_command_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">NetworkCommand</span><span class="op">&gt;</span>,
     <span class="ident">network_event_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">NetworkEvent</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">MockNetworkController</span> {
+    <span class="doccomment">/// new mock network controller</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; (<span class="self">Self</span>, <span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkEventReceiver</span>) {
         <span class="kw">let</span> (<span class="ident">network_command_tx</span>, <span class="ident">network_command_rx</span>) <span class="op">=</span>
             <span class="ident">mpsc::channel</span>::<span class="op">&lt;</span><span class="ident">NetworkCommand</span><span class="op">&gt;</span>(<span class="ident">CHANNEL_SIZE</span>);
@@ -195,6 +216,7 @@
         )
     }
 
+    <span class="doccomment">/// wait command</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_command</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">timeout</span>: <span class="ident">MassaTime</span>, <span class="ident">filter_map</span>: <span class="ident">F</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">F</span>: <span class="ident">Fn</span>(<span class="ident">NetworkCommand</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
@@ -212,6 +234,7 @@
         }
     }
 
+    <span class="doccomment">/// new connection</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">new_connection</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">new_node_id</span>: <span class="ident">NodeId</span>) {
         <span class="self">self</span>.<span class="ident">network_event_tx</span>
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::NewConnection</span>(<span class="ident">new_node_id</span>))
@@ -219,6 +242,7 @@
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t connect node to protocol.&quot;</span>);
     }
 
+    <span class="doccomment">/// close connection</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">close_connection</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">node_id</span>: <span class="ident">NodeId</span>) {
         <span class="self">self</span>.<span class="ident">network_event_tx</span>
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::ConnectionClosed</span>(<span class="ident">node_id</span>))
@@ -226,6 +250,8 @@
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t connect node to protocol.&quot;</span>);
     }
 
+    <span class="doccomment">/// send header</span>
+    <span class="doccomment">/// todo inconsistency with names</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_header</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>, <span class="ident">header</span>: <span class="ident">SignedHeader</span>) {
         <span class="self">self</span>.<span class="ident">network_event_tx</span>
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceivedBlockHeader</span> {
@@ -236,6 +262,8 @@
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t send header to protocol.&quot;</span>);
     }
 
+    <span class="doccomment">/// send block</span>
+    <span class="doccomment">/// todo inconsistency with names</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_block</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>, <span class="ident">block</span>: <span class="ident">Block</span>, <span class="ident">serialized</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
         <span class="self">self</span>.<span class="ident">network_event_tx</span>
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceivedBlock</span> {
@@ -247,6 +275,8 @@
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t send block to protocol.&quot;</span>);
     }
 
+    <span class="doccomment">/// send operations</span>
+    <span class="doccomment">/// todo inconsistency with names</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_operations</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>, <span class="ident">operations</span>: <span class="ident">Operations</span>) {
         <span class="self">self</span>.<span class="ident">network_event_tx</span>
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::ReceivedOperations</span> {
@@ -257,6 +287,8 @@
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t send operations to protocol.&quot;</span>);
     }
 
+    <span class="doccomment">/// send operation ids</span>
+    <span class="doccomment">/// todo inconsistency with names</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_operation_batch</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>,
@@ -271,6 +303,8 @@
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t send operations to protocol.&quot;</span>);
     }
 
+    <span class="doccomment">/// received aks for operation from node</span>
+    <span class="doccomment">/// todo inconsistency with names</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_ask_for_operation</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>,
@@ -285,6 +319,8 @@
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t send operations to protocol.&quot;</span>);
     }
 
+    <span class="doccomment">/// send endorsements</span>
+    <span class="doccomment">/// todo inconsistency with names</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_endorsements</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>,
@@ -299,6 +335,7 @@
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t send endorsements to protocol.&quot;</span>);
     }
 
+    <span class="doccomment">///ask for block</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_ask_for_block</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>, <span class="ident">list</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>) {
         <span class="self">self</span>.<span class="ident">network_event_tx</span>
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::AskedForBlocks</span> {
@@ -309,6 +346,7 @@
             .<span class="ident">expect</span>(<span class="string">&quot;Couldn&#39;t send ask for block to protocol.&quot;</span>);
     }
 
+    <span class="doccomment">/// block not found</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_block_not_found</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">source_node_id</span>: <span class="ident">NodeId</span>, <span class="ident">block_id</span>: <span class="ident">BlockId</span>) {
         <span class="self">self</span>.<span class="ident">network_event_tx</span>
             .<span class="ident">send</span>(<span class="ident">NetworkEvent::BlockNotFound</span> {
@@ -320,5 +358,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="massa_protocol_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

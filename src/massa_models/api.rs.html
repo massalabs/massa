@@ -425,6 +425,106 @@
 <span id="420">420</span>
 <span id="421">421</span>
 <span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::address::AddressCycleProductionStats</span>;
@@ -438,24 +538,38 @@
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">CompactConfig</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>, <span class="ident">Version</span>,
 };
-<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
+<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
+
+<span class="doccomment">/// node status</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeStatus</span> {
+    <span class="doccomment">/// our node id</span>
     <span class="kw">pub</span> <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
+    <span class="doccomment">/// optional node ip</span>
     <span class="kw">pub</span> <span class="ident">node_ip</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// node version</span>
     <span class="kw">pub</span> <span class="ident">version</span>: <span class="ident">Version</span>,
+    <span class="doccomment">/// now</span>
     <span class="kw">pub</span> <span class="ident">current_time</span>: <span class="ident">MassaTime</span>,
+    <span class="doccomment">/// current cycle</span>
     <span class="kw">pub</span> <span class="ident">current_cycle</span>: <span class="ident">u64</span>,
+    <span class="doccomment">/// connected nodes (node id, ip address)</span>
     <span class="kw">pub</span> <span class="ident">connected_nodes</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">IpAddr</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// latest slot, none if now is before genesis timestamp</span>
     <span class="kw">pub</span> <span class="ident">last_slot</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// next slot</span>
     <span class="kw">pub</span> <span class="ident">next_slot</span>: <span class="ident">Slot</span>,
+    <span class="doccomment">/// consensus stats</span>
     <span class="kw">pub</span> <span class="ident">consensus_stats</span>: <span class="ident">ConsensusStats</span>,
+    <span class="doccomment">/// pool stats</span>
     <span class="kw">pub</span> <span class="ident">pool_stats</span>: <span class="ident">PoolStats</span>,
+    <span class="doccomment">/// network stats</span>
     <span class="kw">pub</span> <span class="ident">network_stats</span>: <span class="ident">NetworkStats</span>,
+    <span class="doccomment">/// compact config</span>
     <span class="kw">pub</span> <span class="ident">config</span>: <span class="ident">CompactConfig</span>,
 }
 
@@ -495,16 +609,25 @@
     }
 }
 
+<span class="doccomment">/// Operation and contextual info about it</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OperationInfo</span> {
+    <span class="doccomment">/// id</span>
     <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">OperationId</span>,
+    <span class="doccomment">/// true if operation is still in pool</span>
     <span class="kw">pub</span> <span class="ident">in_pool</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// the operation appears in in_blocks</span>
+    <span class="doccomment">/// if it appears in multiple blocks, these blocks are in different cliques</span>
     <span class="kw">pub</span> <span class="ident">in_blocks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// true if the operation is final (ie in a final block)</span>
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// the operation itself</span>
     <span class="kw">pub</span> <span class="ident">operation</span>: <span class="ident">SignedOperation</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">OperationInfo</span> {
+    <span class="doccomment">/// extend an operation info with another one</span>
+    <span class="doccomment">/// There is not check to see if the id and operation are indeed the same</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extend</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">OperationInfo</span>) {
         <span class="self">self</span>.<span class="ident">in_pool</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">in_pool</span> <span class="op">|</span><span class="op">|</span> <span class="ident">other</span>.<span class="ident">in_pool</span>;
         <span class="self">self</span>.<span class="ident">in_blocks</span>.<span class="ident">extend</span>(<span class="ident">other</span>.<span class="ident">in_blocks</span>.<span class="ident">iter</span>());
@@ -530,10 +653,14 @@
     }
 }
 
+<span class="doccomment">/// Current Parallel balance leger info</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerInfo</span> {
+    <span class="doccomment">/// final data</span>
     <span class="kw">pub</span> <span class="ident">final_ledger_info</span>: <span class="ident">LedgerData</span>,
+    <span class="doccomment">/// latest data</span>
     <span class="kw">pub</span> <span class="ident">candidate_ledger_info</span>: <span class="ident">LedgerData</span>,
+    <span class="doccomment">/// locked balance, ie balance due to a roll sell</span>
     <span class="kw">pub</span> <span class="ident">locked_balance</span>: <span class="ident">Amount</span>,
 }
 
@@ -550,10 +677,14 @@
     }
 }
 
+<span class="doccomment">/// Roll counts</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RollsInfo</span> {
+    <span class="doccomment">/// count taken into account for the current cycle</span>
     <span class="kw">pub</span> <span class="ident">active_rolls</span>: <span class="ident">u64</span>,
+    <span class="doccomment">/// at final blocks</span>
     <span class="kw">pub</span> <span class="ident">final_rolls</span>: <span class="ident">u64</span>,
+    <span class="doccomment">/// at latest blocks</span>
     <span class="kw">pub</span> <span class="ident">candidate_rolls</span>: <span class="ident">u64</span>,
 }
 
@@ -566,10 +697,14 @@
     }
 }
 
+<span class="doccomment">/// Sequential balance state (really same as SCELedgerEntry)</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SCELedgerInfo</span> {
+    <span class="doccomment">/// sequential coins</span>
     <span class="kw">pub</span> <span class="ident">balance</span>: <span class="ident">Amount</span>,
+    <span class="doccomment">/// stored bytes</span>
     <span class="kw">pub</span> <span class="ident">module</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// datastore</span>
     <span class="kw">pub</span> <span class="ident">datastore</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
@@ -581,19 +716,32 @@
     }
 }
 
+<span class="doccomment">/// All you ever dreamt to know about an address</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AddressInfo</span> {
+    <span class="doccomment">/// the address</span>
     <span class="kw">pub</span> <span class="ident">address</span>: <span class="ident">Address</span>,
+    <span class="doccomment">/// the thread it is in</span>
     <span class="kw">pub</span> <span class="ident">thread</span>: <span class="ident">u8</span>,
+    <span class="doccomment">/// parallel balance info</span>
     <span class="kw">pub</span> <span class="ident">ledger_info</span>: <span class="ident">LedgerInfo</span>,
+    <span class="doccomment">/// final sequential balance</span>
     <span class="kw">pub</span> <span class="ident">final_sce_ledger_info</span>: <span class="ident">SCELedgerInfo</span>,
+    <span class="doccomment">/// latest sequential balance</span>
     <span class="kw">pub</span> <span class="ident">candidate_sce_ledger_info</span>: <span class="ident">SCELedgerInfo</span>,
+    <span class="doccomment">/// rolls</span>
     <span class="kw">pub</span> <span class="ident">rolls</span>: <span class="ident">RollsInfo</span>,
+    <span class="doccomment">/// next slots this address will be selected to create a block</span>
     <span class="kw">pub</span> <span class="ident">block_draws</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// next slots this address will be selected to create a endorsement</span>
     <span class="kw">pub</span> <span class="ident">endorsement_draws</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">IndexedSlot</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// created blocks ids</span>
     <span class="kw">pub</span> <span class="ident">blocks_created</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// endorsements in which this address is involved (endorser, block creator)</span>
     <span class="kw">pub</span> <span class="ident">involved_in_endorsements</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// operation in which this address is involved (sender or receiver)</span>
     <span class="kw">pub</span> <span class="ident">involved_in_operations</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// stats about block production</span>
     <span class="kw">pub</span> <span class="ident">production_stats</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AddressCycleProductionStats</span><span class="op">&gt;</span>,
 }
 
@@ -667,6 +815,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">AddressInfo</span> {
+    <span class="doccomment">/// Only essential info about an address</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">CompactAddressInfo</span> {
         <span class="ident">CompactAddressInfo</span> {
             <span class="ident">address</span>: <span class="self">self</span>.<span class="ident">address</span>,
@@ -682,7 +831,9 @@
 <span class="doccomment">/// When an address is drawn to create an endorsement it is selected for a specific index</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Hash</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IndexedSlot</span> {
+    <span class="doccomment">/// slot</span>
     <span class="kw">pub</span> <span class="ident">slot</span>: <span class="ident">Slot</span>,
+    <span class="doccomment">/// endorsement index in the slot</span>
     <span class="kw">pub</span> <span class="ident">index</span>: <span class="ident">usize</span>,
 }
 
@@ -692,13 +843,20 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>)]</span>
+<span class="doccomment">/// Less information about an address</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CompactAddressInfo</span> {
+    <span class="doccomment">/// the address</span>
     <span class="kw">pub</span> <span class="ident">address</span>: <span class="ident">Address</span>,
+    <span class="doccomment">/// the thread it is</span>
     <span class="kw">pub</span> <span class="ident">thread</span>: <span class="ident">u8</span>,
+    <span class="doccomment">/// parallel balance</span>
     <span class="kw">pub</span> <span class="ident">balance</span>: <span class="ident">LedgerInfo</span>,
+    <span class="doccomment">/// rolls</span>
     <span class="kw">pub</span> <span class="ident">rolls</span>: <span class="ident">RollsInfo</span>,
+    <span class="doccomment">/// final sequential balance</span>
     <span class="kw">pub</span> <span class="ident">final_sce_balance</span>: <span class="ident">SCELedgerInfo</span>,
+    <span class="doccomment">/// latest sequential balance</span>
     <span class="kw">pub</span> <span class="ident">candidate_sce_balance</span>: <span class="ident">SCELedgerInfo</span>,
 }
 
@@ -718,12 +876,18 @@
     }
 }
 
+<span class="doccomment">/// All you wanna know about an endorsement</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EndorsementInfo</span> {
+    <span class="doccomment">/// the id</span>
     <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">EndorsementId</span>,
+    <span class="doccomment">/// true is the endorsement is still in pool</span>
     <span class="kw">pub</span> <span class="ident">in_pool</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// endorsements included in these blocks</span>
     <span class="kw">pub</span> <span class="ident">in_blocks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// true included in a final block</span>
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// The full endorsement</span>
     <span class="kw">pub</span> <span class="ident">endorsement</span>: <span class="ident">SignedEndorsement</span>,
 }
 
@@ -744,17 +908,25 @@
     }
 }
 
+<span class="doccomment">/// refactor to delete</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockInfo</span> {
+    <span class="doccomment">/// block id</span>
     <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">BlockId</span>,
+    <span class="doccomment">/// optional block info content</span>
     <span class="kw">pub</span> <span class="ident">content</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockInfoContent</span><span class="op">&gt;</span>,
 }
 
+<span class="doccomment">/// Block content</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockInfoContent</span> {
+    <span class="doccomment">/// true if final</span>
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// true if incompatible with a final block</span>
     <span class="kw">pub</span> <span class="ident">is_stale</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// true if in the greatest clique</span>
     <span class="kw">pub</span> <span class="ident">is_in_blockclique</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// block</span>
     <span class="kw">pub</span> <span class="ident">block</span>: <span class="ident">Block</span>,
 }
 
@@ -777,14 +949,22 @@
     }
 }
 
+<span class="doccomment">/// A block resume (without the block itself)</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockSummary</span> {
+    <span class="doccomment">/// id</span>
     <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">BlockId</span>,
+    <span class="doccomment">/// true if in a final block</span>
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// true if incompatible with a final block</span>
     <span class="kw">pub</span> <span class="ident">is_stale</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// true if in the greatest block clique</span>
     <span class="kw">pub</span> <span class="ident">is_in_blockclique</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// the slot the block is in</span>
     <span class="kw">pub</span> <span class="ident">slot</span>: <span class="ident">Slot</span>,
+    <span class="doccomment">/// the block creator</span>
     <span class="kw">pub</span> <span class="ident">creator</span>: <span class="ident">Address</span>,
+    <span class="doccomment">/// the block parents</span>
     <span class="kw">pub</span> <span class="ident">parents</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
 }
 
@@ -817,36 +997,56 @@
     }
 }
 
+<span class="doccomment">/// Just a wrapper with a optional beginning and end</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TimeInterval</span> {
+    <span class="doccomment">/// optional start slot</span>
     <span class="kw">pub</span> <span class="ident">start</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// optional end slot</span>
     <span class="kw">pub</span> <span class="ident">end</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
 }
 
+<span class="doccomment">/// Move to the api crate</span>
+<span class="doccomment">/// the api settings</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">APISettings</span> {
+    <span class="doccomment">/// when looking for next draw we want to look at max draw_lookahead_period_count</span>
     <span class="kw">pub</span> <span class="ident">draw_lookahead_period_count</span>: <span class="ident">u64</span>,
+    <span class="doccomment">/// bind for the private api</span>
     <span class="kw">pub</span> <span class="ident">bind_private</span>: <span class="ident">SocketAddr</span>,
+    <span class="doccomment">/// bind for the public api</span>
     <span class="kw">pub</span> <span class="ident">bind_public</span>: <span class="ident">SocketAddr</span>,
+    <span class="doccomment">/// max argument count</span>
     <span class="kw">pub</span> <span class="ident">max_arguments</span>: <span class="ident">u64</span>,
 }
 
+<span class="doccomment">/// filter used when retrieving sc output events</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EventFilter</span> {
+    <span class="doccomment">/// optional start slot</span>
     <span class="kw">pub</span> <span class="ident">start</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// optional end slot</span>
     <span class="kw">pub</span> <span class="ident">end</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// optional emitter address</span>
     <span class="kw">pub</span> <span class="ident">emitter_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// optional caller address</span>
     <span class="kw">pub</span> <span class="ident">original_caller_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// optional operation id</span>
     <span class="kw">pub</span> <span class="ident">original_operation_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
 }
 
+<span class="doccomment">/// read only execution request</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReadOnlyExecution</span> {
+    <span class="doccomment">/// max available gas</span>
     <span class="kw">pub</span> <span class="ident">max_gas</span>: <span class="ident">u64</span>,
+    <span class="doccomment">/// gas price</span>
     <span class="kw">pub</span> <span class="ident">simulated_gas_price</span>: <span class="ident">Amount</span>,
+    <span class="doccomment">/// byte code</span>
     <span class="kw">pub</span> <span class="ident">bytecode</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// caller&#39;s address, optional</span>
     <span class="kw">pub</span> <span class="ident">address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

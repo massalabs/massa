@@ -190,6 +190,12 @@
 <span id="185">185</span>
 <span id="186">186</span>
 <span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{
@@ -200,13 +206,16 @@
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::SLOT_KEY_SIZE</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ModelsError</span>;
-<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
+<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">cmp::Ordering</span>, <span class="ident">convert::TryInto</span>};
 
+<span class="doccomment">/// a point in time where a block is expected</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Hash</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Slot</span> {
+    <span class="doccomment">/// period</span>
     <span class="kw">pub</span> <span class="ident">period</span>: <span class="ident">u64</span>,
+    <span class="doccomment">/// thread</span>
     <span class="kw">pub</span> <span class="ident">thread</span>: <span class="ident">u8</span>,
 }
 
@@ -230,6 +239,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Slot</span> {
+    <span class="doccomment">/// new slot from period and thread</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">period</span>: <span class="ident">u64</span>, <span class="ident">thread</span>: <span class="ident">u8</span>) -&gt; <span class="ident">Slot</span> {
         <span class="ident">Slot</span> { <span class="ident">period</span>, <span class="ident">thread</span> }
     }
@@ -250,10 +260,12 @@
         }
     }
 
+    <span class="doccomment">/// first bit of the slot, for seed purpose</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_first_bit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="ident">Hash::compute_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">to_bytes_key</span>()).<span class="ident">to_bytes</span>()[<span class="number">0</span>] <span class="op">&gt;</span><span class="op">&gt;</span> <span class="number">7</span> <span class="op">==</span> <span class="number">1</span>
     }
 
+    <span class="doccomment">/// cycle associated to that slot</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_cycle</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">periods_per_cycle</span>: <span class="ident">u64</span>) -&gt; <span class="ident">u64</span> {
         <span class="self">self</span>.<span class="ident">period</span> <span class="op">/</span> <span class="ident">periods_per_cycle</span>
     }
@@ -378,5 +390,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

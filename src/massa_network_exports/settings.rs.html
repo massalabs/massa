@@ -182,6 +182,8 @@
 <span id="177">177</span>
 <span id="178">178</span>
 <span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">enum_map::EnumMap</span>;
@@ -250,6 +252,7 @@
     <span class="kw">pub</span> <span class="ident">max_out_attempts</span>: <span class="ident">usize</span>,
 }
 
+<span class="doccomment">/// setting tests</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::NetworkSettings</span>;
@@ -306,6 +309,7 @@
     }
 
     <span class="kw">impl</span> <span class="ident">NetworkSettings</span> {
+        <span class="doccomment">/// default network settings from port and peer file path</span>
         <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">scenarios_default</span>(<span class="ident">port</span>: <span class="ident">u16</span>, <span class="ident">peers_file</span>: <span class="kw-2">&amp;</span><span class="ident">std::path::Path</span>) -&gt; <span class="self">Self</span> {
             <span class="comment">// Init the serialization context with a default,</span>
             <span class="comment">// can be overwritten with a more specific one in the test.</span>
@@ -362,5 +366,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

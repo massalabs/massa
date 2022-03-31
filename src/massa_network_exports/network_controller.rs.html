@@ -291,6 +291,22 @@
 <span id="286">286</span>
 <span id="287">287</span>
 <span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -313,10 +329,12 @@
     <span class="ident">task::JoinHandle</span>,
 };
 
+<span class="doccomment">/// Network command sender</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NetworkCommandSender</span>(<span class="kw">pub</span> <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">NetworkCommand</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">NetworkCommandSender</span> {
+    <span class="doccomment">/// ban by node</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">ban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_id</span>: <span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">NetworkCommand::Ban</span>(<span class="ident">node_id</span>))
@@ -325,6 +343,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="doccomment">/// ban ip</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">ban_ip</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">NetworkCommand::BanIp</span>(<span class="ident">ips</span>))
@@ -333,6 +352,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="doccomment">/// add ip to whitelist</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">NetworkCommand::Whitelist</span>(<span class="ident">ips</span>))
@@ -341,6 +361,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="doccomment">/// remove ip from whitelist</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">remove_from_whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">NetworkCommand::RemoveFromWhitelist</span>(<span class="ident">ips</span>))
@@ -351,6 +372,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="doccomment">/// remove from banned nodes</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">unban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="number">0</span>
             .<span class="ident">send</span>(<span class="ident">NetworkCommand::Unban</span>(<span class="ident">ips</span>))
@@ -414,6 +436,7 @@
         })
     }
 
+    <span class="doccomment">/// get network stats</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_network_stats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NetworkStats</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
         <span class="self">self</span>.<span class="number">0</span>
@@ -441,6 +464,7 @@
         })
     }
 
+    <span class="doccomment">/// send block not found to node</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">block_not_found</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
@@ -455,6 +479,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="doccomment">/// send operations to node</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_operations</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
@@ -511,6 +536,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="doccomment">/// send endorsements to node id</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_endorsements</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">node</span>: <span class="ident">NodeId</span>,
@@ -540,9 +566,11 @@
     }
 }
 
+<span class="doccomment">/// network event receiver</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NetworkEventReceiver</span>(<span class="kw">pub</span> <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">NetworkEvent</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">NetworkEventReceiver</span> {
+    <span class="doccomment">/// wait network event</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_event</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NetworkEvent</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="number">0</span>
@@ -563,12 +591,16 @@
     }
 }
 
+<span class="doccomment">/// Network manager</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NetworkManager</span> {
+    <span class="doccomment">/// network handle</span>
     <span class="kw">pub</span> <span class="ident">join_handle</span>: <span class="ident">JoinHandle</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// management commands</span>
     <span class="kw">pub</span> <span class="ident">manager_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">NetworkManagementCommand</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">NetworkManager</span> {
+    <span class="doccomment">/// stop network</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">stop</span>(
         <span class="self">self</span>,
         <span class="ident">network_event_receiver</span>: <span class="ident">NetworkEventReceiver</span>,
@@ -580,5 +612,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>

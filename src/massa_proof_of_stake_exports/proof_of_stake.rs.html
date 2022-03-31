@@ -681,10 +681,20 @@
 <span id="676">676</span>
 <span id="677">677</span>
 <span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">hash_map</span>, <span class="ident">BTreeMap</span>, <span class="ident">HashMap</span>, <span class="ident">VecDeque</span>};
 
 <span class="kw">use</span> <span class="ident">bitvec</span>::{<span class="ident">order::Lsb0</span>, <span class="ident">prelude::BitVec</span>};
-<span class="kw">use</span> <span class="ident">massa_hash::hash::Hash</span>;
+<span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">active_block::ActiveBlock</span>,
     <span class="ident">prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>},
@@ -703,6 +713,7 @@
 };
 <span class="kw">type</span> <span class="ident">DrawCache</span> <span class="op">=</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">u64</span>, (<span class="ident">usize</span>, <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, (<span class="ident">Address</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>)<span class="op">&gt;</span>)<span class="op">&gt;</span>;
 
+<span class="doccomment">/// Proof of stake management</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProofOfStake</span> {
     <span class="doccomment">/// Config</span>
     <span class="ident">cfg</span>: <span class="ident">ProofOfStakeConfig</span>,
@@ -710,6 +721,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">cycle_states</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ThreadCycleState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Cycle draw cache: cycle_number =&gt; (counter, map(slot =&gt; (block_creator_addr, vec&lt;endorsement_creator_addr&gt;)))</span>
     <span class="ident">draw_cache</span>: <span class="ident">DrawCache</span>,
+    <span class="doccomment">/// how many cycle are kept in memory</span>
     <span class="ident">draw_cache_counter</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// Initial rolls: we keep them as long as negative cycle draws are needed</span>
     <span class="ident">initial_rolls</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RollCounts</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -722,6 +734,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">ProofOfStake</span> {
+    <span class="doccomment">/// new proof of stake component</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">cfg</span>: <span class="ident">ProofOfStakeConfig</span>,
         <span class="ident">genesis_block_ids</span>: <span class="kw-2">&amp;</span>[<span class="ident">BlockId</span>],
@@ -784,6 +797,7 @@
         })
     }
 
+    <span class="doccomment">/// set watched addresses</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_watched_addresses</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addrs</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) {
         <span class="self">self</span>.<span class="ident">watched_addresses</span> <span class="op">=</span> <span class="ident">addrs</span>;
     }
@@ -818,6 +832,7 @@
         <span class="ident">initial_seeds</span>
     }
 
+    <span class="doccomment">/// next slot at which address is selected to produce a block</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_next_selected_slot</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">from_slot</span>: <span class="ident">Slot</span>, <span class="ident">address</span>: <span class="ident">Address</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cur_cycle</span> <span class="op">=</span> <span class="ident">from_slot</span>.<span class="ident">get_cycle</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">periods_per_cycle</span>);
         <span class="kw">loop</span> {
@@ -999,10 +1014,12 @@
             .<span class="number">1</span>)
     }
 
+    <span class="doccomment">/// draw endorsement producer at slot</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">draw_endorsement_producers</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) -&gt; <span class="ident">POSResult</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">draw</span>(<span class="ident">slot</span>)<span class="question-mark">?</span>.<span class="number">1</span>)
     }
 
+    <span class="doccomment">/// draw block producer at slot</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">draw_block_producer</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) -&gt; <span class="ident">POSResult</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">draw</span>(<span class="ident">slot</span>)<span class="question-mark">?</span>.<span class="number">0</span>)
     }
@@ -1143,6 +1160,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="doccomment">/// get production stats for addresses</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_stakers_production_stats</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">addrs</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
@@ -1192,6 +1210,7 @@
         <span class="ident">res</span>.<span class="ident">into_values</span>().<span class="ident">collect</span>()
     }
 
+    <span class="doccomment">/// get cycle at last final block</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_last_final_block_cycle</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">thread</span>: <span class="ident">u8</span>) -&gt; <span class="ident">u64</span> {
         <span class="self">self</span>.<span class="ident">cycle_states</span>[<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>][<span class="number">0</span>].<span class="ident">cycle</span>
     }
@@ -1201,6 +1220,7 @@
         <span class="self">self</span>.<span class="ident">cycle_states</span>[<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>][<span class="number">0</span>].<span class="ident">last_final_slot</span>
     }
 
+    <span class="doccomment">/// get roll data at latest final blocks</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_final_roll_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cycle</span>: <span class="ident">u64</span>, <span class="ident">thread</span>: <span class="ident">u8</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ThreadCycleState</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">last_final_block_cycle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_last_final_block_cycle</span>(<span class="ident">thread</span>);
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">neg_relative_cycle</span>) <span class="op">=</span> <span class="ident">last_final_block_cycle</span>.<span class="ident">checked_sub</span>(<span class="ident">cycle</span>) {
@@ -1360,5 +1380,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_proof_of_stake_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>
