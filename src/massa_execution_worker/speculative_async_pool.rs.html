@@ -82,6 +82,31 @@
 <span id="77">77</span>
 <span id="78">78</span>
 <span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! The speculative async pool represents the state of</span>
@@ -140,6 +165,31 @@
     <span class="doccomment">/// Add a new message to the list of changes of this SpeculativeAsyncPool</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push_new_message</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="ident">AsyncMessage</span>) {
         <span class="self">self</span>.<span class="ident">emitted</span>.<span class="ident">push</span>((<span class="ident">msg</span>.<span class="ident">compute_id</span>(), <span class="ident">msg</span>));
+    }
+
+    <span class="doccomment">/// Takes a batch of async messages to execute,</span>
+    <span class="doccomment">/// removing them from the speculative async pool and settling their deletion from it in the changes accumulator.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Arguments</span>
+    <span class="doccomment">/// * slot: slot at which the batch is taken (allows filtering by validity interval)</span>
+    <span class="doccomment">/// * max_gas: maximum amount of gas available</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Returns</span>
+    <span class="doccomment">/// A vector of AsyncMessage to execute</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">take_batch_to_execute</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">slot</span>: <span class="ident">Slot</span>,
+        <span class="ident">max_gas</span>: <span class="ident">u64</span>,
+    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessage</span>)<span class="op">&gt;</span> {
+        <span class="comment">// take a batch of messages, removing it from the async pool</span>
+        <span class="kw">let</span> <span class="ident">msgs</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">async_pool</span>.<span class="ident">take_batch_to_execute</span>(<span class="ident">slot</span>, <span class="ident">max_gas</span>);
+
+        <span class="comment">// settle deletions</span>
+        <span class="kw">for</span> (<span class="ident">msg_id</span>, <span class="ident">_msg</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">msgs</span> {
+            <span class="self">self</span>.<span class="ident">settled_changes</span>.<span class="ident">push_delete</span>(<span class="kw-2">*</span><span class="ident">msg_id</span>);
+        }
+
+        <span class="ident">msgs</span>
     }
 
     <span class="doccomment">/// Settle a slot.</span>

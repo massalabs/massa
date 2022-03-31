@@ -185,7 +185,6 @@
 <span id="180">180</span>
 <span id="181">181</span>
 <span id="182">182</span>
-<span id="183">183</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file defines a finite size final pool of async messages for use in the context of autonomous smart contracts</span>
@@ -318,7 +317,7 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">slot</span>: <span class="ident">Slot</span>,
         <span class="kw-2">mut</span> <span class="ident">available_gas</span>: <span class="ident">u64</span>,
-    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AsyncMessage</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessage</span>)<span class="op">&gt;</span> {
         <span class="comment">// gather all selected items and remove them from self.messages</span>
         <span class="comment">// iterate in decreasing priority order</span>
         <span class="self">self</span>.<span class="ident">messages</span>
@@ -334,8 +333,7 @@
                     <span class="bool-val">false</span>
                 }
             })
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">_id</span>, <span class="ident">msg</span>)<span class="op">|</span> <span class="ident">msg</span>)
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AsyncMessage</span><span class="op">&gt;</span><span class="op">&gt;</span>()
+            .<span class="ident">collect</span>()
     }
 }
 
