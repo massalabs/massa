@@ -212,7 +212,7 @@ impl ExecutionContext {
     /// This function takes a batch of async operations to execute, removing them from the speculative pool.
     ///
     /// # Arguments
-    /// * max_gax: maximal amount of async gas available
+    /// * max_gas: maximal amount of async gas available
     ///
     /// # Returns
     /// A vector of `(Option<Vec<u8>>, AsyncMessage)` pairs where:
