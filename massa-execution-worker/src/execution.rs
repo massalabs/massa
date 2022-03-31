@@ -459,7 +459,7 @@ impl ExecutionState {
         let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
 
         // create a new execution context for the whole active slot
-        let execution_context = ExecutionContext::active_slot(
+        let mut execution_context = ExecutionContext::active_slot(
             slot,
             opt_block_id,
             previous_changes,
@@ -468,26 +468,11 @@ impl ExecutionState {
 
         // note that here, some pre-operations (like crediting block producers) can be performed before the lock
 
-        // get asynchronous messages destination bytecode (if available, otherwise set it to None)
-        let messages: Vec<_> = {
-            // take a lock on the context
-            let mut context = context_guard!(self);
+        // get asynchronous messages to execute
+        let messages = execution_context.take_async_batch(self.config.max_async_gas);
 
-            // apply the created execution context for slot execution
-            *context = execution_context;
-
-            let batch = self
-                .final_state
-                .write()
-                .async_pool
-                .take_batch_to_execute(slot, self.config.max_async_gas);
-
-            // important note: combining here will create a deadlock
-            batch
-                .into_iter()
-                .map(|msg| (context.get_bytecode(&msg.destination), msg))
-                .collect()
-        };
+        // apply the created execution context for slot execution
+        *context_guard!(self) = execution_context;
 
         // Try executing asynchronous messages.
         // Effects are cancelled on failure and the sender is reimbursed.

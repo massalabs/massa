@@ -130,7 +130,7 @@ impl AsyncPool {
         &mut self,
         slot: Slot,
         mut available_gas: u64,
-    ) -> Vec<AsyncMessage> {
+    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         // gather all selected items and remove them from self.messages
         // iterate in decreasing priority order
         self.messages
@@ -146,8 +146,7 @@ impl AsyncPool {
                     false
                 }
             })
-            .map(|(_id, msg)| msg)
-            .collect::<Vec<AsyncMessage>>()
+            .collect()
     }
 }
 

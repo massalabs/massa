@@ -58,6 +58,31 @@ impl SpeculativeAsyncPool {
         self.emitted.push((msg.compute_id(), msg));
     }
 
+    /// Takes a batch of async messages to execute,
+    /// removing them from the speculative async pool and settling their deletion from it in the changes accumulator.
+    ///
+    /// # Arguments
+    /// * slot: slot at which the batch is taken (allows filtering by validity interval)
+    /// * max_gas: maximum amount of gas available
+    ///
+    /// # Returns
+    /// A vector of AsyncMessage to execute
+    pub fn take_batch_to_execute(
+        &mut self,
+        slot: Slot,
+        max_gas: u64,
+    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
+        // take a batch of messages, removing it from the async pool
+        let msgs = self.async_pool.take_batch_to_execute(slot, max_gas);
+
+        // settle deletions
+        for (msg_id, _msg) in &msgs {
+            self.settled_changes.push_delete(*msg_id);
+        }
+
+        msgs
+    }
+
     /// Settle a slot.
     /// Consume newly emitted messages into self.async_pool, recording changes into self.settled_changes
     ///
