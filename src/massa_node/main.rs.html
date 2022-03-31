@@ -415,11 +415,13 @@
 <span id="410">410</span>
 <span id="411">411</span>
 <span id="412">412</span>
+<span id="413">413</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
 <span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
+<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">massa_logging</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings</span>::{<span class="ident">POOL_CONFIG</span>, <span class="ident">SETTINGS</span>};
 <span class="kw">use</span> <span class="ident">massa_api</span>::{<span class="ident">Private</span>, <span class="ident">Public</span>, <span class="ident">RpcServer</span>, <span class="ident">StopHandle</span>, <span class="ident">API</span>};

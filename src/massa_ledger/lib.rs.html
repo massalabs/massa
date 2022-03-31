@@ -75,6 +75,7 @@
 <span id="70">70</span>
 <span id="71">71</span>
 <span id="72">72</span>
+<span id="73">73</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! # General description</span>
@@ -94,9 +95,9 @@
 <span class="doccomment">//! The distinctions between the parallel and the sequential balance of a ledger entry are the following:</span>
 <span class="doccomment">//! * the parallel balance can be credited or spent in any slot</span>
 <span class="doccomment">//! * the sequential balance can be credited in any slot but only spent in slots form the address&#39; thread</span>
-<span class="doccomment">//! * block produers are credited fees from the sequential balance,</span>
+<span class="doccomment">//! * block producers are credited fees from the sequential balance,</span>
 <span class="doccomment">//!   and they can ensure that this balance will be available for their block simply</span>
-<span class="doccomment">//!   by looking for sequential balance spendings within the block&#39;s thread.</span>
+<span class="doccomment">//!   by looking for sequential balance spending within the block&#39;s thread.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Architecture</span>
 <span class="doccomment">//!</span>
@@ -114,7 +115,7 @@
 <span class="doccomment">//! can be modified, combined or applied to the final ledger.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## bootstrap.rs</span>
-<span class="doccomment">//! Provides serializable strucutres and tools for bootstrapping the final ledger.</span>
+<span class="doccomment">//! Provides serializable structures and tools for bootstrapping the final ledger.  </span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## Test exports</span>
 <span class="doccomment">//!</span>
@@ -122,6 +123,7 @@
 <span class="doccomment">//! See test_exports/mod.rs for details.</span>
 
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
+<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">map_first_last</span>)]</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
 

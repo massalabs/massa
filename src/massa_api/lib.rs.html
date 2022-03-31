@@ -247,10 +247,12 @@
 <span id="242">242</span>
 <span id="243">243</span>
 <span id="244">244</span>
+<span id="245">245</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="doccomment">//! Json rpc api for a massa-node</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
+<span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError::WrongAPI</span>;
 <span class="kw">use</span> <span class="ident">error::ApiError</span>;
 <span class="kw">use</span> <span class="ident">jsonrpc_core</span>::{<span class="ident">BoxFuture</span>, <span class="ident">IoHandler</span>, <span class="ident">Value</span>};
