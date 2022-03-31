@@ -209,6 +209,26 @@ impl ExecutionContext {
         }
     }
 
+    /// This function takes a batch of async operations to execute, removing them from the speculative pool.
+    ///
+    /// # Arguments
+    /// * max_gax: maximal amount of async gas available
+    ///
+    /// # Returns
+    /// A vector of `(Option<Vec<u8>>, AsyncMessage)` pairs where:
+    /// * `Option<Vec<u8>>` is the bytecode to execute (or None if not found)
+    /// * AsyncMessage is the async message to execute
+    pub(crate) fn take_async_batch(
+        &mut self,
+        max_gas: u64,
+    ) -> Vec<(Option<Vec<u8>>, AsyncMessage)> {
+        self.speculative_async_pool
+            .take_batch_to_execute(self.slot, max_gas)
+            .into_iter()
+            .map(|(_id, msg)| (self.get_bytecode(&msg.destination), msg))
+            .collect()
+    }
+
     /// Create a new ExecutionContext for executing an active slot.
     /// This should be used before performing any executions at that slot.
     ///
