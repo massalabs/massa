@@ -517,6 +517,7 @@ impl NetworkWorker {
         match cmd {
             NetworkCommand::BanIp(ips) => on_ban_ip_cmd(self, ips).await?,
             NetworkCommand::Ban(node) => on_ban_cmd(self, node).await?,
+            NetworkCommand::BanId(ids) => on_ban_id_cmd(self, ids).await?,
             NetworkCommand::SendBlockHeader { node, block_id } => {
                 on_send_block_header_cmd(self, node, block_id).await?
             }
@@ -546,6 +547,8 @@ impl NetworkWorker {
             NetworkCommand::NodeSignMessage { msg, response_tx } => {
                 on_node_sign_message_cmd(self, msg, response_tx).await?
             }
+            NetworkCommand::UnbanId(id) => on_unban_id_cmd(self, id).await?,
+            NetworkCommand::UnbanIds(ids) => on_unban_ids_cmd(self, ids).await?,
             NetworkCommand::Unban(ip) => on_unban_cmd(self, ip).await?,
             NetworkCommand::GetStats { response_tx } => on_get_stats_cmd(self, response_tx).await,
             NetworkCommand::Whitelist(ips) => on_whitelist_cmd(self, ips).await?,

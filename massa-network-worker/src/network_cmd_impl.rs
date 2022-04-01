@@ -89,10 +89,15 @@ async fn ban_ips(worker: &mut NetworkWorker, ips: Vec<IpAddr>) -> Result<(), Net
 /// See also [ban_connection_ids]
 async fn ban_node(worker: &mut NetworkWorker, node: NodeId) -> Result<(), NetworkError> {
     // get all connection IDs to ban
-    let mut ids: HashSet<ConnectionId> = HashSet::new();
+    let ids = get_connection_ids(worker, &node)?;
+    ban_connection_ids(worker, ids).await;
+    info!("Banned node (node_id: {})", node);
+    Ok(())
+}
 
-    // Note: if we can't find the node, there is no need to resend the close event,
-    // since protocol will have already removed the node from it's list of active ones.
+//TODO to be moved
+fn get_connection_ids(worker: &mut NetworkWorker, node: &NodeId) -> Result<HashSet<ConnectionId>, NetworkError> {
+    let mut ids: HashSet<ConnectionId> = HashSet::new();
     if let Some((orig_conn_id, _)) = worker.active_nodes.get(&node) {
         if let Some((orig_ip, _)) = worker.active_connections.get(orig_conn_id) {
             worker.peer_info_db.peer_banned(orig_ip)?;
@@ -103,8 +108,39 @@ async fn ban_node(worker: &mut NetworkWorker, node: NodeId) -> Result<(), Networ
             }
         }
     }
-    ban_connection_ids(worker, ids).await;
-    info!("Banned node (node_id: {})", node);
+
+    Ok(ids)
+}
+
+//TODO to be moved
+fn get_ips(worker: &mut NetworkWorker, node: &NodeId) -> Vec<IpAddr> {
+    let mut ips: Vec<IpAddr> = Vec::new();
+    if let Some((orig_conn_id, _)) = worker.active_nodes.get(&node) {
+        if let Some((orig_ip, _)) = worker.active_connections.get(orig_conn_id) {
+            for (_, (target_ip, _)) in worker.active_connections.iter() {
+                if target_ip == orig_ip {
+                    ips.push(*target_ip);
+                }
+            }
+        }
+    }
+
+    ips
+}
+
+/// Ban the connections corresponding to `ids` from the `worker`
+/// See also [ban_connection_ids]
+async fn ban_ids(worker: &mut NetworkWorker, ids: Vec<NodeId>) -> Result<(), NetworkError> {
+    // get all connection IDs to ban
+    let ids_to_ban = ids
+        .iter()
+        .map(|id| { get_connection_ids(worker, id) })
+        .filter(|res| res.is_ok())
+        .map(|res| res.unwrap())
+        .flatten()
+        .collect::<HashSet<_>>();
+
+    ban_connection_ids(worker, ids_to_ban).await;
     Ok(())
 }
 
@@ -172,6 +208,17 @@ pub async fn on_ban_cmd(worker: &mut NetworkWorker, node: NodeId) -> Result<(), 
         { "node": node }
     );
     ban_node(worker, node).await
+}
+
+pub async fn on_ban_id_cmd(
+    worker: &mut NetworkWorker,
+    ids: Vec<NodeId>,
+) -> Result<(), NetworkError> {
+    massa_trace!(
+        "network_worker.manage_network_command receive NetworkCommand::BanId",
+        { "ids": ids }
+    );
+    ban_ids(worker, ids).await
 }
 
 pub async fn on_send_block_header_cmd(
@@ -305,6 +352,26 @@ pub async fn on_node_sign_message_cmd(
         warn!("network: could not send NodeSignMessage response upstream");
     }
     Ok(())
+}
+
+pub async fn on_unban_id_cmd(
+    worker: &mut NetworkWorker,
+    id: NodeId,
+) -> Result<(), NetworkError> {
+    let ips_to_unban = get_ips(worker, &id);
+    worker.peer_info_db.unban(ips_to_unban)
+}
+
+pub async fn on_unban_ids_cmd(
+    worker: &mut NetworkWorker,
+    ids: Vec<NodeId>,
+) -> Result<(), NetworkError> {
+    let ips_to_unban = ids
+        .iter()
+        .map(|id| { get_ips(worker, id) })
+        .flatten()
+        .collect::<Vec<_>>();
+    worker.peer_info_db.unban( ips_to_unban)
 }
 
 pub async fn on_unban_cmd(

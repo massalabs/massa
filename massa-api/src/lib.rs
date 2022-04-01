@@ -158,6 +158,11 @@ pub trait Endpoints {
     #[rpc(name = "ban")]
     fn ban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
 
+    /// Bans given node id.
+    /// No confirmation to expect.
+    #[rpc(name = "node_ban_by_id")]
+    fn node_ban_by_id(&self, _: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>>;
+
     /// whitelist given IP address.
     /// No confirmation to expect.
     /// Note: If the ip was unknown it adds it to the known peers, otherwise it updates the peer type
@@ -174,6 +179,11 @@ pub trait Endpoints {
     /// No confirmation to expect.
     #[rpc(name = "unban")]
     fn unban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+
+    /// Unbans given node id.
+    /// No confirmation to expect.
+    #[rpc(name = "node_unban_by_id")]
+    fn node_unban_by_id(&self, _: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>>;
 
     /// Summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count.
     #[rpc(name = "get_status")]

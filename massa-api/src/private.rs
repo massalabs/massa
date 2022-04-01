@@ -19,6 +19,7 @@ use massa_models::{Address, BlockId, EndorsementId, OperationId, SignedOperation
 use massa_network_exports::NetworkCommandSender;
 use massa_signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
+use massa_models::node::NodeId;
 
 impl API<Private> {
     /// generate a new private api
@@ -101,6 +102,18 @@ impl Endpoints for API<Private> {
     fn ban(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
         let network_command_sender = self.0.network_command_sender.clone();
         let closure = async move || Ok(network_command_sender.ban_ip(ips).await?);
+        Box::pin(closure())
+    }
+
+    fn node_ban_by_id(&self, ids: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>> {
+        let network_command_sender = self.0.network_command_sender.clone();
+        let closure = async move || Ok(network_command_sender.ban_id(ids).await?);
+        Box::pin(closure())
+    }
+
+    fn node_unban_by_id(&self, ids: Vec<NodeId>) -> BoxFuture<Result<(), ApiError>> {
+        let network_command_sender = self.0.network_command_sender.clone();
+        let closure = async move || Ok(network_command_sender.unban_id(ids).await?);
         Box::pin(closure())
     }
 

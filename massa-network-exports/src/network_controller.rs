@@ -34,6 +34,15 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    /// ban by node
+    pub async fn ban_id(&self, ids: Vec<NodeId>) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::BanId(ids))
+            .await
+            .map_err(|_| NetworkError::ChannelError("could not send BanId command".into()))?;
+        Ok(())
+    }
+
     /// ban ip
     pub async fn ban_ip(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
@@ -60,6 +69,16 @@ impl NetworkCommandSender {
             .map_err(|_| {
                 NetworkError::ChannelError("could not send RemoveFromWhitelist command".into())
             })?;
+        Ok(())
+    }
+
+
+    /// remove from banned nodes
+    pub async fn unban_id(&self, ids: Vec<NodeId>) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::UnbanIds(ids))
+            .await
+            .map_err(|_| NetworkError::ChannelError("could not send Unban command".into()))?;
         Ok(())
     }
 
