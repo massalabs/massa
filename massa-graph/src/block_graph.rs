@@ -1471,7 +1471,10 @@ impl BlockGraph {
         massa_trace!("consensus.block_graph.process", { "block_id": block_id });
         // control all the waiting states and try to get a valid block
         let (
-            valid_block,
+            valid_block_addresses_to_operations,
+            valid_block_addresses_to_endorsements,
+            valid_block_creator,
+            valid_block_slot,
             valid_block_parents_hash_period,
             valid_block_deps,
             valid_block_incomp,
@@ -1648,7 +1651,10 @@ impl BlockGraph {
                             "block_id": block_id
                         });
                         (
-                            stored_block.block.clone(),
+                            stored_block.block.involved_addresses(&operation_set)?,
+                            stored_block.block.addresses_to_endorsements()?,
+                            stored_block.block.header.content.creator,
+                            slot,
                             parents_hash_period,
                             dependencies,
                             incompatibilities,
@@ -1799,15 +1805,12 @@ impl BlockGraph {
             }
         };
 
-        let valid_block_addresses_to_operations =
-            valid_block.involved_addresses(&valid_block_operation_set)?;
-        let valid_block_addresses_to_endorsements = valid_block.addresses_to_endorsements()?;
-
         // add block to graph
         self.add_block_to_graph(
             block_id,
             valid_block_parents_hash_period,
-            &valid_block,
+            valid_block_creator,
+            valid_block_slot,
             valid_block_deps,
             valid_block_incomp,
             valid_block_inherited_incomp_count,
@@ -2651,7 +2654,8 @@ impl BlockGraph {
         &mut self,
         add_block_id: BlockId,
         parents_hash_period: Vec<(BlockId, u64)>,
-        add_block: &Block,
+        add_block_creator: PublicKey,
+        add_block_slot: Slot,
         deps: Set<BlockId>,
         incomp: Set<BlockId>,
         inherited_incomp_count: usize,
@@ -2670,7 +2674,7 @@ impl BlockGraph {
         self.block_statuses.insert(
             add_block_id,
             BlockStatus::Active(Box::new(ActiveBlock {
-                creator_address: Address::from_public_key(&add_block.header.content.creator),
+                creator_address: Address::from_public_key(&add_block_creator),
                 parents: parents_hash_period.clone(),
                 dependencies: deps,
                 descendants: Set::<BlockId>::default(),
@@ -2684,7 +2688,7 @@ impl BlockGraph {
                 roll_updates,
                 production_events,
                 addresses_to_endorsements,
-                slot: add_block.header.content.slot,
+                slot: add_block_slot,
             })),
         );
         self.active_index.insert(add_block_id);
@@ -2692,8 +2696,8 @@ impl BlockGraph {
         // add as child to parents
         for (parent_h, _parent_period) in parents_hash_period.iter() {
             if let Some(BlockStatus::Active(a_parent)) = self.block_statuses.get_mut(parent_h) {
-                a_parent.children[add_block.header.content.slot.thread as usize]
-                    .insert(add_block_id, add_block.header.content.slot.period);
+                a_parent.children[add_block_slot.thread as usize]
+                    .insert(add_block_id, add_block_slot.period);
             } else {
                 return Err(GraphError::ContainerInconsistency(format!(
                     "inconsistency inside block statuses adding child {} of block {}",
