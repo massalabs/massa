@@ -608,6 +608,7 @@ impl ConsensusWorker {
             creator_private_key,
         )?;
         let block = Block { header, operations };
+        let slot = block.header.content.slot;
         massa_trace!("create block", { "block": block });
 
         let serialized_block = block.to_bytes_compact()?;
@@ -615,7 +616,7 @@ impl ConsensusWorker {
         // Add to shared storage
         self.block_db
             .storage
-            .store_block(block_id, block.clone(), serialized_block);
+            .store_block(block_id, block, serialized_block);
 
         info!(
             "Staked block {} with address {}, at cycle {}, period {}, thread {}",
@@ -629,7 +630,7 @@ impl ConsensusWorker {
         // add block to db
         self.block_db.incoming_block(
             block_id,
-            block.header.content.slot,
+            slot,
             operation_set,
             endorsement_ids,
             &mut self.pos,
