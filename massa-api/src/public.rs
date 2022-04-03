@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 #![allow(clippy::too_many_arguments)]
 use crate::error::ApiError;
+use crate::settings::APISettings;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
@@ -15,8 +16,8 @@ use massa_models::SignedOperation;
 
 use massa_models::{
     api::{
-        APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
-        EventFilter, IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
+        AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
+        EventFilter, IndexedSlot, NodeStatus, OperationInfo, ReadOnlyExecution, TimeInterval,
     },
     clique::Clique,
     composite::PubkeySig,
