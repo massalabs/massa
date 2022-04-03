@@ -6,9 +6,7 @@ use std::path::PathBuf;
 use massa_api::APISettings;
 use massa_bootstrap::BootstrapSettings;
 use massa_consensus_exports::ConsensusSettings;
-use massa_models::{
-    constants::{build_massa_settings, OPERATION_VALIDITY_PERIODS, THREAD_COUNT},
-};
+use massa_models::constants::{build_massa_settings, OPERATION_VALIDITY_PERIODS, THREAD_COUNT};
 use massa_network_exports::NetworkSettings;
 use massa_pool::{PoolConfig, PoolSettings};
 use massa_protocol_exports::ProtocolSettings;

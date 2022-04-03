@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use std::net::SocketAddr;
 use jsonrpc_core::serde::Deserialize;
+use std::net::SocketAddr;
 
 /// API settings.
 /// the api settings
