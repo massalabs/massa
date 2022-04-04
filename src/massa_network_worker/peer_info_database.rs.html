@@ -954,6 +954,17 @@
 <span id="949">949</span>
 <span id="950">950</span>
 <span id="951">951</span>
+<span id="952">952</span>
+<span id="953">953</span>
+<span id="954">954</span>
+<span id="955">955</span>
+<span id="956">956</span>
+<span id="957">957</span>
+<span id="958">958</span>
+<span id="959">959</span>
+<span id="960">960</span>
+<span id="961">961</span>
+<span id="962">962</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident">enum_map::EnumMap</span>;
@@ -968,6 +979,7 @@
 <span class="kw">use</span> <span class="ident">massa_network_exports::PeerInfo</span>;
 <span class="kw">use</span> <span class="ident">massa_network_exports::PeerType</span>;
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
+<span class="kw">use</span> <span class="ident">serde_json::json</span>;
 <span class="kw">use</span> <span class="ident">std::cmp::Reverse</span>;
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 <span class="kw">use</span> <span class="ident">std::net::IpAddr</span>;
@@ -1006,6 +1018,16 @@
     <span class="kw">let</span> <span class="ident">peer_vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">peers</span>
         .<span class="ident">values</span>()
         .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">advertised</span> <span class="op">|</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">peer_type</span> <span class="op">!</span><span class="op">=</span> <span class="ident">PeerType::Standard</span> <span class="op">|</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">banned</span>)
+        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">peer</span><span class="op">|</span> {
+            <span class="macro">json!</span>({
+                <span class="string">&quot;ip&quot;</span>: <span class="ident">peer</span>.<span class="ident">ip</span>,
+                <span class="string">&quot;banned&quot;</span>: <span class="ident">peer</span>.<span class="ident">banned</span>,
+                <span class="string">&quot;peer_type&quot;</span>: <span class="ident">peer</span>.<span class="ident">peer_type</span>,
+                <span class="string">&quot;last_alive&quot;</span>: <span class="ident">peer</span>.<span class="ident">last_alive</span>,
+                <span class="string">&quot;last_failure&quot;</span>: <span class="ident">peer</span>.<span class="ident">last_failure</span>,
+                <span class="string">&quot;advertised&quot;</span>: <span class="ident">peer</span>.<span class="ident">advertised</span>,
+            })
+        })
         .<span class="ident">collect</span>();
 
     <span class="ident">tokio::fs::write</span>(<span class="ident">file_path</span>, <span class="ident">serde_json::to_string_pretty</span>(<span class="kw-2">&amp;</span><span class="ident">peer_vec</span>)<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
