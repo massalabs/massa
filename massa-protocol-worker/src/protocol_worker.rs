@@ -1249,16 +1249,17 @@ impl ProtocolWorker {
                 if let Some((block_id, operation_set, endorsement_ids)) =
                     self.note_block_from_node(&block, &from_node_id).await?
                 {
+                    let slot = block.header.content.slot;
+
                     // Store block in shared storage.
-                    self.storage
-                        .store_block(block_id, block.clone(), serialized);
+                    self.storage.store_block(block_id, block, serialized);
 
                     let mut set = Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
                     set.insert(block_id);
                     self.stop_asking_blocks(set)?;
                     self.send_protocol_event(ProtocolEvent::ReceivedBlock {
                         block_id,
-                        slot: block.header.content.slot,
+                        slot,
                         operation_set,
                         endorsement_ids,
                     })
