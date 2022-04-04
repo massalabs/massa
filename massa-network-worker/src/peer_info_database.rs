@@ -50,6 +50,16 @@ async fn dump_peers(
     let peer_vec: Vec<_> = peers
         .values()
         .filter(|v| v.advertised || v.peer_type != PeerType::Standard || v.banned)
+        .map(|peer| {
+            json!({
+                "ip": peer.ip,
+                "banned": peer.banned,
+                "peer_type": peer.peer_type,
+                "last_alive": peer.last_alive,
+                "last_failure": peer.last_failure,
+                "advertised": peer.advertised,
+            })
+        })
         .collect();
 
     tokio::fs::write(file_path, serde_json::to_string_pretty(&peer_vec)?).await?;
