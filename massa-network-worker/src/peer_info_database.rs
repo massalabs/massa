@@ -12,6 +12,7 @@ use massa_network_exports::NetworkSettings;
 use massa_network_exports::PeerInfo;
 use massa_network_exports::PeerType;
 use massa_time::MassaTime;
+use serde_json::json;
 use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::net::IpAddr;
