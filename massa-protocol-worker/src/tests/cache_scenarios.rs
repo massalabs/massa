@@ -51,7 +51,9 @@ async fn test_noting_block_does_not_panic_with_zero_max_node_known_blocks_size()
             // Send a block, ensuring the processing of it,
             // and of its header,
             // does not panic.
-            network_controller.send_block(nodes[0].id, block).await;
+            network_controller
+                .send_block(nodes[0].id, block, Default::default())
+                .await;
 
             // Wait for the event, should not panic.
             let _ = tools::wait_protocol_event(&mut protocol_event_receiver, 1000.into(), |evt| {

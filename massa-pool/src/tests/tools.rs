@@ -3,7 +3,7 @@
 use super::mock_protocol_controller::MockProtocolController;
 use crate::{pool_controller, settings::PoolConfig, PoolCommandSender, PoolManager};
 use futures::Future;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::{
     signed::Signed, Address, Amount, BlockId, Endorsement, Operation, OperationType,
     SignedEndorsement, SignedOperation, Slot,

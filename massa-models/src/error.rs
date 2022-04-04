@@ -3,10 +3,12 @@
 use displaydoc::Display;
 use thiserror::Error;
 
+/// models error
 pub type ModelsResult<T, E = ModelsError> = core::result::Result<T, E>;
 
+/// models error
 #[non_exhaustive]
-#[derive(Display, Error, Debug)]
+#[derive(Display, Error, Debug, Clone)]
 pub enum ModelsError {
     /// hashing error
     HashError,

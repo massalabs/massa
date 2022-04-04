@@ -9,8 +9,10 @@ use core::usize;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map;
 
+/// a consensus ledger entry
 #[derive(Debug, Default, Deserialize, Clone, Copy, Serialize)]
 pub struct LedgerData {
+    /// the balance in coins
     pub balance: Amount,
 }
 
@@ -36,12 +38,15 @@ impl DeserializeCompact for LedgerData {
 }
 
 impl LedgerData {
+    /// new LedgerData from an initial balance
     pub fn new(starting_balance: Amount) -> LedgerData {
         LedgerData {
             balance: starting_balance,
         }
     }
 
+    /// apply a LedgerChange for an entry
+    /// Can fail in overflow or underflow occur
     pub fn apply_change(&mut self, change: &LedgerChange) -> Result<()> {
         if change.balance_increment {
             self.balance = self
@@ -121,6 +126,7 @@ impl LedgerChange {
         Ok(())
     }
 
+    /// true if the change is 0
     pub fn is_nil(&self) -> bool {
         self.balance_delta == Amount::default()
     }
@@ -174,6 +180,7 @@ impl DeserializeCompact for LedgerChange {
 pub struct LedgerChanges(pub Map<Address, LedgerChange>);
 
 impl LedgerChanges {
+    /// addresses that are impacted by these ledger changes
     pub fn get_involved_addresses(&self) -> Set<Address> {
         self.0.keys().copied().collect()
     }

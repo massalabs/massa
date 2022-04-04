@@ -16,11 +16,13 @@ use massa_final_state::FinalState;
 use massa_models::BlockId;
 use massa_models::{
     timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp},
-    Block, Slot,
+    Slot,
 };
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::{collections::HashMap, sync::Arc};
+use tracing::info;
 
 /// Structure gathering all elements needed by the execution thread
 pub(crate) struct ExecutionThread {
@@ -30,16 +32,16 @@ pub(crate) struct ExecutionThread {
     input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     // Map of final slots not executed yet but ready for execution
     // See lib.rs for an explanation on final execution ordering.
-    ready_final_slots: HashMap<Slot, Option<(BlockId, Block)>>,
+    ready_final_slots: HashMap<Slot, Option<BlockId>>,
     // Highest final slot that is ready to be executed
     last_ready_final_slot: Slot,
     // Map of final blocks that are not yet ready to be executed
     // See lib.rs for an explanation on final execution ordering.
-    pending_final_blocks: HashMap<Slot, (BlockId, Block)>,
+    pending_final_blocks: HashMap<Slot, BlockId>,
     // Current blockclique, indexed by slot number
-    blockclique: HashMap<Slot, (BlockId, Block)>,
+    blockclique: HashMap<Slot, BlockId>,
     // Map of all active slots
-    active_slots: HashMap<Slot, Option<(BlockId, Block)>>,
+    active_slots: HashMap<Slot, Option<BlockId>>,
     // Highest active slot
     last_active_slot: Slot,
     // Execution state (see execution.rs) to which execution requests are sent
@@ -84,7 +86,7 @@ impl ExecutionThread {
     ///
     /// # Arguments
     /// * new_final_blocks: a map of newly finalized blocks
-    fn update_final_slots(&mut self, new_final_blocks: HashMap<Slot, (BlockId, Block)>) {
+    fn update_final_slots(&mut self, new_final_blocks: HashMap<Slot, BlockId>) {
         // if there are no new final blocks, exit and do nothing
         if new_final_blocks.is_empty() {
             return;
@@ -111,10 +113,10 @@ impl ExecutionThread {
                 .expect("final slot overflow in VM");
 
             // try to remove that slot out of pending_final_blocks
-            if let Some((block_id, block)) = self.pending_final_blocks.remove(&slot) {
+            if let Some(block_id) = self.pending_final_blocks.remove(&slot) {
                 // pending final block found at slot:
                 // add block to the ready_final_slots list of final slots ready for execution
-                self.ready_final_slots.insert(slot, Some((block_id, block)));
+                self.ready_final_slots.insert(slot, Some(block_id));
                 self.last_ready_final_slot = slot;
                 // continue the loop
                 continue;
@@ -179,7 +181,7 @@ impl ExecutionThread {
     ///
     /// Arguments:
     /// * new_blockclique: optionally provide a new blockclique
-    fn update_active_slots(&mut self, new_blockclique: Option<HashMap<Slot, (BlockId, Block)>>) {
+    fn update_active_slots(&mut self, new_blockclique: Option<HashMap<Slot, BlockId>>) {
         // Update the current blockclique if it has changed
         if let Some(blockclique) = new_blockclique {
             self.blockclique = blockclique;
@@ -207,17 +209,15 @@ impl ExecutionThread {
                 .get_next_slot(self.config.thread_count)
                 .expect("active slot overflow in VM");
             // look for a block at that slot among the ones that are final but not ready for final execution yet
-            if let Some((block_id, block)) = self.pending_final_blocks.get(&slot) {
+            if let Some(block_id) = self.pending_final_blocks.get(&slot) {
                 // A block at that slot was found in pending_final_blocks.
                 // Add it to the sequence of active slots.
-                self.active_slots
-                    .insert(slot, Some((*block_id, block.clone())));
+                self.active_slots.insert(slot, Some(*block_id));
                 self.last_active_slot = slot;
-            } else if let Some((block_id, block)) = self.blockclique.get(&slot) {
+            } else if let Some(block_id) = self.blockclique.get(&slot) {
                 // A block at that slot was found in the current blockclique.
                 // Add it to the sequence of active slots.
-                self.active_slots
-                    .insert(slot, Some((*block_id, block.clone())));
+                self.active_slots.insert(slot, Some(*block_id));
                 self.last_active_slot = slot;
             } else {
                 // No block was found at that slot: it's a miss
@@ -252,10 +252,8 @@ impl ExecutionThread {
             .expect("the SCE final slot list skipped a slot");
 
         // check if the final slot is cached at the front of the speculative execution history
-        if let Some(exec_out) = exec_state.active_history.pop_front() {
-            if exec_out.slot == slot
-                && exec_out.block_id == exec_target.as_ref().map(|(b_id, _)| *b_id)
-            {
+        if let Some(exec_out) = exec_state.pop_first_execution_result() {
+            if exec_out.slot == slot && exec_out.block_id == exec_target {
                 // speculative execution front result matches what we want to compute
 
                 // apply the cached output and return
@@ -265,6 +263,7 @@ impl ExecutionThread {
         }
 
         // speculative cache mismatch
+        info!("speculative execution cache mismatch: resetting the cache");
 
         // clear the speculative execution output cache completely
         exec_state.clear_history();
@@ -307,8 +306,8 @@ impl ExecutionThread {
 
         // choose the execution target
         let exec_target = match self.active_slots.get(&slot) {
-            Some(b) => b.clone(), //TODO get rid of that clone on storage refactoring https://github.com/massalabs/massa/issues/2178
-            None => return false,
+            Some(b_id) => *b_id,
+            _ => return false,
         };
 
         // execute the slot
@@ -394,7 +393,51 @@ impl ExecutionThread {
         false
     }
 
-    /// Waits for an event to trigger a new iteration in the execution main loop.
+    /// Internal function tool used in `self.wait_loop_event()`, check in the
+    /// first place the content of `input_data` set by the controller.
+    ///
+    /// # Returns
+    /// Return if the wait_loop has to break, early return, or pass.
+    /// - None: pass
+    /// - Some(true): break (will stop the worker)
+    /// - Some(false): early return (will continue to execute the input data)
+    ///
+    /// # Test case
+    /// With the test config, the behavior is slightly different and we prefer
+    /// to execute all `readonly_requests`, `new_blockclique`, and
+    /// `finalized_blocks` before he thread join
+    fn check_input_data(&self, input_data: &ExecutionInputData) -> Option<bool> {
+        #[cfg(test)]
+        {
+            if (!input_data.readonly_requests.is_empty()
+                || input_data.new_blockclique.is_some()
+                || !input_data.finalized_blocks.is_empty())
+                && !input_data.stop
+            {
+                return Some(false);
+            }
+            if input_data.stop {
+                return Some(true);
+            }
+        }
+        #[cfg(not(test))]
+        {
+            if input_data.stop {
+                return Some(true);
+            }
+            // Check for readonly requests, new blockclique or final slot changes
+            // The most frequent triggers are checked first.
+            if !input_data.readonly_requests.is_empty()
+                || input_data.new_blockclique.is_some()
+                || !input_data.finalized_blocks.is_empty()
+            {
+                return Some(false);
+            }
+        }
+        None
+    }
+
+    /// Waits for an event to trigger a new iteration in the excution main loop.
     ///
     /// # Returns
     /// Some(ExecutionInputData) representing the input requests,
@@ -406,18 +449,15 @@ impl ExecutionThread {
             // take current input data, resetting it
             let input_data: ExecutionInputData = input_data_lock.take();
 
-            // check for stop signal
-            if input_data.stop {
-                break input_data;
-            }
-
+            // check for stop signal (in testing mode we wait for all
             // Check for readonly requests, new blockclique or final slot changes
             // The most frequent triggers are checked first.
-            if !input_data.readonly_requests.is_empty()
-                || input_data.new_blockclique.is_some()
-                || !input_data.finalized_blocks.is_empty()
-            {
-                return Some(input_data);
+            if let Some(should_break) = self.check_input_data(&input_data) {
+                if should_break {
+                    break input_data;
+                } else {
+                    return Some(input_data);
+                }
             }
 
             // Check for slots to execute.
@@ -522,6 +562,7 @@ impl ExecutionThread {
 /// # parameters
 /// * config: execution config
 /// * final_state: a thread-safe shared access to the final state for reading and writing
+/// * storage:A shared storage between all modules to have shared data.
 ///
 /// # Returns
 /// A pair (execution_manager, execution_controller) where:
@@ -530,11 +571,13 @@ impl ExecutionThread {
 pub fn start_execution_worker(
     config: ExecutionConfig,
     final_state: Arc<RwLock<FinalState>>,
+    storage: Storage,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     // create an execution state
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),
         final_state,
+        storage,
     )));
 
     // define the input data interface

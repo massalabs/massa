@@ -5,8 +5,11 @@ use crate::{
     NetworkEvent, Peers,
 };
 use massa_models::{
-    composite::PubkeySig, node::NodeId, stats::NetworkStats, Block, BlockId, SignedEndorsement,
-    SignedHeader, SignedOperation,
+    composite::PubkeySig,
+    node::NodeId,
+    operation::{OperationIds, Operations},
+    stats::NetworkStats,
+    BlockId, SignedEndorsement,
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -17,10 +20,12 @@ use tokio::{
     task::JoinHandle,
 };
 
+/// Network command sender
 #[derive(Clone)]
 pub struct NetworkCommandSender(pub mpsc::Sender<NetworkCommand>);
 
 impl NetworkCommandSender {
+    /// ban by node
     pub async fn ban(&self, node_id: NodeId) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::Ban(node_id))
@@ -29,6 +34,7 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    /// ban ip
     pub async fn ban_ip(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::BanIp(ips))
@@ -37,6 +43,27 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    /// add ip to whitelist
+    pub async fn whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::Whitelist(ips))
+            .await
+            .map_err(|_| NetworkError::ChannelError("could not send Whitelist command".into()))?;
+        Ok(())
+    }
+
+    /// remove ip from whitelist
+    pub async fn remove_from_whitelist(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::RemoveFromWhitelist(ips))
+            .await
+            .map_err(|_| {
+                NetworkError::ChannelError("could not send RemoveFromWhitelist command".into())
+            })?;
+        Ok(())
+    }
+
+    /// remove from banned nodes
     pub async fn unban(&self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::Unban(ips))
@@ -46,9 +73,9 @@ impl NetworkCommandSender {
     }
 
     /// Send the order to send block.
-    pub async fn send_block(&self, node: NodeId, block: Block) -> Result<(), NetworkError> {
+    pub async fn send_block(&self, node: NodeId, block_id: BlockId) -> Result<(), NetworkError> {
         self.0
-            .send(NetworkCommand::SendBlock { node, block })
+            .send(NetworkCommand::SendBlock { node, block_id })
             .await
             .map_err(|_| NetworkError::ChannelError("could not send SendBlock command".into()))?;
         Ok(())
@@ -67,13 +94,18 @@ impl NetworkCommandSender {
     }
 
     /// Send the order to send block header.
+    ///
+    /// Note: with the current use of shared storage,
+    /// sending a header requires having the block stored.
+    /// This matches the current use of send_block_header,
+    /// which is only used after a block has been integrated in the graph.
     pub async fn send_block_header(
         &self,
         node: NodeId,
-        header: SignedHeader,
+        block_id: BlockId,
     ) -> Result<(), NetworkError> {
         self.0
-            .send(NetworkCommand::SendBlockHeader { node, header })
+            .send(NetworkCommand::SendBlockHeader { node, block_id })
             .await
             .map_err(|_| {
                 NetworkError::ChannelError("could not send SendBlockHeader command".into())
@@ -95,6 +127,7 @@ impl NetworkCommandSender {
         })
     }
 
+    /// get network stats
     pub async fn get_network_stats(&self) -> Result<NetworkStats, NetworkError> {
         let (response_tx, response_rx) = oneshot::channel();
         self.0
@@ -122,6 +155,7 @@ impl NetworkCommandSender {
         })
     }
 
+    /// send block not found to node
     pub async fn block_not_found(
         &self,
         node: NodeId,
@@ -136,10 +170,11 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    /// send operations to node
     pub async fn send_operations(
         &self,
         node: NodeId,
-        operations: Vec<SignedOperation>,
+        operations: Operations,
     ) -> Result<(), NetworkError> {
         self.0
             .send(NetworkCommand::SendOperations { node, operations })
@@ -150,6 +185,49 @@ impl NetworkCommandSender {
         Ok(())
     }
 
+    /// Create a new call to the network, sending a announcement of OperationIds to a
+    /// target node (`to_node`)
+    ///
+    /// # Returns
+    /// Can return a [NetworkError::ChannelError] that must be managed by the direct caller of the
+    /// function.
+    pub async fn send_operations_batch(
+        &self,
+        to_node: NodeId,
+        batch: OperationIds,
+    ) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::SendOperationAnnouncements { to_node, batch })
+            .await
+            .map_err(|_| {
+                NetworkError::ChannelError(
+                    "could not send SendOperationAnnouncements command".into(),
+                )
+            })?;
+        Ok(())
+    }
+
+    /// Create a new call to the network, sending a `wishlist` of operationIds to a
+    /// target node (`to_node`) in order to receive the full operations in the future.
+    ///
+    /// # Returns
+    /// Can return a [NetworkError::ChannelError] that must be managed by the direct caller of the
+    /// function.
+    pub async fn send_ask_for_operations(
+        &self,
+        to_node: NodeId,
+        wishlist: OperationIds,
+    ) -> Result<(), NetworkError> {
+        self.0
+            .send(NetworkCommand::AskForOperations { to_node, wishlist })
+            .await
+            .map_err(|_| {
+                NetworkError::ChannelError("could not send AskForOperations command".into())
+            })?;
+        Ok(())
+    }
+
+    /// send endorsements to node id
     pub async fn send_endorsements(
         &self,
         node: NodeId,
@@ -179,9 +257,11 @@ impl NetworkCommandSender {
     }
 }
 
+/// network event receiver
 pub struct NetworkEventReceiver(pub mpsc::Receiver<NetworkEvent>);
 
 impl NetworkEventReceiver {
+    /// wait network event
     pub async fn wait_event(&mut self) -> Result<NetworkEvent, NetworkError> {
         let res = self
             .0
@@ -202,12 +282,16 @@ impl NetworkEventReceiver {
     }
 }
 
+/// Network manager
 pub struct NetworkManager {
+    /// network handle
     pub join_handle: JoinHandle<Result<(), NetworkError>>,
+    /// management commands
     pub manager_tx: mpsc::Sender<NetworkManagementCommand>,
 }
 
 impl NetworkManager {
+    /// stop network
     pub async fn stop(
         self,
         network_event_receiver: NetworkEventReceiver,

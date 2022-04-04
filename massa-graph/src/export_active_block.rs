@@ -8,14 +8,17 @@ use massa_models::{
     signed::Signable,
     *,
 };
+use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
 
 /// Exportable version of ActiveBlock
 /// Fields that can be easily recomputed were left out
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportActiveBlock {
-    /// The block itself, as it was created
+    /// The block.
     pub block: Block,
+    /// The Id of the block.
+    pub block_id: BlockId,
     /// one (block id, period) per thread ( if not genesis )
     pub parents: Vec<(BlockId, u64)>,
     /// one HashMap<Block id, period> per thread (blocks that need to be kept)
@@ -32,22 +35,6 @@ pub struct ExportActiveBlock {
     /// list of (period, address, did_create) for all block/endorsement creation events
     pub production_events: Vec<(u64, Address, bool)>,
 }
-
-impl From<&ActiveBlock> for ExportActiveBlock {
-    fn from(a_block: &ActiveBlock) -> Self {
-        ExportActiveBlock {
-            block: a_block.block.clone(),
-            parents: a_block.parents.clone(),
-            children: a_block.children.clone(),
-            dependencies: a_block.dependencies.clone(),
-            is_final: a_block.is_final,
-            block_ledger_changes: a_block.block_ledger_changes.clone(),
-            roll_updates: a_block.roll_updates.clone(),
-            production_events: a_block.production_events.clone(),
-        }
-    }
-}
-
 impl TryFrom<ExportActiveBlock> for ActiveBlock {
     fn try_from(a_block: ExportActiveBlock) -> Result<ActiveBlock> {
         let operation_set = a_block
@@ -71,27 +58,47 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
             .collect::<Result<_>>()?;
 
         let addresses_to_operations = a_block.block.involved_addresses(&operation_set)?;
-        let addresses_to_endorsements =
-            a_block.block.addresses_to_endorsements(&endorsement_ids)?;
+        let addresses_to_endorsements = a_block.block.addresses_to_endorsements()?;
         Ok(ActiveBlock {
             creator_address: Address::from_public_key(&a_block.block.header.content.creator),
-            block: a_block.block,
-            parents: a_block.parents,
-            children: a_block.children,
-            dependencies: a_block.dependencies,
+            block_id: a_block.block_id,
+            parents: a_block.parents.clone(),
+            children: a_block.children.clone(),
+            dependencies: a_block.dependencies.clone(),
             descendants: Default::default(), // will be computed once the full graph is available
             is_final: a_block.is_final,
-            block_ledger_changes: a_block.block_ledger_changes,
+            block_ledger_changes: a_block.block_ledger_changes.clone(),
             operation_set,
             endorsement_ids,
             addresses_to_operations,
-            roll_updates: a_block.roll_updates,
-            production_events: a_block.production_events,
+            roll_updates: a_block.roll_updates.clone(),
+            production_events: a_block.production_events.clone(),
             addresses_to_endorsements,
+            slot: a_block.block.header.content.slot,
         })
     }
-
     type Error = GraphError;
+}
+
+impl ExportActiveBlock {
+    /// try conversion from active block to export active block
+    pub fn try_from_active_block(a_block: &ActiveBlock, storage: Storage) -> Result<Self> {
+        let block = storage
+            .retrieve_block(&a_block.block_id)
+            .ok_or(GraphError::MissingBlock)?;
+        let stored_block = block.read();
+        Ok(ExportActiveBlock {
+            block: stored_block.block.clone(),
+            block_id: a_block.block_id,
+            parents: a_block.parents.clone(),
+            children: a_block.children.clone(),
+            dependencies: a_block.dependencies.clone(),
+            is_final: a_block.is_final,
+            block_ledger_changes: a_block.block_ledger_changes.clone(),
+            roll_updates: a_block.roll_updates.clone(),
+            production_events: a_block.production_events.clone(),
+        })
+    }
 }
 
 impl SerializeCompact for ExportActiveBlock {
@@ -107,6 +114,9 @@ impl SerializeCompact for ExportActiveBlock {
 
         // block
         res.extend(self.block.to_bytes_compact()?);
+
+        // block id
+        res.extend(self.block_id.to_bytes());
 
         // parents (note: there should be none if slot period=0)
         if self.parents.is_empty() {
@@ -215,6 +225,10 @@ impl DeserializeCompact for ExportActiveBlock {
         // block
         let (block, delta) = Block::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
+
+        // block id
+        let block_id = BlockId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+        cursor += BLOCK_ID_SIZE_BYTES;
 
         // parents
         let has_parents = u8_from_slice(&buffer[cursor..])?;
@@ -350,6 +364,7 @@ impl DeserializeCompact for ExportActiveBlock {
             ExportActiveBlock {
                 is_final,
                 block,
+                block_id,
                 parents,
                 children,
                 dependencies,

@@ -13,8 +13,7 @@
 //! Provides a mock of ExecutionController to simulate interactions
 //! with an execution worker within tests.
 
-mod config;
 mod mock;
-
-pub use config::*;
+mod settings;
 pub use mock::*;
+pub use settings::*;

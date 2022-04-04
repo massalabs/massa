@@ -4,7 +4,7 @@
 
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::{prehash::Map, Address, Amount};
 use std::collections::hash_map;
 
@@ -391,7 +391,7 @@ impl LedgerChanges {
         }
     }
 
-    /// Set a datastore entry for a given address.  
+    /// Set a datastore entry for a given address.
     /// If the address doesn't exist, its ledger entry is created.
     /// If the datastore entry exists, its value is replaced, otherwise it is created.
     ///

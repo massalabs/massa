@@ -27,6 +27,10 @@ use directories::ProjectDirs;
 use serde::Deserialize;
 use std::path::Path;
 
+/// Merge the settings
+/// 1. default
+/// 2. in path specified in MASSA_CONFIG_PATH env variable ("base_config/config.toml" by default)
+/// 3. in path specified in MASSA_CONFIG_OVERRIDE_PATH env variable ("config/config.toml" by default)
 #[inline]
 pub fn build_massa_settings<T: Deserialize<'static>>(app_name: &str, env_prefix: &str) -> T {
     let mut settings = config::Config::default();

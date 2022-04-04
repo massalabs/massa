@@ -1,9 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use super::tools::{create_executesc, random_address_on_thread};
 use crate::tests::tools::{self, create_endorsement, create_roll_transaction, create_transaction};
 use massa_consensus_exports::{tools::*, ConsensusConfig};
 use massa_graph::ledger::LedgerSubset;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::rolls::{RollCounts, RollUpdate, RollUpdates};
 use massa_models::signed::{Signable, Signed};
 use massa_models::SerializeCompact;
@@ -17,8 +18,6 @@ use serial_test::serial;
 use std::collections::HashMap;
 use std::str::FromStr;
 use tokio::time::sleep_until;
-
-use super::tools::{create_executesc, random_address_on_thread};
 
 #[tokio::test]
 #[serial]
@@ -73,7 +72,50 @@ async fn test_genesis_block_creation() {
     .await;
 }
 
-// implement test of issue !424.
+/// /// See the test removed at https://gitlab.com/massalabs/massa-network/-/merge_requests/381/diffs#a5bee3b1b5cc9d8157b6feee0ac3e775aa457a33_544_539
+///
+/// **NOTE: that test is expected to fail 1 / 1000 times**
+///
+///
+/// ### Context
+///
+/// * price per roll = 1000
+/// * periods per cycle = 30 000
+/// * t0 = 500ms
+/// * lookback = 2
+/// * thread count = 2
+/// * delta f0 = 3
+/// * genesis timestamp = now - t0 * periods per cycle * 3 - 1000
+/// * block reward = 0
+/// * fee = 0 for every operation
+/// * addr 1 has 1 roll and 0 coins
+/// * addr 2 is in consensus and has 0 roll and 1000 coins
+///
+/// ### Initialization
+/// Following blocks are sent through a protocol event to consensus right at the beginning. They all have best parents as parents.
+/// * block at slot(1,0) with operation addr 2 buys 1 roll
+/// * block at slot( period per cycle, 0)
+/// * block at slot( period per cycle, 1)
+/// * block at slot( period per cycle + 1, 0)
+/// * block at slot( period per cycle + 1, 1)
+/// * block at slot( period per cycle + 2, 0)
+/// * block at slot( period per cycle + 2, 0)
+///
+/// ### Scenario
+///
+/// * start consensus
+/// * blocks previously described are sent to consensus through a protocol event
+/// * assert they are propagated
+/// * let draws = get_selection_draws( (3*periods_per cycle, 0), (4*periods_per cycle, 0)
+/// * assert
+/// ```math
+/// abs(1/2 - \frac{TimesAddr1WasDrawn}{ThreadCount * PeriodsPerCycle}) < 0.01
+/// ```
+/// (see [the math](https://en.wikipedia.org/wiki/Checking_whether_a_coin_is_fair))
+/// * wait for cycle 3 beginning
+/// * for the 10 first slots of cycle 3
+///    * if addr 2 was selected assert consensus created and propagated a block
+///    * if addr 1 was selected assert nothing is propagated
 #[tokio::test]
 #[serial]
 async fn test_block_creation_with_draw() {
@@ -128,10 +170,12 @@ async fn test_block_creation_with_draw() {
     cfg.initial_rolls_path = initial_rolls_file.path().to_path_buf();
 
     let operation_fee = 0;
-
-    tools::consensus_without_pool_test(
+    tools::consensus_without_pool_test_with_storage(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let genesis_ids = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -147,6 +191,7 @@ async fn test_block_creation_with_draw() {
                 staking_keys[0],
                 vec![op1],
             );
+
             tools::propagate_block(&mut protocol_controller, block, true, 1000).await;
 
             // make cycle 0 final/finished by sending enough blocks in each thread in cycle 1
@@ -196,9 +241,13 @@ async fn test_block_creation_with_draw() {
                 // wait block propagation
                 let block_creator = protocol_controller
                     .wait_command(3500.into(), |cmd| match cmd {
-                        ProtocolCommand::IntegratedBlock { block, .. } => {
-                            if block.header.content.slot == cur_slot {
-                                Some(block.header.content.creator)
+                        ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                            let block = storage
+                                .retrieve_block(&block_id)
+                                .expect(&format!("Block id : {} not found in storage", block_id));
+                            let stored_block = block.read();
+                            if stored_block.block.header.content.slot == cur_slot {
+                                Some(stored_block.block.header.content.creator)
                             } else {
                                 None
                             }
@@ -225,6 +274,19 @@ async fn test_block_creation_with_draw() {
     .await;
 }
 
+/// https://gitlab.com/massalabs/massa/-/issues/301
+///
+/// Block creation reception mix test
+///
+/// see https://gitlab.com/massalabs/massa/-/issues/295#note_693561778
+///
+///
+///     two staking keys. Only key a is registered in consensus
+///     start before genesis timestamp
+///     retrieve next draws
+///     for a few slots:
+///         if it's key b time to create a block create it and send it to consensus
+///         if key a created a block, assert it has chosen as parents expected blocks (no misses), and that it was sent to protocol around the time it was expected.
 #[tokio::test]
 #[serial]
 async fn test_interleaving_block_creation_with_reception() {
@@ -254,7 +316,7 @@ async fn test_interleaving_block_creation_with_reception() {
         cfg.initial_ledger_path.to_str().unwrap(),
         std::env::current_dir().unwrap().to_str().unwrap()
     );
-    //init roll count
+    // init roll count
     let mut roll_counts = RollCounts::default();
     let update = RollUpdate {
         roll_purchases: 1,
@@ -267,9 +329,12 @@ async fn test_interleaving_block_creation_with_reception() {
     let temp_roll_file = generate_roll_counts_file(&roll_counts);
     cfg.initial_rolls_path = temp_roll_file.path().to_path_buf();
 
-    tools::consensus_without_pool_test(
+    tools::consensus_without_pool_test_with_storage(
         cfg.clone(),
-        async move |mut protocol_controller, consensus_command_sender, consensus_event_receiver| {
+        async move |mut protocol_controller,
+                    consensus_command_sender,
+                    consensus_event_receiver,
+                    storage| {
             let mut parents = consensus_command_sender
                 .get_block_graph_status(None, None)
                 .await
@@ -306,11 +371,14 @@ async fn test_interleaving_block_creation_with_reception() {
                     // wait block propagation
                     let (header, id) = protocol_controller
                         .wait_command(cfg.t0.saturating_add(300.into()), |cmd| match cmd {
-                            ProtocolCommand::IntegratedBlock {
-                                block, block_id, ..
-                            } => {
-                                if block.header.content.slot == cur_slot {
-                                    Some((block.header, block_id))
+                            ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                                let block = storage.retrieve_block(&block_id).expect(&format!(
+                                    "Block id : {} not found in storage",
+                                    block_id
+                                ));
+                                let stored_block = block.read();
+                                if stored_block.block.header.content.slot == cur_slot {
+                                    Some((stored_block.block.header.clone(), block_id))
                                 } else {
                                     None
                                 }
@@ -358,6 +426,24 @@ async fn test_interleaving_block_creation_with_reception() {
     .await;
 }
 
+/// https://gitlab.com/massalabs/massa-network-archive/-/issues/343
+/// Test block creation with operations
+///
+/// Test consensus block creation with an initial graph and simulated pool
+///
+/// In all tests, once it has started there is only one block creator, so we expect consensus to create blocks at every slots after initialization.
+///
+/// context
+///
+/// initial ledger: A:100
+/// op1 : A -> B : 5, fee 1
+/// op2 : A -> B : 50, fee 10
+/// op3 : B -> A : 10, fee 15
+///
+/// ---
+///
+/// create block at (0,1)
+/// operations should be [op2, op1]
 #[tokio::test]
 #[serial]
 async fn test_order_of_inclusion() {
@@ -388,14 +474,15 @@ async fn test_order_of_inclusion() {
 
     // there is only one node so it should be drawn at every slot
 
-    tools::consensus_pool_test(
+    tools::consensus_pool_test_with_storage(
         cfg.clone(),
         None,
         None,
         async move |mut pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    storage| {
             // wait for first slot
             pool_controller
                 .wait_command(
@@ -464,9 +551,13 @@ async fn test_order_of_inclusion() {
             // wait for block
             let (_block_id, block) = protocol_controller
                 .wait_command(300.into(), |cmd| match cmd {
-                    ProtocolCommand::IntegratedBlock {
-                        block_id, block, ..
-                    } => Some((block_id, block)),
+                    ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                        let block = storage
+                            .retrieve_block(&block_id)
+                            .expect(&format!("Block id : {} not found in storage", block_id));
+                        let stored_block = block.read();
+                        Some((block_id, stored_block.block.clone()))
+                    }
                     _ => None,
                 })
                 .await
@@ -494,6 +585,28 @@ async fn test_order_of_inclusion() {
     .await;
 }
 
+/// https://gitlab.com/massalabs/massa-network-archive/-/issues/343
+/// Test block creation with operations
+///
+/// Test consensus block creation with an initial graph and simulated pool
+///
+/// In all tests, once it has started there is only one block creator, so we expect consensus to create blocks at every slots after initialization.
+///
+/// context
+///
+/// initial ledger A = 1 000 000
+/// max_block_size = 500
+/// max_operations_per_block = 10 000
+/// op_i = A -> B : 10, 1, signed for the i-th time
+///
+/// ---
+///
+/// let block_size = size of dummy block at (1,0) without any operation
+/// let op_size = size of an operation
+/// while consensus is asking for operations send next ops
+/// assert created block size is max_block_size +/- one op_size
+/// assert created_block_size = block_size + op_size * op count
+///
 #[tokio::test]
 #[serial]
 async fn test_block_filling() {
@@ -534,14 +647,15 @@ async fn test_block_filling() {
         ops.push(create_transaction(priv_a, pubkey_a, address_a, 5, 10, 1))
     }
 
-    tools::consensus_pool_test(
+    tools::consensus_pool_test_with_storage(
         cfg.clone(),
         None,
         None,
         async move |mut pool_controller,
                     mut protocol_controller,
                     consensus_command_sender,
-                    consensus_event_receiver| {
+                    consensus_event_receiver,
+                    storage| {
             let op_size = 10;
 
             // wait for slot
@@ -574,9 +688,13 @@ async fn test_block_filling() {
                 // wait for block
                 let (block_id, block) = protocol_controller
                     .wait_command(500.into(), |cmd| match cmd {
-                        ProtocolCommand::IntegratedBlock {
-                            block_id, block, ..
-                        } => Some((block_id, block)),
+                        ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                            let block = storage
+                                .retrieve_block(&block_id)
+                                .expect(&format!("Block id : {} not found in storage", block_id));
+                            let stored_block = block.read();
+                            Some((block_id, stored_block.block.clone()))
+                        }
                         _ => None,
                     })
                     .await
@@ -672,9 +790,13 @@ async fn test_block_filling() {
             // wait for block
             let (_block_id, block) = protocol_controller
                 .wait_command(500.into(), |cmd| match cmd {
-                    ProtocolCommand::IntegratedBlock {
-                        block_id, block, ..
-                    } => Some((block_id, block)),
+                    ProtocolCommand::IntegratedBlock { block_id, .. } => {
+                        let block = storage
+                            .retrieve_block(&block_id)
+                            .expect(&format!("Block id : {} not found in storage", block_id));
+                        let stored_block = block.read();
+                        Some((block_id, stored_block.block.clone()))
+                    }
                     _ => None,
                 })
                 .await

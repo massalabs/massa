@@ -7,12 +7,14 @@
 
 use crate::context::ExecutionContext;
 use anyhow::{bail, Result};
+use massa_async_pool::AsyncMessage;
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_models::{
     output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId},
     timeslots::get_block_slot_timestamp,
+    Address, Amount, Slot,
 };
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
@@ -188,7 +190,7 @@ impl Interface for InterfaceImpl {
     /// The datastore value matching the provided key, if found, otherwise an error.
     fn raw_get_data_for(&self, address: &str, key: &str) -> Result<Vec<u8>> {
         let addr = &massa_models::Address::from_bs58_check(address)?;
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         match context.get_data_entry(addr, &key) {
             Some(value) => Ok(value),
@@ -204,7 +206,7 @@ impl Interface for InterfaceImpl {
     /// * value: new value to set
     fn raw_set_data_for(&self, address: &str, key: &str, value: &[u8]) -> Result<()> {
         let addr = massa_models::Address::from_str(address)?;
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
         context.set_data_entry(&addr, key, value.to_vec())?;
         Ok(())
@@ -220,7 +222,7 @@ impl Interface for InterfaceImpl {
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
     fn has_data_for(&self, address: &str, key: &str) -> Result<bool> {
         let addr = massa_models::Address::from_str(address)?;
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         Ok(context.has_data_entry(&addr, &key))
     }
@@ -233,7 +235,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The datastore value matching the provided key, if found, otherwise an error.
     fn raw_get_data(&self, key: &str) -> Result<Vec<u8>> {
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
         match context.get_data_entry(&addr, &key) {
@@ -249,7 +251,7 @@ impl Interface for InterfaceImpl {
     /// * key: string key of the datastore entry to set
     /// * value: new value to set
     fn raw_set_data(&self, key: &str, value: &[u8]) -> Result<()> {
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let mut context = context_guard!(self);
         let addr = context.get_current_address()?;
         context.set_data_entry(&addr, key, value.to_vec())?;
@@ -264,7 +266,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// true if the address exists and has the entry matching the provided key in its datastore, otherwise false
     fn has_data(&self, key: &str) -> Result<bool> {
-        let key = massa_hash::hash::Hash::compute_from(key.as_bytes());
+        let key = massa_hash::Hash::compute_from(key.as_bytes());
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
         Ok(context.has_data_entry(&addr, &key))
@@ -278,7 +280,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The string representation of the resulting hash
     fn hash(&self, data: &[u8]) -> Result<String> {
-        Ok(massa_hash::hash::Hash::compute_from(data).to_bs58_check())
+        Ok(massa_hash::Hash::compute_from(data).to_bs58_check())
     }
 
     /// Converts a pubkey to an address
@@ -312,7 +314,7 @@ impl Interface for InterfaceImpl {
             Ok(pubk) => pubk,
             Err(_) => return Ok(false),
         };
-        let h = massa_hash::hash::Hash::compute_from(data);
+        let h = massa_hash::Hash::compute_from(data);
         Ok(massa_signature::verify_signature(&h, &signature, &public_key).is_ok())
     }
 
@@ -448,5 +450,66 @@ impl Interface for InterfaceImpl {
     fn unsafe_random(&self) -> Result<i64> {
         let distr = rand::distributions::Uniform::new_inclusive(i64::MIN, i64::MAX);
         Ok(context_guard!(self).unsafe_rng.sample(distr))
+    }
+
+    /// Adds an asynchronous message to the context speculative async pool
+    ///
+    /// # Arguments
+    /// * target_address: Destination address hash in format string
+    /// * target_handler: Name of the message handling function
+    /// * validity_start: Tuple containing the period and thread of the validity start slot
+    /// * validity_end: Tuple containing the period and thread of the validity end slot
+    /// * max_gas: Maximum gas for the message execution
+    /// * gas_price: Price of one gas unit
+    /// * raw_coins: Coins given by the sender
+    /// * data: Message data
+    fn send_message(
+        &self,
+        target_address: &str,
+        target_handler: &str,
+        validity_start: (u64, u8),
+        validity_end: (u64, u8),
+        max_gas: u64,
+        gas_price: u64,
+        raw_coins: u64,
+        data: &[u8],
+    ) -> Result<()> {
+        if validity_start.1 >= self.config.thread_count {
+            bail!("validity start thread exceeds the configuration thread count")
+        }
+        if validity_end.1 >= self.config.thread_count {
+            bail!("validity end thread exceeds the configuration thread count")
+        }
+        let mut execution_context = context_guard!(self);
+        let emission_slot = execution_context.slot;
+        let emission_index = execution_context.created_message_index;
+        let sender = execution_context.get_current_address()?;
+        execution_context.push_new_message(AsyncMessage {
+            emission_slot,
+            emission_index,
+            sender,
+            destination: Address::from_str(target_address)?,
+            handler: target_handler.to_string(),
+            validity_start: Slot::new(validity_start.0, validity_start.1),
+            validity_end: Slot::new(validity_end.0, validity_end.1),
+            max_gas,
+            gas_price: Amount::from_raw(gas_price),
+            coins: Amount::from_raw(raw_coins),
+            data: data.to_vec(),
+        });
+        execution_context.created_message_index += 1;
+        Ok(())
+    }
+
+    /// Returns the period of the current execution slot
+    fn get_current_period(&self) -> Result<u64> {
+        let slot = context_guard!(self).slot;
+        Ok(slot.period)
+    }
+
+    /// Returns the thread of the current execution slot
+    fn get_current_thread(&self) -> Result<u8> {
+        let slot = context_guard!(self).slot;
+        Ok(slot.thread)
     }
 }

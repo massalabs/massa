@@ -6,6 +6,7 @@ use massa_models::ModelsError;
 use std::net::IpAddr;
 use thiserror::Error;
 
+/// Network error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum NetworkError {
@@ -41,25 +42,36 @@ pub enum NetworkError {
     TimeError(#[from] massa_time::TimeError),
     /// missing peers
     MissingPeersError,
+    /// missing block
+    MissingBlock,
     /// models error: {0}
     ModelsError(#[from] ModelsError),
     /// container inconsistency error: {0}
     ContainerInconsistencyError(String),
 }
 
+/// Handshake error type
 #[derive(Debug)]
 pub enum HandshakeErrorType {
+    /// Id already exist
     HandshakeIdAlreadyExist(String),
+    /// timeout
     HandshakeTimeout,
+    /// Unexpected interruption
     HandshakeInterruption(String),
+    /// wrong handshake message
     HandshakeWrongMessage,
+    /// if remote id is the same as ours
     HandshakeKey,
+    /// Invalid signature
     HandshakeInvalidSignature,
+    /// Incompatible version
     IncompatibleVersion,
     /// Outgoing connection returned a bootstrapable peer list: {0:?}
     PeerListReceived(Vec<IpAddr>),
 }
 
+/// return handshake error
 #[macro_export]
 macro_rules! throw_handshake_error {
     ($err:ident) => {

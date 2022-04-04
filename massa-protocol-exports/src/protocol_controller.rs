@@ -3,10 +3,15 @@
 use crate::error::ProtocolError;
 use massa_logging::massa_trace;
 
-use massa_models::prehash::{Map, Set};
+use massa_models::{
+    node::NodeId,
+    operation::{OperationIds, Operations},
+    prehash::{Map, Set},
+    Slot,
+};
 
 use massa_models::{
-    Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
+    BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader, SignedOperation,
 };
 use massa_network_exports::NetworkEventReceiver;
 use serde::Serialize;
@@ -19,14 +24,20 @@ use tracing::debug;
 pub enum ProtocolEvent {
     /// A block with a valid signature has been received.
     ReceivedBlock {
+        /// corresponding id
         block_id: BlockId,
-        block: Block,
-        operation_set: Map<OperationId, (usize, u64)>, // (index, validity end period)
+        /// the slot
+        slot: Slot,
+        /// operations in the block by (index, validity end period)
+        operation_set: Map<OperationId, (usize, u64)>,
+        /// endorsements in the block with index
         endorsement_ids: Map<EndorsementId, u32>,
     },
     /// A block header with a valid signature has been received.
     ReceivedBlockHeader {
+        /// its id
         block_id: BlockId,
+        /// The header
         header: SignedHeader,
     },
     /// Ask for a list of blocks from consensus.
@@ -37,47 +48,65 @@ pub enum ProtocolEvent {
 pub enum ProtocolPoolEvent {
     /// Operations were received
     ReceivedOperations {
+        /// the operations
         operations: Map<OperationId, SignedOperation>,
-        propagate: bool, // whether or not to propagate operations
+        /// whether or not to propagate operations
+        propagate: bool,
     },
     /// Endorsements were received
     ReceivedEndorsements {
+        /// the endorsements
         endorsements: Map<EndorsementId, SignedEndorsement>,
-        propagate: bool, // whether or not to propagate endorsements
+        /// whether or not to propagate endorsements
+        propagate: bool,
     },
+    /// Get operations for a node
+    GetOperations((NodeId, OperationIds)),
 }
 
-type BlocksResults =
-    Map<BlockId, Option<(Block, Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
+/// block result: map block id to option (
+///     option(set(operation id)),
+///     option(vec(endorsement id))
+/// )
+pub type BlocksResults =
+    Map<BlockId, Option<(Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
 
 /// Commands that protocol worker can process
 #[derive(Debug, Serialize)]
 pub enum ProtocolCommand {
     /// Notify block integration of a given block.
     IntegratedBlock {
+        /// block id
         block_id: BlockId,
-        block: Box<Block>,
-        operation_ids: Set<OperationId>,
+        /// operations ids in the block
+        operation_ids: OperationIds,
+        /// endorsement ids in the block
         endorsement_ids: Vec<EndorsementId>,
     },
     /// A block, or it's header, amounted to an attempted attack.
     AttackBlockDetected(BlockId),
     /// Wishlist delta
     WishlistDelta {
+        /// add to wishlist
         new: Set<BlockId>,
+        /// remove from wishlist
         remove: Set<BlockId>,
     },
-    /// The response to a ProtocolEvent::GetBlocks.
+    /// The response to a [ProtocolEvent::GetBlocks].
     GetBlocksResults(BlocksResults),
-    /// Propagate operations
-    PropagateOperations(Map<OperationId, SignedOperation>),
+    /// The response to a [ProtocolEvent::GetOperations].
+    GetOperationsResults((NodeId, Operations)),
+    /// Propagate operations ids (send batches)
+    PropagateOperations(OperationIds),
     /// Propagate endorsements
     PropagateEndorsements(Map<EndorsementId, SignedEndorsement>),
 }
 
+/// protocol management commands
 #[derive(Debug, Serialize)]
 pub enum ProtocolManagementCommand {}
 
+/// protocol command sender
 #[derive(Clone)]
 pub struct ProtocolCommandSender(pub mpsc::Sender<ProtocolCommand>);
 
@@ -89,16 +118,16 @@ impl ProtocolCommandSender {
     pub async fn integrated_block(
         &mut self,
         block_id: BlockId,
-        block: Block,
         operation_ids: Set<OperationId>,
         endorsement_ids: Vec<EndorsementId>,
     ) -> Result<(), ProtocolError> {
-        massa_trace!("protocol.command_sender.integrated_block", { "block_id": block_id, "block": block });
+        massa_trace!("protocol.command_sender.integrated_block", {
+            "block_id": block_id
+        });
         let res = self
             .0
             .send(ProtocolCommand::IntegratedBlock {
                 block_id,
-                block: Box::new(block),
                 operation_ids,
                 endorsement_ids,
             })
@@ -140,6 +169,26 @@ impl ProtocolCommandSender {
         res
     }
 
+    /// Send the response to a [ProtocolEvent::GetBlocks].
+    pub async fn send_get_operations_results(
+        &mut self,
+        node_id: NodeId,
+        results: Operations,
+    ) -> Result<(), ProtocolError> {
+        massa_trace!("protocol.command_sender.send_get_operations_results", {
+            "results": results
+        });
+        let res = self
+            .0
+            .send(ProtocolCommand::GetOperationsResults((node_id, results)))
+            .await
+            .map_err(|_| {
+                ProtocolError::ChannelError("send_get_operations_results command send error".into())
+            });
+        res
+    }
+
+    /// update the block wishlist
     pub async fn send_wishlist_delta(
         &mut self,
         new: Set<BlockId>,
@@ -156,16 +205,17 @@ impl ProtocolCommandSender {
         res
     }
 
+    /// Propagate a batch of operation ids from pool.
     pub async fn propagate_operations(
         &mut self,
-        operations: Map<OperationId, SignedOperation>,
+        operation_ids: OperationIds,
     ) -> Result<(), ProtocolError> {
         massa_trace!("protocol.command_sender.propagate_operations", {
-            "operations": operations
+            "operations": operation_ids
         });
         let res = self
             .0
-            .send(ProtocolCommand::PropagateOperations(operations))
+            .send(ProtocolCommand::PropagateOperations(operation_ids))
             .await
             .map_err(|_| {
                 ProtocolError::ChannelError("propagate_operation command send error".into())
@@ -173,6 +223,7 @@ impl ProtocolCommandSender {
         res
     }
 
+    /// propagate endorsements to connected node
     pub async fn propagate_endorsements(
         &mut self,
         endorsements: Map<EndorsementId, SignedEndorsement>,
@@ -191,6 +242,7 @@ impl ProtocolCommandSender {
     }
 }
 
+/// Protocol event receiver
 pub struct ProtocolEventReceiver(pub mpsc::Receiver<ProtocolEvent>);
 
 impl ProtocolEventReceiver {
@@ -220,6 +272,8 @@ impl ProtocolEventReceiver {
         remaining_events
     }
 }
+
+/// Protocol pool event receiver
 pub struct ProtocolPoolEventReceiver(pub mpsc::Receiver<ProtocolPoolEvent>);
 
 impl ProtocolPoolEventReceiver {
@@ -250,12 +304,14 @@ impl ProtocolPoolEventReceiver {
     }
 }
 
+/// protocol manager used to stop the protocol
 pub struct ProtocolManager {
     join_handle: JoinHandle<Result<NetworkEventReceiver, ProtocolError>>,
     manager_tx: mpsc::Sender<ProtocolManagementCommand>,
 }
 
 impl ProtocolManager {
+    /// new protocol manager
     pub fn new(
         join_handle: JoinHandle<Result<NetworkEventReceiver, ProtocolError>>,
         manager_tx: mpsc::Sender<ProtocolManagementCommand>,

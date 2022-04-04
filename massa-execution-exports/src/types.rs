@@ -9,13 +9,13 @@ use massa_models::{Address, Amount, BlockId, Slot};
 /// structure describing the output of a single execution
 #[derive(Debug, Clone)]
 pub struct ExecutionOutput {
-    // slot
+    /// slot
     pub slot: Slot,
-    // optional block ID at that slot (None if miss)
+    /// optional block ID at that slot (None if miss)
     pub block_id: Option<BlockId>,
-    // state changes caused by the execution step
+    /// state changes caused by the execution step
     pub state_changes: StateChanges,
-    // events emitted by the execution step
+    /// events emitted by the execution step
     pub events: EventStore,
 }
 

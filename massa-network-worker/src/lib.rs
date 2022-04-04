@@ -3,7 +3,8 @@
 #![feature(async_closure)]
 #![feature(drain_filter)]
 #![feature(ip)]
-
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 //! Manages a connection with a node
 
 use crate::{
@@ -17,6 +18,7 @@ use massa_network_exports::{
     NetworkEventReceiver, NetworkManagementCommand, NetworkManager, NetworkSettings,
 };
 use massa_signature::{derive_public_key, generate_random_private_key, PrivateKey};
+use massa_storage::Storage;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
@@ -42,6 +44,7 @@ pub async fn start_network_controller(
     mut establisher: Establisher,
     clock_compensation: i64,
     initial_peers: Option<BootstrapPeers>,
+    storage: Storage,
     version: Version,
 ) -> Result<
     (
@@ -127,6 +130,7 @@ pub async fn start_network_controller(
                 controller_event_tx,
                 controller_manager_rx,
             },
+            storage,
             version,
         )
         .run_loop()

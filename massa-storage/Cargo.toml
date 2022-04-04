@@ -1,0 +1,12 @@
+[package]
+name = "massa_storage"
+version = "0.1.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2021"
+
+[dependencies]
+parking_lot = "0.12"
+massa_models = { path = "../massa-models" }
+
+[features]
+instrument = ["massa_models/instrument"]

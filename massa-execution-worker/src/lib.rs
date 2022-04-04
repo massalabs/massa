@@ -66,6 +66,8 @@
 //! It handles requests that come with an MPSC to send back the result of their execution once it's done.
 //!
 
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 #![feature(map_first_last)]
 #![feature(unzip_option)]
 
@@ -74,6 +76,7 @@ mod controller;
 mod execution;
 mod interface_impl;
 mod request_queue;
+mod speculative_async_pool;
 mod speculative_ledger;
 mod worker;
 

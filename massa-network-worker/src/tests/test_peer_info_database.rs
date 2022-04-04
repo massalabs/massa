@@ -110,7 +110,7 @@ async fn test_try_new_in_connection_in_connection_closed() {
     {
         assert_eq!(IpAddr::V4(std::net::Ipv4Addr::new(169, 202, 0, 11)), ip_err);
     } else {
-        panic!("ToManyConnectionAttempt error not return");
+        panic!("TooManyConnectionAttempt error not return");
     }
 }
 

@@ -52,7 +52,7 @@ async fn test_pool() {
                     None => panic!("unexpected timeout reached"),
                 };
                 assert_eq!(
-                    newly_added.keys().copied().collect::<Vec<_>>(),
+                    newly_added.iter().copied().collect::<Vec<_>>(),
                     ops.keys().copied().collect::<Vec<_>>()
                 );
 
@@ -83,7 +83,7 @@ async fn test_pool() {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 3;
                     let res = pool_command_sender
-                        .get_operation_batch(
+                        .send_get_operations_announcement(
                             target_slot,
                             Set::<OperationId>::default(),
                             max_count,
@@ -117,7 +117,7 @@ async fn test_pool() {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 4;
                     let res = pool_command_sender
-                        .get_operation_batch(
+                        .send_get_operations_announcement(
                             target_slot,
                             Set::<OperationId>::default(),
                             max_count,
@@ -157,7 +157,7 @@ async fn test_pool() {
                     panic!("unexpected protocol command {:?}", cmd)
                 };
                 let res = pool_command_sender
-                    .get_operation_batch(
+                    .send_get_operations_announcement(
                         Slot::new(expire_period - 1, thread),
                         Set::<OperationId>::default(),
                         10,
@@ -210,7 +210,7 @@ async fn test_pool_with_execute_sc() {
                     None => panic!("unexpected timeout reached"),
                 };
                 assert_eq!(
-                    newly_added.keys().copied().collect::<Vec<_>>(),
+                    newly_added.iter().copied().collect::<Vec<_>>(),
                     ops.keys().copied().collect::<Vec<_>>()
                 );
 
@@ -241,7 +241,12 @@ async fn test_pool_with_execute_sc() {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 3;
                     let res = pool_command_sender
-                        .get_operation_batch(target_slot, Set::default(), max_count, 10000)
+                        .send_get_operations_announcement(
+                            target_slot,
+                            Set::default(),
+                            max_count,
+                            10000,
+                        )
                         .await
                         .unwrap();
                     assert!(res
@@ -270,7 +275,12 @@ async fn test_pool_with_execute_sc() {
                     let target_slot = Slot::new(period, thread);
                     let max_count = 4;
                     let res = pool_command_sender
-                        .get_operation_batch(target_slot, Set::default(), max_count, 10000)
+                        .send_get_operations_announcement(
+                            target_slot,
+                            Set::default(),
+                            max_count,
+                            10000,
+                        )
                         .await
                         .unwrap();
                     assert!(res
@@ -305,7 +315,7 @@ async fn test_pool_with_execute_sc() {
                     panic!("unexpected protocol command {:?}", cmd)
                 };
                 let res = pool_command_sender
-                    .get_operation_batch(
+                    .send_get_operations_announcement(
                         Slot::new(expire_period - 1, thread),
                         Set::default(),
                         10,
@@ -356,7 +366,7 @@ async fn test_pool_with_protocol_events() {
                     None => panic!("unexpected timeout reached"),
                 };
                 assert_eq!(
-                    newly_added.keys().copied().collect::<Vec<_>>(),
+                    newly_added.iter().copied().collect::<Vec<_>>(),
                     ops.keys().copied().collect::<Vec<_>>()
                 );
 
@@ -542,7 +552,7 @@ async fn test_get_involved_operations() {
                 None => panic!("unexpected timeout reached"),
             };
             assert_eq!(
-                newly_added.keys().copied().collect::<HashSet<_>>(),
+                newly_added.iter().copied().collect::<HashSet<_>>(),
                 ops.keys().copied().collect::<HashSet<_>>()
             );
 
@@ -683,7 +693,7 @@ async fn test_new_final_ops() {
                 None => panic!("unexpected timeout reached"),
             };
             assert_eq!(
-                newly_added.keys().copied().collect::<HashSet<_>>(),
+                newly_added.iter().copied().collect::<HashSet<_>>(),
                 ops.iter().map(|(id, _)| *id).collect::<HashSet<_>>()
             );
 

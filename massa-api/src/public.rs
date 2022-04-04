@@ -34,6 +34,7 @@ use massa_time::MassaTime;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
+    /// generate a new public api
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         execution_controller: Box<dyn ExecutionController>,
@@ -648,5 +649,13 @@ impl Endpoints for API<Public> {
         // TODO get rid of the async part
         let closure = async move || Ok(events);
         Box::pin(closure())
+    }
+
+    fn node_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        crate::wrong_api::<()>()
+    }
+
+    fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        crate::wrong_api::<()>()
     }
 }

@@ -2,9 +2,9 @@
 
 use crate::error::MassaHashError;
 use crate::settings::HASH_SIZE_BYTES;
-use bitcoin_hashes;
 use std::{convert::TryInto, str::FromStr};
 
+/// sha256 hash
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
 pub struct Hash(bitcoin_hashes::sha256::Hash);
 
@@ -25,7 +25,7 @@ impl Hash {
     ///
     /// # Example
     ///  ```
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// ```
     pub fn compute_from(data: &[u8]) -> Self {
@@ -37,7 +37,7 @@ impl Hash {
     ///
     /// # Example
     ///  ```
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check();
     /// ```
@@ -49,7 +49,7 @@ impl Hash {
     ///
     /// # Example
     ///  ```
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized = hash.to_bytes();
     /// ```
@@ -62,7 +62,7 @@ impl Hash {
     ///
     /// # Example
     ///  ```
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized = hash.into_bytes();
     /// ```
@@ -76,7 +76,7 @@ impl Hash {
     /// # Example
     ///  ```
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = hash.to_bs58_check();
     /// let deserialized: Hash = Hash::from_bs58_check(&serialized).unwrap();
@@ -99,7 +99,7 @@ impl Hash {
     /// # Example
     ///  ```
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized = hash.into_bytes();
     /// let deserialized: Hash = Hash::from_bytes(&serialized).unwrap();
@@ -124,7 +124,7 @@ impl ::serde::Serialize for Hash {
     /// Human readable serialization :
     /// ```
     /// # use serde::{Deserialize, Serialize};
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = serde_json::to_string(&hash).unwrap();
     /// ```
@@ -148,7 +148,7 @@ impl<'de> ::serde::Deserialize<'de> for Hash {
     ///
     /// Human readable deserialization :
     /// ```
-    /// # use massa_hash::hash::Hash;
+    /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let hash = Hash::compute_from(&"hello world".as_bytes());
     /// let serialized: String = serde_json::to_string(&hash).unwrap();

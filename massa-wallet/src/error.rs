@@ -4,6 +4,7 @@ use displaydoc::Display;
 use massa_models::Address;
 use thiserror::Error;
 
+/// wallet error
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum WalletError {

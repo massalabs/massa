@@ -2,10 +2,12 @@
 
 #![feature(ip)]
 #![doc = include_str!("../../README.md")]
-
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 extern crate massa_logging;
 use crate::settings::{POOL_CONFIG, SETTINGS};
 use massa_api::{Private, Public, RpcServer, StopHandle, API};
+use massa_async_pool::AsyncPoolConfig;
 use massa_bootstrap::{get_state, start_bootstrap_server, BootstrapManager};
 use massa_consensus_exports::{
     events::ConsensusEvent, settings::ConsensusChannels, ConsensusCommandSender, ConsensusConfig,
@@ -19,8 +21,8 @@ use massa_ledger::LedgerConfig;
 use massa_logging::massa_trace;
 use massa_models::{
     constants::{
-        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, T0,
-        THREAD_COUNT, VERSION,
+        END_TIMESTAMP, GENESIS_TIMESTAMP, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH, MAX_GAS_PER_BLOCK,
+        OPERATION_VALIDITY_PERIODS, T0, THREAD_COUNT, VERSION,
     },
     init_serialization_context, SerializationContext,
 };
@@ -29,6 +31,7 @@ use massa_network_worker::start_network_controller;
 use massa_pool::{start_pool_controller, PoolCommandSender, PoolManager};
 use massa_protocol_exports::ProtocolManager;
 use massa_protocol_worker::start_protocol_controller;
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use std::{process, sync::Arc};
@@ -62,6 +65,9 @@ async fn launch() -> (
         }
     }
 
+    // Storage shared by multiple components.
+    let shared_storage: Storage = Default::default();
+
     // Init the global serialization context
     init_serialization_context(SerializationContext::default());
 
@@ -75,7 +81,7 @@ async fn launch() -> (
         },
         res = get_state(
             &SETTINGS.bootstrap,
-            massa_bootstrap::establisher::Establisher::new(),
+            massa_bootstrap::types::Establisher::new(),
             *VERSION,
             *GENESIS_TIMESTAMP,
             *END_TIMESTAMP,
@@ -92,6 +98,7 @@ async fn launch() -> (
             Establisher::new(),
             bootstrap_state.compensation_millis,
             bootstrap_state.peers,
+            shared_storage.clone(),
             *VERSION,
         )
         .await
@@ -109,6 +116,7 @@ async fn launch() -> (
         MAX_GAS_PER_BLOCK,
         network_command_sender.clone(),
         network_event_receiver,
+        shared_storage.clone(),
     )
     .await
     .expect("could not start protocol controller");
@@ -122,14 +130,27 @@ async fn launch() -> (
     .await
     .expect("could not start pool controller");
 
+    #[cfg(not(feature = "sandbox"))]
+    let thread_count = THREAD_COUNT;
+    #[cfg(not(feature = "sandbox"))]
+    let t0 = T0;
+    #[cfg(feature = "sandbox")]
+    let thread_count = *THREAD_COUNT;
+    #[cfg(feature = "sandbox")]
+    let t0 = *T0;
+
     // init final state
     let ledger_config = LedgerConfig {
         initial_sce_ledger_path: SETTINGS.ledger.initial_sce_ledger_path.clone(),
     };
+    let async_pool_config = AsyncPoolConfig {
+        max_length: MAX_ASYNC_POOL_LENGTH,
+    };
     let final_state_config = FinalStateConfig {
         final_history_length: SETTINGS.ledger.final_history_length,
-        thread_count: THREAD_COUNT,
+        thread_count,
         ledger_config,
+        async_pool_config,
     };
     let final_state = Arc::new(RwLock::new(match bootstrap_state.final_state {
         Some(l) => FinalState::from_bootstrap_state(final_state_config, l),
@@ -142,12 +163,16 @@ async fn launch() -> (
         readonly_queue_length: SETTINGS.execution.readonly_queue_length,
         cursor_delay: SETTINGS.execution.cursor_delay,
         clock_compensation: bootstrap_state.compensation_millis,
-        thread_count: THREAD_COUNT,
-        t0: T0,
+        max_async_gas: MAX_ASYNC_GAS,
+        thread_count,
+        t0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
     };
-    let (execution_manager, execution_controller) =
-        start_execution_worker(execution_config, final_state.clone());
+    let (execution_manager, execution_controller) = start_execution_worker(
+        execution_config,
+        final_state.clone(),
+        shared_storage.clone(),
+    );
 
     let consensus_config = ConsensusConfig::from(&SETTINGS.consensus);
     // launch consensus controller
@@ -162,6 +187,7 @@ async fn launch() -> (
             },
             bootstrap_state.pos,
             bootstrap_state.graph,
+            shared_storage.clone(),
             bootstrap_state.compensation_millis,
         )
         .await

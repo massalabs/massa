@@ -21,6 +21,7 @@ use massa_signature::PrivateKey;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Private> {
+    /// generate a new private api
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         network_command_sender: NetworkCommandSender,
@@ -162,5 +163,17 @@ impl Endpoints for API<Private> {
         _: EventFilter,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
         crate::wrong_api::<Vec<SCOutputEvent>>()
+    }
+
+    fn node_whitelist(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        let network_command_sender = self.0.network_command_sender.clone();
+        let closure = async move || Ok(network_command_sender.whitelist(ips).await?);
+        Box::pin(closure())
+    }
+
+    fn node_remove_from_whitelist(&self, ips: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>> {
+        let network_command_sender = self.0.network_command_sender.clone();
+        let closure = async move || Ok(network_command_sender.remove_from_whitelist(ips).await?);
+        Box::pin(closure())
     }
 }

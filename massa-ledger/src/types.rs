@@ -4,6 +4,7 @@
 
 /// Trait marking a structure that supports another one (V) being applied to it
 pub trait Applicable<V> {
+    /// apply changes from other to mut self
     fn apply(&mut self, _: V);
 }
 

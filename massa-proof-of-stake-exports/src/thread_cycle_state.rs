@@ -9,6 +9,7 @@ use massa_models::{
 };
 use serde::{Deserialize, Serialize};
 
+/// Rolls state for a cycle in a thread
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ThreadCycleState {
     /// Cycle number

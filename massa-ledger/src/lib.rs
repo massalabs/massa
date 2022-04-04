@@ -19,7 +19,7 @@
 //! * the sequential balance can be credited in any slot but only spent in slots form the address' thread
 //! * block producers are credited fees from the sequential balance,
 //!   and they can ensure that this balance will be available for their block simply
-//!   by looking for sequential balance spending's within the block's thread.
+//!   by looking for sequential balance spending within the block's thread.
 //!
 //! # Architecture
 //!
@@ -44,6 +44,8 @@
 //! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
 //! See test_exports/mod.rs for details.
 
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 #![feature(map_first_last)]
 #![feature(async_closure)]
 
@@ -67,4 +69,5 @@ pub use types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 mod tests;
 
 #[cfg(feature = "testing")]
+/// test exports
 pub mod test_exports;

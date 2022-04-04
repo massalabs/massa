@@ -336,6 +336,76 @@ impl PeerInfoDatabase {
         Ok(())
     }
 
+    pub async fn whitelist(&mut self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+        for ip in ips.into_iter() {
+            let old_pt = if let Some(peer) = self.peers.get_mut(&ip) {
+                let pt = peer.peer_type;
+                if pt == PeerType::WhiteListed {
+                    continue;
+                }
+                peer.peer_type = PeerType::WhiteListed;
+                pt
+            } else {
+                let mut p = PeerInfo::new(ip, false);
+                p.peer_type = PeerType::WhiteListed;
+                self.peers.insert(ip, p);
+                continue;
+            };
+            // update global connection counts by peer type
+            let peer = *self.peers.get(&ip).unwrap(); // filled just before
+            if peer.active_out_connection_attempts > 0 {
+                self.decrease_global_active_out_connection_attempt_count(old_pt, &ip)?;
+                self.increase_global_active_out_connection_attempt_count(
+                    PeerType::WhiteListed,
+                    &ip,
+                )?
+            }
+            if peer.active_out_connections > 0 {
+                self.decrease_global_active_out_connection_count(old_pt, &ip)?;
+                self.increase_global_active_out_connection_count(PeerType::WhiteListed)?
+            }
+            if peer.active_in_connections > 0 {
+                self.decrease_global_active_in_connection_count(old_pt, &ip)?;
+                self.increase_global_active_in_connection_count(PeerType::WhiteListed)?
+            }
+        }
+        self.update()
+    }
+
+    pub async fn remove_from_whitelist(&mut self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
+        for ip in ips.into_iter() {
+            let old_pt = if let Some(peer) = self.peers.get_mut(&ip) {
+                let old = peer.peer_type;
+                peer.peer_type = Default::default();
+                old
+            } else {
+                return Ok(());
+            };
+
+            if old_pt != Default::default() {
+                // update global connection counts by peer type
+                // as the peer isn't whitelist anymore
+                let peer = *self.peers.get(&ip).unwrap(); // filled just before
+                if peer.active_out_connection_attempts > 0 {
+                    self.decrease_global_active_out_connection_attempt_count(old_pt, &ip)?;
+                    self.increase_global_active_out_connection_attempt_count(
+                        Default::default(),
+                        &ip,
+                    )?
+                }
+                if peer.active_out_connections > 0 {
+                    self.decrease_global_active_out_connection_count(old_pt, &ip)?;
+                    self.increase_global_active_out_connection_count(Default::default())?
+                }
+                if peer.active_in_connections > 0 {
+                    self.decrease_global_active_in_connection_count(old_pt, &ip)?;
+                    self.increase_global_active_in_connection_count(Default::default())?
+                }
+            }
+        }
+        self.update()
+    }
+
     /// Acknowledges a new out connection attempt to ip.
     ///
     /// # Argument

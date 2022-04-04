@@ -450,6 +450,8 @@ impl Ledger {
     }
 }
 
+/// address to ledger data map
+/// Only part of a ledger
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct LedgerSubset(pub Map<Address, LedgerData>);
 

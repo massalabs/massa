@@ -16,39 +16,69 @@ use tracing::warn;
 /// Commands that can be processed by pool.
 #[derive(Debug)]
 pub enum PoolCommand {
+    /// Add operations to the pool
     AddOperations(Map<OperationId, SignedOperation>),
+    /// current slot update
     UpdateCurrentSlot(Slot),
+    /// Latest final periods update
     UpdateLatestFinalPeriods(Vec<u64>),
+    /// Get an operation batch for block creation
     GetOperationBatch {
+        /// target slot
         target_slot: Slot,
+        /// list of operation ids to exclude  from the batch
         exclude: Set<OperationId>,
+        /// expected batch size
         batch_size: usize,
+        /// max size of an operation in bytes
         max_size: u64,
+        /// response channel
         response_tx: oneshot::Sender<Vec<(OperationId, SignedOperation, u64)>>,
     },
+    /// get operations by id
     GetOperations {
+        /// ids
         operation_ids: Set<OperationId>,
+        /// response channel
         response_tx: oneshot::Sender<Map<OperationId, SignedOperation>>,
     },
+    /// Get operations by involved address
     GetRecentOperations {
+        /// address
         address: Address,
+        /// response channel
         response_tx: oneshot::Sender<Map<OperationId, OperationSearchResult>>,
     },
-    FinalOperations(Map<OperationId, (u64, u8)>), // (end of validity period, thread)
+    /// mark operations as final
+    /// by end of validity period, thread
+    FinalOperations(Map<OperationId, (u64, u8)>),
+    /// Get endorsements for block creation
     GetEndorsements {
+        /// target slot
         target_slot: Slot,
+        /// expected parent
         parent: BlockId,
+        /// expected creators
         creators: Vec<Address>,
+        /// response channel
         response_tx: oneshot::Sender<Vec<(EndorsementId, SignedEndorsement)>>,
     },
+    /// add endorsements to pool
     AddEndorsements(Map<EndorsementId, SignedEndorsement>),
+    /// get pool stats
     GetStats(oneshot::Sender<PoolStats>),
+    /// get endorsements by address
     GetEndorsementsByAddress {
+        /// address
         address: Address,
+        /// response channel
         response_tx: oneshot::Sender<Map<EndorsementId, SignedEndorsement>>,
     },
+    /// get endorsements by id
     GetEndorsementsById {
+        /// ids
         endorsements: Set<EndorsementId>,
+        /// response channel
         response_tx: oneshot::Sender<Map<EndorsementId, SignedEndorsement>>,
     },
 }
@@ -157,7 +187,7 @@ impl PoolWorker {
                 operations.retain(|op_id, _op| newly_added.contains(op_id));
                 if !operations.is_empty() {
                     self.protocol_command_sender
-                        .propagate_operations(operations)
+                        .propagate_operations(operations.keys().cloned().collect())
                         .await?;
                 }
             }
@@ -297,7 +327,7 @@ impl PoolWorker {
                     operations.retain(|op_id, _op| newly_added.contains(op_id));
                     if !operations.is_empty() {
                         self.protocol_command_sender
-                            .propagate_operations(operations)
+                            .propagate_operations(operations.keys().cloned().collect())
                             .await?;
                     }
                 } else {
@@ -321,6 +351,12 @@ impl PoolWorker {
                 } else {
                     self.endorsement_pool.add_endorsements(endorsements)?;
                 }
+            }
+            ProtocolPoolEvent::GetOperations((node_id, operation_ids)) => {
+                let operations = self.operation_pool.get_operations(&operation_ids);
+                self.protocol_command_sender
+                    .send_get_operations_results(node_id, operations.into_values().collect())
+                    .await?;
             }
         }
         Ok(())

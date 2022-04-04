@@ -38,27 +38,9 @@ impl MockPoolController {
             }
         }
     }
-
-    /*
-    // ignore all commands while waiting for a future
-    pub async fn ignore_commands_while<FutureT: futures::Future + Unpin>(
-        &mut self,
-        mut future: FutureT,
-    ) -> FutureT::Output {
-        loop {
-            tokio::select!(
-                res = &mut future => return res,
-                cmd = self.pool_command_rx.recv() => match cmd {
-                    Some(_) => {},
-                    None => return future.await,  // if the controlled dies, wait for the future to finish
-                }
-            );
-        }
-    }
-    */
 }
 
-// a structure that ignores pool commands
+/// a structure that ignores pool commands
 pub struct PoolCommandSink {
     stop_tx: oneshot::Sender<()>,
     handle: JoinHandle<MockPoolController>,

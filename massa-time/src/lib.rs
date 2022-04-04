@@ -1,4 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! Unsigned time management
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 
 mod error;
 pub use error::TimeError;
@@ -13,7 +16,7 @@ use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use tokio::time::Instant;
 
-/// Time structure used every where.
+/// Time structure used everywhere.
 /// Millis since 01/01/1970.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct MassaTime(u64);

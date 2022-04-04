@@ -22,13 +22,15 @@
 //! It can be modified, combined or applied to the final ledger.
 //!
 //! ## bootstrap.rs
-//! Provides serializable structures and tools for bootstrapping the final state.  
+//! Provides serializable structures and tools for bootstrapping the final state.
 //!
 //! ## Test exports
 //!
 //! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
 //! See test_exports/mod.rs for details.
 
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 #![feature(map_first_last)]
 #![feature(async_closure)]
 

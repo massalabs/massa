@@ -1,15 +1,16 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::constants::{ADDRESS_SIZE_BYTES, OPERATION_ID_SIZE_BYTES};
-use crate::prehash::{PreHashed, Set};
+use crate::prehash::{BuildMap, PreHashed, Set};
 use crate::signed::{Id, Signable, Signed};
+use crate::with_serialization_context;
 use crate::{
     serialization::{
         array_from_slice, DeserializeCompact, DeserializeVarInt, SerializeCompact, SerializeVarInt,
     },
     Address, Amount, ModelsError,
 };
-use massa_hash::hash::Hash;
+use massa_hash::Hash;
 use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::{Deserialize, Serialize};
@@ -18,6 +19,8 @@ use std::fmt::Formatter;
 use std::{ops::RangeInclusive, str::FromStr};
 
 const OPERATION_ID_STRING_PREFIX: &str = "OPE";
+
+/// operation id
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub struct OperationId(Hash);
 
@@ -81,20 +84,24 @@ impl Id for OperationId {
 }
 
 impl OperationId {
+    /// op id into bytes
     pub fn to_bytes(&self) -> [u8; OPERATION_ID_SIZE_BYTES] {
         self.0.to_bytes()
     }
 
+    /// op id into bytes
     pub fn into_bytes(self) -> [u8; OPERATION_ID_SIZE_BYTES] {
         self.0.into_bytes()
     }
 
+    /// op id from bytes
     pub fn from_bytes(data: &[u8; OPERATION_ID_SIZE_BYTES]) -> Result<OperationId, ModelsError> {
         Ok(OperationId(
             Hash::from_bytes(data).map_err(|_| ModelsError::HashError)?,
         ))
     }
 
+    /// op id from bs58 check
     pub fn from_bs58_check(data: &str) -> Result<OperationId, ModelsError> {
         Ok(OperationId(
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
@@ -111,40 +118,16 @@ enum OperationTypeId {
     ExecuteSC = 3,
 }
 
-// #[derive(Debug, Clone, Serialize, Deserialize)]
-// pub struct Operation {
-//     pub content: Operation,
-//     pub signature: Signature,
-// }
-
-// impl std::fmt::Display for Operation {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         writeln!(
-//             f,
-//             "Id: {}",
-//             match self.content.compute_id() {
-//                 Ok(id) => format!("{}", id),
-//                 Err(e) => format!("error computing id: {}", e),
-//             }
-//         )?;
-//         writeln!(f, "Signature: {}", self.signature)?;
-//         let addr = Address::from_public_key(&self.content.sender_public_key);
-//         let amount = self.content.fee.to_string();
-//         writeln!(
-//             f,
-//             "sender: {}     fee: {}     expire_period: {}",
-//             addr, amount, self.content.expire_period,
-//         )?;
-//         writeln!(f, "{}", self.content.op)?;
-//         Ok(())
-//     }
-// }
-
+/// the operation as sent in the network
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Operation {
+    /// the operation creator public key
     pub sender_public_key: PublicKey,
+    /// the fee they have decided for tis operation
     pub fee: Amount,
+    /// after expire_period slot the operation won't be included in a block
     pub expire_period: u64,
+    /// the type specific operation part
     pub op: OperationType,
 }
 
@@ -160,18 +143,27 @@ impl std::fmt::Display for Operation {
 
 impl Signable<OperationId> for Operation {}
 
+/// signed operation
 pub type SignedOperation = Signed<Operation, OperationId>;
 
+/// Type specific operation content
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OperationType {
+    /// transfer coins from sender to recipient
     Transaction {
+        /// recipient address
         recipient_address: Address,
+        /// amount
         amount: Amount,
     },
+    /// the sender buys roll_count rolls. Roll price is config defined
     RollBuy {
+        /// roll count
         roll_count: u64,
     },
+    /// the sender sells roll_count rolls. Roll price is config defined
     RollSell {
+        /// roll count
         roll_count: u64,
     },
     /// Execute a smart contract.
@@ -207,12 +199,16 @@ impl std::fmt::Display for OperationType {
                 write!(f, "\t- Roll count:{}", roll_count)?;
             }
             OperationType::ExecuteSC {
-                data: _,
-                max_gas: _,
-                coins: _,
-                gas_price: _,
+                max_gas,
+                coins,
+                gas_price,
+                ..
+                // data, // this field is ignored because bytes eh
             } => {
-                writeln!(f, "ExecuteSC")?;
+                writeln!(f, "ExecuteSC: ")?;
+                write!(f, "\t- max_gas:{}", max_gas)?;
+                write!(f, "\t- gas_price:{}", gas_price)?;
+                write!(f, "\t- coins:{}", coins)?;
             }
         }
         Ok(())
@@ -440,11 +436,13 @@ impl SignedOperation {
 }
 
 impl Operation {
+    /// get the range of periods during which an operation is valid
     pub fn get_validity_range(&self, operation_validity_period: u64) -> RangeInclusive<u64> {
         let start = self.expire_period.saturating_sub(operation_validity_period);
         start..=self.expire_period
     }
 
+    /// get the addresses that are involved in this operation from a ledger point of view
     pub fn get_ledger_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut res = Set::<Address>::default();
         let emitter_address = Address::from_public_key(&self.sender_public_key);
@@ -462,6 +460,7 @@ impl Operation {
         Ok(res)
     }
 
+    /// get the addresses that are involved in this operation from a rolls point of view
     pub fn get_roll_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut res = Set::<Address>::default();
         match self.op {
@@ -475,6 +474,89 @@ impl Operation {
             OperationType::ExecuteSC { .. } => {}
         }
         Ok(res)
+    }
+}
+
+/// Set of operation ids
+pub type OperationIds = Set<OperationId>;
+
+impl SerializeCompact for OperationIds {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
+        let list_len: u32 = self.len().try_into().map_err(|_| {
+            ModelsError::SerializeError("could not encode AskForBlocks list length as u32".into())
+        })?;
+        let mut res = Vec::new();
+        res.extend(list_len.to_varint_bytes());
+        for hash in self {
+            res.extend(&hash.to_bytes());
+        }
+        Ok(res)
+    }
+}
+
+/// Deserialize from the given `buffer`.
+///
+/// You know that the maximum number of ids is `max_operations_per_message` taken
+/// from the node configuration.
+///
+/// # Return
+/// A result that return the deserialized Vec of `OperationId`
+impl DeserializeCompact for OperationIds {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        let max_operations_per_message =
+            with_serialization_context(|context| context.max_operations_per_message);
+        let mut cursor = 0usize;
+        let (length, delta) =
+            u32::from_varint_bytes_bounded(&buffer[cursor..], max_operations_per_message)?;
+        cursor += delta;
+        // hash list
+        let mut list: OperationIds =
+            Set::with_capacity_and_hasher(length as usize, BuildMap::default());
+        for _ in 0..length {
+            let b_id = OperationId::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += OPERATION_ID_SIZE_BYTES;
+            list.insert(b_id);
+        }
+        Ok((list, cursor))
+    }
+}
+
+/// Set of self containing signed operations.
+pub type Operations = Vec<SignedOperation>;
+
+impl SerializeCompact for Operations {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
+        let mut res = Vec::new();
+        res.extend((self.len() as u32).to_varint_bytes());
+        for op in self.iter() {
+            res.extend(op.to_bytes_compact()?);
+        }
+        Ok(res)
+    }
+}
+
+/// Deserialize from the given `buffer`.
+///
+/// You know that the maximum number of ids is `max_operations_per_message` taken
+/// from the node configuration.
+///
+/// # Return
+/// A result that return the deserialized Vec of `Operation`
+impl DeserializeCompact for Operations {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        let max_operations_per_message =
+            with_serialization_context(|context| context.max_operations_per_message);
+        let mut cursor = 0usize;
+        let (length, delta) =
+            u32::from_varint_bytes_bounded(&buffer[cursor..], max_operations_per_message)?;
+        cursor += delta;
+        let mut ops: Operations = Operations::with_capacity(length as usize);
+        for _ in 0..length {
+            let (operation, delta) = SignedOperation::from_bytes_compact(&buffer[cursor..])?;
+            cursor += delta;
+            ops.push(operation);
+        }
+        Ok((ops, cursor))
     }
 }
 

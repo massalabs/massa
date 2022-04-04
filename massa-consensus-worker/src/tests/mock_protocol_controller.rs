@@ -1,19 +1,23 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_models::{constants::CHANNEL_SIZE, signed::Signable, Block, BlockId, SignedHeader};
+use massa_models::{
+    constants::CHANNEL_SIZE, signed::Signable, Block, BlockId, SerializeCompact, SignedHeader,
+};
 use massa_protocol_exports::{
     ProtocolCommand, ProtocolCommandSender, ProtocolEvent, ProtocolEventReceiver,
 };
+use massa_storage::Storage;
 use massa_time::MassaTime;
 use tokio::{sync::mpsc, time::sleep};
 
 pub struct MockProtocolController {
     protocol_command_rx: mpsc::Receiver<ProtocolCommand>,
     protocol_event_tx: mpsc::Sender<ProtocolEvent>,
+    storage: Storage,
 }
 
 impl MockProtocolController {
-    pub fn new() -> (Self, ProtocolCommandSender, ProtocolEventReceiver) {
+    pub fn new(storage: Storage) -> (Self, ProtocolCommandSender, ProtocolEventReceiver) {
         let (protocol_command_tx, protocol_command_rx) =
             mpsc::channel::<ProtocolCommand>(CHANNEL_SIZE);
         let (protocol_event_tx, protocol_event_rx) = mpsc::channel::<ProtocolEvent>(CHANNEL_SIZE);
@@ -21,6 +25,7 @@ impl MockProtocolController {
             MockProtocolController {
                 protocol_event_tx,
                 protocol_command_rx,
+                storage,
             },
             ProtocolCommandSender(protocol_command_tx),
             ProtocolEventReceiver(protocol_event_rx),
@@ -44,18 +49,28 @@ impl MockProtocolController {
         }
     }
 
-    // Note: if you care about the operation set, use another method.
+    /// Note: if you care about the operation set, use another method.
     pub async fn receive_block(&mut self, block: Block) {
         let block_id = block.header.content.compute_id().unwrap();
+        let serialize_block = block.to_bytes_compact().expect("Fail to serialize block.");
+        self.storage
+            .store_block(block_id, block.clone(), serialize_block);
         self.protocol_event_tx
             .send(ProtocolEvent::ReceivedBlock {
                 block_id,
-                block,
+                slot: block.header.content.slot,
                 operation_set: Default::default(),
                 endorsement_ids: Default::default(),
             })
             .await
             .expect("could not send protocol event");
+    }
+
+    /// Retrieve a block from storage.
+    pub fn get_block(&self, block_id: &BlockId) -> Option<Block> {
+        self.storage
+            .retrieve_block(block_id)
+            .map(|stored_block| stored_block.read().block.clone())
     }
 
     pub async fn receive_header(&mut self, header: SignedHeader) {
@@ -73,7 +88,7 @@ impl MockProtocolController {
             .expect("could not send protocol event");
     }
 
-    // ignore all commands while waiting for a future
+    /// ignore all commands while waiting for a future
     pub async fn ignore_commands_while<FutureT: futures::Future + Unpin>(
         &mut self,
         mut future: FutureT,

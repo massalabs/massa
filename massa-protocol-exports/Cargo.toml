@@ -8,11 +8,7 @@ edition = "2021"
 
 [dependencies]
 displaydoc = "0.2"
-futures = "0.3"
-itertools = "0.10"
 lazy_static = "1.4"
-num_enum = "0.5"
-rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
@@ -26,10 +22,7 @@ massa_network_exports = { path = "../massa-network-exports" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 
-[dev-dependencies]
-pretty_assertions = "1.0"
-serial_test = "0.5"
-tempfile = "3.2"
 
+# for more information on what are the following features used for, see the cargo.toml at workspace level
 [features]
 instrument = ["tokio/tracing", "massa_models/instrument", "massa_network_exports/instrument", "massa_time/instrument"]

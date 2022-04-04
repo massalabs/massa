@@ -1,7 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-
+//! Json rpc api for a massa-node
 #![feature(async_closure)]
-
+#![warn(missing_docs)]
+#![warn(unused_crate_dependencies)]
 use crate::error::ApiError::WrongAPI;
 use error::ApiError;
 use jsonrpc_core::{BoxFuture, IoHandler, Value};
@@ -34,31 +35,52 @@ mod error;
 mod private;
 mod public;
 
+/// Public api component
 pub struct Public {
+    /// link to the consensus component
     pub consensus_command_sender: ConsensusCommandSender,
+    /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
+    /// link to the pool component
     pub pool_command_sender: PoolCommandSender,
+    /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
+    /// api settings
     pub api_settings: &'static APISettings,
+    /// network setting (TODO consider removing)
     pub network_settings: &'static NetworkSettings,
+    /// node version (TODO remove, can be retrieved via an endpoint)
     pub version: Version,
+    /// link to the network component
     pub network_command_sender: NetworkCommandSender,
+    /// compensation millis (used to sync time with bootstrap server)
     pub compensation_millis: i64,
+    /// our node id
     pub node_id: NodeId,
 }
 
+/// Private api content
 pub struct Private {
+    /// link to the consensus component
     pub consensus_command_sender: ConsensusCommandSender,
+    /// link to the network component
     pub network_command_sender: NetworkCommandSender,
+    /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
+    /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
+    /// api settings
     pub api_settings: &'static APISettings,
+    /// stop channel
     pub stop_node_channel: mpsc::Sender<()>,
 }
 
+/// The api wrapper
 pub struct API<T>(T);
 
+/// Used to manage the api
 pub trait RpcServer: Endpoints {
+    /// Start the api
     fn serve(self, _: &SocketAddr) -> StopHandle;
 }
 
@@ -80,12 +102,14 @@ fn serve(api: impl Endpoints, url: &SocketAddr) -> StopHandle {
     }
 }
 
+/// Used to be able to stop the api
 pub struct StopHandle {
     close_handle: CloseHandle,
     join_handle: JoinHandle<()>,
 }
 
 impl StopHandle {
+    /// stop the api gracefully
     pub fn stop(self) {
         self.close_handle.close();
         if let Err(err) = self.join_handle.join() {
@@ -96,6 +120,7 @@ impl StopHandle {
     }
 }
 
+/// Exposed api endpoints
 #[rpc(server)]
 pub trait Endpoints {
     /// Gracefully stop the node.
@@ -133,7 +158,19 @@ pub trait Endpoints {
     #[rpc(name = "ban")]
     fn ban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
 
-    /// Remove ban for a given IP address.
+    /// whitelist given IP address.
+    /// No confirmation to expect.
+    /// Note: If the ip was unknown it adds it to the known peers, otherwise it updates the peer type
+    #[rpc(name = "node_whitelist")]
+    fn node_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+
+    /// remove from whitelist given IP address.
+    /// keep it as standard
+    /// No confirmation to expect.
+    #[rpc(name = "node_remove_from_whitelist")]
+    fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
+
+    /// Unbans given IP address.
     /// No confirmation to expect.
     #[rpc(name = "unban")]
     fn unban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
