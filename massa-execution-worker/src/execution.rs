@@ -289,7 +289,7 @@ impl ExecutionState {
             .compute_id()
             .expect("could not compute operation ID");
 
-        // call the execution process specific to th operation type
+        // call the execution process specific to the operation type
         match &operation.content.op {
             OperationType::ExecuteSC { .. } => self.execute_executesc_op(
                 &operation.content.op,
