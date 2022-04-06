@@ -79,7 +79,7 @@ Technical documentation
    :caption: Smart-contracts
 
    smart-contracts/massa-sc-by-example.rst
-
+   smart-contracts/types.rst
 .. toctree::
    :maxdepth: 2
    :caption: Testnet
