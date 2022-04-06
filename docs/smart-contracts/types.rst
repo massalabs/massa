@@ -12,7 +12,7 @@ A representation of a monetary unit used to express a value.
 Usage
 ^^^^^
 
-.. codeblock:: javascript
+.. code-block:: typescript
     import {Currency} from 'mscl-type';
 
     const euro = new Currency("Euro", 2);
@@ -33,7 +33,7 @@ A representation of a value in a :ref:`Currency`.
 Usage
 ^^^^^
 
-.. codeblock:: javascript
+.. code-block:: typescript
     import {Currency} from 'mscl-type';
     import {Amount} from 'mscl-type';
 
@@ -56,12 +56,12 @@ An interface to unify how invalid types are handled.
 .. note::
    * `Exception handling proposal <https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md>`_ is not yet implemented in `Wasmer <https://webassembly.org/roadmap>`_ or in `AssemblyScript <https://www.assemblyscript.org/status.html>`_;
    * `Result` type is not implemented;
-    then this is the only way to perform an action on a type and check later if the type is still valid.
+   Then this is the only way to perform an action on a type and check later if the type is still valid.
 
 Usage
 ^^^^^
 
-.. code-block:: javascript
+.. code-block:: typescript
    import {Valider} from 'mscl-type';
 
     export MyAwesomeType implements Valider {
