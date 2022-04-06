@@ -3,8 +3,8 @@
 use crate::{settings::PoolConfig, PoolError};
 use massa_models::prehash::{Map, Set};
 use massa_models::{
-    Address, OperationId, OperationSearchResult, OperationSearchResultStatus, OperationType,
-    SerializeCompact, SignedOperation, Slot,
+    Address, OperationId, OperationSearchResult, OperationSearchResultStatus, SerializeCompact,
+    SignedOperation, Slot,
 };
 use num::rational::Ratio;
 use std::{collections::BTreeSet, usize};
@@ -55,16 +55,12 @@ impl WrappedOperation {
     /// Gets the priority of the operation based on how much it profits the block producer
     /// vs how much space it takes in the block
     fn get_fee_density(&self) -> Ratio<u64> {
-        // add inclusion fee
-        let mut total_return = self.op.content.fee;
-
-        // add gas fees
-        if let OperationType::ExecuteSC {
-            max_gas, gas_price, ..
-        } = self.op.content.op
-        {
-            total_return = total_return.saturating_add(gas_price.saturating_mul_u64(max_gas));
-        }
+        // add inclusion fee and gas fees
+        let total_return = self
+            .op
+            .content
+            .fee
+            .saturating_add(self.op.content.get_gas_coins());
 
         // return ratio with size
         Ratio::new(total_return.to_raw(), self.byte_count)

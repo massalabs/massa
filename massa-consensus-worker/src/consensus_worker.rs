@@ -19,7 +19,7 @@ use massa_models::{
 use massa_models::{ledger_models::LedgerData, SignedOperation};
 use massa_models::{
     Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, OperationSearchResult,
-    OperationType, SerializeCompact, Slot,
+    SerializeCompact, Slot,
 };
 use massa_proof_of_stake_exports::{error::ProofOfStakeError, ExportProofOfStake, ProofOfStake};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
@@ -560,11 +560,7 @@ impl ConsensusWorker {
                 }
 
                 // check that we have block gas left
-                let op_gas = if let OperationType::ExecuteSC { max_gas, .. } = &op.content.op {
-                    *max_gas
-                } else {
-                    0
-                };
+                let op_gas = op.content.get_gas_usage();
                 if total_gas.saturating_add(op_gas) > self.cfg.max_gas_per_block {
                     // no more gas left: do not include
                     continue;
