@@ -1,9 +1,9 @@
 Types
 =====
 
-The following `AssemblyScript <https://www.assemblyscript.org>`_ types can be helpful in your smart contract journey witghout having to re-invent the wheel.
+The following `AssemblyScript <https://www.assemblyscript.org>`_ types can be helpful in your smart contract journey without having to reinvent the wheel.
 
-
+.. _Currency:
 Currency
 --------
 
@@ -12,7 +12,7 @@ A representation of a monetary unit used to express a value.
 Usage
 ^^^^^
 
-.. codeblock:: typescript
+.. codeblock:: javascript
     import {Currency} from 'mscl-type';
 
     const euro = new Currency("Euro", 2);
@@ -21,6 +21,7 @@ Usage
 
 More info at `module repository <https://github.com/massalabs/massa-sc-library/tree/main/type>`_.
 
+.. _Amount:
 Amount
 ------
 
@@ -32,7 +33,7 @@ A representation of a value in a :ref:`Currency`.
 Usage
 ^^^^^
 
-.. codeblock:: typescript
+.. codeblock:: javascript
     import {Currency} from 'mscl-type';
     import {Amount} from 'mscl-type';
 
@@ -46,20 +47,21 @@ Usage
 
 More info at `module repository <https://github.com/massalabs/massa-sc-library/tree/main/type>`_.
 
+.. Valider:
 Valider
 -------
 
-An interface to unify how invalid types are handle.
+An interface to unify how invalid types are handled.
 
 .. note::
-   * `Exception handling proposal <https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md>`_ is not yet implemented on `Wasmer <https://webassembly.org/roadmap>`_ or on `AssemblyScript <https://www.assemblyscript.org/status.html>`_;
-   * `Result` type not being implemented;
+   * `Exception handling proposal <https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md>`_ is not yet implemented in `Wasmer <https://webassembly.org/roadmap>`_ or in `AssemblyScript <https://www.assemblyscript.org/status.html>`_;
+   * `Result` type is not implemented;
     then this is the only way to perform an action on a type and check later if the type is still valid.
 
 Usage
 ^^^^^
 
-.. code-block:: typescript
+.. code-block:: javascript
    import {Valider} from 'mscl-type';
 
     export MyAwesomeType implements Valider {
