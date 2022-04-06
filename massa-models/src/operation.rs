@@ -210,11 +210,11 @@ impl std::fmt::Display for OperationType {
             }
             OperationType::RollBuy { roll_count } => {
                 writeln!(f, "Buy rolls:")?;
-                write!(f, "\t- Roll count:{}", roll_count)?;
+                writeln!(f, "\t- Roll count:{}", roll_count)?;
             }
             OperationType::RollSell { roll_count } => {
                 writeln!(f, "Sell rolls:")?;
-                write!(f, "\t- Roll count:{}", roll_count)?;
+                writeln!(f, "\t- Roll count:{}", roll_count)?;
             }
             OperationType::ExecuteSC {
                 max_gas,
@@ -224,9 +224,9 @@ impl std::fmt::Display for OperationType {
                 // data, // this field is ignored because bytes eh
             } => {
                 writeln!(f, "ExecuteSC: ")?;
-                write!(f, "\t- max_gas:{}", max_gas)?;
-                write!(f, "\t- gas_price:{}", gas_price)?;
-                write!(f, "\t- coins:{}", coins)?;
+                writeln!(f, "\t- max_gas:{}", max_gas)?;
+                writeln!(f, "\t- gas_price:{}", gas_price)?;
+                writeln!(f, "\t- coins:{}", coins)?;
             },
             OperationType::CallSC {
                 max_gas,
@@ -238,13 +238,13 @@ impl std::fmt::Display for OperationType {
                 param
             } => {
                 writeln!(f, "CallSC:")?;
-                write!(f, "\t- target address:{}", target_addr)?;
-                write!(f, "\t- target function:{}", target_func)?;
-                write!(f, "\t- target parameter:{}", param)?;
-                write!(f, "\t- max_gas:{}", max_gas)?;
-                write!(f, "\t- gas_price:{}", gas_price)?;
-                write!(f, "\t- sequential coins:{}", sequential_coins)?;
-                write!(f, "\t- parallel coins:{}", parallel_coins)?;
+                writeln!(f, "\t- target address:{}", target_addr)?;
+                writeln!(f, "\t- target function:{}", target_func)?;
+                writeln!(f, "\t- target parameter:{}", param)?;
+                writeln!(f, "\t- max_gas:{}", max_gas)?;
+                writeln!(f, "\t- gas_price:{}", gas_price)?;
+                writeln!(f, "\t- sequential coins:{}", sequential_coins)?;
+                writeln!(f, "\t- parallel coins:{}", parallel_coins)?;
             }
         }
         Ok(())
