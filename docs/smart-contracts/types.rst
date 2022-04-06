@@ -4,6 +4,7 @@ Types
 The following `AssemblyScript <https://www.assemblyscript.org>`_ types can be helpful in your smart contract journey without having to reinvent the wheel.
 
 .. _Currency:
+
 Currency
 --------
 
@@ -13,6 +14,7 @@ Usage
 ^^^^^
 
 .. code-block:: typescript
+
     import {Currency} from 'mscl-type';
 
     const euro = new Currency("Euro", 2);
@@ -22,18 +24,21 @@ Usage
 More info at `module repository <https://github.com/massalabs/massa-sc-library/tree/main/type>`_.
 
 .. _Amount:
+
 Amount
 ------
 
 A representation of a value in a :ref:`Currency`.
 
 .. warning::
-   `Amount` implements :ref:`Valider` as some operations, such as subtraction, can result in an invalid `Amount`.
+
+    `Amount` implements :ref:`Valider` as some operations, such as subtraction, can result in an invalid `Amount`.
 
 Usage
 ^^^^^
 
 .. code-block:: typescript
+
     import {Currency} from 'mscl-type';
     import {Amount} from 'mscl-type';
 
@@ -47,14 +52,16 @@ Usage
 
 More info at `module repository <https://github.com/massalabs/massa-sc-library/tree/main/type>`_.
 
-.. Valider:
+.. _Valider:
+
 Valider
 -------
 
 An interface to unify how invalid types are handled.
 
 .. note::
-   * `Exception handling proposal <https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md>`_ is not yet implemented in `Wasmer <https://webassembly.org/roadmap>`_ or in `AssemblyScript <https://www.assemblyscript.org/status.html>`_;
+
+    * `Exception handling proposal <https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md>`_ is not yet implemented in `Wasmer <https://webassembly.org/roadmap>`_ or in `AssemblyScript <https://www.assemblyscript.org/status.html>`_;
    * `Result` type is not implemented;
    Then this is the only way to perform an action on a type and check later if the type is still valid.
 
@@ -62,7 +69,8 @@ Usage
 ^^^^^
 
 .. code-block:: typescript
-   import {Valider} from 'mscl-type';
+
+    import {Valider} from 'mscl-type';
 
     export MyAwesomeType implements Valider {
         ...
