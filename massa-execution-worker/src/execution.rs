@@ -13,7 +13,7 @@ use crate::interface_impl::InterfaceImpl;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
-    ReadOnlyExecutionRequest,
+    ReadOnlyCallRequest, ReadOnlyExecutionRequest, ReadOnlyRequest,
 };
 use massa_final_state::{FinalState, StateChanges};
 use massa_ledger::{Applicable, LedgerEntry, SetUpdateOrDelete};
@@ -695,7 +695,21 @@ impl ExecutionState {
         context_guard!(self).settle_slot()
     }
 
-    /// Executes a read-only execution request.
+    /// Executed a read-only execution request
+    /// The executed bytecode appears to be able to read and write the consensus state,
+    /// but all accumulated changes are simply returned as an ExecutionOutput object,
+    /// and not actually applied to the consensus state.
+    pub(crate) fn execute_readonly_request(
+        &self,
+        req: ReadOnlyRequest,
+    ) -> Result<ExecutionOutput, ExecutionError> {
+        match req {
+            ReadOnlyRequest::BytecodeExecution(r) => self.execute_readonly_bytecode(r),
+            ReadOnlyRequest::FunctionCall(r) => self.execute_readonly_call(r),
+        }
+    }
+
+    /// Executes a read-only bytecode execution request.
     /// The executed bytecode appears to be able to read and write the consensus state,
     /// but all accumulated changes are simply returned as an ExecutionOutput object,
     /// and not actually applied to the consensus state.
@@ -705,7 +719,7 @@ impl ExecutionState {
     ///
     /// # Returns
     ///  ExecutionOutput describing the output of the execution, or an error
-    pub(crate) fn execute_readonly_request(
+    pub(crate) fn execute_readonly_bytecode(
         &self,
         req: ReadOnlyExecutionRequest,
     ) -> Result<ExecutionOutput, ExecutionError> {
@@ -719,17 +733,76 @@ impl ExecutionState {
         let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
 
         // create a readonly execution context
-        let max_gas = req.max_gas;
-        let bytecode = req.bytecode.clone();
-        let execution_context =
-            ExecutionContext::readonly(slot, req, previous_changes, self.final_state.clone());
+        let execution_context = ExecutionContext::readonly(
+            slot,
+            req.max_gas,
+            req.simulated_gas_price,
+            req.call_stack,
+            previous_changes,
+            self.final_state.clone(),
+        );
 
         // set the execution context for execution
         *context_guard!(self) = execution_context;
 
         // run the intepreter
-        massa_sc_runtime::run_main(&bytecode, max_gas, &*self.execution_interface)
+        massa_sc_runtime::run_main(&req.bytecode, req.max_gas, &*self.execution_interface)
             .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+
+        // return the execution output
+        Ok(context_guard!(self).settle_slot())
+    }
+
+    /// Executes a read-only SC function call.
+    /// The executed function appears to be able to read and write the consensus state,
+    /// but all accumulated changes are simply returned as an ExecutionOutput object,
+    /// and not actually applied to the consensus state.
+    ///
+    /// # Arguments
+    /// * req: a read-only SC call request
+    ///
+    /// # Returns
+    ///  ExecutionOutput describing the output of the execution, or an error
+    pub(crate) fn execute_readonly_call(
+        &self,
+        req: ReadOnlyCallRequest,
+    ) -> Result<ExecutionOutput, ExecutionError> {
+        // set the execution slot to be the one after the latest executed active slot
+        let slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow in readonly execution");
+
+        // accumulate state changes that happened in the output history before this slot
+        let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
+
+        // create a readonly execution context
+        let execution_context = ExecutionContext::readonly(
+            slot,
+            req.max_gas,
+            req.simulated_gas_price,
+            req.call_stack,
+            previous_changes,
+            self.final_state.clone(),
+        );
+
+        // get the bytecode, default to an empty vector
+        let bytecode = execution_context
+            .get_bytecode(&req.target_addr)
+            .unwrap_or_default();
+
+        // set the execution context for execution
+        *context_guard!(self) = execution_context;
+
+        // run the intepreter
+        massa_sc_runtime::run_function(
+            &bytecode,
+            req.max_gas,
+            &req.target_func,
+            &req.parameter,
+            &*self.execution_interface,
+        )
+        .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
 
         // return the execution output
         Ok(context_guard!(self).settle_slot())
