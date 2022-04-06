@@ -3,6 +3,10 @@ Types
 
 The following `AssemblyScript <https://www.assemblyscript.org>`_ types can be helpful in your smart contract journey without having to reinvent the wheel.
 
+.. note::
+   You know a nugget that could be added to this list or you have a specific need for a new type?
+   `Open an issue <https://github.com/massalabs/massa-sc-library/issues>`_ to discuss about it!
+
 .. _Currency:
 
 Currency
