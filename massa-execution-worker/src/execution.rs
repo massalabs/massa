@@ -477,7 +477,7 @@ impl ExecutionState {
             bytecode = context.get_bytecode(&target_addr).unwrap_or_default();
 
             // save a snapshot of the context state to restore it if the op fails to execute,
-            // this reverting any changes except the coin transfers above
+            // thus reverting any changes except the coin transfers above
             context_snapshot = context.get_snapshot();
 
             // compute the total amount of coins that need to be transferred
@@ -490,24 +490,17 @@ impl ExecutionState {
             // set the context max gas to match the one defined in the operation
             context.max_gas = max_gas;
 
-            // Set the call stack
-            context.stack = vec![
-                ExecutionStackElement {
-                    address: sender_addr,
-                    coins,
-                    owned_addresses: vec![sender_addr],
-                },
-                ExecutionStackElement {
-                    address: target_addr,
-                    coins,
-                    owned_addresses: vec![target_addr],
-                },
-            ];
-
             // set the context origin operation ID
             context.origin_operation_id = Some(operation_id);
 
-            // try to transfer parallel coins
+            // Set the call stack o the sender addr only to allow it to send parallel coins (access rights)
+            context.stack = vec![ExecutionStackElement {
+                address: sender_addr,
+                coins,
+                owned_addresses: vec![sender_addr],
+            }];
+
+            // try to transfer parallel coins from the sender to the target
             if let Err(err) =
                 context.transfer_parallel_coins(Some(sender_addr), Some(target_addr), coins)
             {
@@ -519,6 +512,13 @@ impl ExecutionState {
                     coins, sender_addr, target_addr, err
                 )));
             }
+
+            // Add the second part of the stack (the target)
+            context.stack.push(ExecutionStackElement {
+                address: target_addr,
+                coins,
+                owned_addresses: vec![target_addr],
+            });
         };
 
         // run the VM on the called fucntion of the bytecode
