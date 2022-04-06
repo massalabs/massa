@@ -521,6 +521,11 @@ impl ExecutionState {
             });
         };
 
+        // quit if there is no function to be called
+        if target_func.is_empty() {
+            return Ok(());
+        }
+
         // run the VM on the called fucntion of the bytecode
         let run_result = massa_sc_runtime::run_function(
             &bytecode,
