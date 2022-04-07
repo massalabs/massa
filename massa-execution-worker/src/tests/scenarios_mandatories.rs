@@ -16,6 +16,7 @@ use massa_storage::Storage;
 use parking_lot::RwLock;
 use serial_test::serial;
 use std::{
+    cmp::Reverse,
     collections::{BTreeMap, HashMap},
     str::FromStr,
     sync::Arc,
@@ -98,14 +99,20 @@ fn test_sending_read_only_execution_command() {
     manager.stop()
 }
 
+/// Test the gas usage in nested calls using call sc operation
+///
+/// Create a smart contract and send it in the blockclique.
+/// This smart contract have his sources in the sources folder.
+/// It calls the test function that have a sub-call to the receive function and send it to the blockclique.
+/// We are checking that the gas is going down through the execution even in sub-calls.
+///
+/// This test can fail if the gas is going up in the execution
 #[test]
 #[serial]
-fn test_nested_call_gas_limit() {
-    // setup the period duration and the maximum gas for
-    // asynchronous messages execution
+fn test_nested_call_gas_usage() {
+    // setup the period duration
     let exec_cfg = ExecutionConfig {
-        t0: 10.into(),
-        max_async_gas: 100_000,
+        t0: 1000.into(),
         ..ExecutionConfig::default()
     };
     // get a sample final state
@@ -116,14 +123,14 @@ fn test_nested_call_gas_limit() {
     let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state, storage.clone());
     // get random private and public keys
     let (_, priv_key, pub_key) = get_random_address_full();
-    // load send_message bytecode you can check the source code of the
+    // load bytecode you can check the source code of the
     // following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/nested_call.wasm");
-    // create the block contaning the smart contract execution operation
-    let (block_id, block) = create_block(vec![create_execute_sc_operation(
-        priv_key, pub_key, bytecode,
+    // create the block containing the smart contract execution operation
+    let (block_id, block) = create_block(
+        vec![create_execute_sc_operation(priv_key, pub_key, bytecode).unwrap()],
+        Slot::new(1, 0),
     )
-    .unwrap()])
     .unwrap();
     // store the block in storage
     storage.store_block(block_id, block.clone(), Vec::new());
@@ -131,10 +138,10 @@ fn test_nested_call_gas_limit() {
     // set our block as a final block so the message is sent
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
     finalized_blocks.insert(block.header.content.slot, block_id);
-    controller.update_blockclique_status(finalized_blocks, Default::default());
+    controller.update_blockclique_status(finalized_blocks.clone(), Default::default());
 
     // sleep for 300ms to reach the message execution period
-    std::thread::sleep(Duration::from_millis(300));
+    std::thread::sleep(Duration::from_millis(10));
     // retrieve events emitted by smart contracts
     let events = controller.get_filtered_sc_output_event(
         Some(Slot::new(0, 1)),
@@ -146,27 +153,34 @@ fn test_nested_call_gas_limit() {
     // match the events
     assert!(!events.is_empty(), "One event was expected");
     let address = events[0].clone().data;
-    let operation = create_call_sc_operation(priv_key, pub_key, 10000000, Amount::from_str("0").unwrap(), Address::from_str(&address).unwrap(), String::from("test"), address).unwrap();
-    let (block_id, block) = create_block(vec![operation])
+    // Call the function test of the smart contract
+    let operation = create_call_sc_operation(
+        priv_key,
+        pub_key,
+        10000000,
+        Amount::from_str("0").unwrap(),
+        Address::from_str(&address).unwrap(),
+        String::from("test"),
+        address,
+    )
     .unwrap();
+    let (block_id, block) = create_block(vec![operation], Slot::new(1, 1)).unwrap();
     // store the block in storage
     storage.store_block(block_id, block.clone(), Vec::new());
-
     // set our block as a final block so the message is sent
     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
     finalized_blocks.insert(block.header.content.slot, block_id);
     controller.update_blockclique_status(finalized_blocks, Default::default());
-    // stop the execution controller
-    let events = controller.get_filtered_sc_output_event(
-        None,
-        None,
-        None,
-        None,
-        None,
+    std::thread::sleep(Duration::from_millis(300));
+    // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
+    let events =
+        controller.get_filtered_sc_output_event(Some(Slot::new(1, 1)), None, None, None, None);
+    // Check that we always subtract gas through the execution (even in sub calls)
+    assert!(
+        events.is_sorted_by_key(|event| Reverse(event.data.parse::<u64>().unwrap())),
+        "Gas is not going down through the execution."
     );
-    println!("{}", events.len());
-    assert!(!events.is_empty(), "One event was expected");
-    assert_eq!(events[0].data, "test");
+    // stop the execution controller
     manager.stop();
 }
 
@@ -228,10 +242,10 @@ fn send_and_receive_async_message() {
     // following wasm file in massa-sc-examples
     let bytecode = include_bytes!("./wasm/send_message.wasm");
     // create the block contaning the smart contract execution operation
-    let (block_id, block) = create_block(vec![create_execute_sc_operation(
-        priv_key, pub_key, bytecode,
+    let (block_id, block) = create_block(
+        vec![create_execute_sc_operation(priv_key, pub_key, bytecode).unwrap()],
+        Slot::new(1, 0),
     )
-    .unwrap()])
     .unwrap();
     // store the block in storage
     storage.store_block(block_id, block.clone(), Vec::new());
@@ -274,12 +288,13 @@ fn generate_events() {
 
     let (sender_address, sender_private_key, sender_public_key) = get_random_address_full();
     let event_test_data = include_bytes!("./wasm/event_test.wasm");
-    let (block_id, block) = create_block(vec![create_execute_sc_operation(
-        sender_private_key,
-        sender_public_key,
-        event_test_data,
+    let (block_id, block) = create_block(
+        vec![
+            create_execute_sc_operation(sender_private_key, sender_public_key, event_test_data)
+                .unwrap(),
+        ],
+        Slot::new(1, 0),
     )
-    .unwrap()])
     .unwrap();
     let slot = block.header.content.slot;
 
@@ -338,7 +353,7 @@ fn create_call_sc_operation(
     gas_price: Amount,
     target_addr: Address,
     target_func: String,
-    param: String
+    param: String,
 ) -> Result<SignedOperation, ExecutionError> {
     let op = OperationType::CallSC {
         max_gas,
@@ -365,7 +380,10 @@ fn create_call_sc_operation(
 /// creator.
 ///
 /// Return a result that should be unwraped in the root `#[test]` routine.
-fn create_block(operations: Vec<SignedOperation>) -> Result<(BlockId, Block), ExecutionError> {
+fn create_block(
+    operations: Vec<SignedOperation>,
+    slot: Slot,
+) -> Result<(BlockId, Block), ExecutionError> {
     let creator = generate_random_private_key();
     let public_key = derive_public_key(&creator);
 
@@ -378,10 +396,7 @@ fn create_block(operations: Vec<SignedOperation>) -> Result<(BlockId, Block), Ex
     let (id, header) = SignedHeader::new_signed(
         BlockHeader {
             creator: public_key,
-            slot: Slot {
-                period: 1,
-                thread: 0,
-            },
+            slot,
             parents: vec![],
             operation_merkle_root,
             endorsements: vec![],
