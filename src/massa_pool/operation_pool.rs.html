@@ -360,17 +360,13 @@
 <span id="355">355</span>
 <span id="356">356</span>
 <span id="357">357</span>
-<span id="358">358</span>
-<span id="359">359</span>
-<span id="360">360</span>
-<span id="361">361</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">settings::PoolConfig</span>, <span class="ident">PoolError</span>};
 <span class="kw">use</span> <span class="ident">massa_models::prehash</span>::{<span class="ident">Map</span>, <span class="ident">Set</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">Address</span>, <span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">OperationSearchResultStatus</span>, <span class="ident">OperationType</span>,
-    <span class="ident">SerializeCompact</span>, <span class="ident">SignedOperation</span>, <span class="ident">Slot</span>,
+    <span class="ident">Address</span>, <span class="ident">OperationId</span>, <span class="ident">OperationSearchResult</span>, <span class="ident">OperationSearchResultStatus</span>, <span class="ident">SerializeCompact</span>,
+    <span class="ident">SignedOperation</span>, <span class="ident">Slot</span>,
 };
 <span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::BTreeSet</span>, <span class="ident">usize</span>};
@@ -421,16 +417,12 @@
     <span class="doccomment">/// Gets the priority of the operation based on how much it profits the block producer</span>
     <span class="doccomment">/// vs how much space it takes in the block</span>
     <span class="kw">fn</span> <span class="ident">get_fee_density</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Ratio</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
-        <span class="comment">// add inclusion fee</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total_return</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">op</span>.<span class="ident">content</span>.<span class="ident">fee</span>;
-
-        <span class="comment">// add gas fees</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">OperationType::ExecuteSC</span> {
-            <span class="ident">max_gas</span>, <span class="ident">gas_price</span>, ..
-        } <span class="op">=</span> <span class="self">self</span>.<span class="ident">op</span>.<span class="ident">content</span>.<span class="ident">op</span>
-        {
-            <span class="ident">total_return</span> <span class="op">=</span> <span class="ident">total_return</span>.<span class="ident">saturating_add</span>(<span class="ident">gas_price</span>.<span class="ident">saturating_mul_u64</span>(<span class="ident">max_gas</span>));
-        }
+        <span class="comment">// add inclusion fee and gas fees</span>
+        <span class="kw">let</span> <span class="ident">total_return</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">op</span>
+            .<span class="ident">content</span>
+            .<span class="ident">fee</span>
+            .<span class="ident">saturating_add</span>(<span class="self">self</span>.<span class="ident">op</span>.<span class="ident">content</span>.<span class="ident">get_gas_coins</span>());
 
         <span class="comment">// return ratio with size</span>
         <span class="ident">Ratio::new</span>(<span class="ident">total_return</span>.<span class="ident">to_raw</span>(), <span class="self">self</span>.<span class="ident">byte_count</span>)
@@ -726,5 +718,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (306ba8357 2022-04-05)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_pool" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (8f36334ca 2022-04-06)" ></div>
 </body></html>

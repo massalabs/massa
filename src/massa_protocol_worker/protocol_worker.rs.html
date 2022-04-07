@@ -1527,9 +1527,6 @@
 <span id="1522">1522</span>
 <span id="1523">1523</span>
 <span id="1524">1524</span>
-<span id="1525">1525</span>
-<span id="1526">1526</span>
-<span id="1527">1527</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">node_info::NodeInfo</span>, <span class="ident">worker_operations_impl::OperationBatchBuffer</span>};
@@ -1542,8 +1539,7 @@
     <span class="ident">operation</span>::{<span class="ident">OperationIds</span>, <span class="ident">Operations</span>},
     <span class="ident">prehash</span>::{<span class="ident">BuildMap</span>, <span class="ident">Map</span>, <span class="ident">Set</span>},
     <span class="ident">signed::Signable</span>,
-    <span class="ident">Address</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">OperationType</span>, <span class="ident">SignedEndorsement</span>,
-    <span class="ident">SignedHeader</span>,
+    <span class="ident">Address</span>, <span class="ident">Block</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">SignedEndorsement</span>, <span class="ident">SignedHeader</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_network_exports</span>::{<span class="ident">NetworkCommandSender</span>, <span class="ident">NetworkEvent</span>, <span class="ident">NetworkEventReceiver</span>};
 <span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{
@@ -2551,7 +2547,7 @@
         <span class="kw">if</span> <span class="ident">total_gas</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">max_block_gas</span> {
             <span class="comment">// Gas usage over limit =&gt; block invalid</span>
             <span class="comment">// TODO remove this check in the single-ledger version,</span>
-            <span class="comment">//      this is only here to prevent ExecuteSC senders from spending gas fees while the block is unable to execute their op</span>
+            <span class="comment">//      this is only here to prevent SC operations from spending gas fees while the block is unable to execute their op</span>
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
         }
 
@@ -2647,9 +2643,7 @@
             }
 
             <span class="comment">// Accumulate gas</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">OperationType::ExecuteSC</span> { <span class="ident">max_gas</span>, .. } <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">op</span> {
-                <span class="ident">total_gas</span> <span class="op">=</span> <span class="ident">total_gas</span>.<span class="ident">saturating_add</span>(<span class="kw-2">*</span><span class="ident">max_gas</span>);
-            }
+            <span class="ident">total_gas</span> <span class="op">=</span> <span class="ident">total_gas</span>.<span class="ident">saturating_add</span>(<span class="ident">operation</span>.<span class="ident">content</span>.<span class="ident">get_gas_usage</span>());
 
             <span class="comment">// Check operation signature only if not already checked.</span>
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">checked_operations</span>.<span class="ident">insert</span>(<span class="ident">operation_id</span>) {
@@ -3058,5 +3052,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (306ba8357 2022-04-05)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_protocol_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (8f36334ca 2022-04-06)" ></div>
 </body></html>

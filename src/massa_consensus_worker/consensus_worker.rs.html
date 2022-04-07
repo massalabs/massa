@@ -1420,10 +1420,6 @@
 <span id="1415">1415</span>
 <span id="1416">1416</span>
 <span id="1417">1417</span>
-<span id="1418">1418</span>
-<span id="1419">1419</span>
-<span id="1420">1420</span>
-<span id="1421">1421</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="kw">use</span> <span class="ident">massa_consensus_exports</span>::{
     <span class="ident">commands::ConsensusCommand</span>,
@@ -1445,7 +1441,7 @@
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">ledger_models::LedgerData</span>, <span class="ident">SignedOperation</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
     <span class="ident">Address</span>, <span class="ident">Block</span>, <span class="ident">BlockHeader</span>, <span class="ident">BlockId</span>, <span class="ident">Endorsement</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationSearchResult</span>,
-    <span class="ident">OperationType</span>, <span class="ident">SerializeCompact</span>, <span class="ident">Slot</span>,
+    <span class="ident">SerializeCompact</span>, <span class="ident">Slot</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_proof_of_stake_exports</span>::{<span class="ident">error::ProofOfStakeError</span>, <span class="ident">ExportProofOfStake</span>, <span class="ident">ProofOfStake</span>};
 <span class="kw">use</span> <span class="ident">massa_protocol_exports</span>::{<span class="ident">ProtocolEvent</span>, <span class="ident">ProtocolEventReceiver</span>};
@@ -1986,11 +1982,7 @@
                 }
 
                 <span class="comment">// check that we have block gas left</span>
-                <span class="kw">let</span> <span class="ident">op_gas</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="ident">OperationType::ExecuteSC</span> { <span class="ident">max_gas</span>, .. } <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">op</span>.<span class="ident">content</span>.<span class="ident">op</span> {
-                    <span class="kw-2">*</span><span class="ident">max_gas</span>
-                } <span class="kw">else</span> {
-                    <span class="number">0</span>
-                };
+                <span class="kw">let</span> <span class="ident">op_gas</span> <span class="op">=</span> <span class="ident">op</span>.<span class="ident">content</span>.<span class="ident">get_gas_usage</span>();
                 <span class="kw">if</span> <span class="ident">total_gas</span>.<span class="ident">saturating_add</span>(<span class="ident">op_gas</span>) <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">max_gas_per_block</span> {
                     <span class="comment">// no more gas left: do not include</span>
                     <span class="kw">continue</span>;
@@ -2846,5 +2838,5 @@
     <span class="prelude-val">Ok</span>((<span class="ident">e_id</span>, <span class="ident">endorsement</span>))
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (306ba8357 2022-04-05)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_consensus_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (8f36334ca 2022-04-06)" ></div>
 </body></html>
