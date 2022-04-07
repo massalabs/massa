@@ -1,7 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 use crate::start_execution_worker;
 use massa_async_pool::AsyncPoolConfig;
-use massa_execution_exports::{ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest};
+use massa_execution_exports::{
+    ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+};
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger::{LedgerConfig, LedgerError};
@@ -92,8 +94,10 @@ fn test_sending_read_only_execution_command() {
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 1_000_000,
             simulated_gas_price: Amount::from_raw(1_000_000 * AMOUNT_DECIMAL_FACTOR),
-            bytecode: include_bytes!("./wasm/event_test.wasm").to_vec(),
             call_stack: vec![],
+            target: ReadOnlyExecutionTarget::BytecodeExecution(
+                include_bytes!("./wasm/event_test.wasm").to_vec(),
+            ),
         })
         .unwrap();
     manager.stop()

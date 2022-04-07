@@ -50,10 +50,10 @@ pub trait ExecutionController: Send + Sync {
         addr: &Address,
     ) -> (Option<LedgerEntry>, Option<LedgerEntry>);
 
-    /// Execute read-only bytecode without causing modifications to the consensus state
+    /// Execute read-only SC function call without causing modifications to the consensus state
     ///
     /// # arguments
-    /// * req: an instance of ReadOnlyExecutionRequest describing the parameters of the execution
+    /// * req: an instance of ReadOnlyCallRequest describing the parameters of the execution
     ///
     /// # returns
     /// An instance of ExecutionOutput containing a summary of the effects of the execution,
