@@ -195,7 +195,7 @@ pub enum Command {
     #[strum(
         ascii_case_insensitive,
         props(args = "TargetAddress TargetFunction Parameter MaxGas GasPrice SenderAddress",),
-        message = "call a smar contract function, sender address is optional. Nothing is really executed on chain"
+        message = "call a smart contract function, sender address is optional. Nothing is really executed on chain"
     )]
     read_only_call,
 
