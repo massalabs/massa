@@ -36,22 +36,10 @@ pub const CHANNEL_SIZE: usize = 256;
 
 lazy_static::lazy_static! {
     /// Time in millis when the blockclique started.
-    pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
-        std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
-            MassaTime::now()
-                .unwrap()
-                .saturating_add(MassaTime::from(1000 * 60 * 3))
-        )
-    } else {
-        1649358000000.into()  //  	Thu Apr 07 2022 19:00:00 GMT+0000
-    };
+    pub static ref GENESIS_TIMESTAMP: MassaTime = 1649343933531.into();
 
     /// TESTNET: time when the blockclique is ended.
-    pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
-        None
-    } else {
-        Some(1651345200000.into())  // Sat Apr 30 2022 19:00:00 GMT+0000
-    };
+    pub static ref END_TIMESTAMP: Option<MassaTime> = None;
     /// Private_key to sign genesis blocks.
     pub static ref GENESIS_KEY: PrivateKey = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
         .parse()
@@ -59,15 +47,7 @@ lazy_static::lazy_static! {
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(7, 10);
     /// node version
-    pub static ref VERSION: Version = {
-        if cfg!(feature = "sandbox") {
-            "SAND.0.0"
-        } else {
-            "TEST.9.0"
-        }
-        .parse()
-        .unwrap()
-    };
+    pub static ref VERSION: Version = "LABN.0.0".parse().unwrap();
 }
 
 #[cfg(feature = "sandbox")]
