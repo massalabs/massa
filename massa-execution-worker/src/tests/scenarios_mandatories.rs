@@ -98,6 +98,78 @@ fn test_sending_read_only_execution_command() {
     manager.stop()
 }
 
+#[test]
+#[serial]
+fn test_nested_call_gas_limit() {
+    // setup the period duration and the maximum gas for
+    // asynchronous messages execution
+    let exec_cfg = ExecutionConfig {
+        t0: 10.into(),
+        max_async_gas: 100_000,
+        ..ExecutionConfig::default()
+    };
+    // get a sample final state
+    let (sample_state, _) = get_sample_state().unwrap();
+    // init the storage
+    let storage = Storage::default();
+    // start the execution worker
+    let (mut manager, controller) = start_execution_worker(exec_cfg, sample_state, storage.clone());
+    // get random private and public keys
+    let (_, priv_key, pub_key) = get_random_address_full();
+    // load send_message bytecode you can check the source code of the
+    // following wasm file in massa-sc-examples
+    let bytecode = include_bytes!("./wasm/nested_call.wasm");
+    // create the block contaning the smart contract execution operation
+    let (block_id, block) = create_block(vec![create_execute_sc_operation(
+        priv_key, pub_key, bytecode,
+    )
+    .unwrap()])
+    .unwrap();
+    // store the block in storage
+    storage.store_block(block_id, block.clone(), Vec::new());
+
+    // set our block as a final block so the message is sent
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.header.content.slot, block_id);
+    controller.update_blockclique_status(finalized_blocks, Default::default());
+
+    // sleep for 300ms to reach the message execution period
+    std::thread::sleep(Duration::from_millis(300));
+    // retrieve events emitted by smart contracts
+    let events = controller.get_filtered_sc_output_event(
+        Some(Slot::new(0, 1)),
+        Some(Slot::new(20, 1)),
+        None,
+        None,
+        None,
+    );
+    // match the events
+    assert!(!events.is_empty(), "One event was expected");
+    let address = events[0].clone().data;
+    let operation = create_call_sc_operation(priv_key, pub_key, 10000000, Amount::from_str("0").unwrap(), Address::from_str(&address).unwrap(), String::from("test"), address).unwrap();
+    let (block_id, block) = create_block(vec![operation])
+    .unwrap();
+    // store the block in storage
+    storage.store_block(block_id, block.clone(), Vec::new());
+
+    // set our block as a final block so the message is sent
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.header.content.slot, block_id);
+    controller.update_blockclique_status(finalized_blocks, Default::default());
+    // stop the execution controller
+    let events = controller.get_filtered_sc_output_event(
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
+    println!("{}", events.len());
+    assert!(!events.is_empty(), "One event was expected");
+    assert_eq!(events[0].data, "test");
+    manager.stop();
+}
+
 //#[test]
 //#[serial]
 //fn test_execution_with_bootstrap() {
@@ -244,6 +316,38 @@ fn create_execute_sc_operation(
         max_gas: u64::MAX,
         coins: Amount::from_raw(u64::MAX),
         gas_price: Amount::from_raw(AMOUNT_DECIMAL_FACTOR),
+    };
+    let (_, op) = SignedOperation::new_signed(
+        Operation {
+            sender_public_key,
+            fee: Amount::zero(),
+            expire_period: 10,
+            op,
+        },
+        &sender_private_key,
+    )?;
+    Ok(op)
+}
+
+/// Create an operation for the given sender with `data` as bytecode.
+/// Return a result that should be unwraped in the root `#[test]` routine.
+fn create_call_sc_operation(
+    sender_private_key: PrivateKey,
+    sender_public_key: PublicKey,
+    max_gas: u64,
+    gas_price: Amount,
+    target_addr: Address,
+    target_func: String,
+    param: String
+) -> Result<SignedOperation, ExecutionError> {
+    let op = OperationType::CallSC {
+        max_gas,
+        target_addr,
+        parallel_coins: Amount::from_str("0").unwrap(),
+        sequential_coins: Amount::from_str("0").unwrap(),
+        gas_price,
+        target_func,
+        param,
     };
     let (_, op) = SignedOperation::new_signed(
         Operation {
