@@ -141,10 +141,10 @@
         <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>,
     ) -&gt; (<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LedgerEntry</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LedgerEntry</span><span class="op">&gt;</span>);
 
-    <span class="doccomment">/// Execute read-only bytecode without causing modifications to the consensus state</span>
+    <span class="doccomment">/// Execute read-only SC function call without causing modifications to the consensus state</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # arguments</span>
-    <span class="doccomment">/// * req: an instance of ReadOnlyExecutionRequest describing the parameters of the execution</span>
+    <span class="doccomment">/// * req: an instance of ReadOnlyCallRequest describing the parameters of the execution</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # returns</span>
     <span class="doccomment">/// An instance of ExecutionOutput containing a summary of the effects of the execution,</span>

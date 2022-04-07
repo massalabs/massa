@@ -503,9 +503,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger</span>;
 <span class="kw">use</span> <span class="ident">massa_async_pool</span>::{<span class="ident">AsyncMessage</span>, <span class="ident">AsyncMessageId</span>};
-<span class="kw">use</span> <span class="ident">massa_execution_exports</span>::{
-    <span class="ident">EventStore</span>, <span class="ident">ExecutionError</span>, <span class="ident">ExecutionOutput</span>, <span class="ident">ExecutionStackElement</span>, <span class="ident">ReadOnlyExecutionRequest</span>,
-};
+<span class="kw">use</span> <span class="ident">massa_execution_exports</span>::{<span class="ident">EventStore</span>, <span class="ident">ExecutionError</span>, <span class="ident">ExecutionOutput</span>, <span class="ident">ExecutionStackElement</span>};
 <span class="kw">use</span> <span class="ident">massa_final_state</span>::{<span class="ident">FinalState</span>, <span class="ident">StateChanges</span>};
 <span class="kw">use</span> <span class="ident">massa_hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">massa_ledger::LedgerChanges</span>;
@@ -671,7 +669,9 @@
     <span class="doccomment">/// A ExecutionContext instance ready for a read-only execution</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">readonly</span>(
         <span class="ident">slot</span>: <span class="ident">Slot</span>,
-        <span class="ident">req</span>: <span class="ident">ReadOnlyExecutionRequest</span>,
+        <span class="ident">max_gas</span>: <span class="ident">u64</span>,
+        <span class="ident">gas_price</span>: <span class="ident">Amount</span>,
+        <span class="ident">call_stack</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExecutionStackElement</span><span class="op">&gt;</span>,
         <span class="ident">previous_changes</span>: <span class="ident">StateChanges</span>,
         <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) -&gt; <span class="self">Self</span> {
@@ -692,10 +692,10 @@
 
         <span class="comment">// return readonly context</span>
         <span class="ident">ExecutionContext</span> {
-            <span class="ident">max_gas</span>: <span class="ident">req</span>.<span class="ident">max_gas</span>,
-            <span class="ident">gas_price</span>: <span class="ident">req</span>.<span class="ident">simulated_gas_price</span>,
+            <span class="ident">max_gas</span>,
+            <span class="ident">gas_price</span>,
             <span class="ident">slot</span>,
-            <span class="ident">stack</span>: <span class="ident">req</span>.<span class="ident">call_stack</span>,
+            <span class="ident">stack</span>: <span class="ident">call_stack</span>,
             <span class="ident">read_only</span>: <span class="bool-val">true</span>,
             <span class="ident">unsafe_rng</span>,
             ..<span class="ident">ExecutionContext::new</span>(<span class="ident">final_state</span>, <span class="ident">previous_changes</span>)

@@ -525,6 +525,23 @@
 <span id="520">520</span>
 <span id="521">521</span>
 <span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::address::AddressCycleProductionStats</span>;
@@ -1035,9 +1052,9 @@
     <span class="kw">pub</span> <span class="ident">original_operation_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
 }
 
-<span class="doccomment">/// read only execution request</span>
+<span class="doccomment">/// read only bytecode execution request</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReadOnlyExecution</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReadOnlyBytecodeExecution</span> {
     <span class="doccomment">/// max available gas</span>
     <span class="kw">pub</span> <span class="ident">max_gas</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// gas price</span>
@@ -1046,6 +1063,23 @@
     <span class="kw">pub</span> <span class="ident">bytecode</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="doccomment">/// caller&#39;s address, optional</span>
     <span class="kw">pub</span> <span class="ident">address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
+}
+
+<span class="doccomment">/// read SC call request</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReadOnlyCall</span> {
+    <span class="doccomment">/// max available gas</span>
+    <span class="kw">pub</span> <span class="ident">max_gas</span>: <span class="ident">u64</span>,
+    <span class="doccomment">/// gas price</span>
+    <span class="kw">pub</span> <span class="ident">simulated_gas_price</span>: <span class="ident">Amount</span>,
+    <span class="doccomment">/// target address</span>
+    <span class="kw">pub</span> <span class="ident">target_address</span>: <span class="ident">Address</span>,
+    <span class="doccomment">/// target function</span>
+    <span class="kw">pub</span> <span class="ident">target_function</span>: <span class="ident">String</span>,
+    <span class="doccomment">/// function parameter</span>
+    <span class="kw">pub</span> <span class="ident">parameter</span>: <span class="ident">String</span>,
+    <span class="doccomment">/// caller&#39;s address, optional</span>
+    <span class="kw">pub</span> <span class="ident">caller_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_models" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (8f36334ca 2022-04-06)" ></div>

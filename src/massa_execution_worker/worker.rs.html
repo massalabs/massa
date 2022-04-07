@@ -660,7 +660,7 @@
     <span class="ident">last_active_slot</span>: <span class="ident">Slot</span>,
     <span class="comment">// Execution state (see execution.rs) to which execution requests are sent</span>
     <span class="ident">execution_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">ExecutionState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// queue for readonly execution requests and response mpscs to send back their outputs</span>
+    <span class="doccomment">/// queue for readonly requests and response mpscs to send back their outputs</span>
     <span class="ident">readonly_requests</span>: <span class="ident">RequestQueue</span><span class="op">&lt;</span><span class="ident">ReadOnlyExecutionRequest</span>, <span class="ident">ExecutionOutput</span><span class="op">&gt;</span>,
 }
 
