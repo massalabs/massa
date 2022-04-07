@@ -827,7 +827,7 @@ impl Command {
                 let max_gas = parameters[3].parse::<u64>()?;
                 let simulated_gas_price = parameters[4].parse::<Amount>()?;
                 let caller_address = if let Some(addr) = parameters.get(5) {
-                    Some(adr.parse::<Address>()?)
+                    Some(addr.parse::<Address>()?)
                 } else {
                     None
                 };
