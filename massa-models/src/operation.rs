@@ -116,6 +116,7 @@ enum OperationTypeId {
     RollBuy = 1,
     RollSell = 2,
     ExecuteSC = 3,
+    CallSC = 4,
 }
 
 /// the operation as sent in the network
@@ -177,6 +178,23 @@ pub enum OperationType {
         /// The price per unit of gas that the caller is willing to pay for the execution.
         gas_price: Amount,
     },
+    /// Calls an exported function from a stored smart contract
+    CallSC {
+        /// Target smart contract address
+        target_addr: Address,
+        /// Target function name. No function is called if empty.
+        target_func: String,
+        /// Parameter to pass to the target function
+        param: String,
+        /// The maximum amount of gas that the execution of the contract is allowed to cost.
+        max_gas: u64,
+        /// Extra coins that are spent from the caller's sequential balance and transferred to the target
+        sequential_coins: Amount,
+        /// Extra coins that are spent from the caller's parallel balance and transferred to the target
+        parallel_coins: Amount,
+        /// The price per unit of gas that the caller is willing to pay for the execution.
+        gas_price: Amount,
+    },
 }
 
 impl std::fmt::Display for OperationType {
@@ -192,11 +210,11 @@ impl std::fmt::Display for OperationType {
             }
             OperationType::RollBuy { roll_count } => {
                 writeln!(f, "Buy rolls:")?;
-                write!(f, "\t- Roll count:{}", roll_count)?;
+                writeln!(f, "\t- Roll count:{}", roll_count)?;
             }
             OperationType::RollSell { roll_count } => {
                 writeln!(f, "Sell rolls:")?;
-                write!(f, "\t- Roll count:{}", roll_count)?;
+                writeln!(f, "\t- Roll count:{}", roll_count)?;
             }
             OperationType::ExecuteSC {
                 max_gas,
@@ -206,9 +224,27 @@ impl std::fmt::Display for OperationType {
                 // data, // this field is ignored because bytes eh
             } => {
                 writeln!(f, "ExecuteSC: ")?;
-                write!(f, "\t- max_gas:{}", max_gas)?;
-                write!(f, "\t- gas_price:{}", gas_price)?;
-                write!(f, "\t- coins:{}", coins)?;
+                writeln!(f, "\t- max_gas:{}", max_gas)?;
+                writeln!(f, "\t- gas_price:{}", gas_price)?;
+                writeln!(f, "\t- coins:{}", coins)?;
+            },
+            OperationType::CallSC {
+                max_gas,
+                parallel_coins,
+                sequential_coins,
+                gas_price,
+                target_addr,
+                target_func,
+                param
+            } => {
+                writeln!(f, "CallSC:")?;
+                writeln!(f, "\t- target address:{}", target_addr)?;
+                writeln!(f, "\t- target function:{}", target_func)?;
+                writeln!(f, "\t- target parameter:{}", param)?;
+                writeln!(f, "\t- max_gas:{}", max_gas)?;
+                writeln!(f, "\t- gas_price:{}", gas_price)?;
+                writeln!(f, "\t- sequential coins:{}", sequential_coins)?;
+                writeln!(f, "\t- parallel coins:{}", parallel_coins)?;
             }
         }
         Ok(())
@@ -274,6 +310,53 @@ impl SerializeCompact for OperationType {
 
                 // Contract data
                 res.extend(data);
+            }
+            OperationType::CallSC {
+                max_gas,
+                parallel_coins,
+                sequential_coins,
+                gas_price,
+                target_addr,
+                target_func,
+                param,
+            } => {
+                // type id
+                res.extend(u32::from(OperationTypeId::CallSC).to_varint_bytes());
+
+                // Max gas.
+                res.extend(max_gas.to_varint_bytes());
+
+                // Parallel coins
+                res.extend(&parallel_coins.to_bytes_compact()?);
+
+                // Sequential coins
+                res.extend(&sequential_coins.to_bytes_compact()?);
+
+                // Gas price.
+                res.extend(&gas_price.to_bytes_compact()?);
+
+                // Target address
+                res.extend(target_addr.to_bytes());
+
+                // Target function name
+                let func_name_bytes = target_func.as_bytes();
+                let func_name_len: u8 = func_name_bytes.len().try_into().map_err(|_| {
+                    ModelsError::SerializeError(
+                        "CallSC target function name length does not fit in u8".into(),
+                    )
+                })?;
+                res.push(func_name_len);
+                res.extend(func_name_bytes);
+
+                // Parameter
+                let param_bytes = param.as_bytes();
+                let param_len: u16 = param_bytes.len().try_into().map_err(|_| {
+                    ModelsError::SerializeError(
+                        "CallSC parameter length does not fit in u16".into(),
+                    )
+                })?;
+                res.extend(param_len.to_varint_bytes());
+                res.extend(param_bytes);
             }
         }
         Ok(res)
@@ -362,6 +445,69 @@ impl DeserializeCompact for OperationType {
                     gas_price,
                 }
             }
+            OperationTypeId::CallSC => {
+                // Max gas.
+                let (max_gas, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+                cursor += delta;
+
+                // Parallel coins
+                let (parallel_coins, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+
+                // Sequential coins
+                let (sequential_coins, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+
+                // Gas price.
+                let (gas_price, delta) = Amount::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+
+                // Target address
+                let target_addr = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += ADDRESS_SIZE_BYTES;
+
+                // Target function name
+                let func_name_len = *buffer
+                    .get(cursor)
+                    .ok_or_else(|| ModelsError::DeserializeError("buffer too small".into()))?;
+                cursor += 1;
+                let target_func = match buffer.get(cursor..(cursor + func_name_len as usize)) {
+                    Some(s) => {
+                        cursor += s.len();
+                        String::from_utf8(s.to_vec()).map_err(|_| {
+                            ModelsError::DeserializeError("string is not utf8".into())
+                        })?
+                    }
+                    None => {
+                        return Err(ModelsError::DeserializeError("buffer too small".into()));
+                    }
+                };
+
+                // parameter
+                let (param_len, delta) = u16::from_varint_bytes(&buffer[cursor..])?;
+                cursor += delta;
+                let param = match buffer.get(cursor..(cursor + param_len as usize)) {
+                    Some(s) => {
+                        cursor += s.len();
+                        String::from_utf8(s.to_vec()).map_err(|_| {
+                            ModelsError::DeserializeError("string is not utf8".into())
+                        })?
+                    }
+                    None => {
+                        return Err(ModelsError::DeserializeError("buffer too small".into()));
+                    }
+                };
+
+                OperationType::CallSC {
+                    target_addr,
+                    sequential_coins,
+                    parallel_coins,
+                    target_func,
+                    max_gas,
+                    gas_price,
+                    param,
+                }
+            }
         };
         Ok((res, cursor))
     }
@@ -442,20 +588,49 @@ impl Operation {
         start..=self.expire_period
     }
 
+    /// Get the amount of gas used by the operation
+    pub fn get_gas_usage(&self) -> u64 {
+        match &self.op {
+            OperationType::ExecuteSC { max_gas, .. } => *max_gas,
+            OperationType::CallSC { max_gas, .. } => *max_gas,
+            OperationType::RollBuy { .. } => 0,
+            OperationType::RollSell { .. } => 0,
+            OperationType::Transaction { .. } => 0,
+        }
+    }
+
+    /// Get the amount of coins used by the operation to pay for gas
+    pub fn get_gas_coins(&self) -> Amount {
+        match &self.op {
+            OperationType::ExecuteSC {
+                max_gas, gas_price, ..
+            } => gas_price.saturating_mul_u64(*max_gas),
+            OperationType::CallSC {
+                max_gas, gas_price, ..
+            } => gas_price.saturating_mul_u64(*max_gas),
+            OperationType::RollBuy { .. } => Amount::default(),
+            OperationType::RollSell { .. } => Amount::default(),
+            OperationType::Transaction { .. } => Amount::default(),
+        }
+    }
+
     /// get the addresses that are involved in this operation from a ledger point of view
     pub fn get_ledger_involved_addresses(&self) -> Result<Set<Address>, ModelsError> {
         let mut res = Set::<Address>::default();
         let emitter_address = Address::from_public_key(&self.sender_public_key);
         res.insert(emitter_address);
-        match self.op {
+        match &self.op {
             OperationType::Transaction {
                 recipient_address, ..
             } => {
-                res.insert(recipient_address);
+                res.insert(*recipient_address);
             }
             OperationType::RollBuy { .. } => {}
             OperationType::RollSell { .. } => {}
             OperationType::ExecuteSC { .. } => {}
+            OperationType::CallSC { target_addr, .. } => {
+                res.insert(*target_addr);
+            }
         }
         Ok(res)
     }
@@ -472,6 +647,7 @@ impl Operation {
                 res.insert(Address::from_public_key(&self.sender_public_key));
             }
             OperationType::ExecuteSC { .. } => {}
+            OperationType::CallSC { .. } => {}
         }
         Ok(res)
     }
@@ -614,6 +790,49 @@ mod tests {
             coins: Amount::from_str("456.789").unwrap(),
             gas_price: Amount::from_str("772.122").unwrap(),
             data: vec![23u8, 123u8, 44u8],
+        };
+        let ser_type = op.to_bytes_compact().unwrap();
+        let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
+        assert_eq!(format!("{}", res_type), format!("{}", op));
+
+        let content = Operation {
+            fee: Amount::from_str("20").unwrap(),
+            sender_public_key: sender_pub,
+            op,
+            expire_period: 50,
+        };
+
+        let ser_content = content.to_bytes_compact().unwrap();
+        let (res_content, _) = Operation::from_bytes_compact(&ser_content).unwrap();
+        assert_eq!(format!("{}", res_content), format!("{}", content));
+
+        let op = Signed::new_signed(content, &sender_priv).unwrap().1;
+
+        let ser_op = op.to_bytes_compact().unwrap();
+        let (res_op, _) = Signed::<Operation, OperationId>::from_bytes_compact(&ser_op).unwrap();
+        assert_eq!(format!("{}", res_op), format!("{}", op));
+
+        assert_eq!(op.content.get_validity_range(10), 40..=50);
+    }
+
+    #[test]
+    #[serial]
+    fn test_callsc() {
+        let sender_priv = generate_random_private_key();
+        let sender_pub = derive_public_key(&sender_priv);
+
+        let target_priv = generate_random_private_key();
+        let target_pub = derive_public_key(&target_priv);
+        let target_addr = Address::from_public_key(&target_pub);
+
+        let op = OperationType::CallSC {
+            max_gas: 123,
+            target_addr,
+            parallel_coins: Amount::from_str("456.789").unwrap(),
+            sequential_coins: Amount::from_str("123.111").unwrap(),
+            gas_price: Amount::from_str("772.122").unwrap(),
+            target_func: "target function".to_string(),
+            param: "parameter".to_string(),
         };
         let ser_type = op.to_bytes_compact().unwrap();
         let (res_type, _) = OperationType::from_bytes_compact(&ser_type).unwrap();
