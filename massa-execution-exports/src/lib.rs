@@ -56,7 +56,7 @@ pub use event_store::EventStore;
 pub use settings::ExecutionConfig;
 pub use types::{
     ExecutionOutput, ExecutionStackElement, ReadOnlyCallRequest, ReadOnlyExecutionRequest,
-    ReadOnlyRequest,
+    ReadOnlyExecutionTarget,
 };
 
 #[cfg(feature = "testing")]

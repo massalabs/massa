@@ -3,7 +3,7 @@
 //! This module exports generic traits representing interfaces for interacting with the Execution worker
 
 use crate::types::ExecutionOutput;
-use crate::types::ReadOnlyRequest;
+use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
 use massa_ledger::LedgerEntry;
 use massa_models::output_event::SCOutputEvent;
@@ -60,7 +60,7 @@ pub trait ExecutionController: Send + Sync {
     /// or an error if the execution failed.
     fn execute_readonly_request(
         &self,
-        req: ReadOnlyRequest,
+        req: ReadOnlyExecutionRequest,
     ) -> Result<ExecutionOutput, ExecutionError>;
 
     /// Returns a boxed clone of self.

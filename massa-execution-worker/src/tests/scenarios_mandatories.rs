@@ -2,7 +2,7 @@
 use crate::start_execution_worker;
 use massa_async_pool::AsyncPoolConfig;
 use massa_execution_exports::{
-    ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest, ReadOnlyRequest,
+    ExecutionConfig, ExecutionError, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
@@ -90,14 +90,14 @@ fn test_sending_read_only_execution_command() {
     let (mut manager, controller) =
         start_execution_worker(ExecutionConfig::default(), sample_state, Default::default());
     controller
-        .execute_readonly_request(ReadOnlyRequest::BytecodeExecution(
-            ReadOnlyExecutionRequest {
-                max_gas: 1_000_000,
-                simulated_gas_price: Amount::from_raw(1_000_000 * AMOUNT_DECIMAL_FACTOR),
-                bytecode: include_bytes!("./wasm/event_test.wasm").to_vec(),
-                call_stack: vec![],
-            },
-        ))
+        .execute_readonly_request(ReadOnlyExecutionRequest {
+            max_gas: 1_000_000,
+            simulated_gas_price: Amount::from_raw(1_000_000 * AMOUNT_DECIMAL_FACTOR),
+            call_stack: vec![],
+            target: ReadOnlyExecutionTarget::BytecodeExecution(
+                include_bytes!("./wasm/event_test.wasm").to_vec(),
+            ),
+        })
         .unwrap();
     manager.stop()
 }

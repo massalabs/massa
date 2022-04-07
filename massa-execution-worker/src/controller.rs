@@ -7,7 +7,7 @@ use crate::execution::ExecutionState;
 use crate::request_queue::{RequestQueue, RequestWithResponseSender};
 use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
-    ReadOnlyRequest,
+    ReadOnlyExecutionRequest,
 };
 use massa_ledger::LedgerEntry;
 use massa_models::output_event::SCOutputEvent;
@@ -28,7 +28,7 @@ pub(crate) struct ExecutionInputData {
     /// new blockclique (if there is a new one), blocks indexed by slot
     pub new_blockclique: Option<HashMap<Slot, BlockId>>,
     /// queue for readonly execution requests and response mpscs to send back their outputs
-    pub readonly_requests: RequestQueue<ReadOnlyRequest, ExecutionOutput>,
+    pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
 }
 
 impl ExecutionInputData {
@@ -122,7 +122,7 @@ impl ExecutionController for ExecutionControllerImpl {
     /// Read-only requests do not modify consesnsus state
     fn execute_readonly_request(
         &self,
-        req: ReadOnlyRequest,
+        req: ReadOnlyExecutionRequest,
     ) -> Result<ExecutionOutput, ExecutionError> {
         let resp_rx = {
             let mut input_data = self.input_data.1.lock();

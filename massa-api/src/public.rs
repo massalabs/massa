@@ -6,8 +6,7 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::{
-    ExecutionController, ExecutionStackElement, ReadOnlyCallRequest, ReadOnlyExecutionRequest,
-    ReadOnlyRequest,
+    ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_graph::{DiscardReason, ExportBlockStatus};
 use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall, SCELedgerInfo};
@@ -112,16 +111,16 @@ impl Endpoints for API<Public> {
             // * remove async stuff
 
             // translate request
-            let req = ReadOnlyRequest::BytecodeExecution(ReadOnlyExecutionRequest {
+            let req = ReadOnlyExecutionRequest {
                 max_gas,
                 simulated_gas_price,
-                bytecode,
+                target: ReadOnlyExecutionTarget::BytecodeExecution(bytecode),
                 call_stack: vec![ExecutionStackElement {
                     address,
                     coins: Default::default(),
                     owned_addresses: vec![address],
                 }],
-            });
+            };
 
             // run
             let result = self.0.execution_controller.execute_readonly_request(req);
@@ -175,12 +174,14 @@ impl Endpoints for API<Public> {
             // * remove async stuff
 
             // translate request
-            let req = ReadOnlyRequest::FunctionCall(ReadOnlyCallRequest {
+            let req = ReadOnlyExecutionRequest {
                 max_gas,
                 simulated_gas_price,
-                target_func: target_function,
-                target_addr: target_address,
-                parameter,
+                target: ReadOnlyExecutionTarget::FunctionCall {
+                    target_func: target_function,
+                    target_addr: target_address,
+                    parameter,
+                },
                 call_stack: vec![
                     ExecutionStackElement {
                         address: caller_address,
@@ -193,7 +194,7 @@ impl Endpoints for API<Public> {
                         owned_addresses: vec![target_address],
                     },
                 ],
-            });
+            };
 
             // run
             let result = self.0.execution_controller.execute_readonly_request(req);

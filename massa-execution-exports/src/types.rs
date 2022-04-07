@@ -21,15 +21,6 @@ pub struct ExecutionOutput {
 
 /// structure describing different types of read-only execution request
 #[derive(Debug, Clone)]
-pub enum ReadOnlyRequest {
-    /// request read-only bytecode execution
-    BytecodeExecution(ReadOnlyExecutionRequest),
-    /// request read-only SC function call
-    FunctionCall(ReadOnlyCallRequest),
-}
-
-/// structure describing a read-only bytecode execution request
-#[derive(Debug, Clone)]
 pub struct ReadOnlyExecutionRequest {
     /// Maximum gas to spend in the execution.
     pub max_gas: u64,
@@ -37,8 +28,25 @@ pub struct ReadOnlyExecutionRequest {
     pub simulated_gas_price: Amount,
     /// Call stack to simulate, older caller first
     pub call_stack: Vec<ExecutionStackElement>,
-    /// The code to execute.
-    pub bytecode: Vec<u8>,
+    /// Target of the request
+    pub target: ReadOnlyExecutionTarget,
+}
+
+/// structure describing different possible targets of a read-only execution request
+#[derive(Debug, Clone)]
+pub enum ReadOnlyExecutionTarget {
+    /// Execute the main function of a bytecode
+    BytecodeExecution(Vec<u8>),
+
+    /// Execute a function call
+    FunctionCall {
+        /// Target address
+        target_addr: Address,
+        /// Target function
+        target_func: String,
+        /// Parameter to pass to the target function
+        parameter: String,
+    },
 }
 
 /// structure describing a read-only call

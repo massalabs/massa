@@ -10,7 +10,7 @@ use crate::execution::ExecutionState;
 use crate::request_queue::RequestQueue;
 use massa_execution_exports::{
     ExecutionConfig, ExecutionController, ExecutionError, ExecutionManager, ExecutionOutput,
-    ReadOnlyRequest,
+    ReadOnlyExecutionRequest,
 };
 use massa_final_state::FinalState;
 use massa_models::BlockId;
@@ -47,7 +47,7 @@ pub(crate) struct ExecutionThread {
     // Execution state (see execution.rs) to which execution requests are sent
     execution_state: Arc<RwLock<ExecutionState>>,
     /// queue for readonly requests and response mpscs to send back their outputs
-    readonly_requests: RequestQueue<ReadOnlyRequest, ExecutionOutput>,
+    readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
 }
 
 impl ExecutionThread {
@@ -364,7 +364,7 @@ impl ExecutionThread {
     /// Cancel those that are in excess if there are too many.
     fn update_readonly_requests(
         &mut self,
-        new_requests: RequestQueue<ReadOnlyRequest, ExecutionOutput>,
+        new_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
     ) {
         // Append incoming readonly requests to our readonly request queue
         // Excess requests are cancelld
