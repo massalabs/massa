@@ -31,4 +31,5 @@ Finally, at node level, the byte of a program is executed by Wasmer.
 
 The following schema recap graphically all this:
 
-// TODO
+.. image:: diagram-smartcontract.png
+  :width: 250
