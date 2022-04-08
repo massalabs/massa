@@ -10,13 +10,11 @@ In this tutorial, we will go through all the steps required to create a smart-co
 
 This tutorial is divided into several parts:
 
-see :ref:`writing-sc`.
-
-- Writing your smart-contract
-- Putting your smart-contract on the blockchain
-- Interacting with your smart-contract
-- Creating your first dApp
-- Hosting your dApp on Massa decentralized web
+- :ref:`writing-sc` will show you how to write Massa smart-contracts
+- :ref:`sending-sc` will show you how to send your smart-contract to the Massa blockchain
+- :ref:`interacting` will show you how to interact with your smart-contract
+- :ref:`dapp` will get you through the process of creating your first dApp
+- :ref:`hosting` will show you how to host your dApp on Massa's decentralized web
 
 You can find the complete project `here <https://github.com/massalabs/tictactoe-poc>`__.
 
@@ -176,16 +174,19 @@ main.ts
     }
 
 Compiling your smart-contract
-=============================
+-----------------------------
 
 Smart-contract can be compiled using the `massa-sc-scripts` command: TODO.
 
-## Putting your smart-contract on the blockchain
+.. _sending-sc:
+
+Putting your smart-contract on the blockchain
+=============================================
 
 We'll now turn to the process of putting the smart-contract on the Massa blockchain.
 
 Setup
-=====
+~~~~~
 
 To put your smart-contract on the Massa blockchain, you need to run a node and use the client. If this is something that you have never done, all the steps are detailed in the `tutorials <https://github.com/massalabs/massa#tutorials-to-join-the-testnet>`_.
 
@@ -233,6 +234,8 @@ Once the operation is included in a block, it is immediately executed. Now, look
 
     2022-03-17T16:18:42.002581Z DEBUG massa_execution_worker::interface_impl: SC print: Initialized, address:yqQMHYoWoD569AzuqT97HW8bTuZu44yx5z6W1wRtQP9u715r4
 
+.. _interacting:
+
 Interacting with your smart-contract
 ====================================
 
@@ -274,8 +277,10 @@ As before, you should compile your smart-contract, send it to the blockchain usi
     2022-03-17T16:18:42.015528Z DEBUG massa_execution_worker::interface_impl: SC print: Game state:X,X,X,O,O,n,n,n,n
     2022-03-17T16:18:42.015543Z DEBUG massa_execution_worker::interface_impl: SC print: Game winner:X
 
-Create your first dApp
-======================
+.. _dapp:
+
+Creating your first dApp
+========================
 
 Interacting with smart-contracts through the command line client is usually cumbersome, and you are probably more used to interact with smart-contracts through regular websites such as `sushi.com <https://www.sushi.com/>`_.
 
@@ -289,6 +294,8 @@ Now let's start building out the client-side application that will talk to our s
 You do not have to be a front-end expert to follow along with this part of the tutorial. I have intentionally kept the HTML and JavaScript code simple, and we will not spend much time focusing on it.
 
 We'll be using the front end made by `React for their tutorial <https://reactjs.org/tutorial/tutorial.html>`_.
+
+.. _hosting:
 
 Hosting your dApp on Massa decentralized web
 ============================================
