@@ -1,3 +1,7 @@
+==================================
+Massa's smart-contracts by example
+==================================
+
 .. note::
 
     This tutorial doesn't assume any existing knowledge of the Massa protocol.
