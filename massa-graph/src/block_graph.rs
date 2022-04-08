@@ -174,7 +174,7 @@ impl<'a> BlockGraphExport {
         block_graph: &'a BlockGraph,
         slot_start: Option<Slot>,
         slot_end: Option<Slot>,
-    ) -> Self {
+    ) -> Result<Self> {
         let mut export = BlockGraphExport {
             genesis_blocks: block_graph.genesis_hashes.clone(),
             active_blocks: Map::with_capacity_and_hasher(
@@ -219,7 +219,7 @@ impl<'a> BlockGraphExport {
                         let block = block_graph
                             .storage
                             .retrieve_block(hash)
-                            .expect("Missing block in storage.");
+                            .ok_or(GraphError::MissingBlock)?;
                         let stored_block = block.read();
                         export.active_blocks.insert(
                             *hash,
@@ -239,7 +239,7 @@ impl<'a> BlockGraphExport {
             }
         }
 
-        export
+        Ok(export)
     }
 }
 
@@ -1218,38 +1218,37 @@ impl BlockGraph {
     }
 
     /// get export version of a block
-    pub fn get_export_block_status(&self, block_id: &BlockId) -> Option<ExportBlockStatus> {
-        self.block_statuses
-            .get(block_id)
-            .map(|block_status| match block_status {
-                BlockStatus::Incoming(_) => ExportBlockStatus::Incoming,
-                BlockStatus::WaitingForSlot(_) => ExportBlockStatus::WaitingForSlot,
-                BlockStatus::WaitingForDependencies { .. } => {
-                    ExportBlockStatus::WaitingForDependencies
+    pub fn get_export_block_status(&self, block_id: &BlockId) -> Result<Option<ExportBlockStatus>> {
+        let block_status = match self.block_statuses.get(block_id) {
+            None => return Ok(None),
+            Some(block_status) => block_status,
+        };
+        let export = match block_status {
+            BlockStatus::Incoming(_) => ExportBlockStatus::Incoming,
+            BlockStatus::WaitingForSlot(_) => ExportBlockStatus::WaitingForSlot,
+            BlockStatus::WaitingForDependencies { .. } => ExportBlockStatus::WaitingForDependencies,
+            BlockStatus::Active(active_block) => {
+                let block = self
+                    .storage
+                    .retrieve_block(block_id)
+                    .ok_or(GraphError::MissingBlock)?;
+                let stored_block = block.read();
+                if active_block.is_final {
+                    ExportBlockStatus::Final(stored_block.block.clone())
+                } else {
+                    ExportBlockStatus::Active(stored_block.block.clone())
                 }
-                BlockStatus::Active(active_block) => {
-                    let block = self
-                        .storage
-                        .retrieve_block(block_id)
-                        .expect("Missing block in storage.");
-                    let stored_block = block.read();
-                    if active_block.is_final {
-                        ExportBlockStatus::Final(stored_block.block.clone())
-                    } else {
-                        ExportBlockStatus::Active(stored_block.block.clone())
-                    }
-                }
-                BlockStatus::Discarded { reason, .. } => {
-                    ExportBlockStatus::Discarded(reason.clone())
-                }
-            })
+            }
+            BlockStatus::Discarded { reason, .. } => ExportBlockStatus::Discarded(reason.clone()),
+        };
+        Ok(Some(export))
     }
 
     /// Retrieves operations from operation Ids
     pub fn get_operations(
         &self,
         operation_ids: &Set<OperationId>,
-    ) -> Map<OperationId, OperationSearchResult> {
+    ) -> Result<Map<OperationId, OperationSearchResult>> {
         let mut res: Map<OperationId, OperationSearchResult> = Default::default();
         // for each active block
         for block_id in self.active_index.iter() {
@@ -1257,7 +1256,7 @@ impl BlockGraph {
                 let stored_block = self
                     .storage
                     .retrieve_block(block_id)
-                    .expect("Missing block in storage.");
+                    .ok_or(GraphError::MissingBlock)?;
                 let stored_block = stored_block.read();
 
                 // check the intersection with the wanted operation ids, and update/insert into results
@@ -1285,7 +1284,7 @@ impl BlockGraph {
                     });
             }
         }
-        res
+        Ok(res)
     }
 
     /// signal new slot

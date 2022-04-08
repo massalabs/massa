@@ -18,8 +18,7 @@ use massa_models::{
 };
 use massa_models::{ledger_models::LedgerData, SignedOperation};
 use massa_models::{
-    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, OperationSearchResult,
-    SerializeCompact, Slot,
+    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, SerializeCompact, Slot,
 };
 use massa_proof_of_stake_exports::{error::ProofOfStakeError, ExportProofOfStake, ProofOfStake};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
@@ -682,7 +681,7 @@ impl ConsensusWorker {
                         &self.block_db,
                         slot_start,
                         slot_end,
-                    ))
+                    )?)
                     .is_err()
                 {
                     warn!("consensus: could not send GetBlockGraphStatus answer");
@@ -699,7 +698,7 @@ impl ConsensusWorker {
                     {}
                 );
                 if response_tx
-                    .send(self.block_db.get_export_block_status(&block_id))
+                    .send(self.block_db.get_export_block_status(&block_id)?)
                     .is_err()
                 {
                     warn!("consensus: could not send GetBlock Status answer");
@@ -819,8 +818,10 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_consensus_command.get_operations",
                     { "operation_ids": operation_ids }
                 );
-                let res = self.get_operations(&operation_ids).await;
-                if response_tx.send(res).is_err() {
+                if response_tx
+                    .send(self.block_db.get_operations(&operation_ids)?)
+                    .is_err()
+                {
                     warn!("consensus: could not send get operations response");
                 }
                 Ok(())
@@ -1088,15 +1089,6 @@ impl ConsensusWorker {
             }
         }
         Ok(states)
-    }
-
-    /// search operations by id in the whole graph
-    /// Used in response to a api request
-    async fn get_operations(
-        &mut self,
-        operation_ids: &Set<OperationId>,
-    ) -> Map<OperationId, OperationSearchResult> {
-        self.block_db.get_operations(operation_ids)
     }
 
     /// Manages received protocol events.
