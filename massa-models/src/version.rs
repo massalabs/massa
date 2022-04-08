@@ -121,7 +121,7 @@ impl Version {
     /// true if instance and major are the same
     pub fn is_compatible(&self, other: &Version) -> bool {
         // TODO for next testnet: update this control statement
-        if other.major == 9 && other.minor == 0 {
+        if other.major == 9 && other.minor < 2 {
             return false;
         }
         self.instance == other.instance && self.major == other.major
