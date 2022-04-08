@@ -1261,43 +1261,53 @@ impl BlockGraph {
     /// Retrieves operations from operation Ids
     pub fn get_operations(
         &self,
-        operation_ids: &Set<OperationId>,
+        operation_ids: Set<OperationId>,
     ) -> Result<Map<OperationId, OperationSearchResult>> {
+        // The search result.
         let mut res: Map<OperationId, OperationSearchResult> = Default::default();
-        // for each active block
-        for block_id in self.active_index.iter() {
-            if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(block_id) {
-                let stored_block = self.storage.retrieve_block(block_id).ok_or_else(|| {
-                    GraphError::MissingBlock(format!(
-                        "missing block in get_operations: {}",
-                        block_id
-                    ))
-                })?;
-                let stored_block = stored_block.read();
 
-                // check the intersection with the wanted operation ids, and update/insert into results
-                operation_ids
-                    .iter()
-                    .filter_map(|op_id| {
-                        active_block.operation_set.get(op_id).map(|(idx, _)| {
-                            (op_id, idx, stored_block.block.operations[*idx].clone())
-                        })
-                    })
-                    .for_each(|(op_id, idx, op)| {
-                        let search_new = OperationSearchResult {
-                            op,
-                            in_pool: false,
-                            in_blocks: vec![(*block_id, (*idx, active_block.is_final))]
-                                .into_iter()
-                                .collect(),
-                            status: OperationSearchResultStatus::InBlock(
-                                OperationSearchResultBlockStatus::Active,
-                            ),
-                        };
-                        res.entry(*op_id)
-                            .and_modify(|search_old| search_old.extend(&search_new))
-                            .or_insert(search_new);
-                    });
+        // For each operation id we are searching for.
+        for op_id in operation_ids.into_iter() {
+            // The operation corresponding to the id, initially none.
+            let mut operation = None;
+
+            // The active blocks in which the operation is found.
+            let mut in_blocks: Map<BlockId, (usize, bool)> = Default::default();
+
+            for block_id in self.active_index.iter() {
+                if let Some(BlockStatus::Active(active_block)) = self.block_statuses.get(block_id) {
+                    // If the operation is found in the active block.
+                    if let Some((idx, _)) = active_block.operation_set.get(&op_id) {
+                        // If this is the first time we encounter the operation as present in an active block.
+                        if operation.is_none() {
+                            let stored_block =
+                                self.storage.retrieve_block(block_id).ok_or_else(|| {
+                                    GraphError::MissingBlock(format!(
+                                        "missing block in get_operations: {}",
+                                        block_id
+                                    ))
+                                })?;
+                            let stored_block = stored_block.read();
+
+                            // Clone the operation.
+                            operation = Some(stored_block.block.operations[*idx].clone());
+                        }
+                        in_blocks.insert(*block_id, (*idx, active_block.is_final));
+                    }
+                }
+            }
+
+            // If we found the operation in at least one active block.
+            if let Some(op) = operation {
+                let result = OperationSearchResult {
+                    op,
+                    in_pool: false,
+                    in_blocks,
+                    status: OperationSearchResultStatus::InBlock(
+                        OperationSearchResultBlockStatus::Active,
+                    ),
+                };
+                res.insert(op_id, result);
             }
         }
         Ok(res)
