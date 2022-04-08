@@ -612,6 +612,15 @@
 <span id="607">607</span>
 <span id="608">608</span>
 <span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This module allows launching the execution worker thread, returning objects to communicate with it.</span>
@@ -636,7 +645,7 @@
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">parking_lot</span>::{<span class="ident">Condvar</span>, <span class="ident">Mutex</span>, <span class="ident">RwLock</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashMap</span>, <span class="ident">sync::Arc</span>};
-<span class="kw">use</span> <span class="ident">tracing::info</span>;
+<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">info</span>, <span class="ident">warn</span>};
 
 <span class="doccomment">/// Structure gathering all elements needed by the execution thread</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ExecutionThread</span> {
@@ -873,11 +882,20 @@
                 <span class="comment">// apply the cached output and return</span>
                 <span class="ident">exec_state</span>.<span class="ident">apply_final_execution_output</span>(<span class="ident">exec_out</span>);
                 <span class="kw">return</span> <span class="bool-val">true</span>;
+            } <span class="kw">else</span> {
+                <span class="comment">// speculative cache mismatch</span>
+                <span class="macro">warn!</span>(
+                    <span class="string">&quot;speculative execution cache mismatch (final slot={}/block={:?}, front speculative slot={}/block={:?}). Resetting the cache.&quot;</span>,
+                    <span class="ident">slot</span>, <span class="ident">exec_target</span>, <span class="ident">exec_out</span>.<span class="ident">slot</span>, <span class="ident">exec_out</span>.<span class="ident">block_id</span>
+                );
             }
+        } <span class="kw">else</span> {
+            <span class="comment">// cache entry absent</span>
+            <span class="macro">info!</span>(
+                <span class="string">&quot;speculative execution cache empty, executing final slot={}/block={:?}&quot;</span>,
+                <span class="ident">slot</span>, <span class="ident">exec_target</span>
+            );
         }
-
-        <span class="comment">// speculative cache mismatch</span>
-        <span class="macro">info!</span>(<span class="string">&quot;speculative execution cache mismatch: resetting the cache&quot;</span>);
 
         <span class="comment">// clear the speculative execution output cache completely</span>
         <span class="ident">exec_state</span>.<span class="ident">clear_history</span>();
