@@ -79,6 +79,7 @@ Technical documentation
    :caption: Smart-contracts
 
    smart-contracts/introduction.rst
+   smart-contracts/getting-started.rst
    smart-contracts/massa-sc-by-example.rst
    smart-contracts/types.rst
 .. toctree::
