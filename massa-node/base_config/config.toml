@@ -2,7 +2,7 @@
 
 [logging]
     # Logging level. High log levels might impact performance. 0: ERROR, 1: WARN, 2: INFO, 3: DEBUG, 4: TRACE
-    level = 2
+    level = 3
 
 [api]
     # max number of future periods considered during requests
