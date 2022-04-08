@@ -39,6 +39,17 @@ pub struct PeerInfoDatabase {
     pub(crate) clock_compensation: i64,
 }
 
+/// Normalize the IP address (convert IPV4s that are mapped to IPV6 into IPV4)
+pub fn normalize_ip(ip: &IpAddr) -> IpAddr {
+    match ip {
+        IpAddr::V4(ipv4) => IpAddr::V4(*ipv4),
+        IpAddr::V6(ipv6) => match ipv6.to_ipv4() {
+            Some(ipv4) => IpAddr::V4(ipv4),
+            None => IpAddr::V6(*ipv6),
+        },
+    }
+}
+
 /// Saves advertised and non standard peers to a file.
 ///
 /// # Arguments
@@ -91,27 +102,28 @@ pub(crate) fn cleanup_peers(
     let mut res_new_peers: Vec<PeerInfo> = if let Some(new_peers) = opt_new_peers {
         new_peers
             .iter()
+            .map(|ip| normalize_ip(ip))
             .unique()
             .filter(|&ip| {
-                if let Some(mut p) = peers.get_mut(ip) {
-                    // avoid already-known IPs, but mark them as advertised
-                    p.advertised = true;
-                    return false;
-                }
                 if !ip.is_global() {
                     // avoid non-global IPs
                     return false;
                 }
                 if let Some(our_ip) = cfg.routable_ip {
                     // avoid our own IP
-                    if ip == &our_ip {
+                    if ip == our_ip {
                         return false;
                     }
+                }
+                if let Some(mut p) = peers.get_mut(&ip) {
+                    // avoid already-known IPs, but mark them as advertised
+                    p.advertised = true;
+                    return false;
                 }
                 true
             })
             .take(MAX_ADVERTISE_LENGTH as usize)
-            .map(|&ip| PeerInfo::new(ip, true))
+            .map(|ip| PeerInfo::new(ip, true))
             .collect()
     } else {
         Vec::new()
@@ -125,6 +137,7 @@ pub(crate) fn cleanup_peers(
     let mut banned_peers: Vec<PeerInfo> = Vec::new();
     let mut idle_peers: Vec<PeerInfo> = Vec::new();
     for (ip, p) in peers.drain() {
+        let ip = normalize_ip(&ip);
         if !ip.is_global() {
             // avoid non-global IPs
             continue;
@@ -191,7 +204,10 @@ impl PeerInfoDatabase {
                     &tokio::fs::read_to_string(&cfg.peers_file).await?,
                 )?
                 .into_iter()
-                .map(|p| (p.ip, p)),
+                .map(|mut p| {
+                    p.ip = normalize_ip(&p.ip);
+                    (p.ip, p)
+                }),
             );
         }
 
@@ -335,6 +351,7 @@ impl PeerInfoDatabase {
     pub fn unban(&mut self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         let mut update_happened = false;
         for ip in ips.into_iter() {
+            let ip = normalize_ip(&ip);
             if let Some(peer) = self.peers.get_mut(&ip) {
                 update_happened = update_happened || peer.banned;
                 peer.banned = false;
@@ -349,6 +366,7 @@ impl PeerInfoDatabase {
 
     pub async fn whitelist(&mut self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         for ip in ips.into_iter() {
+            let ip = normalize_ip(&ip);
             let old_pt = if let Some(peer) = self.peers.get_mut(&ip) {
                 let pt = peer.peer_type;
                 if pt == PeerType::WhiteListed {
@@ -385,6 +403,7 @@ impl PeerInfoDatabase {
 
     pub async fn remove_from_whitelist(&mut self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         for ip in ips.into_iter() {
+            let ip = normalize_ip(&ip);
             let old_pt = if let Some(peer) = self.peers.get_mut(&ip) {
                 let old = peer.peer_type;
                 peer.peer_type = Default::default();
@@ -422,31 +441,32 @@ impl PeerInfoDatabase {
     /// # Argument
     /// ip: ipAddr we are now connected to
     pub fn new_out_connection_attempt(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
+        let ip = normalize_ip(ip);
         if !ip.is_global() {
-            return Err(NetworkError::InvalidIpError(*ip));
+            return Err(NetworkError::InvalidIpError(ip));
         }
-        let peer_type = if let Some(peer) = self.peers.get(ip) {
+        let peer_type = if let Some(peer) = self.peers.get(&ip) {
             if self.can_try_new_out_connection(peer.peer_type) {
                 // Can unwrap because we checked above that there is a peer.
-                let peer = self.peers.get_mut(ip).unwrap();
+                let peer = self.peers.get_mut(&ip).unwrap();
                 peer.active_out_connection_attempts += 1;
                 Ok(peer.peer_type)
             } else {
                 Err(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
+                    NetworkConnectionErrorType::TooManyConnectionAttempts(ip),
                 ))
             }
         } else if self.can_try_new_out_connection(Default::default()) {
-            let mut peer = PeerInfo::new(*ip, false);
+            let mut peer = PeerInfo::new(ip, false);
             peer.active_out_connection_attempts += 1;
-            self.peers.insert(*ip, peer);
+            self.peers.insert(ip, peer);
             Ok(peer.peer_type)
         } else {
             Err(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
+                NetworkConnectionErrorType::TooManyConnectionAttempts(ip),
             ))
         }?;
-        self.increase_global_active_out_connection_attempt_count(peer_type, ip)?;
+        self.increase_global_active_out_connection_attempt_count(peer_type, &ip)?;
         self.update()
     }
 
@@ -456,11 +476,12 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn peer_alive(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
+        let ip = normalize_ip(ip);
         self.peers
-            .get_mut(ip)
+            .get_mut(&ip)
             .ok_or({
                 NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })?
             .last_alive = Some(MassaTime::compensated_now(self.clock_compensation)?);
@@ -473,11 +494,12 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn peer_failed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
+        let ip = normalize_ip(ip);
         self.peers
-            .get_mut(ip)
+            .get_mut(&ip)
             .ok_or({
                 NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })?
             .last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
@@ -491,10 +513,11 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn peer_banned(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
+        let ip = normalize_ip(ip);
         let peer = self
             .peers
-            .entry(*ip)
-            .or_insert_with(|| PeerInfo::new(*ip, false));
+            .entry(ip)
+            .or_insert_with(|| PeerInfo::new(ip, false));
         peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
         if !peer.banned {
             peer.banned = true;
@@ -513,22 +536,23 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn out_connection_closed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
+        let ip = normalize_ip(ip);
         let peer_type = {
-            let peer = self.peers.get(ip).ok_or({
+            let peer = self.peers.get(&ip).ok_or({
                 NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })?;
             if peer.active_out_connections == 0
                 || !self.can_remove_active_out_connection_count(peer.peer_type)
             {
                 return Err(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
+                    NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip),
                 ));
             }
-            let peer = self.peers.get_mut(ip).ok_or({
+            let peer = self.peers.get_mut(&ip).ok_or({
                 NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })?;
             peer.active_out_connections -= 1;
@@ -539,7 +563,7 @@ impl PeerInfoDatabase {
             }
             peer_type
         };
-        self.decrease_global_active_out_connection_count(peer_type, ip)?;
+        self.decrease_global_active_out_connection_count(peer_type, &ip)?;
         Ok(())
     }
 
@@ -551,22 +575,23 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn in_connection_closed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
+        let ip = normalize_ip(ip);
         let peer_type = {
-            let peer = self.peers.get(ip).ok_or({
+            let peer = self.peers.get(&ip).ok_or({
                 NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })?;
             if peer.active_in_connections == 0
                 || !self.can_decrease_global_active_in_connection_count(peer.peer_type)
             {
                 return Err(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(*ip),
+                    NetworkConnectionErrorType::CloseConnectionWithNoConnectionToClose(ip),
                 ));
             }
-            let peer = self.peers.get_mut(ip).ok_or({
+            let peer = self.peers.get_mut(&ip).ok_or({
                 NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })?;
             peer.active_in_connections -= 1;
@@ -578,7 +603,7 @@ impl PeerInfoDatabase {
             peer_type
         };
 
-        self.decrease_global_active_in_connection_count(peer_type, ip)?;
+        self.decrease_global_active_in_connection_count(peer_type, &ip)?;
         Ok(())
     }
 
@@ -594,12 +619,11 @@ impl PeerInfoDatabase {
         &mut self,
         ip: &IpAddr,
     ) -> Result<bool, NetworkError> {
+        let ip = normalize_ip(ip);
         // a connection attempt succeeded
         // remove out connection attempt and add out connection
-        let peer_type = self.get_peer_type(ip).ok_or({
-            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(
-                *ip,
-            ))
+        let peer_type = self.get_peer_type(&ip).ok_or({
+            NetworkError::PeerConnectionError(NetworkConnectionErrorType::PeerInfoNotFoundError(ip))
         })?;
 
         // have we reached target yet ?
@@ -607,22 +631,22 @@ impl PeerInfoDatabase {
             return Ok(false);
         }
 
-        self.decrease_global_active_out_connection_attempt_count(peer_type, ip)?;
+        self.decrease_global_active_out_connection_attempt_count(peer_type, &ip)?;
 
         let peer_type = {
-            let peer = self.peers.get(ip).ok_or({
+            let peer = self.peers.get(&ip).ok_or({
                 NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })?;
             if peer.active_out_connection_attempts == 0 {
                 return Err(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::TooManyConnectionAttempts(*ip),
+                    NetworkConnectionErrorType::TooManyConnectionAttempts(ip),
                 ));
             }
-            let peer = self.peers.get_mut(ip).ok_or({
+            let peer = self.peers.get_mut(&ip).ok_or({
                 NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })?;
             peer.active_out_connection_attempts -= 1;
@@ -651,22 +675,26 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn out_connection_attempt_failed(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
+        let ip = normalize_ip(ip);
         let peer_type = {
-            let peer = self.peers.get(ip).ok_or(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
-            ))?;
+            let peer = self
+                .peers
+                .get(&ip)
+                .ok_or(NetworkError::PeerConnectionError(
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
+                ))?;
             if peer.active_out_connection_attempts == 0
                 || !self.can_remove_new_out_connection_attempt(peer.peer_type)
             {
                 return Err(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::TooManyConnectionFailure(*ip),
+                    NetworkConnectionErrorType::TooManyConnectionFailure(ip),
                 ));
             }
             let peer = self
                 .peers
-                .get_mut(ip)
+                .get_mut(&ip)
                 .ok_or(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 ))?;
             peer.active_out_connection_attempts -= 1;
             peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
@@ -676,7 +704,7 @@ impl PeerInfoDatabase {
             }
             pt
         };
-        self.decrease_global_active_out_connection_attempt_count(peer_type, ip)?;
+        self.decrease_global_active_out_connection_attempt_count(peer_type, &ip)?;
         self.request_dump()
     }
 
@@ -689,15 +717,16 @@ impl PeerInfoDatabase {
     /// # Argument
     /// * ip : ip address of the considered peer.
     pub fn try_new_in_connection(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
+        let ip = normalize_ip(ip);
         // try to create a new input connection, return false if no slots
         if !ip.is_global() || self.network_settings.max_in_connections_per_ip == 0 {
             return Err(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::MaxPeersConnectionReached(*ip),
+                NetworkConnectionErrorType::MaxPeersConnectionReached(ip),
             ));
         }
         if let Some(our_ip) = self.network_settings.routable_ip {
             // avoid our own IP
-            if *ip == our_ip {
+            if ip == our_ip {
                 warn!("incoming connection from our own IP");
                 return Err(NetworkError::PeerConnectionError(
                     NetworkConnectionErrorType::SelfConnection,
@@ -707,21 +736,21 @@ impl PeerInfoDatabase {
 
         let peer_type = self
             .peers
-            .entry(*ip)
-            .or_insert_with(|| PeerInfo::new(*ip, false))
+            .entry(ip)
+            .or_insert_with(|| PeerInfo::new(ip, false))
             .peer_type;
 
         // we need to first check if there is a global slot avaible
         if self.is_max_in_connection_count_reached(peer_type) {
             return Err(NetworkError::PeerConnectionError(
-                NetworkConnectionErrorType::MaxPeersConnectionReached(*ip),
+                NetworkConnectionErrorType::MaxPeersConnectionReached(ip),
             ));
         }
 
         let peer_type = {
-            let peer = self.peers.get_mut(ip).ok_or({
+            let peer = self.peers.get_mut(&ip).ok_or({
                 NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::PeerInfoNotFoundError(*ip),
+                    NetworkConnectionErrorType::PeerInfoNotFoundError(ip),
                 )
             })?; // peer was inserted just before
 
@@ -731,13 +760,13 @@ impl PeerInfoDatabase {
                 peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
                 self.request_dump()?;
                 return Err(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::BannedPeerTryingToConnect(*ip),
+                    NetworkConnectionErrorType::BannedPeerTryingToConnect(ip),
                 ));
             } else if peer.active_in_connections >= self.network_settings.max_in_connections_per_ip
             {
                 self.request_dump()?;
                 return Err(NetworkError::PeerConnectionError(
-                    NetworkConnectionErrorType::MaxPeersConnectionReached(*ip),
+                    NetworkConnectionErrorType::MaxPeersConnectionReached(ip),
                 ));
             } else {
                 peer.active_in_connections += 1;
