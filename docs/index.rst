@@ -78,6 +78,7 @@ Technical documentation
    :maxdepth: 2
    :caption: Smart-contracts
 
+   smart-contracts/introduction.rst
    smart-contracts/massa-sc-by-example.rst
    smart-contracts/types.rst
 .. toctree::
