@@ -8,7 +8,7 @@ use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcError, RpcResult, TypedClient};
 use massa_models::api::{
     AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
-    ReadOnlyExecution, TimeInterval,
+    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -138,21 +138,6 @@ impl RpcClient {
             .await
     }
 
-    /// execute read only bytecode
-    pub async fn execute_read_only_request(
-        &self,
-        read_only_execution: ReadOnlyExecution,
-    ) -> RpcResult<ExecuteReadOnlyResponse> {
-        self.call_method::<Vec<Vec<ReadOnlyExecution>>, Vec<ExecuteReadOnlyResponse>>(
-            "execute_read_only_request",
-            "Vec<ExecuteReadOnlyResponse>",
-            vec![vec![read_only_execution]],
-        )
-        .await?
-        .pop()
-        .ok_or_else(|| RpcError::Client("missing return value on execute_read_only_request".into()))
-    }
-
     ////////////////
     // public-api //
     ////////////////
@@ -229,5 +214,37 @@ impl RpcClient {
     ) -> RpcResult<Vec<OperationId>> {
         self.call_method("send_operations", "Vec<OperationId>", vec![operations])
             .await
+    }
+
+    /// execute read only bytecode
+    pub async fn execute_read_only_bytecode(
+        &self,
+        read_only_execution: ReadOnlyBytecodeExecution,
+    ) -> RpcResult<ExecuteReadOnlyResponse> {
+        self.call_method::<Vec<Vec<ReadOnlyBytecodeExecution>>, Vec<ExecuteReadOnlyResponse>>(
+            "execute_read_only_bytecode",
+            "Vec<ExecuteReadOnlyResponse>",
+            vec![vec![read_only_execution]],
+        )
+        .await?
+        .pop()
+        .ok_or_else(|| {
+            RpcError::Client("missing return value on execute_read_only_bytecode".into())
+        })
+    }
+
+    /// execute read only SC call
+    pub async fn execute_read_only_call(
+        &self,
+        read_only_execution: ReadOnlyCall,
+    ) -> RpcResult<ExecuteReadOnlyResponse> {
+        self.call_method::<Vec<Vec<ReadOnlyCall>>, Vec<ExecuteReadOnlyResponse>>(
+            "execute_read_only_call",
+            "Vec<ExecuteReadOnlyResponse>",
+            vec![vec![read_only_execution]],
+        )
+        .await?
+        .pop()
+        .ok_or_else(|| RpcError::Client("missing return value on execute_read_only_call".into()))
     }
 }

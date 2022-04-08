@@ -13,7 +13,7 @@ use crate::interface_impl::InterfaceImpl;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
-    ReadOnlyExecutionRequest,
+    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::{FinalState, StateChanges};
 use massa_ledger::{Applicable, LedgerEntry, SetUpdateOrDelete};
@@ -695,7 +695,7 @@ impl ExecutionState {
         context_guard!(self).settle_slot()
     }
 
-    /// Executes a read-only execution request.
+    /// Runs a read-only execution request.
     /// The executed bytecode appears to be able to read and write the consensus state,
     /// but all accumulated changes are simply returned as an ExecutionOutput object,
     /// and not actually applied to the consensus state.
@@ -719,17 +719,49 @@ impl ExecutionState {
         let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
 
         // create a readonly execution context
-        let max_gas = req.max_gas;
-        let bytecode = req.bytecode.clone();
-        let execution_context =
-            ExecutionContext::readonly(slot, req, previous_changes, self.final_state.clone());
+        let execution_context = ExecutionContext::readonly(
+            slot,
+            req.max_gas,
+            req.simulated_gas_price,
+            req.call_stack,
+            previous_changes,
+            self.final_state.clone(),
+        );
 
-        // set the execution context for execution
-        *context_guard!(self) = execution_context;
+        // run the intepreter according to the target type
+        match req.target {
+            ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
+                // set the execution context for execution
+                *context_guard!(self) = execution_context;
 
-        // run the intepreter
-        massa_sc_runtime::run_main(&bytecode, max_gas, &*self.execution_interface)
-            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+                // run the bytecode's main function
+                massa_sc_runtime::run_main(&bytecode, req.max_gas, &*self.execution_interface)
+                    .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+            }
+            ReadOnlyExecutionTarget::FunctionCall {
+                target_addr,
+                target_func,
+                parameter,
+            } => {
+                // get the bytecode, default to an empty vector
+                let bytecode = execution_context
+                    .get_bytecode(&target_addr)
+                    .unwrap_or_default();
+
+                // set the execution context for execution
+                *context_guard!(self) = execution_context;
+
+                // run the target function in the bytecode
+                massa_sc_runtime::run_function(
+                    &bytecode,
+                    req.max_gas,
+                    &target_func,
+                    &parameter,
+                    &*self.execution_interface,
+                )
+                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+            }
+        }
 
         // return the execution output
         Ok(context_guard!(self).settle_slot())
