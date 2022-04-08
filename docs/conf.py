@@ -29,7 +29,7 @@ author = 'Massa Labs'
 # ones.
 extensions = [
     'sphinx_rtd_theme',
-    'sphinx_toolbox',
+    'sphinx_toolbox.collapse',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
