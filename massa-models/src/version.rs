@@ -120,6 +120,10 @@ impl DeserializeCompact for Version {
 impl Version {
     /// true if instance and major are the same
     pub fn is_compatible(&self, other: &Version) -> bool {
+        // TODO for next testnet: update this control statement
+        if self.major == 9 && self.minor != other.minor {
+            return false;
+        }
         self.instance == other.instance && self.major == other.major
     }
 }
