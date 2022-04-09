@@ -543,6 +543,9 @@
 <span id="538">538</span>
 <span id="539">539</span>
 <span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="doccomment">//! Bootstrap crate</span>
 <span class="doccomment">//!</span>
@@ -555,6 +558,7 @@
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
+<span class="attribute">#![<span class="ident">feature</span>(<span class="ident">ip</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::client_binder::BootstrapClientBinder</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::establisher::types::Duplex</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::server_binder::BootstrapServerBinder</span>;
@@ -994,6 +998,8 @@
                         }
                     });
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.session.started&quot;</span>, {<span class="string">&quot;active_count&quot;</span>: <span class="ident">bootstrap_sessions</span>.<span class="ident">len</span>()});
+                } <span class="kw">else</span> {
+                    <span class="macro">debug!</span>(<span class="string">&quot;did not bootstrap {}: no available slots&quot;</span>, <span class="ident">remote_addr</span>);
                 },
             }
         }
@@ -1084,5 +1090,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (e745b4ddb 2022-04-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (f4a7ce997 2022-04-08)" ></div>
 </body></html>

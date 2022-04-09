@@ -100,6 +100,9 @@
 <span id="95">95</span>
 <span id="96">96</span>
 <span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -138,7 +141,10 @@
     <span class="kw">impl</span> <span class="ident">DefaultListener</span> {
         <span class="doccomment">/// Accepts a new incoming connection from this listener.</span>
         <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">accept</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span>(<span class="ident">Duplex</span>, <span class="ident">SocketAddr</span>)<span class="op">&gt;</span> {
-            <span class="kw">let</span> (<span class="ident">sock</span>, <span class="ident">remote_addr</span>) <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">accept</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="comment">// accept</span>
+            <span class="kw">let</span> (<span class="ident">sock</span>, <span class="kw-2">mut</span> <span class="ident">remote_addr</span>) <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">accept</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="comment">// normalize address</span>
+            <span class="ident">remote_addr</span>.<span class="ident">set_ip</span>(<span class="ident">remote_addr</span>.<span class="ident">ip</span>().<span class="ident">to_canonical</span>());
             <span class="prelude-val">Ok</span>((<span class="ident">sock</span>, <span class="ident">remote_addr</span>))
         }
     }
@@ -198,5 +204,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (e745b4ddb 2022-04-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_bootstrap" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (f4a7ce997 2022-04-08)" ></div>
 </body></html>

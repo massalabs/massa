@@ -107,6 +107,10 @@
 <span id="102">102</span>
 <span id="103">103</span>
 <span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>)]</span>
 <span class="kw">mod</span> <span class="ident">types</span> {
@@ -146,7 +150,11 @@
     <span class="kw">impl</span> <span class="ident">DefaultListener</span> {
         <span class="doccomment">/// Accepts a new incoming connection from this listener.</span>
         <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">accept</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span>(<span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>, <span class="ident">SocketAddr</span>)<span class="op">&gt;</span> {
-            <span class="kw">let</span> (<span class="ident">sock</span>, <span class="ident">remote_addr</span>) <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">accept</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="comment">// accept</span>
+            <span class="kw">let</span> (<span class="ident">sock</span>, <span class="kw-2">mut</span> <span class="ident">remote_addr</span>) <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">accept</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="comment">// normalize IP</span>
+            <span class="ident">remote_addr</span>.<span class="ident">set_ip</span>(<span class="ident">remote_addr</span>.<span class="ident">ip</span>().<span class="ident">to_canonical</span>());
+            <span class="comment">// split into read half and write half</span>
             <span class="kw">let</span> (<span class="ident">read_half</span>, <span class="ident">write_half</span>) <span class="op">=</span> <span class="ident">sock</span>.<span class="ident">into_split</span>();
             <span class="prelude-val">Ok</span>((<span class="ident">read_half</span>, <span class="ident">write_half</span>, <span class="ident">remote_addr</span>))
         }
@@ -212,5 +220,5 @@
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">types</span>::<span class="kw-2">*</span>;
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (e745b4ddb 2022-04-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (f4a7ce997 2022-04-08)" ></div>
 </body></html>

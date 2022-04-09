@@ -223,6 +223,17 @@
 <span id="218">218</span>
 <span id="219">219</span>
 <span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::PeerTypeConnectionConfig</span>;
 <span class="kw">use</span> <span class="ident">displaydoc::Display</span>;
 <span class="kw">use</span> <span class="ident">enum_map::Enum</span>;
@@ -371,6 +382,17 @@
 }
 
 <span class="kw">impl</span> <span class="ident">PeerInfo</span> {
+    <span class="doccomment">/// Cleans up the PeerInfo by normalizing the IP address</span>
+    <span class="doccomment">/// and resetting active connection counts.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cleanup</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
+        <span class="comment">// canonicalize IP</span>
+        <span class="self">self</span>.<span class="ident">ip</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ip</span>.<span class="ident">to_canonical</span>();
+        <span class="comment">// ensure that connections are set to zero</span>
+        <span class="self">self</span>.<span class="ident">active_out_connection_attempts</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="self">self</span>.<span class="ident">active_out_connections</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="self">self</span>.<span class="ident">active_in_connections</span> <span class="op">=</span> <span class="number">0</span>;
+    }
+
     <span class="doccomment">/// Returns true if there is at least one connection attempt /</span>
     <span class="doccomment">/// one active connection in either direction</span>
     <span class="doccomment">/// with this peer</span>
@@ -444,5 +466,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (e745b4ddb 2022-04-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_network_exports" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (f4a7ce997 2022-04-08)" ></div>
 </body></html>
