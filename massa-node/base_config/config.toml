@@ -58,7 +58,7 @@
     initial_ledger_path = "base_config/initial_ledger.json"
 
     # max millis to wait while sending an event before dropping it
-    max_send_wait = 500
+    max_send_wait = 0
     # useless blocks are pruned every block_db_prune_interval ms
     block_db_prune_interval = 5000
 
@@ -86,7 +86,7 @@
     # max number of blocks we can ask simultaneously per node
     max_simultaneous_ask_blocks_per_node = 128
     # max millis to wait while sending an event before dropping it
-    max_send_wait = 500
+    max_send_wait = 0
     # max cache size for which operations a foreign node knows about
     max_known_ops_size = 10024
     # max cache size for which endorsements a foreign node knows about
@@ -139,7 +139,7 @@
     # max number of endorsements per message
     max_endorsements_per_message = 1024
     # max milliseconds to wait while sending an event before dropping it
-    max_send_wait = 500
+    max_send_wait = 0
     # we forget we banned a node after ban_timeout milliseconds
     ban_timeout = 3600000
     # Timeout duration when in handshake we respond with a PeerList
