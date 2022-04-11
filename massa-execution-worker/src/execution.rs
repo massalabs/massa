@@ -671,23 +671,23 @@ impl ExecutionState {
 
         // check if there is a block at this slot
         if let Some(block_id) = opt_block_id {
-            if let Some(block) = self.storage.retrieve_block(&block_id) {
-                let stored_block = block.read();
-                // Try executing the operations of this block in the order in which they appear in the block.
-                // Errors are logged but do not interrupt the execution of the slot.
-                for (op_idx, operation) in stored_block.block.operations.iter().enumerate() {
-                    if let Err(err) = self.execute_operation(
-                        operation,
-                        Address::from_public_key(&stored_block.block.header.content.creator),
-                    ) {
-                        debug!(
-                            "failed executing operation index {} in block {}: {}",
-                            op_idx, block_id, err
-                        );
-                    }
+            let block = self
+                .storage
+                .retrieve_block(&block_id)
+                .expect("Missing block in storage.");
+            let stored_block = block.read();
+            // Try executing the operations of this block in the order in which they appear in the block.
+            // Errors are logged but do not interrupt the execution of the slot.
+            for (op_idx, operation) in stored_block.block.operations.iter().enumerate() {
+                if let Err(err) = self.execute_operation(
+                    operation,
+                    Address::from_public_key(&stored_block.block.header.content.creator),
+                ) {
+                    debug!(
+                        "failed executing operation index {} in block {}: {}",
+                        op_idx, block_id, err
+                    );
                 }
-            } else {
-                debug!("missing block in storage when executing slot");
             }
         }
 
