@@ -169,6 +169,7 @@ As a consequence of the logs level 3, you should now get not only `INFO` message
 4) Run the client :
 
 ..code-block:: shell
+
   cd massa/massa-client
   cargo run --release
   
@@ -176,79 +177,83 @@ when the client is launched you will see :
 
 ..code-block:: shell
 
-███    ███  █████  ███████ ███████  █████ 
-████  ████ ██   ██ ██      ██      ██   ██
-██ ████ ██ ███████ ███████ ███████ ███████
-██  ██  ██ ██   ██      ██      ██ ██   ██
-██      ██ ██   ██ ███████ ███████ ██   ██
 
-Use 'exit' to quit the prompt
-Use the Up/Down arrows to scroll through history
-Use the Right arrow or Tab to complete your command
-Use the Enter key to execute your command
-HELP of Massa client (list of available commands):
-- exit no args: exit the client gracefully
-- help no args: display this help
-- unban [IpAddr]: unban given IP addresses
-- ban [IpAddr]: ban given IP addresses
-- node_stop no args: stops the node
-- node_get_staking_addresses no args: show staking addresses
-- node_remove_staking_addresses Address1 Address2 ...: remove staking addresses
-- node_add_staking_private_keys PrivateKey1 PrivateKey2 ...: add staking private keys
-- node_testnet_rewards_program_ownership_proof Address discord_id: generate the testnet rewards program node/staker ownership proof
-- node_whitelist [IpAddr]: whitelist given IP addresses
-- node_remove_from_whitelist [IpAddr]: remove from whitelist given IP addresses
-- get_status no args: show the status of the node (reachable? number of peers connected, consensus, version, config parameter summary...)
-- get_addresses Address1 Address2 ...: get info about a list of addresses (balances, block creation, ...)
-- get_block BlockId: show info about a block (content, finality ...)
-- get_endorsements EndorsementId1 EndorsementId2 ...: show info about a list of endorsements (content, finality ...)
-- get_operations OperationId1 OperationId2 ...: show info about a list of operations(content, finality ...) 
-- wallet_info no args: show wallet info (private keys, public keys, addresses, balances ...)
-- wallet_generate_private_key no args: generate a private key and add it into the wallet
-- wallet_add_private_keys PrivateKey1 PrivateKey2 ...: add a list of private keys to the wallet
-- wallet_remove_addresses Address1 Address2 ...: remove a list of addresses from the wallet
-- wallet_sign Address string: sign provided string with given address (address must be in the wallet)
-- buy_rolls Address RollCount Fee: buy rolls with wallet address
-- sell_rolls Address RollCount Fee: sell rolls with wallet address
-- send_transaction SenderAddress ReceiverAddress Amount Fee: send coins from a wallet address
-- send_smart_contract SenderAddress PathToBytecode MaxGas GasPrice Coins Fee: create and send an operation containing byte code
-- read_only_smart_contract PathToBytecode MaxGas GasPrice Address: execute byte code, address is optional. Nothing is really executed on chain
-- read_only_call TargetAddress TargetFunction Parameter MaxGas GasPrice SenderAddress: call a smart contract function, sender address is optional. Nothing is really executed on chain
-- when_episode_ends no args: show time remaining to end of current episode
-- when_moon no args: tells you when moon
-? command ›
+    ███    ███  █████  ███████ ███████  █████ 
+    ████  ████ ██   ██ ██      ██      ██   ██
+    ██ ████ ██ ███████ ███████ ███████ ███████
+    ██  ██  ██ ██   ██      ██      ██ ██   ██
+    ██      ██ ██   ██ ███████ ███████ ██   ██
+
+    Use 'exit' to quit the prompt
+    Use the Up/Down arrows to scroll through history
+    Use the Right arrow or Tab to complete your command
+    Use the Enter key to execute your command
+    HELP of Massa client (list of available commands):
+    - exit no args: exit the client gracefully
+    - help no args: display this help
+    - unban [IpAddr]: unban given IP addresses
+    - ban [IpAddr]: ban given IP addresses
+    - node_stop no args: stops the node
+    - node_get_staking_addresses no args: show staking addresses
+    - node_remove_staking_addresses Address1 Address2 ...: remove staking addresses
+    - node_add_staking_private_keys PrivateKey1 PrivateKey2 ...: add staking private keys
+    - node_testnet_rewards_program_ownership_proof Address discord_id: generate the testnet rewards program node/staker ownership proof
+    - node_whitelist [IpAddr]: whitelist given IP addresses
+    - node_remove_from_whitelist [IpAddr]: remove from whitelist given IP addresses
+    - get_status no args: show the status of the node (reachable? number of peers connected, consensus, version, config parameter summary...)
+    - get_addresses Address1 Address2 ...: get info about a list of addresses (balances, block creation, ...)
+    - get_block BlockId: show info about a block (content, finality ...)
+    - get_endorsements EndorsementId1 EndorsementId2 ...: show info about a list of endorsements (content, finality ...)
+    - get_operations OperationId1 OperationId2 ...: show info about a list of operations(content, finality ...) 
+    - wallet_info no args: show wallet info (private keys, public keys, addresses, balances ...)
+    - wallet_generate_private_key no args: generate a private key and add it into the wallet
+    - wallet_add_private_keys PrivateKey1 PrivateKey2 ...: add a list of private keys to the wallet
+    - wallet_remove_addresses Address1 Address2 ...: remove a list of addresses from the wallet
+    - wallet_sign Address string: sign provided string with given address (address must be in the wallet)
+    - buy_rolls Address RollCount Fee: buy rolls with wallet address
+    - sell_rolls Address RollCount Fee: sell rolls with wallet address
+    - send_transaction SenderAddress ReceiverAddress Amount Fee: send coins from a wallet address
+    - send_smart_contract SenderAddress PathToBytecode MaxGas GasPrice Coins Fee: create and send an operation containing byte code
+    - read_only_smart_contract PathToBytecode MaxGas GasPrice Address: execute byte code, address is optional. Nothing is really executed on chain
+    - read_only_call TargetAddress TargetFunction Parameter MaxGas GasPrice SenderAddress: call a smart contract function, sender address is optional.  
+    - when_episode_ends no args: show time remaining to end of current episode
+    - when_moon no args: tells you when moon
+    ? command ›
 
 Then, write `wallet_info` in order to check if a wallet is connected to your node.
 
 You should get the following print result :
 
 ..code-block:: shell
-✔ command · wallet_info
-Private key: f9WuMS5Bsugkqa2T7kSVWjWqkciPqMHHZCqXtt2fGHLQSdEp4
-Public key: 8TVsRirM4eThkt5SyRZHVPmgGfkzT2GomDGy5SQAFrqTWewXJi
-Address: hBywzhNzPfvEXVftXxoVTv56AXX5FaFfg2sHwQSUXrTrzMjRk
-Thread: 11
-Final Sequential balance:
-	Balance: 0
 
-Candidate Sequential balance:
-	Balance: 0
+    ✔ command · wallet_info
+    Private key: f9WuMS5Bsugkqa2T7kSVWjWqkciPqMHHZCqXtt2fGHLQSdEp4
+    Public key: 8TVsRirM4eThkt5SyRZHVPmgGfkzT2GomDGy5SQAFrqTWewXJi
+    Address: hBywzhNzPfvEXVftXxoVTv56AXX5FaFfg2sHwQSUXrTrzMjRk
+    Thread: 11
+    Final Sequential balance:
+	    Balance: 0
 
-Parallel balance:
-	Final balance: 0
-	Candidate balance: 0
-	Locked balance: 0
+    Candidate Sequential balance:
+	    Balance: 0
 
-Rolls:
-	Active rolls: 0
-	Final rolls: 0
-	Candidate rolls: 0
+    Parallel balance:
+	    Final balance: 0
+	    Candidate balance: 0
+	    Locked balance: 0
+
+    Rolls:
+	    Active rolls: 0
+	    Final rolls: 0
+	    Candidate rolls: 0
 
 
 If you get :
 
-✔ command · wallet_info
-WARNING: do not share your private key
+..code-block:: shell
+
+    ✔ command · wallet_info
+    WARNING: do not share your private key
 
 It is because your wallet is not connected. You have to follow this tutorial: https://github.com/massalabs/massa/wiki/wallet#if-your-client-is-running (since the step "if your client is running"). Next, you must have coins to send smart contract on the blockchain. You can get coins following this tutorial : https://github.com/massalabs/massa/wiki/staking
 
