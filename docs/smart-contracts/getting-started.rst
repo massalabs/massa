@@ -12,6 +12,7 @@ Setting up a new project
    .. code-block:: shell
 
        npm init
+       npm install --global yarn npx
        npm install --save-dev @as-pect/cli
        npx asinit .
        npx asp --init
@@ -33,6 +34,8 @@ Create or go to the directory where you want to set up your project and run:
 .. code-block:: shell
 
    npm init
+   npm install --global yarn npx
+
 
 Don't bother with the different question, you can change all that by editing the `package.json` file.
 
@@ -99,7 +102,7 @@ Now that everything is in place, we can start the compilation step by running th
 
 .. code-block:: shell
 
-   asc assembly/helloworld.ts --target release --exportRuntime --binaryFile build/helloworld.wasm
+   yarn run asc assembly/helloworld.ts --target release --exportRuntime --binaryFile build/helloworld.wasm
 
 Congratulations! You have generated your first smart contract: the `helloworld.wasm` file in `build` directory.
 
