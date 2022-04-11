@@ -149,6 +149,7 @@ If your node is not installed yet follow the steps : https://github.com/massalab
 As a consequence of the logs level 3, you should now get not only `INFO` messages as previously from the node but also the `DEBUG` messages like :
 
 .. code-block:: shell
+
    2022-04-11T21:49:34.612046Z  INFO massa_node: Node version : LABN.0.0
    2022-04-11T21:49:34.612335Z  INFO massa_bootstrap: Start bootstrapping from 51.75.131.129:31245
    2022-04-11T21:49:34.950386Z  INFO massa_bootstrap: Successful bootstrap
