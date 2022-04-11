@@ -272,7 +272,9 @@ impl EventStore {
             .filter_map(|id| self.id_to_event.get(id))
             .cloned()
             .collect();
-        events.sort_unstable_by_key(|event| Reverse((event.context.slot, event.context.index_in_slot)));
+        events.sort_unstable_by_key(|event| {
+            Reverse((event.context.slot, event.context.index_in_slot))
+        });
         events
     }
 }
