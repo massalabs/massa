@@ -81,7 +81,9 @@ Technical documentation
    smart-contracts/introduction.rst
    smart-contracts/getting-started.rst
    smart-contracts/massa-sc-by-example.rst
+   smart-contracts/decentralized-web.rst
    smart-contracts/types.rst
+
 .. toctree::
    :maxdepth: 2
    :caption: Testnet
