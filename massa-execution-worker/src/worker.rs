@@ -22,7 +22,7 @@ use massa_storage::Storage;
 use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::{collections::HashMap, sync::Arc};
-use tracing::info;
+use tracing::{info, warn};
 
 /// Structure gathering all elements needed by the execution thread
 pub(crate) struct ExecutionThread {
@@ -259,11 +259,20 @@ impl ExecutionThread {
                 // apply the cached output and return
                 exec_state.apply_final_execution_output(exec_out);
                 return true;
+            } else {
+                // speculative cache mismatch
+                warn!(
+                    "speculative execution cache mismatch (final slot={}/block={:?}, front speculative slot={}/block={:?}). Resetting the cache.",
+                    slot, exec_target, exec_out.slot, exec_out.block_id
+                );
             }
+        } else {
+            // cache entry absent
+            info!(
+                "speculative execution cache empty, executing final slot={}/block={:?}",
+                slot, exec_target
+            );
         }
-
-        // speculative cache mismatch
-        info!("speculative execution cache mismatch: resetting the cache");
 
         // clear the speculative execution output cache completely
         exec_state.clear_history();

@@ -146,6 +146,17 @@ pub struct PeerInfo {
 }
 
 impl PeerInfo {
+    /// Cleans up the PeerInfo by normalizing the IP address
+    /// and resetting active connection counts.
+    pub fn cleanup(&mut self) {
+        // canonicalize IP
+        self.ip = self.ip.to_canonical();
+        // ensure that connections are set to zero
+        self.active_out_connection_attempts = 0;
+        self.active_out_connections = 0;
+        self.active_in_connections = 0;
+    }
+
     /// Returns true if there is at least one connection attempt /
     /// one active connection in either direction
     /// with this peer

@@ -37,7 +37,11 @@ mod types {
     impl DefaultListener {
         /// Accepts a new incoming connection from this listener.
         pub async fn accept(&mut self) -> io::Result<(ReadHalf, WriteHalf, SocketAddr)> {
-            let (sock, remote_addr) = self.0.accept().await?;
+            // accept
+            let (sock, mut remote_addr) = self.0.accept().await?;
+            // normalize IP
+            remote_addr.set_ip(remote_addr.ip().to_canonical());
+            // split into read half and write half
             let (read_half, write_half) = sock.into_split();
             Ok((read_half, write_half, remote_addr))
         }
