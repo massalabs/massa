@@ -17,7 +17,7 @@ use massa_models::SignedOperation;
 use massa_models::{
     api::{
         AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, EventFilter,
-        IndexedSlot, NodeStatus, OperationInfo, ReadOnlyExecution, TimeInterval,
+        IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
     },
     clique::Clique,
     composite::PubkeySig,
