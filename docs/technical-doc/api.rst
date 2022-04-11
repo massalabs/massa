@@ -407,6 +407,13 @@ pool.
             "RollSell": {
             "roll_count": Number
             }
+            OR
+            "ExecuteSC": {
+            "data": [Number], // vec of bytes to execute
+            "max_gas": Number, // maximum amount of gas that the execution of the contract is allowed to cost.
+            "coins": String, // represent an Amount in coins that are spent by consensus and are available in the execution context of the contract.
+            "gas_price": String, // represent an Amount in coins, price per unit of gas that the caller is willing to pay for the execution.
+            }
         },
         "sender_public_key": String
         },
@@ -419,6 +426,101 @@ pool.
 .. code-block:: javascript
 
     [String], // Operation ids
+
+`execute_read_only_call`
+------------------------
+
+Call a function of a contract in a read only context. The changes on the ledger will not be applied and directly drop after the context of the execution. All the events generated will be returned :
+
+-   Parameters:
+
+.. code-block:: javascript
+
+    [{
+        "max_gas": Number,
+        "simulated_gas_price": Number,
+        "target_address": String,
+        "target_function": String,
+        "parameter": String,
+        "caller_address": String OR null,
+    }]
+
+-   Return:
+
+.. code-block:: javascript
+
+    [{
+        "executed_at": {
+        "period": Number,
+        "thread": Number
+        },
+        "result": String, //"ok" or error message
+        "output_events": [
+        // Each id is a event id. The size of this array is dynamic over the number of events pop in the execution.
+        "id1": {
+            "id": String, //id of the event
+            "context": {
+            "slot": {
+                "period": Number,
+                "thread": Number
+            },
+            "block": null OR String // block id,
+            "read_only": Boolean // wether the event was generated during  read only call
+            "call_stack": [String], //Addresses
+            "index_in_slot": Number,
+            "origin_operation_id": null OR String // operation id
+            }
+            "data": String // String of the event you sended
+        }
+        ]
+    }]
+
+
+`execute_read_only_bytecode`
+----------------------------
+
+Execute a smart contract in a read only context. The changes on the ledger will not be applied and directly drop after the context of the execution. All the events generated will be returned :
+
+-   Parameters:
+
+.. code-block:: javascript
+
+    [{
+        "max_gas": Number,
+        "simulated_gas_price": Number,
+        "bytecode": [Number],
+        "address": String OR null,
+    }]
+
+-   Returns:
+
+.. code-block:: javascript
+
+    [{
+        "executed_at": {
+        "period": Number,
+        "thread": Number
+        },
+        "result": String, //"ok" or error message
+        "output_events": [
+        // Each id is a event id. The size of this array is dynamic over the number of events pop in the execution.
+        "id1": {
+            "id": String, //id of the event
+            "context": {
+            "slot": {
+                "period": Number,
+                "thread": Number
+            },
+            "block": null OR String // block id,
+            "read_only": Boolean // wether the event was generated during  read only call
+            "call_stack": [String], //Addresses
+            "index_in_slot": Number,
+            "origin_operation_id": null OR String // operation id
+            }
+            "data": String // String of the event you sended
+        }
+        ]
+    }]
 
 `get_sc_output_event_by_slot_range`
 -----------------------------------
@@ -515,6 +617,7 @@ Returns output events by caller address. (not yet implemented)
         }
     }
     ]
+
 
 **Private** API
 ===============
