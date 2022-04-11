@@ -255,7 +255,7 @@ If you get :
     ✔ command · wallet_info
     WARNING: do not share your private key
 
-It is because your wallet is not connected. You have to follow this tutorial: https://github.com/massalabs/massa/wiki/wallet#if-your-client-is-running (since the step "if your client is running"). Next, you must have coins to send smart contract on the blockchain. You can get coins following this tutorial : https://github.com/massalabs/massa/wiki/staking
+It is because your wallet is not connected. You have to follow this tutorial: https://github.com/massalabs/massa/wiki/wallet#if-your-client-is-running (since the step "if your client is running"). Next, you must get coins to send smart contract on the blockchain. You can obtain coins following this tutorial : https://github.com/massalabs/massa/wiki/staking
 
 (the end tomorrow)
 
