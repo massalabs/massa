@@ -7,7 +7,7 @@ use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
 use massa_models::prehash::{Map, PreHashed, Set};
 /// Define types used while executing block bytecodes
 use massa_models::{Address, OperationId, Slot};
-use std::cmp;
+use std::cmp::{self, Reverse};
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use tracing::warn;
@@ -272,7 +272,7 @@ impl EventStore {
             .filter_map(|id| self.id_to_event.get(id))
             .cloned()
             .collect();
-        events.sort_unstable_by_key(|event| (event.context.slot, event.context.index_in_slot));
+        events.sort_unstable_by_key(|event| Reverse((event.context.slot, event.context.index_in_slot)));
         events
     }
 }
