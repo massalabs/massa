@@ -156,7 +156,7 @@ First of all, check if your node setup and wallet are correct.
            If your node is not installed yet follow the steps : https://github.com/massalabs/massa/wiki/install
            
     .. collapse:: About your wallet :
-        (be sure your node is running, if not follow : https://github.com/massalabs/massa/wiki/run)
+        (Be sure your node is running, if not follow : https://github.com/massalabs/massa/wiki/run)
         To create a wallet follow this tutorial : https://github.com/massalabs/massa/wiki/wallet
         You will need coins to deploy the smart contrat, send your `address` to the faucet bot in the "testnet-faucet" channel of our Discord (https://discord.com/invite/massa).
         
@@ -179,9 +179,17 @@ When all the setup steps about your node and wallet are done, just start your no
     
     ..code-block::
         ✔ command · get_status
+        Node's ID: 8ANdewCK2t7xZBztR2VFeMYW4AFDqTH21KeEUExKtgosJq3xdB
+        No routable IP set
+        [...]
+        All information about the node
+        
+    If you get :
+    ..code-block::
+        ✔ command · get_status
         Error: check if your node is running: error trying to connect: tcp connect error: Connection refused (os error 111)
      
-    If you have the error message, just restart your node. If it still doesn't work you can find help on https://discord.com/invite/massa, in #testnet channel
+    Just start or restart your node. If it still doesn't work you can find help on https://discord.com/invite/massa, in #testnet channel
     
 Next, you have to copy manually and paste your `helloword.wasm` from the previous `build` directory, to the `massa-client` directory (`massa/massa-client`)
     
