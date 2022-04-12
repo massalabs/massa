@@ -177,7 +177,7 @@ When all the setup steps about your node and wallet are done, just start your no
 
     To check if your node is running properly or not, write `get_status` command into the client, you will get : 
     
-    ..code-block::
+    ..code-block:: shell
         ✔ command · get_status
         Node's ID: 8ANdewCK2t7xZBztR2VFeMYW4AFDqTH21KeEUExKtgosJq3xdB
         No routable IP set
@@ -185,7 +185,8 @@ When all the setup steps about your node and wallet are done, just start your no
         All information about the node
         
     If you get :
-    ..code-block::
+    
+    ..code-block:: shell
         ✔ command · get_status
         Error: check if your node is running: error trying to connect: tcp connect error: Connection refused (os error 111)
      
