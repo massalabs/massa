@@ -189,15 +189,13 @@ impl ProtocolWorker {
             )
             .await?;
         }
-        // reset timer
-        if let Some(item) = self.op_batch_buffer.front() {
-            operation_batch_proc_period_timer.set(sleep_until(item.instant));
-        } else {
-            let next_tick = now
-                .checked_add(self.protocol_settings.operation_batch_proc_period.into())
-                .ok_or(TimeError::TimeOverflowError)?;
-            operation_batch_proc_period_timer.set(sleep_until(next_tick));
-        }
+        
+        // Reset timer to the next tick.
+        let next_tick = now
+            .checked_add(self.protocol_settings.operation_batch_proc_period.into())
+            .ok_or(TimeError::TimeOverflowError)?;
+        operation_batch_proc_period_timer.set(sleep_until(next_tick));
+        
         Ok(())
     }
 
