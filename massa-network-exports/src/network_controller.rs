@@ -218,13 +218,12 @@ impl NetworkCommandSender {
         to_node: NodeId,
         wishlist: OperationIds,
     ) -> Result<(), NetworkError> {
-        self.0
-            .send(NetworkCommand::AskForOperations { to_node, wishlist })
-            .await
-            .map_err(|_| {
-                NetworkError::ChannelError("could not send AskForOperations command".into())
-            })?;
-        Ok(())
+        match self.0.try_reserve() {
+            Ok(permit) => Ok(permit.send(NetworkCommand::AskForOperations { to_node, wishlist })),
+            Err(_) => Err(NetworkError::ChannelError(
+                "Failed to acquire permit to send AskForOperations command".into(),
+            )),
+        }
     }
 
     /// send endorsements to node id
