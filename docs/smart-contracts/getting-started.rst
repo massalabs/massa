@@ -149,7 +149,9 @@ First of all, check if your node setup and wallet are correct.
             
         As a consequence of the logs level 3, you should now get from the node not only `INFO` messages as previously but also the `DEBUG` messages like:
     
-        capture.jpg
+        .. image:: deploy_sc_result_logs.png
+            :width: 250
+            :align: center
 
         .. note::
 
@@ -223,4 +225,6 @@ Your `helloworld.wasm` file will be executed by the EVM on the Massa blockchain,
 
     DEBUG massa_execution_worker::interface_impl: SC print: Hello world!
 
-capture2
+.. image:: deploy_sc_printsc.png
+            :width: 250
+            :align: center
