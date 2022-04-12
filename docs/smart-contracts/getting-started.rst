@@ -13,7 +13,7 @@ Setting up a new project
 
        npm init
        npm install --global yarn npx
-       npm install --save-dev @as-pect/cli
+       npm install --save-dev @as-pect/cli massa-sc-std
        npx asinit .
        npx asp --init
 
@@ -27,6 +27,7 @@ Setting up a new project
        docker run --user $(id -u):$(id -g) -v $PWD:/app -v $PWD/.npm:/.npm -v $PWD/.config:/.config -w /app node:17.7-alpine npm install --save-dev @as-pect/cli
        docker run -it --user $(id -u):$(id -g) -v $PWD:/app -v $PWD/.npm:/.npm -v $PWD/.config:/.config -w /app node:17.7-alpinenpx asinit .
        docker run --user $(id -u):$(id -g) -v $PWD:/app -v $PWD/.npm:/.npm -v $PWD/.config:/.config -w /app node:17.7-alpine npx asp --init
+
 
 Make sure you have a recent version of Node.js and npm. Update or `install <https://docs.npmjs.com/downloading-and-installing-node-js-and-npm>`_ them if needed.
 Create or go to the directory where you want to set up your project and run:
