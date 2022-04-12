@@ -196,7 +196,9 @@ In that case, return to the node tab and have a look at the log, you should see 
    <date and time> DEBUG massa_execution_worker::interface_impl: SC print: Hello world!
 
 
-Congratulations! You have just executed your first smart contract on a node !! Don't forget to change node's log level to INFO (value is 2).
+Congratulations! You have just executed your first smart contract on a node !!
+
+Don't forget to change node's log level to INFO (value is 2).
 
 Store a smart contract in the blockchain
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
