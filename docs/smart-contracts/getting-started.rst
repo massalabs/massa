@@ -116,115 +116,89 @@ Congratulations! You have generated your first smart contract: the `helloworld.w
 
    If you find nothing, feel free to contact us at `TODO <//TODO>`_ or directly open an issue `here <//TODO>`_.
 
-Add your smart contract to the blockchain
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Execute your smart contract on a node
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In this section you will learn how to deploy your first Massa smart contract.
+To execute the smart contract you will need:
 
-First of all, check if your node setup and wallet are correct.
+- A running node with a log level set to DEBUG.
+- A client configured with an address having coins.
+- A smart contract compiled in WebAssembly (see previous step).
 
-    .. collapse:: About your node :
-    
-        Modify the logs of your node to the level 3 in order to see the messages from the massa SC runtime :
+Let's go!
 
-        Open a terminal and be sure you are in the massa directory (with `cd massa` command) and edit the file the `nano` command (as following)
+Running a node in debug mode
+""""""""""""""""""""""""""""
 
-        .. code-block:: shell
-            nano massa-node/base_config/config.toml
+Make sure that you have the last version of the Massa node. If not, `install it <https://github.com/massalabs/massa/wiki/install>`_.
 
-        You can now edit the `config.toml` file and you have to replace level = 2 by level = 3 like : 
+Once the node is installed and before running it, set your log level to DEBUG:
 
-        .. code-block:: shell
-
-            [logging]
-                level = 3
-
-        Then press Ctrl + X to save, and press "Y" then `enter` to validate.
-        
-        Run your node to check the modification :
-        
-        ..code-block:: shell
-            cd massa/massa-node
-            RUST_BACKTRACE=full cargo run --release |& tee logs.txt
-            
-        As a consequence of the logs level 3, you should now get from the node not only `INFO` messages as previously but also the `DEBUG` messages like:
-    
-        .. image:: deploy_sc_result_logs.png
-            :width: 250
-            :align: center
-
-        .. note::
-
-           If your node is not installed yet follow the steps : https://github.com/massalabs/massa/wiki/install
-           
-    .. collapse:: About your wallet :
-        (Be sure your node is running, if not follow : https://github.com/massalabs/massa/wiki/run)
-        To create a wallet follow this tutorial : https://github.com/massalabs/massa/wiki/wallet
-        You will need coins to deploy the smart contrat, send your `address` to the faucet bot in the "testnet-faucet" channel of our Discord (https://discord.com/invite/massa).
-        
-        ..note::
-            If you don't know where to find your `address`, run the client :
-            ..code-block:: shell
-                cd massa/massa-client
-                cargo run --release
-            and use the command `wallet_info` into the client.
-       
-When all the setup steps about your node and wallet are done, just start your node : (if your node is already running because of the setup steps, don't start a new one) :
-    
-..code-block:: shell
-    cd massa/massa-node
-    RUST_BACKTRACE=full cargo run --release |& tee logs.txt
-    
-.. Note::
-
-    To check if your node is running properly or not, write `get_status` command into the client, you will get : 
-    
-    ..code-block:: shell
-        ✔ command · get_status
-        Node's ID: 8ANdewCK2t7xZBztR2VFeMYW4AFDqTH21KeEUExKtgosJq3xdB
-        No routable IP set
-        [...]
-        All information about the node
-        
-    If you get :
-    
-    ..code-block:: shell
-        ✔ command · get_status
-        Error: check if your node is running: error trying to connect: tcp connect error: Connection refused (os error 111)
-     
-    Just start or restart your node. If it still doesn't work you can find help on https://discord.com/invite/massa, in #testnet channel
-    
-Next, you have to copy manually and paste your `helloword.wasm` from the previous `build` directory, to the `massa-client` directory (`massa/massa-client`)
-    
-When your node is running, open a second terminal and run the client :
-
-..code-block:: shell
-    cd massa/massa-client
-    cargo run --release
-    
-
-Into the client, use the command send_smart_contract :
-
-..code-blocki:: shell
-    send_smart_contract your_address your_file.wasm 1000000 0 0 0
-
-Command : send_smart_contract 
-Parameters : SenderAddress PathToBytecode MaxGas GasPrice Coins Fee
+- open `massa-node/base_config/config.toml` file with your preferred editor;
+- set the log level to `3`.
 
 .. note::
 
-    You should get the following message printed into the client : 
-    
-    ..code-block:: shell
-        ✔ command · send_smart_contract your_address your_file.wasm 1000000 0 0 0
-        Sent operation IDs: operation_id
-        
-Your `helloworld.wasm` file will be executed by the EVM on the Massa blockchain, and you can find the print into the `DEBUG` messages of your node switching to your node window and Ctrl+F to find : `SC Print`
+   Your file should look like the following:
 
-..code-block:: shell
+    .. code-block:: toml
 
-    DEBUG massa_execution_worker::interface_impl: SC print: Hello world!
+        [logging]
+        # Logging level. High log levels might impact performance. 0: ERROR, 1: WARN, 2: INFO, 3: DEBUG, 4: TRACE
+        level = 3
 
-.. image:: deploy_sc_printsc.png
-            :width: 250
-            :align: center
+.. warning::
+   A node configured with a verbose log level will write a lot of logs. You should restore default value as soon as this tutorial is finished.
+
+
+Now that the node is properly configured to log `print` function output you have to `run the node <https://github.com/massalabs/massa/wiki/run>`_.
+
+Configure the client
+""""""""""""""""""""
+
+If you don't have any wallet configured yet, `create a new one <https://github.com/massalabs/massa/wiki/wallet>`_.
+
+If you're using a brand new wallet, add some coins by sending your address to `testnet-faucet discord channel <https://discord.com/channels/828270821042159636/866190913030193172>`_.
+
+If you are using an existing wallet, make sure that you have at least 1 coin on it.
+
+In any case, keep the `address` of your wallet, you will use it later.
+
+Execute the smart contract on the node
+""""""""""""""""""""""""""""""""""""""
+
+Everything is in place, we can now execute the `hello world` smart contract on your local node with the following command inside the **client cli**:
+
+.. code-block:: shell
+
+   send_smart_contract <address> <path to wasm file> 0 0 0 0
+
+.. note::
+
+   We are executing the send_smart_contract command with 6 parameters:
+
+   - <address>: the address of your wallet kept during previous step;
+   - <path to wasm file>: the full path (from the root directory to the file extension .wasm) of the hello smart contract generated in the previous chapter.
+   - Four 0 parameters that can be safely ignored by now. If you want more info on them, use the command `help send_smart_contract`.
+
+
+If everything went fine, the following prompted message should be prompted:
+
+.. code-block:: shell
+
+   Sent operation IDs:
+   <id with numbers and letters>
+
+In that case, return to the node tab and have a look at the log, you should see a message like the following:
+
+.. code-block:: shell
+
+   <date and time> DEBUG massa_execution_worker::interface_impl: SC print: Hello world!
+
+
+Congratulations! You have just executed your first smart contract on a node !! Don't forget to change node's log level to INFO (value is 2).
+
+Store a smart contract in the blockchain
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+TODO
