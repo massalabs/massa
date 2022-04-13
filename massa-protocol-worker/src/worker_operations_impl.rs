@@ -13,8 +13,8 @@ use std::collections::VecDeque;
 use crate::protocol_worker::ProtocolWorker;
 use massa_models::{
     node::NodeId,
-    operation::{OperationIds, Operations},
-    prehash::BuildMap,
+    operation::{OperationId, OperationIds, Operations, SignedOperation},
+    prehash::{BuildMap, Map},
     signed::Signable,
 };
 use massa_network_exports::NetworkError;
@@ -134,23 +134,28 @@ impl ProtocolWorker {
     ///   `node_info.known_operations`
     /// - Notify the operations to he local node, to be propagated
     pub(crate) async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {
-        let operation_ids: OperationIds = operations
-            .iter()
-            .filter_map(|signed_op| match signed_op.content.compute_id() {
-                Ok(op_id) => Some(op_id),
-                _ => None,
-            })
-            .collect();
         if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
+            let operation_ids: OperationIds = operations
+                .iter()
+                .filter_map(|signed_op| match signed_op.content.compute_id() {
+                    Ok(op_id) => Some(op_id),
+                    _ => None,
+                })
+                .collect();
             node_info.known_operations.extend(operation_ids.iter());
-        }
-        if self
-            .note_operations_from_node(operations, &node_id, true)
-            .await
-            .is_err()
-        {
-            warn!("node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node", node_id,);
-            let _ = self.ban_node(&node_id).await;
+            node_info.wanted_operations = node_info
+                .wanted_operations
+                .difference(&node_info.known_operations)
+                .copied()
+                .collect();
+            if self
+                .note_operations_from_node(operations, &node_id, true)
+                .await
+                .is_err()
+            {
+                warn!("node {} sent us critically incorrect operation, which may be an attack attempt by the remote node or a loss of sync between us and the remote node", node_id,);
+                let _ = self.ban_node(&node_id).await;
+            }
         }
     }
 
@@ -213,19 +218,40 @@ impl ProtocolWorker {
         node_id: NodeId,
         op_ids: OperationIds,
     ) -> Result<(), ProtocolError> {
+        if self
+            .pending_operations_from_pool
+            .len()
+            .checked_add(op_ids.len())
+            .ok_or_else(|| {
+                ProtocolError::GeneralProtocolError(
+                    "Overflow on checking max_pending_operations_from_pool.".into(),
+                )
+            })?
+            == self.protocol_settings.max_pending_operations_from_pool
+        {
+            // Ignore request when we've already got the maximum of them pending.
+            return Ok(());
+        }
+
+        // Only process request for operations if node is active.
         if let Some(node_info) = self.active_nodes.get_mut(&node_id) {
-            for op_ids in op_ids.iter() {
-                node_info.known_operations.remove(op_ids);
+            let mut operation_ids = OperationIds::default();
+            for op_id in op_ids.into_iter() {
+                node_info.known_operations.remove(&op_id);
+
+                // Only ask for operations we have seen.
+                if self.checked_operations.get(&op_id).is_some() {
+                    node_info.wanted_operations.insert(op_id);
+                    operation_ids.insert(op_id);
+                }
+            }
+            if !operation_ids.is_empty() {
+                self.pending_operations_from_pool
+                    .extend(operation_ids.iter());
+                self.send_protocol_pool_event(ProtocolPoolEvent::GetOperations(operation_ids))
+                    .await;
             }
         }
-        let mut operation_ids = OperationIds::default();
-        for op_id in op_ids.iter() {
-            if self.checked_operations.get(op_id).is_some() {
-                operation_ids.insert(*op_id);
-            }
-        }
-        self.send_protocol_pool_event(ProtocolPoolEvent::GetOperations((node_id, operation_ids)))
-            .await;
         Ok(())
     }
 
@@ -233,11 +259,35 @@ impl ProtocolWorker {
     /// Function called on
     pub(crate) async fn on_operation_results_from_pool(
         &mut self,
-        node_id: NodeId,
-        operations: Operations,
+        results: Map<OperationId, Option<SignedOperation>>,
     ) -> Result<(), NetworkError> {
-        self.network_command_sender
-            .send_operations(node_id, operations)
-            .await
+        let set_of_keys = results.keys().copied().collect();
+        // Update pending from pool with results.
+        self.pending_operations_from_pool = self
+            .pending_operations_from_pool
+            .difference(&set_of_keys)
+            .copied()
+            .collect();
+
+        for (node_id, node_info) in self.active_nodes.iter_mut() {
+            if node_info.wanted_operations.is_disjoint(&set_of_keys) {
+                continue;
+            }
+            let mut to_send = vec![];
+            node_info.wanted_operations.drain_filter(|id| {
+                if let Some(op) = results.get(id).cloned().flatten() {
+                    to_send.push(op);
+                    return true;
+                }
+                false
+            });
+            if !to_send.is_empty() {
+                self.network_command_sender
+                    .send_operations(*node_id, to_send)
+                    .await?;
+            }
+        }
+
+        Ok(())
     }
 }

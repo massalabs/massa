@@ -147,6 +147,8 @@ pub struct ProtocolWorker {
     checked_endorsements: Set<EndorsementId>,
     /// List of processed operations
     pub(crate) checked_operations: OperationIds,
+    /// Operation we asked to pool.
+    pub(crate) pending_operations_from_pool: OperationIds,
     /// List of processed headers
     checked_headers: Map<BlockId, BlockInfo>,
     /// Shared storage.
@@ -216,6 +218,10 @@ impl ProtocolWorker {
             checked_headers: Default::default(),
             storage,
             asked_operations: Default::default(),
+            pending_operations_from_pool: OperationIds::with_capacity_and_hasher(
+                protocol_settings.max_pending_operations_from_pool,
+                BuildMap::default(),
+            ),
             op_batch_buffer: OperationBatchBuffer::with_capacity(
                 protocol_settings.operation_batch_buffer_capacity,
             ),
@@ -562,9 +568,8 @@ impl ProtocolWorker {
                     }
                 }
             }
-            ProtocolCommand::GetOperationsResults((node_id, operations)) => {
-                self.on_operation_results_from_pool(node_id, operations)
-                    .await?;
+            ProtocolCommand::GetOperationsResults(results) => {
+                self.on_operation_results_from_pool(results).await?;
             }
         }
         massa_trace!("protocol.protocol_worker.process_command.end", {});

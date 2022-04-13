@@ -223,10 +223,13 @@ impl PoolWorker {
                 operation_ids,
                 response_tx,
             } => {
-                if response_tx
-                    .send(self.operation_pool.get_operations(&operation_ids))
-                    .is_err()
-                {
+                let results = self
+                    .operation_pool
+                    .get_operations(operation_ids)
+                    .into_iter()
+                    .filter_map(|(id, found_op)| found_op.map(|op| (id, op)))
+                    .collect();
+                if response_tx.send(results).is_err() {
                     warn!("pool: could not send get_operations response");
                 }
             }
@@ -352,10 +355,10 @@ impl PoolWorker {
                     self.endorsement_pool.add_endorsements(endorsements)?;
                 }
             }
-            ProtocolPoolEvent::GetOperations((node_id, operation_ids)) => {
-                let operations = self.operation_pool.get_operations(&operation_ids);
+            ProtocolPoolEvent::GetOperations(operation_ids) => {
+                let results = self.operation_pool.get_operations(operation_ids);
                 self.protocol_command_sender
-                    .send_get_operations_results(node_id, operations.into_values().collect())
+                    .send_get_operations_results(results)
                     .await?;
             }
         }

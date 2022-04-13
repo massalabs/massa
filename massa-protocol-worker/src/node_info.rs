@@ -28,6 +28,8 @@ pub(crate) struct NodeInfo {
     pub asked_blocks: Map<BlockId, Instant>,
     /// Instant when the node was added
     pub connection_instant: Instant,
+    /// The operations the node asked for.
+    pub wanted_operations: OperationIds,
     /// all known operations
     pub known_operations: OperationIds,
     /// Same as `known_operations` but sorted for a premature optimization :-)
@@ -52,6 +54,10 @@ impl NodeInfo {
             ),
             asked_blocks: Default::default(),
             connection_instant: Instant::now(),
+            wanted_operations: Set::<OperationId>::with_capacity_and_hasher(
+                pool_settings.max_pending_operations_from_pool,
+                BuildMap::default(),
+            ),
             known_operations: Set::<OperationId>::with_capacity_and_hasher(
                 pool_settings.max_known_ops_size.saturating_add(1),
                 BuildMap::default(),
