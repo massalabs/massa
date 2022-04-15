@@ -57,13 +57,13 @@ impl NodeWorker {
     /// Creates a new node worker
     ///
     /// # Arguments
-    /// * cfg: Network configuration.
-    /// * serialization_context: SerializationContext instance
-    /// * node_id: Node id associated to that worker.
-    /// * socket_reader: Reader for incoming data.
-    /// * socket_writer: Writer for sending data.
-    /// * node_command_rx: Channel to receive node commands.
-    /// * node_event_tx: Channel to send node events.
+    /// * `cfg`: Network configuration.
+    /// * `node_id`: Node id associated to that worker.
+    /// * `socket_reader`: Reader for incoming data.
+    /// * `socket_writer`: Writer for sending data.
+    /// * `node_command_rx`: Channel to receive node commands.
+    /// * `node_event_tx`: Channel to send node events.
+    /// * `storage`: Shared storage.
     pub fn new(
         cfg: NetworkSettings,
         node_id: NodeId,

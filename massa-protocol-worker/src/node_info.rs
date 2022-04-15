@@ -148,7 +148,7 @@ impl NodeInfo {
     }
 
     /// Remove the oldest items from wanted_blocks
-    /// to ensure it contains at most max_node_wanted_blocks_size items.
+    /// to ensure it contains at most `max_node_wanted_blocks_size` items.
     /// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.
     fn remove_excess_wanted_blocks(&mut self, max_node_wanted_blocks_size: usize) {
         while self.wanted_blocks.len() > max_node_wanted_blocks_size {

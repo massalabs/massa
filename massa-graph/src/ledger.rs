@@ -26,7 +26,7 @@ pub struct Ledger {
     ledger_per_thread: Vec<Tree>,
     /// containing (thread_number: u8, latest_final_period: u64)
     latest_final_periods: Tree,
-    /// consensus related config
+    /// consensus related configuration
     cfg: LedgerConfig,
 }
 
@@ -47,9 +47,9 @@ pub trait OperationLedgerInterface {
     /// * block creator
     /// * included endorsement producers
     /// * creator of the endorsed block
-    /// * thread count (fixed by the config)
-    /// * roll price (fixed by the config)
-    /// * max expected number of endorsements (fixed by the config)
+    /// * thread count (fixed by the configuration)
+    /// * roll price (fixed by the configuration)
+    /// * max expected number of endorsements (fixed by the configuration)
     fn get_ledger_changes(
         &self,
         creator: Address,
@@ -291,7 +291,7 @@ impl Ledger {
     ///
     /// * If the balance of an address falls exactly to 0, it is removed from the ledger.
     /// * If the balance of a non-existing address increases, the address is added to the ledger.
-    /// * If we attempt to subtract more than the balance of an address, the transaction is cancelled and the function returns an error.
+    /// * If we attempt to subtract more than the balance of an address, the transaction is canceled and the function returns an error.
     pub fn apply_final_changes(
         &self,
         thread: u8,
@@ -513,7 +513,7 @@ impl LedgerSubset {
     }
 
     /// merge another ledger subset into self, overwriting existing data
-    /// addrs that are in not other are removed from self
+    /// address that are in not other are removed from self
     pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: LedgerSubset) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {

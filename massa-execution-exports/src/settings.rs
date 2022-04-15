@@ -11,7 +11,7 @@ pub struct ExecutionConfig {
     pub readonly_queue_length: usize,
     /// maximum number of SC output events kept in cache
     pub max_final_events: usize,
-    /// maximum available gas for async messages execution
+    /// maximum available gas for asynchronous messages execution
     pub max_async_gas: u64,
     /// number of threads
     pub thread_count: u8,

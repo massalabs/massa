@@ -34,7 +34,7 @@ use massa_time::MassaTime;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
-    /// generate a new public api
+    /// generate a new public API
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         execution_controller: Box<dyn ExecutionController>,

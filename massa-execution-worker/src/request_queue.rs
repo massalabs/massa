@@ -60,7 +60,7 @@ impl<T, R> RequestQueue<T, R> {
     /// Create a new request queue
     ///
     /// # Arguments
-    /// * max_items: the maximal number of items in the queue. When full, extra new elements are cancelled and dropped.
+    /// * `max_items`: the maximal number of items in the queue. When full, extra new elements are cancelled and dropped.
     pub fn new(max_items: usize) -> Self {
         RequestQueue {
             max_items,

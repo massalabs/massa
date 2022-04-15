@@ -428,8 +428,8 @@ impl BlockGraph {
     /// Creates a new block_graph.
     ///
     /// # Argument
-    /// * cfg : consensus configuration.
-    /// * serialization_context: SerializationContext instance
+    /// * `cfg` : consensus configuration.
+    /// * serialization_context: `SerializationContext` instance
     pub async fn new(
         cfg: GraphConfig,
         init: Option<BootstrapableGraph>,
@@ -665,10 +665,10 @@ impl BlockGraph {
     /// loads missing block state rolls if available
     ///
     /// # Arguments
-    /// * accu: accumulated block changes
-    /// * header: block header
-    /// * pos: proof of state engine
-    /// * involved_addrs: involved addresses
+    /// * `accu`: accumulated block changes
+    /// * `header`: block header
+    /// * `pos`: proof of state engine
+    /// * `involved_addrs`: involved addresses
     pub fn block_state_sync_rolls(
         &self,
         accu: &mut BlockStateAccumulator,
@@ -1031,9 +1031,9 @@ impl BlockGraph {
             .collect()
     }
 
-    /// for algo see pos.md
-    /// if addrs_opt is Some(addrs), restrict to addrs. If None, return all addresses.
-    /// returns (roll_counts, cycle_roll_updates)
+    /// for algorithm see `pos.md`
+    /// if `addrs_opt` is `Some(addrs)`, restrict to address. If None, return all addresses.
+    /// returns (`roll_counts`, `cycle_roll_updates`)
     pub fn get_roll_data_at_parent(
         &self,
         block_id: BlockId,
@@ -1212,7 +1212,7 @@ impl BlockGraph {
     /// Gets whole compiled block corresponding to given hash, if it is active.
     ///
     /// # Argument
-    /// * block_id : block ID
+    /// * `block_id`: block ID
     pub fn get_active_block(&self, block_id: &BlockId) -> Option<&ActiveBlock> {
         BlockGraph::get_full_active_block(&self.block_statuses, *block_id)
     }
@@ -1863,10 +1863,10 @@ impl BlockGraph {
         }
     }
 
-    /// Gets whole ActiveBlock corresponding to given block_id
+    /// Gets whole `ActiveBlock` corresponding to given `block_id`
     ///
     /// # Argument
-    /// * block_id : block ID
+    /// * `block_id`: block ID
     fn get_full_active_block(
         block_statuses: &Map<BlockId, BlockStatus>,
         block_id: BlockId,
@@ -1905,7 +1905,7 @@ impl BlockGraph {
     /// - Valid thread.
     /// - Check that the block is older than the latest final one in thread.
     /// - Check that the block slot is not too much into the future,
-    ///   as determined by the config `future_block_processing_max_periods`.
+    ///   as determined by the configuration `future_block_processing_max_periods`.
     /// - Check if it was the creator's turn to create this block.
     /// - TODO: check for double staking.
     /// - Check parents are present.
@@ -2245,7 +2245,7 @@ impl BlockGraph {
 
     /// check endorsements:
     /// * endorser was selected for that (slot, index)
-    /// * endorsed slot is parent_in_own_thread slot
+    /// * endorsed slot is `parent_in_own_thread` slot
     fn check_endorsements(
         &self,
         header: &SignedHeader,
@@ -2374,7 +2374,7 @@ impl BlockGraph {
     /// Check if operations are consistent.
     ///
     /// Returns changes done by that block to the ledger (one hashmap per thread) and rolls
-    /// consensus/pos.md#block-reception-process
+    /// `consensus/pos.md#block-reception-process`
     ///
     /// Checks performed:
     /// - Check that ops were not reused in previous blocks.

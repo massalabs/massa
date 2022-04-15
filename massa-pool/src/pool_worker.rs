@@ -179,7 +179,7 @@ impl PoolWorker {
     /// Manages given pool command.
     ///
     /// # Argument
-    /// * cmd: consensus command to process
+    /// * `cmd`: consensus command to process
     async fn process_pool_command(&mut self, cmd: PoolCommand) -> Result<(), PoolError> {
         match cmd {
             PoolCommand::AddOperations(mut operations) => {

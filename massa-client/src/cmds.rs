@@ -208,7 +208,7 @@ pub(crate) fn help() {
     Command::iter().map(|c| c.help()).collect()
 }
 
-/// bail a shinny rpc error
+/// bail a shinny RPC error
 macro_rules! rpc_error {
     ($e:expr) => {
         bail!("check if your node is running: {}", $e)
@@ -223,7 +223,7 @@ macro_rules! client_warning {
 }
 
 /// Used to have a shinny json output
-/// TODO refactor me
+/// TODO re-factor me
 #[derive(Debug, Serialize)]
 struct ExtendedWalletEntry {
     /// the private key
@@ -307,7 +307,7 @@ impl Command {
     /// run a given command
     ///
     /// # parameters
-    /// - client: the rpc client
+    /// - client: the RPC client
     /// - wallet: an access to the wallet
     /// - parameters: the parsed parameters
     /// - json: true if --json was passed as an option
@@ -885,7 +885,7 @@ async fn send_operation(
 }
 
 /// TODO: ugly utilities functions
-/// takes a slice of string and makes it into a vec<T>
+/// takes a slice of string and makes it into a `Vec<T>`
 pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, T::Err> {
     args.iter().map(|x| x.parse::<T>()).collect()
 }

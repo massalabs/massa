@@ -34,7 +34,7 @@ pub fn assert_eq_ledger_entry(v1: &LedgerEntry, v2: &LedgerEntry) {
     }
 }
 
-/// asserts that two FinalLedgerBootstrapState are equal
+/// asserts that two `FinalLedgerBootstrapState` are equal
 pub fn assert_eq_ledger_bootstrap_state(
     v1: &FinalLedgerBootstrapState,
     v2: &FinalLedgerBootstrapState,

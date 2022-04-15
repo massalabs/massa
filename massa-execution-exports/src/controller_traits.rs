@@ -53,7 +53,7 @@ pub trait ExecutionController: Send + Sync {
     /// Execute read-only bytecode without causing modifications to the consensus state
     ///
     /// # arguments
-    /// * req: an instance of ReadOnlyExecutionRequest describing the parameters of the execution
+    /// * `req`: an instance of `ReadOnlyExecutionRequest` describing the parameters of the execution
     ///
     /// # returns
     /// An instance of ExecutionOutput containing a summary of the effects of the execution,
@@ -64,12 +64,12 @@ pub trait ExecutionController: Send + Sync {
     ) -> Result<ExecutionOutput, ExecutionError>;
 
     /// Returns a boxed clone of self.
-    /// Useful to alow cloning Box<dyn ExecutionController>.
+    /// Useful to allow cloning `Box<dyn ExecutionController>`.
     fn clone_box(&self) -> Box<dyn ExecutionController>;
 }
 
-/// Allow cloning Box<dyn ExecutionController>
-/// Uses ExecutionController::clone_box internally
+/// Allow cloning `Box<dyn ExecutionController>`
+/// Uses `ExecutionController::clone_box` internally
 impl Clone for Box<dyn ExecutionController> {
     fn clone(&self) -> Box<dyn ExecutionController> {
         self.clone_box()

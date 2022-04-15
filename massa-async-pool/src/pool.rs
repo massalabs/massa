@@ -80,14 +80,14 @@ impl AsyncPool {
     /// and get the list of pruned messages for `coins` reimbursement.
     ///
     /// # arguments
-    /// * slot: used to filter out expired messages, not stored
-    /// * new_messages: list of AsyncMessage to add to the pool
+    /// * `slot`: used to filter out expired messages, not stored
+    /// * `new_messages`: list of AsyncMessage to add to the pool
     ///
     /// # returns
     /// The list of (message_id, message) that were eliminated from the pool after the changes were applied, sorted in the following order:
     /// * expired messages from the pool, in priority order (from highest to lowest priority)
     /// * expired messages from new_messages (in the order they appear in new_messages)
-    /// * excess messages after inserting all remaining new_messages, in priority order (from highest to lowest priority)
+    /// * excess messages after inserting all remaining `new_messages`, in priority order (from highest to lowest priority)
     pub fn settle_slot(
         &mut self,
         slot: Slot,
@@ -118,14 +118,14 @@ impl AsyncPool {
 
     /// Takes the best possible batch of messages to execute, with gas limits and slot validity filtering.
     /// The returned messages are removed from the pool.
-    /// This method is used at the beginning of a slot execution to list async messages to execute.
+    /// This method is used at the beginning of a slot execution to list asynchronous messages to execute.
     ///
     /// # arguments
-    /// * slot: select only messages that are valid within this slot
-    /// * available_gas: maximum amount of available gas
+    /// * `slot`: select only messages that are valid within this slot
+    /// * `available_gas`: maximum amount of available gas
     ///
     /// # returns
-    /// A vector of messages, sorted from the most prioritary to the least prioritary
+    /// A vector of messages, sorted from the most priority to the least priority
     pub fn take_batch_to_execute(
         &mut self,
         slot: Slot,
