@@ -3,7 +3,9 @@
 - [ ] code should be formatted using `rustfmt` (:warning: this also applies to code in macro like `tokio::select!` and `lazy_static!`)
 - [ ] reduce the code size in macro arguments and in matching patterns
 - [ ] code should be exempt of `clippy` lints (and function size should not exempt 50 lines)
-- [ ] code should not `panic!` an `Err` variant should be propagated and capture by top-level `async main() -> Result<()>`
+- [ ] code should not `panic!` an `Err` variant should be propagated and captured by top-level `async main() -> Result<()>`
+
+In addition, as a reviewer, if you can make a code suggestion to accelerate the process it'll be greatly appreciated!
 
 # Contributor Covenant Code of Conduct
 
