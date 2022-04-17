@@ -435,15 +435,19 @@ async fn test_interleaving_block_creation_with_reception() {
 ///
 /// context
 ///
+/// ```
 /// initial ledger: A:100
 /// op1 : A -> B : 5, fee 1
 /// op2 : A -> B : 50, fee 10
 /// op3 : B -> A : 10, fee 15
-///
+/// ```
+/// 
 /// ---
 ///
+/// ```
 /// create block at (0,1)
 /// operations should be [op2, op1]
+/// ```
 #[tokio::test]
 #[serial]
 async fn test_order_of_inclusion() {
@@ -594,19 +598,21 @@ async fn test_order_of_inclusion() {
 ///
 /// context
 ///
+/// ````
 /// initial ledger A = 1 000 000
 /// max_block_size = 500
 /// max_operations_per_block = 10 000
 /// op_i = A -> B : 10, 1, signed for the i-th time
-///
+/// ```
+/// 
 /// ---
-///
+/// ```
 /// let block_size = size of dummy block at (1,0) without any operation
 /// let op_size = size of an operation
 /// while consensus is asking for operations send next ops
-/// assert created block size is max_block_size +/- one op_size
-/// assert created_block_size = block_size + op_size * op count
-///
+/// assert created_block_size is max_block_size +/- one op_size
+/// assert created_block_size = block_size +`op_size * op_count
+/// ```
 #[tokio::test]
 #[serial]
 async fn test_block_filling() {

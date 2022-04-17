@@ -34,11 +34,11 @@ pub enum ProtocolError {
     IOError(#[from] std::io::Error),
     /// Serde error : {0}
     SerdeError(#[from] serde_json::Error),
-    /// massa_hash error {0}
+    /// `massa_hash` error {0}
     MassaHashError(#[from] massa_hash::MassaHashError),
     /// the network controller should not drop a node command sender before shutting down the node.
     UnexpectedNodeCommandChannelClosure,
-    /// the writer of a node should not drop its event sender before sending a clean_exit message.
+    /// the writer of a node should not drop its event sender before sending a `clean_exit` message.
     UnexpectedWriterClosure,
     /// Time error {0}
     TimeError(#[from] massa_time::TimeError),

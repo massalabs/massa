@@ -43,7 +43,7 @@ mod types {
         }
     }
 
-    /// Initiates a connection with given timeout in millis
+    /// Initiates a connection with given timeout in milliseconds
     #[derive(Debug)]
     pub struct DefaultConnector(MassaTime);
 
@@ -85,7 +85,7 @@ mod types {
         /// Get the connector with associated timeout
         ///
         /// # Argument
-        /// * timeout_duration: timeout duration in millis
+        /// * timeout_duration: timeout duration in milliseconds
         pub async fn get_connector(
             &mut self,
             timeout_duration: MassaTime,

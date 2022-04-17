@@ -7,7 +7,7 @@ use std::fmt::Display;
 /// Compact representation of key values of consensus algorithm used in API
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct CompactConfig {
-    /// Time in millis when the blockclique started.
+    /// Time in milliseconds when the blockclique started.
     pub genesis_timestamp: MassaTime,
     /// TESTNET: time when the blockclique is ended.
     pub end_timestamp: Option<MassaTime>,

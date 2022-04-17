@@ -1,6 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! This file defines a finite size final pool of async messages for use in the context of autonomous smart contracts
+//! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
 
 use crate::{
     bootstrap::AsyncPoolBootstrap,
@@ -11,20 +11,20 @@ use crate::{
 use massa_models::Slot;
 use std::collections::BTreeMap;
 
-/// Represents a pool of deterministically sorted messages.
-/// The final async pool is attached to the output of the latest final slot within the context of massa-final-state.
+/// Represents a pool of sorted messages in a deterministic way.
+/// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.
 /// Nodes must bootstrap the final message pool when they join the network.
 #[derive(Debug, Clone)]
 pub struct AsyncPool {
-    /// async pool config
+    /// Asynchronous pool configuration
     config: AsyncPoolConfig,
 
-    /// messages sorted by decreasing ID (decreasing priority)
+    /// Messages sorted by decreasing ID (decreasing priority)
     pub(crate) messages: BTreeMap<AsyncMessageId, AsyncMessage>,
 }
 
 impl AsyncPool {
-    /// Creates an empty AsyncPool
+    /// Creates an empty `AsyncPool`
     pub fn new(config: AsyncPoolConfig) -> AsyncPool {
         AsyncPool {
             config,
@@ -32,7 +32,7 @@ impl AsyncPool {
         }
     }
 
-    /// Creates an AsyncPool from a bootstrap snapshot obtained using AsyncPool::get_bootstrap_snapshot
+    /// Creates an `AsyncPool` from a bootstrap snapshot obtained using `AsyncPool::get_bootstrap_snapshot`
     pub fn from_bootstrap_snapshot(
         config: AsyncPoolConfig,
         snapshot: AsyncPoolBootstrap,
@@ -47,18 +47,18 @@ impl AsyncPool {
         }
     }
 
-    /// Returns a snapshot clone of the AsyncPool for bootstrapping other nodes
+    /// Returns a snapshot clone of the `AsyncPool` for bootstrapping other nodes
     pub fn get_bootstrap_snapshot(&self) -> AsyncPoolBootstrap {
         AsyncPoolBootstrap {
             messages: self.messages.values().cloned().collect(),
         }
     }
 
-    /// Applies precompiled AsyncPoolChanges to the pool without checking for overflows.
-    /// This function is used when applying pre-compiled AsyncPoolChanges to an AsyncPool.
+    /// Applies pre-compiled `AsyncPoolChanges` to the pool without checking for overflows.
+    /// This function is used when applying pre-compiled `AsyncPoolChanges` to an AsyncPool.
     ///
     /// # arguments
-    /// * changes: AsyncPoolChanges listing all async pool changes (message insertions/deletions)
+    /// * changes: `AsyncPoolChanges` listing all asynchronous pool changes (message insertions/deletions)
     pub fn apply_changes_unchecked(&mut self, changes: AsyncPoolChanges) {
         for change in changes.0.into_iter() {
             match change {
@@ -81,12 +81,12 @@ impl AsyncPool {
     ///
     /// # arguments
     /// * `slot`: used to filter out expired messages, not stored
-    /// * `new_messages`: list of AsyncMessage to add to the pool
+    /// * `new_messages`: list of `AsyncMessage` to add to the pool
     ///
     /// # returns
-    /// The list of (message_id, message) that were eliminated from the pool after the changes were applied, sorted in the following order:
+    /// The list of `(message_id, message)` that were eliminated from the pool after the changes were applied, sorted in the following order:
     /// * expired messages from the pool, in priority order (from highest to lowest priority)
-    /// * expired messages from new_messages (in the order they appear in new_messages)
+    /// * expired messages from new_messages (in the order they appear in `new_messages`)
     /// * excess messages after inserting all remaining `new_messages`, in priority order (from highest to lowest priority)
     pub fn settle_slot(
         &mut self,

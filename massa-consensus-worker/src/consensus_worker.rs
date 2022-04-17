@@ -40,7 +40,7 @@ pub struct ConsensusWorker {
     genesis_public_key: PublicKey,
     /// Associated channels, sender and receivers
     channels: ConsensusWorkerChannels,
-    /// Database containing all information about blocks, the blockgraph and cliques.
+    /// Database containing all information about blocks, the `BlockGraph` and cliques.
     block_db: BlockGraph,
     /// Proof of stake module.
     pos: ProofOfStake,
@@ -56,15 +56,15 @@ pub struct ConsensusWorker {
     clock_compensation: i64,
     /// staking keys
     staking_keys: Map<Address, (PublicKey, PrivateKey)>,
-    /// stats (block -> tx_count, creator)
+    /// stats `(block -> tx_count, creator)`
     final_block_stats: VecDeque<(MassaTime, u64, Address)>,
     /// No idea what this is used for. My guess is one timestamp per stale block
     stale_block_stats: VecDeque<MassaTime>,
     /// the time span considered for stats
     stats_history_timespan: MassaTime,
-    /// the time span considered for desync detection
+    /// the time span considered for desynchronization detection
     stats_desync_detection_timespan: MassaTime,
-    /// time at which the node was launched (used for desync detection)
+    /// time at which the node was launched (used for desynchronization detection)
     launch_time: MassaTime,
     // endorsed slots cache
     endorsed_slots: HashSet<Slot>,

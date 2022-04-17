@@ -19,9 +19,9 @@ use std::{convert::TryInto, net::IpAddr};
 pub enum Message {
     /// Initiates handshake.
     HandshakeInitiation {
-        /// Our public_key, so the peer can decode our reply.
+        /// Our `public_key`, so the peer can decode our reply.
         public_key: PublicKey,
-        /// Random data we expect the peer to sign with its private_key.
+        /// Random data we expect the peer to sign with its `private_key`.
         /// They should send us their handshake initiation message to
         /// let us know their public key.
         random_bytes: [u8; HANDSHAKE_RANDOMNESS_SIZE_BYTES],
@@ -29,7 +29,7 @@ pub enum Message {
     },
     /// Reply to a handshake initiation message.
     HandshakeReply {
-        /// Signature of the received random bytes with our private_key.
+        /// Signature of the received random bytes with our `private_key`.
         signature: Signature,
     },
     /// Whole block structure.
@@ -40,7 +40,7 @@ pub enum Message {
     AskForBlocks(Vec<BlockId>),
     /// Message asking the peer for its advertisable peers list.
     AskPeerList,
-    /// Reply to a AskPeerList message
+    /// Reply to a `AskPeerList` message
     /// Peers are ordered from most to less reliable.
     /// If the ip of the node that sent that message is routable,
     /// it is the first ip of the list.

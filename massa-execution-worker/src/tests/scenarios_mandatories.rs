@@ -23,7 +23,7 @@ use std::{
 };
 use tempfile::NamedTempFile;
 
-/// Same as `get_random_address()` and return priv_key and pub_key associated
+/// Same as `get_random_address()` and return `priv_key` and `pub_key` associated
 /// to the address.
 pub fn get_random_address_full() -> (Address, PrivateKey, PublicKey) {
     let priv_key = generate_random_private_key();
@@ -121,16 +121,16 @@ fn test_sending_read_only_execution_command() {
 ///
 /// Functional test for async messages sending and handling
 ///
-/// 1. a block is created containing an execute_sc operation
-/// 2. this operation executes the send_message SC
-/// 3. send_message stores the receive_message SC on the block
-/// 4. receive_message contains the message handler function
-/// 5. send_message sends a message to the receive_message address
+/// 1. a block is created containing an `execute_sc` operation
+/// 2. this operation executes the `send_message` of the smart contract
+/// 3. `send_message` stores the `receive_message` of the smart contract on the block
+/// 4. `receive_message` contains the message handler function
+/// 5. `send_message` sends a message to the `receive_message` address
 /// 6. we set the created block as finalized so the message is actually sent
-/// 7. we execute the following slots for 300ms to reach the message execution period
+/// 7. we execute the following slots for 300 milliseconds to reach the message execution period
 /// 8. once the execution period is over we stop the execution controller
-/// 9. we retrieve the events emitted by SCs, filtered by the message execution period
-/// 10. receive_message handler function should have emitted an event
+/// 9. we retrieve the events emitted by smart contract, filtered by the message execution period
+/// 10. `receive_message` handler function should have emitted an event
 /// 11. we check if they are events
 /// 12. if they are some, we verify that the data has the correct value
 ///
@@ -233,7 +233,7 @@ fn generate_events() {
 }
 
 /// Create an operation for the given sender with `data` as bytecode.
-/// Return a result that should be unwraped in the root `#[test]` routine.
+/// Return a result that should be unwrapped in the root `#[test]` routine.
 fn create_execute_sc_operation(
     sender_private_key: PrivateKey,
     sender_public_key: PublicKey,
@@ -260,7 +260,7 @@ fn create_execute_sc_operation(
 /// Create an almost empty block with a vector `operations` and a random
 /// creator.
 ///
-/// Return a result that should be unwraped in the root `#[test]` routine.
+/// Return a result that should be unwrapped in the root `#[test]` routine.
 fn create_block(operations: Vec<SignedOperation>) -> Result<(BlockId, Block), ExecutionError> {
     let creator = generate_random_private_key();
     let public_key = derive_public_key(&creator);

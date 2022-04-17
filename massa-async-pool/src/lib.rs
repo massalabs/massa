@@ -41,7 +41,7 @@
 //! Note that `max_gas*gas_price` coins are burned when sending the message.
 //!
 //! ## How is the AsyncPool handled
-//!
+//! ```
 //! * In the AsyncPool, Messages are kept sorted by `priority = AsyncMessageId(msg.max_gas * msg.gas_price, rev(msg.slot), rev(msg.emission_index))`
 //!
 //! * when an AsyncMessage is added to the AsyncPool:
@@ -65,26 +65,26 @@
 //!
 //! * define a public exported handler function taking 1 parameter (the message data)
 //! * this function will be called when a message is processed with the right `destination` and `handler`
-//!
+//! ```
 //!
 //! # Architecture
 //!
 //! ## message.rs
-//! Defines AsyncMessage that represents an asynchronous message.
+//! Defines `AsyncMessage` that represents an asynchronous message.
 //!
 //! ## pool.rs
-//! Defines the AsyncPool that manipulates a list of AsyncMessages sorted by priority.
+//! Defines the `AsyncPool` that manipulates a list of `AsyncMessages` sorted by priority.
 //!
 //! ## changes.rs
-//! Represents and manipulates changes (message additions/deletions) in the AsyncPool.
+//! Represents and manipulates changes (message additions/deletions) in the `AsyncPool`.
 //!
 //! ## bootstrap.rs
-//! Provides serializable strucutres and tools for bootstrapping the async pool.
+//! Provides serializable structures and tools for bootstrapping the asynchronous pool.
 //!
 //! ## Test exports
 //!
 //! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
-//! See test_exports/mod.rs for details.
+//! See `test_exports/mod.rs` for details.
 
 #![feature(map_first_last)]
 #![feature(btree_drain_filter)]

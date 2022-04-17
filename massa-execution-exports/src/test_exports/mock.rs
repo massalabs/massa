@@ -60,7 +60,7 @@ pub enum MockExecutionControllerMessage {
 
 /// A mocked execution controller that will intercept calls on its methods
 /// and emit corresponding `MockExecutionControllerMessage` messages through a MPSC in a thread-safe way.
-/// For messages with a `response_tx` field, the mock will await a response through their response_tx channel
+/// For messages with a `response_tx` field, the mock will await a response through their `response_tx` channel
 /// in order to simulate returning this value at the end of the call.
 #[derive(Clone)]
 pub struct MockExecutionController(Arc<Mutex<mpsc::Sender<MockExecutionControllerMessage>>>);

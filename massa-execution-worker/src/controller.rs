@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! This module implements an execution controller.
-//! See massa-execution-exports/controller_traits.rs for functional details.
+//! See `massa-execution-exports/controller_traits.rs` for functional details.
 
 use crate::execution::ExecutionState;
 use crate::request_queue::{RequestQueue, RequestWithResponseSender};
@@ -27,12 +27,12 @@ pub(crate) struct ExecutionInputData {
     pub finalized_blocks: HashMap<Slot, BlockId>,
     /// new blockclique (if there is a new one), blocks indexed by slot
     pub new_blockclique: Option<HashMap<Slot, BlockId>>,
-    /// queue for readonly execution requests and response mpscs to send back their outputs
+    /// queue for read-only execution requests and response mpscs to send back their outputs
     pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
 }
 
 impl ExecutionInputData {
-    /// Creates a new empty ExecutionInputData
+    /// Creates a new empty `ExecutionInputData`
     pub fn new(config: ExecutionConfig) -> Self {
         ExecutionInputData {
             stop: Default::default(),
@@ -68,8 +68,8 @@ impl ExecutionController for ExecutionControllerImpl {
     /// called to signal changes on the current blockclique, also listing newly finalized blocks
     ///
     /// # arguments
-    /// * finalized_blocks: list of newly finalized blocks to be appended to the input finalized blocks
-    /// * blockclique: new blockclique, replaces the current one in the input
+    /// * `finalized_blocks`: list of newly finalized blocks to be appended to the input finalized blocks
+    /// * `blockclique`: new blockclique, replaces the current one in the input
     fn update_blockclique_status(
         &self,
         finalized_blocks: HashMap<Slot, BlockId>,
@@ -108,7 +108,7 @@ impl ExecutionController for ExecutionControllerImpl {
     /// gets a copy of a full ledger entry
     ///
     /// # return value
-    /// * (final_entry, active_entry)
+    /// * `(final_entry, active_entry)`
     fn get_final_and_active_ledger_entry(
         &self,
         addr: &Address,
@@ -118,7 +118,7 @@ impl ExecutionController for ExecutionControllerImpl {
             .get_final_and_active_ledger_entry(addr)
     }
 
-    /// Executes a readonly request
+    /// Executes a read-only request
     /// Read-only requests do not modify consensus state
     fn execute_readonly_request(
         &self,
@@ -162,8 +162,8 @@ impl ExecutionController for ExecutionControllerImpl {
     }
 
     /// Returns a boxed clone of self.
-    /// Allows cloning Box<dyn ExecutionController>,
-    /// see massa-execution-exports/controller_traits.rs
+    /// Allows cloning `Box<dyn ExecutionController>`,
+    /// see `massa-execution-exports/controller_traits.rs`
     fn clone_box(&self) -> Box<dyn ExecutionController> {
         Box::new(self.clone())
     }

@@ -8,10 +8,10 @@ use massa_models::{
 };
 use serde::{Deserialize, Serialize};
 
-/// Represents a snapshot of the async pool aimed at bootstrapping an AsyncPool
+/// Represents a snapshot of the asynchronous pool aimed at bootstrapping an `AsyncPool`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AsyncPoolBootstrap {
-    /// list of async messages in no particular order
+    /// list of asynchronous messages in no particular order
     pub(crate) messages: Vec<AsyncMessage>,
 }
 

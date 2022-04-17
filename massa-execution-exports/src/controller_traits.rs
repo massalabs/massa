@@ -15,11 +15,11 @@ use std::collections::HashMap;
 
 /// interface that communicates with the execution worker thread
 pub trait ExecutionController: Send + Sync {
-    /// Updates blockclique status by signalling newly finalized blocks and the latest blockclique.
+    /// Updates blockclique status by signaling newly finalized blocks and the latest blockclique.
     ///
-    /// # arguments
-    /// * finalized_blocks: newly finalized blocks
-    /// * blockclique: new blockclique
+    /// # Arguments
+    /// * `finalized_blocks`: newly finalized blocks
+    /// * `blockclique`: new blockclique
     fn update_blockclique_status(
         &self,
         finalized_blocks: HashMap<Slot, BlockId>,
@@ -44,7 +44,7 @@ pub trait ExecutionController: Send + Sync {
     /// Get a copy of a full ledger entry with its final and active values
     ///
     /// # return value
-    /// * (final_entry, active_entry)
+    /// * `(final_entry, active_entry)`
     fn get_final_and_active_ledger_entry(
         &self,
         addr: &Address,
@@ -56,7 +56,7 @@ pub trait ExecutionController: Send + Sync {
     /// * `req`: an instance of `ReadOnlyExecutionRequest` describing the parameters of the execution
     ///
     /// # returns
-    /// An instance of ExecutionOutput containing a summary of the effects of the execution,
+    /// An instance of `ExecutionOutput` containing a summary of the effects of the execution,
     /// or an error if the execution failed.
     fn execute_readonly_request(
         &self,

@@ -17,10 +17,10 @@ pub struct NetworkSettings {
     /// Protocol port
     pub protocol_port: u16,
     /// Time interval spent waiting for a response from a peer.
-    /// In millis
+    /// In milliseconds
     pub connect_timeout: MassaTime,
     /// Network_worker will try to connect to available peers every wakeup_interval.
-    /// In millis
+    /// In milliseconds
     pub wakeup_interval: MassaTime,
     /// Path to the file containing initial peers.
     pub initial_peers_file: std::path::PathBuf,
@@ -36,11 +36,11 @@ pub struct NetworkSettings {
     pub max_idle_peers: usize,
     /// Limit on the number of banned peers we remember.
     pub max_banned_peers: usize,
-    /// Peer database is dumped every peers_file_dump_interval in millis
+    /// Peer database is dumped every peers_file_dump_interval in milliseconds
     pub peers_file_dump_interval: MassaTime,
-    /// After message_timeout millis we are no longer waiting on handshake message
+    /// After message_timeout milliseconds we are no longer waiting on handshake message
     pub message_timeout: MassaTime,
-    /// Every ask_peer_list_interval in millis we ask every one for its advertisable peers list.
+    /// Every ask_peer_list_interval in milliseconds we ask every one for its advertisable peers list.
     pub ask_peer_list_interval: MassaTime,
     /// Max wait time for sending a Network or Node event.
     pub max_send_wait: MassaTime,

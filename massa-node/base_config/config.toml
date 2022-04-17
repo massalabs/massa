@@ -57,7 +57,7 @@
     # path to the initial consensus balance ledger
     initial_ledger_path = "base_config/initial_ledger.json"
 
-    # max millis to wait while sending an event before dropping it
+    # max milliseconds to wait while sending an event before dropping it
     max_send_wait = 500
     # useless blocks are pruned every block_db_prune_interval ms
     block_db_prune_interval = 5000
@@ -85,7 +85,7 @@
     max_node_wanted_blocks_size = 1024
     # max number of blocks we can ask simultaneously per node
     max_simultaneous_ask_blocks_per_node = 2048
-    # max millis to wait while sending an event before dropping it
+    # max milliseconds to wait while sending an event before dropping it
     max_send_wait = 500
     # max cache size for which operations a foreign node knows about
     max_known_ops_size = 10024
@@ -122,7 +122,7 @@
     max_banned_peers = 100
     # max number of advertized peers
     max_advertise_length = 10000
-    # peers are dumped to file every peers_file_dump_interval millis
+    # peers are dumped to file every peers_file_dump_interval milliseconds
     peers_file_dump_interval = 10000
     # max size of sent messages
     max_message_size = 1048576000
@@ -176,7 +176,7 @@
     write_timeout = 10000
     # when enabled, apply a correction to the local computer clock to match bootstrap server time
     enable_clock_synchronization = false
-    # [server] data is cached for cache duration millis
+    # [server] data is cached for cache duration milliseconds
     cache_duration = 15000
     # max number of simulataneous bootstraps for server
     max_simultaneous_bootstraps = 2

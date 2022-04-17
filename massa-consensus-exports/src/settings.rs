@@ -116,7 +116,7 @@ pub struct ConsensusConfig {
     #[cfg(feature = "testing")]
     /// temps files
     pub temp_files: TempFiles,
-    /// Time in millis when the blockclique started.
+    /// Time in milliseconds when the blockclique started.
     pub genesis_timestamp: MassaTime,
     /// TESTNET: time when the blockclique is ended.
     pub end_timestamp: Option<MassaTime>,

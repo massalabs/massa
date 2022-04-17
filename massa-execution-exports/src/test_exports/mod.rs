@@ -10,7 +10,7 @@
 //! Provides a default execution configuration for testing.
 //!
 //! ## mock.rs
-//! Provides a mock of ExecutionController to simulate interactions
+//! Provides a mock of `ExecutionController` to simulate interactions
 //! with an execution worker within tests.
 
 mod mock;

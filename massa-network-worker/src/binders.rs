@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Flexbuffer layer between raw data and our objects.
+//! `Flexbuffer` layer between raw data and our objects.
 use super::messages::{deserialize_message_with_optional_serialized_object, Message};
 use massa_models::{with_serialization_context, DeserializeMinBEInt, SerializeMinBEInt};
 use massa_network_exports::{NetworkError, ReadHalf, WriteHalf};
@@ -14,7 +14,7 @@ pub struct WriteBinder {
 }
 
 impl WriteBinder {
-    /// Creates a new WriteBinder.
+    /// Creates a new `WriteBinder`.
     ///
     /// # Argument
     /// * `write_half`: writer half.
@@ -83,7 +83,7 @@ impl ReadBinder {
     /// This means that the function can restart from the beginning at any "await" point and we need to avoid losing any data,
     /// and we can only use the cancel-safe read() function
     /// `https://doc.rust-lang.org/std/io/trait.Read.html#tymethod.read`
-    /// that returns an arbitrary number of bytes that were received that is > 0 and <= `buffer.len()`,
+    /// that returns an arbitrary number of bytes that were received that is `> 0 and <= buffer.len()`,
     /// or = 0 if there is no more data.
     /// We can't use `read_exact` and similar because they are not cancel-safe:
     /// `https://docs.rs/tokio/latest/tokio/io/trait.AsyncReadExt.html#cancel-safety-2`

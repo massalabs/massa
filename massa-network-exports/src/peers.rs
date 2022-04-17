@@ -123,9 +123,9 @@ pub struct PeerInfo {
     pub ip: IpAddr,
     /// The category the peer is in affects how it's treated.
     pub peer_type: PeerType,
-    /// Time in millis when peer was last alive
+    /// Time in milliseconds when peer was last alive
     pub last_alive: Option<MassaTime>,
-    /// Time in millis of peer's last failure
+    /// Time in milliseconds of peer's last failure
     pub last_failure: Option<MassaTime>,
     /// Whether peer was promoted through another peer
     pub advertised: bool,

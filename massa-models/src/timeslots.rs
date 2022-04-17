@@ -25,11 +25,11 @@ pub fn slot_count_in_range(a: Slot, b: Slot, thread_count: u8) -> Result<u64, Mo
         .ok_or(ModelsError::TimeOverflowError)
 }
 
-/// Gets timestamp in millis for given slot.
+/// Gets timestamp in milliseconds for given slot.
 ///
 /// # Arguments
 /// * thread_count: number of threads.
-/// * t0: time in millis between two periods in the same thread.
+/// * t0: time in milliseconds between two periods in the same thread.
 /// * slot: the considered slot.
 pub fn get_block_slot_timestamp(
     thread_count: u8,
@@ -56,9 +56,9 @@ pub fn get_block_slot_timestamp(
 ///
 /// # Arguments
 /// * thread_count: number of threads.
-/// * t0: time in millis between two periods in the same thread.
-/// * genesis_timestamp: when the blockclique first started, in millis.
-/// * timestamp: target timestamp in millis.
+/// * t0: time in milliseconds between two periods in the same thread.
+/// * genesis_timestamp: when the blockclique first started, in milliseconds.
+/// * timestamp: target timestamp in milliseconds.
 pub fn get_latest_block_slot_at_timestamp(
     thread_count: u8,
     t0: MassaTime,
@@ -82,8 +82,8 @@ pub fn get_latest_block_slot_at_timestamp(
 ///
 /// # Arguments
 /// * thread_count: number of threads.
-/// * t0: time in millis between two periods in the same thread.
-/// * genesis_timestamp: when the blockclique first started, in millis.
+/// * t0: time in milliseconds between two periods in the same thread.
+/// * genesis_timestamp: when the blockclique first started, in milliseconds.
 pub fn get_current_latest_block_slot(
     thread_count: u8,
     t0: MassaTime,
@@ -102,8 +102,8 @@ pub fn get_current_latest_block_slot(
 ///
 /// # Arguments
 /// * thread_count: number of threads.
-/// * t0: time in millis between two periods in the same thread.
-/// * genesis_timestamp: when the blockclique first started, in millis
+/// * t0: time in milliseconds between two periods in the same thread.
+/// * genesis_timestamp: when the blockclique first started, in milliseconds
 /// * start_time: optional start time
 /// * end_time: optional end time
 /// # Returns

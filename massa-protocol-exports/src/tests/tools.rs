@@ -78,10 +78,10 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
 
 /// create a block with no endorsement
 ///
-/// * private_key: key that sign the block
-/// * public_key: creator's key TODO could be derived from the private key
-/// * slot
-/// * operations
+/// * `private_key`: key that sign the block
+/// * `public_key`: creator's key TODO could be derived from the private key
+/// * `slot`
+/// * `operations`
 pub fn create_block_with_operations(
     private_key: &PrivateKey,
     public_key: &PublicKey,

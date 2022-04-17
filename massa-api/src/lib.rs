@@ -53,7 +53,7 @@ pub struct Public {
     pub version: Version,
     /// link to the network component
     pub network_command_sender: NetworkCommandSender,
-    /// compensation millis (used to sync time with bootstrap server)
+    /// compensation milliseconds (used to sync time with bootstrap server)
     pub compensation_millis: i64,
     /// our node id
     pub node_id: NodeId,

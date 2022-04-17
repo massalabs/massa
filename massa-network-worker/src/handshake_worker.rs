@@ -54,7 +54,7 @@ impl HandshakeWorker {
     /// * `socket_writer`: sends data.
     /// * `self_node_id`: our node id.
     /// * `private_key`: our private key.
-    /// * `timeout_duration`: after `timeout_duration` millis, the handshake attempt is dropped.
+    /// * `timeout_duration`: after `timeout_duration` milliseconds, the handshake attempt is dropped.
     /// * `connection_id`: Node we are trying to connect for debugging
     /// * `version`: Node version used in handshake initialization (check peers compatibility)
     pub fn spawn(

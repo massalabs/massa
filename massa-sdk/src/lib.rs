@@ -108,7 +108,7 @@ impl RpcClient {
             .await
     }
 
-    /// Return hashset of staking addresses.
+    /// Return hash-set of staking addresses.
     pub async fn get_staking_addresses(&self) -> RpcResult<Set<Address>> {
         self.call_method("get_staking_addresses", "Set<Address>", ())
             .await

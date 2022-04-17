@@ -33,7 +33,7 @@ use std::net::{IpAddr, Ipv4Addr};
 lazy_static::lazy_static! {
     /// genesis private keys
     pub static ref GENESIS_KEY: PrivateKey = generate_random_private_key();
-    /// Time in millis when the blockclique started.
+    /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         MassaTime::now()
             .unwrap()
@@ -135,7 +135,7 @@ pub const ROLL_PRICE: Amount = Amount::from_raw(100 * AMOUNT_DECIMAL_FACTOR);
 pub const SLOT_KEY_SIZE: usize = 9;
 /// thread count
 pub const THREAD_COUNT: u8 = 2;
-/// period length in millis, sometimes overridden in config.rs or setting.rs
+/// period length in milliseconds, sometimes overridden in config.rs or setting.rs
 pub const T0: MassaTime = MassaTime::from(32000);
 
 /*************************
@@ -192,12 +192,12 @@ pub const READONLY_QUEUE_LENGTH: usize = 10;
 // `massa-network` crate.
 
 lazy_static::lazy_static! {
-    /// blocks are pruned every BLOCK_DB_PRUNE_INTERVAL millis
+    /// blocks are pruned every BLOCK_DB_PRUNE_INTERVAL milliseconds
     pub static ref BLOCK_DB_PRUNE_INTERVAL: MassaTime = 1000.into();
-    /// ledger is saved on disk every LEDGER_FLUSH_INTERVAL millis
+    /// ledger is saved on disk every LEDGER_FLUSH_INTERVAL milliseconds
     pub static ref LEDGER_FLUSH_INTERVAL: Option<MassaTime> = Some(200.into());
-    /// we wait MAX_SEND_WAIT millis to send a message
+    /// we wait MAX_SEND_WAIT milliseconds to send a message
     pub static ref MAX_SEND_WAIT: MassaTime = 500.into();
-    /// stats are considered for STATS_TIMESPAN millis
+    /// stats are considered for STATS_TIMESPAN milliseconds
     pub static ref STATS_TIMESPAN: MassaTime = 60000.into();
 }

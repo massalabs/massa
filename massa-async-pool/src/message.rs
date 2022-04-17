@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 /// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
-/// (rev(max_gas*gas_price), emission_slot, emission_index)
+/// `(rev(max_gas*gas_price), emission_slot, emission_index)`
 pub type AsyncMessageId = (std::cmp::Reverse<Amount>, Slot, u64);
 
 /// Structure defining an asynchronous smart contract message
@@ -20,8 +20,8 @@ pub struct AsyncMessage {
     /// Slot at which the message was emitted
     pub emission_slot: Slot,
 
-    /// Index of the emitted message within the emission_slot.
-    /// This is used for disambiguating the emission of multiple messages at the same slot.
+    /// Index of the emitted message within the `emission_slot`.
+    /// This is used for disambiguate the emission of multiple messages at the same slot.
     pub emission_index: u64,
 
     /// The address that sent the message
@@ -37,7 +37,7 @@ pub struct AsyncMessage {
     pub max_gas: u64,
 
     /// Gas price to take into account when executing the message.
-    /// max_gas * gas_price are burned by the sender when the emessage is sent.
+    /// `max_gas * gas_price` are burned by the sender when the message is sent.
     pub gas_price: Amount,
 
     /// Coins sent from the sender to the target address of the message.
@@ -58,7 +58,7 @@ pub struct AsyncMessage {
 
 impl AsyncMessage {
     /// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.
-    /// For now, the formula is simply score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))
+    /// For now, the formula is simply `score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))`
     pub fn compute_id(&self) -> AsyncMessageId {
         (
             std::cmp::Reverse(self.gas_price.saturating_mul_u64(self.max_gas)),

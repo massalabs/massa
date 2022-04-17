@@ -66,13 +66,13 @@ pub(crate) struct ExecutionState {
 impl ExecutionState {
     /// Create a new execution state. This should be called only once at the start of the execution worker.
     ///
-    /// # arguments
-    /// * config: execution config
-    /// * final_state: atomic access to the final state
-    /// * storage: Shared storage with data shared all across the modules
+    /// # Arguments
+    /// * `config`: execution configuration
+    /// * `final_state`: atomic access to the final state
+    /// * `storage`: Shared storage with data shared all across the modules
     ///
     /// # returns
-    /// A new ExecutionState
+    /// A new `ExecutionState`
     pub fn new(
         config: ExecutionConfig,
         final_state: Arc<RwLock<FinalState>>,
@@ -114,7 +114,7 @@ impl ExecutionState {
     /// Gets out the first (oldest) execution history item, removing it from history.
     ///
     /// # Returns
-    /// The earliest ExecutionOutput from the execution history, or None if the history is empty
+    /// The earliest `ExecutionOutput` from the execution history, or None if the history is empty
     pub fn pop_first_execution_result(&mut self) -> Option<ExecutionOutput> {
         self.active_history.pop_front()
     }
@@ -123,7 +123,7 @@ impl ExecutionState {
     /// The newly applied final output should be from the slot just after the last executed final slot
     ///
     /// # Arguments
-    /// * exec_out: execution output to apply
+    /// * `exec_ou`t: execution output to apply
     pub fn apply_final_execution_output(&mut self, exec_out: ExecutionOutput) {
         if self.final_cursor >= exec_out.slot {
             panic!("attempting to apply a final execution output at or before the current final_cursor");
@@ -150,7 +150,7 @@ impl ExecutionState {
     /// The newly active final output should be from the slot just after the last executed active slot
     ///
     /// # Arguments
-    /// * exec_out: execution output to apply
+    /// * `exec_out`: execution output to apply
     pub fn apply_active_execution_output(&mut self, exec_out: ExecutionOutput) {
         if self.active_cursor >= exec_out.slot {
             panic!("attempting to apply an active execution output at or before the current active_cursor");
@@ -183,8 +183,8 @@ impl ExecutionState {
     /// Slots after that point will need to be (re-executed) to account for the new sequence.
     ///
     /// # Arguments
-    /// * active_slots: A HashMap mapping each active slot to a block or None if the slot is a miss
-    /// * ready_final_slots:  A HashMap mapping each ready-to-execute final slot to a block or None if the slot is a miss
+    /// * `active_slots`: A `HashMap` mapping each active slot to a block or None if the slot is a miss
+    /// * `ready_final_slots`:  A `HashMap` mapping each ready-to-execute final slot to a block or None if the slot is a miss
     pub fn truncate_history(
         &mut self,
         active_slots: &HashMap<Slot, Option<BlockId>>,
@@ -449,8 +449,8 @@ impl ExecutionState {
     /// just yielding the execution output.
     ///
     /// # Arguments
-    /// * slot: slot to execute
-    /// * opt_block: block ID if there is a block a that slot, otherwise None
+    /// * `slot`: slot to execute
+    /// * `opt_block`: block ID if there is a block a that slot, otherwise None
     ///
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
@@ -510,14 +510,14 @@ impl ExecutionState {
 
     /// Executes a read-only execution request.
     /// The executed bytecode appears to be able to read and write the consensus state,
-    /// but all accumulated changes are simply returned as an ExecutionOutput object,
+    /// but all accumulated changes are simply returned as an `ExecutionOutput` object,
     /// and not actually applied to the consensus state.
     ///
     /// # Arguments
-    /// * req: a read-only execution request
+    /// * `req`: a read-only execution request
     ///
     /// # Returns
-    ///  ExecutionOutput describing the output of the execution, or an error
+    ///  `ExecutionOutput` describing the output of the execution, or an error
     pub(crate) fn execute_readonly_request(
         &self,
         req: ReadOnlyExecutionRequest,
@@ -552,7 +552,7 @@ impl ExecutionState {
     /// TODO: this can be heavily optimized, see comments and https://github.com/massalabs/massa/issues/2343
     ///
     /// # returns
-    /// (final_entry, active_entry)
+    /// `(final_entry, active_entry)`
     pub fn get_final_and_active_ledger_entry(
         &self,
         addr: &Address,
