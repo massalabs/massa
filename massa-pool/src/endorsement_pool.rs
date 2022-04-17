@@ -39,7 +39,7 @@ impl EndorsementPool {
     }
 
     /// gets ok endorsements for a given slot, with given endorsed block and endorsement creators at index
-    /// returns sorted and dedupped endorsements
+    /// returns sorted and deduped endorsements
     pub fn get_endorsements(
         &self,
         target_slot: Slot,

@@ -75,12 +75,12 @@ impl ConsensusWorker {
     /// Initiates the random selector.
     ///
     /// # Arguments
-    /// * cfg: consensus configuration.
-    /// * protocol_command_sender: associated protocol controller
-    /// * block_db: Database containing all information about blocks, the blockgraph and cliques.
-    /// * controller_command_rx: Channel receiving consensus commands.
-    /// * controller_event_tx: Channel sending out consensus events.
-    /// * controller_manager_rx: Channel receiving consensus management commands.
+    /// * `cfg`: consensus configuration.
+    /// * `protocol_command_sender`: associated protocol controller
+    /// * `block_db`: Database containing all information about blocks, the blockgraph and cliques.
+    /// * `controller_command_rx`: Channel receiving consensus commands.
+    /// * `controller_event_tx`: Channel sending out consensus events.
+    /// * `controller_manager_rx`: Channel receiving consensus management commands.
     pub(crate) async fn new(
         cfg: ConsensusConfig,
         channels: ConsensusWorkerChannels,
@@ -641,7 +641,7 @@ impl ConsensusWorker {
 
     /// Channel management stuff
     /// todo delete
-    /// or at least introduce some genericity
+    /// or at least introduce some generic
     async fn send_consensus_event(&self, event: ConsensusEvent) -> Result<()> {
         let result = self
             .channels
@@ -664,11 +664,11 @@ impl ConsensusWorker {
     }
 
     /// Manages given consensus command.
-    /// They can come from the api or the bootstrap server
+    /// They can come from the API or the bootstrap server
     /// Please refactor me
     ///
     /// # Argument
-    /// * cmd: consensus command to process
+    /// * `cmd`: consensus command to process
     async fn process_consensus_command(&mut self, cmd: ConsensusCommand) -> Result<()> {
         match cmd {
             ConsensusCommand::GetBlockGraphStatus {
@@ -955,7 +955,7 @@ impl ConsensusWorker {
     }
 
     /// retrieve stats
-    /// Used in response to a api request
+    /// Used in response to a API request
     fn get_stats(&mut self) -> Result<ConsensusStats> {
         let timespan_end = max(
             self.launch_time,
@@ -994,7 +994,7 @@ impl ConsensusWorker {
     }
 
     /// retrieve all current cycle active stakers
-    /// Used in response to a api request
+    /// Used in response to a API request
     fn get_active_stakers(&self) -> Result<Map<Address, u64>, ConsensusError> {
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         let mut res: Map<Address, u64> = Map::default();
@@ -1010,7 +1010,7 @@ impl ConsensusWorker {
     }
 
     /// all you wanna know about an address
-    /// Used in response to a api request
+    /// Used in response to a API request
     fn get_addresses_info(&self, addresses: &Set<Address>) -> Result<Map<Address, AddressState>> {
         let thread_count = self.cfg.thread_count;
         let mut addresses_by_thread = vec![Set::<Address>::default(); thread_count as usize];
@@ -1094,7 +1094,7 @@ impl ConsensusWorker {
     }
 
     /// search operations by id in the whole graph
-    /// Used in response to a api request
+    /// Used in response to a API request
     async fn get_operations(
         &mut self,
         operation_ids: &Set<OperationId>,
@@ -1190,7 +1190,7 @@ impl ConsensusWorker {
     /// 6. Process new final blocks
     /// 7. Notify pool of new final ops
     /// 8. Notify PoS of final blocks
-    /// 9. notify protocol of block wishlist
+    /// 9. notify protocol of block wish list
     /// 10. note new latest final periods (prune graph if changed)
     /// 11. Produce endorsements
     /// 12. add stale blocks to stats

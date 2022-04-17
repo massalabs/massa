@@ -108,9 +108,9 @@ pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
-/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - pos_look back_cycles - 1
+/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - `pos_look` `back_cycles` - 1
 pub const POS_LOOKBACK_CYCLES: u64 = 2;
-/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles
+/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
 pub const POS_LOCK_CYCLES: u64 = 1;
 
 // ***********************
@@ -129,7 +129,7 @@ pub const MAX_BOOTSTRAP_DEPS: u32 = 1000;
 pub const MAX_BOOTSTRAP_CHILDREN: u32 = 1000;
 /// Max number of cycles in PoS bootstrap
 pub const MAX_BOOTSTRAP_POS_CYCLES: u32 = 5;
-/// Max number of address and rng entries for PoS bootstrap
+/// Max number of address and random entries for PoS bootstrap
 pub const MAX_BOOTSTRAP_POS_ENTRIES: u32 = 1000000000;
 /// Max size of the IP list
 pub const IP_LIST_MAX_SIZE: usize = 10000;
@@ -142,7 +142,7 @@ pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 
 /// Maximum of GAS allowed for a block
 pub const MAX_GAS_PER_BLOCK: u64 = 100_000_000;
-/// Maximum of GAS allowed for async messages exection on one slot
+/// Maximum of GAS allowed for asynchronous messages execution on one slot
 pub const MAX_ASYNC_GAS: u64 = 10_000_000;
 
 //

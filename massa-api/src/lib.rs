@@ -1,5 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-//! Json rpc api for a massa-node
+//! Json RPC API for a massa-node
 #![feature(async_closure)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
@@ -35,7 +35,7 @@ mod error;
 mod private;
 mod public;
 
-/// Public api component
+/// Public API component
 pub struct Public {
     /// link to the consensus component
     pub consensus_command_sender: ConsensusCommandSender,
@@ -45,7 +45,7 @@ pub struct Public {
     pub pool_command_sender: PoolCommandSender,
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
-    /// api settings
+    /// API settings
     pub api_settings: &'static APISettings,
     /// network setting (TODO consider removing)
     pub network_settings: &'static NetworkSettings,
@@ -69,18 +69,18 @@ pub struct Private {
     pub execution_controller: Box<dyn ExecutionController>,
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
-    /// api settings
+    /// API settings
     pub api_settings: &'static APISettings,
     /// stop channel
     pub stop_node_channel: mpsc::Sender<()>,
 }
 
-/// The api wrapper
+/// The API wrapper
 pub struct API<T>(T);
 
-/// Used to manage the api
+/// Used to manage the API
 pub trait RpcServer: Endpoints {
-    /// Start the api
+    /// Start the API
     fn serve(self, _: &SocketAddr) -> StopHandle;
 }
 
@@ -102,14 +102,14 @@ fn serve(api: impl Endpoints, url: &SocketAddr) -> StopHandle {
     }
 }
 
-/// Used to be able to stop the api
+/// Used to be able to stop the API
 pub struct StopHandle {
     close_handle: CloseHandle,
     join_handle: JoinHandle<()>,
 }
 
 impl StopHandle {
-    /// stop the api gracefully
+    /// stop the API gracefully
     pub fn stop(self) {
         self.close_handle.close();
         if let Err(err) = self.join_handle.join() {
@@ -120,7 +120,7 @@ impl StopHandle {
     }
 }
 
-/// Exposed api endpoints
+/// Exposed API endpoints
 #[rpc(server)]
 pub trait Endpoints {
     /// Gracefully stop the node.
@@ -132,7 +132,7 @@ pub trait Endpoints {
     #[rpc(name = "node_sign_message")]
     fn node_sign_message(&self, _: Vec<u8>) -> BoxFuture<Result<PubkeySig, ApiError>>;
 
-    /// Add a vec of new private keys for the node to use to stake.
+    /// Add a vector of new private keys for the node to use to stake.
     /// No confirmation to expect.
     #[rpc(name = "add_staking_private_keys")]
     fn add_staking_private_keys(&self, _: Vec<PrivateKey>) -> BoxFuture<Result<(), ApiError>>;
@@ -144,7 +144,7 @@ pub trait Endpoints {
         _: Vec<ReadOnlyExecution>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>>;
 
-    /// Remove a vec of addresses used to stake.
+    /// Remove a vector of addresses used to stake.
     /// No confirmation to expect.
     #[rpc(name = "remove_staking_addresses")]
     fn remove_staking_addresses(&self, _: Vec<Address>) -> BoxFuture<Result<(), ApiError>>;
@@ -170,7 +170,7 @@ pub trait Endpoints {
     #[rpc(name = "node_remove_from_whitelist")]
     fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
 
-    /// Unbans given IP address.
+    /// Unban given IP address.
     /// No confirmation to expect.
     #[rpc(name = "unban")]
     fn unban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;

@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Build here the default node settings from the config file toml
+//! Build here the default node settings from the configuration file toml
 use std::path::PathBuf;
 
 use massa_bootstrap::BootstrapSettings;

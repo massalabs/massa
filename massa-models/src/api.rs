@@ -42,7 +42,7 @@ pub struct NodeStatus {
     pub pool_stats: PoolStats,
     /// network stats
     pub network_stats: NetworkStats,
-    /// compact config
+    /// compact configuration
     pub config: CompactConfig,
 }
 
@@ -89,10 +89,10 @@ pub struct OperationInfo {
     pub id: OperationId,
     /// true if operation is still in pool
     pub in_pool: bool,
-    /// the operation appears in in_blocks
+    /// the operation appears in `in_blocks`
     /// if it appears in multiple blocks, these blocks are in different cliques
     pub in_blocks: Vec<BlockId>,
-    /// true if the operation is final (ie in a final block)
+    /// true if the operation is final (for example in a final block)
     pub is_final: bool,
     /// the operation itself
     pub operation: SignedOperation,
@@ -126,14 +126,14 @@ impl std::fmt::Display for OperationInfo {
     }
 }
 
-/// Current Parallel balance leger info
+/// Current Parallel balance ledger info
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct LedgerInfo {
     /// final data
     pub final_ledger_info: LedgerData,
     /// latest data
     pub candidate_ledger_info: LedgerData,
-    /// locked balance, ie balance due to a roll sell
+    /// locked balance, for example balance due to a roll sell
     pub locked_balance: Amount,
 }
 
@@ -170,7 +170,7 @@ impl std::fmt::Display for RollsInfo {
     }
 }
 
-/// Sequential balance state (really same as SCELedgerEntry)
+/// Sequential balance state (really same as `SCELedgerEntry`)
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct SCELedgerInfo {
     /// sequential coins
@@ -189,7 +189,7 @@ impl std::fmt::Display for SCELedgerInfo {
     }
 }
 
-/// All you ever dreamt to know about an address
+/// All you ever dream to know about an address
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AddressInfo {
     /// the address
@@ -479,15 +479,15 @@ pub struct TimeInterval {
     pub end: Option<MassaTime>,
 }
 
-/// Move to the api crate
-/// the api settings
+/// Move to the API crate
+/// the API settings
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct APISettings {
-    /// when looking for next draw we want to look at max draw_lookahead_period_count
+    /// when looking for next draw we want to look at max `draw_lookahead_period_count`
     pub draw_lookahead_period_count: u64,
-    /// bind for the private api
+    /// bind for the private API
     pub bind_private: SocketAddr,
-    /// bind for the public api
+    /// bind for the public API
     pub bind_public: SocketAddr,
     /// max argument count
     pub max_arguments: u64,

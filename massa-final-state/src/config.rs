@@ -8,9 +8,9 @@ use massa_ledger::LedgerConfig;
 /// Ledger configuration
 #[derive(Debug, Clone)]
 pub struct FinalStateConfig {
-    /// ledger config
+    /// ledger configuration
     pub ledger_config: LedgerConfig,
-    /// async pool config
+    /// async pool configuration
     pub async_pool_config: AsyncPoolConfig,
     /// final changes history length
     pub final_history_length: usize,

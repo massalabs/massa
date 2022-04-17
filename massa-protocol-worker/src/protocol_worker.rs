@@ -29,7 +29,7 @@ use tokio::{
 };
 use tracing::{debug, error, info, warn};
 
-/// start a new ProtocolController from a ProtocolConfig
+/// start a new `ProtocolController` from a `ProtocolConfig`
 /// - generate public / private key
 /// - create `protocol_command/protocol_event` channels
 /// - launch `protocol_controller_fn` in an other task

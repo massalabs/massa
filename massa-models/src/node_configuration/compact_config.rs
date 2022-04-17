@@ -21,9 +21,9 @@ pub struct CompactConfig {
     pub operation_validity_periods: u64,
     /// cycle duration in periods
     pub periods_per_cycle: u64,
-    /// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - pos_look back_cycles - 1
+    /// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - `pos_look` `back_cycles` - 1
     pub pos_lookback_cycles: u64,
-    /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles
+    /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
     pub pos_lock_cycles: u64,
     /// Reward amount for a block creation
     pub block_reward: Amount,

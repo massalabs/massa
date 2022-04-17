@@ -25,8 +25,8 @@ use tracing::{debug, error, info};
 ///
 /// # Arguments
 /// * pool_settings: pool configuration
-/// * protocol_command_sender: a ProtocolCommandSender instance to send commands to Protocol.
-/// * protocol_pool_event_receiver: a ProtocolPoolEventReceiver instance to receive pool events from Protocol.
+/// * `protocol_command_sender`: a `ProtocolCommandSender` instance to send commands to Protocol.
+/// * `protocol_pool_event_receiver`: a `ProtocolPoolEventReceiver` instance to receive pool events from `Protocol`.
 pub async fn start_pool_controller(
     cfg: &'static PoolConfig,
     protocol_command_sender: ProtocolCommandSender,

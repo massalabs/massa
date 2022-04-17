@@ -10,12 +10,12 @@ use massa_ledger::LedgerChanges;
 pub struct StateChanges {
     /// ledger changes
     pub ledger_changes: LedgerChanges,
-    /// async pool changes
+    /// asynchronous pool changes
     pub async_pool_changes: AsyncPoolChanges,
 }
 
 impl StateChanges {
-    /// extends the current StateChanges with another one
+    /// extends the current `StateChanges` with another one
     pub fn apply(&mut self, changes: StateChanges) {
         use massa_ledger::Applicable;
         self.ledger_changes.apply(changes.ledger_changes);

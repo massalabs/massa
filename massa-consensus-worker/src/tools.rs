@@ -43,7 +43,7 @@ async fn load_initial_staking_keys(path: &Path) -> Result<Map<Address, (PublicKe
 /// Creates a new consensus controller.
 ///
 /// # Arguments
-/// * cfg: consensus configuration
+/// * `cfg`: consensus configuration
 /// * `protocol_command_sender`: a `ProtocolCommandSender` instance to send commands to Protocol.
 /// * `protocol_event_receiver`: a `ProtocolEventReceiver` instance to receive events from Protocol.
 pub async fn start_consensus_controller(

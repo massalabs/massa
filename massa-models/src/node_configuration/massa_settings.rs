@@ -1,4 +1,4 @@
-//! Build a settings for an object that implement massa_settings
+//! Build a settings for an object that implement `massa_settings`
 //!
 //! ---
 //! The massa node configuration is composed from 2 parts, one part is the
@@ -9,7 +9,7 @@
 //! in the `path` described in the environment variable `MASSA_CONFIG_PATH`.
 //! If no path found in the environment variable, the relative path
 //! `base_config/config.toml` is used as default. The default path should exist
-//! because it's a config file pushed in the repository.
+//! because it's a configuration file pushed in the repository.
 //!
 //! The next step will try to read the file at the given path. It will `panic`
 //! if no file found.
@@ -29,8 +29,8 @@ use std::path::Path;
 
 /// Merge the settings
 /// 1. default
-/// 2. in path specified in MASSA_CONFIG_PATH env variable ("base_config/config.toml" by default)
-/// 3. in path specified in MASSA_CONFIG_OVERRIDE_PATH env variable ("config/config.toml" by default)
+/// 2. in path specified in `MASSA_CONFIG_PATH` environnement variable (`base_config/config.toml` by default)
+/// 3. in path specified in `MASSA_CONFIG_OVERRIDE_PATH` environnement variable (`config/config.toml` by default)
 #[inline]
 pub fn build_massa_settings<T: Deserialize<'static>>(app_name: &str, env_prefix: &str) -> T {
     let mut settings = config::Config::default();

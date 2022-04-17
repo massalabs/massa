@@ -102,7 +102,7 @@ enum BlockStatus {
     /// The block/header has reached consensus but no consensus-level check has been performed.
     /// It will be processed during the next iteration
     Incoming(HeaderOrBlock),
-    /// The block/header's slot is too much in the future.
+    /// The block's or header's slot is too much in the future.
     /// It will be processed at the block/header slot
     WaitingForSlot(HeaderOrBlock),
     /// The block references an unknown Block id
@@ -293,7 +293,7 @@ pub struct BlockGraph {
     discarded_index: Set<BlockId>,
     /// One (block id, period) per thread
     latest_final_blocks_periods: Vec<(BlockId, u64)>,
-    /// One (block id, period) per thread TODO not sure I understand the difference with latest_final_blocks_periods
+    /// One `(block id, period)` per thread TODO not sure I understand the difference with `latest_final_blocks_periods`
     best_parents: Vec<(BlockId, u64)>,
     /// Incompatibility graph: maps a block id to the block ids it is incompatible with
     /// One entry per Active Block
@@ -327,7 +327,7 @@ enum HeaderCheckOutcome {
         incompatibilities: Set<BlockId>,
         /// number of incompatibilities that are inherited from the parents
         inherited_incompatibilities_count: usize,
-        /// list of (period, address, did_create) for all block/endorsement creation events
+        /// list of `(period, address, did_create)` for all block/endorsement creation events
         production_events: Vec<(u64, Address, bool)>,
     },
     /// there is something wrong with that header
@@ -366,7 +366,7 @@ enum BlockCheckOutcome {
         block_ledger_changes: LedgerChanges,
         /// changes caused by that block on rolls
         roll_updates: RollUpdates,
-        /// list of (period, address, did_create) for all block/endorsement creation events
+        /// list of `(period, address, did_create)` for all block/endorsement creation events
         production_events: Vec<(u64, Address, bool)>,
     },
     /// There is something wrong with that block
@@ -398,9 +398,9 @@ enum BlockOperationsCheckOutcome {
 /// Creates genesis block in given thread.
 ///
 /// # Arguments
-/// * cfg: consensus configuration
-/// * serialization_context: ref to a SerializationContext instance
-/// * thread_number: thread in which we want a genesis block
+/// * `cfg: consensus configuration
+/// * `serialization_context`: ref to a `SerializationContext` instance
+/// * `thread_number`: thread in which we want a genesis block
 pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> Result<(BlockId, Block)> {
     let private_key = cfg.genesis_key;
     let public_key = derive_public_key(&private_key);
@@ -425,11 +425,12 @@ pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> Result<(Blo
 }
 
 impl BlockGraph {
-    /// Creates a new block_graph.
+    /// Creates a new `BlockGraph`.
     ///
     /// # Argument
-    /// * `cfg` : consensus configuration.
-    /// * serialization_context: `SerializationContext` instance
+    /// * `cfg`: consensus configuration.
+    /// * `init`: A bootstrap graph to start the graph with
+    /// * `storage`: A shared storage that share data across all modules.
     pub async fn new(
         cfg: GraphConfig,
         init: Option<BootstrapableGraph>,
@@ -627,10 +628,10 @@ impl BlockGraph {
     /// Try to apply an operation in the context of the block
     ///
     /// # Arguments
-    /// * state_accu: where the changes are accumulated while we go through the block
-    /// * header: the header of the block we are inside
-    /// * operation: the operation that we are trying to apply
-    /// * pos: proof of stake engine (used for roll related operations)
+    /// * `state_accu`: where the changes are accumulated while we go through the block
+    /// * `header`: the header of the block we are inside
+    /// * `operation`: the operation that we are trying to apply
+    /// * `pos`: proof of stake engine (used for roll related operations)
     pub fn block_state_try_apply_op(
         &self,
         state_accu: &mut BlockStateAccumulator,
@@ -1454,7 +1455,7 @@ impl BlockGraph {
         Ok(())
     }
 
-    /// ack a single item, return a set of items to re-ack
+    /// Acknowledge a single item, return a set of items to re-ack
     ///
     /// Checks performed:
     /// - See `check_header` for checks on incoming headers.
@@ -3631,7 +3632,7 @@ impl BlockGraph {
         Ok(discarded_finals)
     }
 
-    /// get the current block wishlist
+    /// get the current block wish list
     pub fn get_block_wishlist(&self) -> Result<Set<BlockId>> {
         let mut wishlist = Set::<BlockId>::default();
         for block_id in self.waiting_for_dependencies_index.iter() {
