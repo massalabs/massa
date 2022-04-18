@@ -3,8 +3,8 @@
 use crate::repl::Output;
 use anyhow::{anyhow, bail, Result};
 use console::style;
-use massa_models::api::ReadOnlyExecution;
 use massa_models::api::{AddressInfo, CompactAddressInfo};
+use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 use massa_models::prehash::Map;
 use massa_models::timeslots::get_current_latest_block_slot;
 use massa_models::{
@@ -191,6 +191,13 @@ pub enum Command {
         message = "execute byte code, address is optional. Nothing is really executed on chain"
     )]
     read_only_smart_contract,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "TargetAddress TargetFunction Parameter MaxGas GasPrice SenderAddress",),
+        message = "call a smart contract function, sender address is optional. Nothing is really executed on chain"
+    )]
+    read_only_call,
 
     #[strum(
         ascii_case_insensitive,
@@ -797,11 +804,42 @@ impl Command {
                 let bytecode = get_file_as_byte_vec(&path).await?;
                 match client
                     .public
-                    .execute_read_only_request(ReadOnlyExecution {
+                    .execute_read_only_bytecode(ReadOnlyBytecodeExecution {
                         max_gas,
                         simulated_gas_price,
                         bytecode,
                         address,
+                    })
+                    .await
+                {
+                    Ok(res) => Ok(Box::new(res)),
+                    Err(e) => rpc_error!(e),
+                }
+            }
+            Command::read_only_call => {
+                if parameters.len() != 5 && parameters.len() != 6 {
+                    bail!("wrong number of parameters");
+                }
+
+                let target_address = parameters[0].parse::<Address>()?;
+                let target_function = parameters[1].parse::<String>()?;
+                let parameter = parameters[2].parse::<String>()?;
+                let max_gas = parameters[3].parse::<u64>()?;
+                let simulated_gas_price = parameters[4].parse::<Amount>()?;
+                let caller_address = if let Some(addr) = parameters.get(5) {
+                    Some(addr.parse::<Address>()?)
+                } else {
+                    None
+                };
+                match client
+                    .public
+                    .execute_read_only_call(ReadOnlyCall {
+                        caller_address,
+                        target_address,
+                        target_function,
+                        parameter,
+                        max_gas,
+                        simulated_gas_price,
                     })
                     .await
                 {

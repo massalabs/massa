@@ -8,7 +8,7 @@ use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus,
-    OperationInfo, ReadOnlyExecution, TimeInterval,
+    OperationInfo, ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -75,11 +75,18 @@ impl Endpoints for API<Private> {
         Box::pin(closure())
     }
 
-    fn execute_read_only_request(
+    fn execute_read_only_bytecode(
         &self,
-        _: Vec<ReadOnlyExecution>,
+        _reqs: Vec<ReadOnlyBytecodeExecution>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
-        crate::wrong_api::<Vec<ExecuteReadOnlyResponse>>()
+        crate::wrong_api::<_>()
+    }
+
+    fn execute_read_only_call(
+        &self,
+        _reqs: Vec<ReadOnlyCall>,
+    ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>> {
+        crate::wrong_api::<_>()
     }
 
     fn remove_staking_addresses(&self, keys: Vec<Address>) -> BoxFuture<Result<(), ApiError>> {

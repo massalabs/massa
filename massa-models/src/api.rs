@@ -508,9 +508,9 @@ pub struct EventFilter {
     pub original_operation_id: Option<OperationId>,
 }
 
-/// read only execution request
+/// read only bytecode execution request
 #[derive(Debug, Deserialize, Clone, Serialize)]
-pub struct ReadOnlyExecution {
+pub struct ReadOnlyBytecodeExecution {
     /// max available gas
     pub max_gas: u64,
     /// gas price
@@ -519,4 +519,21 @@ pub struct ReadOnlyExecution {
     pub bytecode: Vec<u8>,
     /// caller's address, optional
     pub address: Option<Address>,
+}
+
+/// read SC call request
+#[derive(Debug, Deserialize, Clone, Serialize)]
+pub struct ReadOnlyCall {
+    /// max available gas
+    pub max_gas: u64,
+    /// gas price
+    pub simulated_gas_price: Amount,
+    /// target address
+    pub target_address: Address,
+    /// target function
+    pub target_function: String,
+    /// function parameter
+    pub parameter: String,
+    /// caller's address, optional
+    pub caller_address: Option<Address>,
 }

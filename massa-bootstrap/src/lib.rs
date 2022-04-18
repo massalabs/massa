@@ -10,6 +10,7 @@
 #![feature(async_closure)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(ip)]
 use crate::client_binder::BootstrapClientBinder;
 use crate::establisher::types::Duplex;
 use crate::server_binder::BootstrapServerBinder;
@@ -449,6 +450,8 @@ impl BootstrapServer {
                         }
                     });
                     massa_trace!("bootstrap.session.started", {"active_count": bootstrap_sessions.len()});
+                } else {
+                    debug!("did not bootstrap {}: no available slots", remote_addr);
                 },
             }
         }

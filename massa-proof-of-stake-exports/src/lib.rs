@@ -54,6 +54,7 @@ impl OperationRollInterface for Operation {
                 )?;
             }
             OperationType::ExecuteSC { .. } => {}
+            OperationType::CallSC { .. } => {}
         }
         Ok(res)
     }

@@ -16,7 +16,7 @@
 
 [execution]
     # max number of generated events kept in RAM
-    max_final_events = 100
+    max_final_events = 10000
     # maximum length of the read-only execution requests queue
     readonly_queue_length = 10
     # by how many milliseconds shoud the execution lag behind real time
@@ -39,7 +39,7 @@
     # max number of blocks waiting for dependencies
     max_dependency_blocks = 2048
     # number of final periods that must be kept at all times (increase to more resilience to short network disconnections, high values will increase RAM usage.)
-    force_keep_final_periods = 30
+    force_keep_final_periods = 20
 
     # max number of batches of pool operations to scan when generating a block
     max_operations_fill_attempts = 102400
@@ -58,7 +58,7 @@
     initial_ledger_path = "base_config/initial_ledger.json"
 
     # max milliseconds to wait while sending an event before dropping it
-    max_send_wait = 500
+    max_send_wait = 0
     # useless blocks are pruned every block_db_prune_interval ms
     block_db_prune_interval = 5000
 
@@ -84,9 +84,9 @@
     # max cache size for which blocks a foreign node asked for
     max_node_wanted_blocks_size = 1024
     # max number of blocks we can ask simultaneously per node
-    max_simultaneous_ask_blocks_per_node = 2048
+    max_simultaneous_ask_blocks_per_node = 128
     # max milliseconds to wait while sending an event before dropping it
-    max_send_wait = 500
+    max_send_wait = 0
     # max cache size for which operations a foreign node knows about
     max_known_ops_size = 10024
     # max cache size for which endorsements a foreign node knows about
@@ -139,7 +139,7 @@
     # max number of endorsements per message
     max_endorsements_per_message = 1024
     # max milliseconds to wait while sending an event before dropping it
-    max_send_wait = 500
+    max_send_wait = 0
     # we forget we banned a node after ban_timeout milliseconds
     ban_timeout = 3600000
     # Timeout duration when in handshake we respond with a PeerList
@@ -150,9 +150,9 @@
     max_in_connection_overflow = 100
 
     [network.peer_types_config]
-    Standard = { target_out_connections = 15, max_out_attempts = 10, max_in_connections = 5}
+    Standard = { target_out_connections = 10, max_out_attempts = 10, max_in_connections = 15}
     Bootstrap = { target_out_connections = 1, max_out_attempts = 1, max_in_connections = 1}
-    WhiteListed = { target_out_connections = 3, max_out_attempts = 2, max_in_connections = 2}
+    WhiteListed = { target_out_connections = 2, max_out_attempts = 2, max_in_connections = 3}
 
 [bootstrap]
     # list of bootstrap (ip, node id)
@@ -167,8 +167,8 @@
     # timeout to establish a bootstrap connection
     connect_timeout = 15000
     # delay in milliseconds to wait between consecutive bootstrap attempts
-    retry_delay = 5000
-    # if ping is too high bootstrap will be inturrupted after max_ping milliseconds
+    retry_delay = 600000
+    # if ping is too high bootstrap will be interrupted after max_ping milliseconds
     max_ping = 10000
     # timeout for incoming message readout
     read_timeout = 10000
@@ -183,7 +183,7 @@
     # max size of recently bootstrapped IP cache
     ip_list_max_size = 10000
     # refuse consecutive bootstrap attempts from a given IP when the interval between them is lower than per_ip_min_interval milliseconds
-    per_ip_min_interval = 86400000
+    per_ip_min_interval = 180000
 
 [pool]
     # max number of operations kept per thread

@@ -10,9 +10,7 @@
 use crate::speculative_async_pool::SpeculativeAsyncPool;
 use crate::speculative_ledger::SpeculativeLedger;
 use massa_async_pool::{AsyncMessage, AsyncMessageId};
-use massa_execution_exports::{
-    EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest,
-};
+use massa_execution_exports::{EventStore, ExecutionError, ExecutionOutput, ExecutionStackElement};
 use massa_final_state::{FinalState, StateChanges};
 use massa_hash::Hash;
 use massa_ledger::LedgerChanges;
@@ -178,7 +176,9 @@ impl ExecutionContext {
     /// A `ExecutionContext` instance ready for a read-only execution
     pub(crate) fn readonly(
         slot: Slot,
-        req: ReadOnlyExecutionRequest,
+        max_gas: u64,
+        gas_price: Amount,
+        call_stack: Vec<ExecutionStackElement>,
         previous_changes: StateChanges,
         final_state: Arc<RwLock<FinalState>>,
     ) -> Self {
@@ -199,10 +199,10 @@ impl ExecutionContext {
 
         // return readonly context
         ExecutionContext {
-            max_gas: req.max_gas,
-            gas_price: req.simulated_gas_price,
+            max_gas,
+            gas_price,
             slot,
-            stack: req.call_stack,
+            stack: call_stack,
             read_only: true,
             unsafe_rng,
             ..ExecutionContext::new(final_state, previous_changes)

@@ -10,8 +10,7 @@ use massa_models::{
     operation::{OperationIds, Operations},
     prehash::{BuildMap, Map, Set},
     signed::Signable,
-    Address, Block, BlockId, EndorsementId, OperationId, OperationType, SignedEndorsement,
-    SignedHeader,
+    Address, Block, BlockId, EndorsementId, OperationId, SignedEndorsement, SignedHeader,
 };
 use massa_network_exports::{NetworkCommandSender, NetworkEvent, NetworkEventReceiver};
 use massa_protocol_exports::{
@@ -1020,7 +1019,7 @@ impl ProtocolWorker {
         if total_gas > self.max_block_gas {
             // Gas usage over limit => block invalid
             // TODO remove this check in the single-ledger version,
-            //      this is only here to prevent ExecuteSC senders from spending gas fees while the block is unable to execute their op
+            //      this is only here to prevent SC operations from spending gas fees while the block is unable to execute their op
             return Ok(None);
         }
 
@@ -1116,9 +1115,7 @@ impl ProtocolWorker {
             }
 
             // Accumulate gas
-            if let OperationType::ExecuteSC { max_gas, .. } = &operation.content.op {
-                total_gas = total_gas.saturating_add(*max_gas);
-            }
+            total_gas = total_gas.saturating_add(operation.content.get_gas_usage());
 
             // Check operation signature only if not already checked.
             if self.checked_operations.insert(operation_id) {
@@ -1251,16 +1248,17 @@ impl ProtocolWorker {
                 if let Some((block_id, operation_set, endorsement_ids)) =
                     self.note_block_from_node(&block, &from_node_id).await?
                 {
+                    let slot = block.header.content.slot;
+
                     // Store block in shared storage.
-                    self.storage
-                        .store_block(block_id, block.clone(), serialized);
+                    self.storage.store_block(block_id, block, serialized);
 
                     let mut set = Set::<BlockId>::with_capacity_and_hasher(1, BuildMap::default());
                     set.insert(block_id);
                     self.stop_asking_blocks(set)?;
                     self.send_protocol_event(ProtocolEvent::ReceivedBlock {
                         block_id,
-                        slot: block.header.content.slot,
+                        slot,
                         operation_set,
                         endorsement_ids,
                     })

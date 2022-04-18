@@ -13,6 +13,12 @@ pub trait SerializeVarInt {
     fn to_varint_bytes(self) -> Vec<u8>;
 }
 
+impl SerializeVarInt for u16 {
+    fn to_varint_bytes(self) -> Vec<u8> {
+        self.encode_var_vec()
+    }
+}
+
 impl SerializeVarInt for u32 {
     fn to_varint_bytes(self) -> Vec<u8> {
         self.encode_var_vec()
@@ -39,6 +45,26 @@ pub trait DeserializeVarInt: Sized {
         buffer: &[u8],
         max_value: Self,
     ) -> Result<(Self, usize), ModelsError>;
+}
+
+impl DeserializeVarInt for u16 {
+    fn from_varint_bytes(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
+        u16::decode_var(buffer)
+            .ok_or_else(|| ModelsError::DeserializeError("could not deserialize varint".into()))
+    }
+
+    fn from_varint_bytes_bounded(
+        buffer: &[u8],
+        max_value: Self,
+    ) -> Result<(Self, usize), ModelsError> {
+        let (res, res_size) = Self::from_varint_bytes(buffer)?;
+        if res > max_value {
+            return Err(ModelsError::DeserializeError(
+                "deserialized varint u16 out of bounds".into(),
+            ));
+        }
+        Ok((res, res_size))
+    }
 }
 
 impl DeserializeVarInt for u32 {

@@ -54,7 +54,10 @@ pub use controller_traits::{ExecutionController, ExecutionManager};
 pub use error::ExecutionError;
 pub use event_store::EventStore;
 pub use settings::ExecutionConfig;
-pub use types::{ExecutionOutput, ExecutionStackElement, ReadOnlyExecutionRequest};
+pub use types::{
+    ExecutionOutput, ExecutionStackElement, ReadOnlyCallRequest, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget,
+};
 
 #[cfg(feature = "testing")]
 pub mod test_exports;

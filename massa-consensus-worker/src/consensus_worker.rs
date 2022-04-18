@@ -18,8 +18,7 @@ use massa_models::{
 };
 use massa_models::{ledger_models::LedgerData, SignedOperation};
 use massa_models::{
-    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, OperationSearchResult,
-    OperationType, SerializeCompact, Slot,
+    Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, SerializeCompact, Slot,
 };
 use massa_proof_of_stake_exports::{error::ProofOfStakeError, ExportProofOfStake, ProofOfStake};
 use massa_protocol_exports::{ProtocolEvent, ProtocolEventReceiver};
@@ -560,11 +559,7 @@ impl ConsensusWorker {
                 }
 
                 // check that we have block gas left
-                let op_gas = if let OperationType::ExecuteSC { max_gas, .. } = &op.content.op {
-                    *max_gas
-                } else {
-                    0
-                };
+                let op_gas = op.content.get_gas_usage();
                 if total_gas.saturating_add(op_gas) > self.cfg.max_gas_per_block {
                     // no more gas left: do not include
                     continue;
@@ -608,6 +603,7 @@ impl ConsensusWorker {
             creator_private_key,
         )?;
         let block = Block { header, operations };
+        let slot = block.header.content.slot;
         massa_trace!("create block", { "block": block });
 
         let serialized_block = block.to_bytes_compact()?;
@@ -615,7 +611,7 @@ impl ConsensusWorker {
         // Add to shared storage
         self.block_db
             .storage
-            .store_block(block_id, block.clone(), serialized_block);
+            .store_block(block_id, block, serialized_block);
 
         info!(
             "Staked block {} with address {}, at cycle {}, period {}, thread {}",
@@ -629,7 +625,7 @@ impl ConsensusWorker {
         // add block to db
         self.block_db.incoming_block(
             block_id,
-            block.header.content.slot,
+            slot,
             operation_set,
             endorsement_ids,
             &mut self.pos,
@@ -685,7 +681,7 @@ impl ConsensusWorker {
                         &self.block_db,
                         slot_start,
                         slot_end,
-                    ))
+                    )?)
                     .is_err()
                 {
                     warn!("consensus: could not send GetBlockGraphStatus answer");
@@ -702,7 +698,7 @@ impl ConsensusWorker {
                     {}
                 );
                 if response_tx
-                    .send(self.block_db.get_export_block_status(&block_id))
+                    .send(self.block_db.get_export_block_status(&block_id)?)
                     .is_err()
                 {
                     warn!("consensus: could not send GetBlock Status answer");
@@ -822,8 +818,10 @@ impl ConsensusWorker {
                     "consensus.consensus_worker.process_consensus_command.get_operations",
                     { "operation_ids": operation_ids }
                 );
-                let res = self.get_operations(&operation_ids).await;
-                if response_tx.send(res).is_err() {
+                if response_tx
+                    .send(self.block_db.get_operations(&operation_ids)?)
+                    .is_err()
+                {
                     warn!("consensus: could not send get operations response");
                 }
                 Ok(())
@@ -1093,19 +1091,10 @@ impl ConsensusWorker {
         Ok(states)
     }
 
-    /// search operations by id in the whole graph
-    /// Used in response to a API request
-    async fn get_operations(
-        &mut self,
-        operation_ids: &Set<OperationId>,
-    ) -> Map<OperationId, OperationSearchResult> {
-        self.block_db.get_operations(operation_ids)
-    }
-
     /// Manages received protocol events.
     ///
     /// # Arguments
-    /// * event: event type to process.
+    /// * `event`: event type to process.
     async fn process_protocol_event(&mut self, event: ProtocolEvent) -> Result<()> {
         match event {
             ProtocolEvent::ReceivedBlock {

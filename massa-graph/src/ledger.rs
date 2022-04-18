@@ -142,6 +142,24 @@ impl OperationLedgerInterface for Operation {
                     },
                 )?;
             }
+            massa_models::OperationType::CallSC {
+                max_gas,
+                gas_price,
+                sequential_coins,
+                ..
+            } => {
+                res.apply(
+                    &sender_address,
+                    &LedgerChange {
+                        balance_delta: gas_price
+                            .checked_mul_u64(*max_gas)
+                            .ok_or(LedgerError::AmountOverflowError)?
+                            .checked_add(*sequential_coins)
+                            .ok_or(LedgerError::AmountOverflowError)?,
+                        balance_increment: false,
+                    },
+                )?;
+            }
         }
 
         Ok(res)

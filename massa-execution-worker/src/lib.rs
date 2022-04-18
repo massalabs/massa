@@ -70,6 +70,7 @@
 #![warn(unused_crate_dependencies)]
 #![feature(map_first_last)]
 #![feature(unzip_option)]
+#![feature(is_sorted)]
 
 mod context;
 mod controller;

@@ -18,7 +18,7 @@ where
     pub content: T,
     /// signature
     pub signature: Signature,
-    #[serde(skip_deserializing)]
+    #[serde(skip)]
     phantom: PhantomData<U>,
 }
 

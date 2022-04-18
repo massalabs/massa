@@ -12,7 +12,7 @@ use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
     APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus,
-    OperationInfo, ReadOnlyExecution, TimeInterval,
+    OperationInfo, ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -137,11 +137,18 @@ pub trait Endpoints {
     #[rpc(name = "add_staking_private_keys")]
     fn add_staking_private_keys(&self, _: Vec<PrivateKey>) -> BoxFuture<Result<(), ApiError>>;
 
-    /// Execute code in read-only mode.
-    #[rpc(name = "execute_read_only_request")]
-    fn execute_read_only_request(
+    /// Execute bytecode in read-only mode.
+    #[rpc(name = "execute_read_only_bytecode")]
+    fn execute_read_only_bytecode(
         &self,
-        _: Vec<ReadOnlyExecution>,
+        _: Vec<ReadOnlyBytecodeExecution>,
+    ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>>;
+
+    /// Execute an SC function in read-only mode.
+    #[rpc(name = "execute_read_only_call")]
+    fn execute_read_only_call(
+        &self,
+        _: Vec<ReadOnlyCall>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>>;
 
     /// Remove a vector of addresses used to stake.

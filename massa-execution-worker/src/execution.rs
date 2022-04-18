@@ -13,7 +13,7 @@ use crate::interface_impl::InterfaceImpl;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionStackElement,
-    ReadOnlyExecutionRequest,
+    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::{FinalState, StateChanges};
 use massa_ledger::{Applicable, LedgerEntry, SetUpdateOrDelete};
@@ -270,14 +270,10 @@ impl ExecutionState {
         operation: &SignedOperation,
         block_creator_addr: Address,
     ) -> Result<(), ExecutionError> {
-        // process ExecuteSC operations only, ignore other types of operations
-        let (bytecode, max_gas, coins, gas_price) = match &operation.content.op {
-            OperationType::ExecuteSC {
-                data,
-                max_gas,
-                coins,
-                gas_price,
-            } => (data, max_gas, coins, gas_price),
+        // prefilter only SC operations
+        match &operation.content.op {
+            OperationType::ExecuteSC { .. } => {}
+            OperationType::CallSC { .. } => {}
             _ => return Ok(()),
         };
 
@@ -292,6 +288,50 @@ impl ExecutionState {
             .content
             .compute_id()
             .expect("could not compute operation ID");
+
+        // call the execution process specific to the operation type
+        match &operation.content.op {
+            OperationType::ExecuteSC { .. } => self.execute_executesc_op(
+                &operation.content.op,
+                block_creator_addr,
+                operation_id,
+                sender_addr,
+            ),
+            OperationType::CallSC { .. } => self.execute_callsc_op(
+                &operation.content.op,
+                block_creator_addr,
+                operation_id,
+                sender_addr,
+            ),
+            _ => panic!("unexpected operation type"), // checked at the beginning of the function
+        }
+    }
+
+    /// Execute an operation of type ExecuteSC
+    /// Will panic if called with another operation type
+    ///
+    /// # Arguments
+    /// * operation: the SignedOperation to process, must be an ExecuteSC
+    /// * block_creator_addr: address of the block creator
+    /// * operation_id: ID of the operation
+    /// * sender_addr: address of the sender
+    pub fn execute_executesc_op(
+        &self,
+        operation: &OperationType,
+        block_creator_addr: Address,
+        operation_id: OperationId,
+        sender_addr: Address,
+    ) -> Result<(), ExecutionError> {
+        // process ExecuteSC operations only
+        let (bytecode, max_gas, coins, gas_price) = match &operation {
+            OperationType::ExecuteSC {
+                data,
+                max_gas,
+                coins,
+                gas_price,
+            } => (data, max_gas, coins, gas_price),
+            _ => panic!("unexpected operation type"),
+        };
 
         // prepare the current slot context for executing the operation
         let context_snapshot;
@@ -347,6 +387,153 @@ impl ExecutionState {
 
         // run the VM on the bytecode contained in the operation
         let run_result = massa_sc_runtime::run_main(bytecode, *max_gas, &*self.execution_interface);
+        if let Err(err) = run_result {
+            // there was an error during bytecode execution:
+            // cancel the effects of the execution by resetting the context to the previously saved snapshot
+            let mut context = context_guard!(self);
+            context.origin_operation_id = None;
+            context.reset_to_snapshot(context_snapshot);
+            return Err(ExecutionError::RuntimeError(format!(
+                "bytecode execution error: {}",
+                err
+            )));
+        }
+
+        Ok(())
+    }
+
+    /// Execute an operation of type CallSC
+    /// Will panic if called with another operation type
+    ///
+    /// # Arguments
+    /// * operation: the SignedOperation to process, must be an CallSC
+    /// * block_creator_addr: address of the block creator
+    /// * operation_id: ID of the operation
+    /// * sender_addr: address of the sender
+    pub fn execute_callsc_op(
+        &self,
+        operation: &OperationType,
+        block_creator_addr: Address,
+        operation_id: OperationId,
+        sender_addr: Address,
+    ) -> Result<(), ExecutionError> {
+        // process CallSC operations only
+        let (gas_price, max_gas, target_addr, target_func, param, parallel_coins, sequential_coins) =
+            match &operation {
+                OperationType::CallSC {
+                    gas_price,
+                    max_gas,
+                    target_addr,
+                    target_func,
+                    param,
+                    parallel_coins,
+                    sequential_coins,
+                } => (
+                    *gas_price,
+                    *max_gas,
+                    *target_addr,
+                    target_func,
+                    param,
+                    *parallel_coins,
+                    *sequential_coins,
+                ),
+                _ => panic!("unexpected operation type"),
+            };
+
+        // prepare the current slot context for executing the operation
+        let context_snapshot;
+        let bytecode;
+        {
+            // acquire write access to the context
+            let mut context = context_guard!(self);
+
+            // Use the context to credit the producer of the block with max_gas * gas_price parallel coins.
+            // Note that errors are deterministic and do not cancel the operation execution.
+            // That way, even if the sender sent an invalid operation, the block producer will still get credited.
+            let gas_fees = gas_price.saturating_mul_u64(max_gas);
+            if let Err(err) =
+                context.transfer_parallel_coins(None, Some(block_creator_addr), gas_fees)
+            {
+                debug!(
+                    "failed to credit block producer {} with {} gas fee coins: {}",
+                    block_creator_addr, gas_fees, err
+                );
+            }
+
+            // Credit the operation sender with `sequential_coins` parallel coins.
+            // This is used to ensure that those coins are not lost in case of failure,
+            // since they have been debited by consensus beforehand.
+            // Note that errors are deterministic and do not cancel op execution.
+            if let Err(err) =
+                context.transfer_parallel_coins(None, Some(sender_addr), sequential_coins)
+            {
+                debug!(
+                    "failed to credit operation sender {} with {} operation coins: {}",
+                    sender_addr, sequential_coins, err
+                );
+            }
+
+            // Load bytecode. Assume empty bytecode if not found.
+            bytecode = context.get_bytecode(&target_addr).unwrap_or_default();
+
+            // save a snapshot of the context state to restore it if the op fails to execute,
+            // thus reverting any changes except the coin transfers above
+            context_snapshot = context.get_snapshot();
+
+            // compute the total amount of coins that need to be transferred
+            // from the sender's parallel balance to the target's parallel balance
+            let coins = sequential_coins.saturating_add(parallel_coins);
+
+            // set the context gas price to match the one defined in the operation
+            context.gas_price = gas_price;
+
+            // set the context max gas to match the one defined in the operation
+            context.max_gas = max_gas;
+
+            // set the context origin operation ID
+            context.origin_operation_id = Some(operation_id);
+
+            // Set the call stack o the sender addr only to allow it to send parallel coins (access rights)
+            context.stack = vec![ExecutionStackElement {
+                address: sender_addr,
+                coins,
+                owned_addresses: vec![sender_addr],
+            }];
+
+            // try to transfer parallel coins from the sender to the target
+            if let Err(err) =
+                context.transfer_parallel_coins(Some(sender_addr), Some(target_addr), coins)
+            {
+                // cancel the effects of the execution by resetting the context to the previously saved snapshot
+                context.origin_operation_id = None;
+                context.reset_to_snapshot(context_snapshot);
+                return Err(ExecutionError::RuntimeError(format!(
+                    "failed to transfer {} call coins from {} to {}: {}",
+                    coins, sender_addr, target_addr, err
+                )));
+            }
+
+            // Add the second part of the stack (the target)
+            context.stack.push(ExecutionStackElement {
+                address: target_addr,
+                coins,
+                owned_addresses: vec![target_addr],
+            });
+        };
+
+        // quit if there is no function to be called
+        if target_func.is_empty() {
+            return Ok(());
+        }
+
+        // run the VM on the called fucntion of the bytecode
+        let run_result = massa_sc_runtime::run_function(
+            &bytecode,
+            max_gas,
+            target_func,
+            param,
+            &*self.execution_interface,
+        );
         if let Err(err) = run_result {
             // there was an error during bytecode execution:
             // cancel the effects of the execution by resetting the context to the previously saved snapshot
@@ -508,7 +695,7 @@ impl ExecutionState {
         context_guard!(self).settle_slot()
     }
 
-    /// Executes a read-only execution request.
+    /// Runs a read-only execution request.
     /// The executed bytecode appears to be able to read and write the consensus state,
     /// but all accumulated changes are simply returned as an `ExecutionOutput` object,
     /// and not actually applied to the consensus state.
@@ -532,17 +719,49 @@ impl ExecutionState {
         let previous_changes = self.get_accumulated_active_changes_at_slot(slot);
 
         // create a readonly execution context
-        let max_gas = req.max_gas;
-        let bytecode = req.bytecode.clone();
-        let execution_context =
-            ExecutionContext::readonly(slot, req, previous_changes, self.final_state.clone());
+        let execution_context = ExecutionContext::readonly(
+            slot,
+            req.max_gas,
+            req.simulated_gas_price,
+            req.call_stack,
+            previous_changes,
+            self.final_state.clone(),
+        );
 
-        // set the execution context for execution
-        *context_guard!(self) = execution_context;
+        // run the intepreter according to the target type
+        match req.target {
+            ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
+                // set the execution context for execution
+                *context_guard!(self) = execution_context;
 
-        // run the interpreter
-        massa_sc_runtime::run_main(&bytecode, max_gas, &*self.execution_interface)
-            .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+                // run the bytecode's main function
+                massa_sc_runtime::run_main(&bytecode, req.max_gas, &*self.execution_interface)
+                    .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+            }
+            ReadOnlyExecutionTarget::FunctionCall {
+                target_addr,
+                target_func,
+                parameter,
+            } => {
+                // get the bytecode, default to an empty vector
+                let bytecode = execution_context
+                    .get_bytecode(&target_addr)
+                    .unwrap_or_default();
+
+                // set the execution context for execution
+                *context_guard!(self) = execution_context;
+
+                // run the target function in the bytecode
+                massa_sc_runtime::run_function(
+                    &bytecode,
+                    req.max_gas,
+                    &target_func,
+                    &parameter,
+                    &*self.execution_interface,
+                )
+                .map_err(|err| ExecutionError::RuntimeError(err.to_string()))?;
+            }
+        }
 
         // return the execution output
         Ok(context_guard!(self).settle_slot())

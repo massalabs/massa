@@ -230,7 +230,8 @@ impl EventStore {
         original_operation_id: Option<OperationId>,
     ) -> Vec<SCOutputEvent> {
         let empty = Set::<SCOutputEventId>::default();
-        self.slot_to_id
+        let mut events: Vec<_> = self
+            .slot_to_id
             .iter()
             // filter on slots
             .filter_map(|(slot, ids)| {
@@ -270,6 +271,8 @@ impl EventStore {
             })
             .filter_map(|id| self.id_to_event.get(id))
             .cloned()
-            .collect()
+            .collect();
+        events.sort_unstable_by_key(|event| (event.context.slot, event.context.index_in_slot));
+        events
     }
 }
