@@ -15,7 +15,7 @@ use massa_hash::Hash;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
 
 /// node status
 #[derive(Debug, Deserialize, Serialize)]
@@ -76,7 +76,7 @@ impl std::fmt::Display for NodeStatus {
 
         writeln!(f, "Connected nodes:")?;
         for (node_id, ip_addr) in &self.connected_nodes {
-            writeln!(f, "\tNode's ID: {} / IP address: {}", node_id, ip_addr)?;
+            writeln!(f, "\t[\"{}:31245\", \"{}\"],", ip_addr, node_id)?;
         }
         Ok(())
     }
@@ -479,21 +479,7 @@ pub struct TimeInterval {
     pub end: Option<MassaTime>,
 }
 
-/// Move to the API crate
-/// the API settings
-#[derive(Debug, Deserialize, Clone, Copy)]
-pub struct APISettings {
-    /// when looking for next draw we want to look at max `draw_lookahead_period_count`
-    pub draw_lookahead_period_count: u64,
-    /// bind for the private API
-    pub bind_private: SocketAddr,
-    /// bind for the public API
-    pub bind_public: SocketAddr,
-    /// max argument count
-    pub max_arguments: u64,
-}
-
-/// filter used when retrieving SC output events
+/// filter used when retrieving sc output events
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct EventFilter {
     /// optional start slot
