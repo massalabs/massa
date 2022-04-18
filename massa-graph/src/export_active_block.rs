@@ -83,9 +83,12 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
 impl ExportActiveBlock {
     /// try conversion from active block to export active block
     pub fn try_from_active_block(a_block: &ActiveBlock, storage: Storage) -> Result<Self> {
-        let block = storage
-            .retrieve_block(&a_block.block_id)
-            .ok_or(GraphError::MissingBlock)?;
+        let block = storage.retrieve_block(&a_block.block_id).ok_or_else(|| {
+            GraphError::MissingBlock(format!(
+                "missing block ExportActiveBlock::try_from_active_block: {}",
+                a_block.block_id
+            ))
+        })?;
         let stored_block = block.read();
         Ok(ExportActiveBlock {
             block: stored_block.block.clone(),
