@@ -142,7 +142,7 @@ pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 
 /// Maximum of GAS allowed for a block
 pub const MAX_GAS_PER_BLOCK: u64 = 100_000_000;
-/// Maximum of GAS allowed for async messages execution on one slot
+/// Maximum of GAS allowed for asynchronous messages execution on one slot
 pub const MAX_ASYNC_GAS: u64 = 100_000_000;
 
 //

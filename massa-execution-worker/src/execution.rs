@@ -307,14 +307,14 @@ impl ExecutionState {
         }
     }
 
-    /// Execute an operation of type ExecuteSC
+    /// Execute an operation of type `ExecuteSC`
     /// Will panic if called with another operation type
     ///
     /// # Arguments
-    /// * operation: the SignedOperation to process, must be an ExecuteSC
-    /// * block_creator_addr: address of the block creator
-    /// * operation_id: ID of the operation
-    /// * sender_addr: address of the sender
+    /// * `operation`: the `SignedOperation` to process, must be an `ExecuteSC`
+    /// * `block_creator_addr`: address of the block creator
+    /// * `operation_id`: ID of the operation
+    /// * `sender_addr`: address of the sender
     pub fn execute_executesc_op(
         &self,
         operation: &OperationType,
@@ -402,14 +402,14 @@ impl ExecutionState {
         Ok(())
     }
 
-    /// Execute an operation of type CallSC
+    /// Execute an operation of type `CallSC`
     /// Will panic if called with another operation type
     ///
     /// # Arguments
-    /// * operation: the SignedOperation to process, must be an CallSC
-    /// * block_creator_addr: address of the block creator
-    /// * operation_id: ID of the operation
-    /// * sender_addr: address of the sender
+    /// * `operation`: the `SignedOperation` to process, must be an `CallSC`
+    /// * `block_creator_addr`: address of the block creator
+    /// * `operation_id`: ID of the operation
+    /// * `sender_addr`: address of the sender
     pub fn execute_callsc_op(
         &self,
         operation: &OperationType,

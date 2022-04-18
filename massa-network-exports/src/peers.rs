@@ -146,7 +146,7 @@ pub struct PeerInfo {
 }
 
 impl PeerInfo {
-    /// Cleans up the PeerInfo by normalizing the IP address
+    /// Cleans up the `PeerInfo` by normalizing the IP address
     /// and resetting active connection counts.
     pub fn cleanup(&mut self) {
         // canonicalize IP

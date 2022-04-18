@@ -46,7 +46,7 @@ pub(crate) struct ExecutionThread {
     last_active_slot: Slot,
     // Execution state (see execution.rs) to which execution requests are sent
     execution_state: Arc<RwLock<ExecutionState>>,
-    /// queue for readonly requests and response MPSCs to send back their outputs
+    /// queue for read-only requests and response MPSCs to send back their outputs
     readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
 }
 

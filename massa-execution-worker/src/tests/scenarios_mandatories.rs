@@ -103,7 +103,7 @@ fn test_sending_read_only_execution_command() {
     manager.stop()
 }
 
-/// Test the gas usage in nested calls using call sc operation
+/// Test the gas usage in nested calls using call SC operation
 ///
 /// Create a smart contract and send it in the blockclique.
 /// This smart contract have his sources in the sources folder.
@@ -349,7 +349,7 @@ fn create_execute_sc_operation(
 }
 
 /// Create an operation for the given sender with `data` as bytecode.
-/// Return a result that should be unwraped in the root `#[test]` routine.
+/// Return a result that should be unwrapped in the root `#[test]` routine.
 fn create_call_sc_operation(
     sender_private_key: PrivateKey,
     sender_public_key: PublicKey,
