@@ -32,6 +32,10 @@ jobs:
           args: --all -- --check
       - uses: actions-rs/cargo@v1
         with:
+          command: install
+          args: cargo-spellcheck
+      - uses: actions-rs/cargo@v1
+        with:
           command: spellcheck
 
   check:
