@@ -606,7 +606,7 @@
 
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;Connected nodes:&quot;</span>)<span class="question-mark">?</span>;
         <span class="kw">for</span> (<span class="ident">node_id</span>, <span class="ident">ip_addr</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">connected_nodes</span> {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\tNode&#39;s ID: {} / IP address: {}&quot;</span>, <span class="ident">node_id</span>, <span class="ident">ip_addr</span>)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;\t[\&quot;{}:31245\&quot;, \&quot;{}\&quot;],&quot;</span>, <span class="ident">ip_addr</span>, <span class="ident">node_id</span>)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
