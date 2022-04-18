@@ -1,14 +1,15 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::error::ApiError;
+use crate::settings::APISettings;
 use crate::{Endpoints, Private, RpcServer, StopHandle, API};
 use jsonrpc_core::BoxFuture;
 use jsonrpc_http_server::tokio::sync::mpsc;
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
-    APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus,
-    OperationInfo, ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
+    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus, OperationInfo,
+    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;

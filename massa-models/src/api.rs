@@ -15,7 +15,7 @@ use massa_hash::Hash;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
 
 /// node status
 #[derive(Debug, Deserialize, Serialize)]
@@ -477,20 +477,6 @@ pub struct TimeInterval {
     pub start: Option<MassaTime>,
     /// optional end slot
     pub end: Option<MassaTime>,
-}
-
-/// Move to the api crate
-/// the api settings
-#[derive(Debug, Deserialize, Clone, Copy)]
-pub struct APISettings {
-    /// when looking for next draw we want to look at max draw_lookahead_period_count
-    pub draw_lookahead_period_count: u64,
-    /// bind for the private api
-    pub bind_private: SocketAddr,
-    /// bind for the public api
-    pub bind_public: SocketAddr,
-    /// max argument count
-    pub max_arguments: u64,
 }
 
 /// filter used when retrieving sc output events

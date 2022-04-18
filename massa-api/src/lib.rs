@@ -11,8 +11,8 @@ use jsonrpc_http_server::{CloseHandle, ServerBuilder};
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
-    APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus,
-    OperationInfo, ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
+    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus, OperationInfo,
+    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -34,6 +34,8 @@ use tracing::{info, warn};
 mod error;
 mod private;
 mod public;
+mod settings;
+pub use settings::APISettings;
 
 /// Public api component
 pub struct Public {
