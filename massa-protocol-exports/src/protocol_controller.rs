@@ -64,7 +64,7 @@ pub enum ProtocolPoolEvent {
     GetOperations((NodeId, OperationIds)),
 }
 
-/// block result: map block id to 
+/// block result: map block id to
 /// ```
 /// Option(
 ///     Option(set(operation id)),

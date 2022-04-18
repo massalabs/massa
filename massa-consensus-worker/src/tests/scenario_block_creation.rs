@@ -441,7 +441,7 @@ async fn test_interleaving_block_creation_with_reception() {
 /// op2 : A -> B : 50, fee 10
 /// op3 : B -> A : 10, fee 15
 /// ```
-/// 
+///
 /// ---
 ///
 /// ```
@@ -604,7 +604,7 @@ async fn test_order_of_inclusion() {
 /// max_operations_per_block = 10 000
 /// op_i = A -> B : 10, 1, signed for the i-th time
 /// ```
-/// 
+///
 /// ---
 /// ```
 /// let block_size = size of dummy block at (1,0) without any operation
