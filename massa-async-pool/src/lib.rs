@@ -41,7 +41,7 @@
 //! Note that `max_gas*gas_price` coins are burned when sending the message.
 //!
 //! ## How is the `AsyncPool` handled
-//! ```
+//! ```md
 //! * In the AsyncPool, Messages are kept sorted by `priority = AsyncMessageId(msg.max_gas * msg.gas_price, rev(msg.slot), rev(msg.emission_index))`
 //!
 //! * when an AsyncMessage is added to the AsyncPool:

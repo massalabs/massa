@@ -31,7 +31,7 @@
 //! ```
 //!
 //! # Note about rooting
-//! ```
+//! ```md
 //! |T|S| not(T) or S | T and not(S)
 //! |0|0| 1           | 0
 //! |1|0| 0           | 1

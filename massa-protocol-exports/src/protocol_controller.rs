@@ -65,7 +65,7 @@ pub enum ProtocolPoolEvent {
 }
 
 /// block result: map block id to
-/// ```
+/// ```md
 /// Option(
 ///     Option(set(operation id)),
 ///     Option(Vec(endorsement id))
