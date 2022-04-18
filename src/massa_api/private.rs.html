@@ -189,17 +189,19 @@
 <span id="184">184</span>
 <span id="185">185</span>
 <span id="186">186</span>
+<span id="187">187</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::APISettings</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Endpoints</span>, <span class="ident">Private</span>, <span class="ident">RpcServer</span>, <span class="ident">StopHandle</span>, <span class="ident">API</span>};
 <span class="kw">use</span> <span class="ident">jsonrpc_core::BoxFuture</span>;
 <span class="kw">use</span> <span class="ident">jsonrpc_http_server::tokio::sync::mpsc</span>;
 <span class="kw">use</span> <span class="ident">massa_consensus_exports</span>::{<span class="ident">ConsensusCommandSender</span>, <span class="ident">ConsensusConfig</span>};
 <span class="kw">use</span> <span class="ident">massa_execution_exports::ExecutionController</span>;
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{
-    <span class="ident">APISettings</span>, <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">EventFilter</span>, <span class="ident">NodeStatus</span>,
-    <span class="ident">OperationInfo</span>, <span class="ident">ReadOnlyBytecodeExecution</span>, <span class="ident">ReadOnlyCall</span>, <span class="ident">TimeInterval</span>,
+    <span class="ident">AddressInfo</span>, <span class="ident">BlockInfo</span>, <span class="ident">BlockSummary</span>, <span class="ident">EndorsementInfo</span>, <span class="ident">EventFilter</span>, <span class="ident">NodeStatus</span>, <span class="ident">OperationInfo</span>,
+    <span class="ident">ReadOnlyBytecodeExecution</span>, <span class="ident">ReadOnlyCall</span>, <span class="ident">TimeInterval</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_models::clique::Clique</span>;
 <span class="kw">use</span> <span class="ident">massa_models::composite::PubkeySig</span>;
@@ -376,5 +378,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (90ca44752 2022-04-11)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (ec77f2524 2022-04-17)" ></div>
 </body></html>

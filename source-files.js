@@ -1,5 +1,5 @@
 var N = null;var sourcesIndex = {};
-sourcesIndex["massa_api"] = {"name":"","files":["error.rs","lib.rs","private.rs","public.rs"]};
+sourcesIndex["massa_api"] = {"name":"","files":["error.rs","lib.rs","private.rs","public.rs","settings.rs"]};
 sourcesIndex["massa_async_pool"] = {"name":"","files":["bootstrap.rs","changes.rs","config.rs","lib.rs","message.rs","pool.rs"]};
 sourcesIndex["massa_bootstrap"] = {"name":"","files":["client_binder.rs","error.rs","establisher.rs","lib.rs","messages.rs","server_binder.rs","settings.rs"]};
 sourcesIndex["massa_client"] = {"name":"","files":["cmds.rs","main.rs","repl.rs","settings.rs","utils.rs"]};
