@@ -172,7 +172,7 @@ pub const LEDGER_RESET_AT_STARTUP: bool = true;
 /// normally in `config.toml`, max unknown dependencies kept
 pub const MAX_DEPENDENCY_BLOCK: usize = 10;
 /// normally in `config.toml`, max discarded blocks kept
-pub const MAX_DISCARED_BLOCKS: usize = 10;
+pub const MAX_DISCARDED_BLOCKS: usize = 10;
 /// normally in `config.toml`, max final events kept
 pub const MAX_FINAL_EVENTS: usize = 10;
 /// normally in `config.toml`, max in the future kept blocks
