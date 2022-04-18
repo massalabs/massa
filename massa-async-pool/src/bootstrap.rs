@@ -1,6 +1,6 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Provides serializable structures for bootstrapping the AsyncPool
+//! Provides serializable structures for bootstrapping the `AsyncPool`
 
 use crate::message::AsyncMessage;
 use massa_models::{

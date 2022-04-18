@@ -23,7 +23,7 @@ pub struct BootstrapClientBinder {
 }
 
 impl BootstrapClientBinder {
-    /// Creates a new WriteBinder.
+    /// Creates a new `WriteBinder`.
     ///
     /// # Argument
     /// * duplex: duplex stream.

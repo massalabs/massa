@@ -1,17 +1,17 @@
 //! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
-//! # Default hardcoded
+//! # Default hard-coded
 //!
 //! Each crates may contains a `settings.rs` or a `config.rs` the `Default`
 //! implementation of each object take the default Values from the following
 //! file.
 //!
-//! These values are the hardcoded values that make sens to never be modified
+//! These values are the hard-coded values that make sens to never be modified
 //! by a user. Generally, this values are passed with dependency injection in a `cfg`
 //! parameter for each worker, that is convenient for unit tests.
 //!
-//! A parallel file with the same const definitions exist for the testing case.
+//! A parallel file with the same constant definitions exist for the testing case.
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use crate::{Amount, Version};
 use massa_signature::PrivateKey;
@@ -22,7 +22,7 @@ use num::rational::Ratio;
 pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
 /// Maximum message length in bytes
 pub const MAX_MESSAGE_SIZE: u32 = 1048576000;
-/// Max number of hash in the message AskForBlocks
+/// Max number of hash in the message `AskForBlocks`
 pub const MAX_ASK_BLOCKS_PER_MESSAGE: u32 = 128;
 /// Max number of operations per message
 pub const MAX_OPERATIONS_PER_MESSAGE: u32 = 1024;
@@ -52,7 +52,7 @@ lazy_static::lazy_static! {
     } else {
         Some(1648764000000.into())
     };
-    /// Private_key to sign genesis blocks.
+    /// `PrivateKey` to sign genesis blocks.
     pub static ref GENESIS_KEY: PrivateKey = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
         .parse()
         .unwrap();

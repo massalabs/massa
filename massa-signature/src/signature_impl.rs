@@ -298,7 +298,7 @@ impl PublicKey {
         bs58::encode(self.to_bytes()).with_check().into_string()
     }
 
-    /// Serialize a PublicKey as bytes.
+    /// Serialize a `PublicKey` as bytes.
     ///
     /// # Example
     ///  ```
@@ -480,7 +480,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
     }
 }
 
-/// Signature generated from a message and a privateKey.
+/// Signature generated from a message and a `PrivateKey`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Signature(secp256k1::Signature);
 
@@ -790,7 +790,7 @@ impl SignatureEngine {
     }
 }
 
-/// Generate a random private key from a RNG.
+/// Generate a random private key from a random draw.
 ///
 /// # Example
 /// ```

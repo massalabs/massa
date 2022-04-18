@@ -281,7 +281,7 @@ impl ConsensusWorker {
     }
 
     /// this function is called around every slot tick
-    /// it checks for cycle incrementation
+    /// it checks for cycle increment
     /// creates block and endorsement if a staking address has been drawn
     /// it signals the new slot to other components
     /// detects desynchronization

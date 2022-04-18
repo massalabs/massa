@@ -30,6 +30,9 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
+      - uses: actions-rs/cargo@v1
+        with:
+          command: spellcheck
 
   check:
     if: github.ref != 'refs/heads/staging'

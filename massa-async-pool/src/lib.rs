@@ -2,9 +2,9 @@
 
 //! # General description
 //!
-//! This crate implements a consensual/deterministic pool of asynchronous messages (AsyncPool) within the context of autonomous smart contracts.
+//! This crate implements a consensual/deterministic pool of asynchronous messages (`AsyncPool`) within the context of autonomous smart contracts.
 //!
-//! AsyncPool is used in conjunction with FinalLedger within the FinalState, but also as a speculative copy for speculative execution.
+//! `AsyncPool` is used in conjunction with `FinalLedger` within the `FinalState`, but also as a speculative copy for speculative execution.
 //!
 //! ## Goal
 //!
@@ -32,15 +32,15 @@
 //!
 //! ## How to send a message during bytecode execution
 //!
-//! * messages are sent using an ABI: `send_message(target_addrress, target_handler, validity_start, validity_end, max_gas, gas_price, coins, data: JSON string) -> Result<(), ABIReturnError>`. Note that data has a config defined max_async_message_data_size.
+//! * messages are sent using an ABI: `send_message(target_address, target_handler, validity_start, validity_end, max_gas, gas_price, coins, data: JSON string) -> Result<(), ABIReturnError>`. Note that data has a configuration defined `max_async_message_data_size`.
 //! * when called, this ABI does this:
 //!   * it consumes `compute_gas_cost_of_message_storage(context.current_slot, validity_end_slot)` of gas in the current execution. This allows making the message emission more gas-consuming when it requires storing the message in queue for longer
 //!   * it consumes `max_gas * gas_price + coins` coins from the sender
-//!   * it generates an AsyncMessage and stores it in an Async pool
+//!   * it generates an `AsyncMessage` and stores it in an asynchronous pool
 //!
 //! Note that `max_gas*gas_price` coins are burned when sending the message.
 //!
-//! ## How is the AsyncPool handled
+//! ## How is the `AsyncPool` handled
 //! ```
 //! * In the AsyncPool, Messages are kept sorted by `priority = AsyncMessageId(msg.max_gas * msg.gas_price, rev(msg.slot), rev(msg.emission_index))`
 //!

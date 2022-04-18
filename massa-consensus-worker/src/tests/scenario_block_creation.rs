@@ -78,7 +78,7 @@ async fn test_genesis_block_creation() {
 ///
 ///
 /// ### Context
-///
+/// ```
 /// * price per roll = 1000
 /// * periods per cycle = 30 000
 /// * t0 = 500ms
@@ -90,7 +90,7 @@ async fn test_genesis_block_creation() {
 /// * fee = 0 for every operation
 /// * address 1 has 1 roll and 0 coins
 /// * address 2 is in consensus and has 0 roll and 1000 coins
-///
+/// ```
 /// ### Initialization
 /// Following blocks are sent through a protocol event to consensus right at the beginning. They all have best parents as parents.
 /// * block at slot(1,0) with operation address 2 buys 1 roll

@@ -33,25 +33,25 @@ macro_rules! context_guard {
 /// an implementation of the Interface trait (see massa-sc-runtime crate)
 #[derive(Clone)]
 pub(crate) struct InterfaceImpl {
-    /// execution config
+    /// execution configuration
     config: ExecutionConfig,
     /// thread-safe shared access to the execution context (see context.rs)
     context: Arc<Mutex<ExecutionContext>>,
 }
 
 impl InterfaceImpl {
-    /// creates a new InterfaceImpl
+    /// creates a new `InterfaceImpl`
     ///
     /// # Arguments
-    /// * config: execution config
-    /// * context: thread-safe shared access to the current execution context (see context.rs)
+    /// * `config`: execution configuration
+    /// * `context`: thread-safe shared access to the current execution context (see context.rs)
     pub fn new(config: ExecutionConfig, context: Arc<Mutex<ExecutionContext>>) -> InterfaceImpl {
         InterfaceImpl { config, context }
     }
 }
 
 impl InterfaceClone for InterfaceImpl {
-    /// allows cloning a boxed InterfaceImpl
+    /// allows cloning a boxed `InterfaceImpl`
     fn clone_box(&self) -> Box<dyn Interface> {
         Box::new(self.clone())
     }
@@ -60,7 +60,7 @@ impl InterfaceClone for InterfaceImpl {
 /// Implementation of the Interface trait providing functions for massa-sc-runtime to call
 /// in order to interact with the execution context during bytecode execution.
 /// See the massa-sc-runtime crate for a functional description of the trait and its methods.
-/// Note that massa-sc-runtime uses basic types (str for addresses, u64 for amounts...) for genericity.
+/// Note that massa-sc-runtime uses basic types (`str` for addresses, `u64` for amounts...) for genericity.
 impl Interface for InterfaceImpl {
     /// prints a message in the node logs at log level 3 (debug)
     fn print(&self, message: &str) -> Result<()> {
@@ -74,8 +74,8 @@ impl Interface for InterfaceImpl {
     /// and returns the target bytecode from the ledger.
     ///
     /// # Arguments
-    /// * address: string representation of the target address on which the bytecode will be called
-    /// * raw_coins: raw representation (without decimal factor) of the amount of parallel coins to transfer from the caller address to the target address at the beginning of the call
+    /// * `address`: string representation of the target address on which the bytecode will be called
+    /// * `raw_coins`: raw representation (without decimal factor) of the amount of parallel coins to transfer from the caller address to the target address at the beginning of the call
     ///
     /// # Returns
     /// The target bytecode or an error
@@ -283,10 +283,10 @@ impl Interface for InterfaceImpl {
         Ok(massa_hash::Hash::compute_from(data).to_bs58_check())
     }
 
-    /// Converts a pubkey to an address
+    /// Converts a public key to an address
     ///
     /// # Arguments
-    /// * public_key: string representation of the public key
+    /// * `public_key`: string representation of the public key
     ///
     /// # Returns
     /// The string representation of the resulting address
@@ -321,8 +321,8 @@ impl Interface for InterfaceImpl {
     /// Transfer parallel coins from the current address (top of the call stack) towards a target address.
     ///
     /// # Arguments
-    /// * to_address: string representation of the address to which the coins are sent
-    /// * raw_amount: raw representation (no decimal factor) of the amount of coins to transfer
+    /// * `to_address`: string representation of the address to which the coins are sent
+    /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
     fn transfer_coins(&self, to_address: &str, raw_amount: u64) -> Result<()> {
         let to_address = massa_models::Address::from_str(to_address)?;
         let amount = massa_models::Amount::from_raw(raw_amount);
@@ -335,9 +335,9 @@ impl Interface for InterfaceImpl {
     /// Transfer parallel coins from a given address towards a target address.
     ///
     /// # Arguments
-    /// * from_address: string representation of the address that is sending the coins
-    /// * to_address: string representation of the address to which the coins are sent
-    /// * raw_amount: raw representation (no decimal factor) of the amount of coins to transfer
+    /// * `from_address`: string representation of the address that is sending the coins
+    /// * `to_address`: string representation of the address to which the coins are sent
+    /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
     fn transfer_coins_for(
         &self,
         from_address: &str,
@@ -381,7 +381,7 @@ impl Interface for InterfaceImpl {
     }
 
     /// Gets the amount of coins that have been transferred at the beginning of the call.
-    /// See the init_call method.
+    /// See the `init_call` method.
     ///
     /// # Returns
     /// The raw representation (no decimal factor) of the amount of coins
@@ -429,7 +429,7 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
-    /// Returns the current time (millisecond unix timestamp)
+    /// Returns the current time (millisecond UNIX timestamp)
     /// Note that in order to ensure determinism, this is actually the time of the context slot.
     fn get_time(&self) -> Result<u64> {
         let slot = context_guard!(self).slot;
@@ -442,7 +442,7 @@ impl Interface for InterfaceImpl {
         Ok(ts.to_millis())
     }
 
-    /// Returns a pseudo-random deterministic i64 number
+    /// Returns a pseudo-random deterministic `i64` number
     ///
     /// # Warning
     /// This random number generator is unsafe:
@@ -452,17 +452,17 @@ impl Interface for InterfaceImpl {
         Ok(context_guard!(self).unsafe_rng.sample(distr))
     }
 
-    /// Adds an asynchronous message to the context speculative async pool
+    /// Adds an asynchronous message to the context speculative asynchronous pool
     ///
     /// # Arguments
-    /// * target_address: Destination address hash in format string
-    /// * target_handler: Name of the message handling function
-    /// * validity_start: Tuple containing the period and thread of the validity start slot
-    /// * validity_end: Tuple containing the period and thread of the validity end slot
-    /// * max_gas: Maximum gas for the message execution
-    /// * gas_price: Price of one gas unit
-    /// * raw_coins: Coins given by the sender
-    /// * data: Message data
+    /// * `target_address`: Destination address hash in format string
+    /// * `target_handler`: Name of the message handling function
+    /// * `validity_start`: Tuple containing the period and thread of the validity start slot
+    /// * `validity_end`: Tuple containing the period and thread of the validity end slot
+    /// * `max_gas`: Maximum gas for the message execution
+    /// * `gas_price`: Price of one gas unit
+    /// * `raw_coins`: Coins given by the sender
+    /// * `data`: Message data
     fn send_message(
         &self,
         target_address: &str,

@@ -85,7 +85,7 @@ impl EndorsementId {
         ))
     }
 
-    /// endorsement id from bs58 check
+    /// endorsement id from `bs58` check
     pub fn from_bs58_check(data: &str) -> Result<EndorsementId, ModelsError> {
         Ok(EndorsementId(
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,

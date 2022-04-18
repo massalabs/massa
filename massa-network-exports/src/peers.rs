@@ -83,7 +83,7 @@ impl DeserializeCompact for BootstrapPeers {
 }
 
 /// Peer categories.
-/// There is a defined number af slots for each category.
+/// There is a defined number of slots for each category.
 /// Order matters: less prioritized peer type first
 #[derive(
     Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Display, Enum,
@@ -95,7 +95,7 @@ pub enum PeerType {
     WhiteListed,
     /** if the peer is in bootstrap servers list
     for now it is decoupled from the real bootstrap sever list, it's just parsed
-    TODO: https://github.com/massalabs/massa/issues/2320
+    TODO: `https://github.com/massalabs/massa/issues/2320`
     */
     Bootstrap,
 }
@@ -156,11 +156,11 @@ impl PeerInfo {
             || self.active_in_connections > 0
     }
 
-    /// New standard PeerInfo for ipaddr
+    /// New standard `PeerInfo` for `IpAddr`
     ///
     /// # Arguments
-    /// * ip: the IP address of the peer
-    /// * advertised: true if this peer was advertised as routable,
+    /// * `ip`: the IP address of the peer
+    /// * `advertised`: true if this peer was advertised as routable,
     /// which means that our node can attempt outgoing connections to it
     pub fn new(ip: IpAddr, advertised: bool) -> PeerInfo {
         PeerInfo {

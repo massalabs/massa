@@ -119,7 +119,7 @@ fn test_sending_read_only_execution_command() {
 
 /// # Context
 ///
-/// Functional test for async messages sending and handling
+/// Functional test for asynchronous messages sending and handling
 ///
 /// 1. a block is created containing an `execute_sc` operation
 /// 2. this operation executes the `send_message` of the smart contract

@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
-/// The ledger size can be very high: it can exceed 1TB.
+/// The ledger size can be very high: it can exceed 1 terabyte.
 /// To allow for storage on disk, the ledger uses trees and has `O(log(N))` access, insertion and deletion complexity.
 ///
 /// Note: currently the ledger is stored in RAM. TODO put it on the hard drive with cache.
@@ -128,7 +128,7 @@ impl FinalLedger {
     /// A clone of the whole `LedgerEntry`, or None if not found.
     ///
     /// TODO: in the future, never manipulate full ledger entries because their datastore can be huge
-    /// https://github.com/massalabs/massa/issues/2342
+    /// `https://github.com/massalabs/massa/issues/2342`
     pub fn get_full_entry(&self, addr: &Address) -> Option<LedgerEntry> {
         self.sorted_ledger.get(addr).cloned()
     }
@@ -160,11 +160,11 @@ impl FinalLedger {
     /// Gets a copy of the value of a datastore entry for a given address.
     ///
     /// # Arguments
-    /// * addr: target address
-    /// * key: datastore key
+    /// * `addr`: target address
+    /// * `key`: datastore key
     ///
     /// # Returns
-    /// A copy of the datastore value, or None if the ledger entry or datastore entry was not found
+    /// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found
     pub fn get_data_entry(&self, addr: &Address, key: &Hash) -> Option<Vec<u8>> {
         self.sorted_ledger
             .get(addr)

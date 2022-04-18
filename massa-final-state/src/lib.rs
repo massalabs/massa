@@ -11,17 +11,17 @@
 //!
 //! # Architecture
 //!
-//! ## final_state.rs
+//! ## `final_state.rs`
 //! Defines the `FinalState` that matches that represents the state of the node at
 //! the latest executed final slot. It contains the final ledger and the asynchronous event pool.
 //! It can be manipulated using `StateChanges` (see `state_changes.rs`).
-//! The FinalState is bootstrapped using tooling available in bootstrap.rs
+//! The `FinalState` is bootstrapped using tooling available in bootstrap.rs
 //!
-//! ## state_changes.rs
+//! ## `state_changes.rs`
 //! Represents a list of changes the final state.
 //! It can be modified, combined or applied to the final ledger.
 //!
-//! ## bootstrap.rs
+//! ## `bootstrap.rs`
 //! Provides serializable structures and tools for bootstrapping the final state.
 //!
 //! ## Test exports

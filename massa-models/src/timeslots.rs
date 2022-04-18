@@ -10,9 +10,9 @@ use crate::{ModelsError, Slot};
 /// Counts the number of slots in a slot range [a, b)
 ///
 /// # Arguments
-/// * a: starting slot (included)
-/// * b: ending slot (excluded)
-/// * thread_count: number of threads
+/// * `a`: starting slot (included)
+/// * `b`: ending slot (excluded)
+/// * `thread_count`: number of threads
 pub fn slot_count_in_range(a: Slot, b: Slot, thread_count: u8) -> Result<u64, ModelsError> {
     b.period
         .checked_sub(a.period)

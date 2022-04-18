@@ -22,9 +22,9 @@ use crate::{
 /// Here we map an address to its balance.
 /// When a balance becomes final it is written on the disk.
 pub struct Ledger {
-    /// containing (Address, LedgerData), one per thread
+    /// containing `(Address, LedgerData)`, one per thread
     ledger_per_thread: Vec<Tree>,
-    /// containing (thread_number: u8, latest_final_period: u64)
+    /// containing `(thread_number: u8, latest_final_period: u64)`
     latest_final_periods: Tree,
     /// consensus related configuration
     cfg: LedgerConfig,
@@ -149,7 +149,7 @@ impl OperationLedgerInterface for Operation {
 }
 
 impl Ledger {
-    /// if no latest_final_periods in file, they are initialized at 0u64
+    /// if no `latest_final_periods` in file, they are initialized at `0u64`
     /// if there is a ledger in the given file, it is loaded
     pub fn new(cfg: LedgerConfig, opt_init_data: Option<LedgerSubset>) -> Result<Ledger> {
         let sled_config = sled::Config::default()
@@ -423,7 +423,7 @@ impl Ledger {
         Ok(res)
     }
 
-    /// Gets ledger at latest final blocks for query_addrs
+    /// Gets ledger at latest final blocks for `query_addrs`
     pub fn get_final_ledger_subset(&self, query_addrs: &Set<Address>) -> Result<LedgerSubset> {
         let res = self.ledger_per_thread.transaction(|ledger_per_thread| {
             let mut data = LedgerSubset::default();

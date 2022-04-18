@@ -96,7 +96,7 @@ pub enum DiscardReason {
     Final,
 }
 
-/// Enum used in blockgraph's state machine
+/// Enum used in `BlockGraph`'s state machine
 #[derive(Debug, Clone)]
 enum BlockStatus {
     /// The block/header has reached consensus but no consensus-level check has been performed.
@@ -273,7 +273,7 @@ pub struct LedgerDataExport {
 
 /// Graph management
 pub struct BlockGraph {
-    /// Consensus related config
+    /// Consensus related configuration
     cfg: GraphConfig,
     /// Block ids of genesis blocks
     genesis_hashes: Vec<BlockId>,
@@ -398,7 +398,7 @@ enum BlockOperationsCheckOutcome {
 /// Creates genesis block in given thread.
 ///
 /// # Arguments
-/// * `cfg: consensus configuration
+/// * `cfg`: consensus configuration
 /// * `serialization_context`: ref to a `SerializationContext` instance
 /// * `thread_number`: thread in which we want a genesis block
 pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> Result<(BlockId, Block)> {

@@ -59,7 +59,7 @@ pub struct Public {
     pub node_id: NodeId,
 }
 
-/// Private api content
+/// Private API content
 pub struct Private {
     /// link to the consensus component
     pub consensus_command_sender: ConsensusCommandSender,

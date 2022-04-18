@@ -6,10 +6,10 @@
 //!
 //! # Architecture
 //!
-//! ## config.rs
+//! ## `config.rs`
 //! Provides a default execution configuration for testing.
 //!
-//! ## mock.rs
+//! ## `mock.rs`
 //! Provides a mock of `ExecutionController` to simulate interactions
 //! with an execution worker within tests.
 

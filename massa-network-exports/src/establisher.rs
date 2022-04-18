@@ -21,9 +21,9 @@ mod types {
         time::timeout,
     };
 
-    /// read half of the tcp stream
+    /// read half of the TCP stream
     pub type ReadHalf = tokio::net::tcp::OwnedReadHalf;
-    /// Write half of the tcp stream
+    /// Write half of the TCP stream
     pub type WriteHalf = tokio::net::tcp::OwnedWriteHalf;
     /// Connection listener
     pub type Listener = DefaultListener;
@@ -48,10 +48,10 @@ mod types {
     pub struct DefaultConnector(MassaTime);
 
     impl DefaultConnector {
-        /// Tries to connect to addr
+        /// Tries to connect to a address
         ///
         /// # Argument
-        /// * addr: SocketAddr we are trying to connect to.
+        /// * `addr`: `SocketAddr` we are trying to connect to.
         pub async fn connect(&mut self, addr: SocketAddr) -> io::Result<(ReadHalf, WriteHalf)> {
             match timeout(self.0.to_duration(), TcpStream::connect(addr)).await {
                 Ok(Ok(sock)) => {
@@ -77,7 +77,7 @@ mod types {
         /// Gets the associated listener
         ///
         /// # Argument
-        /// * addr: SocketAddr we want to bind to.
+        /// * `addr`: `SocketAddr` we want to bind to.
         pub async fn get_listener(&mut self, addr: SocketAddr) -> io::Result<DefaultListener> {
             Ok(DefaultListener(TcpListener::bind(addr).await?))
         }
@@ -85,7 +85,7 @@ mod types {
         /// Get the connector with associated timeout
         ///
         /// # Argument
-        /// * timeout_duration: timeout duration in milliseconds
+        /// *` timeout_duration`: timeout duration in milliseconds
         pub async fn get_connector(
             &mut self,
             timeout_duration: MassaTime,

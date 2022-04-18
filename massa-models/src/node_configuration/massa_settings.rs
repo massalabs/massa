@@ -14,7 +14,7 @@
 //! The next step will try to read the file at the given path. It will `panic`
 //! if no file found.
 //!
-//! Whatever configuration you used (the one from de environment variable or the
+//! Whatever configuration you used (the one from the environment variable or the
 //! default one) You always have a next possibility. Using the default path of
 //! configuration for the massa-project. The default configuration directories
 //! is set on Setting creation. All the configuration in this file will be merged
@@ -29,8 +29,8 @@ use std::path::Path;
 
 /// Merge the settings
 /// 1. default
-/// 2. in path specified in `MASSA_CONFIG_PATH` environnement variable (`base_config/config.toml` by default)
-/// 3. in path specified in `MASSA_CONFIG_OVERRIDE_PATH` environnement variable (`config/config.toml` by default)
+/// 2. in path specified in `MASSA_CONFIG_PATH` environment variable (`base_config/config.toml` by default)
+/// 3. in path specified in `MASSA_CONFIG_OVERRIDE_PATH` environment variable (`config/config.toml` by default)
 #[inline]
 pub fn build_massa_settings<T: Deserialize<'static>>(app_name: &str, env_prefix: &str) -> T {
     let mut settings = config::Config::default();

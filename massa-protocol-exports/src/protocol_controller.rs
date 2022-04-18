@@ -64,10 +64,13 @@ pub enum ProtocolPoolEvent {
     GetOperations((NodeId, OperationIds)),
 }
 
-/// block result: map block id to option (
+/// block result: map block id to 
+/// ```
+/// Option(
 ///     Option(set(operation id)),
 ///     Option(Vec(endorsement id))
 /// )
+/// ```
 pub type BlocksResults =
     Map<BlockId, Option<(Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
 

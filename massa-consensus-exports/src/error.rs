@@ -28,7 +28,7 @@ pub enum ConsensusError {
     ExecutionError(#[from] ExecutionError),
     /// models error: {0}
     ModelsError(#[from] ModelsError),
-    /// config error: {0}
+    /// configuration error: {0}
     ConfigError(String),
     /// Protocol error {0}
     ProtocolError(#[from] Box<ProtocolError>),

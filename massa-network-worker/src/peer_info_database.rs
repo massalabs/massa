@@ -32,7 +32,7 @@ pub struct PeerInfoDatabase {
     pub(crate) saver_watch_tx: watch::Sender<HashMap<IpAddr, PeerInfo>>,
     /// Connections count for each `PeerType`
     pub(crate) peer_types_connection_count: EnumMap<PeerType, ConnectionCount>,
-    /// Every wakeup_interval we try to establish a connection with known inactive peers
+    /// Every `wakeup_interval` we try to establish a connection with known inactive peers
     pub(crate) wakeup_interval: MassaTime,
     /// Clock compensation.
     pub(crate) clock_compensation: i64,
@@ -58,7 +58,7 @@ async fn dump_peers(
 }
 
 /// Cleans up the peer database using max values
-/// provided by NetworkConfig.ProtocolConfig.
+/// provided by `NetworkConfig.ProtocolConfig`.
 /// If `opt_new_peers` is provided, adds its contents as well.
 ///
 /// Note: only standard non-active peers are counted when clipping to size limits.
@@ -247,7 +247,7 @@ impl PeerInfoDatabase {
 
     /// total in connection count, considering all peer types
     /// quite similar to `get_out_connection_count`
-    /// todo https://github.com/massalabs/massa/issues/2319
+    /// todo `https://github.com/massalabs/massa/issues/2319`
     #[inline]
     pub fn get_in_connection_count(&self) -> u64 {
         self.peer_types_connection_count
@@ -259,7 +259,7 @@ impl PeerInfoDatabase {
 
     /// total out connections count, considering all peer types
     /// quite similar to `get_in_connection_count`
-    /// todo https://github.com/massalabs/massa/issues/2319
+    /// todo `https://github.com/massalabs/massa/issues/2319`
     #[inline]
     pub fn get_out_connection_count(&self) -> u64 {
         self.peer_types_connection_count
@@ -571,7 +571,7 @@ impl PeerInfoDatabase {
         Ok(())
     }
 
-    /// Yay an out connection attempt succeeded.
+    /// An out connection attempt succeeded.
     /// returns false if there are no slots left for out connections.
     /// The peer is set to advertised.
     ///
@@ -768,7 +768,7 @@ impl PeerInfoDatabase {
         &self.peers
     }
 
-    /// Returns a vector of advertisable IpAddrs sorted by `( last_failure, rev(last_success) )`
+    /// Returns a vector of advertisable `IpAddr` sorted by `( last_failure, rev(last_success) )`
     pub fn get_advertisable_peer_ips(&self) -> Vec<IpAddr> {
         let mut sorted_peers: Vec<PeerInfo> = self
             .peers
@@ -934,21 +934,21 @@ impl PeerInfoDatabase {
     }
 
     /// similar to `get_global_active_out_connection_count` and `get_global_active_in_connection_count`
-    /// todo https://github.com/massalabs/massa/issues/2319
+    /// todo `https://github.com/massalabs/massa/issues/2319`
     #[inline]
     fn get_global_active_out_connection_attempt_count(&self, peer_type: PeerType) -> usize {
         self.peer_types_connection_count[peer_type].active_out_connection_attempts
     }
 
     /// similar to `get_global_active_out_connection_attempt_count` and `get_global_active_in_connection_count`
-    /// todo https://github.com/massalabs/massa/issues/2319
+    /// todo `https://github.com/massalabs/massa/issues/2319`
     #[inline]
     fn get_global_active_out_connection_count(&self, peer_type: PeerType) -> usize {
         self.peer_types_connection_count[peer_type].active_out_connections
     }
 
     /// similar to `get_global_active_out_connection_count` and `get_global_active_out_connection_attempt_count`
-    /// todo https://github.com/massalabs/massa/issues/2319
+    /// todo `https://github.com/massalabs/massa/issues/2319`
     #[inline]
     fn get_global_active_in_connection_count(&self, peer_type: PeerType) -> usize {
         self.peer_types_connection_count[peer_type].active_in_connections

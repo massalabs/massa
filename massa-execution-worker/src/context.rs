@@ -23,13 +23,13 @@ use rand_xoshiro::Xoshiro256PlusPlus;
 use std::sync::Arc;
 use tracing::debug;
 
-/// A snapshot taken from an ExecutionContext and that represents its current state.
-/// The ExecutionContext state can then be restored later from this snapshot.
+/// A snapshot taken from an `ExecutionContext` and that represents its current state.
+/// The `ExecutionContext` state can then be restored later from this snapshot.
 pub(crate) struct ExecutionContextSnapshot {
     /// speculative ledger changes caused so far in the context
     pub ledger_changes: LedgerChanges,
 
-    /// speculative async pool messages emitted so far in the context
+    /// speculative asynchronous pool messages emitted so far in the context
     pub async_pool_changes: Vec<(AsyncMessageId, AsyncMessage)>,
 
     /// counter of newly created addresses so far at this slot during this execution
@@ -44,7 +44,7 @@ pub(crate) struct ExecutionContextSnapshot {
     /// generated events during this execution, with multiple indexes
     pub events: EventStore,
 
-    /// Unsafe RNG state
+    /// Unsafe random state
     pub unsafe_rng: Xoshiro256PlusPlus,
 }
 
@@ -56,7 +56,7 @@ pub(crate) struct ExecutionContext {
     /// as seen after everything that happened so far in the context
     speculative_ledger: SpeculativeLedger,
 
-    /// speculative async pool state,
+    /// speculative asynchronous pool state,
     /// as seen after everything that happened so far in the context
     speculative_async_pool: SpeculativeAsyncPool,
 
@@ -90,7 +90,7 @@ pub(crate) struct ExecutionContext {
     /// generated events during this execution, with multiple indexes
     pub events: EventStore,
 
-    /// Unsafe RNG state (can be predicted and manipulated)
+    /// Unsafe random state (can be predicted and manipulated)
     pub unsafe_rng: Xoshiro256PlusPlus,
 
     /// operation id that originally caused this execution (if any)
@@ -98,17 +98,17 @@ pub(crate) struct ExecutionContext {
 }
 
 impl ExecutionContext {
-    /// Create a new empty ExecutionContext
+    /// Create a new empty `ExecutionContext`
     /// This should only be used as a placeholder.
     /// Further initialization is required before running bytecode
-    /// (see readonly and active_slot methods).
+    /// (see read-only and `active_slot` methods).
     ///
     /// # arguments
-    /// * final_state: thread-safe access to the final state. Note that this will be used only for reading, never for writing
-    /// * previous_changes: list of ledger changes that happened since the final ledger state and before the current execution
+    /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
+    /// * `previous_changes`: list of ledger changes that happened since the final ledger state and before the current execution
     ///
     /// # returns
-    /// A new (empty) ExecutionContext instance
+    /// A new (empty) `ExecutionContext` instance
     pub(crate) fn new(
         final_state: Arc<RwLock<FinalState>>,
         previous_changes: StateChanges,
@@ -165,17 +165,17 @@ impl ExecutionContext {
         self.unsafe_rng = snapshot.unsafe_rng;
     }
 
-    /// Create a new ExecutionContext for readonly execution
-    /// This should be used before performing a readonly execution.
+    /// Create a new `ExecutionContext` for read-only execution
+    /// This should be used before performing a read-only execution.
     ///
     /// # arguments
-    /// * slot: slot at which the execution will happen
-    /// * req: parameters of the read only execution
-    /// * previous_changes: list of state changes that happened since the final_state state and before this execution
-    /// * final_state: thread-safe access to the final state. Note that this will be used only for reading, never for writing
+    /// * `slot`: slot at which the execution will happen
+    /// * `req`: parameters of the read only execution
+    /// * `previous_changes`: list of state changes that happened since the `final_state` state and before this execution
+    /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
     ///
     /// # returns
-    /// A ExecutionContext instance ready for a read-only execution
+    /// A `ExecutionContext` instance ready for a read-only execution
     pub(crate) fn readonly(
         slot: Slot,
         req: ReadOnlyExecutionRequest,
@@ -209,15 +209,15 @@ impl ExecutionContext {
         }
     }
 
-    /// This function takes a batch of async operations to execute, removing them from the speculative pool.
+    /// This function takes a batch of asynchronous operations to execute, removing them from the speculative pool.
     ///
     /// # Arguments
-    /// * max_gas: maximal amount of async gas available
+    /// * `max_gas`: maximal amount of asynchronous gas available
     ///
     /// # Returns
     /// A vector of `(Option<Vec<u8>>, AsyncMessage)` pairs where:
-    /// * `Option<Vec<u8>>` is the bytecode to execute (or None if not found)
-    /// * AsyncMessage is the async message to execute
+    /// * `Option<Vec<u8>>` is the bytecode to execute (or `None` if not found)
+    /// * `AsyncMessage` is the asynchronous message to execute
     pub(crate) fn take_async_batch(
         &mut self,
         max_gas: u64,
@@ -229,17 +229,17 @@ impl ExecutionContext {
             .collect()
     }
 
-    /// Create a new ExecutionContext for executing an active slot.
+    /// Create a new `ExecutionContext` for executing an active slot.
     /// This should be used before performing any executions at that slot.
     ///
     /// # arguments
-    /// * slot: slot at which the execution will happen
-    /// * opt_block_id: optional ID of the block at that slot
-    /// * previous_changes: list of state changes that happened since the final state state and before this execution
-    /// * final_state: thread-safe access to the final state. Note that this will be used only for reading, never for writing
+    /// * `slot`: slot at which the execution will happen
+    /// * `opt_block_id`: optional ID of the block at that slot
+    /// * `previous_changes`: list of state changes that happened since the final state state and before this execution
+    /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
     ///
     /// # returns
-    /// A ExecutionContext instance
+    /// A `ExecutionContext` instance
     pub(crate) fn active_slot(
         slot: Slot,
         opt_block_id: Option<BlockId>,
@@ -415,9 +415,9 @@ impl ExecutionContext {
     /// Spending is only allowed from existing addresses we have write access on
     ///
     /// # Arguments
-    /// * from_addr: optional spending address (use None for pure coin creation)
-    /// * to_addr: optional crediting address (use None for pure coin destruction)
-    /// * amount: amount of coins to transfer
+    /// * `from_addr`: optional spending address (use None for pure coin creation)
+    /// * `to_addr`: optional crediting address (use None for pure coin destruction)
+    /// * `amount`: amount of coins to transfer
     pub fn transfer_parallel_coins(
         &mut self,
         from_addr: Option<Address>,
@@ -441,15 +441,15 @@ impl ExecutionContext {
     /// Add a new asynchronous message to speculative pool
     ///
     /// # Arguments
-    /// * msg: asynchronous message to add
+    /// * `msg`: asynchronous message to add
     pub fn push_new_message(&mut self, msg: AsyncMessage) {
         self.speculative_async_pool.push_new_message(msg);
     }
 
-    /// Cancels an async message, reimbursing msg.coins to the sender
+    /// Cancels an asynchronous message, reimbursing `msg.coins` to the sender
     ///
     /// # Arguments
-    /// * msg: the async message to cancel
+    /// * `msg`: the asynchronous message to cancel
     pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
         if let Err(e) = self.transfer_parallel_coins(None, Some(msg.sender), msg.coins) {
             debug!(
@@ -460,7 +460,7 @@ impl ExecutionContext {
     }
 
     /// Finishes a slot and generates the execution output.
-    /// Settles emitted async messages, reimburse the senders of deleted messages.
+    /// Settles emitted asynchronous messages, reimburse the senders of deleted messages.
     /// Moves the output of the execution out of the context,
     /// resetting some context fields in the process.
     ///

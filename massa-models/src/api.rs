@@ -493,7 +493,7 @@ pub struct APISettings {
     pub max_arguments: u64,
 }
 
-/// filter used when retrieving sc output events
+/// filter used when retrieving SC output events
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct EventFilter {
     /// optional start slot

@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Provides serializable structures for bootstrapping the FinalLedger
+//! Provides serializable structures for bootstrapping the `FinalLedger`
 
 use crate::LedgerEntry;
 use massa_models::{

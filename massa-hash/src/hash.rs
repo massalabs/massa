@@ -71,7 +71,7 @@ impl Hash {
         self.0.into_inner()
     }
 
-    /// Deserialize using bs58 encoding with checksum.
+    /// Deserialize using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```

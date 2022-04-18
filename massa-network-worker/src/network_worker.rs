@@ -499,7 +499,7 @@ impl NetworkWorker {
     /// # Arguments
     /// * `cmd` : command to process.
     /// * `peer_info_db`: Database with peer information.
-    /// * `active_connections`: hashmap linking connection id to ipAddr to
+    /// * `active_connections`: hashmap linking connection id to `ÌpAddr` to
     ///   whether connection is outgoing (true)
     /// * `event_tx`: channel to send network events out.
     ///

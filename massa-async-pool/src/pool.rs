@@ -55,10 +55,10 @@ impl AsyncPool {
     }
 
     /// Applies pre-compiled `AsyncPoolChanges` to the pool without checking for overflows.
-    /// This function is used when applying pre-compiled `AsyncPoolChanges` to an AsyncPool.
+    /// This function is used when applying pre-compiled `AsyncPoolChanges` to an `AsyncPool`.
     ///
     /// # arguments
-    /// * changes: `AsyncPoolChanges` listing all asynchronous pool changes (message insertions/deletions)
+    /// * `changes`: `AsyncPoolChanges` listing all asynchronous pool changes (message insertions/deletions)
     pub fn apply_changes_unchecked(&mut self, changes: AsyncPoolChanges) {
         for change in changes.0.into_iter() {
             match change {
@@ -86,7 +86,7 @@ impl AsyncPool {
     /// # returns
     /// The list of `(message_id, message)` that were eliminated from the pool after the changes were applied, sorted in the following order:
     /// * expired messages from the pool, in priority order (from highest to lowest priority)
-    /// * expired messages from new_messages (in the order they appear in `new_messages`)
+    /// * expired messages from `new_messages` (in the order they appear in `new_messages`)
     /// * excess messages after inserting all remaining `new_messages`, in priority order (from highest to lowest priority)
     pub fn settle_slot(
         &mut self,

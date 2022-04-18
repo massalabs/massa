@@ -86,7 +86,7 @@ pub enum SetOrKeep<T: Clone> {
     Keep,
 }
 
-/// allows applying another SetOrKeep to the current one
+/// allows applying another `SetOrKeep` to the current one
 impl<T: Clone> Applicable<SetOrKeep<T>> for SetOrKeep<T> {
     fn apply(&mut self, other: SetOrKeep<T>) {
         if let v @ SetOrKeep::Set(..) = other {

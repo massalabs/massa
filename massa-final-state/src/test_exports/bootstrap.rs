@@ -21,7 +21,7 @@ pub fn make_bootstrap_state(
     }
 }
 
-/// asserts that two FinalStateBootstrap are equal
+/// asserts that two `FinalStateBootstrap` are equal
 pub fn assert_eq_final_state_bootstrap(v1: &FinalStateBootstrap, v2: &FinalStateBootstrap) {
     // compare slots
     assert_eq!(v1.slot, v2.slot, "final slot mismatch");

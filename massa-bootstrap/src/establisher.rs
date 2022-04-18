@@ -49,7 +49,7 @@ pub mod types {
         /// Tries to connect to address
         ///
         /// # Argument
-        /// * addr: SocketAddr we are trying to connect to.
+        /// * `addr`: `SocketAddr` we are trying to connect to.
         pub async fn connect(&mut self, addr: SocketAddr) -> io::Result<Duplex> {
             match timeout(self.0.to_duration(), TcpStream::connect(addr)).await {
                 Ok(Ok(sock)) => Ok(sock),
@@ -72,7 +72,7 @@ pub mod types {
         /// Gets the associated listener
         ///
         /// # Argument
-        /// * addr: SocketAddr we want to bind to.
+        /// * `addr`: `SocketAddr` we want to bind to.
         pub async fn get_listener(&mut self, addr: SocketAddr) -> io::Result<DefaultListener> {
             Ok(DefaultListener(TcpListener::bind(addr).await?))
         }
@@ -80,7 +80,7 @@ pub mod types {
         /// Get the connector with associated timeout
         ///
         /// # Argument
-        /// * timeout_duration: timeout duration in milliseconds
+        /// * `timeout_duration`: timeout duration in milliseconds
         pub async fn get_connector(
             &mut self,
             timeout_duration: MassaTime,

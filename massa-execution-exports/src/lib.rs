@@ -22,19 +22,19 @@
 //!
 //! # Architecture
 //!
-//! ## config.rs
+//! ## `config.rs`
 //! Contains configuration parameters for the execution system.
 //!
-//! ## controller_traits.rs
+//! ## `controller_traits.rs`
 //! Defines the `ExecutionManager` and `ExecutionController` traits for interacting with the execution worker.
 //!
-//! ## errors.rs
+//! ## `errors.rs`
 //! Defines error types for the crate.
 //!
-//! ## event_store.rs
+//! ## `event_store.rs`
 //! Defines an indexed, finite-size storage system for execution events.
 //!
-//! ## types.rs
+//! ## `types.rs`
 //! Defines useful shared structures.
 //!
 //! ## Test exports

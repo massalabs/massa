@@ -27,7 +27,7 @@ pub(crate) struct ExecutionInputData {
     pub finalized_blocks: HashMap<Slot, BlockId>,
     /// new blockclique (if there is a new one), blocks indexed by slot
     pub new_blockclique: Option<HashMap<Slot, BlockId>>,
-    /// queue for read-only execution requests and response mpscs to send back their outputs
+    /// queue for read-only execution requests and response MPSCs to send back their outputs
     pub readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
 }
 

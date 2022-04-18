@@ -165,9 +165,9 @@ pub struct AddressCycleProductionStats {
     pub cycle: u64,
     /// true if that cycle is final
     pub is_final: bool,
-    /// ok_count blocks were created by this address during that cycle
+    /// `ok_count` blocks were created by this address during that cycle
     pub ok_count: u64,
-    /// ok_count blocks were missed by this address during that cycle
+    /// `ok_count` blocks were missed by this address during that cycle
     pub nok_count: u64,
 }
 

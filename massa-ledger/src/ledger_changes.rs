@@ -51,7 +51,7 @@ impl Applicable<LedgerChanges> for LedgerChanges {
 }
 
 impl LedgerChanges {
-    /// get an item from the LedgerChanges
+    /// Get an item from the `LedgerChanges`
     pub fn get(
         &self,
         addr: &Address,
@@ -156,8 +156,8 @@ impl LedgerChanges {
     /// or gets the information from a function if the entry's status is unknown.
     ///
     /// This function is used as an optimization:
-    /// if the result can be deduced unambiguously from the LedgerChanges,
-    /// no need to dig further (for example in the FinalLedger).
+    /// if the result can be deduced unambiguously from the `LedgerChanges`,
+    /// no need to dig further (for example in the `FinalLedger`).
     ///
     /// # Arguments
     /// * `addr`: address to search for
@@ -238,8 +238,8 @@ impl LedgerChanges {
     /// If the address doesn't exist, its ledger entry is created.
     ///
     /// # Parameters
-    /// * addr: target address
-    /// * bytecode: executable bytecode to assign to that address
+    /// * `addr`: target address
+    /// * `bytecode`: executable bytecode to assign to that address
     pub fn set_bytecode(&mut self, addr: Address, bytecode: Vec<u8>) {
         // Get the current changes being applied to the entry associated to that address
         match self.0.entry(addr) {
@@ -285,8 +285,8 @@ impl LedgerChanges {
     /// or gets it from a function if the value's status is unknown.
     ///
     /// This function is used as an optimization:
-    /// if the result can be deduced unambiguously from the LedgerChanges,
-    /// no need to dig further (for example in the FinalLedger).
+    /// if the result can be deduced unambiguously from the `LedgerChanges`,
+    /// no need to dig further (for example in the `FinalLedger`).
     ///
     /// # Arguments
     /// * `addr`: target address

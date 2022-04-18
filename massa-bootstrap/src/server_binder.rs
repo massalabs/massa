@@ -20,7 +20,7 @@ pub struct BootstrapServerBinder {
 }
 
 impl BootstrapServerBinder {
-    /// Creates a new WriteBinder.
+    /// Creates a new `WriteBinder`.
     ///
     /// # Argument
     /// * duplex: duplex stream.

@@ -91,7 +91,7 @@ impl HandshakeWorker {
 
     /// Manages one on going handshake.
     /// Consumes self.
-    /// Returns a tuple (`ConnectionId`, `Result`).
+    /// Returns a tuple `(ConnectionId, Result)`.
     /// Creates the binders to communicate with that node.
     async fn run(mut self) -> HandshakeReturnType {
         // generate random bytes

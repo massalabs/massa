@@ -189,7 +189,7 @@ where
     }
 }
 
-/// asserts that two ExportProofOfStake are equal
+/// asserts that two `ExportProofOfStake` are equal
 pub fn assert_eq_thread_cycle_states(v1: &ExportProofOfStake, v2: &ExportProofOfStake) {
     assert_eq!(
         v1.cycle_states.len(),
@@ -242,7 +242,7 @@ pub fn assert_eq_thread_cycle_states(v1: &ExportProofOfStake, v2: &ExportProofOf
     }
 }
 
-/// asserts that two BootstrapableGraph are equal
+/// asserts that two `BootstrapableGraph` are equal
 pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGraph) {
     assert_eq!(
         v1.active_blocks.len(),

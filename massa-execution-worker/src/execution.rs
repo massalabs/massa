@@ -230,10 +230,10 @@ impl ExecutionState {
     /// Returns the state changes accumulated from the beginning of the output history,
     /// up until a provided slot (excluded).
     /// Only used in the VM main loop because the lock on the final ledger
-    /// carried by the returned SpeculativeLedger is not held.
-    /// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any subentry
+    /// carried by the returned `SpeculativeLedger` is not held.
+    /// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any sub-entry
     /// by scanning through history from end to beginning
-    /// https://github.com/massalabs/massa/issues/2343
+    /// `https://github.com/massalabs/massa/issues/2343`
     pub fn get_accumulated_active_changes_at_slot(&self, slot: Slot) -> StateChanges {
         // check that the slot is within the reach of history
         if slot <= self.final_cursor {
@@ -263,8 +263,8 @@ impl ExecutionState {
     /// Assumes the execution context was initialized at the beginning of the slot.
     ///
     /// # Arguments
-    /// * operation: operation to execute
-    /// * block_creator_addr: address of the block creator
+    /// * `operation`: operation to execute
+    /// * `block_creator_addr`: address of the block creator
     pub fn execute_operation(
         &self,
         operation: &SignedOperation,
@@ -549,7 +549,7 @@ impl ExecutionState {
     }
 
     /// Gets a full ledger entry both at the latest final and active executed slots
-    /// TODO: this can be heavily optimized, see comments and https://github.com/massalabs/massa/issues/2343
+    /// TODO: this can be heavily optimized, see comments and `https://github.com/massalabs/massa/issues/2343`
     ///
     /// # returns
     /// `(final_entry, active_entry)`

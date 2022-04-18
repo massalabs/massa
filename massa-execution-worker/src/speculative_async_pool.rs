@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! The speculative async pool represents the state of
+//! The speculative asynchronous pool represents the state of
 //! the pool at an arbitrary execution slot.
 
 use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncPool, AsyncPoolChanges};
@@ -25,7 +25,7 @@ impl SpeculativeAsyncPool {
     /// Creates a new `SpeculativeAsyncPool`
     ///
     /// # Arguments
-    /// * `async_pool`: a copy of the final state AsyncPool
+    /// * `async_pool`: a copy of the final state `AsyncPool`
     /// * `previous_changes`: accumulation of changes that previously happened to the asynchronous pool since finality
     pub fn new(mut async_pool: AsyncPool, previous_changes: AsyncPoolChanges) -> Self {
         async_pool.apply_changes_unchecked(previous_changes);
@@ -53,13 +53,13 @@ impl SpeculativeAsyncPool {
         self.emitted = snapshot;
     }
 
-    /// Add a new message to the list of changes of this SpeculativeAsyncPool
+    /// Add a new message to the list of changes of this `SpeculativeAsyncPool`
     pub fn push_new_message(&mut self, msg: AsyncMessage) {
         self.emitted.push((msg.compute_id(), msg));
     }
 
     /// Takes a batch of asynchronous messages to execute,
-    /// removing them from the speculative async pool and settling their deletion from it in the changes accumulator.
+    /// removing them from the speculative asynchronous pool and settling their deletion from it in the changes accumulator.
     ///
     /// # Arguments
     /// * `slot`: slot at which the batch is taken (allows filtering by validity interval)

@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! This file defines the structure representing an entry in the FinalLedger
+//! This file defines the structure representing an entry in the `FinalLedger`
 
 use crate::ledger_changes::LedgerEntryUpdate;
 use crate::types::{Applicable, SetOrDelete};
