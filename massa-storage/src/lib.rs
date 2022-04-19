@@ -2,6 +2,7 @@
 
 #![warn(missing_docs)]
 
+use massa_logging::massa_trace;
 use massa_models::prehash::Map;
 use massa_models::{Block, BlockId};
 use parking_lot::RwLock;
@@ -29,6 +30,7 @@ pub struct Storage {
 impl Storage {
     /// Store a block, along with it's serialized representation.
     pub fn store_block(&self, block_id: BlockId, block: Block, serialized: Vec<u8>) {
+        massa_trace!("storage.storage.store_block", { "block_id": block_id });
         let mut blocks = self.blocks.write();
         match blocks.entry(block_id) {
             Entry::Occupied(_) => {}
@@ -46,12 +48,14 @@ impl Storage {
 
     /// Get a (mutable) reference to the stored block.
     pub fn retrieve_block(&self, block_id: &BlockId) -> Option<Arc<RwLock<StoredBlock>>> {
+        massa_trace!("storage.storage.retrieve_block", { "block_id": block_id });
         let blocks = self.blocks.read();
         blocks.get(block_id).map(Arc::clone)
     }
 
     /// Remove a list of blocks from storage.
     pub fn remove_blocks(&self, block_ids: &[BlockId]) {
+        massa_trace!("storage.storage.remove_blocks", { "block_ids": block_ids });
         let mut blocks = self.blocks.write();
         for id in block_ids {
             blocks.remove(id);

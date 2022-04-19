@@ -22,8 +22,8 @@ pub enum GraphError {
     ModelsError(#[from] ModelsError),
     /// Could not create genesis block {0}
     GenesisCreationError(String),
-    /// missing block
-    MissingBlock,
+    /// missing block {0}
+    MissingBlock(String),
     /// there was an inconsistency between containers {0}
     ContainerInconsistency(String),
     /// fitness overflow
