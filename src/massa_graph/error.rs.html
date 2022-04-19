@@ -102,8 +102,8 @@
     <span class="ident">ModelsError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ModelsError</span>),
     <span class="doccomment">/// Could not create genesis block {0}</span>
     <span class="ident">GenesisCreationError</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// missing block</span>
-    <span class="ident">MissingBlock</span>,
+    <span class="doccomment">/// missing block {0}</span>
+    <span class="ident">MissingBlock</span>(<span class="ident">String</span>),
     <span class="doccomment">/// there was an inconsistency between containers {0}</span>
     <span class="ident">ContainerInconsistency</span>(<span class="ident">String</span>),
     <span class="doccomment">/// fitness overflow</span>
