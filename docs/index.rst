@@ -49,21 +49,11 @@ Tutorials to join the testnet
 -   `Routability tutorial <https://github.com/massalabs/massa/wiki/routability>`_ (Optional)
 -   `Testnet rewards program <https://github.com/massalabs/massa/wiki/testnet_rules>`_ (Optional)
 
-More tutorials
---------------
+Community
+---------
 
--   `Updating the node <https://github.com/massalabs/massa/wiki/update>`_
--   `Sending transactions <https://github.com/massalabs/massa/wiki/transaction>`_
--   `Tutorials and resources from the community <https://github.com/massalabs/massa/wiki/Community-Ressources>`_
-
-`FAQ <https://github.com/massalabs/massa/wiki/faq>`_ and Troubleshooting
-------------------------------------------------------------------------
-
-You'll find answers to common issues and questions regarding the Massa
-protocol in the `FAQ <https://github.com/massalabs/massa/wiki/faq>`_.
-
-Don't hesitate to ask questions in the
-`Discord <https://discord.com/invite/massa>`_ testnet channel.
+If you have issues regarging the testnet, smart-contract engine, or any general question
+regarding the Massa protocol don't hesitate to ask them on our `Discord <https://discord.com/invite/massa>`_.
 
 
 .. toctree::
