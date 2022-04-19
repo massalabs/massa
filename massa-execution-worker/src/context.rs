@@ -485,4 +485,27 @@ impl ExecutionContext {
             events: std::mem::take(&mut self.events),
         }
     }
+
+    /// Sets a bytecode for an address in the speculative ledger.
+    /// Fail if the address is absent from the ledger.
+    ///
+    /// # Arguments
+    /// * address: the address of the ledger entry
+    /// * data: the bytecode to set
+    pub fn set_bytecode(
+        &mut self,
+        address: &Address,
+        bytecode: Vec<u8>,
+    ) -> Result<(), ExecutionError> {
+        // check access right
+        if !self.has_write_rights_on(address) {
+            return Err(ExecutionError::RuntimeError(format!(
+                "setting the bytecode of address {} is not allowed in this context",
+                address
+            )));
+        }
+
+        // set data entry
+        self.speculative_ledger.set_bytecode(address, bytecode)
+    }
 }

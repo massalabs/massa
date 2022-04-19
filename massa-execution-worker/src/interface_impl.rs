@@ -512,4 +512,25 @@ impl Interface for InterfaceImpl {
         let slot = context_guard!(self).slot;
         Ok(slot.thread)
     }
+
+    /// Sets the bytecode of the current address
+    fn raw_set_bytecode(&self, bytecode: &[u8]) -> Result<()> {
+        let mut execution_context = context_guard!(self);
+        let address = execution_context.get_current_address()?;
+        match execution_context.set_bytecode(&address, bytecode.to_vec()) {
+            Ok(()) => Ok(()),
+            Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
+        }
+    }
+
+    /// Sets the bytecode of an arbitrary address.
+    /// Fails if the address does not exist of if the context doesn't have write access rights on it.
+    fn raw_set_bytecode_for(&self, address: &str, bytecode: &[u8]) -> Result<()> {
+        let address = massa_models::Address::from_str(address)?;
+        let mut execution_context = context_guard!(self);
+        match execution_context.set_bytecode(&address, bytecode.to_vec()) {
+            Ok(()) => Ok(()),
+            Err(err) => bail!("couldn't set address {} bytecode: {}", address, err),
+        }
+    }
 }

@@ -17,7 +17,7 @@ massa_execution_exports = { path = "../massa-execution-exports" }
 massa_models = { path = "../massa-models" }
 massa_storage = { path = "../massa-storage" }
 massa_hash = { path = "../massa-hash" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", tag = "v0.6.1" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", tag = "v0.6.2" }
 massa_signature = { path = "../massa-signature" }
 massa_time = { path = "../massa-time" }
 massa_final_state = { path = "../massa-final-state" }
