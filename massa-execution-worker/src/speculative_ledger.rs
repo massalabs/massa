@@ -182,9 +182,13 @@ impl SpeculativeLedger {
     /// * `addr`: target address
     /// * `bytecode`: bytecode to set for that address
     #[allow(dead_code)] // TODO remove when it is used
-    pub fn set_bytecode(&mut self, addr: Address, bytecode: Vec<u8>) -> Result<(), ExecutionError> {
+    pub fn set_bytecode(
+        &mut self,
+        addr: &Address,
+        bytecode: Vec<u8>,
+    ) -> Result<(), ExecutionError> {
         // check for address existence
-        if !self.entry_exists(&addr) {
+        if !self.entry_exists(addr) {
             return Err(ExecutionError::RuntimeError(format!(
                 "could not set bytecode for address {}: entry does not exist",
                 addr
@@ -192,7 +196,7 @@ impl SpeculativeLedger {
         }
 
         // set the bytecode of that address
-        self.added_changes.set_bytecode(addr, bytecode);
+        self.added_changes.set_bytecode(*addr, bytecode);
 
         Ok(())
     }

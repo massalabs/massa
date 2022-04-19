@@ -6,7 +6,10 @@ edition = "2021"
 
 [dependencies]
 parking_lot = "0.12"
+massa_logging = { path = "../massa-logging" }
 massa_models = { path = "../massa-models" }
+serde_json = "1.0"
+tracing = "0.1"
 
 [features]
 instrument = ["massa_models/instrument"]
