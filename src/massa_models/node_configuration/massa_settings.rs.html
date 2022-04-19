@@ -78,6 +78,10 @@
 <span id="73">73</span>
 <span id="74">74</span>
 <span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Build a settings for an object that implement `massa_settings`</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ---</span>
@@ -118,11 +122,12 @@
         .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="string">&quot;base_config/config.toml&quot;</span>.<span class="ident">to_string</span>());
     <span class="ident">settings</span>
         .<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="kw-2">&amp;</span><span class="ident">config_path</span>))
-        .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+        .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">error</span><span class="op">|</span> {
             <span class="macro">panic!</span>(
-                <span class="string">&quot;failed to read {} config {}&quot;</span>,
+                <span class="string">&quot;failed to read {} config {}: {}&quot;</span>,
                 <span class="ident">config_path</span>,
-                <span class="ident">std::env::current_dir</span>().<span class="ident">unwrap</span>().<span class="ident">as_path</span>().<span class="ident">to_str</span>().<span class="ident">unwrap</span>()
+                <span class="ident">std::env::current_dir</span>().<span class="ident">unwrap</span>().<span class="ident">as_path</span>().<span class="ident">to_str</span>().<span class="ident">unwrap</span>(),
+                <span class="ident">error</span>
             )
         });
     <span class="kw">let</span> <span class="ident">config_override_path</span> <span class="op">=</span> <span class="ident">std::env::var</span>(<span class="string">&quot;MASSA_CONFIG_OVERRIDE_PATH&quot;</span>)
@@ -130,11 +135,12 @@
     <span class="kw">if</span> <span class="ident">Path::new</span>(<span class="kw-2">&amp;</span><span class="ident">config_override_path</span>).<span class="ident">is_file</span>() {
         <span class="ident">settings</span>
             .<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="kw-2">&amp;</span><span class="ident">config_override_path</span>))
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">error</span><span class="op">|</span> {
                 <span class="macro">panic!</span>(
-                    <span class="string">&quot;failed to read {} override config {}&quot;</span>,
+                    <span class="string">&quot;failed to read {} override config {}: {}&quot;</span>,
                     <span class="ident">config_override_path</span>,
-                    <span class="ident">std::env::current_dir</span>().<span class="ident">unwrap</span>().<span class="ident">as_path</span>().<span class="ident">to_str</span>().<span class="ident">unwrap</span>()
+                    <span class="ident">std::env::current_dir</span>().<span class="ident">unwrap</span>().<span class="ident">as_path</span>().<span class="ident">to_str</span>().<span class="ident">unwrap</span>(),
+                    <span class="ident">error</span>
                 )
             });
     }
@@ -145,7 +151,9 @@
             <span class="kw">let</span> <span class="ident">path_str</span> <span class="op">=</span> <span class="ident">user_config_path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap</span>();
             <span class="ident">settings</span>
                 .<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="ident">path_str</span>))
-                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">panic!</span>(<span class="string">&quot;failed to read {} user config&quot;</span>, <span class="ident">path_str</span>));
+                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">error</span><span class="op">|</span> {
+                    <span class="macro">panic!</span>(<span class="string">&quot;failed to read {} user config: {}&quot;</span>, <span class="ident">path_str</span>, <span class="ident">error</span>)
+                });
         }
     }
     <span class="ident">settings</span>
