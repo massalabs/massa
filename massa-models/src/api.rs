@@ -479,7 +479,7 @@ pub struct TimeInterval {
     pub end: Option<MassaTime>,
 }
 
-/// filter used when retrieving sc output events
+/// filter used when retrieving SC output events
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct EventFilter {
     /// optional start slot
