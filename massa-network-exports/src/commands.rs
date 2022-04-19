@@ -1,13 +1,13 @@
 //! Declaration of the public and internal Events and Commands used by
 //! `massa-network` that allow external communication with other nodes.
 //!
-//! # Operations workflow
+//! # Operations work flow
 //! An operation batch can be send or received by the massa node. Which
 //! operation is asked is managed by the `NetworkWorker`.
 //!
 //! Other modules has the access to all commands but the usage if they want to
 //! send operation that they just noticed, they should use the command
-//! [NetworkCommand::SendOperationAnnouncements].
+//! `[NetworkCommand::SendOperationAnnouncements]`.
 //!
 //! ```txt
 //! OurNode      ProtocolWorker      Network & NodeWorker
@@ -25,7 +25,7 @@
 //! inform the `ProtocolWorker` that some potentials new operations are in
 //! transit and can be requested.
 //!
-//! The network will inform the node that new operations can transites with
+//! The network will inform the node that new operations can transit with
 //! the propagation method `SendOperationAnnouncements` that we defined just before.
 //! Then, the node will manage if he ask or not the operations inside the
 //! `ProtocolWorker` on node-worker event `ReceivedOperationAnnouncements`
@@ -67,7 +67,7 @@
 //! ```
 //!
 //! Look at `massa-protocol-worker/src/node-info.rs` to look further how we
-//! remember wich node know what.
+//! remember which node know what.
 
 use crate::{BootstrapPeers, ConnectionClosureReason, Peers};
 use massa_models::{
@@ -107,7 +107,7 @@ pub enum NodeCommand {
 
 /// Event types that node worker can emit
 /// Append on receive something from inside and outside.
-/// Outside init with `Received` prefix.
+/// Outside initialization with `Received` prefix.
 #[derive(Clone, Debug)]
 pub enum NodeEventType {
     /// Node we are connected to asked for advertised peers
@@ -159,7 +159,7 @@ pub enum NetworkCommand {
         /// block id
         block_id: BlockId,
     },
-    /// (PeerInfo, Vec <(NodeId, bool)>) peer info + list of associated Id nodes in connection out (true)
+    /// `(PeerInfo, Vec <(NodeId, bool)>) peer info + list` of associated Id nodes in connection out (true)
     GetPeers(oneshot::Sender<Peers>),
     /// get peers for bootstrap server
     GetBootstrapPeers(oneshot::Sender<BootstrapPeers>),
@@ -214,12 +214,12 @@ pub enum NetworkCommand {
     AskForOperations {
         /// to node id
         to_node: NodeId,
-        /// operation ids in the wishlist
+        /// operation ids in the wish list
         wishlist: OperationIds,
     },
-    /// Whitelist a list of IpAddr
+    /// Whitelist a list of `IpAddr`
     Whitelist(Vec<IpAddr>),
-    /// Remove from whitelist a list of IpAddr
+    /// Remove from whitelist a list of `IpAddr`
     RemoveFromWhitelist(Vec<IpAddr>),
 }
 
@@ -267,7 +267,7 @@ pub enum NetworkEvent {
         /// operations
         operations: Operations,
     },
-    /// Receive a list of OperationId
+    /// Receive a list of `OperationId`
     ReceivedOperationAnnouncements {
         /// from node id
         node: NodeId,

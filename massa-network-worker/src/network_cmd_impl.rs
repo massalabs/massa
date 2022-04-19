@@ -64,7 +64,7 @@ async fn ban_connection_ids(worker: &mut NetworkWorker, ids: HashSet<ConnectionI
 }
 
 /// Ban the connections corresponding to `ips` from the `worker`
-/// See also [ban_connection_ids]
+/// See also `[ban_connection_ids]`
 async fn ban_ips(worker: &mut NetworkWorker, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
     for ip in ips.iter() {
         worker.peer_info_db.peer_banned(ip)?;
@@ -85,8 +85,8 @@ async fn ban_ips(worker: &mut NetworkWorker, ips: Vec<IpAddr>) -> Result<(), Net
     Ok(())
 }
 
-/// Ban the `node` corresponding to the NodeId from the `worker`
-/// See also [ban_connection_ids]
+/// Ban the `node` corresponding to the `NodeId` from the `worker`
+/// See also `[ban_connection_ids]`
 async fn ban_node(worker: &mut NetworkWorker, node: NodeId) -> Result<(), NetworkError> {
     // get all connection IDs to ban
     let mut ids: HashSet<ConnectionId> = HashSet::new();
@@ -375,7 +375,7 @@ pub async fn on_send_operations_cmd(
         .await;
 }
 
-/// On the command [massa_network_exports::NetworkCommand::SendOperationAnnouncements] is called,
+/// On the command `[massa_network_exports::NetworkCommand::SendOperationAnnouncements]` is called,
 /// Forward (and split) the command to the `NodeWorker` and propagate to the network
 pub async fn on_send_operation_batches_cmd(
     worker: &mut NetworkWorker,
@@ -401,12 +401,12 @@ pub async fn on_send_operation_batches_cmd(
 /// or received a new batch.
 ///
 /// # See also
-/// [massa_models::operation::OperationBatchItem]
-/// [massa_models::operation::OperationBatchBuffer]
-/// todo: add the link to the function tha process the buffer
+/// `[massa_models::operation::OperationBatchItem]`
+/// `[massa_models::operation::OperationBatchBuffer]`
+/// todo: add the link to the function that process the buffer
 ///
 /// # What it does
-/// When the command [massa_network_exports::NetworkCommand::AskForOperations] is called,
+/// When the command `[massa_network_exports::NetworkCommand::AskForOperations]` is called,
 /// Forward the command to the `NodeWorker` and propagate to the network
 pub async fn on_ask_for_operations_cmd(
     worker: &mut NetworkWorker,

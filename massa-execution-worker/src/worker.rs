@@ -46,18 +46,18 @@ pub(crate) struct ExecutionThread {
     last_active_slot: Slot,
     // Execution state (see execution.rs) to which execution requests are sent
     execution_state: Arc<RwLock<ExecutionState>>,
-    /// queue for readonly requests and response mpscs to send back their outputs
+    /// queue for read-only requests and response MPSCs to send back their outputs
     readonly_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
 }
 
 impl ExecutionThread {
-    /// Creates the ExecutionThread structure to gather all data and references
+    /// Creates the `ExecutionThread` structure to gather all data and references
     /// needed by the execution worker thread.
     ///
     /// # Arguments
-    /// * config: execution config
-    /// * input_data: a copy of the input data interface to get incoming requests from
-    /// * execution_state: an thread-safe shared access to the execution state, which can be bootstrapped or newly created
+    /// * `config`: execution configuration
+    /// * `input_data`: a copy of the input data interface to get incoming requests from
+    /// * `execution_state`: an thread-safe shared access to the execution state, which can be bootstrapped or newly created
     pub fn new(
         config: ExecutionConfig,
         input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
@@ -85,7 +85,7 @@ impl ExecutionThread {
     /// This method is called from the execution worker's main loop.
     ///
     /// # Arguments
-    /// * new_final_blocks: a map of newly finalized blocks
+    /// * `new_final_blocks`: a map of newly finalized blocks
     fn update_final_slots(&mut self, new_final_blocks: HashMap<Slot, BlockId>) {
         // if there are no new final blocks, exit and do nothing
         if new_final_blocks.is_empty() {
@@ -154,12 +154,12 @@ impl ExecutionThread {
     }
 
     /// Returns the latest slot that is at or just before the current timestamp.
-    /// If a non-zero cursor_delay config is defined, this extra lag is taken into account.
+    /// If a non-zero `cursor_delay` configuration is defined, this extra lag is taken into account.
     /// Such an extra lag can be useful for weaker nodes to perform less speculative executions
     /// because more recent slots change more often and might require multiple re-executions.
     ///
     /// # Returns
-    /// The latest slot at or before now() - self.config.cursor_delay) if there is any,
+    /// The latest slot at or before `now() - self.config.cursor_delay` if there is any,
     /// or None if it falls behind the genesis timestamp.
     fn get_end_active_slot(&self) -> Option<Slot> {
         let target_time = MassaTime::compensated_now(self.config.clock_compensation)
@@ -180,7 +180,7 @@ impl ExecutionThread {
     /// ready-to-be-executed active slots with misses until the current time.
     ///
     /// Arguments:
-    /// * new_blockclique: optionally provide a new blockclique
+    /// * `new_blockclique`: optionally provide a new blockclique
     fn update_active_slots(&mut self, new_blockclique: Option<HashMap<Slot, BlockId>>) {
         // Update the current blockclique if it has changed
         if let Some(blockclique) = new_blockclique {
@@ -328,9 +328,9 @@ impl ExecutionThread {
         true
     }
 
-    /// Gets the time from now() to the slot just after next last_active_slot.
+    /// Gets the time from `now()` to the slot just after next `last_active_slot`.
     /// Saturates down to 0 on negative durations.
-    /// Note that config.cursor_delay is taken into account.
+    /// Note that `config.cursor_delay` is taken into account.
     fn get_time_until_next_active_slot(&self) -> MassaTime {
         // get the timestamp of the slot after the current last active one
         let next_slot = self
@@ -343,7 +343,7 @@ impl ExecutionThread {
             self.config.genesis_timestamp,
             next_slot,
         )
-        .expect("could not compute block timestmap in VM");
+        .expect("could not compute block timestamp in VM");
 
         // get the current timestamp minus the cursor delay
         let end_time = MassaTime::compensated_now(self.config.clock_compensation)
@@ -376,7 +376,7 @@ impl ExecutionThread {
         new_requests: RequestQueue<ReadOnlyExecutionRequest, ExecutionOutput>,
     ) {
         // Append incoming readonly requests to our readonly request queue
-        // Excess requests are cancelld
+        // Excess requests are cancelled
         self.readonly_requests.extend(new_requests);
     }
 
@@ -406,13 +406,13 @@ impl ExecutionThread {
     /// first place the content of `input_data` set by the controller.
     ///
     /// # Returns
-    /// Return if the wait_loop has to break, early return, or pass.
-    /// - None: pass
-    /// - Some(true): break (will stop the worker)
-    /// - Some(false): early return (will continue to execute the input data)
+    /// Return if the `wait_loop` has to break, early return, or pass.
+    /// - `None`: pass
+    /// - `Some(true)`: break (will stop the worker)
+    /// - `Some(false)`: early return (will continue to execute the input data)
     ///
     /// # Test case
-    /// With the test config, the behavior is slightly different and we prefer
+    /// With the test configuration, the behavior is slightly different and we prefer
     /// to execute all `readonly_requests`, `new_blockclique`, and
     /// `finalized_blocks` before he thread join
     fn check_input_data(&self, input_data: &ExecutionInputData) -> Option<bool> {
@@ -446,11 +446,11 @@ impl ExecutionThread {
         None
     }
 
-    /// Waits for an event to trigger a new iteration in the excution main loop.
+    /// Waits for an event to trigger a new iteration in the execution main loop.
     ///
     /// # Returns
-    /// Some(ExecutionInputData) representing the input requests,
-    /// or None if the main loop needs to stop.
+    /// `Some(ExecutionInputData)` representing the input requests,
+    /// or `None` if the main loop needs to stop.
     fn wait_loop_event(&mut self) -> Option<ExecutionInputData> {
         let mut cancel_input = loop {
             let mut input_data_lock = self.input_data.1.lock();
@@ -514,9 +514,9 @@ impl ExecutionThread {
         None
     }
 
-    /// Main loop of the executin worker
+    /// Main loop of the execution worker
     pub fn main_loop(&mut self) {
-        // This loop restarts everytime an execution happens for easier tracking.
+        // This loop restarts every time an execution happens for easier tracking.
         // It also prioritizes executions in the following order:
         // 1 - final executions
         // 2 - speculative executions
@@ -566,17 +566,17 @@ impl ExecutionThread {
     }
 }
 
-/// Launches an execution worker thread and returns an ExecutionManager to interact with it
+/// Launches an execution worker thread and returns an `ExecutionManager` to interact with it
 ///
 /// # parameters
-/// * config: execution config
-/// * final_state: a thread-safe shared access to the final state for reading and writing
-/// * storage:A shared storage between all modules to have shared data.
+/// * `config`: execution configuration
+/// * `final_state`: a thread-safe shared access to the final state for reading and writing
+/// * `storage`: A shared storage between all modules to have shared data.
 ///
 /// # Returns
-/// A pair (execution_manager, execution_controller) where:
-/// * execution_manager allows to stop the worker
-/// * execution_controller allows sending requests and notifications to the worker
+/// A pair `(execution_manager, execution_controller)` where:
+/// * `execution_manager`: allows to stop the worker
+/// * `execution_controller`: allows sending requests and notifications to the worker
 pub fn start_execution_worker(
     config: ExecutionConfig,
     final_state: Arc<RwLock<FinalState>>,

@@ -5,7 +5,7 @@ use crate::{
     Address, BlockId, EndorsementId, OperationId, Slot,
 };
 
-/// Block that was checked as valid, with some useful precomputed data
+/// Block that was checked as valid, with some useful pre-computed data
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ActiveBlock {
     /// The creator's address
@@ -14,14 +14,14 @@ pub struct ActiveBlock {
     pub block_id: BlockId,
     /// one (block id, period) per thread ( if not genesis )
     pub parents: Vec<(BlockId, u64)>,
-    /// one HashMap<Block id, period> per thread (blocks that need to be kept)
+    /// one `HashMap<Block id, period>` per thread (blocks that need to be kept)
     /// Children reference that block as a parent
     pub children: Vec<Map<BlockId, u64>>,
     /// dependencies required for validity check
     pub dependencies: Set<BlockId>,
     /// Blocks id that have this block as an ancestor
     pub descendants: Set<BlockId>,
-    /// ie has its fitness reached the given threshold
+    /// for example has its fitness reached the given threshold
     pub is_final: bool,
     /// Changes caused by this block
     pub block_ledger_changes: LedgerChanges,
@@ -33,9 +33,9 @@ pub struct ActiveBlock {
     pub addresses_to_operations: Map<Address, Set<OperationId>>,
     /// Maps addresses to endorsements id they are involved in
     pub addresses_to_endorsements: Map<Address, Set<EndorsementId>>,
-    /// Address -> RollUpdate
+    /// `Address -> RollUpdate`
     pub roll_updates: RollUpdates,
-    /// list of (period, address, did_create) for all block/endorsement creation events
+    /// list of `(period, address, did_create)` for all block/endorsement creation events
     pub production_events: Vec<(u64, Address, bool)>,
     /// Slot of the block.
     pub slot: Slot,

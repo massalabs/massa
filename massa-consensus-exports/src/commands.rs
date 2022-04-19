@@ -76,7 +76,7 @@ pub enum ConsensusCommand {
     /// Remove associated staking keys
     RemoveStakingAddresses(Set<Address>),
     /// Get staking addresses
-    GetStakingAddressses(oneshot::Sender<Set<Address>>),
+    GetStakingAddresses(oneshot::Sender<Set<Address>>),
     /// Get production stats for addresses
     GetStakersProductionStats {
         /// wanted addresses

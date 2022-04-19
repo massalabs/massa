@@ -51,7 +51,7 @@ impl FromStr for Address {
 impl PreHashed for Address {}
 
 impl Address {
-    /// Gets the associated thread. Depends on the thread_count
+    /// Gets the associated thread. Depends on the `thread_count`
     pub fn get_thread(&self, thread_count: u8) -> u8 {
         (self.to_bytes()[0])
             .checked_shr(8 - thread_count.trailing_zeros())
@@ -165,14 +165,14 @@ pub struct AddressCycleProductionStats {
     pub cycle: u64,
     /// true if that cycle is final
     pub is_final: bool,
-    /// ok_count blocks were created by this address during that cycle
+    /// `ok_count` blocks were created by this address during that cycle
     pub ok_count: u64,
-    /// ok_count blocks were missed by this address during that cycle
+    /// `ok_count` blocks were missed by this address during that cycle
     pub nok_count: u64,
 }
 
 /// Address state as know by consensus
-/// Used to answer to api
+/// Used to answer to API
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AddressState {
     /// Parallel balance information

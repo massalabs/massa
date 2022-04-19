@@ -78,22 +78,22 @@ async fn test_genesis_block_creation() {
 ///
 ///
 /// ### Context
-///
+/// ```
 /// * price per roll = 1000
 /// * periods per cycle = 30 000
 /// * t0 = 500ms
-/// * lookback = 2
+/// * look-back = 2
 /// * thread count = 2
 /// * delta f0 = 3
 /// * genesis timestamp = now - t0 * periods per cycle * 3 - 1000
 /// * block reward = 0
 /// * fee = 0 for every operation
-/// * addr 1 has 1 roll and 0 coins
-/// * addr 2 is in consensus and has 0 roll and 1000 coins
-///
+/// * address 1 has 1 roll and 0 coins
+/// * address 2 is in consensus and has 0 roll and 1000 coins
+/// ```
 /// ### Initialization
 /// Following blocks are sent through a protocol event to consensus right at the beginning. They all have best parents as parents.
-/// * block at slot(1,0) with operation addr 2 buys 1 roll
+/// * block at slot(1,0) with operation address 2 buys 1 roll
 /// * block at slot( period per cycle, 0)
 /// * block at slot( period per cycle, 1)
 /// * block at slot( period per cycle + 1, 0)
@@ -106,7 +106,7 @@ async fn test_genesis_block_creation() {
 /// * start consensus
 /// * blocks previously described are sent to consensus through a protocol event
 /// * assert they are propagated
-/// * let draws = get_selection_draws( (3*periods_per cycle, 0), (4*periods_per cycle, 0)
+/// * ```let draws = get_selection_draws( (3*periods_per cycle, 0), (4*periods_per cycle, 0)```
 /// * assert
 /// ```math
 /// abs(1/2 - \frac{TimesAddr1WasDrawn}{ThreadCount * PeriodsPerCycle}) < 0.01
@@ -114,8 +114,8 @@ async fn test_genesis_block_creation() {
 /// (see [the math](https://en.wikipedia.org/wiki/Checking_whether_a_coin_is_fair))
 /// * wait for cycle 3 beginning
 /// * for the 10 first slots of cycle 3
-///    * if addr 2 was selected assert consensus created and propagated a block
-///    * if addr 1 was selected assert nothing is propagated
+///    * if address 2 was selected assert consensus created and propagated a block
+///    * if address 1 was selected assert nothing is propagated
 #[tokio::test]
 #[serial]
 async fn test_block_creation_with_draw() {
@@ -435,15 +435,19 @@ async fn test_interleaving_block_creation_with_reception() {
 ///
 /// context
 ///
+/// ```
 /// initial ledger: A:100
 /// op1 : A -> B : 5, fee 1
 /// op2 : A -> B : 50, fee 10
 /// op3 : B -> A : 10, fee 15
+/// ```
 ///
 /// ---
 ///
+/// ```
 /// create block at (0,1)
 /// operations should be [op2, op1]
+/// ```
 #[tokio::test]
 #[serial]
 async fn test_order_of_inclusion() {
@@ -594,19 +598,21 @@ async fn test_order_of_inclusion() {
 ///
 /// context
 ///
+/// ````
 /// initial ledger A = 1 000 000
 /// max_block_size = 500
 /// max_operations_per_block = 10 000
 /// op_i = A -> B : 10, 1, signed for the i-th time
+/// ```
 ///
 /// ---
-///
+/// ```
 /// let block_size = size of dummy block at (1,0) without any operation
 /// let op_size = size of an operation
 /// while consensus is asking for operations send next ops
-/// assert created block size is max_block_size +/- one op_size
-/// assert created_block_size = block_size + op_size * op count
-///
+/// assert created_block_size is max_block_size +/- one op_size
+/// assert created_block_size = block_size +`op_size * op_count
+/// ```
 #[tokio::test]
 #[serial]
 async fn test_block_filling() {

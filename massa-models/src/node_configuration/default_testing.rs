@@ -2,19 +2,19 @@
 //! Same as default constants but in testing mode. You can access to them with
 //! the `testing` feature activated.
 //!
-//! # Default hardcoded
+//! # Default hard-coded
 //!
 //! Each crates may contains a `settings.rs` or a `config.rs` the `Default`
 //! implementation of each object take the default Values from the following
 //! file.
 //!
-//! These values are the hardcoded values that make sens to never be modified
+//! These values are the hard-coded values that make sens to never be modified
 //! by a user. Generally, this values are passed with dependency injection in a `cfg`
 //! parameter for each worker, that is convenient for unit tests.
 //!
 //! See `./default.rs` for more documentation about each constants
 //!
-//! /!\ The following values are good as it. If you want a specific configuration,
+//! The following values are good as it. If you want a specific configuration,
 //! create a mutable configuration and inject it as a dependency in the worker.
 //!
 //! Ex:
@@ -33,7 +33,7 @@ use std::net::{IpAddr, Ipv4Addr};
 lazy_static::lazy_static! {
     /// genesis private keys
     pub static ref GENESIS_KEY: PrivateKey = generate_random_private_key();
-    /// Time in millis when the blockclique started.
+    /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         MassaTime::now()
             .unwrap()
@@ -47,7 +47,7 @@ lazy_static::lazy_static! {
     /// Be careful:
     /// The `GENESIS_TIMESTAMP` shouldn't be used as it in test because if you start the full test
     /// process, the first use is effectively `MassaTime::now().unwrap()` but will be outdated for
-    /// the latest test. That's the reason why we choose to reset it each time we get a ConsensusConfig.
+    /// the latest test. That's the reason why we choose to reset it each time we get a `ConsensusConfig`.
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(1, 1);
     /// node version
     pub static ref VERSION: Version = "DEVE.0.0".parse().unwrap();
@@ -81,13 +81,13 @@ pub const HANDSHAKE_RANDOMNESS_SIZE_BYTES: usize = 32;
 pub const INITIAL_DRAW_SEED: &str = "massa_genesis_seed";
 /// max bootstrap ips kept size
 pub const IP_LIST_MAX_SIZE: usize = 10000;
-/// max advertized id length
+/// max advertised id length
 pub const MAX_ADVERTISE_LENGTH: u32 = 10;
 /// max ask for block per message
 pub const MAX_ASK_BLOCKS_PER_MESSAGE: u32 = 3;
 /// max block size 3 * 1024 * 1024
 pub const MAX_BLOCK_SIZE: u32 = 3145728;
-/// max async pool length
+/// max asynchronous pool length
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 /// max bootstrapped blocks
 pub const MAX_BOOTSTRAP_BLOCKS: u32 = 100;
@@ -109,7 +109,7 @@ pub const MAX_BOOTSTRAP_POS_ENTRIES: u32 = 1000;
 pub const MAX_BOOTSTRAP_POS_CYCLES: u32 = 5;
 /// max gas per block
 pub const MAX_GAS_PER_BLOCK: u64 = 100_000_000;
-/// max async gas
+/// max asynchronous gas
 pub const MAX_ASYNC_GAS: u64 = 10_000_000;
 /// max message size 3 * 1024 * 1024
 pub const MAX_MESSAGE_SIZE: u32 = 3145728;
@@ -135,7 +135,7 @@ pub const ROLL_PRICE: Amount = Amount::from_raw(100 * AMOUNT_DECIMAL_FACTOR);
 pub const SLOT_KEY_SIZE: usize = 9;
 /// thread count
 pub const THREAD_COUNT: u8 = 2;
-/// period length in millis, sometimes overridden in config.rs or setting.rs
+/// period length in milliseconds, sometimes overridden in `config.rs` or `setting.rs`
 pub const T0: MassaTime = MassaTime::from(32000);
 
 /*************************
@@ -155,49 +155,49 @@ pub const T0: MassaTime = MassaTime::from(32000);
 * };
 */
 
-/// normally in config.toml, allow execution worker to lag smoothly
+/// normally in `config.toml`, allow execution worker to lag smoothly
 pub const CURSOR_DELAY: MassaTime = MassaTime::from(0);
-/// normally in config.toml, if the node will create blocks
+/// normally in `config.toml`, if the node will create blocks
 pub const DISABLE_BLOCK_CREATION: bool = true;
-/// normally in config.toml, final history length
+/// normally in `config.toml`, final history length
 pub const FINAL_HISTORY_LENGTH: usize = 10;
-/// normally in config.toml, forcefully kept periods
+/// normally in `config.toml`, forcefully kept periods
 pub const FORCE_KEEP_FINAL_PERIOD: u64 = 0;
-/// normally in config.toml, if slot is after FUTURE_BLOCK_PROCESSING_MAX_PERIODS, the block is not processed
+/// normally in `config.toml`, if slot is after `FUTURE_BLOCK_PROCESSING_MAX_PERIODS`, the block is not processed
 pub const FUTURE_BLOCK_PROCESSING_MAX_PERIODS: u64 = 10;
-/// normally in config.toml, ledger cache capacity
+/// normally in `config.toml`, ledger cache capacity
 pub const LEDGER_CACHE_CAPACITY: u64 = 1_000_000;
-/// normally in config.toml, if the ledger need a reset at start up
+/// normally in `config.toml`, if the ledger need a reset at start up
 pub const LEDGER_RESET_AT_STARTUP: bool = true;
-/// normally in config.toml, max unknown dependencies kept
+/// normally in `config.toml`, max unknown dependencies kept
 pub const MAX_DEPENDENCY_BLOCK: usize = 10;
-/// normally in config.toml, max discarded blocks kept
-pub const MAX_DISCARED_BLOCKS: usize = 10;
-/// normally in config.toml, max final events kept
+/// normally in `config.toml`, max discarded blocks kept
+pub const MAX_DISCARDED_BLOCKS: usize = 10;
+/// normally in `config.toml`, max final events kept
 pub const MAX_FINAL_EVENTS: usize = 10;
-/// normally in config.toml, max in the future kept blocks
+/// normally in `config.toml`, max in the future kept blocks
 pub const MAX_FUTURE_PROCESSING_BLOCK: usize = 10;
-/// normally in config.toml, max item count returned
+/// normally in `config.toml`, max item count returned
 pub const MAX_ITEM_RETURN_COUNT: usize = 1000;
-/// normally in config.toml, max operation fill attempts
+/// normally in `config.toml`, max operation fill attempts
 pub const MAX_OPERATION_FILL_ATTEMPTS: u32 = 6;
-/// normally in config.toml, operation batch size
+/// normally in `config.toml`, operation batch size
 pub const OPERATION_BATCH_SIZE: usize = 3;
-/// normally in config.toml, proof of stake cached cycle
+/// normally in `config.toml`, proof of stake cached cycle
 pub const POS_DRAW_CACHED_CYCLE: usize = 10;
-/// normally in config.toml, read only queue length
+/// normally in `config.toml`, read only queue length
 pub const READONLY_QUEUE_LENGTH: usize = 10;
 
 // Note: In the `massa-network`, the default values are defined in the `settings.rs` of the
 // `massa-network` crate.
 
 lazy_static::lazy_static! {
-    /// blocks are pruned every BLOCK_DB_PRUNE_INTERVAL millis
+    /// blocks are pruned every `BLOCK_DB_PRUNE_INTERVAL` milliseconds
     pub static ref BLOCK_DB_PRUNE_INTERVAL: MassaTime = 1000.into();
-    /// ledger is saved on disk every LEDGER_FLUSH_INTERVAL millis
+    /// ledger is saved on disk every `LEDGER_FLUSH_INTERVAL` milliseconds
     pub static ref LEDGER_FLUSH_INTERVAL: Option<MassaTime> = Some(200.into());
-    /// we wait MAX_SEND_WAIT millis to send a message
+    /// we wait `MAX_SEND_WAIT` milliseconds to send a message
     pub static ref MAX_SEND_WAIT: MassaTime = 500.into();
-    /// stats are considered for STATS_TIMESPAN millis
+    /// stats are considered for `STATS_TIMESPAN` milliseconds
     pub static ref STATS_TIMESPAN: MassaTime = 60000.into();
 }

@@ -42,7 +42,7 @@ pub struct NodeStatus {
     pub pool_stats: PoolStats,
     /// network stats
     pub network_stats: NetworkStats,
-    /// compact config
+    /// compact configuration
     pub config: CompactConfig,
 }
 
@@ -89,10 +89,10 @@ pub struct OperationInfo {
     pub id: OperationId,
     /// true if operation is still in pool
     pub in_pool: bool,
-    /// the operation appears in in_blocks
+    /// the operation appears in `in_blocks`
     /// if it appears in multiple blocks, these blocks are in different cliques
     pub in_blocks: Vec<BlockId>,
-    /// true if the operation is final (ie in a final block)
+    /// true if the operation is final (for example in a final block)
     pub is_final: bool,
     /// the operation itself
     pub operation: SignedOperation,
@@ -126,14 +126,14 @@ impl std::fmt::Display for OperationInfo {
     }
 }
 
-/// Current Parallel balance leger info
+/// Current Parallel balance ledger info
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct LedgerInfo {
     /// final data
     pub final_ledger_info: LedgerData,
     /// latest data
     pub candidate_ledger_info: LedgerData,
-    /// locked balance, ie balance due to a roll sell
+    /// locked balance, for example balance due to a roll sell
     pub locked_balance: Amount,
 }
 
@@ -170,7 +170,7 @@ impl std::fmt::Display for RollsInfo {
     }
 }
 
-/// Sequential balance state (really same as SCELedgerEntry)
+/// Sequential balance state (really same as `SCELedgerEntry`)
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct SCELedgerInfo {
     /// sequential coins
@@ -189,7 +189,7 @@ impl std::fmt::Display for SCELedgerInfo {
     }
 }
 
-/// All you ever dreamt to know about an address
+/// All you ever dream to know about an address
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AddressInfo {
     /// the address
@@ -479,7 +479,7 @@ pub struct TimeInterval {
     pub end: Option<MassaTime>,
 }
 
-/// filter used when retrieving sc output events
+/// filter used when retrieving SC output events
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct EventFilter {
     /// optional start slot

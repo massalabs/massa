@@ -4,11 +4,11 @@
 
 /// Trait marking a structure that supports another one (V) being applied to it
 pub trait Applicable<V> {
-    /// apply changes from other to mut self
+    /// apply changes from other to mutable self
     fn apply(&mut self, _: V);
 }
 
-/// Enum representing set/update/delete change on a value T
+/// Enumeration representing set/update/delete change on a value T
 #[derive(Debug, Clone)]
 pub enum SetUpdateOrDelete<T: Default + Applicable<V>, V: Applicable<V> + Clone> {
     /// Sets the value T a new absolute value T
@@ -18,14 +18,14 @@ pub enum SetUpdateOrDelete<T: Default + Applicable<V>, V: Applicable<V> + Clone>
     /// If the value T doesn't exist:
     /// a `new_t = T::default()` is created,
     /// the update V is applied to it,
-    /// and the enum is changed to `SetUpdateOrDelete::Set(new_t)`
+    /// and the enumeration is changed to `SetUpdateOrDelete::Set(new_t)`
     Update(V),
 
     /// Deletes the value T
     Delete,
 }
 
-/// support applying another SetUpdateOrDelete to self
+/// Support applying another `SetUpdateOrDelete` to self
 impl<T: Default + Applicable<V>, V: Applicable<V>> Applicable<SetUpdateOrDelete<T, V>>
     for SetUpdateOrDelete<T, V>
 where
@@ -59,7 +59,7 @@ where
     }
 }
 
-/// Enum representing a set/delete change on a value T
+/// `Enum` representing a set/delete change on a value T
 #[derive(Debug, Clone)]
 pub enum SetOrDelete<T: Clone> {
     /// sets a new absolute value T
@@ -69,7 +69,7 @@ pub enum SetOrDelete<T: Clone> {
     Delete,
 }
 
-/// allows applying another SetOrDelete to the current one
+/// allows applying another `SetOrDelete` to the current one
 impl<T: Clone> Applicable<SetOrDelete<T>> for SetOrDelete<T> {
     fn apply(&mut self, other: Self) {
         *self = other;
@@ -86,7 +86,7 @@ pub enum SetOrKeep<T: Clone> {
     Keep,
 }
 
-/// allows applying another SetOrKeep to the current one
+/// allows applying another `SetOrKeep` to the current one
 impl<T: Clone> Applicable<SetOrKeep<T>> for SetOrKeep<T> {
     fn apply(&mut self, other: SetOrKeep<T>) {
         if let v @ SetOrKeep::Set(..) = other {
@@ -97,7 +97,7 @@ impl<T: Clone> Applicable<SetOrKeep<T>> for SetOrKeep<T> {
 }
 
 impl<T: Clone> SetOrKeep<T> {
-    /// applies the current SetOrKeep to a target mutable value
+    /// applies the current `SetOrKeep` to a target mutable value
     pub fn apply_to(self, val: &mut T) {
         if let SetOrKeep::Set(v) = self {
             // only change the value if self is setting a new one
@@ -106,7 +106,7 @@ impl<T: Clone> SetOrKeep<T> {
     }
 }
 
-/// By default, SetOrKeep keeps the existing value
+/// By default, `SetOrKeep` keeps the existing value
 impl<T: Clone> Default for SetOrKeep<T> {
     fn default() -> Self {
         SetOrKeep::Keep

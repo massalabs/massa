@@ -8,7 +8,7 @@ use std::{convert::TryInto, fmt, str::FromStr};
 /// Application version, checked during handshakes
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Version {
-    /// ascii uppercase alpha
+    /// ASCII uppercase alpha
     instance: [char; 4],
     major: u32,
     minor: u32,

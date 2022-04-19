@@ -83,7 +83,7 @@ impl DeserializeCompact for BootstrapPeers {
 }
 
 /// Peer categories.
-/// There is a defined number af slots for each category.
+/// There is a defined number of slots for each category.
 /// Order matters: less prioritized peer type first
 #[derive(
     Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Display, Enum,
@@ -95,7 +95,7 @@ pub enum PeerType {
     WhiteListed,
     /** if the peer is in bootstrap servers list
     for now it is decoupled from the real bootstrap sever list, it's just parsed
-    TODO: https://github.com/massalabs/massa/issues/2320
+    TODO: `https://github.com/massalabs/massa/issues/2320`
     */
     Bootstrap,
 }
@@ -123,9 +123,9 @@ pub struct PeerInfo {
     pub ip: IpAddr,
     /// The category the peer is in affects how it's treated.
     pub peer_type: PeerType,
-    /// Time in millis when peer was last alive
+    /// Time in milliseconds when peer was last alive
     pub last_alive: Option<MassaTime>,
-    /// Time in millis of peer's last failure
+    /// Time in milliseconds of peer's last failure
     pub last_failure: Option<MassaTime>,
     /// Whether peer was promoted through another peer
     pub advertised: bool,
@@ -146,7 +146,7 @@ pub struct PeerInfo {
 }
 
 impl PeerInfo {
-    /// Cleans up the PeerInfo by normalizing the IP address
+    /// Cleans up the `PeerInfo` by normalizing the IP address
     /// and resetting active connection counts.
     pub fn cleanup(&mut self) {
         // canonicalize IP
@@ -167,11 +167,11 @@ impl PeerInfo {
             || self.active_in_connections > 0
     }
 
-    /// New standard PeerInfo for ipaddr
+    /// New standard `PeerInfo` for `IpAddr`
     ///
     /// # Arguments
-    /// * ip: the IP address of the peer
-    /// * advertised: true if this peer was advertised as routable,
+    /// * `ip`: the IP address of the peer
+    /// * `advertised`: true if this peer was advertised as routable,
     /// which means that our node can attempt outgoing connections to it
     pub fn new(ip: IpAddr, advertised: bool) -> PeerInfo {
         PeerInfo {

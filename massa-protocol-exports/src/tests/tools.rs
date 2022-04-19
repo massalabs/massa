@@ -19,7 +19,7 @@ use massa_time::MassaTime;
 use std::collections::HashMap;
 use tokio::time::sleep;
 
-/// test utility struct
+/// test utility structures
 /// keeps private key and associated node id
 #[derive(Debug, Clone)]
 pub struct NodeInfo {
@@ -36,7 +36,7 @@ pub fn create_node() -> NodeInfo {
     NodeInfo { private_key, id }
 }
 
-/// create num nodes and connect them with protocol
+/// create number of nodes and connect them with protocol
 pub async fn create_and_connect_nodes(
     num: usize,
     network_controller: &mut MockNetworkController,
@@ -78,10 +78,10 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
 
 /// create a block with no endorsement
 ///
-/// * private_key: key that sign the block
-/// * public_key: creator's key TODO could be derived from the private key
-/// * slot
-/// * operations
+/// * `private_key`: key that sign the block
+/// * `public_key`: creator's key TODO could be derived from the private key
+/// * `slot`
+/// * `operations`
 pub fn create_block_with_operations(
     private_key: &PrivateKey,
     public_key: &PublicKey,
@@ -113,10 +113,10 @@ pub fn create_block_with_operations(
 
 /// create a block with no operation
 ///
-/// * private_key: key that sign the block
-/// * public_key: creator's key TODO could be derived from the private key
-/// * slot
-/// * endorsements
+/// * `private_key`: key that sign the block
+/// * `public_key`: creator's key TODO could be derived from the private key
+/// * `slot`
+/// * `endorsements`
 pub fn create_block_with_endorsements(
     private_key: &PrivateKey,
     public_key: &PublicKey,
@@ -221,7 +221,7 @@ lazy_static::lazy_static! {
     pub static ref PROTOCOL_SETTINGS: ProtocolSettings = create_protocol_settings();
 }
 
-/// create a ProtocolConfig with typical values
+/// create a `ProtocolConfig` with typical values
 pub fn create_protocol_settings() -> ProtocolSettings {
     // Init the serialization context with a default,
     // can be overwritten with a more specific one in the test.
@@ -335,7 +335,7 @@ pub async fn asked_list(
         .expect("Hash not asked for before timer.")
 }
 
-/// asser a node has been banned
+/// assert a node has been banned
 pub async fn assert_banned_node(node_id: NodeId, network_controller: &mut MockNetworkController) {
     let banned_node = network_controller
         .wait_command(1000.into(), |cmd| match cmd {

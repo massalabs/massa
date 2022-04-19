@@ -11,7 +11,7 @@ use massa_models::{
 use massa_storage::Storage;
 use serde::{Deserialize, Serialize};
 
-/// Exportable version of ActiveBlock
+/// Exportable version of `ActiveBlock`
 /// Fields that can be easily recomputed were left out
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportActiveBlock {
@@ -19,20 +19,20 @@ pub struct ExportActiveBlock {
     pub block: Block,
     /// The Id of the block.
     pub block_id: BlockId,
-    /// one (block id, period) per thread ( if not genesis )
+    /// one `(block id, period)` per thread ( if not genesis )
     pub parents: Vec<(BlockId, u64)>,
-    /// one HashMap<Block id, period> per thread (blocks that need to be kept)
+    /// one `HashMap<Block id, period>` per thread (blocks that need to be kept)
     /// Children reference that block as a parent
     pub children: Vec<Map<BlockId, u64>>,
     /// dependencies required for validity check
     pub dependencies: Set<BlockId>,
-    /// ie has its fitness reached the given threshold
+    /// for example has its fitness reached the given threshold
     pub is_final: bool,
     /// Changes caused by this block
     pub block_ledger_changes: LedgerChanges,
-    /// Address -> RollUpdate
+    /// `Address -> RollUpdate`
     pub roll_updates: RollUpdates,
-    /// list of (period, address, did_create) for all block/endorsement creation events
+    /// list of `(period, address, did_create)` for all block/endorsement creation events
     pub production_events: Vec<(u64, Address, bool)>,
 }
 impl TryFrom<ExportActiveBlock> for ActiveBlock {

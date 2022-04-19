@@ -10,17 +10,20 @@ use std::{collections::HashSet, str::FromStr};
 
 /// # Context
 ///
-/// Regression test for https://github.com/massalabs/massa/pull/2433
+/// Regression test for `https://github.com/massalabs/massa/pull/2433`
 ///
 /// When we have the following block sequence
+/// ```
 /// 1 thread, periods_per_cycle = 2, delta_f0 = 1, 1 endorsement per block
 ///
 /// cycle 0 | cycle 1 | cycle 2
 ///  G - B1 - B2 - B3 - B4
 /// where G is the genesis block
 /// and B4 contains a roll sell operation
+/// ```
 ///
-/// And the block B1 is received AFTER B4, blocks will be processed recursively:
+/// And the block `B1` is received AFTER `B4`, blocks will be processed recursively:
+/// ```
 /// * B1 is received and included
 /// * B2 is processed
 /// * B1 becomes final in the graph
@@ -29,15 +32,16 @@ use std::{collections::HashSet, str::FromStr};
 /// * B4 is processed
 /// * B3 becomes final in the graph
 /// * PoS is told about all finalized blocks
+/// ```
 ///
-/// The problem we had is that in order to check rolls to verify B4's roll sell,
+/// The problem we had is that in order to check rolls to verify `B4`'s roll sell,
 /// the final roll registry was assumed to be attached to the last final block known by the graph,
-/// but that was inaccurate becaue PoS was the one holding the final roll registry,
+/// but that was inaccurate because PoS was the one holding the final roll registry,
 /// and PoS was not yet aware of the blocks that finalized during recursion,
-/// so it was actually still attached to G when B4 was checked.
+/// so it was actually still attached to G when `B4` was checked.
 ///
 /// The correction involved taking the point of view of PoS on where the final roll registry is attached.
-/// This test ensures non-regression by making sure B4 is propagated when B1 is received.
+/// This test ensures non-regression by making sure `B4` is propagated when `B1` is received.
 #[tokio::test]
 #[serial]
 async fn test_inter_cycle_batch_finalization() {

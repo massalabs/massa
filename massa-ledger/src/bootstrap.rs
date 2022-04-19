@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Provides serializable strucutres for bootstrapping the FinalLedger
+//! Provides serializable structures for bootstrapping the `FinalLedger`
 
 use crate::LedgerEntry;
 use massa_models::{
@@ -11,14 +11,14 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 /// Represents a snapshot of the ledger state,
-/// which is enough to fully bootstrap a FinalLedger
+/// which is enough to fully bootstrap a `FinalLedger`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FinalLedgerBootstrapState {
     /// sorted ledger
     pub(crate) sorted_ledger: BTreeMap<Address, LedgerEntry>,
 }
 
-/// Allows serializing the FinalLedgerBootstrapState to a compact binary representation
+/// Allows serializing the `FinalLedgerBootstrapState` to a compact binary representation
 impl SerializeCompact for FinalLedgerBootstrapState {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
         let mut res: Vec<u8> = Vec::new();
@@ -42,7 +42,7 @@ impl SerializeCompact for FinalLedgerBootstrapState {
     }
 }
 
-/// Allows deserializing a FinalLedgerBootstrapState from its compact binary representation
+/// Allows deserializing a `FinalLedgerBootstrapState` from its compact binary representation
 impl DeserializeCompact for FinalLedgerBootstrapState {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
         let mut cursor = 0usize;

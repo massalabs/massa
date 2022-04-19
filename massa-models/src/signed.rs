@@ -7,7 +7,7 @@ use massa_signature::{
 };
 use serde::{Deserialize, Serialize};
 
-/// Signed struct T where U is the associated id
+/// Signed structure T where U is the associated id
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Signed<T, U>
 where
@@ -22,7 +22,7 @@ where
     phantom: PhantomData<U>,
 }
 
-/// Used by signed struct
+/// Used by signed structure
 pub trait Id {
     /// new id from hash
     fn new(hash: Hash) -> Self;
@@ -40,7 +40,7 @@ where
     }
 }
 
-/// impl if you want that struct to be signed
+/// implement if you want that structure to be signed
 pub trait Signable<U>
 where
     U: Id,
@@ -62,7 +62,7 @@ where
     T: SerializeCompact + DeserializeCompact + Signable<U> + Display,
     U: Id,
 {
-    /// generate new signed struct and id
+    /// generate new signed structure and id
     pub fn new_signed(content: T, private_key: &PrivateKey) -> Result<(U, Self), ModelsError> {
         Ok((
             content.compute_id()?,

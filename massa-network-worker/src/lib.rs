@@ -35,10 +35,10 @@ mod peer_info_database;
 #[cfg(test)]
 pub mod tests;
 
-/// Starts a new NetworkWorker in a spawned task
+/// Starts a new `NetworkWorker` in a spawned task
 ///
 /// # Arguments
-/// * cfg : network configuration
+/// * `cfg`: network configuration
 pub async fn start_network_controller(
     network_settings: NetworkSettings,
     mut establisher: Establisher,

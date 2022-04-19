@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::ModelsError;
 
 const NODE_ID_STRING_PREFIX: &str = "NOD";
-/// NodeId wraps a public key to uniquely identify a node.
+/// `NodeId` wraps a public key to uniquely identify a node.
 #[derive(Clone, Copy, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct NodeId(pub PublicKey);
 

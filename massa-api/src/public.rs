@@ -35,7 +35,7 @@ use massa_time::MassaTime;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
-    /// generate a new public api
+    /// generate a new public API
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         execution_controller: Box<dyn ExecutionController>,
@@ -696,7 +696,7 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    /// Get events optionnally filtered by:
+    /// Get events optionally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address

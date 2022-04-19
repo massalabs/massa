@@ -288,7 +288,7 @@ impl BootstrapManager {
 }
 
 #[allow(clippy::too_many_arguments)]
-/// TODO merging the command senders into one channel struct may allow removing that allow
+/// TODO merging the command senders into one channel structure may allow removing that allow
 ///
 /// start a bootstrap server.
 /// Once your node will be ready, you may want other to bootstrap from you.

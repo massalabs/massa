@@ -190,7 +190,7 @@ fn get_bootgraph(
             ]
             .into_iter()
             .collect(),
-            /// Best parents hashe in each thread.
+            /// Best parents hashes in each thread.
             best_parents: vec![(p2t0_id, 2), (p1t1_id, 1)],
             /// Latest final period and block hash in each thread.
             latest_final_blocks_periods: vec![(g0_id, 0u64), (g1_id, 0u64)],

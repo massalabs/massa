@@ -121,7 +121,7 @@ impl MockNetworkController {
             .expect("Couldn't send operations to protocol.");
     }
 
-    /// received aks for operation from node
+    /// received ask for operation from node
     /// todo inconsistency with names
     pub async fn send_ask_for_operation(
         &mut self,

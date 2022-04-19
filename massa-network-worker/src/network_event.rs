@@ -215,8 +215,8 @@ pub mod event_impl {
     /// The node worker signal that he received some full `operations` from a
     /// node.
     ///
-    /// Forward the event by sending a [NetworkEvent::ReceivedOperations].
-    /// See also [massa_network_exports::NodeEventType::ReceivedOperations]
+    /// Forward the event by sending a `[NetworkEvent::ReceivedOperations]`.
+    /// See also `[massa_network_exports::NodeEventType::ReceivedOperations]`
     pub async fn on_received_operations(
         worker: &mut NetworkWorker,
         from: NodeId,
@@ -238,7 +238,7 @@ pub mod event_impl {
         }
     }
 
-    /// The node worker signal that he received a bach of operation ids
+    /// The node worker signal that he received a batch of operation ids
     /// from another node.
     pub async fn on_received_operations_annoncement(
         worker: &mut NetworkWorker,

@@ -15,7 +15,7 @@ use crate::{export_active_block::ExportActiveBlock, ledger::LedgerSubset};
 pub struct BootstrapableGraph {
     /// Map of active blocks, were blocks are in their exported version.
     pub active_blocks: Map<BlockId, ExportActiveBlock>,
-    /// Best parents hash in each thread.
+    /// Best parents hashes in each thread.
     pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
     pub latest_final_blocks_periods: Vec<(BlockId, u64)>,

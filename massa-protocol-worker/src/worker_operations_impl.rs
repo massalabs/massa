@@ -1,6 +1,6 @@
 //! Contains the implementation of the life cycle of operations
 //!
-//! Impement the propagation algorithm written here [redirect to github]
+//! Implement the propagation algorithm written here [redirect to GitHub]
 //! (https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779).
 //!
 //! 1) get batches of operations ids
@@ -34,12 +34,12 @@ pub struct OperationBatchItem {
     pub operations_ids: OperationIds,
 }
 
-/// Queue containing every [OperationsBatchItem] we want to ask now or later.
+/// Queue containing every `[OperationsBatchItem]` we want to ask now or later.
 pub type OperationBatchBuffer = VecDeque<OperationBatchItem>;
 
 impl ProtocolWorker {
     /// On receive a batch of operation ids `op_batch` from another `node_id`
-    /// Execute the following algorithm: [redirect to github](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)
+    /// Execute the following algorithm: [redirect to GitHub](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)
     ///
     ///```py
     ///def process_op_batch(op_batch, node_id):
@@ -76,7 +76,7 @@ impl ProtocolWorker {
     }
 
     /// On full operations are received from the network,
-    /// - Uptate the cache `received_operations` ids and each
+    /// - Update the cache `received_operations` ids and each
     ///   `node_info.known_operations`
     /// - Notify the operations to he local node, to be propagated
     pub(crate) async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {
