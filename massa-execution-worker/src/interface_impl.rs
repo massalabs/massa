@@ -21,7 +21,7 @@ use parking_lot::Mutex;
 use rand::Rng;
 use std::str::FromStr;
 use std::sync::Arc;
-use tracing::warn;
+use tracing::debug;
 
 /// helper for locking the context mutex
 macro_rules! context_guard {
@@ -64,7 +64,7 @@ impl InterfaceClone for InterfaceImpl {
 impl Interface for InterfaceImpl {
     /// prints a message in the node logs at log level 3 (debug)
     fn print(&self, message: &str) -> Result<()> {
-        warn!("SC print: {}", message);
+        debug!("SC print: {}", message);
         Ok(())
     }
 
