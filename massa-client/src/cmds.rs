@@ -3,7 +3,7 @@
 use crate::repl::Output;
 use anyhow::{anyhow, bail, Result};
 use console::style;
-use massa_models::api::{AddressInfo, CompactAddressInfo};
+use massa_models::api::{AddressInfo, CompactAddressInfo, EventFilter};
 use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 use massa_models::prehash::Map;
 use massa_models::timeslots::get_current_latest_block_slot;
@@ -123,6 +123,13 @@ pub enum Command {
         message = "show info about a list of operations(content, finality ...) "
     )]
     get_operations,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "ARGUMENTS"),
+        message = "show events emitted by smart contracts with various filters"
+    )]
+    get_filtered_sc_output_event,
 
     #[strum(
         ascii_case_insensitive,
@@ -485,6 +492,31 @@ impl Command {
                 let operations = parse_vec::<OperationId>(parameters)?;
                 match client.public.get_operations(operations).await {
                     Ok(operations_info) => Ok(Box::new(operations_info)),
+                    Err(e) => rpc_error!(e),
+                }
+            }
+
+            Command::get_filtered_sc_output_event => {
+                if parameters.len() != 5 {
+                    bail!("wrong number of parameters");
+                }
+                let start = parameters[0].parse::<Slot>()?;
+                let end = parameters[1].parse::<Slot>()?;
+                let emitter_address = parameters[2].parse::<Address>()?;
+                let original_caller_address = parameters[3].parse::<Address>()?;
+                let original_operation_id = parameters[4].parse::<OperationId>()?;
+                match client
+                    .public
+                    .get_filtered_sc_output_event(EventFilter {
+                        start: Some(start),
+                        end: Some(end),
+                        emitter_address: Some(emitter_address),
+                        original_caller_address: Some(original_caller_address),
+                        original_operation_id: Some(original_operation_id),
+                    })
+                    .await
+                {
+                    Ok(events) => Ok(Box::new(events)),
                     Err(e) => rpc_error!(e),
                 }
             }
