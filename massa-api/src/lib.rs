@@ -92,6 +92,7 @@ fn serve(api: impl Endpoints, url: &SocketAddr) -> StopHandle {
 
     let server = ServerBuilder::new(io)
         .event_loop_executor(tokio::runtime::Handle::current())
+        .max_request_body_size(50 * 1024 * 1024)
         .start_http(url)
         .expect("Unable to start RPC server");
 
