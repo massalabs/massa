@@ -11,6 +11,7 @@ futures = "0.3"
 jsonrpc-core = "18.0"
 jsonrpc-derive = "18.0"
 jsonrpc-http-server = "18.0"
+serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 tokio = { version = "1.15", features = ["full"] }
 tracing = "0.1"

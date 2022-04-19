@@ -55,10 +55,10 @@ pub fn generate_peers_file(peer_vec: &[PeerInfo]) -> NamedTempFile {
 ///
 /// * establishes connection
 /// * performs handshake
-/// * waits for NetworkEvent::NewConnection with returned node
+/// * waits for `NetworkEvent::NewConnection` with returned node
 ///
 /// Returns:
-/// * nodeid we just connected to
+/// * `NodeId` we just connected to
 /// * binders used to communicate with that node
 pub async fn full_connection_to_controller(
     network_event_receiver: &mut NetworkEventReceiver,
@@ -117,7 +117,7 @@ pub async fn full_connection_to_controller(
 }
 
 /// try to establish a connection to the controller and expect rejection.
-/// Return the `NetworkError` that spawned from the HanshakeWorker.
+/// Return the `NetworkError` that spawned from the `HandshakeWorker`.
 pub async fn rejected_connection_to_controller(
     network_event_receiver: &mut NetworkEventReceiver,
     mock_interface: &mut MockEstablisherInterface,
@@ -191,15 +191,15 @@ pub async fn rejected_connection_to_controller(
     ret
 }
 
-/// establish a full alive connection from the network controller
+/// Establish a full alive connection from the network controller
 /// note: fails if the controller attempts a connection to another IP first
 
 /// * wait for the incoming connection attempt, check address and accept
 /// * perform handshake
-/// * wait for a NetworkEvent::NewConnection event
+/// * wait for a `NetworkEvent::NewConnection` event
 ///
 /// Returns:
-/// * nodeid we just connected to
+/// * `NodeId` we just connected to
 /// * binders used to communicate with that node
 pub async fn full_connection_from_controller(
     network_event_receiver: &mut NetworkEventReceiver,

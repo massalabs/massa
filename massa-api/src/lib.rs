@@ -1,5 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-//! Json rpc api for a massa-node
+//! Json RPC API for a massa-node
 #![feature(async_closure)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
@@ -11,8 +11,8 @@ use jsonrpc_http_server::{CloseHandle, ServerBuilder};
 use massa_consensus_exports::{ConsensusCommandSender, ConsensusConfig};
 use massa_execution_exports::ExecutionController;
 use massa_models::api::{
-    APISettings, AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus,
-    OperationInfo, ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
+    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus, OperationInfo,
+    ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -34,8 +34,10 @@ use tracing::{info, warn};
 mod error;
 mod private;
 mod public;
+mod settings;
+pub use settings::APISettings;
 
-/// Public api component
+/// Public API component
 pub struct Public {
     /// link to the consensus component
     pub consensus_command_sender: ConsensusCommandSender,
@@ -45,7 +47,7 @@ pub struct Public {
     pub pool_command_sender: PoolCommandSender,
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
-    /// api settings
+    /// API settings
     pub api_settings: &'static APISettings,
     /// network setting (TODO consider removing)
     pub network_settings: &'static NetworkSettings,
@@ -53,13 +55,13 @@ pub struct Public {
     pub version: Version,
     /// link to the network component
     pub network_command_sender: NetworkCommandSender,
-    /// compensation millis (used to sync time with bootstrap server)
+    /// compensation milliseconds (used to sync time with bootstrap server)
     pub compensation_millis: i64,
     /// our node id
     pub node_id: NodeId,
 }
 
-/// Private api content
+/// Private API content
 pub struct Private {
     /// link to the consensus component
     pub consensus_command_sender: ConsensusCommandSender,
@@ -69,18 +71,18 @@ pub struct Private {
     pub execution_controller: Box<dyn ExecutionController>,
     /// consensus configuration (TODO: remove it, can be retrieved via an endpoint)
     pub consensus_config: ConsensusConfig,
-    /// api settings
+    /// API settings
     pub api_settings: &'static APISettings,
     /// stop channel
     pub stop_node_channel: mpsc::Sender<()>,
 }
 
-/// The api wrapper
+/// The API wrapper
 pub struct API<T>(T);
 
-/// Used to manage the api
+/// Used to manage the API
 pub trait RpcServer: Endpoints {
-    /// Start the api
+    /// Start the API
     fn serve(self, _: &SocketAddr) -> StopHandle;
 }
 
@@ -90,6 +92,7 @@ fn serve(api: impl Endpoints, url: &SocketAddr) -> StopHandle {
 
     let server = ServerBuilder::new(io)
         .event_loop_executor(tokio::runtime::Handle::current())
+        .max_request_body_size(50 * 1024 * 1024)
         .start_http(url)
         .expect("Unable to start RPC server");
 
@@ -102,14 +105,14 @@ fn serve(api: impl Endpoints, url: &SocketAddr) -> StopHandle {
     }
 }
 
-/// Used to be able to stop the api
+/// Used to be able to stop the API
 pub struct StopHandle {
     close_handle: CloseHandle,
     join_handle: JoinHandle<()>,
 }
 
 impl StopHandle {
-    /// stop the api gracefully
+    /// stop the API gracefully
     pub fn stop(self) {
         self.close_handle.close();
         if let Err(err) = self.join_handle.join() {
@@ -120,7 +123,7 @@ impl StopHandle {
     }
 }
 
-/// Exposed api endpoints
+/// Exposed API endpoints
 #[rpc(server)]
 pub trait Endpoints {
     /// Gracefully stop the node.
@@ -132,7 +135,7 @@ pub trait Endpoints {
     #[rpc(name = "node_sign_message")]
     fn node_sign_message(&self, _: Vec<u8>) -> BoxFuture<Result<PubkeySig, ApiError>>;
 
-    /// Add a vec of new private keys for the node to use to stake.
+    /// Add a vector of new private keys for the node to use to stake.
     /// No confirmation to expect.
     #[rpc(name = "add_staking_private_keys")]
     fn add_staking_private_keys(&self, _: Vec<PrivateKey>) -> BoxFuture<Result<(), ApiError>>;
@@ -151,12 +154,12 @@ pub trait Endpoints {
         _: Vec<ReadOnlyCall>,
     ) -> BoxFuture<Result<Vec<ExecuteReadOnlyResponse>, ApiError>>;
 
-    /// Remove a vec of addresses used to stake.
+    /// Remove a vector of addresses used to stake.
     /// No confirmation to expect.
     #[rpc(name = "remove_staking_addresses")]
     fn remove_staking_addresses(&self, _: Vec<Address>) -> BoxFuture<Result<(), ApiError>>;
 
-    /// Return hashset of staking addresses.
+    /// Return hash set of staking addresses.
     #[rpc(name = "get_staking_addresses")]
     fn get_staking_addresses(&self) -> BoxFuture<Result<Set<Address>, ApiError>>;
 
@@ -177,7 +180,7 @@ pub trait Endpoints {
     #[rpc(name = "node_remove_from_whitelist")]
     fn node_remove_from_whitelist(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
 
-    /// Unbans given IP address.
+    /// Unban given IP address.
     /// No confirmation to expect.
     #[rpc(name = "unban")]
     fn unban(&self, _: Vec<IpAddr>) -> BoxFuture<Result<(), ApiError>>;
@@ -229,7 +232,7 @@ pub trait Endpoints {
         _: Vec<SignedOperation>,
     ) -> BoxFuture<Result<Vec<OperationId>, ApiError>>;
 
-    /// Get events optionnally filtered by:
+    /// Get events optionally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address

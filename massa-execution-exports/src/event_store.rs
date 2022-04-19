@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use tracing::warn;
 
 #[inline]
-/// Remove a given event_id from a `Set<SCOutputEventId>`
+/// Remove a given `event_id` from a `Set<SCOutputEventId>`
 /// The Set is stored into a map `ctnr` at a `key` address. If
 /// the Set resulted from the operation is empty, remove the entry
 /// from the `ctnr`
@@ -38,7 +38,7 @@ fn remove_from_map<T: Eq + std::hash::Hash + PreHashed>(
 }
 
 #[inline]
-/// Remove a given event_id from a `Set<SCOutputEventId>`
+/// Remove a given `event_id` from a `Set<SCOutputEventId>`
 /// The Set is stored into a Hashmap `ctnr` at a `key` address. If
 /// the Set resulted from the operation is empty, remove the entry
 /// from the `ctnr`
@@ -128,11 +128,11 @@ impl EventStore {
         self.operation_id_to_event_id.clear();
     }
 
-    /// Prune the exess of events from the event store,
+    /// Prune the excess of events from the event store,
     /// While there is a slot found, pop slots and get the `event_ids`
     /// inside, remove the event from divers containers.
     ///
-    /// Return directly if the event_size <= max_final_events
+    /// Return directly if the `event_size <= max_final_events`
     pub fn prune(&mut self, max_final_events: usize) {
         let mut events_size = self.id_to_event.len();
         if events_size <= max_final_events {
@@ -214,8 +214,8 @@ impl EventStore {
         })
     }
 
-    /// get vec of event for given slot range (start included, end excluded)
-    /// Get events optionnally filtered by:
+    /// Get a vector of event for given slot range (start included, end excluded)
+    /// Get events optionally filtered by:
     /// * start slot (default Slot(0,0))
     /// * end slot   (default Slot(0,0))
     /// * emitter address

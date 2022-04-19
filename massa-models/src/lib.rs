@@ -1,5 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
-//! All the structs that are used everywhere
+//! All the structures that are used everywhere
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 #[macro_use]
@@ -25,40 +25,40 @@ pub use serialization_context::{
 };
 pub use slot::Slot;
 pub use version::Version;
-/// active blocks related structs
+/// active blocks related structures
 pub mod active_block;
-/// address related structs
+/// address related structures
 pub mod address;
-/// amount related structs
+/// amount related structures
 pub mod amount;
-/// struct use by the api
+/// structure use by the API
 pub mod api;
 mod block;
 /// clique
 pub mod clique;
-/// various structs
+/// various structures
 pub mod composite;
 mod endorsement;
 /// models error
 pub mod error;
-/// execution related structs
+/// execution related structures
 pub mod execution;
-/// ledger related structs
+/// ledger related structures
 pub mod ledger_models;
-/// node related struct
+/// node related structure
 pub mod node;
 mod node_configuration;
 /// operations
 pub mod operation;
 /// smart contract output events
 pub mod output_event;
-/// prehashed trait, for hash less hashmap/set
+/// pre-hashed trait, for hash less hashmap/set
 pub mod prehash;
 /// rolls
 pub mod rolls;
 mod serialization;
 mod serialization_context;
-/// trait for signed struct
+/// trait for signed structure
 pub mod signed;
 /// slots
 pub mod slot;

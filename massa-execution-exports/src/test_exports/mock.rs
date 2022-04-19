@@ -14,10 +14,10 @@ use std::{
 };
 
 /// List of possible messages coming from the mock.
-/// Each variant corresponds to a unique method in ExecutionController,
+/// Each variant corresponds to a unique method in `ExecutionController`,
 /// and is emitted in a thread-safe way by the mock whenever that method is called.
-/// Some variants wait for a response on their response_tx field, if present.
-/// See the documentation of ExecutionController for details on parameters and return values.
+/// Some variants wait for a response on their `response_tx` field, if present.
+/// See the documentation of `ExecutionController` for details on parameters and return values.
 #[derive(Clone)]
 pub enum MockExecutionControllerMessage {
     /// update blockclique status
@@ -44,7 +44,7 @@ pub enum MockExecutionControllerMessage {
     },
     /// get full ledger entry
     GetFullLedgerEntry {
-        /// addresss
+        /// address
         addr: Address,
         /// response channel
         response_tx: mpsc::Sender<(Option<LedgerEntry>, Option<LedgerEntry>)>,
@@ -59,8 +59,8 @@ pub enum MockExecutionControllerMessage {
 }
 
 /// A mocked execution controller that will intercept calls on its methods
-/// and emit corresponding MockExecutionControllerMessage messages through a MPSC in a thread-safe way.
-/// For messages with a response_tx field, the mock will await a response through their response_tx channel
+/// and emit corresponding `MockExecutionControllerMessage` messages through a MPSC in a thread-safe way.
+/// For messages with a `response_tx` field, the mock will await a response through their `response_tx` channel
 /// in order to simulate returning this value at the end of the call.
 #[derive(Clone)]
 pub struct MockExecutionController(Arc<Mutex<mpsc::Sender<MockExecutionControllerMessage>>>);
@@ -80,11 +80,11 @@ impl MockExecutionController {
     }
 }
 
-/// Implements all the methods of the ExecutionController trait,
-/// but simply make them emit a MockExecutionControllerMessage.
-/// If the message contains a response_tx,
+/// Implements all the methods of the `ExecutionController` trait,
+/// but simply make them emit a `MockExecutionControllerMessage`.
+/// If the message contains a `response_tx`,
 /// a response from that channel is read and returned as return value.
-/// See the documentation of ExecutionController for details on each function.
+/// See the documentation of `ExecutionController` for details on each function.
 impl ExecutionController for MockExecutionController {
     fn update_blockclique_status(
         &self,

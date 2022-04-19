@@ -39,7 +39,7 @@ pub struct ConsensusWorker {
     genesis_public_key: PublicKey,
     /// Associated channels, sender and receivers
     channels: ConsensusWorkerChannels,
-    /// Database containing all information about blocks, the blockgraph and cliques.
+    /// Database containing all information about blocks, the `BlockGraph` and cliques.
     block_db: BlockGraph,
     /// Proof of stake module.
     pos: ProofOfStake,
@@ -55,15 +55,15 @@ pub struct ConsensusWorker {
     clock_compensation: i64,
     /// staking keys
     staking_keys: Map<Address, (PublicKey, PrivateKey)>,
-    /// stats (block -> tx_count, creator)
+    /// stats `(block -> tx_count, creator)`
     final_block_stats: VecDeque<(MassaTime, u64, Address)>,
     /// No idea what this is used for. My guess is one timestamp per stale block
     stale_block_stats: VecDeque<MassaTime>,
     /// the time span considered for stats
     stats_history_timespan: MassaTime,
-    /// the time span considered for desync detection
+    /// the time span considered for desynchronization detection
     stats_desync_detection_timespan: MassaTime,
-    /// time at which the node was launched (used for desync detection)
+    /// time at which the node was launched (used for desynchronization detection)
     launch_time: MassaTime,
     // endorsed slots cache
     endorsed_slots: HashSet<Slot>,
@@ -74,12 +74,12 @@ impl ConsensusWorker {
     /// Initiates the random selector.
     ///
     /// # Arguments
-    /// * cfg: consensus configuration.
-    /// * protocol_command_sender: associated protocol controller
-    /// * block_db: Database containing all information about blocks, the blockgraph and cliques.
-    /// * controller_command_rx: Channel receiving consensus commands.
-    /// * controller_event_tx: Channel sending out consensus events.
-    /// * controller_manager_rx: Channel receiving consensus management commands.
+    /// * `cfg`: consensus configuration.
+    /// * `protocol_command_sender`: associated protocol controller
+    /// * `block_db`: Database containing all information about blocks, the blockgraph and cliques.
+    /// * `controller_command_rx`: Channel receiving consensus commands.
+    /// * `controller_event_tx`: Channel sending out consensus events.
+    /// * `controller_manager_rx`: Channel receiving consensus management commands.
     pub(crate) async fn new(
         cfg: ConsensusConfig,
         channels: ConsensusWorkerChannels,
@@ -280,7 +280,7 @@ impl ConsensusWorker {
     }
 
     /// this function is called around every slot tick
-    /// it checks for cycle incrementation
+    /// it checks for cycle increment
     /// creates block and endorsement if a staking address has been drawn
     /// it signals the new slot to other components
     /// detects desynchronization
@@ -354,7 +354,7 @@ impl ConsensusWorker {
                     Ok(b_draw) => Some(b_draw),
                     Err(ProofOfStakeError::PosCycleUnavailable(_)) => {
                         massa_trace!(
-                            "consensus.consensus_worker.slot_tick.block_creatorunavailable",
+                            "consensus.consensus_worker.slot_tick.block_creator_unavailable",
                             {}
                         );
                         warn!("desynchronization detected because the lookback cycle is not final at the current time");
@@ -637,7 +637,7 @@ impl ConsensusWorker {
 
     /// Channel management stuff
     /// todo delete
-    /// or at least introduce some genericity
+    /// or at least introduce some generic
     async fn send_consensus_event(&self, event: ConsensusEvent) -> Result<()> {
         let result = self
             .channels
@@ -660,11 +660,11 @@ impl ConsensusWorker {
     }
 
     /// Manages given consensus command.
-    /// They can come from the api or the bootstrap server
+    /// They can come from the API or the bootstrap server
     /// Please refactor me
     ///
     /// # Argument
-    /// * cmd: consensus command to process
+    /// * `cmd`: consensus command to process
     async fn process_consensus_command(&mut self, cmd: ConsensusCommand) -> Result<()> {
         match cmd {
             ConsensusCommand::GetBlockGraphStatus {
@@ -869,7 +869,7 @@ impl ConsensusWorker {
                 self.dump_staking_keys().await;
                 Ok(())
             }
-            ConsensusCommand::GetStakingAddressses(response_tx) => {
+            ConsensusCommand::GetStakingAddresses(response_tx) => {
                 massa_trace!(
                     "consensus.consensus_worker.process_consensus_command.get_staking_addresses",
                     {}
@@ -953,7 +953,7 @@ impl ConsensusWorker {
     }
 
     /// retrieve stats
-    /// Used in response to a api request
+    /// Used in response to a API request
     fn get_stats(&mut self) -> Result<ConsensusStats> {
         let timespan_end = max(
             self.launch_time,
@@ -992,7 +992,7 @@ impl ConsensusWorker {
     }
 
     /// retrieve all current cycle active stakers
-    /// Used in response to a api request
+    /// Used in response to a API request
     fn get_active_stakers(&self) -> Result<Map<Address, u64>, ConsensusError> {
         let cur_cycle = self.next_slot.get_cycle(self.cfg.periods_per_cycle);
         let mut res: Map<Address, u64> = Map::default();
@@ -1008,7 +1008,7 @@ impl ConsensusWorker {
     }
 
     /// all you wanna know about an address
-    /// Used in response to a api request
+    /// Used in response to a API request
     fn get_addresses_info(&self, addresses: &Set<Address>) -> Result<Map<Address, AddressState>> {
         let thread_count = self.cfg.thread_count;
         let mut addresses_by_thread = vec![Set::<Address>::default(); thread_count as usize];
@@ -1094,7 +1094,7 @@ impl ConsensusWorker {
     /// Manages received protocol events.
     ///
     /// # Arguments
-    /// * event: event type to process.
+    /// * `event`: event type to process.
     async fn process_protocol_event(&mut self, event: ProtocolEvent) -> Result<()> {
         match event {
             ProtocolEvent::ReceivedBlock {
@@ -1145,7 +1145,7 @@ impl ConsensusWorker {
                         );
                     } else {
                         // not found in consensus
-                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensu_not_found", { "hash": block_hash});
+                        massa_trace!("consensus.consensus_worker.process_protocol_event.get_block.consensus_not_found", { "hash": block_hash});
                         results.insert(block_hash, None);
                     }
                 }
@@ -1179,7 +1179,7 @@ impl ConsensusWorker {
     /// 6. Process new final blocks
     /// 7. Notify pool of new final ops
     /// 8. Notify PoS of final blocks
-    /// 9. notify protocol of block wishlist
+    /// 9. notify protocol of block wish list
     /// 10. note new latest final periods (prune graph if changed)
     /// 11. Produce endorsements
     /// 12. add stale blocks to stats
@@ -1320,7 +1320,7 @@ impl ConsensusWorker {
                     None => continue,
                 };
                 if self.endorsed_slots.contains(&block_slot) {
-                    // skip already endorsed (to prevent double stake pernalty)
+                    // skip already endorsed (to prevent double stake penalty)
                     continue;
                 }
                 // check that the block to endorse is at most one period before the last slot

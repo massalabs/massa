@@ -2,14 +2,14 @@
 
 use crate::{AsyncMessage, AsyncPoolBootstrap};
 
-/// This file defines tools to test the async pool bootstrap
+/// This file defines tools to test the asynchronous pool bootstrap
 
-/// creates an async pool bootstrap state from components
+/// Creates an asynchronous pool bootstrap state from components
 pub fn make_bootstrap_state(messages: Vec<AsyncMessage>) -> AsyncPoolBootstrap {
     AsyncPoolBootstrap { messages }
 }
 
-/// asserts that two instances of AsyncMessage are the same
+/// Asserts that two instances of `AsyncMessage` are the same
 pub fn assert_eq_async_message(v1: &AsyncMessage, v2: &AsyncMessage) {
     assert_eq!(v1.emission_slot, v2.emission_slot, "emission_slot mismatch");
     assert_eq!(
@@ -30,7 +30,7 @@ pub fn assert_eq_async_message(v1: &AsyncMessage, v2: &AsyncMessage) {
     assert_eq!(v1.data, v2.data, "data mismatch");
 }
 
-/// asserts that two AsyncPoolBootstrap are equal
+/// asserts that two `AsyncPoolBootstrap` are equal
 pub fn assert_eq_async_pool_bootstrap_state(v1: &AsyncPoolBootstrap, v2: &AsyncPoolBootstrap) {
     assert_eq!(
         v1.messages.len(),

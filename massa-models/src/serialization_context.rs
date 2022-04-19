@@ -13,7 +13,7 @@ lazy_static! {
 // The local context, a clone of the global one initialized on first use.
 thread_local!(static TLS_CONTEXT: RefCell<Option<SerializationContext>> = RefCell::new(None));
 
-/// Initialize the global context, should be called once at startup
+/// Initialize the global context, should be called once at start up
 /// or used at the beginning of a test.
 pub fn init_serialization_context(context: SerializationContext) {
     *SERIALIZATION_CONTEXT
@@ -30,7 +30,7 @@ pub fn get_serialization_context() -> SerializationContext {
         .expect("uninitialized SERIALIZATION_CONTEXT.")
 }
 
-/// Use the tls context, should be called only after initializing the global context.
+/// Use the TLS context, should be called only after initializing the global context.
 pub fn with_serialization_context<F, V>(f: F) -> V
 where
     F: FnOnce(&SerializationContext) -> V,
@@ -96,7 +96,7 @@ impl Default for SerializationContext {
 }
 
 /// Create a specific default implementation for sandbox because the constants are not declared
-/// at compile time but at runtime using `lazy_static` so they need to be deref.
+/// at compile time but at runtime using `lazy_static` so they need to be dereferenced.
 #[cfg(feature = "sandbox")]
 impl Default for SerializationContext {
     fn default() -> Self {

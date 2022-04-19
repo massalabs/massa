@@ -26,7 +26,7 @@ pub enum OperationSearchResultBlockStatus {
 pub enum OperationSearchResultStatus {
     /// in pool
     Pending,
-    /// in a block, the block being in [OperationSearchResultBlockStatus]
+    /// in a block, the block being in `[OperationSearchResultBlockStatus]`
     InBlock(OperationSearchResultBlockStatus),
     /// discarded
     Discarded,
@@ -61,7 +61,7 @@ pub struct StakersCycleProductionStats {
     /// if that cycle is final
     pub is_final: bool,
     /// map address to produced valid block count and not valid but expected block count
-    /// really a re arranged [crate::address::AddressCycleProductionStats]
+    /// really a re arranged `[crate::address::AddressCycleProductionStats]`
     pub ok_nok_counts: Map<Address, (u64, u64)>,
 }
 

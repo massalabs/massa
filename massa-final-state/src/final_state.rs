@@ -1,7 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! This file defines the final state of the node, which includes
-//! the final ledger and async message pool that are kept at
+//! the final ledger and asynchronous message pool that are kept at
 //! the output of a given final slot (the latest executed final slot),
 //! and need to be bootstrapped by nodes joining the network.
 
@@ -14,26 +14,26 @@ use massa_ledger::{Applicable, FinalLedger};
 use massa_models::Slot;
 use std::collections::VecDeque;
 
-/// Represents a final state (ledger, async pool)
+/// Represents a final state `(ledger, async pool)`
 pub struct FinalState {
-    /// execution state config
+    /// execution state configuration
     config: FinalStateConfig,
     /// slot at the output of which the state is attached
     pub slot: Slot,
     /// final ledger associating addresses to their balance, executable bytecode and data
     pub ledger: FinalLedger,
-    /// async pool containing messages sorted by priority and their data
+    /// asynchronous pool containing messages sorted by priority and their data
     pub async_pool: AsyncPool,
     /// history of recent final state changes, useful for streaming bootstrap
-    /// front = oldest, back = newest
+    /// `front = oldest`, `back = newest`
     changes_history: VecDeque<(Slot, StateChanges)>,
 }
 
 impl FinalState {
-    /// Initializes a new FinalState
+    /// Initializes a new `FinalState`
     ///
     /// # Arguments
-    /// * config: the configuration of the execution state
+    /// * `config`: the configuration of the execution state
     pub fn new(config: FinalStateConfig) -> Result<Self, FinalStateError> {
         // attach at the output of the latest initial final slot, that is the last genesis slot
         let slot = Slot::new(0, config.thread_count.saturating_sub(1));
@@ -56,11 +56,11 @@ impl FinalState {
         })
     }
 
-    /// Initialize a FinalState from a bootstrap state
+    /// Initialize a `FinalState` from a bootstrap state
     ///
     /// # Arguments
-    /// * config: final state config
-    /// * state: bootstrap state
+    /// * `config`: final state configuration
+    /// * `state`: bootstrap state
     pub fn from_bootstrap_state(config: FinalStateConfig, state: FinalStateBootstrap) -> Self {
         FinalState {
             slot: state.slot,

@@ -101,7 +101,7 @@ impl OperationId {
         ))
     }
 
-    /// op id from bs58 check
+    /// op id from `bs58` check
     pub fn from_bs58_check(data: &str) -> Result<OperationId, ModelsError> {
         Ok(OperationId(
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,
@@ -124,9 +124,9 @@ enum OperationTypeId {
 pub struct Operation {
     /// the operation creator public key
     pub sender_public_key: PublicKey,
-    /// the fee they have decided for tis operation
+    /// the fee they have decided for this operation
     pub fee: Amount,
-    /// after expire_period slot the operation won't be included in a block
+    /// after `expire_period` slot the operation won't be included in a block
     pub expire_period: u64,
     /// the type specific operation part
     pub op: OperationType,
@@ -157,12 +157,12 @@ pub enum OperationType {
         /// amount
         amount: Amount,
     },
-    /// the sender buys roll_count rolls. Roll price is config defined
+    /// the sender buys `roll_count` rolls. Roll price is defined in configuration
     RollBuy {
         /// roll count
         roll_count: u64,
     },
-    /// the sender sells roll_count rolls. Roll price is config defined
+    /// the sender sells `roll_count` rolls. Roll price is defined in configuration
     RollSell {
         /// roll count
         roll_count: u64,
@@ -676,7 +676,7 @@ impl SerializeCompact for OperationIds {
 /// from the node configuration.
 ///
 /// # Return
-/// A result that return the deserialized Vec of `OperationId`
+/// A result that return the deserialized `Vec<OperationId>`
 impl DeserializeCompact for OperationIds {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let max_operations_per_message =
@@ -717,7 +717,7 @@ impl SerializeCompact for Operations {
 /// from the node configuration.
 ///
 /// # Return
-/// A result that return the deserialized Vec of `Operation`
+/// A result that return the deserialized `Vec<Operation>`
 impl DeserializeCompact for Operations {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let max_operations_per_message =

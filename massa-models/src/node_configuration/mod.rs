@@ -1,11 +1,11 @@
-//! Main node config and all that stuff is here
+//! Main node configuration and all that stuff is here
 //!
 //! # Introduction
 //!
 //! This module is mainly used to define the default values used through
 //! the project in all *Configuration* objects.
 //!
-//! The name "constant" is a used for some hardcoded default values. It shouldn't
+//! The name "constant" is a used for some hard-coded default values. It shouldn't
 //! be used as it as a constant. When you need one of these values, you better
 //! use the `cfg` parameter in your worker.
 //!
@@ -31,17 +31,18 @@
 //! ```
 //!
 //! # Note about rooting
-//!
+//! ```md
 //! |T|S| not(T) or S | T and not(S)
 //! |0|0| 1           | 0
 //! |1|0| 0           | 1
 //! |0|1| 1           | 0
 //! |1|1| 1           | 0
+//! ```
 //!
-//! #[cfg(any(not(feature = "testing"), feature = "sandbox"))]
+//! `#[cfg(any(not(feature = "testing"), feature = "sandbox"))]`
 //! On `cargo run --release` or `cargo run --features sandbox`
 //!
-//! #[cfg(all(feature = "testing", not(feature = "sandbox")))]
+//! #`[cfg(all(feature = "testing", not(feature = "sandbox")))]`
 //! On `cargo run` or `cargo test`
 //!
 

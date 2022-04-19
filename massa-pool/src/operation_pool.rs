@@ -69,16 +69,16 @@ impl WrappedOperation {
 
 pub struct OperationPool {
     ops: Map<OperationId, WrappedOperation>,
-    /// one vec per thread
+    /// one vector per thread
     ops_by_thread_and_interest:
         Vec<BTreeSet<(std::cmp::Reverse<num::rational::Ratio<u64>>, OperationId)>>, // [thread][order by: (rev rentability, OperationId)]
-    /// Maps Addres -> Op id
+    /// Maps Address -> Op id
     ops_by_address: OperationIndex,
     /// latest final blocks periods
     last_final_periods: Vec<u64>,
     /// current slot
     current_slot: Option<Slot>,
-    /// config
+    /// configuration
     cfg: &'static PoolConfig,
     /// ids of operations that are final with expire period and thread
     final_operations: Map<OperationId, (u64, u8)>,
@@ -274,8 +274,8 @@ impl OperationPool {
         Ok(())
     }
 
-    /// Get max_count operation for thread block_slot.thread
-    /// if vec is not full that means that there is no more interesting transactions left
+    /// Get `max_count` operation for thread `block_slot.thread`
+    /// if vector is not full that means that there is no more interesting transactions left
     pub fn get_operation_batch(
         &mut self,
         block_slot: Slot,

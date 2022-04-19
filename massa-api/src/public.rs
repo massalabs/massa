@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 #![allow(clippy::too_many_arguments)]
 use crate::error::ApiError;
+use crate::settings::APISettings;
 use crate::{Endpoints, Public, RpcServer, StopHandle, API};
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonrpc_core::BoxFuture;
@@ -15,8 +16,8 @@ use massa_models::SignedOperation;
 
 use massa_models::{
     api::{
-        APISettings, AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo,
-        EventFilter, IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
+        AddressInfo, BlockInfo, BlockInfoContent, BlockSummary, EndorsementInfo, EventFilter,
+        IndexedSlot, NodeStatus, OperationInfo, TimeInterval,
     },
     clique::Clique,
     composite::PubkeySig,
@@ -34,7 +35,7 @@ use massa_time::MassaTime;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {
-    /// generate a new public api
+    /// generate a new public API
     pub fn new(
         consensus_command_sender: ConsensusCommandSender,
         execution_controller: Box<dyn ExecutionController>,
@@ -695,7 +696,7 @@ impl Endpoints for API<Public> {
         Box::pin(closure())
     }
 
-    /// Get events optionnally filtered by:
+    /// Get events optionally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address

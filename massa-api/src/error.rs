@@ -21,7 +21,7 @@ pub enum ApiError {
     SendChannelError(String),
     /// receive channel error: {0}
     ReceiveChannelError(String),
-    /// massa_hash error: {0}
+    /// `massa_hash` error: {0}
     MassaHashError(#[from] MassaHashError),
     /// consensus error: {0}
     ConsensusError(#[from] Box<ConsensusError>),
@@ -39,7 +39,7 @@ pub enum ApiError {
     InconsistencyError(String),
     /// missing command sender {0}
     MissingCommandSender(String),
-    /// missing config {0}
+    /// missing configuration {0}
     MissingConfig(String),
     /// the wrong API (either Public or Private) was called
     WrongAPI,

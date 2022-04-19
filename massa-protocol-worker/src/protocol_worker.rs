@@ -28,17 +28,18 @@ use tokio::{
 };
 use tracing::{debug, error, info, warn};
 
-/// start a new ProtocolController from a ProtocolConfig
+/// start a new `ProtocolController` from a `ProtocolConfig`
 /// - generate public / private key
-/// - create protocol_command/protocol_event channels
-/// - launch protocol_controller_fn in an other task
+/// - create `protocol_command/protocol_event` channels
+/// - launch `protocol_controller_fn` in an other task
 ///
 /// # Arguments
-/// * cfg: protocol configuration
-/// * operation_validity_periods: operation validity duration in periods
-/// * max_block_gas: maximum gas per block
-/// * network_command_sender: the NetworkCommandSender we interact with
-/// * network_event_receiver: the NetworkEventReceiver we interact with
+/// * `protocol_settings`: protocol settings
+/// * `operation_validity_periods`: operation validity duration in periods
+/// * `max_block_gas`: maximum gas per block
+/// * `network_command_sender`: the `NetworkCommandSender` we interact with
+/// * `network_event_receiver`: the `NetworkEventReceiver` we interact with
+/// * `storage`: Shared storage to fetch data that are fetch across all modules
 pub async fn start_protocol_controller(
     protocol_settings: &'static ProtocolSettings,
     operation_validity_periods: u64,
@@ -176,14 +177,14 @@ impl ProtocolWorker {
     /// Creates a new protocol worker.
     ///
     /// # Arguments
-    /// * protocol_settings: protocol configuration.
-    /// * operation_validity_periods: operation validity periods
-    /// * max_block_gas: max gas per block
-    /// * self_node_id: our private key.
-    /// * network_controller associated network controller.
-    /// * controller_event_tx: Channel to send protocol events.
-    /// * controller_command_rx: Channel receiving commands.
-    /// * controller_manager_rx: Channel receiving management commands.
+    /// * `protocol_settings`: protocol configuration.
+    /// * `operation_validity_periods`: operation validity periods
+    /// * `max_block_gas`: max gas per block
+    /// * `self_node_id`: our private key.
+    /// * `network_controller`: associated network controller.
+    /// * `controller_event_tx`: Channel to send protocol events.
+    /// * `controller_command_rx`: Channel receiving commands.
+    /// * `controller_manager_rx`: Channel receiving management commands.
     pub fn new(
         protocol_settings: &'static ProtocolSettings,
         operation_validity_periods: u64,
@@ -263,15 +264,15 @@ impl ProtocolWorker {
     }
 
     /// Main protocol worker loop. Consumes self.
-    /// It is mostly a tokio::select inside a loop
+    /// It is mostly a `tokio::select!` inside a loop
     /// waiting on :
-    /// - controller_command_rx
-    /// - network_controller
-    /// - handshake_futures
-    /// - node_event_rx
+    /// - `controller_command_rx`
+    /// - `network_controller`
+    /// - `handshake_futures`
+    /// - `node_event_rx`
     /// And at the end every thing is closed properly
     /// Consensus work is managed here.
-    /// It's mostly a tokio::select within a loop.
+    /// It's mostly a `tokio::select!` within a loop.
     pub async fn run_loop(mut self) -> Result<NetworkEventReceiver, ProtocolError> {
         // TODO: Config variable for the moment 10000 (prune) (100 seconds)
         let operation_prune_timer = sleep(
@@ -291,7 +292,7 @@ impl ProtocolWorker {
                 select! without the "biased" modifier will randomly select the 1st branch to check,
                 then will check the next ones in the order they are written.
                 We choose this order:
-                    * manager commands: low freq, avoid havign to wait to stop
+                    * manager commands: low freq, avoid having to wait to stop
                     * incoming commands (high frequency): process commands in priority (this is a high-level crate so we prioritize this side to avoid slowing down consensus)
                     * network events (high frequency): process incoming events
                     * ask for blocks (timing not important)
@@ -790,7 +791,7 @@ impl ProtocolWorker {
     ///
     /// Checks performed on Header:
     /// - Not genesis.
-    /// - Can compute a BlockId.
+    /// - Can compute a `BlockId`.
     /// - Valid signature.
     /// - Absence of duplicate endorsements.
     ///
@@ -894,21 +895,21 @@ impl ProtocolWorker {
         for endorsement in header.content.endorsements.iter() {
             // check index reuse
             if !used_endorsement_indices.insert(endorsement.content.index) {
-                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_index_reused", { "header": header, "edorsement": endorsement});
+                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_index_reused", { "header": header, "endorsement": endorsement});
                 return Ok(None);
             }
             // check slot
             if (endorsement.content.slot.thread != header.content.slot.thread)
                 || (endorsement.content.slot >= header.content.slot)
             {
-                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_slot", { "header": header, "edorsement": endorsement});
+                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_slot", { "header": header, "endorsement": endorsement});
                 return Ok(None);
             }
             // check endorsed block
             if endorsement.content.endorsed_block
                 != header.content.parents[header.content.slot.thread as usize]
             {
-                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_endorsed_block", { "header": header, "edorsement": endorsement});
+                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_endorsed_block", { "header": header, "endorsement": endorsement});
                 return Ok(None);
             }
         }
@@ -943,21 +944,21 @@ impl ProtocolWorker {
         Ok(None)
     }
 
-    /// Prune checked_endorsements if it is too large
+    /// Prune `checked_endorsements` if it is too large
     fn prune_checked_endorsements(&mut self) {
         if self.checked_endorsements.len() > self.protocol_settings.max_known_endorsements_size {
             self.checked_endorsements.clear();
         }
     }
 
-    /// Prune checked operations if it has grown too large.
+    /// Prune `checked_operations` if it has grown too large.
     fn prune_checked_operations(&mut self) {
         if self.checked_operations.len() > self.protocol_settings.max_known_ops_size {
             self.checked_operations.clear();
         }
     }
 
-    /// Prune checked_headers if it is too large
+    /// Prune `checked_headers` if it is too large
     fn prune_checked_headers(&mut self) {
         if self.checked_headers.len() > self.protocol_settings.max_node_known_blocks_size {
             self.checked_headers.clear();
@@ -968,10 +969,10 @@ impl ProtocolWorker {
     /// Does not ban if the block is invalid.
     ///
     /// Checks performed:
-    /// - Check the header(see note_header_from_node).
-    /// - Check operations(see note_operations_from_node).
+    /// - Check the header(see `note_header_from_node`).
+    /// - Check operations(see `note_operations_from_node`).
     /// - Check operations:
-    ///     - Absense of duplicates.
+    ///     - Absence of duplicates.
     ///     - Validity period includes the slot of the block.
     ///     - Address matches that of the block.
     ///     - Thread matches that of the block.
@@ -1082,7 +1083,7 @@ impl ProtocolWorker {
     /// - a list of seen operation ids, for use in checking the root hash of the block.
     /// - a map of seen operations with indices and validity periods to avoid recomputing them later
     /// - a boolean indicating whether duplicate operations were noted.
-    /// - the sum of all operation's max_gas.
+    /// - the sum of all operation's `max_gas`.
     ///
     /// Checks performed:
     /// - Valid signature
@@ -1209,7 +1210,8 @@ impl ProtocolWorker {
     /// Only used by the worker.
     ///
     /// # Argument
-    /// evt: event to process
+    /// `evt`: event to process
+    /// `block_ask_timer`: Timer to update to the next time we are able to ask a block
     async fn on_network_event(
         &mut self,
         evt: NetworkEvent,
@@ -1373,7 +1375,7 @@ mod tests {
         BlockId(Hash::compute_from(s.as_bytes()))
     }
 
-    /// Test the pruning behavior of NodeInfo::insert_wanted_block
+    /// Test the pruning behavior of `NodeInfo::insert_wanted_block`
     #[test]
     #[serial]
     fn test_node_info_wanted_blocks_pruning() {
@@ -1403,7 +1405,7 @@ mod tests {
             "wanted_blocks pruning incorrect"
         );
 
-        // ensure that there are max_node_known_blocks_size entries for knwon blocks
+        // ensure that there are max_node_known_blocks_size entries for known blocks
         assert_eq!(
             nodeinfo.known_blocks.len(),
             max_node_known_blocks_size,

@@ -22,7 +22,7 @@ pub enum BootstrapError {
     UnexpectedMessage(BootstrapMessage),
     /// connection with bootstrap node dropped
     UnexpectedConnectionDrop,
-    /// massa_hash error: {0}
+    /// `massa_hash` error: {0}
     MassaHashError(#[from] MassaHashError),
     /// time error: {0}
     TimeError(#[from] TimeError),

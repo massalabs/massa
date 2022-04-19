@@ -30,11 +30,11 @@ use crate::{
 pub struct ConsensusCommandSender(pub mpsc::Sender<ConsensusCommand>);
 
 impl ConsensusCommandSender {
-    /// Gets all the available information on the block graph returning a Blockgraphexport.
+    /// Gets all the available information on the block graph returning a `BlockGraphExport`.
     ///
     /// # Arguments
-    /// * slot_start: optional slot start for slot-based filtering (included).
-    /// * slot_end: optional slot end for slot-based filtering (excluded).
+    /// * `slot_start`: optional slot start for slot-based filtering (included).
+    /// * `slot_end`: optional slot end for slot-based filtering (excluded).
     pub async fn get_block_graph_status(
         &self,
         slot_start: Option<Slot>,
@@ -109,11 +109,11 @@ impl ConsensusCommandSender {
         })
     }
 
-    /// Gets (slot, public_key) were the staker with public_key was selected for slot, between start_slot and end_slot.
+    /// Gets `(slot, public_key)` were the staker with `public_key` was selected for slot, between `start_slot` and `end_slot`.
     ///
     /// # Arguments
-    /// * start_slot: beginning of the considered interval.
-    /// * end_slot: end of the considered interval.
+    /// * `start_slot`: beginning of the considered interval.
+    /// * `end_slot`: end of the considered interval.
     pub async fn get_selection_draws(
         &self,
         start: Slot,
@@ -329,7 +329,7 @@ impl ConsensusCommandSender {
 
     /// remove some keys from staking keys by associated address
     /// the node won't be able to stake with these keys anymore
-    /// They wil be erased from the staking keys file
+    /// They will be erased from the staking keys file
     pub async fn remove_staking_addresses(
         &self,
         addresses: Set<Address>,
@@ -349,7 +349,7 @@ impl ConsensusCommandSender {
         let (response_tx, response_rx) = oneshot::channel();
         massa_trace!("consensus.consensus_controller.get_staking_addresses", {});
         self.0
-            .send(ConsensusCommand::GetStakingAddressses(response_tx))
+            .send(ConsensusCommand::GetStakingAddresses(response_tx))
             .await
             .map_err(|_| {
                 ConsensusError::SendChannelError(
@@ -454,7 +454,7 @@ impl ConsensusEventReceiver {
             .ok_or(ConsensusError::ControllerEventError)
     }
 
-    /// drains remaining events and returns them in a VecDeque
+    /// drains remaining events and returns them in a `VecDeque`
     /// note: events are sorted from oldest to newest
     pub async fn drain(mut self) -> VecDeque<ConsensusEvent> {
         let mut remaining_events: VecDeque<ConsensusEvent> = VecDeque::new();

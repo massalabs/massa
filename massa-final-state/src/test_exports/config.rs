@@ -1,12 +1,12 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! This file defines testing tools related to the config
+//! This file defines testing tools related to the configuration
 
 use crate::FinalStateConfig;
 use massa_async_pool::AsyncPoolConfig;
 use massa_ledger::LedgerConfig;
 
-/// Default value of FinalStateConfig used for tests
+/// Default value of `FinalStateConfig` used for tests
 impl Default for FinalStateConfig {
     fn default() -> Self {
         FinalStateConfig {

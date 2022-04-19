@@ -4,7 +4,7 @@ use crate::error::MassaHashError;
 use crate::settings::HASH_SIZE_BYTES;
 use std::{convert::TryInto, str::FromStr};
 
-/// sha256 hash
+/// SHA256 hash
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Hash)]
 pub struct Hash(bitcoin_hashes::sha256::Hash);
 
@@ -33,7 +33,7 @@ impl Hash {
         Hash(bitcoin_hashes::sha256::Hash::hash(data))
     }
 
-    /// Serialize a Hash using bs58 encoding with checksum.
+    /// Serialize a Hash using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
@@ -71,7 +71,7 @@ impl Hash {
         self.0.into_inner()
     }
 
-    /// Deserialize using bs58 encoding with checksum.
+    /// Deserialize using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
@@ -114,10 +114,10 @@ impl Hash {
 }
 
 impl ::serde::Serialize for Hash {
-    /// ::serde::Serialize trait for Hash
+    /// `::serde::Serialize` trait for Hash
     /// if the serializer is human readable,
-    /// serialization is done using serialize_bs58_check
-    /// else, it uses serialize_binary
+    /// serialization is done using `serialize_bs58_check`
+    /// else, it uses `serialize_binary`
     ///
     /// # Example
     ///
@@ -139,10 +139,10 @@ impl ::serde::Serialize for Hash {
 }
 
 impl<'de> ::serde::Deserialize<'de> for Hash {
-    /// ::serde::Deserialize trait for Hash
+    /// `::serde::Deserialize` trait for Hash
     /// if the deserializer is human readable,
-    /// deserialization is done using deserialize_bs58_check
-    /// else, it uses deserialize_binary
+    /// deserialization is done using `deserialize_bs58_check`
+    /// else, it uses `deserialize_binary`
     ///
     /// # Example
     ///

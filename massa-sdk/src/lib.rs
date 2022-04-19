@@ -94,21 +94,21 @@ impl RpcClient {
             .await
     }
 
-    /// Add a vec of new private keys for the node to use to stake.
+    /// Add a vector of new private keys for the node to use to stake.
     /// No confirmation to expect.
     pub async fn add_staking_private_keys(&self, private_keys: Vec<PrivateKey>) -> RpcResult<()> {
         self.call_method("add_staking_private_keys", "()", vec![private_keys])
             .await
     }
 
-    /// Remove a vec of addresses used to stake.
+    /// Remove a vector of addresses used to stake.
     /// No confirmation to expect.
     pub async fn remove_staking_addresses(&self, addresses: Vec<Address>) -> RpcResult<()> {
         self.call_method("remove_staking_addresses", "()", vec![addresses])
             .await
     }
 
-    /// Return hashset of staking addresses.
+    /// Return hash-set of staking addresses.
     pub async fn get_staking_addresses(&self) -> RpcResult<Set<Address>> {
         self.call_method("get_staking_addresses", "Set<Address>", ())
             .await
@@ -120,19 +120,19 @@ impl RpcClient {
         self.call_method("ban", "()", vec![ips]).await
     }
 
-    /// Unbans given ip addr
+    /// Unban given ip address
     /// No confirmation to expect.
     pub async fn unban(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.call_method("unban", "()", vec![ips]).await
     }
 
-    /// add ips to whitelist
+    /// add IPs to whitelist
     /// create peer if it was unknown
     pub async fn node_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.call_method("node_whitelist", "()", vec![ips]).await
     }
 
-    /// remove ips from whitelist
+    /// remove IPs from whitelist
     pub async fn node_remove_from_whitelist(&self, ips: Vec<IpAddr>) -> RpcResult<()> {
         self.call_method("node_remove_from_whitelist", "()", vec![ips])
             .await
@@ -183,14 +183,14 @@ impl RpcClient {
         .await
     }
 
-    /// Get information on a block given its BlockId
+    /// Get information on a block given its `BlockId`
     pub async fn get_block(&self, block_id: BlockId) -> RpcResult<BlockInfo> {
         self.call_method("get_block", "BlockInfo", vec![block_id])
             .await
     }
 
     /// Get the block graph within the specified time interval.
-    /// Optional parameters: from <time_start> (included) and to <time_end> (excluded) millisecond timestamp
+    /// Optional parameters: from `<time_start>` (included) and to `<time_end>` (excluded) millisecond timestamp
     pub(crate) async fn _get_graph_interval(
         &self,
         time_interval: TimeInterval,

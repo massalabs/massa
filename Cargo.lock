@@ -1388,6 +1388,7 @@ dependencies = [
  "massa_pool",
  "massa_signature",
  "massa_time",
+ "serde 1.0.136",
  "thiserror",
  "tokio",
  "tracing",

@@ -15,7 +15,7 @@ use massa_hash::Hash;
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
 
 /// node status
 #[derive(Debug, Deserialize, Serialize)]
@@ -42,7 +42,7 @@ pub struct NodeStatus {
     pub pool_stats: PoolStats,
     /// network stats
     pub network_stats: NetworkStats,
-    /// compact config
+    /// compact configuration
     pub config: CompactConfig,
 }
 
@@ -76,7 +76,7 @@ impl std::fmt::Display for NodeStatus {
 
         writeln!(f, "Connected nodes:")?;
         for (node_id, ip_addr) in &self.connected_nodes {
-            writeln!(f, "\tNode's ID: {} / IP address: {}", node_id, ip_addr)?;
+            writeln!(f, "\t[\"{}:31245\", \"{}\"],", ip_addr, node_id)?;
         }
         Ok(())
     }
@@ -89,10 +89,10 @@ pub struct OperationInfo {
     pub id: OperationId,
     /// true if operation is still in pool
     pub in_pool: bool,
-    /// the operation appears in in_blocks
+    /// the operation appears in `in_blocks`
     /// if it appears in multiple blocks, these blocks are in different cliques
     pub in_blocks: Vec<BlockId>,
-    /// true if the operation is final (ie in a final block)
+    /// true if the operation is final (for example in a final block)
     pub is_final: bool,
     /// the operation itself
     pub operation: SignedOperation,
@@ -126,14 +126,14 @@ impl std::fmt::Display for OperationInfo {
     }
 }
 
-/// Current Parallel balance leger info
+/// Current Parallel balance ledger info
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct LedgerInfo {
     /// final data
     pub final_ledger_info: LedgerData,
     /// latest data
     pub candidate_ledger_info: LedgerData,
-    /// locked balance, ie balance due to a roll sell
+    /// locked balance, for example balance due to a roll sell
     pub locked_balance: Amount,
 }
 
@@ -170,7 +170,7 @@ impl std::fmt::Display for RollsInfo {
     }
 }
 
-/// Sequential balance state (really same as SCELedgerEntry)
+/// Sequential balance state (really same as `SCELedgerEntry`)
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct SCELedgerInfo {
     /// sequential coins
@@ -189,7 +189,7 @@ impl std::fmt::Display for SCELedgerInfo {
     }
 }
 
-/// All you ever dreamt to know about an address
+/// All you ever dream to know about an address
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AddressInfo {
     /// the address
@@ -479,21 +479,7 @@ pub struct TimeInterval {
     pub end: Option<MassaTime>,
 }
 
-/// Move to the api crate
-/// the api settings
-#[derive(Debug, Deserialize, Clone, Copy)]
-pub struct APISettings {
-    /// when looking for next draw we want to look at max draw_lookahead_period_count
-    pub draw_lookahead_period_count: u64,
-    /// bind for the private api
-    pub bind_private: SocketAddr,
-    /// bind for the public api
-    pub bind_public: SocketAddr,
-    /// max argument count
-    pub max_arguments: u64,
-}
-
-/// filter used when retrieving sc output events
+/// filter used when retrieving SC output events
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct EventFilter {
     /// optional start slot

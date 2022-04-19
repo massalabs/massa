@@ -22,11 +22,11 @@ use crate::{
 /// Here we map an address to its balance.
 /// When a balance becomes final it is written on the disk.
 pub struct Ledger {
-    /// containing (Address, LedgerData), one per thread
+    /// containing `(Address, LedgerData)`, one per thread
     ledger_per_thread: Vec<Tree>,
-    /// containing (thread_number: u8, latest_final_period: u64)
+    /// containing `(thread_number: u8, latest_final_period: u64)`
     latest_final_periods: Tree,
-    /// consensus related config
+    /// consensus related configuration
     cfg: LedgerConfig,
 }
 
@@ -47,9 +47,9 @@ pub trait OperationLedgerInterface {
     /// * block creator
     /// * included endorsement producers
     /// * creator of the endorsed block
-    /// * thread count (fixed by the config)
-    /// * roll price (fixed by the config)
-    /// * max expected number of endorsements (fixed by the config)
+    /// * thread count (fixed by the configuration)
+    /// * roll price (fixed by the configuration)
+    /// * max expected number of endorsements (fixed by the configuration)
     fn get_ledger_changes(
         &self,
         creator: Address,
@@ -167,7 +167,7 @@ impl OperationLedgerInterface for Operation {
 }
 
 impl Ledger {
-    /// if no latest_final_periods in file, they are initialized at 0u64
+    /// if no `latest_final_periods` in file, they are initialized at `0u64`
     /// if there is a ledger in the given file, it is loaded
     pub fn new(cfg: LedgerConfig, opt_init_data: Option<LedgerSubset>) -> Result<Ledger> {
         let sled_config = sled::Config::default()
@@ -277,13 +277,13 @@ impl Ledger {
                 .is_some()
             {
                 return Err(LedgerError::LedgerInconsistency(format!(
-                    "adress {} already in ledger while bootsrapping",
+                    "address {} already in ledger while bootstrapping",
                     address
                 )));
             };
         }
 
-        // initilize final periods
+        // initialize final periods
         ledger.latest_final_periods.transaction(|tree| {
             for (thread, period) in latest_final_periods.iter().enumerate() {
                 tree.insert(&[thread as u8], &period.to_be_bytes())?;
@@ -304,12 +304,12 @@ impl Ledger {
     }
 
     /// Atomically apply a batch of changes to the ledger.
-    /// All changes should occure in one thread.
+    /// All changes should occur in one thread.
     /// Update last final period.
     ///
     /// * If the balance of an address falls exactly to 0, it is removed from the ledger.
     /// * If the balance of a non-existing address increases, the address is added to the ledger.
-    /// * If we attempt to substract more than the balance of an address, the transaction is cancelled and the function returns an error.
+    /// * If we attempt to subtract more than the balance of an address, the transaction is canceled and the function returns an error.
     pub fn apply_final_changes(
         &self,
         thread: u8,
@@ -441,7 +441,7 @@ impl Ledger {
         Ok(res)
     }
 
-    /// Gets ledger at latest final blocks for query_addrs
+    /// Gets ledger at latest final blocks for `query_addrs`
     pub fn get_final_ledger_subset(&self, query_addrs: &Set<Address>) -> Result<LedgerSubset> {
         let res = self.ledger_per_thread.transaction(|ledger_per_thread| {
             let mut data = LedgerSubset::default();
@@ -531,7 +531,7 @@ impl LedgerSubset {
     }
 
     /// merge another ledger subset into self, overwriting existing data
-    /// addrs that are in not other are removed from self
+    /// address that are in not other are removed from self
     pub fn sync_from(&mut self, addrs: &Set<Address>, mut other: LedgerSubset) {
         for addr in addrs.iter() {
             if let Some(new_val) = other.0.remove(addr) {

@@ -64,10 +64,13 @@ pub enum ProtocolPoolEvent {
     GetOperations((NodeId, OperationIds)),
 }
 
-/// block result: map block id to option (
-///     option(set(operation id)),
-///     option(vec(endorsement id))
+/// block result: map block id to
+/// ```md
+/// Option(
+///     Option(set(operation id)),
+///     Option(Vec(endorsement id))
 /// )
+/// ```
 pub type BlocksResults =
     Map<BlockId, Option<(Option<Set<OperationId>>, Option<Vec<EndorsementId>>)>>;
 
@@ -85,16 +88,16 @@ pub enum ProtocolCommand {
     },
     /// A block, or it's header, amounted to an attempted attack.
     AttackBlockDetected(BlockId),
-    /// Wishlist delta
+    /// Wish list delta
     WishlistDelta {
-        /// add to wishlist
+        /// add to wish list
         new: Set<BlockId>,
-        /// remove from wishlist
+        /// remove from wish list
         remove: Set<BlockId>,
     },
-    /// The response to a [ProtocolEvent::GetBlocks].
+    /// The response to a `[ProtocolEvent::GetBlocks]`.
     GetBlocksResults(BlocksResults),
-    /// The response to a [ProtocolEvent::GetOperations].
+    /// The response to a `[ProtocolEvent::GetOperations]`.
     GetOperationsResults((NodeId, Operations)),
     /// Propagate operations ids (send batches)
     PropagateOperations(OperationIds),
@@ -151,7 +154,7 @@ impl ProtocolCommandSender {
         res
     }
 
-    /// Send the response to a ProtocolEvent::GetBlocks.
+    /// Send the response to a `ProtocolEvent::GetBlocks`.
     pub async fn send_get_blocks_results(
         &mut self,
         results: BlocksResults,
@@ -169,7 +172,7 @@ impl ProtocolCommandSender {
         res
     }
 
-    /// Send the response to a [ProtocolEvent::GetBlocks].
+    /// Send the response to a `[ProtocolEvent::GetBlocks]`.
     pub async fn send_get_operations_results(
         &mut self,
         node_id: NodeId,
@@ -188,7 +191,7 @@ impl ProtocolCommandSender {
         res
     }
 
-    /// update the block wishlist
+    /// update the block wish list
     pub async fn send_wishlist_delta(
         &mut self,
         new: Set<BlockId>,
@@ -246,7 +249,7 @@ impl ProtocolCommandSender {
 pub struct ProtocolEventReceiver(pub mpsc::Receiver<ProtocolEvent>);
 
 impl ProtocolEventReceiver {
-    /// Receives the next ProtocolEvent from connected Node.
+    /// Receives the next `ProtocolEvent` from connected Node.
     /// None is returned when all Sender halves have dropped,
     /// indicating that no further values can be sent on the channel
     pub async fn wait_event(&mut self) -> Result<ProtocolEvent, ProtocolError> {
@@ -259,7 +262,7 @@ impl ProtocolEventReceiver {
         res
     }
 
-    /// drains remaining events and returns them in a VecDeque
+    /// drains remaining events and returns them in a `VecDeque`
     /// note: events are sorted from oldest to newest
     pub async fn drain(mut self) -> VecDeque<ProtocolEvent> {
         let mut remaining_events: VecDeque<ProtocolEvent> = VecDeque::new();
@@ -277,7 +280,7 @@ impl ProtocolEventReceiver {
 pub struct ProtocolPoolEventReceiver(pub mpsc::Receiver<ProtocolPoolEvent>);
 
 impl ProtocolPoolEventReceiver {
-    /// Receives the next ProtocolPoolEvent
+    /// Receives the next `ProtocolPoolEvent`
     /// None is returned when all Sender halves have dropped,
     /// indicating that no further values can be sent on the channel
     pub async fn wait_event(&mut self) -> Result<ProtocolPoolEvent, ProtocolError> {
@@ -290,7 +293,7 @@ impl ProtocolPoolEventReceiver {
         res
     }
 
-    /// drains remaining events and returns them in a VecDeque
+    /// drains remaining events and returns them in a `VecDeque`
     /// note: events are sorted from oldest to newest
     pub async fn drain(mut self) -> VecDeque<ProtocolPoolEvent> {
         let mut remaining_events: VecDeque<ProtocolPoolEvent> = VecDeque::new();

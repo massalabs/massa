@@ -3,7 +3,7 @@
 //! know in the network.
 //!
 //! # Operations
-//! Same as for wanted/known blocks, we remember here in cache wich node asked
+//! Same as for wanted/known blocks, we remember here in cache which node asked
 //! for operations and which operations he seem to already know.
 
 use massa_models::{
@@ -67,14 +67,14 @@ impl NodeInfo {
         }
     }
 
-    /// Get bool if block knows about the block and when this information was got
+    /// Get boolean if block knows about the block and when this information was got
     /// in a option if we don't know if that node knows that block or not
     pub fn get_known_block(&self, block_id: &BlockId) -> Option<&(bool, Instant)> {
         self.known_blocks.get(block_id)
     }
 
-    /// Remove the oldest items from known_blocks
-    /// to ensure it contains at most max_node_known_blocks_size items.
+    /// Remove the oldest items from `known_blocks`
+    /// to ensure it contains at most `max_node_known_blocks_size` items.
     /// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.
     fn remove_excess_known_blocks(&mut self, max_node_known_blocks_size: usize) {
         while self.known_blocks.len() > max_node_known_blocks_size {
@@ -88,14 +88,14 @@ impl NodeInfo {
         }
     }
 
-    /// Insert knowledge of a list of blocks in NodeInfo
+    /// Insert knowledge of a list of blocks in `NodeInfo`
     ///
     /// ## Arguments
-    /// - self: node info
-    /// - block_ids: list of blocks
-    /// - val: if that node knows that block
-    /// - instant: when that information was created
-    /// - max_node_known_blocks_size : max size of the knowledge of an other node we want to keep
+    /// * `self`: node info
+    /// * `block_ids`: list of blocks
+    /// * `val`: if that node knows that block
+    /// * `instant`: when that information was created
+    /// * `max_node_known_blocks_size`: max size of the knowledge of an other node we want to keep
     pub fn insert_known_blocks(
         &mut self,
         block_ids: &[BlockId],
@@ -147,8 +147,8 @@ impl NodeInfo {
         self.known_operations.contains(op)
     }
 
-    /// Remove the oldest items from wanted_blocks
-    /// to ensure it contains at most max_node_wanted_blocks_size items.
+    /// Remove the oldest items from `wanted_blocks`
+    /// to ensure it contains at most `max_node_wanted_blocks_size` items.
     /// This algorithm is optimized for cases where there are no more than a couple excess items, ideally just one.
     fn remove_excess_wanted_blocks(&mut self, max_node_wanted_blocks_size: usize) {
         while self.wanted_blocks.len() > max_node_wanted_blocks_size {

@@ -17,18 +17,18 @@ pub struct NetworkSettings {
     /// Protocol port
     pub protocol_port: u16,
     /// Time interval spent waiting for a response from a peer.
-    /// In millis
+    /// In milliseconds
     pub connect_timeout: MassaTime,
-    /// Network_worker will try to connect to available peers every wakeup_interval.
-    /// In millis
+    /// `Network_worker` will try to connect to available peers every `wakeup_interval`.
+    /// In milliseconds
     pub wakeup_interval: MassaTime,
     /// Path to the file containing initial peers.
     pub initial_peers_file: std::path::PathBuf,
     /// Path to the file containing known peers.
     pub peers_file: std::path::PathBuf,
-    /// Path to the file containing our private_key
+    /// Path to the file containing our private key
     pub private_key_file: std::path::PathBuf,
-    /// Config for PeerType connections
+    /// Configuration for `PeerType` connections
     pub peer_types_config: EnumMap<PeerType, PeerTypeConnectionConfig>,
     /// Limit on the number of in connections per ip.
     pub max_in_connections_per_ip: usize,
@@ -36,17 +36,17 @@ pub struct NetworkSettings {
     pub max_idle_peers: usize,
     /// Limit on the number of banned peers we remember.
     pub max_banned_peers: usize,
-    /// Peer database is dumped every peers_file_dump_interval in millis
+    /// Peer database is dumped every `peers_file_dump_interval` in milliseconds
     pub peers_file_dump_interval: MassaTime,
-    /// After message_timeout millis we are no longer waiting on handshake message
+    /// After `message_timeout` milliseconds we are no longer waiting on handshake message
     pub message_timeout: MassaTime,
-    /// Every ask_peer_list_interval in millis we ask every one for its advertisable peers list.
+    /// Every `ask_peer_list_interval` in milliseconds we ask every one for its advertisable peers list.
     pub ask_peer_list_interval: MassaTime,
     /// Max wait time for sending a Network or Node event.
     pub max_send_wait: MassaTime,
     /// Time after which we forget a node
     pub ban_timeout: MassaTime,
-    /// Timeout Duration when we send a PeerList in handshake
+    /// Timeout Duration when we send a `PeerList` in handshake
     pub peer_list_send_timeout: MassaTime,
     /// Max number of in connection overflowed managed by the handshake that send a list of peers
     pub max_in_connection_overflow: usize,
@@ -54,11 +54,11 @@ pub struct NetworkSettings {
     pub max_operations_per_message: u32,
 }
 
-/// Connection config for a peer type
+/// Connection configuration for a peer type
 /// Limit the current connections for a given peer type as a whole
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct PeerTypeConnectionConfig {
-    /// max number of incomming connection
+    /// max number of incoming connection
     pub max_in_connections: usize,
     /// target number of outgoing connections
     pub target_out_connections: usize,

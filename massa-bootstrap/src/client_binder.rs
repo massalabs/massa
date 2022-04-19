@@ -23,7 +23,7 @@ pub struct BootstrapClientBinder {
 }
 
 impl BootstrapClientBinder {
-    /// Creates a new WriteBinder.
+    /// Creates a new `WriteBinder`.
     ///
     /// # Argument
     /// * duplex: duplex stream.
@@ -43,7 +43,7 @@ impl BootstrapClientBinder {
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
     pub async fn handshake(&mut self) -> Result<(), BootstrapError> {
-        // send randomnes and their hash
+        // send randomness and their hash
         let rand_hash = {
             let mut random_bytes = [0u8; BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
             StdRng::from_entropy().fill_bytes(&mut random_bytes);
