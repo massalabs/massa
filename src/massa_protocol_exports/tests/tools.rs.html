@@ -398,7 +398,7 @@
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 <span class="kw">use</span> <span class="ident">tokio::time::sleep</span>;
 
-<span class="doccomment">/// test utility struct</span>
+<span class="doccomment">/// test utility structures</span>
 <span class="doccomment">/// keeps private key and associated node id</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeInfo</span> {
@@ -415,7 +415,7 @@
     <span class="ident">NodeInfo</span> { <span class="ident">private_key</span>, <span class="ident">id</span> }
 }
 
-<span class="doccomment">/// create num nodes and connect them with protocol</span>
+<span class="doccomment">/// create number of nodes and connect them with protocol</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create_and_connect_nodes</span>(
     <span class="ident">num</span>: <span class="ident">usize</span>,
     <span class="ident">network_controller</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MockNetworkController</span>,
@@ -457,10 +457,10 @@
 
 <span class="doccomment">/// create a block with no endorsement</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// * private_key: key that sign the block</span>
-<span class="doccomment">/// * public_key: creator&#39;s key TODO could be derived from the private key</span>
-<span class="doccomment">/// * slot</span>
-<span class="doccomment">/// * operations</span>
+<span class="doccomment">/// * `private_key`: key that sign the block</span>
+<span class="doccomment">/// * `public_key`: creator&#39;s key TODO could be derived from the private key</span>
+<span class="doccomment">/// * `slot`</span>
+<span class="doccomment">/// * `operations`</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_block_with_operations</span>(
     <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>,
     <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">PublicKey</span>,
@@ -492,10 +492,10 @@
 
 <span class="doccomment">/// create a block with no operation</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// * private_key: key that sign the block</span>
-<span class="doccomment">/// * public_key: creator&#39;s key TODO could be derived from the private key</span>
-<span class="doccomment">/// * slot</span>
-<span class="doccomment">/// * endorsements</span>
+<span class="doccomment">/// * `private_key`: key that sign the block</span>
+<span class="doccomment">/// * `public_key`: creator&#39;s key TODO could be derived from the private key</span>
+<span class="doccomment">/// * `slot`</span>
+<span class="doccomment">/// * `endorsements`</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_block_with_endorsements</span>(
     <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>,
     <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">PublicKey</span>,
@@ -600,7 +600,7 @@
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PROTOCOL_SETTINGS</span>: <span class="ident">ProtocolSettings</span> <span class="op">=</span> <span class="ident">create_protocol_settings</span>();
 }
 
-<span class="doccomment">/// create a ProtocolConfig with typical values</span>
+<span class="doccomment">/// create a `ProtocolConfig` with typical values</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_protocol_settings</span>() -&gt; <span class="ident">ProtocolSettings</span> {
     <span class="comment">// Init the serialization context with a default,</span>
     <span class="comment">// can be overwritten with a more specific one in the test.</span>
@@ -714,7 +714,7 @@
         .<span class="ident">expect</span>(<span class="string">&quot;Hash not asked for before timer.&quot;</span>)
 }
 
-<span class="doccomment">/// asser a node has been banned</span>
+<span class="doccomment">/// assert a node has been banned</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">assert_banned_node</span>(<span class="ident">node_id</span>: <span class="ident">NodeId</span>, <span class="ident">network_controller</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MockNetworkController</span>) {
     <span class="kw">let</span> <span class="ident">banned_node</span> <span class="op">=</span> <span class="ident">network_controller</span>
         .<span class="ident">wait_command</span>(<span class="number">1000</span>.<span class="ident">into</span>(), <span class="op">|</span><span class="ident">cmd</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">cmd</span> {

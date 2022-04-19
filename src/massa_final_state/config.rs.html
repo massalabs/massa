@@ -24,7 +24,7 @@
 <span id="19">19</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="doccomment">//! This file defines a config structure containing all settings for final state management</span>
+<span class="doccomment">//! This file defines a configuration structure containing all settings for final state management</span>
 
 <span class="kw">use</span> <span class="ident">massa_async_pool::AsyncPoolConfig</span>;
 <span class="kw">use</span> <span class="ident">massa_ledger::LedgerConfig</span>;
@@ -32,9 +32,9 @@
 <span class="doccomment">/// Ledger configuration</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FinalStateConfig</span> {
-    <span class="doccomment">/// ledger config</span>
+    <span class="doccomment">/// ledger configuration</span>
     <span class="kw">pub</span> <span class="ident">ledger_config</span>: <span class="ident">LedgerConfig</span>,
-    <span class="doccomment">/// async pool config</span>
+    <span class="doccomment">/// asynchronous pool configuration</span>
     <span class="kw">pub</span> <span class="ident">async_pool_config</span>: <span class="ident">AsyncPoolConfig</span>,
     <span class="doccomment">/// final changes history length</span>
     <span class="kw">pub</span> <span class="ident">final_history_length</span>: <span class="ident">usize</span>,

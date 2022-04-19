@@ -78,14 +78,15 @@
 <span id="73">73</span>
 <span id="74">74</span>
 <span id="75">75</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Main node config and all that stuff is here</span>
+<span id="76">76</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Main node configuration and all that stuff is here</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Introduction</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module is mainly used to define the default values used through</span>
 <span class="doccomment">//! the project in all *Configuration* objects.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! The name &quot;constant&quot; is a used for some hardcoded default values. It shouldn&#39;t</span>
+<span class="doccomment">//! The name &quot;constant&quot; is a used for some hard-coded default values. It shouldn&#39;t</span>
 <span class="doccomment">//! be used as it as a constant. When you need one of these values, you better</span>
 <span class="doccomment">//! use the `cfg` parameter in your worker.</span>
 <span class="doccomment">//!</span>
@@ -111,17 +112,18 @@
 <span class="doccomment">//! ```</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Note about rooting</span>
-<span class="doccomment">//!</span>
+<span class="doccomment">//! ```md</span>
 <span class="doccomment">//! |T|S| not(T) or S | T and not(S)</span>
 <span class="doccomment">//! |0|0| 1           | 0</span>
 <span class="doccomment">//! |1|0| 0           | 1</span>
 <span class="doccomment">//! |0|1| 1           | 0</span>
 <span class="doccomment">//! |1|1| 1           | 0</span>
+<span class="doccomment">//! ```</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! #[cfg(any(not(feature = &quot;testing&quot;), feature = &quot;sandbox&quot;))]</span>
+<span class="doccomment">//! `#[cfg(any(not(feature = &quot;testing&quot;), feature = &quot;sandbox&quot;))]`</span>
 <span class="doccomment">//! On `cargo run --release` or `cargo run --features sandbox`</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! #[cfg(all(feature = &quot;testing&quot;, not(feature = &quot;sandbox&quot;)))]</span>
+<span class="doccomment">//! #`[cfg(all(feature = &quot;testing&quot;, not(feature = &quot;sandbox&quot;)))]`</span>
 <span class="doccomment">//! On `cargo run` or `cargo test`</span>
 <span class="doccomment">//!</span>
 

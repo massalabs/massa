@@ -533,13 +533,13 @@
     <span class="doccomment">/// Creates a new node worker</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * cfg: Network configuration.</span>
-    <span class="doccomment">/// * serialization_context: SerializationContext instance</span>
-    <span class="doccomment">/// * node_id: Node id associated to that worker.</span>
-    <span class="doccomment">/// * socket_reader: Reader for incoming data.</span>
-    <span class="doccomment">/// * socket_writer: Writer for sending data.</span>
-    <span class="doccomment">/// * node_command_rx: Channel to receive node commands.</span>
-    <span class="doccomment">/// * node_event_tx: Channel to send node events.</span>
+    <span class="doccomment">/// * `cfg`: Network configuration.</span>
+    <span class="doccomment">/// * `node_id`: Node id associated to that worker.</span>
+    <span class="doccomment">/// * `socket_reader`: Reader for incoming data.</span>
+    <span class="doccomment">/// * `socket_writer`: Writer for sending data.</span>
+    <span class="doccomment">/// * `node_command_rx`: Channel to receive node commands.</span>
+    <span class="doccomment">/// * `node_event_tx`: Channel to send node events.</span>
+    <span class="doccomment">/// * `storage`: Shared storage.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">cfg</span>: <span class="ident">NetworkSettings</span>,
         <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
@@ -698,7 +698,7 @@
                 select! without the &quot;biased&quot; modifier will randomly select the 1st branch to check,
                 then will check the next ones in the order they are written.
                 We choose this order:
-                    * node_writer_handle (rare) to immediately register a stop and avoid wasting ressources
+                    * node_writer_handle (rare) to immediately register a stop and avoid wasting resources
                     * incoming socket data (high frequency): forward incoming data in priority to avoid contention
                     * node commands (high frequency): try to send, fail on contention
                     * ask peers: low frequency, non-critical

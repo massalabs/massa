@@ -408,7 +408,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Note: with the current use of shared storage,</span>
     <span class="doccomment">/// sending a header requires having the block stored.</span>
-    <span class="doccomment">/// This matches the current use of send_block_header,</span>
+    <span class="doccomment">/// This matches the current use of `send_block_header`,</span>
     <span class="doccomment">/// which is only used after a block has been integrated in the graph.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_block_header</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -496,11 +496,11 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Create a new call to the network, sending a announcement of OperationIds to a</span>
+    <span class="doccomment">/// Create a new call to the network, sending a announcement of `OperationIds` to a</span>
     <span class="doccomment">/// target node (`to_node`)</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// Can return a [NetworkError::ChannelError] that must be managed by the direct caller of the</span>
+    <span class="doccomment">/// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the</span>
     <span class="doccomment">/// function.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_operations_batch</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -518,11 +518,11 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Create a new call to the network, sending a `wishlist` of operationIds to a</span>
+    <span class="doccomment">/// Create a new call to the network, sending a `wishlist` of `operationIds` to a</span>
     <span class="doccomment">/// target node (`to_node`) in order to receive the full operations in the future.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// Can return a [NetworkError::ChannelError] that must be managed by the direct caller of the</span>
+    <span class="doccomment">/// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the</span>
     <span class="doccomment">/// function.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send_ask_for_operations</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -584,7 +584,7 @@
         <span class="ident">res</span>
     }
 
-    <span class="doccomment">/// drains remaining events and returns them in a VecDeque</span>
+    <span class="doccomment">/// drains remaining events and returns them in a `VecDeque`</span>
     <span class="doccomment">/// note: events are sorted from oldest to newest</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">drain</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">NetworkEvent</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">remaining_events</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">NetworkEvent</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">VecDeque::new</span>();

@@ -109,7 +109,7 @@
 <span class="doccomment">/// Compact representation of key values of consensus algorithm used in API</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CompactConfig</span> {
-    <span class="doccomment">/// Time in millis when the blockclique started.</span>
+    <span class="doccomment">/// Time in milliseconds when the blockclique started.</span>
     <span class="kw">pub</span> <span class="ident">genesis_timestamp</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// TESTNET: time when the blockclique is ended.</span>
     <span class="kw">pub</span> <span class="ident">end_timestamp</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
@@ -123,9 +123,9 @@
     <span class="kw">pub</span> <span class="ident">operation_validity_periods</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// cycle duration in periods</span>
     <span class="kw">pub</span> <span class="ident">periods_per_cycle</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - pos_look back_cycles - 1</span>
+    <span class="doccomment">/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - `pos_look` `back_cycles` - 1</span>
     <span class="kw">pub</span> <span class="ident">pos_lookback_cycles</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles</span>
+    <span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`</span>
     <span class="kw">pub</span> <span class="ident">pos_lock_cycles</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// Reward amount for a block creation</span>
     <span class="kw">pub</span> <span class="ident">block_reward</span>: <span class="ident">Amount</span>,

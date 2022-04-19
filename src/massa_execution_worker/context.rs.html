@@ -495,10 +495,10 @@
 
 <span class="doccomment">//! This module represents the context in which the VM executes bytecode.</span>
 <span class="doccomment">//! It provides information such as the current call stack.</span>
-<span class="doccomment">//! It also maintians a &quot;speculative&quot; ledger state which is a virtual ledger</span>
+<span class="doccomment">//! It also maintains a &quot;speculative&quot; ledger state which is a virtual ledger</span>
 <span class="doccomment">//! as seen after applying everything that happened so far in the context.</span>
 <span class="doccomment">//! More generally, the context acts only on its own state</span>
-<span class="doccomment">//! and does not write anything persistent to the conensus state.</span>
+<span class="doccomment">//! and does not write anything persistent to the consensus state.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger</span>;
@@ -514,13 +514,13 @@
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">tracing::debug</span>;
 
-<span class="doccomment">/// A snapshot taken from an ExecutionContext and that represents its current state.</span>
-<span class="doccomment">/// The ExecutionContext state can then be restored later from this snapshot.</span>
+<span class="doccomment">/// A snapshot taken from an `ExecutionContext` and that represents its current state.</span>
+<span class="doccomment">/// The `ExecutionContext` state can then be restored later from this snapshot.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ExecutionContextSnapshot</span> {
     <span class="doccomment">/// speculative ledger changes caused so far in the context</span>
     <span class="kw">pub</span> <span class="ident">ledger_changes</span>: <span class="ident">LedgerChanges</span>,
 
-    <span class="doccomment">/// speculative async pool messages emitted so far in the context</span>
+    <span class="doccomment">/// speculative asynchronous pool messages emitted so far in the context</span>
     <span class="kw">pub</span> <span class="ident">async_pool_changes</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessage</span>)<span class="op">&gt;</span>,
 
     <span class="doccomment">/// counter of newly created addresses so far at this slot during this execution</span>
@@ -535,7 +535,7 @@
     <span class="doccomment">/// generated events during this execution, with multiple indexes</span>
     <span class="kw">pub</span> <span class="ident">events</span>: <span class="ident">EventStore</span>,
 
-    <span class="doccomment">/// Unsafe RNG state</span>
+    <span class="doccomment">/// Unsafe random state</span>
     <span class="kw">pub</span> <span class="ident">unsafe_rng</span>: <span class="ident">Xoshiro256PlusPlus</span>,
 }
 
@@ -547,7 +547,7 @@
     <span class="doccomment">/// as seen after everything that happened so far in the context</span>
     <span class="ident">speculative_ledger</span>: <span class="ident">SpeculativeLedger</span>,
 
-    <span class="doccomment">/// speculative async pool state,</span>
+    <span class="doccomment">/// speculative asynchronous pool state,</span>
     <span class="doccomment">/// as seen after everything that happened so far in the context</span>
     <span class="ident">speculative_async_pool</span>: <span class="ident">SpeculativeAsyncPool</span>,
 
@@ -581,7 +581,7 @@
     <span class="doccomment">/// generated events during this execution, with multiple indexes</span>
     <span class="kw">pub</span> <span class="ident">events</span>: <span class="ident">EventStore</span>,
 
-    <span class="doccomment">/// Unsafe RNG state (can be predicted and manipulated)</span>
+    <span class="doccomment">/// Unsafe random state (can be predicted and manipulated)</span>
     <span class="kw">pub</span> <span class="ident">unsafe_rng</span>: <span class="ident">Xoshiro256PlusPlus</span>,
 
     <span class="doccomment">/// operation id that originally caused this execution (if any)</span>
@@ -589,17 +589,17 @@
 }
 
 <span class="kw">impl</span> <span class="ident">ExecutionContext</span> {
-    <span class="doccomment">/// Create a new empty ExecutionContext</span>
+    <span class="doccomment">/// Create a new empty `ExecutionContext`</span>
     <span class="doccomment">/// This should only be used as a placeholder.</span>
     <span class="doccomment">/// Further initialization is required before running bytecode</span>
-    <span class="doccomment">/// (see readonly and active_slot methods).</span>
+    <span class="doccomment">/// (see read-only and `active_slot` methods).</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # arguments</span>
-    <span class="doccomment">/// * final_state: thread-safe access to the final state. Note that this will be used only for reading, never for writing</span>
-    <span class="doccomment">/// * previous_changes: list of ledger changes that happened since the final ledger state and before the current execution</span>
+    <span class="doccomment">/// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing</span>
+    <span class="doccomment">/// * `previous_changes`: list of ledger changes that happened since the final ledger state and before the current execution</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # returns</span>
-    <span class="doccomment">/// A new (empty) ExecutionContext instance</span>
+    <span class="doccomment">/// A new (empty) `ExecutionContext` instance</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">previous_changes</span>: <span class="ident">StateChanges</span>,
@@ -656,17 +656,17 @@
         <span class="self">self</span>.<span class="ident">unsafe_rng</span> <span class="op">=</span> <span class="ident">snapshot</span>.<span class="ident">unsafe_rng</span>;
     }
 
-    <span class="doccomment">/// Create a new ExecutionContext for readonly execution</span>
-    <span class="doccomment">/// This should be used before performing a readonly execution.</span>
+    <span class="doccomment">/// Create a new `ExecutionContext` for read-only execution</span>
+    <span class="doccomment">/// This should be used before performing a read-only execution.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # arguments</span>
-    <span class="doccomment">/// * slot: slot at which the execution will happen</span>
-    <span class="doccomment">/// * req: parameters of the read only execution</span>
-    <span class="doccomment">/// * previous_changes: list of state changes that happened since the final_state state and before this execution</span>
-    <span class="doccomment">/// * final_state: thread-safe access to the final state. Note that this will be used only for reading, never for writing</span>
+    <span class="doccomment">/// * `slot`: slot at which the execution will happen</span>
+    <span class="doccomment">/// * `req`: parameters of the read only execution</span>
+    <span class="doccomment">/// * `previous_changes`: list of state changes that happened since the `final_state` state and before this execution</span>
+    <span class="doccomment">/// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # returns</span>
-    <span class="doccomment">/// A ExecutionContext instance ready for a read-only execution</span>
+    <span class="doccomment">/// A `ExecutionContext` instance ready for a read-only execution</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">readonly</span>(
         <span class="ident">slot</span>: <span class="ident">Slot</span>,
         <span class="ident">max_gas</span>: <span class="ident">u64</span>,
@@ -702,15 +702,15 @@
         }
     }
 
-    <span class="doccomment">/// This function takes a batch of async operations to execute, removing them from the speculative pool.</span>
+    <span class="doccomment">/// This function takes a batch of asynchronous operations to execute, removing them from the speculative pool.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * max_gas: maximal amount of async gas available</span>
+    <span class="doccomment">/// * `max_gas`: maximal amount of asynchronous gas available</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
     <span class="doccomment">/// A vector of `(Option&lt;Vec&lt;u8&gt;&gt;, AsyncMessage)` pairs where:</span>
-    <span class="doccomment">/// * `Option&lt;Vec&lt;u8&gt;&gt;` is the bytecode to execute (or None if not found)</span>
-    <span class="doccomment">/// * AsyncMessage is the async message to execute</span>
+    <span class="doccomment">/// * `Option&lt;Vec&lt;u8&gt;&gt;` is the bytecode to execute (or `None` if not found)</span>
+    <span class="doccomment">/// * `AsyncMessage` is the asynchronous message to execute</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">take_async_batch</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">max_gas</span>: <span class="ident">u64</span>,
@@ -722,17 +722,17 @@
             .<span class="ident">collect</span>()
     }
 
-    <span class="doccomment">/// Create a new ExecutionContext for executing an active slot.</span>
+    <span class="doccomment">/// Create a new `ExecutionContext` for executing an active slot.</span>
     <span class="doccomment">/// This should be used before performing any executions at that slot.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # arguments</span>
-    <span class="doccomment">/// * slot: slot at which the execution will happen</span>
-    <span class="doccomment">/// * opt_block_id: optional ID of the block at that slot</span>
-    <span class="doccomment">/// * previous_changes: list of state changes that happened since the final state state and before this execution</span>
-    <span class="doccomment">/// * final_state: thread-safe access to the final state. Note that this will be used only for reading, never for writing</span>
+    <span class="doccomment">/// * `slot`: slot at which the execution will happen</span>
+    <span class="doccomment">/// * `opt_block_id`: optional ID of the block at that slot</span>
+    <span class="doccomment">/// * `previous_changes`: list of state changes that happened since the final state state and before this execution</span>
+    <span class="doccomment">/// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # returns</span>
-    <span class="doccomment">/// A ExecutionContext instance</span>
+    <span class="doccomment">/// A `ExecutionContext` instance</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">active_slot</span>(
         <span class="ident">slot</span>: <span class="ident">Slot</span>,
         <span class="ident">opt_block_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
@@ -905,12 +905,12 @@
 
     <span class="doccomment">/// Transfers parallel coins from one address to another.</span>
     <span class="doccomment">/// No changes are retained in case of failure.</span>
-    <span class="doccomment">/// Spending is only allowed from existing addresses we have write acess on</span>
+    <span class="doccomment">/// Spending is only allowed from existing addresses we have write access on</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * from_addr: optional spending address (use None for pure coin creation)</span>
-    <span class="doccomment">/// * to_addr: optional crediting address (use None for pure coin destruction)</span>
-    <span class="doccomment">/// * amount: amount of coins to transfer</span>
+    <span class="doccomment">/// * `from_addr`: optional spending address (use None for pure coin creation)</span>
+    <span class="doccomment">/// * `to_addr`: optional crediting address (use None for pure coin destruction)</span>
+    <span class="doccomment">/// * `amount`: amount of coins to transfer</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">transfer_parallel_coins</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">from_addr</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
@@ -934,15 +934,15 @@
     <span class="doccomment">/// Add a new asynchronous message to speculative pool</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * msg: asynchronous message to add</span>
+    <span class="doccomment">/// * `msg`: asynchronous message to add</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push_new_message</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="ident">AsyncMessage</span>) {
         <span class="self">self</span>.<span class="ident">speculative_async_pool</span>.<span class="ident">push_new_message</span>(<span class="ident">msg</span>);
     }
 
-    <span class="doccomment">/// Cancels an async message, reimbursing msg.coins to the sender</span>
+    <span class="doccomment">/// Cancels an asynchronous message, reimbursing `msg.coins` to the sender</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * msg: the async message to cancel</span>
+    <span class="doccomment">/// * `msg`: the asynchronous message to cancel</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cancel_async_message</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="kw-2">&amp;</span><span class="ident">AsyncMessage</span>) {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">transfer_parallel_coins</span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">msg</span>.<span class="ident">sender</span>), <span class="ident">msg</span>.<span class="ident">coins</span>) {
             <span class="macro">debug!</span>(
@@ -953,7 +953,7 @@
     }
 
     <span class="doccomment">/// Finishes a slot and generates the execution output.</span>
-    <span class="doccomment">/// Settles emitted async messages, reimburse the senders of deleted messages.</span>
+    <span class="doccomment">/// Settles emitted asynchronous messages, reimburse the senders of deleted messages.</span>
     <span class="doccomment">/// Moves the output of the execution out of the context,</span>
     <span class="doccomment">/// resetting some context fields in the process.</span>
     <span class="doccomment">///</span>

@@ -122,7 +122,7 @@
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file defines the final state of the node, which includes</span>
-<span class="doccomment">//! the final ledger and async message pool that are kept at</span>
+<span class="doccomment">//! the final ledger and asynchronous message pool that are kept at</span>
 <span class="doccomment">//! the output of a given final slot (the latest executed final slot),</span>
 <span class="doccomment">//! and need to be bootstrapped by nodes joining the network.</span>
 
@@ -135,26 +135,26 @@
 <span class="kw">use</span> <span class="ident">massa_models::Slot</span>;
 <span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
 
-<span class="doccomment">/// Represents a final state (ledger, async pool)</span>
+<span class="doccomment">/// Represents a final state `(ledger, async pool)`</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FinalState</span> {
-    <span class="doccomment">/// execution state config</span>
+    <span class="doccomment">/// execution state configuration</span>
     <span class="ident">config</span>: <span class="ident">FinalStateConfig</span>,
     <span class="doccomment">/// slot at the output of which the state is attached</span>
     <span class="kw">pub</span> <span class="ident">slot</span>: <span class="ident">Slot</span>,
     <span class="doccomment">/// final ledger associating addresses to their balance, executable bytecode and data</span>
     <span class="kw">pub</span> <span class="ident">ledger</span>: <span class="ident">FinalLedger</span>,
-    <span class="doccomment">/// async pool containing messages sorted by priority and their data</span>
+    <span class="doccomment">/// asynchronous pool containing messages sorted by priority and their data</span>
     <span class="kw">pub</span> <span class="ident">async_pool</span>: <span class="ident">AsyncPool</span>,
     <span class="doccomment">/// history of recent final state changes, useful for streaming bootstrap</span>
-    <span class="doccomment">/// front = oldest, back = newest</span>
+    <span class="doccomment">/// `front = oldest`, `back = newest`</span>
     <span class="ident">changes_history</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span>(<span class="ident">Slot</span>, <span class="ident">StateChanges</span>)<span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">FinalState</span> {
-    <span class="doccomment">/// Initializes a new FinalState</span>
+    <span class="doccomment">/// Initializes a new `FinalState`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * config: the configuration of the execution state</span>
+    <span class="doccomment">/// * `config`: the configuration of the execution state</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">config</span>: <span class="ident">FinalStateConfig</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">FinalStateError</span><span class="op">&gt;</span> {
         <span class="comment">// attach at the output of the latest initial final slot, that is the last genesis slot</span>
         <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="ident">Slot::new</span>(<span class="number">0</span>, <span class="ident">config</span>.<span class="ident">thread_count</span>.<span class="ident">saturating_sub</span>(<span class="number">1</span>));
@@ -177,11 +177,11 @@
         })
     }
 
-    <span class="doccomment">/// Initialize a FinalState from a bootstrap state</span>
+    <span class="doccomment">/// Initialize a `FinalState` from a bootstrap state</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * config: final state config</span>
-    <span class="doccomment">/// * state: bootstrap state</span>
+    <span class="doccomment">/// * `config`: final state configuration</span>
+    <span class="doccomment">/// * `state`: bootstrap state</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bootstrap_state</span>(<span class="ident">config</span>: <span class="ident">FinalStateConfig</span>, <span class="ident">state</span>: <span class="ident">FinalStateBootstrap</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">FinalState</span> {
             <span class="ident">slot</span>: <span class="ident">state</span>.<span class="ident">slot</span>,

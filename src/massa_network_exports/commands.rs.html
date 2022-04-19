@@ -301,13 +301,13 @@
 </pre><pre class="rust"><code><span class="doccomment">//! Declaration of the public and internal Events and Commands used by</span>
 <span class="doccomment">//! `massa-network` that allow external communication with other nodes.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! # Operations workflow</span>
+<span class="doccomment">//! # Operations work flow</span>
 <span class="doccomment">//! An operation batch can be send or received by the massa node. Which</span>
 <span class="doccomment">//! operation is asked is managed by the `NetworkWorker`.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Other modules has the access to all commands but the usage if they want to</span>
 <span class="doccomment">//! send operation that they just noticed, they should use the command</span>
-<span class="doccomment">//! [NetworkCommand::SendOperationAnnouncements].</span>
+<span class="doccomment">//! `[NetworkCommand::SendOperationAnnouncements]`.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```txt</span>
 <span class="doccomment">//! OurNode      ProtocolWorker      Network &amp; NodeWorker</span>
@@ -325,7 +325,7 @@
 <span class="doccomment">//! inform the `ProtocolWorker` that some potentials new operations are in</span>
 <span class="doccomment">//! transit and can be requested.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! The network will inform the node that new operations can transites with</span>
+<span class="doccomment">//! The network will inform the node that new operations can transit with</span>
 <span class="doccomment">//! the propagation method `SendOperationAnnouncements` that we defined just before.</span>
 <span class="doccomment">//! Then, the node will manage if he ask or not the operations inside the</span>
 <span class="doccomment">//! `ProtocolWorker` on node-worker event `ReceivedOperationAnnouncements`</span>
@@ -367,7 +367,7 @@
 <span class="doccomment">//! ```</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Look at `massa-protocol-worker/src/node-info.rs` to look further how we</span>
-<span class="doccomment">//! remember wich node know what.</span>
+<span class="doccomment">//! remember which node know what.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">BootstrapPeers</span>, <span class="ident">ConnectionClosureReason</span>, <span class="ident">Peers</span>};
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
@@ -407,7 +407,7 @@
 
 <span class="doccomment">/// Event types that node worker can emit</span>
 <span class="doccomment">/// Append on receive something from inside and outside.</span>
-<span class="doccomment">/// Outside init with `Received` prefix.</span>
+<span class="doccomment">/// Outside initialization with `Received` prefix.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NodeEventType</span> {
     <span class="doccomment">/// Node we are connected to asked for advertised peers</span>
@@ -459,7 +459,7 @@
         <span class="doccomment">/// block id</span>
         <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
     },
-    <span class="doccomment">/// (PeerInfo, Vec &lt;(NodeId, bool)&gt;) peer info + list of associated Id nodes in connection out (true)</span>
+    <span class="doccomment">/// `(PeerInfo, Vec &lt;(NodeId, bool)&gt;) peer info + list` of associated Id nodes in connection out (true)</span>
     <span class="ident">GetPeers</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">Peers</span><span class="op">&gt;</span>),
     <span class="doccomment">/// get peers for bootstrap server</span>
     <span class="ident">GetBootstrapPeers</span>(<span class="ident">oneshot::Sender</span><span class="op">&lt;</span><span class="ident">BootstrapPeers</span><span class="op">&gt;</span>),
@@ -514,12 +514,12 @@
     <span class="ident">AskForOperations</span> {
         <span class="doccomment">/// to node id</span>
         <span class="ident">to_node</span>: <span class="ident">NodeId</span>,
-        <span class="doccomment">/// operation ids in the wishlist</span>
+        <span class="doccomment">/// operation ids in the wish list</span>
         <span class="ident">wishlist</span>: <span class="ident">OperationIds</span>,
     },
-    <span class="doccomment">/// Whitelist a list of IpAddr</span>
+    <span class="doccomment">/// Whitelist a list of `IpAddr`</span>
     <span class="ident">Whitelist</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Remove from whitelist a list of IpAddr</span>
+    <span class="doccomment">/// Remove from whitelist a list of `IpAddr`</span>
     <span class="ident">RemoveFromWhitelist</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>),
 }
 
@@ -567,7 +567,7 @@
         <span class="doccomment">/// operations</span>
         <span class="ident">operations</span>: <span class="ident">Operations</span>,
     },
-    <span class="doccomment">/// Receive a list of OperationId</span>
+    <span class="doccomment">/// Receive a list of `OperationId`</span>
     <span class="ident">ReceivedOperationAnnouncements</span> {
         <span class="doccomment">/// from node id</span>
         <span class="ident">node</span>: <span class="ident">NodeId</span>,

@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["GraphConfig","Graph config"],["LedgerConfig","configuration for the old ledger TODO remove after unification"]]});
+initSidebarItems({"struct":[["GraphConfig","Graph configuration"],["LedgerConfig","configuration for the old ledger TODO remove after unification"]]});

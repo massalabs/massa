@@ -32,11 +32,11 @@
 <span class="attribute">#[<span class="ident">non_exhaustive</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Display</span>, <span class="ident">Error</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LedgerError</span> {
-    <span class="doccomment">/// container inconsistency: {0}</span>
+    <span class="doccomment">/// container inconsistency: `{0}`</span>
     <span class="ident">ContainerInconsistency</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// missing entry: {0}</span>
+    <span class="doccomment">/// missing entry: `{0}`</span>
     <span class="ident">MissingEntry</span>(<span class="ident">String</span>),
-    <span class="doccomment">/// file error: {0}</span>
+    <span class="doccomment">/// file error: `{0}`</span>
     <span class="ident">FileError</span>(<span class="ident">String</span>),
 }
 </code></pre></div>

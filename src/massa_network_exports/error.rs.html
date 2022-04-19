@@ -133,7 +133,7 @@
     <span class="doccomment">/// A tokio task has crashed err:{0}</span>
     <span class="ident">TokioTaskJoinError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">tokio::task::JoinError</span>),
     <span class="doccomment">/// error receiving oneshot response : {0}</span>
-    <span class="ident">TokieRecvError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">tokio::sync::oneshot::error::RecvError</span>),
+    <span class="ident">TokioRecvError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">tokio::sync::oneshot::error::RecvError</span>),
     <span class="doccomment">/// Error during network connection: {0}</span>
     <span class="ident">PeerConnectionError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">NetworkConnectionErrorType</span>),
     <span class="doccomment">/// The ip:`{0}` address is not valid</span>
@@ -144,13 +144,13 @@
     <span class="ident">IOError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">std::io::Error</span>),
     <span class="doccomment">/// Serde error : {0}</span>
     <span class="ident">SerdeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">serde_json::Error</span>),
-    <span class="doccomment">/// massa_hash error {0}</span>
+    <span class="doccomment">/// `MassaHash` error {0}</span>
     <span class="ident">MassaHashError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_hash::MassaHashError</span>),
     <span class="doccomment">/// handshake error:{0:?}</span>
     <span class="ident">HandshakeError</span>(<span class="ident">HandshakeErrorType</span>),
     <span class="doccomment">/// the network controller should not drop a node command sender before shutting down the node.</span>
     <span class="ident">UnexpectedNodeCommandChannelClosure</span>,
-    <span class="doccomment">/// the writer of a node should not drop its event sender before sending a clean_exit message.</span>
+    <span class="doccomment">/// the writer of a node should not drop its event sender before sending a `clean_exit` message.</span>
     <span class="ident">UnexpectedWriterClosure</span>,
     <span class="doccomment">/// Time error {0}</span>
     <span class="ident">TimeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">massa_time::TimeError</span>),

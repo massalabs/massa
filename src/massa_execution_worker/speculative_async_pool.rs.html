@@ -109,21 +109,21 @@
 <span id="104">104</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="doccomment">//! The speculative async pool represents the state of</span>
+<span class="doccomment">//! The speculative asynchronous pool represents the state of</span>
 <span class="doccomment">//! the pool at an arbitrary execution slot.</span>
 
 <span class="kw">use</span> <span class="ident">massa_async_pool</span>::{<span class="ident">AsyncMessage</span>, <span class="ident">AsyncMessageId</span>, <span class="ident">AsyncPool</span>, <span class="ident">AsyncPoolChanges</span>};
 <span class="kw">use</span> <span class="ident">massa_models::Slot</span>;
 
-<span class="doccomment">/// The SpeculativeAsyncPool holds a copy of the final state async pool</span>
+<span class="doccomment">/// The `SpeculativeAsyncPool` holds a copy of the final state asynchronous pool</span>
 <span class="doccomment">/// to which it applies the previous changes.</span>
-<span class="doccomment">/// The SpeculativeAsyncPool manipulates this copy to compute the full pool</span>
+<span class="doccomment">/// The `SpeculativeAsyncPool` manipulates this copy to compute the full pool</span>
 <span class="doccomment">/// while keeping track of all the newly added changes.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SpeculativeAsyncPool</span> {
-    <span class="doccomment">/// Copy of the final async pool with the previous changes applied</span>
+    <span class="doccomment">/// Copy of the final asynchronous pool with the previous changes applied</span>
     <span class="ident">async_pool</span>: <span class="ident">AsyncPool</span>,
 
-    <span class="doccomment">/// List of newly emitted async messages</span>
+    <span class="doccomment">/// List of newly emitted asynchronous messages</span>
     <span class="ident">emitted</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessage</span>)<span class="op">&gt;</span>,
 
     <span class="doccomment">/// List of changes (additions/deletions) to the pool after settling emitted messages</span>
@@ -131,11 +131,11 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SpeculativeAsyncPool</span> {
-    <span class="doccomment">/// Creates a new SpeculativeAsyncPool</span>
+    <span class="doccomment">/// Creates a new `SpeculativeAsyncPool`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * async_pool: a copy of the final state AsyncPool</span>
-    <span class="doccomment">/// * previous_changes: accumulation of changes that previously happened to the async pool since finality</span>
+    <span class="doccomment">/// * `async_pool`: a copy of the final state `AsyncPool`</span>
+    <span class="doccomment">/// * `previous_changes`: accumulation of changes that previously happened to the asynchronous pool since finality</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="kw-2">mut</span> <span class="ident">async_pool</span>: <span class="ident">AsyncPool</span>, <span class="ident">previous_changes</span>: <span class="ident">AsyncPoolChanges</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">async_pool</span>.<span class="ident">apply_changes_unchecked</span>(<span class="ident">previous_changes</span>);
         <span class="ident">SpeculativeAsyncPool</span> {
@@ -145,9 +145,9 @@
         }
     }
 
-    <span class="doccomment">/// Returns the changes caused to the SpeculativeAsyncPool since its creation,</span>
+    <span class="doccomment">/// Returns the changes caused to the `SpeculativeAsyncPool` since its creation,</span>
     <span class="doccomment">/// and resets their local value to nothing.</span>
-    <span class="doccomment">/// This must be called after settle_emitted_messages()</span>
+    <span class="doccomment">/// This must be called after `settle_emitted_messages()`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">take</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">AsyncPoolChanges</span> {
         <span class="ident">std::mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">settled_changes</span>)
     }
@@ -157,25 +157,25 @@
         <span class="self">self</span>.<span class="ident">emitted</span>.<span class="ident">clone</span>()
     }
 
-    <span class="doccomment">/// Resets the SpeculativeAsyncPool emitted messages to a snapshot (see get_snapshot method)</span>
+    <span class="doccomment">/// Resets the `SpeculativeAsyncPool` emitted messages to a snapshot (see `get_snapshot` method)</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reset_to_snapshot</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">snapshot</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessage</span>)<span class="op">&gt;</span>) {
         <span class="self">self</span>.<span class="ident">emitted</span> <span class="op">=</span> <span class="ident">snapshot</span>;
     }
 
-    <span class="doccomment">/// Add a new message to the list of changes of this SpeculativeAsyncPool</span>
+    <span class="doccomment">/// Add a new message to the list of changes of this `SpeculativeAsyncPool`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push_new_message</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="ident">AsyncMessage</span>) {
         <span class="self">self</span>.<span class="ident">emitted</span>.<span class="ident">push</span>((<span class="ident">msg</span>.<span class="ident">compute_id</span>(), <span class="ident">msg</span>));
     }
 
-    <span class="doccomment">/// Takes a batch of async messages to execute,</span>
-    <span class="doccomment">/// removing them from the speculative async pool and settling their deletion from it in the changes accumulator.</span>
+    <span class="doccomment">/// Takes a batch of asynchronous messages to execute,</span>
+    <span class="doccomment">/// removing them from the speculative asynchronous pool and settling their deletion from it in the changes accumulator.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * slot: slot at which the batch is taken (allows filtering by validity interval)</span>
-    <span class="doccomment">/// * max_gas: maximum amount of gas available</span>
+    <span class="doccomment">/// * `slot`: slot at which the batch is taken (allows filtering by validity interval)</span>
+    <span class="doccomment">/// * `max_gas`: maximum amount of gas available</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// A vector of AsyncMessage to execute</span>
+    <span class="doccomment">/// A vector of `AsyncMessage` to execute</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">take_batch_to_execute</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">slot</span>: <span class="ident">Slot</span>,
@@ -193,13 +193,13 @@
     }
 
     <span class="doccomment">/// Settle a slot.</span>
-    <span class="doccomment">/// Consume newly emitted messages into self.async_pool, recording changes into self.settled_changes</span>
+    <span class="doccomment">/// Consume newly emitted messages into `self.async_pool`, recording changes into `self.settled_changes`.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
     <span class="doccomment">/// * slot: slot that is being settled</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// the list of deleted (message_id, message), used for reimbursement</span>
+    <span class="doccomment">/// the list of deleted `(message_id, message)`, used for reimbursement</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">settle_slot</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessage</span>)<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">deleted_messages</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">async_pool</span>.<span class="ident">settle_slot</span>(<span class="ident">slot</span>, <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">emitted</span>);
         <span class="kw">for</span> (<span class="ident">msg_id</span>, <span class="ident">msg</span>) <span class="kw">in</span> <span class="ident">std::mem::take</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">emitted</span>) {

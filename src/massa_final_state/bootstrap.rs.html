@@ -71,7 +71,7 @@
 <span id="66">66</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="doccomment">//! Provides serializable strucutres for bootstrapping the FinalState</span>
+<span class="doccomment">//! Provides serializable structures for bootstrapping the `FinalState`</span>
 
 <span class="kw">use</span> <span class="ident">massa_async_pool::AsyncPoolBootstrap</span>;
 <span class="kw">use</span> <span class="ident">massa_ledger::FinalLedgerBootstrapState</span>;
@@ -79,18 +79,18 @@
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="doccomment">/// Represents a snapshot of the final state,</span>
-<span class="doccomment">/// which is enough to fully bootstrap a FinalState</span>
+<span class="doccomment">/// which is enough to fully bootstrap a `FinalState`</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FinalStateBootstrap</span> {
     <span class="doccomment">/// slot at the output of which the state is attached</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">slot</span>: <span class="ident">Slot</span>,
     <span class="doccomment">/// final ledger</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">ledger</span>: <span class="ident">FinalLedgerBootstrapState</span>,
-    <span class="doccomment">/// aysnc pool</span>
+    <span class="doccomment">/// asynchronous pool</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">async_pool</span>: <span class="ident">AsyncPoolBootstrap</span>,
 }
 
-<span class="doccomment">/// Allows serializing the FinalStateBootstrap to a compact binary representation</span>
+<span class="doccomment">/// Allows serializing the `FinalStateBootstrap` to a compact binary representation</span>
 <span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">FinalStateBootstrap</span> {
     <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">massa_models::ModelsError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
@@ -108,7 +108,7 @@
     }
 }
 
-<span class="doccomment">/// Allows deserializing a FinalStateBootstrap from its compact binary representation</span>
+<span class="doccomment">/// Allows deserializing a `FinalStateBootstrap` from its compact binary representation</span>
 <span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">FinalStateBootstrap</span> {
     <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">massa_models::ModelsError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;

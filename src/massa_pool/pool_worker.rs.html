@@ -477,13 +477,13 @@
     <span class="doccomment">/// Initiates the random selector.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * pool_settings: pool configuration.</span>
-    <span class="doccomment">/// * thread_count: number of threads</span>
-    <span class="doccomment">/// * operation_validity_periods : operation validity period</span>
-    <span class="doccomment">/// * protocol_command_sender: associated protocol controller</span>
-    <span class="doccomment">/// * protocol_command_sender protocol pool event receiver</span>
-    <span class="doccomment">/// * controller_command_rx: Channel receiving pool commands.</span>
-    <span class="doccomment">/// * controller_manager_rx: Channel receiving pool management commands.</span>
+    <span class="doccomment">/// * `pool_settings`: pool configuration.</span>
+    <span class="doccomment">/// * `thread_count`: number of threads</span>
+    <span class="doccomment">/// * `operation_validity_periods`: operation validity period</span>
+    <span class="doccomment">/// * `protocol_command_sender`: associated protocol controller</span>
+    <span class="doccomment">/// * `protocol_command_sender`: protocol pool event receiver</span>
+    <span class="doccomment">/// * `controller_command_rx`: Channel receiving pool commands.</span>
+    <span class="doccomment">/// * `controller_manager_rx`: Channel receiving pool management commands.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">PoolConfig</span>,
         <span class="ident">protocol_command_sender</span>: <span class="ident">ProtocolCommandSender</span>,
@@ -548,7 +548,7 @@
     <span class="doccomment">/// Manages given pool command.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Argument</span>
-    <span class="doccomment">/// * cmd: consensus command to process</span>
+    <span class="doccomment">/// * `cmd`: consensus command to process</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">process_pool_command</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cmd</span>: <span class="ident">PoolCommand</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">PoolError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">cmd</span> {
             <span class="ident">PoolCommand::AddOperations</span>(<span class="kw-2">mut</span> <span class="ident">operations</span>) =&gt; {

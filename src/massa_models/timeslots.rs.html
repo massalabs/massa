@@ -253,7 +253,7 @@
 <span id="248">248</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="doccomment">//! warning: assumes thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0</span>
+<span class="doccomment">//! warning: assumes `thread_count &gt;= 1, t0_millis &gt;= 1, t0_millis % thread_count == 0`</span>
 
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
@@ -263,9 +263,9 @@
 <span class="doccomment">/// Counts the number of slots in a slot range [a, b)</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * a: starting slot (included)</span>
-<span class="doccomment">/// * b: ending slot (excluded)</span>
-<span class="doccomment">/// * thread_count: number of threads</span>
+<span class="doccomment">/// * `a`: starting slot (included)</span>
+<span class="doccomment">/// * `b`: ending slot (excluded)</span>
+<span class="doccomment">/// * `thread_count`: number of threads</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">slot_count_in_range</span>(<span class="ident">a</span>: <span class="ident">Slot</span>, <span class="ident">b</span>: <span class="ident">Slot</span>, <span class="ident">thread_count</span>: <span class="ident">u8</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
     <span class="ident">b</span>.<span class="ident">period</span>
         .<span class="ident">checked_sub</span>(<span class="ident">a</span>.<span class="ident">period</span>)
@@ -278,12 +278,12 @@
         .<span class="ident">ok_or</span>(<span class="ident">ModelsError::TimeOverflowError</span>)
 }
 
-<span class="doccomment">/// Gets timestamp in millis for given slot.</span>
+<span class="doccomment">/// Gets timestamp in milliseconds for given slot.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * thread_count: number of threads.</span>
-<span class="doccomment">/// * t0: time in millis between two periods in the same thread.</span>
-<span class="doccomment">/// * slot: the considered slot.</span>
+<span class="doccomment">/// * `thread_count`: number of threads.</span>
+<span class="doccomment">/// * `t0`: time in milliseconds between two periods in the same thread.</span>
+<span class="doccomment">/// * `slot`: the considered slot.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_slot_timestamp</span>(
     <span class="ident">thread_count</span>: <span class="ident">u8</span>,
     <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
@@ -305,13 +305,13 @@
         .<span class="ident">or</span>(<span class="prelude-val">Err</span>(<span class="ident">ModelsError::TimeOverflowError</span>))
 }
 
-<span class="doccomment">/// Returns the thread and block period index of the latest block slot at a given timstamp (inclusive), if any happened</span>
+<span class="doccomment">/// Returns the thread and block period index of the latest block slot at a given timestamp (inclusive), if any happened</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * thread_count: number of threads.</span>
-<span class="doccomment">/// * t0: time in millis between two periods in the same thread.</span>
-<span class="doccomment">/// * genesis_timestamp: when the blockclique first started, in millis.</span>
-<span class="doccomment">/// * timestamp: target timestamp in millis.</span>
+<span class="doccomment">/// * `thread_count`: number of threads.</span>
+<span class="doccomment">/// * `t0`: time in milliseconds between two periods in the same thread.</span>
+<span class="doccomment">/// * `genesis_timestamp`: when the blockclique first started, in milliseconds.</span>
+<span class="doccomment">/// * `timestamp`: target timestamp in milliseconds.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_latest_block_slot_at_timestamp</span>(
     <span class="ident">thread_count</span>: <span class="ident">u8</span>,
     <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
@@ -334,9 +334,9 @@
 <span class="doccomment">/// Returns the thread and block slot index of the current block slot (inclusive), if any happened yet</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * thread_count: number of threads.</span>
-<span class="doccomment">/// * t0: time in millis between two periods in the same thread.</span>
-<span class="doccomment">/// * genesis_timestamp: when the blockclique first started, in millis.</span>
+<span class="doccomment">/// * `thread_count`: number of threads.</span>
+<span class="doccomment">/// * `t0`: time in milliseconds between two periods in the same thread.</span>
+<span class="doccomment">/// * `genesis_timestamp`: when the blockclique first started, in milliseconds.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_current_latest_block_slot</span>(
     <span class="ident">thread_count</span>: <span class="ident">u8</span>,
     <span class="ident">t0</span>: <span class="ident">MassaTime</span>,
@@ -351,17 +351,17 @@
     )
 }
 
-<span class="doccomment">/// Turns an MassaTime range [start, end) with optional start/end to a Slot range [start, end) with optional start/end</span>
+<span class="doccomment">/// Turns an `MassaTime` range [start, end) with optional start/end to a `Slot` range [start, end) with optional start/end</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * thread_count: number of threads.</span>
-<span class="doccomment">/// * t0: time in millis between two periods in the same thread.</span>
-<span class="doccomment">/// * genesis_timestamp: when the blockclique first started, in millis</span>
-<span class="doccomment">/// * start_time: optional start time</span>
-<span class="doccomment">/// * end_time: optional end time</span>
+<span class="doccomment">/// * `thread_count`: number of threads.</span>
+<span class="doccomment">/// * `t0`: time in milliseconds between two periods in the same thread.</span>
+<span class="doccomment">/// * `genesis_timestamp`: when the blockclique first started, in milliseconds</span>
+<span class="doccomment">/// * `start_time`: optional start time</span>
+<span class="doccomment">/// * `end_time`: optional end time</span>
 <span class="doccomment">/// # Returns</span>
-<span class="doccomment">/// (Option&lt;Slot&gt;, Option&lt;Slot&gt;) pair of options representing the start (included) and end (excluded) slots</span>
-<span class="doccomment">/// or ConsensusError on error</span>
+<span class="doccomment">/// `(Option&lt;Slot&gt;, Option&lt;Slot&gt;)` pair of options representing the start (included) and end (excluded) slots</span>
+<span class="doccomment">/// or `ConsensusError` on error</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">time_range_to_slot_range</span>(
     <span class="ident">thread_count</span>: <span class="ident">u8</span>,
     <span class="ident">t0</span>: <span class="ident">MassaTime</span>,

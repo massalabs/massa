@@ -525,11 +525,11 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsensusCommandSender</span>(<span class="kw">pub</span> <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">ConsensusCommand</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">ConsensusCommandSender</span> {
-    <span class="doccomment">/// Gets all the available information on the block graph returning a Blockgraphexport.</span>
+    <span class="doccomment">/// Gets all the available information on the block graph returning a `BlockGraphExport`.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * slot_start: optional slot start for slot-based filtering (included).</span>
-    <span class="doccomment">/// * slot_end: optional slot end for slot-based filtering (excluded).</span>
+    <span class="doccomment">/// * `slot_start`: optional slot start for slot-based filtering (included).</span>
+    <span class="doccomment">/// * `slot_end`: optional slot end for slot-based filtering (excluded).</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_block_graph_status</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">slot_start</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
@@ -604,11 +604,11 @@
         })
     }
 
-    <span class="doccomment">/// Gets (slot, public_key) were the staker with public_key was selected for slot, between start_slot and end_slot.</span>
+    <span class="doccomment">/// Gets `(slot, public_key)` were the staker with `public_key` was selected for slot, between `start_slot` and `end_slot`.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * start_slot: beginning of the considered interval.</span>
-    <span class="doccomment">/// * end_slot: end of the considered interval.</span>
+    <span class="doccomment">/// * `start_slot`: beginning of the considered interval.</span>
+    <span class="doccomment">/// * `end_slot`: end of the considered interval.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_selection_draws</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">start</span>: <span class="ident">Slot</span>,
@@ -824,7 +824,7 @@
 
     <span class="doccomment">/// remove some keys from staking keys by associated address</span>
     <span class="doccomment">/// the node won&#39;t be able to stake with these keys anymore</span>
-    <span class="doccomment">/// They wil be erased from the staking keys file</span>
+    <span class="doccomment">/// They will be erased from the staking keys file</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">remove_staking_addresses</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">addresses</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
@@ -844,7 +844,7 @@
         <span class="kw">let</span> (<span class="ident">response_tx</span>, <span class="ident">response_rx</span>) <span class="op">=</span> <span class="ident">oneshot::channel</span>();
         <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_controller.get_staking_addresses&quot;</span>, {});
         <span class="self">self</span>.<span class="number">0</span>
-            .<span class="ident">send</span>(<span class="ident">ConsensusCommand::GetStakingAddressses</span>(<span class="ident">response_tx</span>))
+            .<span class="ident">send</span>(<span class="ident">ConsensusCommand::GetStakingAddresses</span>(<span class="ident">response_tx</span>))
             .<span class="kw">await</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="ident">ConsensusError::SendChannelError</span>(
@@ -949,7 +949,7 @@
             .<span class="ident">ok_or</span>(<span class="ident">ConsensusError::ControllerEventError</span>)
     }
 
-    <span class="doccomment">/// drains remaining events and returns them in a VecDeque</span>
+    <span class="doccomment">/// drains remaining events and returns them in a `VecDeque`</span>
     <span class="doccomment">/// note: events are sorted from oldest to newest</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">drain</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ConsensusEvent</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">remaining_events</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ConsensusEvent</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">VecDeque::new</span>();

@@ -521,7 +521,7 @@
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.</span>
-<span class="doccomment">//! This allows the VM runtime to acceess the Massa execution context,</span>
+<span class="doccomment">//! This allows the VM runtime to access the Massa execution context,</span>
 <span class="doccomment">//! for example to interact with the ledger.</span>
 <span class="doccomment">//! See the definition of Interface in the massa-sc-runtime crate for functional details.</span>
 
@@ -553,25 +553,25 @@
 <span class="doccomment">/// an implementation of the Interface trait (see massa-sc-runtime crate)</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">InterfaceImpl</span> {
-    <span class="doccomment">/// execution config</span>
+    <span class="doccomment">/// execution configuration</span>
     <span class="ident">config</span>: <span class="ident">ExecutionConfig</span>,
     <span class="doccomment">/// thread-safe shared access to the execution context (see context.rs)</span>
     <span class="ident">context</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionContext</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">InterfaceImpl</span> {
-    <span class="doccomment">/// creates a new InterfaceImpl</span>
+    <span class="doccomment">/// creates a new `InterfaceImpl`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * config: execution config</span>
-    <span class="doccomment">/// * context: thread-safe shared access to the current execution context (see context.rs)</span>
+    <span class="doccomment">/// * `config`: execution configuration</span>
+    <span class="doccomment">/// * `context`: thread-safe shared access to the current execution context (see context.rs)</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">config</span>: <span class="ident">ExecutionConfig</span>, <span class="ident">context</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">ExecutionContext</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="ident">InterfaceImpl</span> {
         <span class="ident">InterfaceImpl</span> { <span class="ident">config</span>, <span class="ident">context</span> }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">InterfaceClone</span> <span class="kw">for</span> <span class="ident">InterfaceImpl</span> {
-    <span class="doccomment">/// allows cloning a boxed InterfaceImpl</span>
+    <span class="doccomment">/// allows cloning a boxed `InterfaceImpl`</span>
     <span class="kw">fn</span> <span class="ident">clone_box</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Interface</span><span class="op">&gt;</span> {
         <span class="ident">Box::new</span>(<span class="self">self</span>.<span class="ident">clone</span>())
     }
@@ -580,7 +580,7 @@
 <span class="doccomment">/// Implementation of the Interface trait providing functions for massa-sc-runtime to call</span>
 <span class="doccomment">/// in order to interact with the execution context during bytecode execution.</span>
 <span class="doccomment">/// See the massa-sc-runtime crate for a functional description of the trait and its methods.</span>
-<span class="doccomment">/// Note that massa-sc-runtime uses basic types (str for addresses, u64 for amounts...) for genericity.</span>
+<span class="doccomment">/// Note that massa-sc-runtime uses basic types (`str` for addresses, `u64` for amounts...) for genericity.</span>
 <span class="kw">impl</span> <span class="ident">Interface</span> <span class="kw">for</span> <span class="ident">InterfaceImpl</span> {
     <span class="doccomment">/// prints a message in the node logs at log level 3 (debug)</span>
     <span class="kw">fn</span> <span class="ident">print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">message</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
@@ -594,8 +594,8 @@
     <span class="doccomment">/// and returns the target bytecode from the ledger.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * address: string representation of the target address on which the bytecode will be called</span>
-    <span class="doccomment">/// * raw_coins: raw representation (without decimal factor) of the amount of parallel coins to transfer from the caller address to the target address at the beginning of the call</span>
+    <span class="doccomment">/// * `address`: string representation of the target address on which the bytecode will be called</span>
+    <span class="doccomment">/// * `raw_coins`: raw representation (without decimal factor) of the amount of parallel coins to transfer from the caller address to the target address at the beginning of the call</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
     <span class="doccomment">/// The target bytecode or an error</span>
@@ -792,7 +792,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">context</span>.<span class="ident">has_data_entry</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>, <span class="kw-2">&amp;</span><span class="ident">key</span>))
     }
 
-    <span class="doccomment">/// Hashses arbitrary data</span>
+    <span class="doccomment">/// Hashes arbitrary data</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
     <span class="doccomment">/// * data: data bytes to hash</span>
@@ -803,10 +803,10 @@
         <span class="prelude-val">Ok</span>(<span class="ident">massa_hash::Hash::compute_from</span>(<span class="ident">data</span>).<span class="ident">to_bs58_check</span>())
     }
 
-    <span class="doccomment">/// Converts a pubkey to an address</span>
+    <span class="doccomment">/// Converts a public key to an address</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * public_key: string representation of the public key</span>
+    <span class="doccomment">/// * `public_key`: string representation of the public key</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
     <span class="doccomment">/// The string representation of the resulting address</span>
@@ -841,8 +841,8 @@
     <span class="doccomment">/// Transfer parallel coins from the current address (top of the call stack) towards a target address.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * to_address: string representation of the address to which the coins are sent</span>
-    <span class="doccomment">/// * raw_amount: raw representation (no decimal factor) of the amount of coins to transfer</span>
+    <span class="doccomment">/// * `to_address`: string representation of the address to which the coins are sent</span>
+    <span class="doccomment">/// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer</span>
     <span class="kw">fn</span> <span class="ident">transfer_coins</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">to_address</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">raw_amount</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">to_address</span> <span class="op">=</span> <span class="ident">massa_models::Address::from_str</span>(<span class="ident">to_address</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">amount</span> <span class="op">=</span> <span class="ident">massa_models::Amount::from_raw</span>(<span class="ident">raw_amount</span>);
@@ -855,9 +855,9 @@
     <span class="doccomment">/// Transfer parallel coins from a given address towards a target address.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * from_address: string representation of the address that is sending the coins</span>
-    <span class="doccomment">/// * to_address: string representation of the address to which the coins are sent</span>
-    <span class="doccomment">/// * raw_amount: raw representation (no decimal factor) of the amount of coins to transfer</span>
+    <span class="doccomment">/// * `from_address`: string representation of the address that is sending the coins</span>
+    <span class="doccomment">/// * `to_address`: string representation of the address to which the coins are sent</span>
+    <span class="doccomment">/// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer</span>
     <span class="kw">fn</span> <span class="ident">transfer_coins_for</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">from_address</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
@@ -872,7 +872,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Returns the list of owned adresses (top of the call stack).</span>
+    <span class="doccomment">/// Returns the list of owned addresses (top of the call stack).</span>
     <span class="doccomment">/// Those addresses are the ones the current execution context has write access to,</span>
     <span class="doccomment">/// typically it includes the current address itself,</span>
     <span class="doccomment">/// but also the ones that were created previously by the current call to allow initializing them.</span>
@@ -900,8 +900,8 @@
             .<span class="ident">collect</span>())
     }
 
-    <span class="doccomment">/// Gets the amount of coins that have been ransferred at the beginning of the call.</span>
-    <span class="doccomment">/// See the init_call method.</span>
+    <span class="doccomment">/// Gets the amount of coins that have been transferred at the beginning of the call.</span>
+    <span class="doccomment">/// See the `init_call` method.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
     <span class="doccomment">/// The raw representation (no decimal factor) of the amount of coins</span>
@@ -949,7 +949,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Returns the current time (millisecond unix timestamp)</span>
+    <span class="doccomment">/// Returns the current time (millisecond UNIX timestamp)</span>
     <span class="doccomment">/// Note that in order to ensure determinism, this is actually the time of the context slot.</span>
     <span class="kw">fn</span> <span class="ident">get_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">slot</span>;
@@ -962,7 +962,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">ts</span>.<span class="ident">to_millis</span>())
     }
 
-    <span class="doccomment">/// Returns a pseudo-random deterministic i64 number</span>
+    <span class="doccomment">/// Returns a pseudo-random deterministic `i64` number</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Warning</span>
     <span class="doccomment">/// This random number generator is unsafe:</span>
@@ -972,17 +972,17 @@
         <span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">unsafe_rng</span>.<span class="ident">sample</span>(<span class="ident">distr</span>))
     }
 
-    <span class="doccomment">/// Adds an asynchronous message to the context speculative async pool</span>
+    <span class="doccomment">/// Adds an asynchronous message to the context speculative asynchronous pool</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * target_address: Destination address hash in format string</span>
-    <span class="doccomment">/// * target_handler: Name of the message handling function</span>
-    <span class="doccomment">/// * validity_start: Tuple containing the period and thread of the validity start slot</span>
-    <span class="doccomment">/// * validity_end: Tuple containing the period and thread of the validity end slot</span>
-    <span class="doccomment">/// * max_gas: Maximum gas for the message execution</span>
-    <span class="doccomment">/// * gas_price: Price of one gas unit</span>
-    <span class="doccomment">/// * raw_coins: Coins given by the sender</span>
-    <span class="doccomment">/// * data: Message data</span>
+    <span class="doccomment">/// * `target_address`: Destination address hash in format string</span>
+    <span class="doccomment">/// * `target_handler`: Name of the message handling function</span>
+    <span class="doccomment">/// * `validity_start`: Tuple containing the period and thread of the validity start slot</span>
+    <span class="doccomment">/// * `validity_end`: Tuple containing the period and thread of the validity end slot</span>
+    <span class="doccomment">/// * `max_gas`: Maximum gas for the message execution</span>
+    <span class="doccomment">/// * `gas_price`: Price of one gas unit</span>
+    <span class="doccomment">/// * `raw_coins`: Coins given by the sender</span>
+    <span class="doccomment">/// * `data`: Message data</span>
     <span class="kw">fn</span> <span class="ident">send_message</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">target_address</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,

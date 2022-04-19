@@ -404,9 +404,9 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Message</span> {
     <span class="doccomment">/// Initiates handshake.</span>
     <span class="ident">HandshakeInitiation</span> {
-        <span class="doccomment">/// Our public_key, so the peer can decode our reply.</span>
+        <span class="doccomment">/// Our `public_key`, so the peer can decode our reply.</span>
         <span class="ident">public_key</span>: <span class="ident">PublicKey</span>,
-        <span class="doccomment">/// Random data we expect the peer to sign with its private_key.</span>
+        <span class="doccomment">/// Random data we expect the peer to sign with its `private_key`.</span>
         <span class="doccomment">/// They should send us their handshake initiation message to</span>
         <span class="doccomment">/// let us know their public key.</span>
         <span class="ident">random_bytes</span>: [<span class="ident">u8</span>; <span class="ident">HANDSHAKE_RANDOMNESS_SIZE_BYTES</span>],
@@ -414,7 +414,7 @@
     },
     <span class="doccomment">/// Reply to a handshake initiation message.</span>
     <span class="ident">HandshakeReply</span> {
-        <span class="doccomment">/// Signature of the received random bytes with our private_key.</span>
+        <span class="doccomment">/// Signature of the received random bytes with our `private_key`.</span>
         <span class="ident">signature</span>: <span class="ident">Signature</span>,
     },
     <span class="doccomment">/// Whole block structure.</span>
@@ -425,7 +425,7 @@
     <span class="ident">AskForBlocks</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Message asking the peer for its advertisable peers list.</span>
     <span class="ident">AskPeerList</span>,
-    <span class="doccomment">/// Reply to a AskPeerList message</span>
+    <span class="doccomment">/// Reply to a `AskPeerList` message</span>
     <span class="doccomment">/// Peers are ordered from most to less reliable.</span>
     <span class="doccomment">/// If the ip of the node that sent that message is routable,</span>
     <span class="doccomment">/// it is the first ip of the list.</span>

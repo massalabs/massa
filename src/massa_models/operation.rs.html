@@ -966,7 +966,7 @@
         ))
     }
 
-    <span class="doccomment">/// op id from bs58 check</span>
+    <span class="doccomment">/// op id from `bs58` check</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bs58_check</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">ModelsError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">OperationId</span>(
             <span class="ident">Hash::from_bs58_check</span>(<span class="ident">data</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ModelsError::HashError</span>)<span class="question-mark">?</span>,
@@ -989,9 +989,9 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Operation</span> {
     <span class="doccomment">/// the operation creator public key</span>
     <span class="kw">pub</span> <span class="ident">sender_public_key</span>: <span class="ident">PublicKey</span>,
-    <span class="doccomment">/// the fee they have decided for tis operation</span>
+    <span class="doccomment">/// the fee they have decided for this operation</span>
     <span class="kw">pub</span> <span class="ident">fee</span>: <span class="ident">Amount</span>,
-    <span class="doccomment">/// after expire_period slot the operation won&#39;t be included in a block</span>
+    <span class="doccomment">/// after `expire_period` slot the operation won&#39;t be included in a block</span>
     <span class="kw">pub</span> <span class="ident">expire_period</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// the type specific operation part</span>
     <span class="kw">pub</span> <span class="ident">op</span>: <span class="ident">OperationType</span>,
@@ -1022,12 +1022,12 @@
         <span class="doccomment">/// amount</span>
         <span class="ident">amount</span>: <span class="ident">Amount</span>,
     },
-    <span class="doccomment">/// the sender buys roll_count rolls. Roll price is config defined</span>
+    <span class="doccomment">/// the sender buys `roll_count` rolls. Roll price is defined in configuration</span>
     <span class="ident">RollBuy</span> {
         <span class="doccomment">/// roll count</span>
         <span class="ident">roll_count</span>: <span class="ident">u64</span>,
     },
-    <span class="doccomment">/// the sender sells roll_count rolls. Roll price is config defined</span>
+    <span class="doccomment">/// the sender sells `roll_count` rolls. Roll price is defined in configuration</span>
     <span class="ident">RollSell</span> {
         <span class="doccomment">/// roll count</span>
         <span class="ident">roll_count</span>: <span class="ident">u64</span>,
@@ -1541,7 +1541,7 @@
 <span class="doccomment">/// from the node configuration.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Return</span>
-<span class="doccomment">/// A result that return the deserialized Vec of `OperationId`</span>
+<span class="doccomment">/// A result that return the deserialized `Vec&lt;OperationId&gt;`</span>
 <span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">OperationIds</span> {
     <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">max_operations_per_message</span> <span class="op">=</span>
@@ -1582,7 +1582,7 @@
 <span class="doccomment">/// from the node configuration.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Return</span>
-<span class="doccomment">/// A result that return the deserialized Vec of `Operation`</span>
+<span class="doccomment">/// A result that return the deserialized `Vec&lt;Operation&gt;`</span>
 <span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">Operations</span> {
     <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">max_operations_per_message</span> <span class="op">=</span>

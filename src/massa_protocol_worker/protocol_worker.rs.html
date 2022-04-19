@@ -1527,6 +1527,8 @@
 <span id="1522">1522</span>
 <span id="1523">1523</span>
 <span id="1524">1524</span>
+<span id="1525">1525</span>
+<span id="1526">1526</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">node_info::NodeInfo</span>, <span class="ident">worker_operations_impl::OperationBatchBuffer</span>};
@@ -1557,17 +1559,18 @@
 };
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">debug</span>, <span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">warn</span>};
 
-<span class="doccomment">/// start a new ProtocolController from a ProtocolConfig</span>
+<span class="doccomment">/// start a new `ProtocolController` from a `ProtocolConfig`</span>
 <span class="doccomment">/// - generate public / private key</span>
-<span class="doccomment">/// - create protocol_command/protocol_event channels</span>
-<span class="doccomment">/// - launch protocol_controller_fn in an other task</span>
+<span class="doccomment">/// - create `protocol_command/protocol_event` channels</span>
+<span class="doccomment">/// - launch `protocol_controller_fn` in an other task</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * cfg: protocol configuration</span>
-<span class="doccomment">/// * operation_validity_periods: operation validity duration in periods</span>
-<span class="doccomment">/// * max_block_gas: maximum gas per block</span>
-<span class="doccomment">/// * network_command_sender: the NetworkCommandSender we interact with</span>
-<span class="doccomment">/// * network_event_receiver: the NetworkEventReceiver we interact with</span>
+<span class="doccomment">/// * `protocol_settings`: protocol settings</span>
+<span class="doccomment">/// * `operation_validity_periods`: operation validity duration in periods</span>
+<span class="doccomment">/// * `max_block_gas`: maximum gas per block</span>
+<span class="doccomment">/// * `network_command_sender`: the `NetworkCommandSender` we interact with</span>
+<span class="doccomment">/// * `network_event_receiver`: the `NetworkEventReceiver` we interact with</span>
+<span class="doccomment">/// * `storage`: Shared storage to fetch data that are fetch across all modules</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">start_protocol_controller</span>(
     <span class="ident">protocol_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ProtocolSettings</span>,
     <span class="ident">operation_validity_periods</span>: <span class="ident">u64</span>,
@@ -1705,14 +1708,14 @@
     <span class="doccomment">/// Creates a new protocol worker.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * protocol_settings: protocol configuration.</span>
-    <span class="doccomment">/// * operation_validity_periods: operation validity periods</span>
-    <span class="doccomment">/// * max_block_gas: max gas per block</span>
-    <span class="doccomment">/// * self_node_id: our private key.</span>
-    <span class="doccomment">/// * network_controller associated network controller.</span>
-    <span class="doccomment">/// * controller_event_tx: Channel to send protocol events.</span>
-    <span class="doccomment">/// * controller_command_rx: Channel receiving commands.</span>
-    <span class="doccomment">/// * controller_manager_rx: Channel receiving management commands.</span>
+    <span class="doccomment">/// * `protocol_settings`: protocol configuration.</span>
+    <span class="doccomment">/// * `operation_validity_periods`: operation validity periods</span>
+    <span class="doccomment">/// * `max_block_gas`: max gas per block</span>
+    <span class="doccomment">/// * `self_node_id`: our private key.</span>
+    <span class="doccomment">/// * `network_controller`: associated network controller.</span>
+    <span class="doccomment">/// * `controller_event_tx`: Channel to send protocol events.</span>
+    <span class="doccomment">/// * `controller_command_rx`: Channel receiving commands.</span>
+    <span class="doccomment">/// * `controller_manager_rx`: Channel receiving management commands.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">protocol_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">ProtocolSettings</span>,
         <span class="ident">operation_validity_periods</span>: <span class="ident">u64</span>,
@@ -1792,15 +1795,15 @@
     }
 
     <span class="doccomment">/// Main protocol worker loop. Consumes self.</span>
-    <span class="doccomment">/// It is mostly a tokio::select inside a loop</span>
+    <span class="doccomment">/// It is mostly a `tokio::select!` inside a loop</span>
     <span class="doccomment">/// waiting on :</span>
-    <span class="doccomment">/// - controller_command_rx</span>
-    <span class="doccomment">/// - network_controller</span>
-    <span class="doccomment">/// - handshake_futures</span>
-    <span class="doccomment">/// - node_event_rx</span>
+    <span class="doccomment">/// - `controller_command_rx`</span>
+    <span class="doccomment">/// - `network_controller`</span>
+    <span class="doccomment">/// - `handshake_futures`</span>
+    <span class="doccomment">/// - `node_event_rx`</span>
     <span class="doccomment">/// And at the end every thing is closed properly</span>
     <span class="doccomment">/// Consensus work is managed here.</span>
-    <span class="doccomment">/// It&#39;s mostly a tokio::select within a loop.</span>
+    <span class="doccomment">/// It&#39;s mostly a `tokio::select!` within a loop.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run_loop</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NetworkEventReceiver</span>, <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
         <span class="comment">// TODO: Config variable for the moment 10000 (prune) (100 seconds)</span>
         <span class="kw">let</span> <span class="ident">operation_prune_timer</span> <span class="op">=</span> <span class="ident">sleep</span>(
@@ -1820,7 +1823,7 @@
                 select! without the &quot;biased&quot; modifier will randomly select the 1st branch to check,
                 then will check the next ones in the order they are written.
                 We choose this order:
-                    * manager commands: low freq, avoid havign to wait to stop
+                    * manager commands: low freq, avoid having to wait to stop
                     * incoming commands (high frequency): process commands in priority (this is a high-level crate so we prioritize this side to avoid slowing down consensus)
                     * network events (high frequency): process incoming events
                     * ask for blocks (timing not important)
@@ -2319,7 +2322,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Checks performed on Header:</span>
     <span class="doccomment">/// - Not genesis.</span>
-    <span class="doccomment">/// - Can compute a BlockId.</span>
+    <span class="doccomment">/// - Can compute a `BlockId`.</span>
     <span class="doccomment">/// - Valid signature.</span>
     <span class="doccomment">/// - Absence of duplicate endorsements.</span>
     <span class="doccomment">///</span>
@@ -2423,21 +2426,21 @@
         <span class="kw">for</span> <span class="ident">endorsement</span> <span class="kw">in</span> <span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">endorsements</span>.<span class="ident">iter</span>() {
             <span class="comment">// check index reuse</span>
             <span class="kw">if</span> <span class="op">!</span><span class="ident">used_endorsement_indices</span>.<span class="ident">insert</span>(<span class="ident">endorsement</span>.<span class="ident">content</span>.<span class="ident">index</span>) {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.check_header.err_endorsement_index_reused&quot;</span>, { <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;edorsement&quot;</span>: <span class="ident">endorsement</span>});
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.check_header.err_endorsement_index_reused&quot;</span>, { <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;endorsement&quot;</span>: <span class="ident">endorsement</span>});
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
             }
             <span class="comment">// check slot</span>
             <span class="kw">if</span> (<span class="ident">endorsement</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">thread</span> <span class="op">!</span><span class="op">=</span> <span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">thread</span>)
                 <span class="op">|</span><span class="op">|</span> (<span class="ident">endorsement</span>.<span class="ident">content</span>.<span class="ident">slot</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>)
             {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.check_header.err_endorsement_invalid_slot&quot;</span>, { <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;edorsement&quot;</span>: <span class="ident">endorsement</span>});
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.check_header.err_endorsement_invalid_slot&quot;</span>, { <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;endorsement&quot;</span>: <span class="ident">endorsement</span>});
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
             }
             <span class="comment">// check endorsed block</span>
             <span class="kw">if</span> <span class="ident">endorsement</span>.<span class="ident">content</span>.<span class="ident">endorsed_block</span>
                 <span class="op">!</span><span class="op">=</span> <span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">parents</span>[<span class="ident">header</span>.<span class="ident">content</span>.<span class="ident">slot</span>.<span class="ident">thread</span> <span class="kw">as</span> <span class="ident">usize</span>]
             {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.check_header.err_endorsement_invalid_endorsed_block&quot;</span>, { <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;edorsement&quot;</span>: <span class="ident">endorsement</span>});
+                <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.check_header.err_endorsement_invalid_endorsed_block&quot;</span>, { <span class="string">&quot;header&quot;</span>: <span class="ident">header</span>, <span class="string">&quot;endorsement&quot;</span>: <span class="ident">endorsement</span>});
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
             }
         }
@@ -2472,21 +2475,21 @@
         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
     }
 
-    <span class="doccomment">/// Prune checked_endorsements if it is too large</span>
+    <span class="doccomment">/// Prune `checked_endorsements` if it is too large</span>
     <span class="kw">fn</span> <span class="ident">prune_checked_endorsements</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">checked_endorsements</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_known_endorsements_size</span> {
             <span class="self">self</span>.<span class="ident">checked_endorsements</span>.<span class="ident">clear</span>();
         }
     }
 
-    <span class="doccomment">/// Prune checked operations if it has grown too large.</span>
+    <span class="doccomment">/// Prune `checked_operations` if it has grown too large.</span>
     <span class="kw">fn</span> <span class="ident">prune_checked_operations</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">checked_operations</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_known_ops_size</span> {
             <span class="self">self</span>.<span class="ident">checked_operations</span>.<span class="ident">clear</span>();
         }
     }
 
-    <span class="doccomment">/// Prune checked_headers if it is too large</span>
+    <span class="doccomment">/// Prune `checked_headers` if it is too large</span>
     <span class="kw">fn</span> <span class="ident">prune_checked_headers</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">checked_headers</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">protocol_settings</span>.<span class="ident">max_node_known_blocks_size</span> {
             <span class="self">self</span>.<span class="ident">checked_headers</span>.<span class="ident">clear</span>();
@@ -2497,10 +2500,10 @@
     <span class="doccomment">/// Does not ban if the block is invalid.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Checks performed:</span>
-    <span class="doccomment">/// - Check the header(see note_header_from_node).</span>
-    <span class="doccomment">/// - Check operations(see note_operations_from_node).</span>
+    <span class="doccomment">/// - Check the header(see `note_header_from_node`).</span>
+    <span class="doccomment">/// - Check operations(see `note_operations_from_node`).</span>
     <span class="doccomment">/// - Check operations:</span>
-    <span class="doccomment">///     - Absense of duplicates.</span>
+    <span class="doccomment">///     - Absence of duplicates.</span>
     <span class="doccomment">///     - Validity period includes the slot of the block.</span>
     <span class="doccomment">///     - Address matches that of the block.</span>
     <span class="doccomment">///     - Thread matches that of the block.</span>
@@ -2611,7 +2614,7 @@
     <span class="doccomment">/// - a list of seen operation ids, for use in checking the root hash of the block.</span>
     <span class="doccomment">/// - a map of seen operations with indices and validity periods to avoid recomputing them later</span>
     <span class="doccomment">/// - a boolean indicating whether duplicate operations were noted.</span>
-    <span class="doccomment">/// - the sum of all operation&#39;s max_gas.</span>
+    <span class="doccomment">/// - the sum of all operation&#39;s `max_gas`.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Checks performed:</span>
     <span class="doccomment">/// - Valid signature</span>
@@ -2738,7 +2741,8 @@
     <span class="doccomment">/// Only used by the worker.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Argument</span>
-    <span class="doccomment">/// evt: event to process</span>
+    <span class="doccomment">/// `evt`: event to process</span>
+    <span class="doccomment">/// `block_ask_timer`: Timer to update to the next time we are able to ask a block</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_network_event</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">evt</span>: <span class="ident">NetworkEvent</span>,
@@ -2902,7 +2906,7 @@
         <span class="ident">BlockId</span>(<span class="ident">Hash::compute_from</span>(<span class="ident">s</span>.<span class="ident">as_bytes</span>()))
     }
 
-    <span class="doccomment">/// Test the pruning behavior of NodeInfo::insert_wanted_block</span>
+    <span class="doccomment">/// Test the pruning behavior of `NodeInfo::insert_wanted_block`</span>
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="attribute">#[<span class="ident">serial</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_node_info_wanted_blocks_pruning</span>() {
@@ -2932,7 +2936,7 @@
             <span class="string">&quot;wanted_blocks pruning incorrect&quot;</span>
         );
 
-        <span class="comment">// ensure that there are max_node_known_blocks_size entries for knwon blocks</span>
+        <span class="comment">// ensure that there are max_node_known_blocks_size entries for known blocks</span>
         <span class="macro">assert_eq!</span>(
             <span class="ident">nodeinfo</span>.<span class="ident">known_blocks</span>.<span class="ident">len</span>(),
             <span class="ident">max_node_known_blocks_size</span>,

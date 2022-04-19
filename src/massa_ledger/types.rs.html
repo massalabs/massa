@@ -123,11 +123,11 @@
 
 <span class="doccomment">/// Trait marking a structure that supports another one (V) being applied to it</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Applicable</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// apply changes from other to mut self</span>
+    <span class="doccomment">/// apply changes from other to mutable self</span>
     <span class="kw">fn</span> <span class="ident">apply</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="kw">_</span>: <span class="ident">V</span>);
 }
 
-<span class="doccomment">/// Enum representing set/update/delete change on a value T</span>
+<span class="doccomment">/// Enumeration representing set/update/delete change on a value T</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SetUpdateOrDelete</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Default</span> <span class="op">+</span> <span class="ident">Applicable</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>, <span class="ident">V</span>: <span class="ident">Applicable</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Sets the value T a new absolute value T</span>
@@ -137,14 +137,14 @@
     <span class="doccomment">/// If the value T doesn&#39;t exist:</span>
     <span class="doccomment">/// a `new_t = T::default()` is created,</span>
     <span class="doccomment">/// the update V is applied to it,</span>
-    <span class="doccomment">/// and the enum is changed to `SetUpdateOrDelete::Set(new_t)`</span>
+    <span class="doccomment">/// and the enumeration is changed to `SetUpdateOrDelete::Set(new_t)`</span>
     <span class="ident">Update</span>(<span class="ident">V</span>),
 
     <span class="doccomment">/// Deletes the value T</span>
     <span class="ident">Delete</span>,
 }
 
-<span class="doccomment">/// support applying another SetUpdateOrDelete to self</span>
+<span class="doccomment">/// Support applying another `SetUpdateOrDelete` to self</span>
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Default</span> <span class="op">+</span> <span class="ident">Applicable</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>, <span class="ident">V</span>: <span class="ident">Applicable</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">Applicable</span><span class="op">&lt;</span><span class="ident">SetUpdateOrDelete</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">V</span><span class="op">&gt;</span><span class="op">&gt;</span>
     <span class="kw">for</span> <span class="ident">SetUpdateOrDelete</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">V</span><span class="op">&gt;</span>
 <span class="kw">where</span>
@@ -178,7 +178,7 @@
     }
 }
 
-<span class="doccomment">/// Enum representing a set/delete change on a value T</span>
+<span class="doccomment">/// `Enum` representing a set/delete change on a value T</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SetOrDelete</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Clone</span><span class="op">&gt;</span> {
     <span class="doccomment">/// sets a new absolute value T</span>
@@ -188,7 +188,7 @@
     <span class="ident">Delete</span>,
 }
 
-<span class="doccomment">/// allows applying another SetOrDelete to the current one</span>
+<span class="doccomment">/// allows applying another `SetOrDelete` to the current one</span>
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Clone</span><span class="op">&gt;</span> <span class="ident">Applicable</span><span class="op">&lt;</span><span class="ident">SetOrDelete</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SetOrDelete</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">apply</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="self">Self</span>) {
         <span class="kw-2">*</span><span class="self">self</span> <span class="op">=</span> <span class="ident">other</span>;
@@ -205,7 +205,7 @@
     <span class="ident">Keep</span>,
 }
 
-<span class="doccomment">/// allows applying another SetOrKeep to the current one</span>
+<span class="doccomment">/// allows applying another `SetOrKeep` to the current one</span>
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Clone</span><span class="op">&gt;</span> <span class="ident">Applicable</span><span class="op">&lt;</span><span class="ident">SetOrKeep</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SetOrKeep</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">apply</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="ident">SetOrKeep</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) {
         <span class="kw">if</span> <span class="kw">let</span> <span class="ident">v</span> @ <span class="ident">SetOrKeep::Set</span>(..) <span class="op">=</span> <span class="ident">other</span> {
@@ -216,7 +216,7 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Clone</span><span class="op">&gt;</span> <span class="ident">SetOrKeep</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// applies the current SetOrKeep to a target mutable value</span>
+    <span class="doccomment">/// applies the current `SetOrKeep` to a target mutable value</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_to</span>(<span class="self">self</span>, <span class="ident">val</span>: <span class="kw-2">&amp;mut</span> <span class="ident">T</span>) {
         <span class="kw">if</span> <span class="kw">let</span> <span class="ident">SetOrKeep::Set</span>(<span class="ident">v</span>) <span class="op">=</span> <span class="self">self</span> {
             <span class="comment">// only change the value if self is setting a new one</span>
@@ -225,7 +225,7 @@
     }
 }
 
-<span class="doccomment">/// By default, SetOrKeep keeps the existing value</span>
+<span class="doccomment">/// By default, `SetOrKeep` keeps the existing value</span>
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Clone</span><span class="op">&gt;</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">SetOrKeep</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">SetOrKeep::Keep</span>

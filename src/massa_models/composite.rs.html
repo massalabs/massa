@@ -114,7 +114,7 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">OperationSearchResultStatus</span> {
     <span class="doccomment">/// in pool</span>
     <span class="ident">Pending</span>,
-    <span class="doccomment">/// in a block, the block being in [OperationSearchResultBlockStatus]</span>
+    <span class="doccomment">/// in a block, the block being in `[OperationSearchResultBlockStatus]`</span>
     <span class="ident">InBlock</span>(<span class="ident">OperationSearchResultBlockStatus</span>),
     <span class="doccomment">/// discarded</span>
     <span class="ident">Discarded</span>,
@@ -149,7 +149,7 @@
     <span class="doccomment">/// if that cycle is final</span>
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// map address to produced valid block count and not valid but expected block count</span>
-    <span class="doccomment">/// really a re arranged [crate::address::AddressCycleProductionStats]</span>
+    <span class="doccomment">/// really a re arranged `[crate::address::AddressCycleProductionStats]`</span>
     <span class="kw">pub</span> <span class="ident">ok_nok_counts</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">u64</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
 }
 

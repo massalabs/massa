@@ -78,7 +78,7 @@
 <span id="73">73</span>
 <span id="74">74</span>
 <span id="75">75</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Build a settings for an object that implement massa_settings</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Build a settings for an object that implement `massa_settings`</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ---</span>
 <span class="doccomment">//! The massa node configuration is composed from 2 parts, one part is the</span>
@@ -89,12 +89,12 @@
 <span class="doccomment">//! in the `path` described in the environment variable `MASSA_CONFIG_PATH`.</span>
 <span class="doccomment">//! If no path found in the environment variable, the relative path</span>
 <span class="doccomment">//! `base_config/config.toml` is used as default. The default path should exist</span>
-<span class="doccomment">//! because it&#39;s a config file pushed in the repository.</span>
+<span class="doccomment">//! because it&#39;s a configuration file pushed in the repository.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! The next step will try to read the file at the given path. It will `panic`</span>
 <span class="doccomment">//! if no file found.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! Whatever configuration you used (the one from de environment variable or the</span>
+<span class="doccomment">//! Whatever configuration you used (the one from the environment variable or the</span>
 <span class="doccomment">//! default one) You always have a next possibility. Using the default path of</span>
 <span class="doccomment">//! configuration for the massa-project. The default configuration directories</span>
 <span class="doccomment">//! is set on Setting creation. All the configuration in this file will be merged</span>
@@ -109,8 +109,8 @@
 
 <span class="doccomment">/// Merge the settings</span>
 <span class="doccomment">/// 1. default</span>
-<span class="doccomment">/// 2. in path specified in MASSA_CONFIG_PATH env variable (&quot;base_config/config.toml&quot; by default)</span>
-<span class="doccomment">/// 3. in path specified in MASSA_CONFIG_OVERRIDE_PATH env variable (&quot;config/config.toml&quot; by default)</span>
+<span class="doccomment">/// 2. in path specified in `MASSA_CONFIG_PATH` environment variable (`base_config/config.toml` by default)</span>
+<span class="doccomment">/// 3. in path specified in `MASSA_CONFIG_OVERRIDE_PATH` environment variable (`config/config.toml` by default)</span>
 <span class="attribute">#[<span class="ident">inline</span>]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build_massa_settings</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">app_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">env_prefix</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">T</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">settings</span> <span class="op">=</span> <span class="ident">config::Config::default</span>();

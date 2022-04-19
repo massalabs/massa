@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["NodeId","NodeId wraps a public key to uniquely identify a node."]]});
+initSidebarItems({"struct":[["NodeId","`NodeId` wraps a public key to uniquely identify a node."]]});

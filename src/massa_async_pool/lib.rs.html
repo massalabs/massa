@@ -116,9 +116,9 @@
 
 <span class="doccomment">//! # General description</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! This crate implements a consensual/deterministic pool of asynchronous messages (AsyncPool) within the context of autonomous smart contracts.</span>
+<span class="doccomment">//! This crate implements a consensual/deterministic pool of asynchronous messages (`AsyncPool`) within the context of autonomous smart contracts.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! AsyncPool is used in conjunction with FinalLedger within the FinalState, but also as a speculative copy for speculative execution.</span>
+<span class="doccomment">//! `AsyncPool` is used in conjunction with `FinalLedger` within the `FinalState`, but also as a speculative copy for speculative execution.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## Goal</span>
 <span class="doccomment">//!</span>
@@ -146,16 +146,16 @@
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## How to send a message during bytecode execution</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! * messages are sent using an ABI: `send_message(target_addrress, target_handler, validity_start, validity_end, max_gas, gas_price, coins, data: JSON string) -&gt; Result&lt;(), ABIReturnError&gt;`. Note that data has a config defined max_async_message_data_size.</span>
+<span class="doccomment">//! * messages are sent using an ABI: `send_message(target_address, target_handler, validity_start, validity_end, max_gas, gas_price, coins, data: JSON string) -&gt; Result&lt;(), ABIReturnError&gt;`. Note that data has a configuration defined `max_async_message_data_size`.</span>
 <span class="doccomment">//! * when called, this ABI does this:</span>
 <span class="doccomment">//!   * it consumes `compute_gas_cost_of_message_storage(context.current_slot, validity_end_slot)` of gas in the current execution. This allows making the message emission more gas-consuming when it requires storing the message in queue for longer</span>
 <span class="doccomment">//!   * it consumes `max_gas * gas_price + coins` coins from the sender</span>
-<span class="doccomment">//!   * it generates an AsyncMessage and stores it in an Async pool</span>
+<span class="doccomment">//!   * it generates an `AsyncMessage` and stores it in an asynchronous pool</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Note that `max_gas*gas_price` coins are burned when sending the message.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! ## How is the AsyncPool handled</span>
-<span class="doccomment">//!</span>
+<span class="doccomment">//! ## How is the `AsyncPool` handled</span>
+<span class="doccomment">//! ```md</span>
 <span class="doccomment">//! * In the AsyncPool, Messages are kept sorted by `priority = AsyncMessageId(msg.max_gas * msg.gas_price, rev(msg.slot), rev(msg.emission_index))`</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! * when an AsyncMessage is added to the AsyncPool:</span>
@@ -179,26 +179,26 @@
 <span class="doccomment">//!</span>
 <span class="doccomment">//! * define a public exported handler function taking 1 parameter (the message data)</span>
 <span class="doccomment">//! * this function will be called when a message is processed with the right `destination` and `handler`</span>
-<span class="doccomment">//!</span>
+<span class="doccomment">//! ```</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Architecture</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## message.rs</span>
-<span class="doccomment">//! Defines AsyncMessage that represents an asynchronous message.</span>
+<span class="doccomment">//! Defines `AsyncMessage` that represents an asynchronous message.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## pool.rs</span>
-<span class="doccomment">//! Defines the AsyncPool that manipulates a list of AsyncMessages sorted by priority.</span>
+<span class="doccomment">//! Defines the `AsyncPool` that manipulates a list of `AsyncMessages` sorted by priority.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## changes.rs</span>
-<span class="doccomment">//! Represents and manipulates changes (message additions/deletions) in the AsyncPool.</span>
+<span class="doccomment">//! Represents and manipulates changes (message additions/deletions) in the `AsyncPool`.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## bootstrap.rs</span>
-<span class="doccomment">//! Provides serializable strucutres and tools for bootstrapping the async pool.</span>
+<span class="doccomment">//! Provides serializable structures and tools for bootstrapping the asynchronous pool.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## Test exports</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.</span>
-<span class="doccomment">//! See test_exports/mod.rs for details.</span>
+<span class="doccomment">//! See `test_exports/mod.rs` for details.</span>
 
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">map_first_last</span>)]</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">btree_drain_filter</span>)]</span>

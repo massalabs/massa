@@ -239,7 +239,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BootstrapableGraph</span> {
     <span class="doccomment">/// Map of active blocks, were blocks are in their exported version.</span>
     <span class="kw">pub</span> <span class="ident">active_blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">ExportActiveBlock</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Best parents hash in each thread.</span>
+    <span class="doccomment">/// Best parents hashes in each thread.</span>
     <span class="kw">pub</span> <span class="ident">best_parents</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Latest final period and block hash in each thread.</span>
     <span class="kw">pub</span> <span class="ident">latest_final_blocks_periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,

@@ -431,16 +431,16 @@
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OperationPool</span> {
     <span class="ident">ops</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, <span class="ident">WrappedOperation</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// one vec per thread</span>
+    <span class="doccomment">/// one vector per thread</span>
     <span class="ident">ops_by_thread_and_interest</span>:
         <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span>(<span class="ident">std::cmp::Reverse</span><span class="op">&lt;</span><span class="ident">num::rational::Ratio</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationId</span>)<span class="op">&gt;</span><span class="op">&gt;</span>, <span class="comment">// [thread][order by: (rev rentability, OperationId)]</span>
-    <span class="doccomment">/// Maps Addres -&gt; Op id</span>
+    <span class="doccomment">/// Maps Address -&gt; Op id</span>
     <span class="ident">ops_by_address</span>: <span class="ident">OperationIndex</span>,
     <span class="doccomment">/// latest final blocks periods</span>
     <span class="ident">last_final_periods</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
     <span class="doccomment">/// current slot</span>
     <span class="ident">current_slot</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// config</span>
+    <span class="doccomment">/// configuration</span>
     <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">PoolConfig</span>,
     <span class="doccomment">/// ids of operations that are final with expire period and thread</span>
     <span class="ident">final_operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">OperationId</span>, (<span class="ident">u64</span>, <span class="ident">u8</span>)<span class="op">&gt;</span>,
@@ -636,8 +636,8 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Get max_count operation for thread block_slot.thread</span>
-    <span class="doccomment">/// if vec is not full that means that there is no more interesting transactions left</span>
+    <span class="doccomment">/// Get `max_count` operation for thread `block_slot.thread`</span>
+    <span class="doccomment">/// if vector is not full that means that there is no more interesting transactions left</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_operation_batch</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">block_slot</span>: <span class="ident">Slot</span>,

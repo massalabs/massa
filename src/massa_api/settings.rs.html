@@ -27,14 +27,14 @@
 <span class="kw">use</span> <span class="ident">std::net::SocketAddr</span>;
 
 <span class="doccomment">/// API settings.</span>
-<span class="doccomment">/// the api settings</span>
+<span class="doccomment">/// the API settings</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">APISettings</span> {
-    <span class="doccomment">/// when looking for next draw we want to look at max draw_lookahead_period_count</span>
+    <span class="doccomment">/// when looking for next draw we want to look at max `draw_lookahead_period_count`</span>
     <span class="kw">pub</span> <span class="ident">draw_lookahead_period_count</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// bind for the private api</span>
+    <span class="doccomment">/// bind for the private API</span>
     <span class="kw">pub</span> <span class="ident">bind_private</span>: <span class="ident">SocketAddr</span>,
-    <span class="doccomment">/// bind for the public api</span>
+    <span class="doccomment">/// bind for the public API</span>
     <span class="kw">pub</span> <span class="ident">bind_public</span>: <span class="ident">SocketAddr</span>,
     <span class="doccomment">/// max argument count</span>
     <span class="kw">pub</span> <span class="ident">max_arguments</span>: <span class="ident">u64</span>,

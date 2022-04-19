@@ -64,7 +64,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ModelsError</span>;
 
 <span class="kw">const</span> <span class="ident">NODE_ID_STRING_PREFIX</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;NOD&quot;</span>;
-<span class="doccomment">/// NodeId wraps a public key to uniquely identify a node.</span>
+<span class="doccomment">/// `NodeId` wraps a public key to uniquely identify a node.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Deserialize</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Ord</span>, <span class="ident">PartialEq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeId</span>(<span class="kw">pub</span> <span class="ident">PublicKey</span>);
 

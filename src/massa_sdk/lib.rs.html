@@ -349,21 +349,21 @@
             .<span class="kw">await</span>
     }
 
-    <span class="doccomment">/// Add a vec of new private keys for the node to use to stake.</span>
+    <span class="doccomment">/// Add a vector of new private keys for the node to use to stake.</span>
     <span class="doccomment">/// No confirmation to expect.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_staking_private_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">private_keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;add_staking_private_keys&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">private_keys</span>])
             .<span class="kw">await</span>
     }
 
-    <span class="doccomment">/// Remove a vec of addresses used to stake.</span>
+    <span class="doccomment">/// Remove a vector of addresses used to stake.</span>
     <span class="doccomment">/// No confirmation to expect.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">remove_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;remove_staking_addresses&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">addresses</span>])
             .<span class="kw">await</span>
     }
 
-    <span class="doccomment">/// Return hashset of staking addresses.</span>
+    <span class="doccomment">/// Return hash-set of staking addresses.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_staking_addresses&quot;</span>, <span class="string">&quot;Set&lt;Address&gt;&quot;</span>, ())
             .<span class="kw">await</span>
@@ -375,19 +375,19 @@
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;ban&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
     }
 
-    <span class="doccomment">/// Unbans given ip addr</span>
+    <span class="doccomment">/// Unban given ip address</span>
     <span class="doccomment">/// No confirmation to expect.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">unban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;unban&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
     }
 
-    <span class="doccomment">/// add ips to whitelist</span>
+    <span class="doccomment">/// add IPs to whitelist</span>
     <span class="doccomment">/// create peer if it was unknown</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_whitelist&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>]).<span class="kw">await</span>
     }
 
-    <span class="doccomment">/// remove ips from whitelist</span>
+    <span class="doccomment">/// remove IPs from whitelist</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">node_remove_from_whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;node_remove_from_whitelist&quot;</span>, <span class="string">&quot;()&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ips</span>])
             .<span class="kw">await</span>
@@ -438,14 +438,14 @@
         .<span class="kw">await</span>
     }
 
-    <span class="doccomment">/// Get information on a block given its BlockId</span>
+    <span class="doccomment">/// Get information on a block given its `BlockId`</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">block_id</span>: <span class="ident">BlockId</span>) -&gt; <span class="ident">RpcResult</span><span class="op">&lt;</span><span class="ident">BlockInfo</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">call_method</span>(<span class="string">&quot;get_block&quot;</span>, <span class="string">&quot;BlockInfo&quot;</span>, <span class="macro">vec!</span>[<span class="ident">block_id</span>])
             .<span class="kw">await</span>
     }
 
     <span class="doccomment">/// Get the block graph within the specified time interval.</span>
-    <span class="doccomment">/// Optional parameters: from &lt;time_start&gt; (included) and to &lt;time_end&gt; (excluded) millisecond timestamp</span>
+    <span class="doccomment">/// Optional parameters: from `&lt;time_start&gt;` (included) and to `&lt;time_end&gt;` (excluded) millisecond timestamp</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">_get_graph_interval</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">time_interval</span>: <span class="ident">TimeInterval</span>,

@@ -240,7 +240,7 @@
 <span class="kw">impl</span> <span class="ident">PreHashed</span> <span class="kw">for</span> <span class="ident">Address</span> {}
 
 <span class="kw">impl</span> <span class="ident">Address</span> {
-    <span class="doccomment">/// Gets the associated thread. Depends on the thread_count</span>
+    <span class="doccomment">/// Gets the associated thread. Depends on the `thread_count`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_thread</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">thread_count</span>: <span class="ident">u8</span>) -&gt; <span class="ident">u8</span> {
         (<span class="self">self</span>.<span class="ident">to_bytes</span>()[<span class="number">0</span>])
             .<span class="ident">checked_shr</span>(<span class="number">8</span> <span class="op">-</span> <span class="ident">thread_count</span>.<span class="ident">trailing_zeros</span>())
@@ -354,14 +354,14 @@
     <span class="kw">pub</span> <span class="ident">cycle</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// true if that cycle is final</span>
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
-    <span class="doccomment">/// ok_count blocks were created by this address during that cycle</span>
+    <span class="doccomment">/// `ok_count` blocks were created by this address during that cycle</span>
     <span class="kw">pub</span> <span class="ident">ok_count</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// ok_count blocks were missed by this address during that cycle</span>
+    <span class="doccomment">/// `ok_count` blocks were missed by this address during that cycle</span>
     <span class="kw">pub</span> <span class="ident">nok_count</span>: <span class="ident">u64</span>,
 }
 
 <span class="doccomment">/// Address state as know by consensus</span>
-<span class="doccomment">/// Used to answer to api</span>
+<span class="doccomment">/// Used to answer to API</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AddressState</span> {
     <span class="doccomment">/// Parallel balance information</span>

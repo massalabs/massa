@@ -385,9 +385,9 @@
 <span class="doccomment">/// Creates a new pool controller.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * pool_settings: pool configuration</span>
-<span class="doccomment">/// * protocol_command_sender: a ProtocolCommandSender instance to send commands to Protocol.</span>
-<span class="doccomment">/// * protocol_pool_event_receiver: a ProtocolPoolEventReceiver instance to receive pool events from Protocol.</span>
+<span class="doccomment">/// * `pool_settings`: pool configuration</span>
+<span class="doccomment">/// * `protocol_command_sender`: a `ProtocolCommandSender` instance to send commands to Protocol.</span>
+<span class="doccomment">/// * `protocol_pool_event_receiver`: a `ProtocolPoolEventReceiver` instance to receive pool events from `Protocol`.</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">start_pool_controller</span>(
     <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">PoolConfig</span>,
     <span class="ident">protocol_command_sender</span>: <span class="ident">ProtocolCommandSender</span>,
@@ -507,7 +507,7 @@
     }
 
     <span class="doccomment">/// Returns a batch of operations ordered from highest to lowest rentability</span>
-    <span class="doccomment">/// Return value: vector of (OperationId, Operation, operation_size: u64)</span>
+    <span class="doccomment">/// Return value: vector of `(OperationId, Operation, operation_size: u64)`</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_get_operations_announcement</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">target_slot</span>: <span class="ident">Slot</span>,

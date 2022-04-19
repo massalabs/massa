@@ -51,7 +51,7 @@
 <span id="46">46</span>
 </pre><pre class="rust"><code><span class="doccomment">///! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="doccomment">///! This file provides structures representing changes to the async message pool</span>
+<span class="doccomment">///! This file provides structures representing changes to the asynchronous message pool</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::message</span>::{<span class="ident">AsyncMessage</span>, <span class="ident">AsyncMessageId</span>};
 
 <span class="doccomment">/// Enum representing a value U with identifier T being added or deleted</span>
@@ -64,12 +64,12 @@
     <span class="ident">Delete</span>(<span class="ident">T</span>),
 }
 
-<span class="doccomment">/// represents a list of additions and deletions to the async message pool</span>
+<span class="doccomment">/// represents a list of additions and deletions to the asynchronous message pool</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AsyncPoolChanges</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Change</span><span class="op">&lt;</span><span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessage</span><span class="op">&gt;</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">AsyncPoolChanges</span> {
-    <span class="doccomment">/// Extends self with another another AsyncPoolChanges.</span>
+    <span class="doccomment">/// Extends self with another another `AsyncPoolChanges`.</span>
     <span class="doccomment">/// This simply appends the contents of other to self.</span>
     <span class="doccomment">/// No add/delete compensations are done.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extend</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="ident">AsyncPoolChanges</span>) {
@@ -80,8 +80,8 @@
     <span class="doccomment">/// No add/delete compensations are done.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Arguments:</span>
-    <span class="doccomment">/// * msg_id: ID of the message to push as added to the list of changes</span>
-    <span class="doccomment">/// * msg: message to push as added to the list of changes</span>
+    <span class="doccomment">/// * `msg_id`: ID of the message to push as added to the list of changes</span>
+    <span class="doccomment">/// * `msg`: message to push as added to the list of changes</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push_add</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">msg_id</span>: <span class="ident">AsyncMessageId</span>, <span class="ident">msg</span>: <span class="ident">AsyncMessage</span>) {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">push</span>(<span class="ident">Change::Add</span>(<span class="ident">msg_id</span>, <span class="ident">msg</span>));
     }
@@ -90,7 +90,7 @@
     <span class="doccomment">/// No add/delete compensations are done.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Arguments:</span>
-    <span class="doccomment">/// * msg_id: ID of the message to push as deleted to the list of changes</span>
+    <span class="doccomment">/// * `msg_id`: ID of the message to push as deleted to the list of changes</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push_delete</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">msg_id</span>: <span class="ident">AsyncMessageId</span>) {
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">push</span>(<span class="ident">Change::Delete</span>(<span class="ident">msg_id</span>));
     }

@@ -43,18 +43,18 @@
 <span class="kw">use</span> <span class="ident">num::rational::Ratio</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
-<span class="doccomment">/// Proof of stake config</span>
+<span class="doccomment">/// Proof of stake configuration</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProofOfStakeConfig</span> {
     <span class="doccomment">/// Number of threads</span>
     <span class="kw">pub</span> <span class="ident">thread_count</span>: <span class="ident">u8</span>,
-    <span class="doccomment">/// Private_key to sign genesis blocks.</span>
+    <span class="doccomment">/// `PrivateKey` to sign genesis blocks.</span>
     <span class="kw">pub</span> <span class="ident">genesis_key</span>: <span class="ident">PrivateKey</span>,
     <span class="doccomment">/// cycle duration in periods</span>
     <span class="kw">pub</span> <span class="ident">periods_per_cycle</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// PoS lookback cycles: when drawing for cycle N, we use the rolls from cycle N - pos_lookback_cycles - 1</span>
+    <span class="doccomment">/// PoS look back cycles: when drawing for cycle N, we use the rolls from `cycle N - pos_lookback_cycles - 1`</span>
     <span class="kw">pub</span> <span class="ident">pos_lookback_cycles</span>: <span class="ident">u64</span>,
-    <span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles</span>
+    <span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`</span>
     <span class="kw">pub</span> <span class="ident">pos_lock_cycles</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// number of cached draw cycles for PoS</span>
     <span class="kw">pub</span> <span class="ident">pos_draw_cached_cycles</span>: <span class="ident">usize</span>,

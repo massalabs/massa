@@ -397,7 +397,7 @@
 <span class="kw">use</span> <span class="ident">tokio::time::Instant</span>;
 
 <span class="doccomment">/// Time structure used everywhere.</span>
-<span class="doccomment">/// Millis since 01/01/1970.</span>
+<span class="doccomment">/// milliseconds since 01/01/1970.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Hash</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MassaTime</span>(<span class="ident">u64</span>);
 
@@ -430,7 +430,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MassaTime</span> {
-    <span class="doccomment">/// Conversion from u64, representing timestamp in millis.</span>
+    <span class="doccomment">/// Conversion from `u64`, representing timestamp in milliseconds.</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
     <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
@@ -441,7 +441,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Duration</span> {
-    <span class="doccomment">/// Conversion massa_time to duration, representing timestamp in millis.</span>
+    <span class="doccomment">/// Conversion from `massa_time` to duration, representing timestamp in milliseconds.</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use std::time::Duration;</span>
     <span class="doccomment">/// # use massa_time::*;</span>
@@ -477,7 +477,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">MassaTime</span> {
-    <span class="doccomment">/// Conversion from u64, representing timestamp in millis.</span>
+    <span class="doccomment">/// Conversion from `u64`, representing timestamp in milliseconds.</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
     <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>
@@ -489,10 +489,10 @@
     <span class="doccomment">/// Smallest time interval</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">EPSILON</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="ident">MassaTime</span>(<span class="number">1</span>);
 
-    <span class="doccomment">/// Gets current compensated unix timestamp (resolution: milliseconds).</span>
+    <span class="doccomment">/// Gets current compensated UNIX timestamp (resolution: milliseconds).</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Parameters</span>
-    <span class="doccomment">///   * compensation_millis: when the system clock is slightly off, this parameter allows correcting it by adding this signed number of milliseconds to the locally measured timestamp</span>
+    <span class="doccomment">///   * `compensation_millis`: when the system clock is slightly off, this parameter allows correcting it by adding this signed number of milliseconds to the locally measured timestamp</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use std::time::{Duration, SystemTime, UNIX_EPOCH};</span>
@@ -519,7 +519,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">MassaTime</span>(<span class="ident">compensated</span>))
     }
 
-    <span class="doccomment">/// Gets current unix timestamp (resolution: milliseconds).</span>
+    <span class="doccomment">/// Gets current UNIX timestamp (resolution: milliseconds).</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use std::time::{Duration, SystemTime, UNIX_EPOCH};</span>
@@ -554,7 +554,7 @@
         <span class="ident">Duration::from_millis</span>(<span class="self">self</span>.<span class="number">0</span>)
     }
 
-    <span class="doccomment">/// Conversion to u64, representing millis.</span>
+    <span class="doccomment">/// Conversion to `u64`, representing milliseconds.</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">/// # use massa_time::*;</span>
     <span class="doccomment">/// let time : MassaTime = MassaTime::from(42);</span>

@@ -296,7 +296,7 @@
 <span class="kw">use</span> <span class="ident">tracing::warn</span>;
 
 <span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="doccomment">/// Remove a given event_id from a `Set&lt;SCOutputEventId&gt;`</span>
+<span class="doccomment">/// Remove a given `event_id` from a `Set&lt;SCOutputEventId&gt;`</span>
 <span class="doccomment">/// The Set is stored into a map `ctnr` at a `key` address. If</span>
 <span class="doccomment">/// the Set resulted from the operation is empty, remove the entry</span>
 <span class="doccomment">/// from the `ctnr`</span>
@@ -321,7 +321,7 @@
 }
 
 <span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="doccomment">/// Remove a given event_id from a `Set&lt;SCOutputEventId&gt;`</span>
+<span class="doccomment">/// Remove a given `event_id` from a `Set&lt;SCOutputEventId&gt;`</span>
 <span class="doccomment">/// The Set is stored into a Hashmap `ctnr` at a `key` address. If</span>
 <span class="doccomment">/// the Set resulted from the operation is empty, remove the entry</span>
 <span class="doccomment">/// from the `ctnr`</span>
@@ -411,11 +411,11 @@
         <span class="self">self</span>.<span class="ident">operation_id_to_event_id</span>.<span class="ident">clear</span>();
     }
 
-    <span class="doccomment">/// Prune the exess of events from the event store,</span>
+    <span class="doccomment">/// Prune the excess of events from the event store,</span>
     <span class="doccomment">/// While there is a slot found, pop slots and get the `event_ids`</span>
     <span class="doccomment">/// inside, remove the event from divers containers.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Return directly if the event_size &lt;= max_final_events</span>
+    <span class="doccomment">/// Return directly if the `event_size &lt;= max_final_events`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prune</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">max_final_events</span>: <span class="ident">usize</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">events_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">id_to_event</span>.<span class="ident">len</span>();
         <span class="kw">if</span> <span class="ident">events_size</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">max_final_events</span> {
@@ -497,8 +497,8 @@
         })
     }
 
-    <span class="doccomment">/// get vec of event for given slot range (start included, end excluded)</span>
-    <span class="doccomment">/// Get events optionnally filtered by:</span>
+    <span class="doccomment">/// Get a vector of event for given slot range (start included, end excluded)</span>
+    <span class="doccomment">/// Get events optionally filtered by:</span>
     <span class="doccomment">/// * start slot (default Slot(0,0))</span>
     <span class="doccomment">/// * end slot   (default Slot(0,0))</span>
     <span class="doccomment">/// * emitter address</span>

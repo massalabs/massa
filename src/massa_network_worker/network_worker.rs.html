@@ -861,7 +861,7 @@
     <span class="doccomment">/// Node worker handles</span>
     <span class="ident">node_worker_handles</span>:
         <span class="ident">FuturesUnordered</span><span class="op">&lt;</span><span class="ident">JoinHandle</span><span class="op">&lt;</span>(<span class="ident">NodeId</span>, <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConnectionClosureReason</span>, <span class="ident">NetworkError</span><span class="op">&gt;</span>)<span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Map of connection to ip, is_outgoing.</span>
+    <span class="doccomment">/// Map of connection to ip, `is_outgoing`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">active_connections</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ConnectionId</span>, (<span class="ident">IpAddr</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Shared storage.</span>
     <span class="ident">storage</span>: <span class="ident">Storage</span>,
@@ -878,16 +878,16 @@
 }
 
 <span class="kw">impl</span> <span class="ident">NetworkWorker</span> {
-    <span class="doccomment">/// Creates a new NetworkWorker</span>
+    <span class="doccomment">/// Creates a new `NetworkWorker`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * cfg: Network configuration.</span>
-    <span class="doccomment">/// * listener: Listener part of the establisher.</span>
-    <span class="doccomment">/// * establisher: The connection establisher.</span>
-    <span class="doccomment">/// * peer_info_db: Database with peer information.</span>
-    <span class="doccomment">/// * controller_command_rx: Channel receiving network commands.</span>
-    <span class="doccomment">/// * controller_event_tx: Channel sending out network events.</span>
-    <span class="doccomment">/// * controller_manager_rx: Channel receiving network management commands.</span>
+    <span class="doccomment">/// * `cfg`: Network configuration.</span>
+    <span class="doccomment">/// * `listener`: Listener part of the establisher.</span>
+    <span class="doccomment">/// * `establisher`: The connection establisher.</span>
+    <span class="doccomment">/// * `peer_info_db`: Database with peer information.</span>
+    <span class="doccomment">/// * `controller_command_rx`: Channel receiving network commands.</span>
+    <span class="doccomment">/// * `controller_event_tx`: Channel sending out network events.</span>
+    <span class="doccomment">/// * `controller_manager_rx`: Channel receiving network management commands.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">cfg</span>: <span class="ident">NetworkSettings</span>,
@@ -930,8 +930,8 @@
         }
     }
 
-    <span class="doccomment">/// Runs the main loop of the network_worker</span>
-    <span class="doccomment">/// There is a tokio::select! inside the loop</span>
+    <span class="doccomment">/// Runs the main loop of the network worker</span>
+    <span class="doccomment">/// There is a `tokio::select!` inside the loop</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run_loop</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out_connecting_futures</span> <span class="op">=</span> <span class="ident">FuturesUnordered::new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cur_connection_id</span> <span class="op">=</span> <span class="ident">ConnectionId::default</span>();
@@ -1122,8 +1122,8 @@
     <span class="doccomment">/// Only used by the worker.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * new_connection_id: connection id of the connection that should be established here.</span>
-    <span class="doccomment">/// * outcome: result returned by a handshake.</span>
+    <span class="doccomment">/// * `new_connection_id`: connection id of the connection that should be established here.</span>
+    <span class="doccomment">/// * `outcome`: result returned by a handshake.</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_handshake_finished</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">new_connection_id</span>: <span class="ident">ConnectionId</span>,
@@ -1295,24 +1295,24 @@
     }
 
     <span class="doccomment">/// Manages network commands</span>
-    <span class="doccomment">/// Only used inside worker&#39;s run_loop</span>
+    <span class="doccomment">/// Only used inside worker&#39;s `run_loop`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * cmd : command to process.</span>
-    <span class="doccomment">/// * peer_info_db: Database with peer information.</span>
-    <span class="doccomment">/// * active_connections: hashmap linking connection id to ipAddr to</span>
+    <span class="doccomment">/// * `cmd` : command to process.</span>
+    <span class="doccomment">/// * `peer_info_db`: Database with peer information.</span>
+    <span class="doccomment">/// * `active_connections`: hashmap linking connection id to `ÌpAddr` to</span>
     <span class="doccomment">///   whether connection is outgoing (true)</span>
-    <span class="doccomment">/// * event_tx: channel to send network events out.</span>
+    <span class="doccomment">/// * `event_tx`: channel to send network events out.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Command implementation</span>
-    <span class="doccomment">/// Some of the commands are just forwarded to the NodeWorker that manage</span>
+    <span class="doccomment">/// Some of the commands are just forwarded to the `NodeWorker` that manage</span>
     <span class="doccomment">/// the real connection between nodes. Some other commands has an impact on</span>
     <span class="doccomment">/// the current worker.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Whatever the behavior of the command, we better have to look at</span>
     <span class="doccomment">/// `network_cmd_impl.rs` where the commands are implemented.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// ex: NetworkCommand::AskForBlocks =&gt; on_ask_bfor_block_cmd(...)</span>
+    <span class="doccomment">/// ex: `NetworkCommand::AskForBlocks` =&gt; `on_ask_bfor_block_cmd(...)`</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">manage_network_command</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cmd</span>: <span class="ident">NetworkCommand</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::network_cmd_impl</span>::<span class="kw-2">*</span>;
         <span class="kw">match</span> <span class="ident">cmd</span> {
@@ -1358,12 +1358,12 @@
     }
 
     <span class="doccomment">/// Manages out connection</span>
-    <span class="doccomment">/// Only used inside worker&#39;s run_loop</span>
+    <span class="doccomment">/// Only used inside worker&#39;s `run_loop`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * res : (reader, writer) in a result coming out of out_connecting_futures</span>
-    <span class="doccomment">/// * ip_addr: distant address we are trying to reach.</span>
-    <span class="doccomment">/// * cur_connection_id : connection id of the node we are trying to reach</span>
+    <span class="doccomment">/// * `res`: `(reader, writer)` in a result coming out of `out_connecting_futures`</span>
+    <span class="doccomment">/// * `ip_addr`: distant address we are trying to reach.</span>
+    <span class="doccomment">/// * `cur_connection_id`: connection id of the node we are trying to reach</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">manage_out_connections</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">res</span>: <span class="ident">tokio::io::Result</span><span class="op">&lt;</span>(<span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>)<span class="op">&gt;</span>,
@@ -1389,7 +1389,7 @@
                     <span class="ident">cur_connection_id</span>.<span class="number">0</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
                     <span class="self">self</span>.<span class="ident">active_connections</span>
                         .<span class="ident">insert</span>(<span class="ident">connection_id</span>, (<span class="ident">ip_addr</span>, <span class="bool-val">true</span>));
-                    <span class="self">self</span>.<span class="ident">manage_successfull_connection</span>(<span class="ident">connection_id</span>, <span class="ident">reader</span>, <span class="ident">writer</span>)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.<span class="ident">manage_successful_connection</span>(<span class="ident">connection_id</span>, <span class="ident">reader</span>, <span class="ident">writer</span>)<span class="question-mark">?</span>;
                 } <span class="kw">else</span> {
                     <span class="macro">debug!</span>(<span class="string">&quot;out connection towards ip={} refused&quot;</span>, <span class="ident">ip_addr</span>);
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;out_connection_refused&quot;</span>, { <span class="string">&quot;ip&quot;</span>: <span class="ident">ip_addr</span> });
@@ -1411,18 +1411,18 @@
     }
 
     <span class="doccomment">/// Manages in connection</span>
-    <span class="doccomment">/// Only used inside worker&#39;s run_loop</span>
+    <span class="doccomment">/// Only used inside worker&#39;s `run_loop`</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Try a connection with an incomming node, if success insert the remote</span>
+    <span class="doccomment">/// Try a connection with an incoming node, if success insert the remote</span>
     <span class="doccomment">/// address at the index `connection_id` inside `self.active_connections`</span>
-    <span class="doccomment">/// and call `self.manage_successfull_connection`</span>
+    <span class="doccomment">/// and call `self.manage_successful_connection`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// If the connection failed with `MaxPeersConnectionReached`, mock the</span>
     <span class="doccomment">/// handshake and send a list of advertisable peer ips.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * res : (reader, writer, socketAddr) in a result coming out of the listener</span>
-    <span class="doccomment">/// * cur_connection_id : connection id of the node we are trying to reach</span>
+    <span class="doccomment">/// * `re` : `(reader, writer, socketAddr)` in a result coming out of the listener</span>
+    <span class="doccomment">/// * `cur_connection_id`: connection id of the node we are trying to reach</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">manage_in_connections</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">res</span>: <span class="ident">std::io::Result</span><span class="op">&lt;</span>(<span class="ident">ReadHalf</span>, <span class="ident">WriteHalf</span>, <span class="ident">SocketAddr</span>)<span class="op">&gt;</span>,
@@ -1444,7 +1444,7 @@
                         <span class="ident">cur_connection_id</span>.<span class="number">0</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
                         <span class="self">self</span>.<span class="ident">active_connections</span>
                             .<span class="ident">insert</span>(<span class="ident">connection_id</span>, (<span class="ident">remote_addr</span>.<span class="ident">ip</span>(), <span class="bool-val">false</span>));
-                        <span class="self">self</span>.<span class="ident">manage_successfull_connection</span>(<span class="ident">connection_id</span>, <span class="ident">reader</span>, <span class="ident">writer</span>)<span class="question-mark">?</span>;
+                        <span class="self">self</span>.<span class="ident">manage_successful_connection</span>(<span class="ident">connection_id</span>, <span class="ident">reader</span>, <span class="ident">writer</span>)<span class="question-mark">?</span>;
                     }
                     <span class="prelude-val">Err</span>(<span class="ident">NetworkError::PeerConnectionError</span>(
                         <span class="ident">NetworkConnectionErrorType::MaxPeersConnectionReached</span>(<span class="kw">_</span>),
@@ -1480,12 +1480,12 @@
     <span class="doccomment">///        |                          |      : Connection success anyway</span>
     <span class="doccomment">///        |                          |        and the in connection enter</span>
     <span class="doccomment">///        |&lt;------------------------&gt;|        in `HandshakeWorker::run()`</span>
-    <span class="doccomment">///        |  symetric read &amp; write   |</span>
+    <span class="doccomment">///        |  symmetric read &amp; write   |</span>
     <span class="doccomment">///```</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// In the `symetric read &amp; write` the current node simulate a handshake</span>
+    <span class="doccomment">/// In the `symmetric read &amp; write` the current node simulate a handshake</span>
     <span class="doccomment">/// managed by the *connection node* in `HandshakeWorker::run()`, the</span>
-    <span class="doccomment">/// current node send a ListPeer as a message.</span>
+    <span class="doccomment">/// current node send a `ListPeer` as a message.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Spawn a future in `self.handshake_peer_list_futures` managed by the</span>
     <span class="doccomment">/// main loop.</span>
@@ -1523,13 +1523,13 @@
         }
     }
 
-    <span class="doccomment">/// Manage a successful incomming and outgoing connection,</span>
+    <span class="doccomment">/// Manage a successful incoming and outgoing connection,</span>
     <span class="doccomment">/// Check if we&#39;re not already running an handshake for `connection_id` by inserting the connection id in</span>
     <span class="doccomment">/// `self.running_handshakes`</span>
     <span class="doccomment">/// Add a new handshake to perform in `self.handshake_futures` to be handle in the main loop.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Return an hanshake error if connection already running/waiting</span>
-    <span class="kw">fn</span> <span class="ident">manage_successfull_connection</span>(
+    <span class="doccomment">/// Return an handshake error if connection already running/waiting</span>
+    <span class="kw">fn</span> <span class="ident">manage_successful_connection</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">connection_id</span>: <span class="ident">ConnectionId</span>,
         <span class="ident">reader</span>: <span class="ident">ReadHalf</span>,
@@ -1556,7 +1556,7 @@
     <span class="doccomment">/// Only used by the worker.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Argument</span>
-    <span class="doccomment">/// * evt: optional node event to process.</span>
+    <span class="doccomment">/// * `evt`: optional node event to process.</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_node_event</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">evt</span>: <span class="ident">NodeEvent</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
         <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::network_event</span>::<span class="kw-2">*</span>;
         <span class="kw">match</span> <span class="ident">evt</span> {

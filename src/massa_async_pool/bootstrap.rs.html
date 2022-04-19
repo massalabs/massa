@@ -61,7 +61,7 @@
 <span id="56">56</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="doccomment">//! Provides serializable structures for bootstrapping the AsyncPool</span>
+<span class="doccomment">//! Provides serializable structures for bootstrapping the `AsyncPool`</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::message::AsyncMessage</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
@@ -69,10 +69,10 @@
 };
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
-<span class="doccomment">/// Represents a snapshot of the async pool aimed at bootstrapping an AsyncPool</span>
+<span class="doccomment">/// Represents a snapshot of the asynchronous pool aimed at bootstrapping an `AsyncPool`</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AsyncPoolBootstrap</span> {
-    <span class="doccomment">/// list of async messages in no particular order</span>
+    <span class="doccomment">/// list of asynchronous messages in no particular order</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">messages</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AsyncMessage</span><span class="op">&gt;</span>,
 }
 

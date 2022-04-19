@@ -142,7 +142,7 @@
 };
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
-<span class="doccomment">/// Signed struct T where U is the associated id</span>
+<span class="doccomment">/// Signed structure T where U is the associated id</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Signed</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">U</span><span class="op">&gt;</span>
 <span class="kw">where</span>
@@ -157,7 +157,7 @@
     <span class="ident">phantom</span>: <span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>,
 }
 
-<span class="doccomment">/// Used by signed struct</span>
+<span class="doccomment">/// Used by signed structure</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Id</span> {
     <span class="doccomment">/// new id from hash</span>
     <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">hash</span>: <span class="ident">Hash</span>) -&gt; <span class="self">Self</span>;
@@ -175,7 +175,7 @@
     }
 }
 
-<span class="doccomment">/// impl if you want that struct to be signed</span>
+<span class="doccomment">/// implement if you want that structure to be signed</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Signable</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">U</span>: <span class="ident">Id</span>,
@@ -197,7 +197,7 @@
     <span class="ident">T</span>: <span class="ident">SerializeCompact</span> <span class="op">+</span> <span class="ident">DeserializeCompact</span> <span class="op">+</span> <span class="ident">Signable</span><span class="op">&lt;</span><span class="ident">U</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Display</span>,
     <span class="ident">U</span>: <span class="ident">Id</span>,
 {
-    <span class="doccomment">/// generate new signed struct and id</span>
+    <span class="doccomment">/// generate new signed structure and id</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_signed</span>(<span class="ident">content</span>: <span class="ident">T</span>, <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">PrivateKey</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">U</span>, <span class="self">Self</span>), <span class="ident">ModelsError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>((
             <span class="ident">content</span>.<span class="ident">compute_id</span>()<span class="question-mark">?</span>,

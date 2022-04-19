@@ -221,7 +221,7 @@
     <span class="ident">self_node_id</span>: <span class="ident">NodeId</span>,
     <span class="doccomment">/// Our private key.</span>
     <span class="ident">private_key</span>: <span class="ident">PrivateKey</span>,
-    <span class="doccomment">/// After timeout_duration millis, the handshake attempt is dropped.</span>
+    <span class="doccomment">/// After `timeout_duration` milliseconds, the handshake attempt is dropped.</span>
     <span class="ident">timeout_duration</span>: <span class="ident">MassaTime</span>,
     <span class="ident">version</span>: <span class="ident">Version</span>,
 }
@@ -231,18 +231,18 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Manage a new connection and perform a normal handshake</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Used for incomming and outgoing connections.</span>
-    <span class="doccomment">/// It will spawn a new future with an HandshakeWorker from the given `reader`</span>
+    <span class="doccomment">/// Used for incoming and outgoing connections.</span>
+    <span class="doccomment">/// It will spawn a new future with an `HandshakeWorker` from the given `reader`</span>
     <span class="doccomment">/// and `writer` from your current node to the distant `connectionId`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * socket_reader: receives data.</span>
-    <span class="doccomment">/// * socket_writer: sends data.</span>
-    <span class="doccomment">/// * self_node_id: our node id.</span>
-    <span class="doccomment">/// * private_key : our private key.</span>
-    <span class="doccomment">/// * timeout_duration: after timeout_duration millis, the handshake attempt is dropped.</span>
-    <span class="doccomment">/// * connection_id : Node we are trying to connect for debuging</span>
-    <span class="doccomment">/// * version : Node version used in handshake initialization (check peers compatibility)</span>
+    <span class="doccomment">/// * `socket_reader`: receives data.</span>
+    <span class="doccomment">/// * `socket_writer`: sends data.</span>
+    <span class="doccomment">/// * `self_node_id`: our node id.</span>
+    <span class="doccomment">/// * `private_key`: our private key.</span>
+    <span class="doccomment">/// * `timeout_duration`: after `timeout_duration` milliseconds, the handshake attempt is dropped.</span>
+    <span class="doccomment">/// * `connection_id`: Node we are trying to connect for debugging</span>
+    <span class="doccomment">/// * `version`: Node version used in handshake initialization (check peers compatibility)</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">spawn</span>(
         <span class="ident">socket_reader</span>: <span class="ident">ReadHalf</span>,
         <span class="ident">socket_writer</span>: <span class="ident">WriteHalf</span>,
@@ -277,7 +277,7 @@
 
     <span class="doccomment">/// Manages one on going handshake.</span>
     <span class="doccomment">/// Consumes self.</span>
-    <span class="doccomment">/// Returns a tuple (ConnectionId, Result).</span>
+    <span class="doccomment">/// Returns a tuple `(ConnectionId, Result)`.</span>
     <span class="doccomment">/// Creates the binders to communicate with that node.</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident">HandshakeReturnType</span> {
         <span class="comment">// generate random bytes</span>

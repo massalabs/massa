@@ -715,18 +715,18 @@
 
 <span class="doccomment">/// Proof of stake management</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProofOfStake</span> {
-    <span class="doccomment">/// Config</span>
+    <span class="doccomment">/// Configuration</span>
     <span class="ident">cfg</span>: <span class="ident">ProofOfStakeConfig</span>,
     <span class="doccomment">/// Index by thread and cycle number</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">cycle_states</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ThreadCycleState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Cycle draw cache: cycle_number =&gt; (counter, map(slot =&gt; (block_creator_addr, vec&lt;endorsement_creator_addr&gt;)))</span>
+    <span class="doccomment">/// Cycle draw cache: `cycle_number =&gt; (counter, map(slot =&gt; (block_creator_addr, Vec&lt;endorsement_creator_addr&gt;)))`</span>
     <span class="ident">draw_cache</span>: <span class="ident">DrawCache</span>,
     <span class="doccomment">/// how many cycle are kept in memory</span>
     <span class="ident">draw_cache_counter</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// Initial rolls: we keep them as long as negative cycle draws are needed</span>
     <span class="ident">initial_rolls</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RollCounts</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Initial seeds: they are lightweight, we always keep them</span>
-    <span class="doccomment">/// the seed for cycle -N is obtained by hashing N times the value ConsensusConfig.initial_draw_seed</span>
+    <span class="doccomment">/// the seed for cycle -N is obtained by hashing N times the value `ConsensusConfig.initial_draw_seed`</span>
     <span class="doccomment">/// the seeds are indexed from -1 to -N</span>
     <span class="ident">initial_seeds</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// watched addresses</span>
@@ -901,7 +901,7 @@
                     })<span class="question-mark">?</span>;
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">final_data</span>.<span class="ident">is_complete</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">periods_per_cycle</span>) {
                     <span class="comment">// the target cycle is not final yet</span>
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProofOfStakeError::PosCycleUnavailable</span>(<span class="macro">format!</span>(<span class="string">&quot;tryign to get PoS draw rolls/seed for cycle {} thread {} which is not finalized yet&quot;</span>, <span class="ident">target_cycle</span>, <span class="ident">scan_thread</span>)));
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProofOfStakeError::PosCycleUnavailable</span>(<span class="macro">format!</span>(<span class="string">&quot;trying to get PoS draw rolls/seed for cycle {} thread {} which is not finalized yet&quot;</span>, <span class="ident">target_cycle</span>, <span class="ident">scan_thread</span>)));
                 }
                 <span class="ident">rng_seed_bits</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">final_data</span>.<span class="ident">rng_seed</span>);
                 <span class="kw">for</span> (<span class="ident">addr</span>, <span class="kw-2">&amp;</span><span class="ident">n_rolls</span>) <span class="kw">in</span> <span class="ident">final_data</span>.<span class="ident">roll_count</span>.<span class="number">0</span>.<span class="ident">iter</span>() {
@@ -1024,7 +1024,7 @@
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">draw</span>(<span class="ident">slot</span>)<span class="question-mark">?</span>.<span class="number">0</span>)
     }
 
-    <span class="doccomment">/// returns (block producers, vec&lt;endorsement producers&gt;)</span>
+    <span class="doccomment">/// returns `(block producers, Vec&lt;endorsement producers&gt;)`</span>
     <span class="kw">fn</span> <span class="ident">draw</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) -&gt; <span class="ident">POSResult</span><span class="op">&lt;</span>(<span class="ident">Address</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>)<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cycle</span> <span class="op">=</span> <span class="ident">slot</span>.<span class="ident">get_cycle</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">periods_per_cycle</span>);
         <span class="kw">let</span> <span class="ident">cycle_draws</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_cycle_draws</span>(<span class="ident">cycle</span>)<span class="question-mark">?</span>;
@@ -1040,7 +1040,7 @@
     }
 
     <span class="doccomment">/// Update internal states after a set of blocks become final</span>
-    <span class="doccomment">/// see /consensus/pos.md#when-a-block-b-in-thread-tau-and-cycle-n-becomes-final</span>
+    <span class="doccomment">/// see `/consensus/pos.md#when-a-block-b-in-thread-tau-and-cycle-n-becomes-final`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">note_final_blocks</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">blocks</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="kw-2">&amp;</span><span class="ident">ActiveBlock</span><span class="op">&gt;</span>) -&gt; <span class="ident">POSResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="comment">// Update internal states after a set of blocks become final.</span>
 
@@ -1353,7 +1353,7 @@
         <span class="ident">res</span>
     }
 
-    <span class="doccomment">/// Gets cycle in which we are drawing at source_cycle</span>
+    <span class="doccomment">/// Gets cycle in which we are drawing at `source_cycle`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_lookback_roll_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">source_cycle</span>: <span class="ident">u64</span>, <span class="ident">thread</span>: <span class="ident">u8</span>) -&gt; <span class="ident">POSResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">RollCounts</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">source_cycle</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">pos_lookback_cycles</span> {
             <span class="comment">// nominal case: lookback after or at cycle 0</span>

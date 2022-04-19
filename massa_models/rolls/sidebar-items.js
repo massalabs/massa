@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["RollCompensation","just a u64 to keep track of the roll sells and buys during a cycle"],["RollCounts","counts the roll for each address"],["RollUpdate","roll sales and purchases"],["RollUpdates","maps addresses to roll updates"]]});
+initSidebarItems({"struct":[["RollCompensation","just a `u64` to keep track of the roll sells and buys during a cycle"],["RollCounts","counts the roll for each address"],["RollUpdate","roll sales and purchases"],["RollUpdates","maps addresses to roll updates"]]});

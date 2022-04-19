@@ -166,7 +166,7 @@
 <span class="doccomment">/// Returns default map if path isn&#39;t a file</span>
 <span class="doccomment">/// Maybe it would be worth considering returning the default map</span>
 <span class="doccomment">/// when the read to string or the parse is failing</span>
-<span class="doccomment">/// but eh that&#39;s left for another refactoring</span>
+<span class="doccomment">/// but eh that&#39;s left for another refactor</span>
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">load_initial_staking_keys</span>(<span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">PublicKey</span>, <span class="ident">PrivateKey</span>)<span class="op">&gt;</span><span class="op">&gt;</span> {
     <span class="kw">if</span> <span class="op">!</span><span class="ident">std::path::Path::is_file</span>(<span class="ident">path</span>) {
         <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">Map::default</span>());
@@ -186,9 +186,9 @@
 <span class="doccomment">/// Creates a new consensus controller.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Arguments</span>
-<span class="doccomment">/// * cfg: consensus configuration</span>
-<span class="doccomment">/// * protocol_command_sender: a ProtocolCommandSender instance to send commands to Protocol.</span>
-<span class="doccomment">/// * protocol_event_receiver: a ProtocolEventReceiver instance to receive events from Protocol.</span>
+<span class="doccomment">/// * `cfg`: consensus configuration</span>
+<span class="doccomment">/// * `protocol_command_sender`: a `ProtocolCommandSender` instance to send commands to Protocol.</span>
+<span class="doccomment">/// * `protocol_event_receiver`: a `ProtocolEventReceiver` instance to receive events from Protocol.</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">start_consensus_controller</span>(
     <span class="ident">cfg</span>: <span class="ident">ConsensusConfig</span>,
     <span class="ident">channels</span>: <span class="ident">ConsensusChannels</span>,

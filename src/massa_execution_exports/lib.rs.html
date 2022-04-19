@@ -77,12 +77,12 @@
 <span class="doccomment">//! # Usage</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! When an execution worker is launched to run in a separate thread for the whole duration of the process,</span>
-<span class="doccomment">//! an instance of ExecutionManager is returned (see the documentation of start_execution_worker in massa-execution-worker),</span>
-<span class="doccomment">//! as well as an instance of ExecutionController.</span>
+<span class="doccomment">//! an instance of `ExecutionManager` is returned (see the documentation of `start_execution_worker` in `massa-execution-worker`),</span>
+<span class="doccomment">//! as well as an instance of `ExecutionController`.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! The non-clonable ExecutionManager allows stopping the execution worker thread.</span>
+<span class="doccomment">//! The non-clonable `ExecutionManager` allows stopping the execution worker thread.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! The clonable ExecutionController allows sending updates on the latest blockclique changes to the execution worker</span>
+<span class="doccomment">//! The clonable `ExecutionController` allows sending updates on the latest blockclique changes to the execution worker</span>
 <span class="doccomment">//! for it to keep track of them and execute the operations present in blocks.</span>
 <span class="doccomment">//! It also allows various read-only queries such as executing bytecode</span>
 <span class="doccomment">//! while ignoring all the changes it would cause to the consensus state (read-only execution),</span>
@@ -90,25 +90,25 @@
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Architecture</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! ## config.rs</span>
+<span class="doccomment">//! ## `config.rs`</span>
 <span class="doccomment">//! Contains configuration parameters for the execution system.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! ## controller_traits.rs</span>
-<span class="doccomment">//! Defines the ExecutionManager and ExecutionController traits for interacting with the execution worker.</span>
+<span class="doccomment">//! ## `controller_traits.rs`</span>
+<span class="doccomment">//! Defines the `ExecutionManager` and `ExecutionController` traits for interacting with the execution worker.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! ## errors.rs</span>
+<span class="doccomment">//! ## `errors.rs`</span>
 <span class="doccomment">//! Defines error types for the crate.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! ## event_store.rs</span>
+<span class="doccomment">//! ## `event_store.rs`</span>
 <span class="doccomment">//! Defines an indexed, finite-size storage system for execution events.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! ## types.rs</span>
+<span class="doccomment">//! ## `types.rs`</span>
 <span class="doccomment">//! Defines useful shared structures.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## Test exports</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.</span>
-<span class="doccomment">//! See test_exports/mod.rs for details.</span>
+<span class="doccomment">//! See `test_exports/mod.rs` for details.</span>
 
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>

@@ -39,12 +39,12 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StateChanges</span> {
     <span class="doccomment">/// ledger changes</span>
     <span class="kw">pub</span> <span class="ident">ledger_changes</span>: <span class="ident">LedgerChanges</span>,
-    <span class="doccomment">/// async pool changes</span>
+    <span class="doccomment">/// asynchronous pool changes</span>
     <span class="kw">pub</span> <span class="ident">async_pool_changes</span>: <span class="ident">AsyncPoolChanges</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">StateChanges</span> {
-    <span class="doccomment">/// extends the current StateChanges with another one</span>
+    <span class="doccomment">/// extends the current `StateChanges` with another one</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">changes</span>: <span class="ident">StateChanges</span>) {
         <span class="kw">use</span> <span class="ident">massa_ledger::Applicable</span>;
         <span class="self">self</span>.<span class="ident">ledger_changes</span>.<span class="ident">apply</span>(<span class="ident">changes</span>.<span class="ident">ledger_changes</span>);

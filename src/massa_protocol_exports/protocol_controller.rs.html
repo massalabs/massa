@@ -340,6 +340,9 @@
 <span id="335">335</span>
 <span id="336">336</span>
 <span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ProtocolError</span>;
@@ -406,10 +409,13 @@
     <span class="ident">GetOperations</span>((<span class="ident">NodeId</span>, <span class="ident">OperationIds</span>)),
 }
 
-<span class="doccomment">/// block result: map block id to option (</span>
-<span class="doccomment">///     option(set(operation id)),</span>
-<span class="doccomment">///     option(vec(endorsement id))</span>
+<span class="doccomment">/// block result: map block id to</span>
+<span class="doccomment">/// ```md</span>
+<span class="doccomment">/// Option(</span>
+<span class="doccomment">///     Option(set(operation id)),</span>
+<span class="doccomment">///     Option(Vec(endorsement id))</span>
 <span class="doccomment">/// )</span>
+<span class="doccomment">/// ```</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">BlocksResults</span> <span class="op">=</span>
     <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span><span class="op">&gt;</span>;
 
@@ -427,16 +433,16 @@
     },
     <span class="doccomment">/// A block, or it&#39;s header, amounted to an attempted attack.</span>
     <span class="ident">AttackBlockDetected</span>(<span class="ident">BlockId</span>),
-    <span class="doccomment">/// Wishlist delta</span>
+    <span class="doccomment">/// Wish list delta</span>
     <span class="ident">WishlistDelta</span> {
-        <span class="doccomment">/// add to wishlist</span>
+        <span class="doccomment">/// add to wish list</span>
         <span class="ident">new</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
-        <span class="doccomment">/// remove from wishlist</span>
+        <span class="doccomment">/// remove from wish list</span>
         <span class="ident">remove</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     },
-    <span class="doccomment">/// The response to a [ProtocolEvent::GetBlocks].</span>
+    <span class="doccomment">/// The response to a `[ProtocolEvent::GetBlocks]`.</span>
     <span class="ident">GetBlocksResults</span>(<span class="ident">BlocksResults</span>),
-    <span class="doccomment">/// The response to a [ProtocolEvent::GetOperations].</span>
+    <span class="doccomment">/// The response to a `[ProtocolEvent::GetOperations]`.</span>
     <span class="ident">GetOperationsResults</span>((<span class="ident">NodeId</span>, <span class="ident">Operations</span>)),
     <span class="doccomment">/// Propagate operations ids (send batches)</span>
     <span class="ident">PropagateOperations</span>(<span class="ident">OperationIds</span>),
@@ -493,7 +499,7 @@
         <span class="ident">res</span>
     }
 
-    <span class="doccomment">/// Send the response to a ProtocolEvent::GetBlocks.</span>
+    <span class="doccomment">/// Send the response to a `ProtocolEvent::GetBlocks`.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_get_blocks_results</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">results</span>: <span class="ident">BlocksResults</span>,
@@ -511,7 +517,7 @@
         <span class="ident">res</span>
     }
 
-    <span class="doccomment">/// Send the response to a [ProtocolEvent::GetBlocks].</span>
+    <span class="doccomment">/// Send the response to a `[ProtocolEvent::GetBlocks]`.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_get_operations_results</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
@@ -530,7 +536,7 @@
         <span class="ident">res</span>
     }
 
-    <span class="doccomment">/// update the block wishlist</span>
+    <span class="doccomment">/// update the block wish list</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_wishlist_delta</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">new</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
@@ -588,7 +594,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolEventReceiver</span>(<span class="kw">pub</span> <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">ProtocolEventReceiver</span> {
-    <span class="doccomment">/// Receives the next ProtocolEvent from connected Node.</span>
+    <span class="doccomment">/// Receives the next `ProtocolEvent` from connected Node.</span>
     <span class="doccomment">/// None is returned when all Sender halves have dropped,</span>
     <span class="doccomment">/// indicating that no further values can be sent on the channel</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_event</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span>, <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
@@ -601,7 +607,7 @@
         <span class="ident">res</span>
     }
 
-    <span class="doccomment">/// drains remaining events and returns them in a VecDeque</span>
+    <span class="doccomment">/// drains remaining events and returns them in a `VecDeque`</span>
     <span class="doccomment">/// note: events are sorted from oldest to newest</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">drain</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">remaining_events</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ProtocolEvent</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">VecDeque::new</span>();
@@ -619,7 +625,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolPoolEventReceiver</span>(<span class="kw">pub</span> <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">ProtocolPoolEventReceiver</span> {
-    <span class="doccomment">/// Receives the next ProtocolPoolEvent</span>
+    <span class="doccomment">/// Receives the next `ProtocolPoolEvent`</span>
     <span class="doccomment">/// None is returned when all Sender halves have dropped,</span>
     <span class="doccomment">/// indicating that no further values can be sent on the channel</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_event</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span>, <span class="ident">ProtocolError</span><span class="op">&gt;</span> {
@@ -632,7 +638,7 @@
         <span class="ident">res</span>
     }
 
-    <span class="doccomment">/// drains remaining events and returns them in a VecDeque</span>
+    <span class="doccomment">/// drains remaining events and returns them in a `VecDeque`</span>
     <span class="doccomment">/// note: events are sorted from oldest to newest</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">drain</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">remaining_events</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">ProtocolPoolEvent</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">VecDeque::new</span>();

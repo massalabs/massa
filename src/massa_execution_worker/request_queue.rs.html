@@ -180,8 +180,8 @@
     <span class="doccomment">/// Create a new request with response sender</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * request: the underlying request of type T</span>
-    <span class="doccomment">/// * response_tx an std::mpsc::Sender to later send the execution output R (or an error)</span>
+    <span class="doccomment">/// * `request`: the underlying request of type T</span>
+    <span class="doccomment">/// * `response_tx`: an `std::mpsc::Sender` to later send the execution output R (or an error)</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">request</span>: <span class="ident">T</span>, <span class="ident">response_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">R</span>, <span class="ident">ExecutionError</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">RequestWithResponseSender</span> {
             <span class="ident">request</span>,
@@ -207,8 +207,8 @@
 }
 
 <span class="doccomment">/// Structure representing an execution request queue with maximal length.</span>
-<span class="doccomment">/// Each request is a RequestWithResponseSender that comes with an MPSC sender</span>
-<span class="doccomment">/// to return the exection result when the execution is over (or an error).</span>
+<span class="doccomment">/// Each request is a `RequestWithResponseSender` that comes with an MPSC sender</span>
+<span class="doccomment">/// to return the execution result when the execution is over (or an error).</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">RequestQueue</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">R</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Max number of item in the queue.</span>
     <span class="doccomment">/// When the queue is full, extra new items are cancelled and dropped.</span>
@@ -222,7 +222,7 @@
     <span class="doccomment">/// Create a new request queue</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * max_items: the maximal number of items in the queue. When full, extra new elements are cancelled and dropped.</span>
+    <span class="doccomment">/// * `max_items`: the maximal number of items in the queue. When full, extra new elements are cancelled and dropped.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">max_items</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">RequestQueue</span> {
             <span class="ident">max_items</span>,
@@ -230,9 +230,9 @@
         }
     }
 
-    <span class="doccomment">/// Extends Self with the contents of another RequestQueue.</span>
+    <span class="doccomment">/// Extends Self with the contents of another `RequestQueue`.</span>
     <span class="doccomment">/// The contents of the incoming queue are appended last.</span>
-    <span class="doccomment">/// Excess items with respect to self.max_items are cancelled and dropped.</span>
+    <span class="doccomment">/// Excess items with respect to `self.max_items` are canceled and dropped.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extend</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">other</span>: <span class="ident">RequestQueue</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">R</span><span class="op">&gt;</span>) {
         <span class="comment">// compute the number of available item slots</span>
         <span class="kw">let</span> <span class="ident">free_slots</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">max_items</span>.<span class="ident">saturating_sub</span>(<span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">len</span>());
@@ -276,7 +276,7 @@
 
     <span class="doccomment">/// Push a new element at the end of the queue.</span>
     <span class="doccomment">/// May fail if maximum capacity is reached,</span>
-    <span class="doccomment">/// in which case the request is cancelled and dropped.</span>
+    <span class="doccomment">/// in which case the request is canceled and dropped.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
     <span class="doccomment">/// The oldest element of the queue, or None if the queue is empty</span>

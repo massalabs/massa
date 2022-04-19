@@ -59,7 +59,7 @@
     <span class="ident">Address</span>, <span class="ident">BlockId</span>, <span class="ident">EndorsementId</span>, <span class="ident">OperationId</span>, <span class="ident">Slot</span>,
 };
 
-<span class="doccomment">/// Block that was checked as valid, with some useful precomputed data</span>
+<span class="doccomment">/// Block that was checked as valid, with some useful pre-computed data</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">serde::Serialize</span>, <span class="ident">serde::Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ActiveBlock</span> {
     <span class="doccomment">/// The creator&#39;s address</span>
@@ -68,14 +68,14 @@
     <span class="kw">pub</span> <span class="ident">block_id</span>: <span class="ident">BlockId</span>,
     <span class="doccomment">/// one (block id, period) per thread ( if not genesis )</span>
     <span class="kw">pub</span> <span class="ident">parents</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">BlockId</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
-    <span class="doccomment">/// one HashMap&lt;Block id, period&gt; per thread (blocks that need to be kept)</span>
+    <span class="doccomment">/// one `HashMap&lt;Block id, period&gt;` per thread (blocks that need to be kept)</span>
     <span class="doccomment">/// Children reference that block as a parent</span>
     <span class="kw">pub</span> <span class="ident">children</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">BlockId</span>, <span class="ident">u64</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// dependencies required for validity check</span>
     <span class="kw">pub</span> <span class="ident">dependencies</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Blocks id that have this block as an ancestor</span>
     <span class="kw">pub</span> <span class="ident">descendants</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// ie has its fitness reached the given threshold</span>
+    <span class="doccomment">/// for example has its fitness reached the given threshold</span>
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// Changes caused by this block</span>
     <span class="kw">pub</span> <span class="ident">block_ledger_changes</span>: <span class="ident">LedgerChanges</span>,
@@ -87,9 +87,9 @@
     <span class="kw">pub</span> <span class="ident">addresses_to_operations</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Maps addresses to endorsements id they are involved in</span>
     <span class="kw">pub</span> <span class="ident">addresses_to_endorsements</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Address -&gt; RollUpdate</span>
+    <span class="doccomment">/// `Address -&gt; RollUpdate`</span>
     <span class="kw">pub</span> <span class="ident">roll_updates</span>: <span class="ident">RollUpdates</span>,
-    <span class="doccomment">/// list of (period, address, did_create) for all block/endorsement creation events</span>
+    <span class="doccomment">/// list of `(period, address, did_create)` for all block/endorsement creation events</span>
     <span class="kw">pub</span> <span class="ident">production_events</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">Address</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Slot of the block.</span>
     <span class="kw">pub</span> <span class="ident">slot</span>: <span class="ident">Slot</span>,

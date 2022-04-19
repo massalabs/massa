@@ -1453,7 +1453,7 @@
     <span class="ident">genesis_public_key</span>: <span class="ident">PublicKey</span>,
     <span class="doccomment">/// Associated channels, sender and receivers</span>
     <span class="ident">channels</span>: <span class="ident">ConsensusWorkerChannels</span>,
-    <span class="doccomment">/// Database containing all information about blocks, the blockgraph and cliques.</span>
+    <span class="doccomment">/// Database containing all information about blocks, the `BlockGraph` and cliques.</span>
     <span class="ident">block_db</span>: <span class="ident">BlockGraph</span>,
     <span class="doccomment">/// Proof of stake module.</span>
     <span class="ident">pos</span>: <span class="ident">ProofOfStake</span>,
@@ -1469,15 +1469,15 @@
     <span class="ident">clock_compensation</span>: <span class="ident">i64</span>,
     <span class="doccomment">/// staking keys</span>
     <span class="ident">staking_keys</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">PublicKey</span>, <span class="ident">PrivateKey</span>)<span class="op">&gt;</span>,
-    <span class="doccomment">/// stats (block -&gt; tx_count, creator)</span>
+    <span class="doccomment">/// stats `(block -&gt; tx_count, creator)`</span>
     <span class="ident">final_block_stats</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span>(<span class="ident">MassaTime</span>, <span class="ident">u64</span>, <span class="ident">Address</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// No idea what this is used for. My guess is one timestamp per stale block</span>
     <span class="ident">stale_block_stats</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
     <span class="doccomment">/// the time span considered for stats</span>
     <span class="ident">stats_history_timespan</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// the time span considered for desync detection</span>
+    <span class="doccomment">/// the time span considered for desynchronization detection</span>
     <span class="ident">stats_desync_detection_timespan</span>: <span class="ident">MassaTime</span>,
-    <span class="doccomment">/// time at which the node was launched (used for desync detection)</span>
+    <span class="doccomment">/// time at which the node was launched (used for desynchronization detection)</span>
     <span class="ident">launch_time</span>: <span class="ident">MassaTime</span>,
     <span class="comment">// endorsed slots cache</span>
     <span class="ident">endorsed_slots</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
@@ -1488,12 +1488,12 @@
     <span class="doccomment">/// Initiates the random selector.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * cfg: consensus configuration.</span>
-    <span class="doccomment">/// * protocol_command_sender: associated protocol controller</span>
-    <span class="doccomment">/// * block_db: Database containing all information about blocks, the blockgraph and cliques.</span>
-    <span class="doccomment">/// * controller_command_rx: Channel receiving consensus commands.</span>
-    <span class="doccomment">/// * controller_event_tx: Channel sending out consensus events.</span>
-    <span class="doccomment">/// * controller_manager_rx: Channel receiving consensus management commands.</span>
+    <span class="doccomment">/// * `cfg`: consensus configuration.</span>
+    <span class="doccomment">/// * `protocol_command_sender`: associated protocol controller</span>
+    <span class="doccomment">/// * `block_db`: Database containing all information about blocks, the blockgraph and cliques.</span>
+    <span class="doccomment">/// * `controller_command_rx`: Channel receiving consensus commands.</span>
+    <span class="doccomment">/// * `controller_event_tx`: Channel sending out consensus events.</span>
+    <span class="doccomment">/// * `controller_manager_rx`: Channel receiving consensus management commands.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">cfg</span>: <span class="ident">ConsensusConfig</span>,
         <span class="ident">channels</span>: <span class="ident">ConsensusWorkerChannels</span>,
@@ -1694,7 +1694,7 @@
     }
 
     <span class="doccomment">/// this function is called around every slot tick</span>
-    <span class="doccomment">/// it checks for cycle incrementation</span>
+    <span class="doccomment">/// it checks for cycle increment</span>
     <span class="doccomment">/// creates block and endorsement if a staking address has been drawn</span>
     <span class="doccomment">/// it signals the new slot to other components</span>
     <span class="doccomment">/// detects desynchronization</span>
@@ -1768,7 +1768,7 @@
                     <span class="prelude-val">Ok</span>(<span class="ident">b_draw</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">b_draw</span>),
                     <span class="prelude-val">Err</span>(<span class="ident">ProofOfStakeError::PosCycleUnavailable</span>(<span class="kw">_</span>)) =&gt; {
                         <span class="macro">massa_trace!</span>(
-                            <span class="string">&quot;consensus.consensus_worker.slot_tick.block_creatorunavailable&quot;</span>,
+                            <span class="string">&quot;consensus.consensus_worker.slot_tick.block_creator_unavailable&quot;</span>,
                             {}
                         );
                         <span class="macro">warn!</span>(<span class="string">&quot;desynchronization detected because the lookback cycle is not final at the current time&quot;</span>);
@@ -2051,7 +2051,7 @@
 
     <span class="doccomment">/// Channel management stuff</span>
     <span class="doccomment">/// todo delete</span>
-    <span class="doccomment">/// or at least introduce some genericity</span>
+    <span class="doccomment">/// or at least introduce some generic</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_consensus_event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">event</span>: <span class="ident">ConsensusEvent</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">channels</span>
@@ -2074,11 +2074,11 @@
     }
 
     <span class="doccomment">/// Manages given consensus command.</span>
-    <span class="doccomment">/// They can come from the api or the bootstrap server</span>
+    <span class="doccomment">/// They can come from the API or the bootstrap server</span>
     <span class="doccomment">/// Please refactor me</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Argument</span>
-    <span class="doccomment">/// * cmd: consensus command to process</span>
+    <span class="doccomment">/// * `cmd`: consensus command to process</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">process_consensus_command</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cmd</span>: <span class="ident">ConsensusCommand</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">cmd</span> {
             <span class="ident">ConsensusCommand::GetBlockGraphStatus</span> {
@@ -2283,7 +2283,7 @@
                 <span class="self">self</span>.<span class="ident">dump_staking_keys</span>().<span class="kw">await</span>;
                 <span class="prelude-val">Ok</span>(())
             }
-            <span class="ident">ConsensusCommand::GetStakingAddressses</span>(<span class="ident">response_tx</span>) =&gt; {
+            <span class="ident">ConsensusCommand::GetStakingAddresses</span>(<span class="ident">response_tx</span>) =&gt; {
                 <span class="macro">massa_trace!</span>(
                     <span class="string">&quot;consensus.consensus_worker.process_consensus_command.get_staking_addresses&quot;</span>,
                     {}
@@ -2367,7 +2367,7 @@
     }
 
     <span class="doccomment">/// retrieve stats</span>
-    <span class="doccomment">/// Used in response to a api request</span>
+    <span class="doccomment">/// Used in response to a API request</span>
     <span class="kw">fn</span> <span class="ident">get_stats</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsensusStats</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">timespan_end</span> <span class="op">=</span> <span class="ident">max</span>(
             <span class="self">self</span>.<span class="ident">launch_time</span>,
@@ -2406,7 +2406,7 @@
     }
 
     <span class="doccomment">/// retrieve all current cycle active stakers</span>
-    <span class="doccomment">/// Used in response to a api request</span>
+    <span class="doccomment">/// Used in response to a API request</span>
     <span class="kw">fn</span> <span class="ident">get_active_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span>, <span class="ident">ConsensusError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cur_cycle</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">next_slot</span>.<span class="ident">get_cycle</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">periods_per_cycle</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::default</span>();
@@ -2422,7 +2422,7 @@
     }
 
     <span class="doccomment">/// all you wanna know about an address</span>
-    <span class="doccomment">/// Used in response to a api request</span>
+    <span class="doccomment">/// Used in response to a API request</span>
     <span class="kw">fn</span> <span class="ident">get_addresses_info</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addresses</span>: <span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">AddressState</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">thread_count</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">thread_count</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">addresses_by_thread</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span><span class="ident">::default</span>(); <span class="ident">thread_count</span> <span class="kw">as</span> <span class="ident">usize</span>];
@@ -2508,7 +2508,7 @@
     <span class="doccomment">/// Manages received protocol events.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * event: event type to process.</span>
+    <span class="doccomment">/// * `event`: event type to process.</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">process_protocol_event</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">event</span>: <span class="ident">ProtocolEvent</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">event</span> {
             <span class="ident">ProtocolEvent::ReceivedBlock</span> {
@@ -2559,7 +2559,7 @@
                         );
                     } <span class="kw">else</span> {
                         <span class="comment">// not found in consensus</span>
-                        <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.process_protocol_event.get_block.consensu_not_found&quot;</span>, { <span class="string">&quot;hash&quot;</span>: <span class="ident">block_hash</span>});
+                        <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.process_protocol_event.get_block.consensus_not_found&quot;</span>, { <span class="string">&quot;hash&quot;</span>: <span class="ident">block_hash</span>});
                         <span class="ident">results</span>.<span class="ident">insert</span>(<span class="ident">block_hash</span>, <span class="prelude-val">None</span>);
                     }
                 }
@@ -2593,7 +2593,7 @@
     <span class="doccomment">/// 6. Process new final blocks</span>
     <span class="doccomment">/// 7. Notify pool of new final ops</span>
     <span class="doccomment">/// 8. Notify PoS of final blocks</span>
-    <span class="doccomment">/// 9. notify protocol of block wishlist</span>
+    <span class="doccomment">/// 9. notify protocol of block wish list</span>
     <span class="doccomment">/// 10. note new latest final periods (prune graph if changed)</span>
     <span class="doccomment">/// 11. Produce endorsements</span>
     <span class="doccomment">/// 12. add stale blocks to stats</span>
@@ -2734,7 +2734,7 @@
                     <span class="prelude-val">None</span> =&gt; <span class="kw">continue</span>,
                 };
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">endorsed_slots</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">block_slot</span>) {
-                    <span class="comment">// skip already endorsed (to prevent double stake pernalty)</span>
+                    <span class="comment">// skip already endorsed (to prevent double stake penalty)</span>
                     <span class="kw">continue</span>;
                 }
                 <span class="comment">// check that the block to endorse is at most one period before the last slot</span>

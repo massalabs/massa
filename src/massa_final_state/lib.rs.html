@@ -60,32 +60,32 @@
 
 <span class="doccomment">//! # General description</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! This crate implements a final state that encompasses a final ledger and async message pool.</span>
+<span class="doccomment">//! This crate implements a final state that encompasses a final ledger and asynchronous message pool.</span>
 <span class="doccomment">//! Nodes store only one copy of this final state which is very large</span>
 <span class="doccomment">//! (the copy is attached to the output of the last executed final slot),</span>
 <span class="doccomment">//! and apply speculative changes on it to deduce its value at a non-final slot</span>
-<span class="doccomment">//! (see massa-execution-exports crate for more details).</span>
+<span class="doccomment">//! (see `massa-execution-exports` crate for more details).</span>
 <span class="doccomment">//! Nodes joining the network need to bootstrap this state.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # Architecture</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! ## final_state.rs</span>
-<span class="doccomment">//! Defines the FinalState that matches  that represents the state of the node at</span>
-<span class="doccomment">//! the latest executed final slot. It contains the final ledger and the async event pool.</span>
-<span class="doccomment">//! It can be manipulated using StateChanges (see state_changes.rs).</span>
-<span class="doccomment">//! The FinalState is bootstrapped using tooling available in bootstrap.rs</span>
+<span class="doccomment">//! ## `final_state.rs`</span>
+<span class="doccomment">//! Defines the `FinalState` that matches that represents the state of the node at</span>
+<span class="doccomment">//! the latest executed final slot. It contains the final ledger and the asynchronous event pool.</span>
+<span class="doccomment">//! It can be manipulated using `StateChanges` (see `state_changes.rs`).</span>
+<span class="doccomment">//! The `FinalState` is bootstrapped using tooling available in bootstrap.rs</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! ## state_changes.rs</span>
+<span class="doccomment">//! ## `state_changes.rs`</span>
 <span class="doccomment">//! Represents a list of changes the final state.</span>
 <span class="doccomment">//! It can be modified, combined or applied to the final ledger.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! ## bootstrap.rs</span>
+<span class="doccomment">//! ## `bootstrap.rs`</span>
 <span class="doccomment">//! Provides serializable structures and tools for bootstrapping the final state.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## Test exports</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.</span>
-<span class="doccomment">//! See test_exports/mod.rs for details.</span>
+<span class="doccomment">//! See `test_exports/mod.rs` for details.</span>
 
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>

@@ -497,7 +497,7 @@
 }
 
 <span class="doccomment">/// Ban the connections corresponding to `ips` from the `worker`</span>
-<span class="doccomment">/// See also [ban_connection_ids]</span>
+<span class="doccomment">/// See also `[ban_connection_ids]`</span>
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">ban_ips</span>(<span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>, <span class="ident">ips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
     <span class="kw">for</span> <span class="ident">ip</span> <span class="kw">in</span> <span class="ident">ips</span>.<span class="ident">iter</span>() {
         <span class="ident">worker</span>.<span class="ident">peer_info_db</span>.<span class="ident">peer_banned</span>(<span class="ident">ip</span>)<span class="question-mark">?</span>;
@@ -518,8 +518,8 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="doccomment">/// Ban the `node` corresponding to the NodeId from the `worker`</span>
-<span class="doccomment">/// See also [ban_connection_ids]</span>
+<span class="doccomment">/// Ban the `node` corresponding to the `NodeId` from the `worker`</span>
+<span class="doccomment">/// See also `[ban_connection_ids]`</span>
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">ban_node</span>(<span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>, <span class="ident">node</span>: <span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">NetworkError</span><span class="op">&gt;</span> {
     <span class="comment">// get all connection IDs to ban</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ids</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ConnectionId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
@@ -808,7 +808,7 @@
         .<span class="kw">await</span>;
 }
 
-<span class="doccomment">/// On the command [massa_network_exports::NetworkCommand::SendOperationAnnouncements] is called,</span>
+<span class="doccomment">/// On the command `[massa_network_exports::NetworkCommand::SendOperationAnnouncements]` is called,</span>
 <span class="doccomment">/// Forward (and split) the command to the `NodeWorker` and propagate to the network</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_send_operation_batches_cmd</span>(
     <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
@@ -834,12 +834,12 @@
 <span class="doccomment">/// or received a new batch.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # See also</span>
-<span class="doccomment">/// [massa_models::operation::OperationBatchItem]</span>
-<span class="doccomment">/// [massa_models::operation::OperationBatchBuffer]</span>
-<span class="doccomment">/// todo: add the link to the function tha process the buffer</span>
+<span class="doccomment">/// `[massa_models::operation::OperationBatchItem]`</span>
+<span class="doccomment">/// `[massa_models::operation::OperationBatchBuffer]`</span>
+<span class="doccomment">/// todo: add the link to the function that process the buffer</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # What it does</span>
-<span class="doccomment">/// When the command [massa_network_exports::NetworkCommand::AskForOperations] is called,</span>
+<span class="doccomment">/// When the command `[massa_network_exports::NetworkCommand::AskForOperations]` is called,</span>
 <span class="doccomment">/// Forward the command to the `NodeWorker` and propagate to the network</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_ask_for_operations_cmd</span>(
     <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,

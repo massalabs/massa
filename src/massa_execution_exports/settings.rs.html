@@ -35,14 +35,14 @@
 
 <span class="kw">use</span> <span class="ident">massa_time::MassaTime</span>;
 
-<span class="doccomment">/// Executio module configuration</span>
+<span class="doccomment">/// Execution module configuration</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExecutionConfig</span> {
     <span class="doccomment">/// read-only execution request queue length</span>
     <span class="kw">pub</span> <span class="ident">readonly_queue_length</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// maximum number of SC output events kept in cache</span>
     <span class="kw">pub</span> <span class="ident">max_final_events</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// maximum available gas for async messages execution</span>
+    <span class="doccomment">/// maximum available gas for asynchronous messages execution</span>
     <span class="kw">pub</span> <span class="ident">max_async_gas</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// number of threads</span>
     <span class="kw">pub</span> <span class="ident">thread_count</span>: <span class="ident">u8</span>,

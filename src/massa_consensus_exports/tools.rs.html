@@ -119,7 +119,7 @@
 }
 
 <span class="doccomment">/// generate a default named temporary JSON initial rolls file,</span>
-<span class="doccomment">/// asuming two threads.</span>
+<span class="doccomment">/// assuming two threads.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_default_roll_counts_file</span>(<span class="ident">stakers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span>) -&gt; <span class="ident">NamedTempFile</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">roll_counts</span> <span class="op">=</span> <span class="ident">RollCounts::default</span>();
     <span class="kw">for</span> <span class="ident">key</span> <span class="kw">in</span> <span class="ident">stakers</span>.<span class="ident">iter</span>() {

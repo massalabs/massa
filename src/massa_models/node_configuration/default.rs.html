@@ -192,17 +192,17 @@
 </pre><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! # Default hardcoded</span>
+<span class="doccomment">//! # Default hard-coded</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Each crates may contains a `settings.rs` or a `config.rs` the `Default`</span>
 <span class="doccomment">//! implementation of each object take the default Values from the following</span>
 <span class="doccomment">//! file.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! These values are the hardcoded values that make sens to never be modified</span>
+<span class="doccomment">//! These values are the hard-coded values that make sens to never be modified</span>
 <span class="doccomment">//! by a user. Generally, this values are passed with dependency injection in a `cfg`</span>
 <span class="doccomment">//! parameter for each worker, that is convenient for unit tests.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! A parallel file with the same const definitions exist for the testing case.</span>
+<span class="doccomment">//! A parallel file with the same constant definitions exist for the testing case.</span>
 <span class="doccomment">//! (`default_testing.rs`) But as for the current file you shouldn&#39;t modify it.</span>
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Amount</span>, <span class="ident">Version</span>};
 <span class="kw">use</span> <span class="ident">massa_signature::PrivateKey</span>;
@@ -213,7 +213,7 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ADVERTISE_LENGTH</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">10000</span>;
 <span class="doccomment">/// Maximum message length in bytes</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_MESSAGE_SIZE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1048576000</span>;
-<span class="doccomment">/// Max number of hash in the message AskForBlocks</span>
+<span class="doccomment">/// Max number of hash in the message `AskForBlocks`</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASK_BLOCKS_PER_MESSAGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">128</span>;
 <span class="doccomment">/// Max number of operations per message</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_OPERATIONS_PER_MESSAGE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1024</span>;
@@ -226,7 +226,7 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CHANNEL_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">256</span>;
 
 <span class="macro">lazy_static::lazy_static!</span> {
-    <span class="doccomment">/// Time in millis when the blockclique started.</span>
+    <span class="doccomment">/// Time in milliseconds when the blockclique started.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_TIMESTAMP</span>: <span class="ident">MassaTime</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;sandbox&quot;</span>) {
         <span class="ident">std::env::var</span>(<span class="string">&quot;GENESIS_TIMESTAMP&quot;</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">timestamp</span><span class="op">|</span> <span class="ident">timestamp</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>().<span class="ident">into</span>()).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span>
             <span class="ident">MassaTime::now</span>()
@@ -243,7 +243,7 @@
     } <span class="kw">else</span> {
         <span class="prelude-val">Some</span>(<span class="number">1651345200000</span>.<span class="ident">into</span>())  <span class="comment">// Sat Apr 30 2022 19:00:00 GMT+0000</span>
     };
-    <span class="doccomment">/// Private_key to sign genesis blocks.</span>
+    <span class="doccomment">/// `PrivateKey` to sign genesis blocks.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">GENESIS_KEY</span>: <span class="ident">PrivateKey</span> <span class="op">=</span> <span class="string">&quot;SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S&quot;</span>
         .<span class="ident">parse</span>()
         .<span class="ident">unwrap</span>();
@@ -299,9 +299,9 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">OPERATION_VALIDITY_PERIODS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
 <span class="doccomment">/// cycle duration in periods</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PERIODS_PER_CYCLE</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">128</span>;
-<span class="doccomment">/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - pos_look back_cycles - 1</span>
+<span class="doccomment">/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - `pos_look` `back_cycles` - 1</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_LOOKBACK_CYCLES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">2</span>;
-<span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles</span>
+<span class="doccomment">/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_LOCK_CYCLES</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1</span>;
 
 <span class="comment">// ***********************</span>
@@ -320,7 +320,7 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_CHILDREN</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000</span>;
 <span class="doccomment">/// Max number of cycles in PoS bootstrap</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_POS_CYCLES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
-<span class="doccomment">/// Max number of address and rng entries for PoS bootstrap</span>
+<span class="doccomment">/// Max number of address and random entries for PoS bootstrap</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_BOOTSTRAP_POS_ENTRIES</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">1000000000</span>;
 <span class="doccomment">/// Max size of the IP list</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">IP_LIST_MAX_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10000</span>;
@@ -333,7 +333,7 @@
 
 <span class="doccomment">/// Maximum of GAS allowed for a block</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_GAS_PER_BLOCK</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">100_000_000</span>;
-<span class="doccomment">/// Maximum of GAS allowed for async messages exection on one slot</span>
+<span class="doccomment">/// Maximum of GAS allowed for asynchronous messages execution on one slot</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_ASYNC_GAS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">100_000_000</span>;
 
 <span class="comment">//</span>

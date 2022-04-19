@@ -1154,7 +1154,7 @@
     <span class="ident">Command::iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">help</span>()).<span class="ident">collect</span>()
 }
 
-<span class="doccomment">/// bail a shinny rpc error</span>
+<span class="doccomment">/// bail a shinny RPC error</span>
 <span class="macro">macro_rules!</span> <span class="ident">rpc_error</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; {
         <span class="macro">bail!</span>(<span class="string">&quot;check if your node is running: {}&quot;</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
@@ -1169,7 +1169,7 @@
 }
 
 <span class="doccomment">/// Used to have a shinny json output</span>
-<span class="doccomment">/// TODO refactor me</span>
+<span class="doccomment">/// TODO re-factor me</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">struct</span> <span class="ident">ExtendedWalletEntry</span> {
     <span class="doccomment">/// the private key</span>
@@ -1253,7 +1253,7 @@
     <span class="doccomment">/// run a given command</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # parameters</span>
-    <span class="doccomment">/// - client: the rpc client</span>
+    <span class="doccomment">/// - client: the RPC client</span>
     <span class="doccomment">/// - wallet: an access to the wallet</span>
     <span class="doccomment">/// - parameters: the parsed parameters</span>
     <span class="doccomment">/// - json: true if --json was passed as an option</span>
@@ -1520,7 +1520,7 @@
                                 <span class="kw">match</span> <span class="ident">addresses_info</span>.<span class="ident">get</span>(<span class="number">0</span>) {
                                     <span class="prelude-val">Some</span>(<span class="ident">info</span>) =&gt; {
                                         <span class="kw">if</span> <span class="ident">info</span>.<span class="ident">ledger_info</span>.<span class="ident">candidate_ledger_info</span>.<span class="ident">balance</span> <span class="op">&lt;</span> <span class="ident">total</span> {
-                                            <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insuffisant balance&quot;</span>);
+                                            <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
                                         }
                                     }
                                     <span class="prelude-val">None</span> =&gt; {
@@ -1560,7 +1560,7 @@
                                 <span class="kw">if</span> <span class="ident">info</span>.<span class="ident">ledger_info</span>.<span class="ident">candidate_ledger_info</span>.<span class="ident">balance</span> <span class="op">&lt;</span> <span class="ident">fee</span>
                                     <span class="op">|</span><span class="op">|</span> <span class="ident">roll_count</span> <span class="op">&gt;</span> <span class="ident">info</span>.<span class="ident">rolls</span>.<span class="ident">candidate_rolls</span>
                                 {
-                                    <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insuffisant balance or roll count&quot;</span>);
+                                    <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance or roll count&quot;</span>);
                                 }
                             }
                             <span class="prelude-val">None</span> =&gt; <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">&quot;address {} not found&quot;</span>, <span class="ident">addr</span>)),
@@ -1597,7 +1597,7 @@
                                 <span class="kw">match</span> <span class="ident">addresses_info</span>.<span class="ident">get</span>(<span class="number">0</span>) {
                                     <span class="prelude-val">Some</span>(<span class="ident">info</span>) =&gt; {
                                         <span class="kw">if</span> <span class="ident">info</span>.<span class="ident">ledger_info</span>.<span class="ident">candidate_ledger_info</span>.<span class="ident">balance</span> <span class="op">&lt;</span> <span class="ident">total</span> {
-                                            <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insuffisant balance&quot;</span>);
+                                            <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
                                         }
                                     }
                                     <span class="prelude-val">None</span> =&gt; {
@@ -1633,7 +1633,7 @@
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>();
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">end</span> {
                     <span class="kw">let</span> (<span class="ident">days</span>, <span class="ident">hours</span>, <span class="ident">mins</span>, <span class="ident">secs</span>) <span class="op">=</span>
-                        <span class="ident">e</span>.<span class="ident">saturating_sub</span>(<span class="ident">MassaTime::now</span>()<span class="question-mark">?</span>).<span class="ident">days_hours_mins_secs</span>()<span class="question-mark">?</span>; <span class="comment">// compensation millis is zero</span>
+                        <span class="ident">e</span>.<span class="ident">saturating_sub</span>(<span class="ident">MassaTime::now</span>()<span class="question-mark">?</span>).<span class="ident">days_hours_mins_secs</span>()<span class="question-mark">?</span>; <span class="comment">// compensation milliseconds is zero</span>
 
                     <span class="ident">res</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode&quot;</span>, <span class="ident">days</span>, <span class="ident">hours</span>, <span class="ident">mins</span>, <span class="ident">secs</span>));
                 } <span class="kw">else</span> {
@@ -1675,7 +1675,7 @@
                                 <span class="kw">match</span> <span class="ident">addresses_info</span>.<span class="ident">get</span>(<span class="number">0</span>) {
                                     <span class="prelude-val">Some</span>(<span class="ident">info</span>) =&gt; {
                                         <span class="kw">if</span> <span class="ident">info</span>.<span class="ident">ledger_info</span>.<span class="ident">candidate_ledger_info</span>.<span class="ident">balance</span> <span class="op">&lt;</span> <span class="ident">total</span> {
-                                            <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insuffisant balance&quot;</span>);
+                                            <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
                                         }
                                     }
                                     <span class="prelude-val">None</span> =&gt; {
@@ -1696,7 +1696,7 @@
                         <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">bail!</span>(<span class="string">&quot;RpcError: {}&quot;</span>, <span class="ident">e</span>),
                     };
                     <span class="kw">if</span> <span class="ident">data</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">max_block_size</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">/</span> <span class="number">2</span> {
-                        <span class="macro">client_warning!</span>(<span class="string">&quot;bytecode size exeeded half of the maximum size of a block, operation will certainly be rejected&quot;</span>);
+                        <span class="macro">client_warning!</span>(<span class="string">&quot;bytecode size exceeded half of the maximum size of a block, operation will certainly be rejected&quot;</span>);
                     }
                 }
 
@@ -1862,7 +1862,7 @@
 }
 
 <span class="doccomment">/// TODO: ugly utilities functions</span>
-<span class="doccomment">/// takes a slice of string and makes it into a vec&lt;T&gt;</span>
+<span class="doccomment">/// takes a slice of string and makes it into a `Vec&lt;T&gt;`</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parse_vec</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">std::str::FromStr</span><span class="op">&gt;</span>(<span class="ident">args</span>: <span class="kw-2">&amp;</span>[<span class="ident">String</span>]) -&gt; <span class="ident">anyhow::Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">T::Err</span><span class="op">&gt;</span> {
     <span class="ident">args</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>()).<span class="ident">collect</span>()
 }

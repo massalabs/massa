@@ -934,8 +934,8 @@
 <span class="comment">// Per-thread signature engine, initiated lazily on first per-thread use.</span>
 <span class="macro">thread_local!</span>(<span class="kw">static</span> <span class="ident">SIGNATURE_ENGINE</span>: <span class="ident">SignatureEngine</span> <span class="op">=</span> <span class="ident">SignatureEngine</span>(<span class="ident">Secp256k1::new</span>()));
 
-<span class="doccomment">/// Private Key used to sign messages</span>
-<span class="doccomment">/// Generated using SignatureEngine.</span>
+<span class="doccomment">/// `PrivateKey` used to sign messages</span>
+<span class="doccomment">/// Generated using `SignatureEngine`.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">Ord</span>, <span class="ident">PartialEq</span>, <span class="ident">PartialOrd</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PrivateKey</span>(<span class="ident">secp256k1::SecretKey</span>);
 
@@ -972,7 +972,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">PrivateKey</span> {
-    <span class="doccomment">/// Serialize a PrivateKey using bs58 encoding with checksum.</span>
+    <span class="doccomment">/// Serialize a `PrivateKey` using `bs58` encoding with checksum.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -986,7 +986,7 @@
         <span class="ident">bs58::encode</span>(<span class="self">self</span>.<span class="ident">to_bytes</span>()).<span class="ident">with_check</span>().<span class="ident">into_string</span>()
     }
 
-    <span class="doccomment">/// Serialize a PrivateKey as bytes.</span>
+    <span class="doccomment">/// Serialize a `PrivateKey` as bytes.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -1000,7 +1000,7 @@
         <span class="kw-2">*</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_ref</span>()
     }
 
-    <span class="doccomment">/// Serialize a PrivateKey into bytes.</span>
+    <span class="doccomment">/// Serialize a `PrivateKey` into bytes.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -1014,7 +1014,7 @@
         <span class="kw-2">*</span><span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_ref</span>()
     }
 
-    <span class="doccomment">/// Deserialize a PrivateKey using bs58 encoding with checksum.</span>
+    <span class="doccomment">/// Deserialize a `PrivateKey` using `bs58` encoding with checksum.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -1045,7 +1045,7 @@
             })
     }
 
-    <span class="doccomment">/// Deserialize a PrivateKey from bytes.</span>
+    <span class="doccomment">/// Deserialize a `PrivateKey` from bytes.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -1066,10 +1066,10 @@
 }
 
 <span class="kw">impl</span> <span class="ident">::serde::Serialize</span> <span class="kw">for</span> <span class="ident">PrivateKey</span> {
-    <span class="doccomment">/// ::serde::Serialize trait for PrivateKey</span>
+    <span class="doccomment">/// `::serde::Serialize` trait for `PrivateKey`</span>
     <span class="doccomment">/// if the serializer is human readable,</span>
-    <span class="doccomment">/// serialization is done using serialize_bs58_check</span>
-    <span class="doccomment">/// else, it uses serialize_binary</span>
+    <span class="doccomment">/// serialization is done using `serialize_bs58_check`</span>
+    <span class="doccomment">/// else, it uses `serialize_binary`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///</span>
@@ -1091,10 +1091,10 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">::serde::Deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">PrivateKey</span> {
-    <span class="doccomment">/// ::serde::Deserialize trait for PrivateKey</span>
+    <span class="doccomment">/// `::serde::Deserialize` trait for `PrivateKey`</span>
     <span class="doccomment">/// if the deserializer is human readable,</span>
-    <span class="doccomment">/// deserialization is done using deserialize_bs58_check</span>
-    <span class="doccomment">/// else, it uses deserialize_binary</span>
+    <span class="doccomment">/// deserialization is done using `deserialize_bs58_check`</span>
+    <span class="doccomment">/// else, it uses `deserialize_binary`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///</span>
@@ -1161,8 +1161,8 @@
 }
 
 <span class="doccomment">/// Public key used to check if a message was encoded</span>
-<span class="doccomment">/// by the corresponding PublicKey.</span>
-<span class="doccomment">/// Generated from the PrivateKey using SignatureEngine</span>
+<span class="doccomment">/// by the corresponding `PublicKey`.</span>
+<span class="doccomment">/// Generated from the `PrivateKey` using `SignatureEngine`</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Ord</span>, <span class="ident">PartialEq</span>, <span class="ident">PartialOrd</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PublicKey</span>(<span class="ident">secp256k1::PublicKey</span>);
 
@@ -1199,7 +1199,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">PublicKey</span> {
-    <span class="doccomment">/// Serialize a PublicKey using bs58 encoding with checksum.</span>
+    <span class="doccomment">/// Serialize a `PublicKey` using `bs58` encoding with checksum.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -1214,7 +1214,7 @@
         <span class="ident">bs58::encode</span>(<span class="self">self</span>.<span class="ident">to_bytes</span>()).<span class="ident">with_check</span>().<span class="ident">into_string</span>()
     }
 
-    <span class="doccomment">/// Serialize a PublicKey as bytes.</span>
+    <span class="doccomment">/// Serialize a `PublicKey` as bytes.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -1244,7 +1244,7 @@
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">serialize</span>()
     }
 
-    <span class="doccomment">/// Deserialize a PublicKey using bs58 encoding with checksum.</span>
+    <span class="doccomment">/// Deserialize a `PublicKey` using `bs58` encoding with checksum.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -1276,7 +1276,7 @@
             })
     }
 
-    <span class="doccomment">/// Deserialize a PublicKey from bytes.</span>
+    <span class="doccomment">/// Deserialize a `PublicKey` from bytes.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -1298,10 +1298,10 @@
 }
 
 <span class="kw">impl</span> <span class="ident">::serde::Serialize</span> <span class="kw">for</span> <span class="ident">PublicKey</span> {
-    <span class="doccomment">/// ::serde::Serialize trait for PublicKey</span>
+    <span class="doccomment">/// `::serde::Serialize` trait for `PublicKey`</span>
     <span class="doccomment">/// if the serializer is human readable,</span>
-    <span class="doccomment">/// serialization is done using serialize_bs58_check</span>
-    <span class="doccomment">/// else, it uses serialize_binary</span>
+    <span class="doccomment">/// serialization is done using `serialize_bs58_check`</span>
+    <span class="doccomment">/// else, it uses `serialize_binary`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///</span>
@@ -1325,10 +1325,10 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">::serde::Deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">PublicKey</span> {
-    <span class="doccomment">/// ::serde::Deserialize trait for PublicKey</span>
+    <span class="doccomment">/// `::serde::Deserialize` trait for `PublicKey`</span>
     <span class="doccomment">/// if the deserializer is human readable,</span>
-    <span class="doccomment">/// deserialization is done using deserialize_bs58_check</span>
-    <span class="doccomment">/// else, it uses deserialize_binary</span>
+    <span class="doccomment">/// deserialization is done using `deserialize_bs58_check`</span>
+    <span class="doccomment">/// else, it uses `deserialize_binary`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///</span>
@@ -1396,7 +1396,7 @@
     }
 }
 
-<span class="doccomment">/// Signature generated from a message and a privateKey.</span>
+<span class="doccomment">/// Signature generated from a message and a `PrivateKey`.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Signature</span>(<span class="ident">secp256k1::Signature</span>);
 
@@ -1433,7 +1433,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Signature</span> {
-    <span class="doccomment">/// Serialize a Signature using bs58 encoding with checksum.</span>
+    <span class="doccomment">/// Serialize a `Signature` using `bs58` encoding with checksum.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -1484,7 +1484,7 @@
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">serialize_compact</span>()
     }
 
-    <span class="doccomment">/// Deserialize a Signature using bs58 encoding with checksum.</span>
+    <span class="doccomment">/// Deserialize a `Signature` using `bs58` encoding with checksum.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -1539,10 +1539,10 @@
 }
 
 <span class="kw">impl</span> <span class="ident">::serde::Serialize</span> <span class="kw">for</span> <span class="ident">Signature</span> {
-    <span class="doccomment">/// ::serde::Serialize trait for Signature</span>
+    <span class="doccomment">/// `::serde::Serialize` trait for `Signature`</span>
     <span class="doccomment">/// if the serializer is human readable,</span>
-    <span class="doccomment">/// serialization is done using to_bs58_check</span>
-    <span class="doccomment">/// else, it uses to_bytes</span>
+    <span class="doccomment">/// serialization is done using `to_bs58_check`</span>
+    <span class="doccomment">/// else, it uses `to_bytes`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///</span>
@@ -1568,10 +1568,10 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">::serde::Deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Signature</span> {
-    <span class="doccomment">/// ::serde::Deserialize trait for Signature</span>
+    <span class="doccomment">/// `::serde::Deserialize` trait for `Signature`</span>
     <span class="doccomment">/// if the deserializer is human readable,</span>
-    <span class="doccomment">/// deserialization is done using from_bs58_check</span>
-    <span class="doccomment">/// else, it uses from_bytes</span>
+    <span class="doccomment">/// deserialization is done using `from_bs58_check`</span>
+    <span class="doccomment">/// else, it uses `from_bytes`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///</span>
@@ -1641,13 +1641,13 @@
     }
 }
 
-<span class="doccomment">/// SignatureEngine manages Key generation,</span>
+<span class="doccomment">/// `SignatureEngine` manages key generation,</span>
 <span class="doccomment">/// signing and verification.</span>
 <span class="doccomment">/// It contains the needed context.</span>
 <span class="kw">struct</span> <span class="ident">SignatureEngine</span>(<span class="ident">secp256k1::Secp256k1</span><span class="op">&lt;</span><span class="ident">secp256k1::All</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span> <span class="ident">SignatureEngine</span> {
-    <span class="doccomment">/// Derives a PublicKey from a PrivateKey.</span>
+    <span class="doccomment">/// Derives a `PublicKey` from a `PrivateKey`.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">/// ```</span>
@@ -1663,8 +1663,8 @@
         ))
     }
 
-    <span class="doccomment">/// Returns the Signature produced by signing</span>
-    <span class="doccomment">/// data bytes with a PrivateKey.</span>
+    <span class="doccomment">/// Returns the `Signature` produced by signing</span>
+    <span class="doccomment">/// data bytes with a `PrivateKey`.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -1681,8 +1681,8 @@
         <span class="prelude-val">Ok</span>(<span class="ident">Signature</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">message</span>, <span class="kw-2">&amp;</span><span class="ident">private_key</span>.<span class="number">0</span>)))
     }
 
-    <span class="doccomment">/// Checks if the Signature associated with data bytes</span>
-    <span class="doccomment">/// was produced with the PrivateKey associated to given PublicKey</span>
+    <span class="doccomment">/// Checks if the `Signature` associated with data bytes</span>
+    <span class="doccomment">/// was produced with the `PrivateKey` associated to given `PublicKey`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -1706,7 +1706,7 @@
     }
 }
 
-<span class="doccomment">/// Generate a random private key from a RNG.</span>
+<span class="doccomment">/// Generate a random private key from a random draw.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Example</span>
 <span class="doccomment">/// ```</span>
@@ -1719,7 +1719,7 @@
     <span class="ident">PrivateKey</span>(<span class="ident">secp256k1::key::SecretKey::new</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rng</span>))
 }
 
-<span class="doccomment">/// Derives a PublicKey from a PrivateKey.</span>
+<span class="doccomment">/// Derives a `PublicKey` from a `PrivateKey`.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Example</span>
 <span class="doccomment">/// ```</span>
@@ -1732,8 +1732,8 @@
     <span class="ident">SIGNATURE_ENGINE</span>.<span class="ident">with</span>(<span class="op">|</span><span class="ident">signature_engine</span><span class="op">|</span> <span class="ident">signature_engine</span>.<span class="ident">derive_public_key</span>(<span class="ident">private_key</span>))
 }
 
-<span class="doccomment">/// Returns the Signature produced by signing</span>
-<span class="doccomment">/// data bytes with a PrivateKey.</span>
+<span class="doccomment">/// Returns the `Signature` produced by signing</span>
+<span class="doccomment">/// data bytes with a `PrivateKey`.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Example</span>
 <span class="doccomment">///  ```</span>
@@ -1750,7 +1750,7 @@
 }
 
 <span class="doccomment">/// Checks if the Signature associated with data bytes</span>
-<span class="doccomment">/// was produced with the PrivateKey associated to given PublicKey</span>
+<span class="doccomment">/// was produced with the `PrivateKey` associated to given `PublicKey`</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Example</span>
 <span class="doccomment">///  ```</span>

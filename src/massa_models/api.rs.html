@@ -572,7 +572,7 @@
     <span class="kw">pub</span> <span class="ident">pool_stats</span>: <span class="ident">PoolStats</span>,
     <span class="doccomment">/// network stats</span>
     <span class="kw">pub</span> <span class="ident">network_stats</span>: <span class="ident">NetworkStats</span>,
-    <span class="doccomment">/// compact config</span>
+    <span class="doccomment">/// compact configuration</span>
     <span class="kw">pub</span> <span class="ident">config</span>: <span class="ident">CompactConfig</span>,
 }
 
@@ -619,10 +619,10 @@
     <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">OperationId</span>,
     <span class="doccomment">/// true if operation is still in pool</span>
     <span class="kw">pub</span> <span class="ident">in_pool</span>: <span class="ident">bool</span>,
-    <span class="doccomment">/// the operation appears in in_blocks</span>
+    <span class="doccomment">/// the operation appears in `in_blocks`</span>
     <span class="doccomment">/// if it appears in multiple blocks, these blocks are in different cliques</span>
     <span class="kw">pub</span> <span class="ident">in_blocks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// true if the operation is final (ie in a final block)</span>
+    <span class="doccomment">/// true if the operation is final (for example in a final block)</span>
     <span class="kw">pub</span> <span class="ident">is_final</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// the operation itself</span>
     <span class="kw">pub</span> <span class="ident">operation</span>: <span class="ident">SignedOperation</span>,
@@ -656,14 +656,14 @@
     }
 }
 
-<span class="doccomment">/// Current Parallel balance leger info</span>
+<span class="doccomment">/// Current Parallel balance ledger info</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerInfo</span> {
     <span class="doccomment">/// final data</span>
     <span class="kw">pub</span> <span class="ident">final_ledger_info</span>: <span class="ident">LedgerData</span>,
     <span class="doccomment">/// latest data</span>
     <span class="kw">pub</span> <span class="ident">candidate_ledger_info</span>: <span class="ident">LedgerData</span>,
-    <span class="doccomment">/// locked balance, ie balance due to a roll sell</span>
+    <span class="doccomment">/// locked balance, for example balance due to a roll sell</span>
     <span class="kw">pub</span> <span class="ident">locked_balance</span>: <span class="ident">Amount</span>,
 }
 
@@ -700,7 +700,7 @@
     }
 }
 
-<span class="doccomment">/// Sequential balance state (really same as SCELedgerEntry)</span>
+<span class="doccomment">/// Sequential balance state (really same as `SCELedgerEntry`)</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SCELedgerInfo</span> {
     <span class="doccomment">/// sequential coins</span>
@@ -719,7 +719,7 @@
     }
 }
 
-<span class="doccomment">/// All you ever dreamt to know about an address</span>
+<span class="doccomment">/// All you ever dream to know about an address</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AddressInfo</span> {
     <span class="doccomment">/// the address</span>
@@ -1009,7 +1009,7 @@
     <span class="kw">pub</span> <span class="ident">end</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
 }
 
-<span class="doccomment">/// filter used when retrieving sc output events</span>
+<span class="doccomment">/// filter used when retrieving SC output events</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EventFilter</span> {
     <span class="doccomment">/// optional start slot</span>

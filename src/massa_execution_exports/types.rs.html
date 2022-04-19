@@ -163,7 +163,7 @@
 
 <span class="doccomment">/// Structure describing an element of the execution stack.</span>
 <span class="doccomment">/// Every time a function is called from bytecode,</span>
-<span class="doccomment">/// a new ExecutionStackElement is pushed at the top of the execution stack</span>
+<span class="doccomment">/// a new `ExecutionStackElement` is pushed at the top of the execution stack</span>
 <span class="doccomment">/// to represent the local execution context of the called function,</span>
 <span class="doccomment">/// instead of the caller&#39;s which should lie just below in the stack.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
@@ -173,14 +173,14 @@
     <span class="doccomment">/// Coins transferred to the target address during the call</span>
     <span class="kw">pub</span> <span class="ident">coins</span>: <span class="ident">Amount</span>,
     <span class="doccomment">/// List of addresses owned by the current call, and on which the current call has write access.</span>
-    <span class="doccomment">/// This list should contain ExecutionStackElement::address in the sense that an address should have write access to itself.</span>
+    <span class="doccomment">/// This list should contain `ExecutionStackElement::address` in the sense that an address should have write access to itself.</span>
     <span class="doccomment">/// This list should also contain all addresses created previously during the call</span>
     <span class="doccomment">/// to allow write access on newly created addresses in order to set them up,</span>
     <span class="doccomment">/// but only within the scope of the current stack element.</span>
     <span class="doccomment">/// That way, only the current scope and neither its caller not the functions it calls gain this write access,</span>
-    <span class="doccomment">/// which is important for security.</span>
-    <span class="doccomment">/// Note that we use a Vec instead of a prehashed set to ensure order determinism,</span>
-    <span class="doccomment">/// the performance hit of linear search remains minimal because owned_addreses will always contain very few elements.</span>
+    <span class="doccomment">/// which is important for security.  </span>
+    <span class="doccomment">/// Note that we use a vector instead of a pre-hashed set to ensure order determinism,</span>
+    <span class="doccomment">/// the performance hit of linear search remains minimal because `owned_addresses` will always contain very few elements.</span>
     <span class="kw">pub</span> <span class="ident">owned_addresses</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
 }
 </code></pre></div>

@@ -232,7 +232,7 @@
 <span id="227">227</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Contains the implementation of the life cycle of operations</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! Impement the propagation algorithm written here [redirect to github]</span>
+<span class="doccomment">//! Implement the propagation algorithm written here [redirect to GitHub]</span>
 <span class="doccomment">//! (https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779).</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! 1) get batches of operations ids</span>
@@ -266,12 +266,12 @@
     <span class="kw">pub</span> <span class="ident">operations_ids</span>: <span class="ident">OperationIds</span>,
 }
 
-<span class="doccomment">/// Queue containing every [OperationsBatchItem] we want to ask now or later.</span>
+<span class="doccomment">/// Queue containing every `[OperationsBatchItem]` we want to ask now or later.</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">OperationBatchBuffer</span> <span class="op">=</span> <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">OperationBatchItem</span><span class="op">&gt;</span>;
 
 <span class="kw">impl</span> <span class="ident">ProtocolWorker</span> {
     <span class="doccomment">/// On receive a batch of operation ids `op_batch` from another `node_id`</span>
-    <span class="doccomment">/// Execute the following algorithm: [redirect to github](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)</span>
+    <span class="doccomment">/// Execute the following algorithm: [redirect to GitHub](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)</span>
     <span class="doccomment">///</span>
     <span class="doccomment">///```py</span>
     <span class="doccomment">///def process_op_batch(op_batch, node_id):</span>
@@ -308,7 +308,7 @@
     }
 
     <span class="doccomment">/// On full operations are received from the network,</span>
-    <span class="doccomment">/// - Uptate the cache `received_operations` ids and each</span>
+    <span class="doccomment">/// - Update the cache `received_operations` ids and each</span>
     <span class="doccomment">///   `node_info.known_operations`</span>
     <span class="doccomment">/// - Notify the operations to he local node, to be propagated</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_operations_received</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">node_id</span>: <span class="ident">NodeId</span>, <span class="ident">operations</span>: <span class="ident">Operations</span>) {

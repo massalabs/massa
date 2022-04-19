@@ -76,7 +76,7 @@
 <span id="71">71</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="doccomment">//! Provides serializable strucutres for bootstrapping the FinalLedger</span>
+<span class="doccomment">//! Provides serializable structures for bootstrapping the `FinalLedger`</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::LedgerEntry</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{
@@ -87,14 +87,14 @@
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 
 <span class="doccomment">/// Represents a snapshot of the ledger state,</span>
-<span class="doccomment">/// which is enough to fully bootstrap a FinalLedger</span>
+<span class="doccomment">/// which is enough to fully bootstrap a `FinalLedger`</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FinalLedgerBootstrapState</span> {
     <span class="doccomment">/// sorted ledger</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">sorted_ledger</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">LedgerEntry</span><span class="op">&gt;</span>,
 }
 
-<span class="doccomment">/// Allows serializing the FinalLedgerBootstrapState to a compact binary representation</span>
+<span class="doccomment">/// Allows serializing the `FinalLedgerBootstrapState` to a compact binary representation</span>
 <span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">FinalLedgerBootstrapState</span> {
     <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">massa_models::ModelsError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
@@ -118,7 +118,7 @@
     }
 }
 
-<span class="doccomment">/// Allows deserializing a FinalLedgerBootstrapState from its compact binary representation</span>
+<span class="doccomment">/// Allows deserializing a `FinalLedgerBootstrapState` from its compact binary representation</span>
 <span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">FinalLedgerBootstrapState</span> {
     <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">massa_models::ModelsError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;

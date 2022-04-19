@@ -258,7 +258,7 @@
 <span id="253">253</span>
 <span id="254">254</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
-<span class="doccomment">//! Json rpc api for a massa-node</span>
+<span class="doccomment">//! Json RPC API for a massa-node</span>
 <span class="attribute">#![<span class="ident">feature</span>(<span class="ident">async_closure</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_crate_dependencies</span>)]</span>
@@ -296,7 +296,7 @@
 <span class="kw">mod</span> <span class="ident">settings</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">settings::APISettings</span>;
 
-<span class="doccomment">/// Public api component</span>
+<span class="doccomment">/// Public API component</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Public</span> {
     <span class="doccomment">/// link to the consensus component</span>
     <span class="kw">pub</span> <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
@@ -306,7 +306,7 @@
     <span class="kw">pub</span> <span class="ident">pool_command_sender</span>: <span class="ident">PoolCommandSender</span>,
     <span class="doccomment">/// consensus configuration (TODO: remove it, can be retrieved via an endpoint)</span>
     <span class="kw">pub</span> <span class="ident">consensus_config</span>: <span class="ident">ConsensusConfig</span>,
-    <span class="doccomment">/// api settings</span>
+    <span class="doccomment">/// API settings</span>
     <span class="kw">pub</span> <span class="ident">api_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">APISettings</span>,
     <span class="doccomment">/// network setting (TODO consider removing)</span>
     <span class="kw">pub</span> <span class="ident">network_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">NetworkSettings</span>,
@@ -314,13 +314,13 @@
     <span class="kw">pub</span> <span class="ident">version</span>: <span class="ident">Version</span>,
     <span class="doccomment">/// link to the network component</span>
     <span class="kw">pub</span> <span class="ident">network_command_sender</span>: <span class="ident">NetworkCommandSender</span>,
-    <span class="doccomment">/// compensation millis (used to sync time with bootstrap server)</span>
+    <span class="doccomment">/// compensation milliseconds (used to sync time with bootstrap server)</span>
     <span class="kw">pub</span> <span class="ident">compensation_millis</span>: <span class="ident">i64</span>,
     <span class="doccomment">/// our node id</span>
     <span class="kw">pub</span> <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
 }
 
-<span class="doccomment">/// Private api content</span>
+<span class="doccomment">/// Private API content</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Private</span> {
     <span class="doccomment">/// link to the consensus component</span>
     <span class="kw">pub</span> <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
@@ -330,18 +330,18 @@
     <span class="kw">pub</span> <span class="ident">execution_controller</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>,
     <span class="doccomment">/// consensus configuration (TODO: remove it, can be retrieved via an endpoint)</span>
     <span class="kw">pub</span> <span class="ident">consensus_config</span>: <span class="ident">ConsensusConfig</span>,
-    <span class="doccomment">/// api settings</span>
+    <span class="doccomment">/// API settings</span>
     <span class="kw">pub</span> <span class="ident">api_settings</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">APISettings</span>,
     <span class="doccomment">/// stop channel</span>
     <span class="kw">pub</span> <span class="ident">stop_node_channel</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
 }
 
-<span class="doccomment">/// The api wrapper</span>
+<span class="doccomment">/// The API wrapper</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">API</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">T</span>);
 
-<span class="doccomment">/// Used to manage the api</span>
+<span class="doccomment">/// Used to manage the API</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">RpcServer</span>: <span class="ident">Endpoints</span> {
-    <span class="doccomment">/// Start the api</span>
+    <span class="doccomment">/// Start the API</span>
     <span class="kw">fn</span> <span class="ident">serve</span>(<span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">SocketAddr</span>) -&gt; <span class="ident">StopHandle</span>;
 }
 
@@ -363,14 +363,14 @@
     }
 }
 
-<span class="doccomment">/// Used to be able to stop the api</span>
+<span class="doccomment">/// Used to be able to stop the API</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StopHandle</span> {
     <span class="ident">close_handle</span>: <span class="ident">CloseHandle</span>,
     <span class="ident">join_handle</span>: <span class="ident">JoinHandle</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">StopHandle</span> {
-    <span class="doccomment">/// stop the api gracefully</span>
+    <span class="doccomment">/// stop the API gracefully</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">stop</span>(<span class="self">self</span>) {
         <span class="self">self</span>.<span class="ident">close_handle</span>.<span class="ident">close</span>();
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">join_handle</span>.<span class="ident">join</span>() {
@@ -381,7 +381,7 @@
     }
 }
 
-<span class="doccomment">/// Exposed api endpoints</span>
+<span class="doccomment">/// Exposed API endpoints</span>
 <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">server</span>)]</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Endpoints</span> {
     <span class="doccomment">/// Gracefully stop the node.</span>
@@ -393,7 +393,7 @@
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;node_sign_message&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">node_sign_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PubkeySig</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
-    <span class="doccomment">/// Add a vec of new private keys for the node to use to stake.</span>
+    <span class="doccomment">/// Add a vector of new private keys for the node to use to stake.</span>
     <span class="doccomment">/// No confirmation to expect.</span>
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;add_staking_private_keys&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">add_staking_private_keys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PrivateKey</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
@@ -412,12 +412,12 @@
         <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ReadOnlyCall</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ExecuteReadOnlyResponse</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
-    <span class="doccomment">/// Remove a vec of addresses used to stake.</span>
+    <span class="doccomment">/// Remove a vector of addresses used to stake.</span>
     <span class="doccomment">/// No confirmation to expect.</span>
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;remove_staking_addresses&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">remove_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
-    <span class="doccomment">/// Return hashset of staking addresses.</span>
+    <span class="doccomment">/// Return hash set of staking addresses.</span>
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_staking_addresses&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">get_staking_addresses</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
@@ -438,7 +438,7 @@
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;node_remove_from_whitelist&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">node_remove_from_whitelist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
-    <span class="doccomment">/// Unbans given IP address.</span>
+    <span class="doccomment">/// Unban given IP address.</span>
     <span class="doccomment">/// No confirmation to expect.</span>
     <span class="attribute">#[<span class="ident">rpc</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;unban&quot;</span>)]</span>
     <span class="kw">fn</span> <span class="ident">unban</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IpAddr</span><span class="op">&gt;</span>) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
@@ -490,7 +490,7 @@
         <span class="kw">_</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SignedOperation</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
-    <span class="doccomment">/// Get events optionnally filtered by:</span>
+    <span class="doccomment">/// Get events optionally filtered by:</span>
     <span class="doccomment">/// * start slot</span>
     <span class="doccomment">/// * end slot</span>
     <span class="doccomment">/// * emitter address</span>

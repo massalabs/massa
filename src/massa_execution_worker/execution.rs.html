@@ -931,15 +931,15 @@
 }
 
 <span class="kw">impl</span> <span class="ident">ExecutionState</span> {
-    <span class="doccomment">/// Create a new execution state. This should be called only once at the start of the executon worker.</span>
+    <span class="doccomment">/// Create a new execution state. This should be called only once at the start of the execution worker.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// # arguments</span>
-    <span class="doccomment">/// * config: execution config</span>
-    <span class="doccomment">/// * final_state: atomic access to the final state</span>
-    <span class="doccomment">/// * storage: Shared storage with data shared all across the modules</span>
+    <span class="doccomment">/// # Arguments</span>
+    <span class="doccomment">/// * `config`: execution configuration</span>
+    <span class="doccomment">/// * `final_state`: atomic access to the final state</span>
+    <span class="doccomment">/// * `storage`: Shared storage with data shared all across the modules</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # returns</span>
-    <span class="doccomment">/// A new ExecutionState</span>
+    <span class="doccomment">/// A new `ExecutionState`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">config</span>: <span class="ident">ExecutionConfig</span>,
         <span class="ident">final_state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">FinalState</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -955,7 +955,7 @@
             <span class="ident">Default::default</span>(),
         )));
 
-        <span class="comment">// Instantiate the interface providing ABI access to the VM, share the execution contex with it</span>
+        <span class="comment">// Instantiate the interface providing ABI access to the VM, share the execution context with it</span>
         <span class="kw">let</span> <span class="ident">execution_interface</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="ident">InterfaceImpl::new</span>(
             <span class="ident">config</span>.<span class="ident">clone</span>(),
             <span class="ident">execution_context</span>.<span class="ident">clone</span>(),
@@ -981,7 +981,7 @@
     <span class="doccomment">/// Gets out the first (oldest) execution history item, removing it from history.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// The earliest ExecutionOutput from the execution history, or None if the history is empty</span>
+    <span class="doccomment">/// The earliest `ExecutionOutput` from the execution history, or None if the history is empty</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_first_execution_result</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ExecutionOutput</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">active_history</span>.<span class="ident">pop_front</span>()
     }
@@ -990,7 +990,7 @@
     <span class="doccomment">/// The newly applied final output should be from the slot just after the last executed final slot</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * exec_out: execution output to apply</span>
+    <span class="doccomment">/// * `exec_ou`t: execution output to apply</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_final_execution_output</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">exec_out</span>: <span class="ident">ExecutionOutput</span>) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">final_cursor</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">exec_out</span>.<span class="ident">slot</span> {
             <span class="macro">panic!</span>(<span class="string">&quot;attempting to apply a final execution output at or before the current final_cursor&quot;</span>);
@@ -1017,7 +1017,7 @@
     <span class="doccomment">/// The newly active final output should be from the slot just after the last executed active slot</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * exec_out: execution output to apply</span>
+    <span class="doccomment">/// * `exec_out`: execution output to apply</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_active_execution_output</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">exec_out</span>: <span class="ident">ExecutionOutput</span>) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active_cursor</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">exec_out</span>.<span class="ident">slot</span> {
             <span class="macro">panic!</span>(<span class="string">&quot;attempting to apply an active execution output at or before the current active_cursor&quot;</span>);
@@ -1050,8 +1050,8 @@
     <span class="doccomment">/// Slots after that point will need to be (re-executed) to account for the new sequence.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * active_slots: A HashMap mapping each active slot to a block or None if the slot is a miss</span>
-    <span class="doccomment">/// * ready_final_slots:  A HashMap mapping each ready-to-execute final slot to a block or None if the slot is a miss</span>
+    <span class="doccomment">/// * `active_slots`: A `HashMap` mapping each active slot to a block or None if the slot is a miss</span>
+    <span class="doccomment">/// * `ready_final_slots`:  A `HashMap` mapping each ready-to-execute final slot to a block or None if the slot is a miss</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">truncate_history</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">active_slots</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BlockId</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -1069,7 +1069,7 @@
                 <span class="comment">// the slot number and block ID still match. Continue scanning</span>
                 <span class="kw">continue</span>;
             }
-            <span class="comment">// mismatch found: stop scannig and return the cutoff index</span>
+            <span class="comment">// mismatch found: stop scanning and return the cutoff index</span>
             <span class="ident">truncate_at</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">hist_index</span>);
             <span class="kw">break</span>;
         }
@@ -1097,10 +1097,10 @@
     <span class="doccomment">/// Returns the state changes accumulated from the beginning of the output history,</span>
     <span class="doccomment">/// up until a provided slot (excluded).</span>
     <span class="doccomment">/// Only used in the VM main loop because the lock on the final ledger</span>
-    <span class="doccomment">/// carried by the returned SpeculativeLedger is not held.</span>
-    <span class="doccomment">/// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any subentry</span>
+    <span class="doccomment">/// carried by the returned `SpeculativeLedger` is not held.</span>
+    <span class="doccomment">/// TODO optimization: do not do this anymore but allow the speculative ledger to lazily query any sub-entry</span>
     <span class="doccomment">/// by scanning through history from end to beginning</span>
-    <span class="doccomment">/// https://github.com/massalabs/massa/issues/2343</span>
+    <span class="doccomment">/// `https://github.com/massalabs/massa/issues/2343`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_accumulated_active_changes_at_slot</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slot</span>: <span class="ident">Slot</span>) -&gt; <span class="ident">StateChanges</span> {
         <span class="comment">// check that the slot is within the reach of history</span>
         <span class="kw">if</span> <span class="ident">slot</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">final_cursor</span> {
@@ -1130,8 +1130,8 @@
     <span class="doccomment">/// Assumes the execution context was initialized at the beginning of the slot.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * operation: operation to execute</span>
-    <span class="doccomment">/// * block_creator_addr: address of the block creator</span>
+    <span class="doccomment">/// * `operation`: operation to execute</span>
+    <span class="doccomment">/// * `block_creator_addr`: address of the block creator</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">execute_operation</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">operation</span>: <span class="kw-2">&amp;</span><span class="ident">SignedOperation</span>,
@@ -1174,14 +1174,14 @@
         }
     }
 
-    <span class="doccomment">/// Execute an operation of type ExecuteSC</span>
+    <span class="doccomment">/// Execute an operation of type `ExecuteSC`</span>
     <span class="doccomment">/// Will panic if called with another operation type</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * operation: the SignedOperation to process, must be an ExecuteSC</span>
-    <span class="doccomment">/// * block_creator_addr: address of the block creator</span>
-    <span class="doccomment">/// * operation_id: ID of the operation</span>
-    <span class="doccomment">/// * sender_addr: address of the sender</span>
+    <span class="doccomment">/// * `operation`: the `SignedOperation` to process, must be an `ExecuteSC`</span>
+    <span class="doccomment">/// * `block_creator_addr`: address of the block creator</span>
+    <span class="doccomment">/// * `operation_id`: ID of the operation</span>
+    <span class="doccomment">/// * `sender_addr`: address of the sender</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">execute_executesc_op</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">operation</span>: <span class="kw-2">&amp;</span><span class="ident">OperationType</span>,
@@ -1269,14 +1269,14 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Execute an operation of type CallSC</span>
+    <span class="doccomment">/// Execute an operation of type `CallSC`</span>
     <span class="doccomment">/// Will panic if called with another operation type</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * operation: the SignedOperation to process, must be an CallSC</span>
-    <span class="doccomment">/// * block_creator_addr: address of the block creator</span>
-    <span class="doccomment">/// * operation_id: ID of the operation</span>
-    <span class="doccomment">/// * sender_addr: address of the sender</span>
+    <span class="doccomment">/// * `operation`: the `SignedOperation` to process, must be an `CallSC`</span>
+    <span class="doccomment">/// * `block_creator_addr`: address of the block creator</span>
+    <span class="doccomment">/// * `operation_id`: ID of the operation</span>
+    <span class="doccomment">/// * `sender_addr`: address of the sender</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">execute_callsc_op</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">operation</span>: <span class="kw-2">&amp;</span><span class="ident">OperationType</span>,
@@ -1503,8 +1503,8 @@
     <span class="doccomment">/// just yielding the execution output.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * slot: slot to execute</span>
-    <span class="doccomment">/// * opt_block: block ID if there is a block a that slot, otherwise None</span>
+    <span class="doccomment">/// * `slot`: slot to execute</span>
+    <span class="doccomment">/// * `opt_block`: block ID if there is a block a that slot, otherwise None</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
     <span class="doccomment">/// An `ExecutionOutput` structure summarizing the output of the executed slot</span>
@@ -1564,14 +1564,14 @@
 
     <span class="doccomment">/// Runs a read-only execution request.</span>
     <span class="doccomment">/// The executed bytecode appears to be able to read and write the consensus state,</span>
-    <span class="doccomment">/// but all accumulated changes are simply returned as an ExecutionOutput object,</span>
+    <span class="doccomment">/// but all accumulated changes are simply returned as an `ExecutionOutput` object,</span>
     <span class="doccomment">/// and not actually applied to the consensus state.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * req: a read-only execution request</span>
+    <span class="doccomment">/// * `req`: a read-only execution request</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">///  ExecutionOutput describing the output of the execution, or an error</span>
+    <span class="doccomment">///  `ExecutionOutput` describing the output of the execution, or an error</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">execute_readonly_request</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">req</span>: <span class="ident">ReadOnlyExecutionRequest</span>,
@@ -1635,10 +1635,10 @@
     }
 
     <span class="doccomment">/// Gets a full ledger entry both at the latest final and active executed slots</span>
-    <span class="doccomment">/// TODO: this can be heavily optimized, see comments and https://github.com/massalabs/massa/issues/2343</span>
+    <span class="doccomment">/// TODO: this can be heavily optimized, see comments and `https://github.com/massalabs/massa/issues/2343`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # returns</span>
-    <span class="doccomment">/// (final_entry, active_entry)</span>
+    <span class="doccomment">/// `(final_entry, active_entry)`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_final_and_active_ledger_entry</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>,
@@ -1681,7 +1681,7 @@
         (<span class="ident">final_entry</span>, <span class="ident">active_entry</span>)
     }
 
-    <span class="doccomment">/// Gets execution events optionnally filtered by:</span>
+    <span class="doccomment">/// Gets execution events optionally filtered by:</span>
     <span class="doccomment">/// * start slot</span>
     <span class="doccomment">/// * end slot</span>
     <span class="doccomment">/// * emitter address</span>

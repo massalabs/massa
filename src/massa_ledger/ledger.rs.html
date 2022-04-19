@@ -190,7 +190,6 @@
 <span id="185">185</span>
 <span id="186">186</span>
 <span id="187">187</span>
-<span id="188">188</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This file defines the final ledger associating addresses to their balances, bytecode and data.</span>
@@ -204,20 +203,19 @@
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 
 <span class="doccomment">/// Represents a final ledger associating addresses to their balances, bytecode and data.</span>
-<span class="doccomment">/// The final ledger is part of the final state which is attached to a final slot, can be boostrapped and allows others to bootstrap.</span>
-<span class="doccomment">/// The ledger size can be very high: it can exceed 1TB.</span>
+<span class="doccomment">/// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.</span>
+<span class="doccomment">/// The ledger size can be very high: it can exceed 1 terabyte.</span>
 <span class="doccomment">/// To allow for storage on disk, the ledger uses trees and has `O(log(N))` access, insertion and deletion complexity.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Note: currently the ledger is stored in RAM. TODO put it on the hard drive with cache.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FinalLedger</span> {
-    <span class="doccomment">/// ledger config</span>
+    <span class="doccomment">/// ledger configuration</span>
     <span class="ident">_config</span>: <span class="ident">LedgerConfig</span>,
     <span class="doccomment">/// ledger tree, sorted by address</span>
     <span class="ident">sorted_ledger</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">LedgerEntry</span><span class="op">&gt;</span>,
 }
 
-<span class="doccomment">/// Allows applying LedgerChanges to the final ledger</span>
-<span class="doccomment">///</span>
+<span class="doccomment">/// Allows applying `LedgerChanges` to the final ledger</span>
 <span class="kw">impl</span> <span class="ident">Applicable</span><span class="op">&lt;</span><span class="ident">LedgerChanges</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">FinalLedger</span> {
     <span class="kw">fn</span> <span class="ident">apply</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">changes</span>: <span class="ident">LedgerChanges</span>) {
         <span class="comment">// for all incoming changes</span>
@@ -266,7 +264,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">init_file_error</span>;
 
 <span class="kw">impl</span> <span class="ident">FinalLedger</span> {
-    <span class="doccomment">/// Initializes a new FinalLedger by reading its initial state from file.</span>
+    <span class="doccomment">/// Initializes a new `FinalLedger` by reading its initial state from file.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">config</span>: <span class="ident">LedgerConfig</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">LedgerError</span><span class="op">&gt;</span> {
         <span class="comment">// load the ledger tree from file</span>
         <span class="kw">let</span> <span class="ident">sorted_ledger</span> <span class="op">=</span> <span class="ident">serde_json::from_str</span>::<span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Address</span>, <span class="ident">Amount</span><span class="op">&gt;</span><span class="op">&gt;</span>(
@@ -293,12 +291,12 @@
         })
     }
 
-    <span class="doccomment">/// Initialize a FinalLedger from a bootstrap state</span>
+    <span class="doccomment">/// Initialize a `FinalLedger` from a bootstrap state</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// TODO: This loads the whole ledger in RAM. Switch to streaming in the future</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * config: ledger config</span>
+    <span class="doccomment">/// * configuration: ledger configuration</span>
     <span class="doccomment">/// * state: bootstrap state</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bootstrap_state</span>(<span class="ident">config</span>: <span class="ident">LedgerConfig</span>, <span class="ident">state</span>: <span class="ident">FinalLedgerBootstrapState</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">FinalLedger</span> {
@@ -319,10 +317,10 @@
     <span class="doccomment">/// Gets a copy of a full ledger entry.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// A clone of the whole LedgerEntry, or None if not found.</span>
+    <span class="doccomment">/// A clone of the whole `LedgerEntry`, or None if not found.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// TODO: in the future, never manipulate full ledger entries because their datastore can be huge</span>
-    <span class="doccomment">/// https://github.com/massalabs/massa/issues/2342</span>
+    <span class="doccomment">/// `https://github.com/massalabs/massa/issues/2342`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_full_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LedgerEntry</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">sorted_ledger</span>.<span class="ident">get</span>(<span class="ident">addr</span>).<span class="ident">cloned</span>()
     }
@@ -354,11 +352,11 @@
     <span class="doccomment">/// Gets a copy of the value of a datastore entry for a given address.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * addr: target address</span>
-    <span class="doccomment">/// * key: datastore key</span>
+    <span class="doccomment">/// * `addr`: target address</span>
+    <span class="doccomment">/// * `key`: datastore key</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
-    <span class="doccomment">/// A copy of the datastore value, or None if the ledger entry or datastore entry was not found</span>
+    <span class="doccomment">/// A copy of the datastore value, or `None` if the ledger entry or datastore entry was not found</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_data_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">Hash</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">sorted_ledger</span>
             .<span class="ident">get</span>(<span class="ident">addr</span>)
@@ -368,8 +366,8 @@
     <span class="doccomment">/// Checks for the existence of a datastore entry for a given address.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * addr: target address</span>
-    <span class="doccomment">/// * key: datastore key</span>
+    <span class="doccomment">/// * `addr`: target address</span>
+    <span class="doccomment">/// * `key`: datastore key</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Returns</span>
     <span class="doccomment">/// true if the datastore entry was found, or false if the ledger entry or datastore entry was not found</span>

@@ -776,7 +776,7 @@
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">IpAddr</span>, <span class="ident">SocketAddr</span>};
 
 <span class="kw">impl</span> <span class="ident">API</span><span class="op">&lt;</span><span class="ident">Public</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// generate a new public api</span>
+    <span class="doccomment">/// generate a new public API</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">consensus_command_sender</span>: <span class="ident">ConsensusCommandSender</span>,
         <span class="ident">execution_controller</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>,
@@ -1437,7 +1437,7 @@
         <span class="ident">Box::pin</span>(<span class="ident">closure</span>())
     }
 
-    <span class="doccomment">/// Get events optionnally filtered by:</span>
+    <span class="doccomment">/// Get events optionally filtered by:</span>
     <span class="doccomment">/// * start slot</span>
     <span class="doccomment">/// * end slot</span>
     <span class="doccomment">/// * emitter address</span>

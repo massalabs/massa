@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["ExportActiveBlock","Exportable version of ActiveBlock Fields that can be easily recomputed were left out"]]});
+initSidebarItems({"struct":[["ExportActiveBlock","Exportable version of `ActiveBlock` Fields that can be easily recomputed were left out"]]});

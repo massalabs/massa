@@ -149,7 +149,7 @@
         }
     }
 
-    <span class="doccomment">/// Initiates a connection with given timeout in millis</span>
+    <span class="doccomment">/// Initiates a connection with given timeout in milliseconds</span>
     <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DefaultConnector</span>(<span class="ident">MassaTime</span>);
 
@@ -157,7 +157,7 @@
         <span class="doccomment">/// Tries to connect to address</span>
         <span class="doccomment">///</span>
         <span class="doccomment">/// # Argument</span>
-        <span class="doccomment">/// * addr: SocketAddr we are trying to connect to.</span>
+        <span class="doccomment">/// * `addr`: `SocketAddr` we are trying to connect to.</span>
         <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">connect</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">SocketAddr</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">Duplex</span><span class="op">&gt;</span> {
             <span class="kw">match</span> <span class="ident">timeout</span>(<span class="self">self</span>.<span class="number">0</span>.<span class="ident">to_duration</span>(), <span class="ident">TcpStream::connect</span>(<span class="ident">addr</span>)).<span class="kw">await</span> {
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">Ok</span>(<span class="ident">sock</span>)) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">sock</span>),
@@ -180,7 +180,7 @@
         <span class="doccomment">/// Gets the associated listener</span>
         <span class="doccomment">///</span>
         <span class="doccomment">/// # Argument</span>
-        <span class="doccomment">/// * addr: SocketAddr we want to bind to.</span>
+        <span class="doccomment">/// * `addr`: `SocketAddr` we want to bind to.</span>
         <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_listener</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="ident">SocketAddr</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">DefaultListener</span><span class="op">&gt;</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">DefaultListener</span>(<span class="ident">TcpListener::bind</span>(<span class="ident">addr</span>).<span class="kw">await</span><span class="question-mark">?</span>))
         }
@@ -188,7 +188,7 @@
         <span class="doccomment">/// Get the connector with associated timeout</span>
         <span class="doccomment">///</span>
         <span class="doccomment">/// # Argument</span>
-        <span class="doccomment">/// * timeout_duration: timeout duration in millis</span>
+        <span class="doccomment">/// * `timeout_duration`: timeout duration in milliseconds</span>
         <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_connector</span>(
             <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
             <span class="ident">timeout_duration</span>: <span class="ident">MassaTime</span>,

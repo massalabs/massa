@@ -257,7 +257,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::settings::HASH_SIZE_BYTES</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert::TryInto</span>, <span class="ident">str::FromStr</span>};
 
-<span class="doccomment">/// sha256 hash</span>
+<span class="doccomment">/// SHA256 hash</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Hash</span>(<span class="ident">bitcoin_hashes::sha256::Hash</span>);
 
@@ -286,7 +286,7 @@
         <span class="ident">Hash</span>(<span class="ident">bitcoin_hashes::sha256::Hash::hash</span>(<span class="ident">data</span>))
     }
 
-    <span class="doccomment">/// Serialize a Hash using bs58 encoding with checksum.</span>
+    <span class="doccomment">/// Serialize a Hash using `bs58` encoding with checksum.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -324,7 +324,7 @@
         <span class="self">self</span>.<span class="number">0</span>.<span class="ident">into_inner</span>()
     }
 
-    <span class="doccomment">/// Deserialize using bs58 encoding with checksum.</span>
+    <span class="doccomment">/// Deserialize using `bs58` encoding with checksum.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///  ```</span>
@@ -367,10 +367,10 @@
 }
 
 <span class="kw">impl</span> <span class="ident">::serde::Serialize</span> <span class="kw">for</span> <span class="ident">Hash</span> {
-    <span class="doccomment">/// ::serde::Serialize trait for Hash</span>
+    <span class="doccomment">/// `::serde::Serialize` trait for Hash</span>
     <span class="doccomment">/// if the serializer is human readable,</span>
-    <span class="doccomment">/// serialization is done using serialize_bs58_check</span>
-    <span class="doccomment">/// else, it uses serialize_binary</span>
+    <span class="doccomment">/// serialization is done using `serialize_bs58_check`</span>
+    <span class="doccomment">/// else, it uses `serialize_binary`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///</span>
@@ -392,10 +392,10 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">::serde::Deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Hash</span> {
-    <span class="doccomment">/// ::serde::Deserialize trait for Hash</span>
+    <span class="doccomment">/// `::serde::Deserialize` trait for Hash</span>
     <span class="doccomment">/// if the deserializer is human readable,</span>
-    <span class="doccomment">/// deserialization is done using deserialize_bs58_check</span>
-    <span class="doccomment">/// else, it uses deserialize_binary</span>
+    <span class="doccomment">/// deserialization is done using `deserialize_bs58_check`</span>
+    <span class="doccomment">/// else, it uses `deserialize_binary`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Example</span>
     <span class="doccomment">///</span>

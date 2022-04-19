@@ -319,7 +319,7 @@
 }
 
 <span class="doccomment">/// Peer categories.</span>
-<span class="doccomment">/// There is a defined number af slots for each category.</span>
+<span class="doccomment">/// There is a defined number of slots for each category.</span>
 <span class="doccomment">/// Order matters: less prioritized peer type first</span>
 <span class="attribute">#[<span class="ident">derive</span>(
     <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Hash</span>, <span class="ident">Display</span>, <span class="ident">Enum</span>,
@@ -331,7 +331,7 @@
     <span class="ident">WhiteListed</span>,
     <span class="doccomment">/** if the peer is in bootstrap servers list
     for now it is decoupled from the real bootstrap sever list, it&#39;s just parsed
-    TODO: https://github.com/massalabs/massa/issues/2320
+    TODO: `https://github.com/massalabs/massa/issues/2320`
     */</span>
     <span class="ident">Bootstrap</span>,
 }
@@ -359,9 +359,9 @@
     <span class="kw">pub</span> <span class="ident">ip</span>: <span class="ident">IpAddr</span>,
     <span class="doccomment">/// The category the peer is in affects how it&#39;s treated.</span>
     <span class="kw">pub</span> <span class="ident">peer_type</span>: <span class="ident">PeerType</span>,
-    <span class="doccomment">/// Time in millis when peer was last alive</span>
+    <span class="doccomment">/// Time in milliseconds when peer was last alive</span>
     <span class="kw">pub</span> <span class="ident">last_alive</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Time in millis of peer&#39;s last failure</span>
+    <span class="doccomment">/// Time in milliseconds of peer&#39;s last failure</span>
     <span class="kw">pub</span> <span class="ident">last_failure</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MassaTime</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Whether peer was promoted through another peer</span>
     <span class="kw">pub</span> <span class="ident">advertised</span>: <span class="ident">bool</span>,
@@ -382,7 +382,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">PeerInfo</span> {
-    <span class="doccomment">/// Cleans up the PeerInfo by normalizing the IP address</span>
+    <span class="doccomment">/// Cleans up the `PeerInfo` by normalizing the IP address</span>
     <span class="doccomment">/// and resetting active connection counts.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cleanup</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="comment">// canonicalize IP</span>
@@ -403,11 +403,11 @@
             <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">active_in_connections</span> <span class="op">&gt;</span> <span class="number">0</span>
     }
 
-    <span class="doccomment">/// New standard PeerInfo for ipaddr</span>
+    <span class="doccomment">/// New standard `PeerInfo` for `IpAddr`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # Arguments</span>
-    <span class="doccomment">/// * ip: the IP address of the peer</span>
-    <span class="doccomment">/// * advertised: true if this peer was advertised as routable,</span>
+    <span class="doccomment">/// * `ip`: the IP address of the peer</span>
+    <span class="doccomment">/// * `advertised`: true if this peer was advertised as routable,</span>
     <span class="doccomment">/// which means that our node can attempt outgoing connections to it</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ip</span>: <span class="ident">IpAddr</span>, <span class="ident">advertised</span>: <span class="ident">bool</span>) -&gt; <span class="ident">PeerInfo</span> {
         <span class="ident">PeerInfo</span> {

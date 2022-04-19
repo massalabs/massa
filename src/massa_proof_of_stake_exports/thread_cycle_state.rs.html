@@ -236,7 +236,7 @@
     <span class="kw">pub</span> <span class="ident">cycle_updates</span>: <span class="ident">RollUpdates</span>,
     <span class="doccomment">/// Used to seed the random selector at each cycle</span>
     <span class="kw">pub</span> <span class="ident">rng_seed</span>: <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">Lsb0</span>, <span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// Per-address production statistics (ok_count, nok_count)</span>
+    <span class="doccomment">/// Per-address production statistics `(ok_count, nok_count)`</span>
     <span class="kw">pub</span> <span class="ident">production_stats</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">Address</span>, (<span class="ident">u64</span>, <span class="ident">u64</span>)<span class="op">&gt;</span>,
 }
 

@@ -527,8 +527,8 @@
     <span class="doccomment">/// The node worker signal that he received some full `operations` from a</span>
     <span class="doccomment">/// node.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Forward the event by sending a [NetworkEvent::ReceivedOperations].</span>
-    <span class="doccomment">/// See also [massa_network_exports::NodeEventType::ReceivedOperations]</span>
+    <span class="doccomment">/// Forward the event by sending a `[NetworkEvent::ReceivedOperations]`.</span>
+    <span class="doccomment">/// See also `[massa_network_exports::NodeEventType::ReceivedOperations]`</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_received_operations</span>(
         <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,
         <span class="ident">from</span>: <span class="ident">NodeId</span>,
@@ -550,7 +550,7 @@
         }
     }
 
-    <span class="doccomment">/// The node worker signal that he received a bach of operation ids</span>
+    <span class="doccomment">/// The node worker signal that he received a batch of operation ids</span>
     <span class="doccomment">/// from another node.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_received_operations_annoncement</span>(
         <span class="ident">worker</span>: <span class="kw-2">&amp;mut</span> <span class="ident">NetworkWorker</span>,

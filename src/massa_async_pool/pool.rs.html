@@ -187,7 +187,7 @@
 <span id="182">182</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="doccomment">//! This file defines a finite size final pool of async messages for use in the context of autonomous smart contracts</span>
+<span class="doccomment">//! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">bootstrap::AsyncPoolBootstrap</span>,
@@ -198,20 +198,20 @@
 <span class="kw">use</span> <span class="ident">massa_models::Slot</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 
-<span class="doccomment">/// Represents a pool of deterministically sorted messages.</span>
-<span class="doccomment">/// The final async pool is attached to the output of the latest final slot within the context of massa-final-state.</span>
+<span class="doccomment">/// Represents a pool of sorted messages in a deterministic way.</span>
+<span class="doccomment">/// The final asynchronous pool is attached to the output of the latest final slot within the context of massa-final-state.</span>
 <span class="doccomment">/// Nodes must bootstrap the final message pool when they join the network.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AsyncPool</span> {
-    <span class="doccomment">/// async pool config</span>
+    <span class="doccomment">/// Asynchronous pool configuration</span>
     <span class="ident">config</span>: <span class="ident">AsyncPoolConfig</span>,
 
-    <span class="doccomment">/// messages sorted by decreasing ID (decreasing priority)</span>
+    <span class="doccomment">/// Messages sorted by decreasing ID (decreasing priority)</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">messages</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">AsyncMessageId</span>, <span class="ident">AsyncMessage</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">AsyncPool</span> {
-    <span class="doccomment">/// Creates an empty AsyncPool</span>
+    <span class="doccomment">/// Creates an empty `AsyncPool`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">config</span>: <span class="ident">AsyncPoolConfig</span>) -&gt; <span class="ident">AsyncPool</span> {
         <span class="ident">AsyncPool</span> {
             <span class="ident">config</span>,
@@ -219,7 +219,7 @@
         }
     }
 
-    <span class="doccomment">/// Creates an AsyncPool from a bootstrap snapshot obtained using AsyncPool::get_bootstrap_snapshot</span>
+    <span class="doccomment">/// Creates an `AsyncPool` from a bootstrap snapshot obtained using `AsyncPool::get_bootstrap_snapshot`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_bootstrap_snapshot</span>(
         <span class="ident">config</span>: <span class="ident">AsyncPoolConfig</span>,
         <span class="ident">snapshot</span>: <span class="ident">AsyncPoolBootstrap</span>,
@@ -234,18 +234,18 @@
         }
     }
 
-    <span class="doccomment">/// Returns a snapshot clone of the AsyncPool for bootstrapping other nodes</span>
+    <span class="doccomment">/// Returns a snapshot clone of the `AsyncPool` for bootstrapping other nodes</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_bootstrap_snapshot</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">AsyncPoolBootstrap</span> {
         <span class="ident">AsyncPoolBootstrap</span> {
             <span class="ident">messages</span>: <span class="self">self</span>.<span class="ident">messages</span>.<span class="ident">values</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>(),
         }
     }
 
-    <span class="doccomment">/// Applies precompiled AsyncPoolChanges to the pool without checking for overflows.</span>
-    <span class="doccomment">/// This function is used when applying pre-compiled AsyncPoolChanges to an AsyncPool.</span>
+    <span class="doccomment">/// Applies pre-compiled `AsyncPoolChanges` to the pool without checking for overflows.</span>
+    <span class="doccomment">/// This function is used when applying pre-compiled `AsyncPoolChanges` to an `AsyncPool`.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # arguments</span>
-    <span class="doccomment">/// * changes: AsyncPoolChanges listing all async pool changes (message insertions/deletions)</span>
+    <span class="doccomment">/// * `changes`: `AsyncPoolChanges` listing all asynchronous pool changes (message insertions/deletions)</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_changes_unchecked</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">changes</span>: <span class="ident">AsyncPoolChanges</span>) {
         <span class="kw">for</span> <span class="ident">change</span> <span class="kw">in</span> <span class="ident">changes</span>.<span class="number">0</span>.<span class="ident">into_iter</span>() {
             <span class="kw">match</span> <span class="ident">change</span> {
@@ -267,14 +267,14 @@
     <span class="doccomment">/// and get the list of pruned messages for `coins` reimbursement.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # arguments</span>
-    <span class="doccomment">/// * slot: used to filter out expired messages, not stored</span>
-    <span class="doccomment">/// * new_messages: list of AsyncMessage to add to the pool</span>
+    <span class="doccomment">/// * `slot`: used to filter out expired messages, not stored</span>
+    <span class="doccomment">/// * `new_messages`: list of `AsyncMessage` to add to the pool</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # returns</span>
-    <span class="doccomment">/// The list of (message_id, message) that were eliminated from the pool after the changes were applied, sorted in the following order:</span>
+    <span class="doccomment">/// The list of `(message_id, message)` that were eliminated from the pool after the changes were applied, sorted in the following order:</span>
     <span class="doccomment">/// * expired messages from the pool, in priority order (from highest to lowest priority)</span>
-    <span class="doccomment">/// * expired messages from new_messages (in the order they appear in new_messages)</span>
-    <span class="doccomment">/// * excess messages after inserting all remaining new_messages, in priority order (from highest to lowest priority)</span>
+    <span class="doccomment">/// * expired messages from `new_messages` (in the order they appear in `new_messages`)</span>
+    <span class="doccomment">/// * excess messages after inserting all remaining `new_messages`, in priority order (from highest to lowest priority)</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">settle_slot</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">slot</span>: <span class="ident">Slot</span>,
@@ -305,14 +305,14 @@
 
     <span class="doccomment">/// Takes the best possible batch of messages to execute, with gas limits and slot validity filtering.</span>
     <span class="doccomment">/// The returned messages are removed from the pool.</span>
-    <span class="doccomment">/// This method is used at the beginning of a slot execution to list async messages to execute.</span>
+    <span class="doccomment">/// This method is used at the beginning of a slot execution to list asynchronous messages to execute.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # arguments</span>
-    <span class="doccomment">/// * slot: select only messages that are valid within this slot</span>
-    <span class="doccomment">/// * available_gas: maximum amount of available gas</span>
+    <span class="doccomment">/// * `slot`: select only messages that are valid within this slot</span>
+    <span class="doccomment">/// * `available_gas`: maximum amount of available gas</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # returns</span>
-    <span class="doccomment">/// A vector of messages, sorted from the most prioritary to the least prioritary</span>
+    <span class="doccomment">/// A vector of messages, sorted from the most priority to the least priority</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">take_batch_to_execute</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">slot</span>: <span class="ident">Slot</span>,

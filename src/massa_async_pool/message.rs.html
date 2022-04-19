@@ -233,7 +233,7 @@
 
 <span class="doccomment">/// Unique identifier of a message.</span>
 <span class="doccomment">/// Also has the property of ordering by priority (highest first) following the triplet:</span>
-<span class="doccomment">/// (rev(max_gas*gas_price), emission_slot, emission_index)</span>
+<span class="doccomment">/// `(rev(max_gas*gas_price), emission_slot, emission_index)`</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">AsyncMessageId</span> <span class="op">=</span> (<span class="ident">std::cmp::Reverse</span><span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>, <span class="ident">Slot</span>, <span class="ident">u64</span>);
 
 <span class="doccomment">/// Structure defining an asynchronous smart contract message</span>
@@ -242,8 +242,8 @@
     <span class="doccomment">/// Slot at which the message was emitted</span>
     <span class="kw">pub</span> <span class="ident">emission_slot</span>: <span class="ident">Slot</span>,
 
-    <span class="doccomment">/// Index of the emitted message within the emission_slot.</span>
-    <span class="doccomment">/// This is used for disambiguating the emission of multiple messages at the same slot.</span>
+    <span class="doccomment">/// Index of the emitted message within the `emission_slot`.</span>
+    <span class="doccomment">/// This is used for disambiguate the emission of multiple messages at the same slot.</span>
     <span class="kw">pub</span> <span class="ident">emission_index</span>: <span class="ident">u64</span>,
 
     <span class="doccomment">/// The address that sent the message</span>
@@ -259,7 +259,7 @@
     <span class="kw">pub</span> <span class="ident">max_gas</span>: <span class="ident">u64</span>,
 
     <span class="doccomment">/// Gas price to take into account when executing the message.</span>
-    <span class="doccomment">/// max_gas * gas_price are burned by the sender when the emessage is sent.</span>
+    <span class="doccomment">/// `max_gas * gas_price` are burned by the sender when the message is sent.</span>
     <span class="kw">pub</span> <span class="ident">gas_price</span>: <span class="ident">Amount</span>,
 
     <span class="doccomment">/// Coins sent from the sender to the target address of the message.</span>
@@ -280,7 +280,7 @@
 
 <span class="kw">impl</span> <span class="ident">AsyncMessage</span> {
     <span class="doccomment">/// Compute the ID of the message for use when choosing which operations to keep in priority (highest score) on pool overflow.</span>
-    <span class="doccomment">/// For now, the formula is simply score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))</span>
+    <span class="doccomment">/// For now, the formula is simply `score = (gas_price * max_gas, rev(emission_slot), rev(emission_index))`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compute_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">AsyncMessageId</span> {
         (
             <span class="ident">std::cmp::Reverse</span>(<span class="self">self</span>.<span class="ident">gas_price</span>.<span class="ident">saturating_mul_u64</span>(<span class="self">self</span>.<span class="ident">max_gas</span>)),

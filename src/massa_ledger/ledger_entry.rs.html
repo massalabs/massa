@@ -178,7 +178,7 @@
 <span id="173">173</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
-<span class="doccomment">//! This file defines the structure representing an entry in the FinalLedger</span>
+<span class="doccomment">//! This file defines the structure representing an entry in the `FinalLedger`</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ledger_changes::LedgerEntryUpdate</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types</span>::{<span class="ident">Applicable</span>, <span class="ident">SetOrDelete</span>};
@@ -189,7 +189,7 @@
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 
-<span class="doccomment">/// Structure defining an entry associated to an address in the FinalLedger</span>
+<span class="doccomment">/// Structure defining an entry associated to an address in the `FinalLedger`</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LedgerEntry</span> {
     <span class="doccomment">/// The parallel balance of that entry.</span>
@@ -203,7 +203,7 @@
     <span class="kw">pub</span> <span class="ident">datastore</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">Hash</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
-<span class="doccomment">/// A LedgerEntryUpdate can be applied to a LedgerEntry</span>
+<span class="doccomment">/// A `LedgerEntryUpdate` can be applied to a `LedgerEntry`</span>
 <span class="kw">impl</span> <span class="ident">Applicable</span><span class="op">&lt;</span><span class="ident">LedgerEntryUpdate</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">LedgerEntry</span> {
     <span class="kw">fn</span> <span class="ident">apply</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">update</span>: <span class="ident">LedgerEntryUpdate</span>) {
         <span class="comment">// apply updates to the parallel balance</span>
@@ -232,7 +232,7 @@
     }
 }
 
-<span class="doccomment">/// Allow serializing the LedgerEntry into a compact binary representation</span>
+<span class="doccomment">/// Allow serializing the `LedgerEntry` into a compact binary representation</span>
 <span class="kw">impl</span> <span class="ident">SerializeCompact</span> <span class="kw">for</span> <span class="ident">LedgerEntry</span> {
     <span class="kw">fn</span> <span class="ident">to_bytes_compact</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">massa_models::ModelsError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
@@ -274,7 +274,7 @@
     }
 }
 
-<span class="doccomment">/// Allow deserializing a LedgerEntry from its compact binary representation</span>
+<span class="doccomment">/// Allow deserializing a `LedgerEntry` from its compact binary representation</span>
 <span class="kw">impl</span> <span class="ident">DeserializeCompact</span> <span class="kw">for</span> <span class="ident">LedgerEntry</span> {
     <span class="kw">fn</span> <span class="ident">from_bytes_compact</span>(<span class="ident">buffer</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">usize</span>), <span class="ident">massa_models::ModelsError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cursor</span> <span class="op">=</span> <span class="number">0usize</span>;

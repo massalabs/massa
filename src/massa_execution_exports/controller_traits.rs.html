@@ -106,18 +106,18 @@
 
 <span class="doccomment">/// interface that communicates with the execution worker thread</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">ExecutionController</span>: <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> {
-    <span class="doccomment">/// Updates blockclique status by signalling newly finalized blocks and the latest blockclique.</span>
+    <span class="doccomment">/// Updates blockclique status by signaling newly finalized blocks and the latest blockclique.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// # arguments</span>
-    <span class="doccomment">/// * finalized_blocks: newly finalized blocks</span>
-    <span class="doccomment">/// * blockclique: new blockclique</span>
+    <span class="doccomment">/// # Arguments</span>
+    <span class="doccomment">/// * `finalized_blocks`: newly finalized blocks</span>
+    <span class="doccomment">/// * `blockclique`: new blockclique</span>
     <span class="kw">fn</span> <span class="ident">update_blockclique_status</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">finalized_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
         <span class="ident">blockclique</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slot</span>, <span class="ident">BlockId</span><span class="op">&gt;</span>,
     );
 
-    <span class="doccomment">/// Get execution events optionnally filtered by:</span>
+    <span class="doccomment">/// Get execution events optionally filtered by:</span>
     <span class="doccomment">/// * start slot</span>
     <span class="doccomment">/// * end slot</span>
     <span class="doccomment">/// * emitter address</span>
@@ -135,7 +135,7 @@
     <span class="doccomment">/// Get a copy of a full ledger entry with its final and active values</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # return value</span>
-    <span class="doccomment">/// * (final_entry, active_entry)</span>
+    <span class="doccomment">/// * `(final_entry, active_entry)`</span>
     <span class="kw">fn</span> <span class="ident">get_final_and_active_ledger_entry</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">Address</span>,
@@ -144,10 +144,10 @@
     <span class="doccomment">/// Execute read-only SC function call without causing modifications to the consensus state</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # arguments</span>
-    <span class="doccomment">/// * req: an instance of ReadOnlyCallRequest describing the parameters of the execution</span>
+    <span class="doccomment">/// * `req`: an instance of `ReadOnlyCallRequest` describing the parameters of the execution</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// # returns</span>
-    <span class="doccomment">/// An instance of ExecutionOutput containing a summary of the effects of the execution,</span>
+    <span class="doccomment">/// An instance of `ExecutionOutput` containing a summary of the effects of the execution,</span>
     <span class="doccomment">/// or an error if the execution failed.</span>
     <span class="kw">fn</span> <span class="ident">execute_readonly_request</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -155,12 +155,12 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ExecutionOutput</span>, <span class="ident">ExecutionError</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// Returns a boxed clone of self.</span>
-    <span class="doccomment">/// Useful to alow cloning Box&lt;dyn ExecutionController&gt;.</span>
+    <span class="doccomment">/// Useful to allow cloning `Box&lt;dyn ExecutionController&gt;`.</span>
     <span class="kw">fn</span> <span class="ident">clone_box</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span>;
 }
 
-<span class="doccomment">/// Allow cloning Box&lt;dyn ExecutionController&gt;</span>
-<span class="doccomment">/// Uses ExecutionController::clone_box internally</span>
+<span class="doccomment">/// Allow cloning `Box&lt;dyn ExecutionController&gt;`</span>
+<span class="doccomment">/// Uses `ExecutionController::clone_box` internally</span>
 <span class="kw">impl</span> <span class="ident">Clone</span> <span class="kw">for</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ExecutionController</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">clone_box</span>()

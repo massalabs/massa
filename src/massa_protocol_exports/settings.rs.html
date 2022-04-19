@@ -43,7 +43,7 @@
 <span class="doccomment">/// Protocol Configuration</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProtocolSettings</span> {
-    <span class="doccomment">/// after ask_block_timeout millis we try to ask a block to another node</span>
+    <span class="doccomment">/// after `ask_block_timeout` milliseconds we try to ask a block to another node</span>
     <span class="kw">pub</span> <span class="ident">ask_block_timeout</span>: <span class="ident">MassaTime</span>,
     <span class="doccomment">/// max known blocks per node kept in memory</span>
     <span class="kw">pub</span> <span class="ident">max_node_known_blocks_size</span>: <span class="ident">usize</span>,
@@ -53,7 +53,7 @@
     <span class="kw">pub</span> <span class="ident">max_known_ops_size</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// max known endorsements per node kept in memory</span>
     <span class="kw">pub</span> <span class="ident">max_known_endorsements_size</span>: <span class="ident">usize</span>,
-    <span class="doccomment">/// we ask for the same block max_simultaneous_ask_blocks_per_node times at the same time</span>
+    <span class="doccomment">/// we ask for the same block `max_simultaneous_ask_blocks_per_node` times at the same time</span>
     <span class="kw">pub</span> <span class="ident">max_simultaneous_ask_blocks_per_node</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// Max wait time for sending a Network or Node event.</span>
     <span class="kw">pub</span> <span class="ident">max_send_wait</span>: <span class="ident">MassaTime</span>,
