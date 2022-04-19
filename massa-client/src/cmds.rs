@@ -497,22 +497,30 @@ impl Command {
             }
 
             Command::get_filtered_sc_output_event => {
-                if parameters.len() != 5 {
-                    bail!("wrong number of parameters");
+                let p_list: [&str; 5] = [
+                    "start",
+                    "end",
+                    "emitter_address",
+                    "caller_address",
+                    "operation_id",
+                ];
+                let mut p: HashMap<&str, &str> = HashMap::new();
+                for v in parameters {
+                    let s: Vec<&str> = v.split('=').collect();
+                    if s.len() == 2 && p_list.contains(&s[0]) {
+                        p.insert(s[0], s[1]);
+                    } else {
+                        bail!("invalid parameter");
+                    }
                 }
-                let start = parameters[0].parse::<Slot>()?;
-                let end = parameters[1].parse::<Slot>()?;
-                let emitter_address = parameters[2].parse::<Address>()?;
-                let original_caller_address = parameters[3].parse::<Address>()?;
-                let original_operation_id = parameters[4].parse::<OperationId>()?;
                 match client
                     .public
                     .get_filtered_sc_output_event(EventFilter {
-                        start: Some(start),
-                        end: Some(end),
-                        emitter_address: Some(emitter_address),
-                        original_caller_address: Some(original_caller_address),
-                        original_operation_id: Some(original_operation_id),
+                        start: parse_value(&p, p_list[0]),
+                        end: parse_value(&p, p_list[1]),
+                        emitter_address: parse_value(&p, p_list[2]),
+                        original_caller_address: parse_value(&p, p_list[3]),
+                        original_operation_id: parse_value(&p, p_list[4]),
                     })
                     .await
                 {
@@ -963,4 +971,17 @@ pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>
 /// reads a file
 async fn get_file_as_byte_vec(filename: &std::path::Path) -> Result<Vec<u8>> {
     Ok(tokio::fs::read(filename).await?)
+}
+
+pub fn parse_value<T: std::str::FromStr>(p: &HashMap<&str, &str>, key: &str) -> Option<T> {
+    p.get_key_value(key).and_then(|x| {
+        x.1.parse::<T>()
+            .map_err(|_| {
+                client_warning!(format!(
+                    "'{}' parameter was ignored because of wrong corresponding value",
+                    key
+                ))
+            })
+            .ok()
+    })
 }
