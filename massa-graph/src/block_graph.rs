@@ -96,13 +96,13 @@ pub enum DiscardReason {
     Final,
 }
 
-/// Enum used in blockgraph's state machine
+/// Enum used in `BlockGraph`'s state machine
 #[derive(Debug, Clone)]
 enum BlockStatus {
     /// The block/header has reached consensus but no consensus-level check has been performed.
     /// It will be processed during the next iteration
     Incoming(HeaderOrBlock),
-    /// The block/header's slot is too much in the future.
+    /// The block's or header's slot is too much in the future.
     /// It will be processed at the block/header slot
     WaitingForSlot(HeaderOrBlock),
     /// The block references an unknown Block id
@@ -111,10 +111,10 @@ enum BlockStatus {
         header_or_block: HeaderOrBlock,
         /// includes self if it's only a header
         unsatisfied_dependencies: Set<BlockId>,
-        /// Used to limit and sort the number of blocks/headers wainting for dependencies
+        /// Used to limit and sort the number of blocks/headers waiting for dependencies
         sequence_number: u64,
     },
-    /// The block was checked and incluced in the blockgraph
+    /// The block was checked and included in the blockgraph
     Active(Box<ActiveBlock>),
     /// The block was discarded and is kept to avoid reprocessing it
     Discarded {
@@ -122,7 +122,7 @@ enum BlockStatus {
         header: SignedHeader,
         /// why it was discarded
         reason: DiscardReason,
-        /// Used to limit and sort the number of blocks/headers wainting for dependencies
+        /// Used to limit and sort the number of blocks/headers waiting for dependencies
         sequence_number: u64,
     },
 }
@@ -174,7 +174,7 @@ impl<'a> BlockGraphExport {
         block_graph: &'a BlockGraph,
         slot_start: Option<Slot>,
         slot_end: Option<Slot>,
-    ) -> Self {
+    ) -> Result<Self> {
         let mut export = BlockGraphExport {
             genesis_blocks: block_graph.genesis_hashes.clone(),
             active_blocks: Map::with_capacity_and_hasher(
@@ -219,7 +219,7 @@ impl<'a> BlockGraphExport {
                         let block = block_graph
                             .storage
                             .retrieve_block(hash)
-                            .expect("Missing block in storage.");
+                            .ok_or(GraphError::MissingBlock)?;
                         let stored_block = block.read();
                         export.active_blocks.insert(
                             *hash,
@@ -239,7 +239,7 @@ impl<'a> BlockGraphExport {
             }
         }
 
-        export
+        Ok(export)
     }
 }
 
@@ -252,7 +252,7 @@ pub struct BlockGraphExport {
     pub active_blocks: Map<BlockId, ExportCompiledBlock>,
     /// Finite cache of discarded blocks, in exported version.
     pub discarded_blocks: Map<BlockId, (DiscardReason, SignedHeader)>,
-    /// Best parents hashe in each thread.
+    /// Best parents hashes in each thread.
     pub best_parents: Vec<(BlockId, u64)>,
     /// Latest final period and block hash in each thread.
     pub latest_final_blocks_periods: Vec<(BlockId, u64)>,
@@ -273,7 +273,7 @@ pub struct LedgerDataExport {
 
 /// Graph management
 pub struct BlockGraph {
-    /// Consensus related config
+    /// Consensus related configuration
     cfg: GraphConfig,
     /// Block ids of genesis blocks
     genesis_hashes: Vec<BlockId>,
@@ -281,7 +281,7 @@ pub struct BlockGraph {
     sequence_counter: u64,
     /// Every block we know about
     block_statuses: Map<BlockId, BlockStatus>,
-    /// Ids of incomming blocks/headers
+    /// Ids of incoming blocks/headers
     incoming_index: Set<BlockId>,
     /// ids of waiting for slot blocks/headers
     waiting_for_slot_index: Set<BlockId>,
@@ -293,7 +293,7 @@ pub struct BlockGraph {
     discarded_index: Set<BlockId>,
     /// One (block id, period) per thread
     latest_final_blocks_periods: Vec<(BlockId, u64)>,
-    /// One (block id, period) per thread TODO not sure I understand the difference with latest_final_blocks_periods
+    /// One `(block id, period)` per thread TODO not sure I understand the difference with `latest_final_blocks_periods`
     best_parents: Vec<(BlockId, u64)>,
     /// Incompatibility graph: maps a block id to the block ids it is incompatible with
     /// One entry per Active Block
@@ -327,7 +327,7 @@ enum HeaderCheckOutcome {
         incompatibilities: Set<BlockId>,
         /// number of incompatibilities that are inherited from the parents
         inherited_incompatibilities_count: usize,
-        /// list of (period, address, did_create) for all block/endorsement creation events
+        /// list of `(period, address, did_create)` for all block/endorsement creation events
         production_events: Vec<(u64, Address, bool)>,
     },
     /// there is something wrong with that header
@@ -366,7 +366,7 @@ enum BlockCheckOutcome {
         block_ledger_changes: LedgerChanges,
         /// changes caused by that block on rolls
         roll_updates: RollUpdates,
-        /// list of (period, address, did_create) for all block/endorsement creation events
+        /// list of `(period, address, did_create)` for all block/endorsement creation events
         production_events: Vec<(u64, Address, bool)>,
     },
     /// There is something wrong with that block
@@ -398,9 +398,9 @@ enum BlockOperationsCheckOutcome {
 /// Creates genesis block in given thread.
 ///
 /// # Arguments
-/// * cfg: consensus configuration
-/// * serialization_context: ref to a SerializationContext instance
-/// * thread_number: thread in wich we want a genesis block
+/// * `cfg`: consensus configuration
+/// * `serialization_context`: ref to a `SerializationContext` instance
+/// * `thread_number`: thread in which we want a genesis block
 pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> Result<(BlockId, Block)> {
     let private_key = cfg.genesis_key;
     let public_key = derive_public_key(&private_key);
@@ -425,11 +425,12 @@ pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> Result<(Blo
 }
 
 impl BlockGraph {
-    /// Creates a new block_graph.
+    /// Creates a new `BlockGraph`.
     ///
     /// # Argument
-    /// * cfg : consensus configuration.
-    /// * serialization_context: SerializationContext instance
+    /// * `cfg`: consensus configuration.
+    /// * `init`: A bootstrap graph to start the graph with
+    /// * `storage`: A shared storage that share data across all modules.
     pub async fn new(
         cfg: GraphConfig,
         init: Option<BootstrapableGraph>,
@@ -627,10 +628,10 @@ impl BlockGraph {
     /// Try to apply an operation in the context of the block
     ///
     /// # Arguments
-    /// * state_accu: where the changes are accumulated while we go through the block
-    /// * header: the header of the block we are inside
-    /// * operation: the operation that we are trying to apply
-    /// * pos: proof of stake engine (used for roll related operations)
+    /// * `state_accu`: where the changes are accumulated while we go through the block
+    /// * `header`: the header of the block we are inside
+    /// * `operation`: the operation that we are trying to apply
+    /// * `pos`: proof of stake engine (used for roll related operations)
     pub fn block_state_try_apply_op(
         &self,
         state_accu: &mut BlockStateAccumulator,
@@ -665,10 +666,10 @@ impl BlockGraph {
     /// loads missing block state rolls if available
     ///
     /// # Arguments
-    /// * accu: accumulated block changes
-    /// * header: block header
-    /// * pos: proof of state engine
-    /// * involved_addrs: involved addresses
+    /// * `accu`: accumulated block changes
+    /// * `header`: block header
+    /// * `pos`: proof of state engine
+    /// * `involved_addrs`: involved addresses
     pub fn block_state_sync_rolls(
         &self,
         accu: &mut BlockStateAccumulator,
@@ -1031,9 +1032,9 @@ impl BlockGraph {
             .collect()
     }
 
-    /// for algo see pos.md
-    /// if addrs_opt is Some(addrs), restrict to addrs. If None, return all addresses.
-    /// returns (roll_counts, cycle_roll_updates)
+    /// for algorithm see `pos.md`
+    /// if `addrs_opt` is `Some(addrs)`, restrict to address. If None, return all addresses.
+    /// returns (`roll_counts`, `cycle_roll_updates`)
     pub fn get_roll_data_at_parent(
         &self,
         block_id: BlockId,
@@ -1212,44 +1213,43 @@ impl BlockGraph {
     /// Gets whole compiled block corresponding to given hash, if it is active.
     ///
     /// # Argument
-    /// * block_id : block ID
+    /// * `block_id`: block ID
     pub fn get_active_block(&self, block_id: &BlockId) -> Option<&ActiveBlock> {
         BlockGraph::get_full_active_block(&self.block_statuses, *block_id)
     }
 
     /// get export version of a block
-    pub fn get_export_block_status(&self, block_id: &BlockId) -> Option<ExportBlockStatus> {
-        self.block_statuses
-            .get(block_id)
-            .map(|block_status| match block_status {
-                BlockStatus::Incoming(_) => ExportBlockStatus::Incoming,
-                BlockStatus::WaitingForSlot(_) => ExportBlockStatus::WaitingForSlot,
-                BlockStatus::WaitingForDependencies { .. } => {
-                    ExportBlockStatus::WaitingForDependencies
+    pub fn get_export_block_status(&self, block_id: &BlockId) -> Result<Option<ExportBlockStatus>> {
+        let block_status = match self.block_statuses.get(block_id) {
+            None => return Ok(None),
+            Some(block_status) => block_status,
+        };
+        let export = match block_status {
+            BlockStatus::Incoming(_) => ExportBlockStatus::Incoming,
+            BlockStatus::WaitingForSlot(_) => ExportBlockStatus::WaitingForSlot,
+            BlockStatus::WaitingForDependencies { .. } => ExportBlockStatus::WaitingForDependencies,
+            BlockStatus::Active(active_block) => {
+                let block = self
+                    .storage
+                    .retrieve_block(block_id)
+                    .ok_or(GraphError::MissingBlock)?;
+                let stored_block = block.read();
+                if active_block.is_final {
+                    ExportBlockStatus::Final(stored_block.block.clone())
+                } else {
+                    ExportBlockStatus::Active(stored_block.block.clone())
                 }
-                BlockStatus::Active(active_block) => {
-                    let block = self
-                        .storage
-                        .retrieve_block(block_id)
-                        .expect("Missing block in storage.");
-                    let stored_block = block.read();
-                    if active_block.is_final {
-                        ExportBlockStatus::Final(stored_block.block.clone())
-                    } else {
-                        ExportBlockStatus::Active(stored_block.block.clone())
-                    }
-                }
-                BlockStatus::Discarded { reason, .. } => {
-                    ExportBlockStatus::Discarded(reason.clone())
-                }
-            })
+            }
+            BlockStatus::Discarded { reason, .. } => ExportBlockStatus::Discarded(reason.clone()),
+        };
+        Ok(Some(export))
     }
 
     /// Retrieves operations from operation Ids
     pub fn get_operations(
         &self,
         operation_ids: &Set<OperationId>,
-    ) -> Map<OperationId, OperationSearchResult> {
+    ) -> Result<Map<OperationId, OperationSearchResult>> {
         let mut res: Map<OperationId, OperationSearchResult> = Default::default();
         // for each active block
         for block_id in self.active_index.iter() {
@@ -1257,7 +1257,7 @@ impl BlockGraph {
                 let stored_block = self
                     .storage
                     .retrieve_block(block_id)
-                    .expect("Missing block in storage.");
+                    .ok_or(GraphError::MissingBlock)?;
                 let stored_block = stored_block.read();
 
                 // check the intersection with the wanted operation ids, and update/insert into results
@@ -1285,7 +1285,7 @@ impl BlockGraph {
                     });
             }
         }
-        res
+        Ok(res)
     }
 
     /// signal new slot
@@ -1454,7 +1454,7 @@ impl BlockGraph {
         Ok(())
     }
 
-    /// ack a single item, return a set of items to re-ack
+    /// Acknowledge a single item, return a set of items to re-ack
     ///
     /// Checks performed:
     /// - See `check_header` for checks on incoming headers.
@@ -1866,10 +1866,10 @@ impl BlockGraph {
         }
     }
 
-    /// Gets whole ActiveBlock corresponding to given block_id
+    /// Gets whole `ActiveBlock` corresponding to given `block_id`
     ///
     /// # Argument
-    /// * block_id : block ID
+    /// * `block_id`: block ID
     fn get_full_active_block(
         block_statuses: &Map<BlockId, BlockStatus>,
         block_id: BlockId,
@@ -1908,7 +1908,7 @@ impl BlockGraph {
     /// - Valid thread.
     /// - Check that the block is older than the latest final one in thread.
     /// - Check that the block slot is not too much into the future,
-    ///   as determined by the config `future_block_processing_max_periods`.
+    ///   as determined by the configuration `future_block_processing_max_periods`.
     /// - Check if it was the creator's turn to create this block.
     /// - TODO: check for double staking.
     /// - Check parents are present.
@@ -2248,7 +2248,7 @@ impl BlockGraph {
 
     /// check endorsements:
     /// * endorser was selected for that (slot, index)
-    /// * endorsed slot is parent_in_own_thread slot
+    /// * endorsed slot is `parent_in_own_thread` slot
     fn check_endorsements(
         &self,
         header: &SignedHeader,
@@ -2377,7 +2377,7 @@ impl BlockGraph {
     /// Check if operations are consistent.
     ///
     /// Returns changes done by that block to the ledger (one hashmap per thread) and rolls
-    /// consensus/pos.md#block-reception-process
+    /// `consensus/pos.md#block-reception-process`
     ///
     /// Checks performed:
     /// - Check that ops were not reused in previous blocks.
@@ -3635,7 +3635,7 @@ impl BlockGraph {
         Ok(discarded_finals)
     }
 
-    /// get the current block wishlist
+    /// get the current block wish list
     pub fn get_block_wishlist(&self) -> Result<Set<BlockId>> {
         let mut wishlist = Set::<BlockId>::default();
         for block_id in self.waiting_for_dependencies_index.iter() {

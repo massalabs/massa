@@ -1,6 +1,6 @@
 //! Contains the implementation of the life cycle of operations
 //!
-//! Impement the propagation algorithm written here [redirect to github]
+//! Implement the propagation algorithm written here [redirect to GitHub]
 //! (https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779).
 //!
 //! 1) get batches of operations ids
@@ -14,7 +14,6 @@ use crate::protocol_worker::ProtocolWorker;
 use massa_models::{
     node::NodeId,
     operation::{OperationIds, Operations},
-    prehash::BuildMap,
     signed::Signable,
 };
 use massa_network_exports::NetworkError;
@@ -35,12 +34,12 @@ pub struct OperationBatchItem {
     pub operations_ids: OperationIds,
 }
 
-/// Queue containing every [OperationsBatchItem] we want to ask now or later.
+/// Queue containing every `[OperationsBatchItem]` we want to ask now or later.
 pub type OperationBatchBuffer = VecDeque<OperationBatchItem>;
 
 impl ProtocolWorker {
     /// On receive a batch of operation ids `op_batch` from another `node_id`
-    /// Execute the following algorithm: [redirect to github](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)
+    /// Execute the following algorithm: [redirect to GitHub](https://github.com/massalabs/massa/issues/2283#issuecomment-1040872779)
     ///
     ///```py
     ///def process_op_batch(op_batch, node_id):
@@ -61,76 +60,23 @@ impl ProtocolWorker {
     ///```
     pub(crate) async fn on_operations_announcements_received(
         &mut self,
-        op_batch: OperationIds,
+        operations_ids: OperationIds,
         node_id: NodeId,
     ) -> Result<(), ProtocolError> {
-        let mut ask_set =
-            OperationIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
-        let mut future_set =
-            OperationIds::with_capacity_and_hasher(op_batch.len(), BuildMap::default());
-        // exactitude isn't important, we want to have a now for that function call
-        let now = Instant::now();
-        for op_id in op_batch {
-            if self.checked_operations.contains(&op_id) {
-                continue;
-            }
-            let wish = match self.asked_operations.get_mut(&op_id) {
-                Some(wish) => {
-                    if wish.1.contains(&node_id) {
-                        continue; // already asked to the `node_id`
-                    } else {
-                        Some(wish) // already asked but at someone else
-                    }
-                }
-                None => None,
-            };
-            if let Some(wish) = wish {
-                // Ask now if latest ask instant < now - operation_batch_proc_period
-                // otherwise add in future_set
-                if wish.0
-                    < now
-                        .checked_sub(self.protocol_settings.operation_batch_proc_period.into())
-                        .ok_or(TimeError::TimeOverflowError)?
-                {
-                    debug!(
-                        "re-ask operation {:?} asked for the first time {:?} millis ago.",
-                        op_id,
-                        wish.0.elapsed().as_millis()
-                    );
-                    ask_set.insert(op_id);
-                    wish.0 = now;
-                    wish.1.push(node_id);
-                } else {
-                    future_set.insert(op_id);
-                }
-            } else {
-                ask_set.insert(op_id);
-                self.asked_operations.insert(op_id, (now, vec![node_id]));
-            }
-        } // EndOf for op_id in op_batch:
-        if self.op_batch_buffer.len() < self.protocol_settings.operation_batch_buffer_capacity
-            && !future_set.is_empty()
-        {
-            self.op_batch_buffer.push_back(OperationBatchItem {
-                instant: now
-                    .checked_add(self.protocol_settings.operation_batch_proc_period.into())
-                    .ok_or(TimeError::TimeOverflowError)?,
-                node_id,
-                operations_ids: future_set,
-            });
+        // Add to the buffer, dropping the oldest one if no capacity remains.
+        if self.op_batch_buffer.len() >= self.protocol_settings.operation_batch_buffer_capacity {
+            self.op_batch_buffer.pop_front();
         }
-        if !ask_set.is_empty() {
-            self.network_command_sender
-                .send_ask_for_operations(node_id, ask_set)
-                .await
-                .map_err(|_| ProtocolError::ChannelError("send ask for operations failed".into()))
-        } else {
-            Ok(())
-        }
+        self.op_batch_buffer.push_back(OperationBatchItem {
+            instant: Instant::now(),
+            node_id,
+            operations_ids,
+        });
+        Ok(())
     }
 
     /// On full operations are received from the network,
-    /// - Uptate the cache `received_operations` ids and each
+    /// - Update the cache `received_operations` ids and each
     ///   `node_info.known_operations`
     /// - Notify the operations to he local node, to be propagated
     pub(crate) async fn on_operations_received(&mut self, node_id: NodeId, operations: Operations) {
@@ -178,26 +124,65 @@ impl ProtocolWorker {
         operation_batch_proc_period_timer: &mut std::pin::Pin<&mut Sleep>,
     ) -> Result<(), ProtocolError> {
         let now = Instant::now();
-        while !self.op_batch_buffer.is_empty()
-        // This unwrap is ok because we checked that it's not empty just before.
-            && now >= self.op_batch_buffer.front().unwrap().instant
-        {
-            let op_batch_item = self.op_batch_buffer.pop_front().unwrap();
-            self.on_operations_announcements_received(
-                op_batch_item.operations_ids,
-                op_batch_item.node_id,
-            )
-            .await?;
+
+        // Reset timer to the next tick.
+        let next_tick = now
+            .checked_add(self.protocol_settings.operation_batch_proc_period.into())
+            .ok_or(TimeError::TimeOverflowError)?;
+        operation_batch_proc_period_timer.set(sleep_until(next_tick));
+
+        while let Some(batch_item) = self.op_batch_buffer.front() {
+            if now < batch_item.instant {
+                break;
+            }
+
+            let mut ask_set = OperationIds::default();
+            for op_id in batch_item.operations_ids.iter() {
+                if self.checked_operations.contains(op_id) {
+                    continue;
+                }
+                let wish = match self.asked_operations.get_mut(op_id) {
+                    Some(wish) => {
+                        if wish.1.contains(&batch_item.node_id) {
+                            continue; // already asked to the `node_id`
+                        } else {
+                            Some(wish) // already asked but at someone else
+                        }
+                    }
+                    None => None,
+                };
+                if let Some(wish) = wish {
+                    // Ask now if latest ask instant < now - operation_batch_proc_period.
+                    if wish.0
+                        < now
+                            .checked_sub(self.protocol_settings.operation_batch_proc_period.into())
+                            .ok_or(TimeError::TimeOverflowError)?
+                    {
+                        debug!(
+                            "re-ask operation {:?} asked for the first time {:?} millis ago.",
+                            op_id,
+                            wish.0.elapsed().as_millis()
+                        );
+                        ask_set.insert(*op_id);
+                        wish.0 = now;
+                        wish.1.push(batch_item.node_id);
+                    }
+                } else {
+                    ask_set.insert(*op_id);
+                    self.asked_operations
+                        .insert(*op_id, (now, vec![batch_item.node_id]));
+                }
+            } // EndOf for op_id in op_batch:
+
+            if !ask_set.is_empty() {
+                self.network_command_sender
+                    .send_ask_for_operations(batch_item.node_id, ask_set)?;
+
+                // Remove the item from the buffer if sending was successful.
+                let _ = self.op_batch_buffer.pop_front().unwrap();
+            }
         }
-        // reset timer
-        if let Some(item) = self.op_batch_buffer.front() {
-            operation_batch_proc_period_timer.set(sleep_until(item.instant));
-        } else {
-            let next_tick = now
-                .checked_add(self.protocol_settings.operation_batch_proc_period.into())
-                .ok_or(TimeError::TimeOverflowError)?;
-            operation_batch_proc_period_timer.set(sleep_until(next_tick));
-        }
+
         Ok(())
     }
 

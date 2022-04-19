@@ -1,17 +1,17 @@
 //! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
-//! # Default hardcoded
+//! # Default hard-coded
 //!
 //! Each crates may contains a `settings.rs` or a `config.rs` the `Default`
 //! implementation of each object take the default Values from the following
 //! file.
 //!
-//! These values are the hardcoded values that make sens to never be modified
+//! These values are the hard-coded values that make sens to never be modified
 //! by a user. Generally, this values are passed with dependency injection in a `cfg`
 //! parameter for each worker, that is convenient for unit tests.
 //!
-//! A parallel file with the same const definitions exist for the testing case.
+//! A parallel file with the same constant definitions exist for the testing case.
 //! (`default_testing.rs`) But as for the current file you shouldn't modify it.
 use crate::{Amount, Version};
 use massa_signature::PrivateKey;
@@ -22,7 +22,7 @@ use num::rational::Ratio;
 pub const MAX_ADVERTISE_LENGTH: u32 = 10000;
 /// Maximum message length in bytes
 pub const MAX_MESSAGE_SIZE: u32 = 1048576000;
-/// Max number of hash in the message AskForBlocks
+/// Max number of hash in the message `AskForBlocks`
 pub const MAX_ASK_BLOCKS_PER_MESSAGE: u32 = 128;
 /// Max number of operations per message
 pub const MAX_OPERATIONS_PER_MESSAGE: u32 = 1024;
@@ -35,7 +35,7 @@ pub const HANDSHAKE_RANDOMNESS_SIZE_BYTES: usize = 32;
 pub const CHANNEL_SIZE: usize = 256;
 
 lazy_static::lazy_static! {
-    /// Time in millis when the blockclique started.
+    /// Time in milliseconds when the blockclique started.
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
             MassaTime::now()
@@ -52,7 +52,7 @@ lazy_static::lazy_static! {
     } else {
         Some(1651345200000.into())  // Sat Apr 30 2022 19:00:00 GMT+0000
     };
-    /// Private_key to sign genesis blocks.
+    /// `PrivateKey` to sign genesis blocks.
     pub static ref GENESIS_KEY: PrivateKey = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
         .parse()
         .unwrap();
@@ -63,7 +63,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.0.0"
         } else {
-            "TEST.9.1"
+            "TEST.9.2"
         }
         .parse()
         .unwrap()
@@ -108,9 +108,9 @@ pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
-/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - pos_look back_cycles - 1
+/// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle N - `pos_look` `back_cycles` - 1
 pub const POS_LOOKBACK_CYCLES: u64 = 2;
-/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles
+/// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
 pub const POS_LOCK_CYCLES: u64 = 1;
 
 // ***********************
@@ -129,7 +129,7 @@ pub const MAX_BOOTSTRAP_DEPS: u32 = 1000;
 pub const MAX_BOOTSTRAP_CHILDREN: u32 = 1000;
 /// Max number of cycles in PoS bootstrap
 pub const MAX_BOOTSTRAP_POS_CYCLES: u32 = 5;
-/// Max number of address and rng entries for PoS bootstrap
+/// Max number of address and random entries for PoS bootstrap
 pub const MAX_BOOTSTRAP_POS_ENTRIES: u32 = 1000000000;
 /// Max size of the IP list
 pub const IP_LIST_MAX_SIZE: usize = 10000;
@@ -142,7 +142,7 @@ pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 
 /// Maximum of GAS allowed for a block
 pub const MAX_GAS_PER_BLOCK: u64 = 100_000_000;
-/// Maximum of GAS allowed for async messages exection on one slot
+/// Maximum of GAS allowed for asynchronous messages execution on one slot
 pub const MAX_ASYNC_GAS: u64 = 100_000_000;
 
 //

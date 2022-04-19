@@ -91,7 +91,7 @@ impl BlockId {
         ))
     }
 
-    /// block id fro bs58 check
+    /// block id fro `bs58` check
     pub fn from_bs58_check(data: &str) -> Result<BlockId, ModelsError> {
         Ok(BlockId(
             Hash::from_bs58_check(data).map_err(|_| ModelsError::HashError)?,

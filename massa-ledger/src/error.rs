@@ -9,10 +9,10 @@ use thiserror::Error;
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
 pub enum LedgerError {
-    /// container inconsistency: {0}
+    /// container inconsistency: `{0}`
     ContainerInconsistency(String),
-    /// missing entry: {0}
+    /// missing entry: `{0}`
     MissingEntry(String),
-    /// file error: {0}
+    /// file error: `{0}`
     FileError(String),
 }

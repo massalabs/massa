@@ -20,8 +20,8 @@ pub enum ProtocolError {
     ChannelError(String),
     /// A tokio task has crashed err:{0}
     TokioTaskJoinError(#[from] tokio::task::JoinError),
-    /// error receiving oneshot response : {0}
-    TokieRecvError(#[from] tokio::sync::oneshot::error::RecvError),
+    /// error receiving one shot response : {0}
+    TokioRecvError(#[from] tokio::sync::oneshot::error::RecvError),
     /// error sending protocol event: {0}
     TokioSendError(#[from] Box<tokio::sync::mpsc::error::SendError<ProtocolEvent>>),
     /// Error during network connection:`{0:?}`
@@ -34,11 +34,11 @@ pub enum ProtocolError {
     IOError(#[from] std::io::Error),
     /// Serde error : {0}
     SerdeError(#[from] serde_json::Error),
-    /// massa_hash error {0}
+    /// `massa_hash` error {0}
     MassaHashError(#[from] massa_hash::MassaHashError),
     /// the network controller should not drop a node command sender before shutting down the node.
     UnexpectedNodeCommandChannelClosure,
-    /// the writer of a node should not drop its event sender before sending a clean_exit message.
+    /// the writer of a node should not drop its event sender before sending a `clean_exit` message.
     UnexpectedWriterClosure,
     /// Time error {0}
     TimeError(#[from] massa_time::TimeError),

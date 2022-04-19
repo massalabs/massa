@@ -16,7 +16,7 @@ pub enum WalletError {
     SerdeqsError(#[from] serde_qs::Error),
     /// Models error: {0}
     ModelsError(#[from] massa_models::ModelsError),
-    /// MassaHash error: {0}
+    /// `MassaHash` error: {0}
     MassaHashError(#[from] massa_hash::MassaHashError),
     /// Missing key error: {0}
     MissingKeyError(Address),

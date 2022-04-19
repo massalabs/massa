@@ -210,7 +210,7 @@ pub fn array_from_slice<const ARRAY_SIZE: usize>(
     })
 }
 
-/// u8 from slice
+/// `u8` from slice
 pub fn u8_from_slice(buffer: &[u8]) -> Result<u8, ModelsError> {
     if buffer.is_empty() {
         return Err(ModelsError::BufferError(
@@ -233,7 +233,7 @@ pub trait DeserializeCompact: Sized {
 }
 
 /// Checks performed:
-/// - Buffer contains a valid u8(implicit check).
+/// - Buffer contains a valid `u8`(implicit check).
 impl SerializeCompact for IpAddr {
     fn to_bytes_compact(&self) -> Result<Vec<u8>, ModelsError> {
         Ok(match self {
@@ -254,7 +254,7 @@ impl SerializeCompact for IpAddr {
 }
 
 /// Checks performed:
-/// - Buffer contains a valid u8.
+/// - Buffer contains a valid `u8`.
 impl DeserializeCompact for IpAddr {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         match u8_from_slice(buffer)? {
@@ -274,7 +274,7 @@ impl SerializeCompact for MassaTime {
 }
 
 /// Checks performed:
-/// - Buffer contains a valid u64.
+/// - Buffer contains a valid `u64`.
 impl DeserializeCompact for MassaTime {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let (res_u64, delta) = u64::from_varint_bytes(buffer)?;
@@ -289,7 +289,7 @@ impl SerializeCompact for Amount {
 }
 
 /// Checks performed:
-/// - Buffer contains a valid u8.
+/// - Buffer contains a valid `u8`.
 impl DeserializeCompact for Amount {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         let (res_u64, delta) = u64::from_varint_bytes(buffer)?;

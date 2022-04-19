@@ -37,7 +37,7 @@ struct Args {
     /// Command that client would execute (non-interactive mode)
     #[structopt(name = "COMMAND", default_value = "help")]
     command: Command,
-    /// Optional command parameter (as a JSON parsable string)
+    /// Optional command parameter (as a JSON string)
     #[structopt(name = "PARAMETERS")]
     parameters: Vec<String>,
     /// Path of wallet file.

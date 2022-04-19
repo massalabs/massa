@@ -147,7 +147,7 @@ fn expand_path(partial_path: &str) -> Vec<u8> {
 }
 
 impl Completion for CommandCompletion {
-    /// Simple completion implementation based on substring
+    /// Simple completion implementation based on sub-string
     fn get(&self, input: &str) -> Option<String> {
         let input = input.to_string();
         if input.contains(' ') {

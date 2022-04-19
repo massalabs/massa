@@ -1,0 +1,26 @@
+
+   
+[Hunspell]
+# lang and name of `.dic` file
+lang = "en_US"
+
+search_dirs = ["."]
+extra_dictionaries = ["lingo.dic"]
+
+skip_os_lookups = true
+use_builtin = true
+
+[Hunspell.quirks]
+# transforms words that are provided by the tokenizer
+# into word fragments based on the capture groups which are to be checked.
+# If no capture groups are present, the matched word is whitelisted.
+transform_regex = ["^'([^\\s])'$", "^[0-9]+x$", "^\\#[0-9]+$", "^[0-9]+$", "^.+\\+$", "\\+"]
+# accepts `alphabeta` variants if the checker provides a replacement suggestion
+# of `alpha-beta`.
+allow_concatenation = true
+allow_dashed = true
+
+
+[Reflow]
+
+max_line_length = 80

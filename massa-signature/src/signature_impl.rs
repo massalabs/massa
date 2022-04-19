@@ -18,8 +18,8 @@ const SIGNATURE_STRING_PREFIX: &str = "SIG";
 // Per-thread signature engine, initiated lazily on first per-thread use.
 thread_local!(static SIGNATURE_ENGINE: SignatureEngine = SignatureEngine(Secp256k1::new()));
 
-/// Private Key used to sign messages
-/// Generated using SignatureEngine.
+/// `PrivateKey` used to sign messages
+/// Generated using `SignatureEngine`.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct PrivateKey(secp256k1::SecretKey);
 
@@ -56,7 +56,7 @@ impl FromStr for PrivateKey {
 }
 
 impl PrivateKey {
-    /// Serialize a PrivateKey using bs58 encoding with checksum.
+    /// Serialize a `PrivateKey` using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
@@ -70,7 +70,7 @@ impl PrivateKey {
         bs58::encode(self.to_bytes()).with_check().into_string()
     }
 
-    /// Serialize a PrivateKey as bytes.
+    /// Serialize a `PrivateKey` as bytes.
     ///
     /// # Example
     ///  ```
@@ -84,7 +84,7 @@ impl PrivateKey {
         *self.0.as_ref()
     }
 
-    /// Serialize a PrivateKey into bytes.
+    /// Serialize a `PrivateKey` into bytes.
     ///
     /// # Example
     ///  ```
@@ -98,7 +98,7 @@ impl PrivateKey {
         *self.0.as_ref()
     }
 
-    /// Deserialize a PrivateKey using bs58 encoding with checksum.
+    /// Deserialize a `PrivateKey` using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
@@ -129,7 +129,7 @@ impl PrivateKey {
             })
     }
 
-    /// Deserialize a PrivateKey from bytes.
+    /// Deserialize a `PrivateKey` from bytes.
     ///
     /// # Example
     ///  ```
@@ -150,10 +150,10 @@ impl PrivateKey {
 }
 
 impl ::serde::Serialize for PrivateKey {
-    /// ::serde::Serialize trait for PrivateKey
+    /// `::serde::Serialize` trait for `PrivateKey`
     /// if the serializer is human readable,
-    /// serialization is done using serialize_bs58_check
-    /// else, it uses serialize_binary
+    /// serialization is done using `serialize_bs58_check`
+    /// else, it uses `serialize_binary`
     ///
     /// # Example
     ///
@@ -175,10 +175,10 @@ impl ::serde::Serialize for PrivateKey {
 }
 
 impl<'de> ::serde::Deserialize<'de> for PrivateKey {
-    /// ::serde::Deserialize trait for PrivateKey
+    /// `::serde::Deserialize` trait for `PrivateKey`
     /// if the deserializer is human readable,
-    /// deserialization is done using deserialize_bs58_check
-    /// else, it uses deserialize_binary
+    /// deserialization is done using `deserialize_bs58_check`
+    /// else, it uses `deserialize_binary`
     ///
     /// # Example
     ///
@@ -245,8 +245,8 @@ impl<'de> ::serde::Deserialize<'de> for PrivateKey {
 }
 
 /// Public key used to check if a message was encoded
-/// by the corresponding PublicKey.
-/// Generated from the PrivateKey using SignatureEngine
+/// by the corresponding `PublicKey`.
+/// Generated from the `PrivateKey` using `SignatureEngine`
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct PublicKey(secp256k1::PublicKey);
 
@@ -283,7 +283,7 @@ impl FromStr for PublicKey {
 }
 
 impl PublicKey {
-    /// Serialize a PublicKey using bs58 encoding with checksum.
+    /// Serialize a `PublicKey` using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
@@ -298,7 +298,7 @@ impl PublicKey {
         bs58::encode(self.to_bytes()).with_check().into_string()
     }
 
-    /// Serialize a PublicKey as bytes.
+    /// Serialize a `PublicKey` as bytes.
     ///
     /// # Example
     ///  ```
@@ -328,7 +328,7 @@ impl PublicKey {
         self.0.serialize()
     }
 
-    /// Deserialize a PublicKey using bs58 encoding with checksum.
+    /// Deserialize a `PublicKey` using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
@@ -360,7 +360,7 @@ impl PublicKey {
             })
     }
 
-    /// Deserialize a PublicKey from bytes.
+    /// Deserialize a `PublicKey` from bytes.
     ///
     /// # Example
     ///  ```
@@ -382,10 +382,10 @@ impl PublicKey {
 }
 
 impl ::serde::Serialize for PublicKey {
-    /// ::serde::Serialize trait for PublicKey
+    /// `::serde::Serialize` trait for `PublicKey`
     /// if the serializer is human readable,
-    /// serialization is done using serialize_bs58_check
-    /// else, it uses serialize_binary
+    /// serialization is done using `serialize_bs58_check`
+    /// else, it uses `serialize_binary`
     ///
     /// # Example
     ///
@@ -409,10 +409,10 @@ impl ::serde::Serialize for PublicKey {
 }
 
 impl<'de> ::serde::Deserialize<'de> for PublicKey {
-    /// ::serde::Deserialize trait for PublicKey
+    /// `::serde::Deserialize` trait for `PublicKey`
     /// if the deserializer is human readable,
-    /// deserialization is done using deserialize_bs58_check
-    /// else, it uses deserialize_binary
+    /// deserialization is done using `deserialize_bs58_check`
+    /// else, it uses `deserialize_binary`
     ///
     /// # Example
     ///
@@ -480,7 +480,7 @@ impl<'de> ::serde::Deserialize<'de> for PublicKey {
     }
 }
 
-/// Signature generated from a message and a privateKey.
+/// Signature generated from a message and a `PrivateKey`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Signature(secp256k1::Signature);
 
@@ -517,7 +517,7 @@ impl FromStr for Signature {
 }
 
 impl Signature {
-    /// Serialize a Signature using bs58 encoding with checksum.
+    /// Serialize a `Signature` using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
@@ -568,7 +568,7 @@ impl Signature {
         self.0.serialize_compact()
     }
 
-    /// Deserialize a Signature using bs58 encoding with checksum.
+    /// Deserialize a `Signature` using `bs58` encoding with checksum.
     ///
     /// # Example
     ///  ```
@@ -623,10 +623,10 @@ impl Signature {
 }
 
 impl ::serde::Serialize for Signature {
-    /// ::serde::Serialize trait for Signature
+    /// `::serde::Serialize` trait for `Signature`
     /// if the serializer is human readable,
-    /// serialization is done using to_bs58_check
-    /// else, it uses to_bytes
+    /// serialization is done using `to_bs58_check`
+    /// else, it uses `to_bytes`
     ///
     /// # Example
     ///
@@ -652,10 +652,10 @@ impl ::serde::Serialize for Signature {
 }
 
 impl<'de> ::serde::Deserialize<'de> for Signature {
-    /// ::serde::Deserialize trait for Signature
+    /// `::serde::Deserialize` trait for `Signature`
     /// if the deserializer is human readable,
-    /// deserialization is done using from_bs58_check
-    /// else, it uses from_bytes
+    /// deserialization is done using `from_bs58_check`
+    /// else, it uses `from_bytes`
     ///
     /// # Example
     ///
@@ -725,13 +725,13 @@ impl<'de> ::serde::Deserialize<'de> for Signature {
     }
 }
 
-/// SignatureEngine manages Key generation,
+/// `SignatureEngine` manages key generation,
 /// signing and verification.
 /// It contains the needed context.
 struct SignatureEngine(secp256k1::Secp256k1<secp256k1::All>);
 
 impl SignatureEngine {
-    /// Derives a PublicKey from a PrivateKey.
+    /// Derives a `PublicKey` from a `PrivateKey`.
     ///
     /// # Example
     /// ```
@@ -747,8 +747,8 @@ impl SignatureEngine {
         ))
     }
 
-    /// Returns the Signature produced by signing
-    /// data bytes with a PrivateKey.
+    /// Returns the `Signature` produced by signing
+    /// data bytes with a `PrivateKey`.
     ///
     /// # Example
     ///  ```
@@ -765,8 +765,8 @@ impl SignatureEngine {
         Ok(Signature(self.0.sign(&message, &private_key.0)))
     }
 
-    /// Checks if the Signature associated with data bytes
-    /// was produced with the PrivateKey associated to given PublicKey
+    /// Checks if the `Signature` associated with data bytes
+    /// was produced with the `PrivateKey` associated to given `PublicKey`
     ///
     /// # Example
     ///  ```
@@ -790,7 +790,7 @@ impl SignatureEngine {
     }
 }
 
-/// Generate a random private key from a RNG.
+/// Generate a random private key from a random draw.
 ///
 /// # Example
 /// ```
@@ -803,7 +803,7 @@ pub fn generate_random_private_key() -> PrivateKey {
     PrivateKey(secp256k1::key::SecretKey::new(&mut rng))
 }
 
-/// Derives a PublicKey from a PrivateKey.
+/// Derives a `PublicKey` from a `PrivateKey`.
 ///
 /// # Example
 /// ```
@@ -816,8 +816,8 @@ pub fn derive_public_key(private_key: &PrivateKey) -> PublicKey {
     SIGNATURE_ENGINE.with(|signature_engine| signature_engine.derive_public_key(private_key))
 }
 
-/// Returns the Signature produced by signing
-/// data bytes with a PrivateKey.
+/// Returns the `Signature` produced by signing
+/// data bytes with a `PrivateKey`.
 ///
 /// # Example
 ///  ```
@@ -834,7 +834,7 @@ pub fn sign(hash: &Hash, private_key: &PrivateKey) -> Result<Signature, MassaHas
 }
 
 /// Checks if the Signature associated with data bytes
-/// was produced with the PrivateKey associated to given PublicKey
+/// was produced with the `PrivateKey` associated to given `PublicKey`
 ///
 /// # Example
 ///  ```

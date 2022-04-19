@@ -1,12 +1,12 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! This file defines testing tools related to the config
+//! This file defines testing tools related to the configuration
 
 use massa_time::MassaTime;
 
 use crate::ExecutionConfig;
 
-/// Default value of ExecutionConfig used for tests
+/// Default value of `ExecutionConfig` used for tests
 impl Default for ExecutionConfig {
     fn default() -> Self {
         use massa_models::constants::default_testing::*;

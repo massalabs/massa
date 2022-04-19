@@ -15,18 +15,18 @@ use std::collections::HashMap;
 
 /// interface that communicates with the execution worker thread
 pub trait ExecutionController: Send + Sync {
-    /// Updates blockclique status by signalling newly finalized blocks and the latest blockclique.
+    /// Updates blockclique status by signaling newly finalized blocks and the latest blockclique.
     ///
-    /// # arguments
-    /// * finalized_blocks: newly finalized blocks
-    /// * blockclique: new blockclique
+    /// # Arguments
+    /// * `finalized_blocks`: newly finalized blocks
+    /// * `blockclique`: new blockclique
     fn update_blockclique_status(
         &self,
         finalized_blocks: HashMap<Slot, BlockId>,
         blockclique: HashMap<Slot, BlockId>,
     );
 
-    /// Get execution events optionnally filtered by:
+    /// Get execution events optionally filtered by:
     /// * start slot
     /// * end slot
     /// * emitter address
@@ -44,7 +44,7 @@ pub trait ExecutionController: Send + Sync {
     /// Get a copy of a full ledger entry with its final and active values
     ///
     /// # return value
-    /// * (final_entry, active_entry)
+    /// * `(final_entry, active_entry)`
     fn get_final_and_active_ledger_entry(
         &self,
         addr: &Address,
@@ -53,10 +53,10 @@ pub trait ExecutionController: Send + Sync {
     /// Execute read-only SC function call without causing modifications to the consensus state
     ///
     /// # arguments
-    /// * req: an instance of ReadOnlyCallRequest describing the parameters of the execution
+    /// * `req`: an instance of `ReadOnlyCallRequest` describing the parameters of the execution
     ///
     /// # returns
-    /// An instance of ExecutionOutput containing a summary of the effects of the execution,
+    /// An instance of `ExecutionOutput` containing a summary of the effects of the execution,
     /// or an error if the execution failed.
     fn execute_readonly_request(
         &self,
@@ -64,12 +64,12 @@ pub trait ExecutionController: Send + Sync {
     ) -> Result<ExecutionOutput, ExecutionError>;
 
     /// Returns a boxed clone of self.
-    /// Useful to alow cloning Box<dyn ExecutionController>.
+    /// Useful to allow cloning `Box<dyn ExecutionController>`.
     fn clone_box(&self) -> Box<dyn ExecutionController>;
 }
 
-/// Allow cloning Box<dyn ExecutionController>
-/// Uses ExecutionController::clone_box internally
+/// Allow cloning `Box<dyn ExecutionController>`
+/// Uses `ExecutionController::clone_box` internally
 impl Clone for Box<dyn ExecutionController> {
     fn clone(&self) -> Box<dyn ExecutionController> {
         self.clone_box()

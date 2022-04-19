@@ -48,7 +48,7 @@ pub fn generate_roll_counts_file(roll_counts: &RollCounts) -> NamedTempFile {
 }
 
 /// generate a default named temporary JSON initial rolls file,
-/// asuming two threads.
+/// assuming two threads.
 pub fn generate_default_roll_counts_file(stakers: Vec<PrivateKey>) -> NamedTempFile {
     let mut roll_counts = RollCounts::default();
     for key in stakers.iter() {

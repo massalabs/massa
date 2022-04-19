@@ -23,7 +23,7 @@ use tokio::sync::mpsc;
 /// Returns default map if path isn't a file
 /// Maybe it would be worth considering returning the default map
 /// when the read to string or the parse is failing
-/// but eh that's left for another refactoring
+/// but eh that's left for another refactor
 async fn load_initial_staking_keys(path: &Path) -> Result<Map<Address, (PublicKey, PrivateKey)>> {
     if !std::path::Path::is_file(path) {
         return Ok(Map::default());
@@ -43,9 +43,9 @@ async fn load_initial_staking_keys(path: &Path) -> Result<Map<Address, (PublicKe
 /// Creates a new consensus controller.
 ///
 /// # Arguments
-/// * cfg: consensus configuration
-/// * protocol_command_sender: a ProtocolCommandSender instance to send commands to Protocol.
-/// * protocol_event_receiver: a ProtocolEventReceiver instance to receive events from Protocol.
+/// * `cfg`: consensus configuration
+/// * `protocol_command_sender`: a `ProtocolCommandSender` instance to send commands to Protocol.
+/// * `protocol_event_receiver`: a `ProtocolEventReceiver` instance to receive events from Protocol.
 pub async fn start_consensus_controller(
     cfg: ConsensusConfig,
     channels: ConsensusChannels,

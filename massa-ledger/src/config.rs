@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! This file defines a config strucutre containing all settings for the ledger system
+//! This file defines a configuration structure containing all settings for the ledger system
 
 use std::path::PathBuf;
 

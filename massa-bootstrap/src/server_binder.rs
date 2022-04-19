@@ -20,7 +20,7 @@ pub struct BootstrapServerBinder {
 }
 
 impl BootstrapServerBinder {
-    /// Creates a new WriteBinder.
+    /// Creates a new `WriteBinder`.
     ///
     /// # Argument
     /// * duplex: duplex stream.
@@ -38,7 +38,7 @@ impl BootstrapServerBinder {
     /// Performs a handshake. Should be called after connection
     /// NOT cancel-safe
     pub async fn handshake(&mut self) -> Result<(), BootstrapError> {
-        // read randomnes, check hash
+        // read randomness, check hash
         let rand_hash = {
             let mut random_bytes = [0u8; BOOTSTRAP_RANDOMNESS_SIZE_BYTES];
             self.duplex.read_exact(&mut random_bytes).await?;

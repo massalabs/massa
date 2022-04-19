@@ -5,9 +5,9 @@
 //!
 //! # Configurations
 //!
-//! * setting: read from user settings file
-//! * config: merge of settings and hardcoded configuration that shouldn't be
-//!           modifyed by user.
+//! * `setting`: read from user settings file
+//! * `config`: merge of settings and hard-coded configuration that shouldn't be
+//!           modified by user.
 //!
 //! This file is allowed to use a lot of constants from `massa-models` as all
 //! other files named `settings.rs` or `config.rs`.
@@ -16,20 +16,20 @@
 //! node. You can get almost every configuration from that one.
 //!
 //! `From<ConsensusSettings> impl *`:
-//! - `ConsensusConfig`: Create a config merging user settings andhardcoded values
-//!                      (see `/massa-models/node_configuration/*)
+//! - `ConsensusConfig`: Create a configuration merging user settings and hard-coded values
+//!                      (see `/massa-models/node_configuration/*`)
 //!
 //! `From<&ConsensusConfig> impl *`:
-//! - GraphConfig
-//! - LedgerConfig
-//! - ProofOfStakeConfig
+//! - `GraphConfig`
+//! - `LedgerConfig`
+//! - `ProofOfStakeConfig`
 //!
 //! > Development note: We clone the values on getting a configuration from another.
 //!
 //! # Usage of constants
 //!
 //! The default configuration is loaded from the `massa-models` crate. You shouldn't
-//! write an hardcoded value in the following file but create a new value in
+//! write an hard-coded value in the following file but create a new value in
 //! `default.rs` and the testing default equivalent value in `default_testing.rs`. See
 //! `/node_configuration/mod.rs` documentation in `massa-models` sources for more
 //! information.
@@ -63,18 +63,18 @@ use crate::{
 };
 
 /// Consensus configuration
-/// Assumes thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0
+/// Assumes `thread_count >= 1, t0_millis >= 1, t0_millis % thread_count == 0`
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ConsensusSettings {
     /// Staking private keys
     pub staking_keys_path: PathBuf,
     /// Maximum number of blocks allowed in discarded blocks.
     pub max_discarded_blocks: usize,
-    /// If a block  is future_block_processing_max_periods periods in the future, it is just discarded.
+    /// If a block is `future_block_processing_max_periods` periods in the future, it is just discarded.
     pub future_block_processing_max_periods: u64,
-    /// Maximum number of blocks allowed in FutureIncomingBlocks.
+    /// Maximum number of blocks allowed in `FutureIncomingBlocks`.
     pub max_future_processing_blocks: usize,
-    /// Maximum number of blocks allowed in DependencyWaitingBlocks.
+    /// Maximum number of blocks allowed in `DependencyWaitingBlocks`.
     pub max_dependency_blocks: usize,
     /// Maximum tries to fill a block with operations
     pub max_operations_fill_attempts: u32,
@@ -94,13 +94,13 @@ pub struct ConsensusSettings {
     pub operation_batch_size: usize,
     /// path to the initial rolls
     pub initial_rolls_path: PathBuf,
-    /// stats timespan
+    /// stats time span
     pub stats_timespan: MassaTime,
     /// max event send wait
     pub max_send_wait: MassaTime,
     /// force keep at least this number of final periods in RAM for each thread
     pub force_keep_final_periods: u64,
-    /// old blocks are pruned every block_db_prune_interval
+    /// old blocks are pruned every `block_db_prune_interval`
     pub block_db_prune_interval: MassaTime,
     /// max number of items returned while querying
     pub max_item_return_count: usize,
@@ -116,7 +116,7 @@ pub struct ConsensusConfig {
     #[cfg(feature = "testing")]
     /// temps files
     pub temp_files: TempFiles,
-    /// Time in millis when the blockclique started.
+    /// Time in milliseconds when the blockclique started.
     pub genesis_timestamp: MassaTime,
     /// TESTNET: time when the blockclique is ended.
     pub end_timestamp: Option<MassaTime>,
@@ -124,17 +124,17 @@ pub struct ConsensusConfig {
     pub thread_count: u8,
     /// Time between the periods in the same thread.
     pub t0: MassaTime,
-    /// Private_key to sign genesis blocks.
+    /// `PrivateKey` to sign genesis blocks.
     pub genesis_key: PrivateKey,
     /// Staking private keys
     pub staking_keys_path: PathBuf,
     /// Maximum number of blocks allowed in discarded blocks.
     pub max_discarded_blocks: usize,
-    /// If a block  is future_block_processing_max_periods periods in the future, it is just discarded.
+    /// If a block is `future_block_processing_max_periods` periods in the future, it is just discarded.
     pub future_block_processing_max_periods: u64,
-    /// Maximum number of blocks allowed in FutureIncomingBlocks.
+    /// Maximum number of blocks allowed in `FutureIncomingBlocks`.
     pub max_future_processing_blocks: usize,
-    /// Maximum number of blocks allowed in DependencyWaitingBlocks.
+    /// Maximum number of blocks allowed in `DependencyWaitingBlocks`.
     pub max_dependency_blocks: usize,
     /// Threshold for fitness.
     pub delta_f0: u64,
@@ -148,9 +148,9 @@ pub struct ConsensusConfig {
     pub operation_validity_periods: u64,
     /// cycle duration in periods
     pub periods_per_cycle: u64,
-    /// PoS lookback cycles: when drawing for cycle N, we use the rolls from cycle N - pos_lookback_cycles - 1
+    /// PoS look back cycles: when drawing for cycle N, we use the rolls from cycle `N - pos_lookback_cycles - 1`
     pub pos_lookback_cycles: u64,
-    /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting  pos_lock_cycles
+    /// PoS lock cycles: when some rolls are released, we only credit the coins back to their owner after waiting `pos_lock_cycles`
     pub pos_lock_cycles: u64,
     /// number of cached draw cycles for PoS
     pub pos_draw_cached_cycles: usize,
@@ -176,7 +176,7 @@ pub struct ConsensusConfig {
     pub initial_draw_seed: String,
     /// Price of a roll inside the network
     pub roll_price: Amount,
-    /// stats timespan
+    /// stats time span
     pub stats_timespan: MassaTime,
     /// max event send wait
     pub max_send_wait: MassaTime,
@@ -184,28 +184,28 @@ pub struct ConsensusConfig {
     pub force_keep_final_periods: u64,
     /// target number of endorsement per block
     pub endorsement_count: u32,
-    /// old blocks are pruned every block_db_prune_interval
+    /// old blocks are pruned every `block_db_prune_interval`
     pub block_db_prune_interval: MassaTime,
     /// max number of items returned while querying
     pub max_item_return_count: usize,
     /// If we want to generate blocks.
     /// Parameter that shouldn't be defined in prod.
     pub disable_block_creation: bool,
-    /// Max gas per block for the execution config
+    /// Max gas per block for the execution configuration
     pub max_gas_per_block: u64,
 }
 
 #[cfg(feature = "testing")]
 #[derive(Default, Debug)]
-/// In testing mode if you create a conguration with tempfiles
+/// In testing mode if you create a configuration with temporary files
 /// we need to keep inside this structure the `TempDir` and
 /// `NamedTempFile` here since the end of the test.
-/// We don't need to move or clone, only the main cfg need that and
+/// We don't need to move or clone, only the main configuration need that and
 /// the var is never used.
 pub struct TempFiles {
-    /// Doesn't drop tempfile on testing
+    /// Doesn't drop temporary file on testing
     pub temp_files: Vec<tempfile::NamedTempFile>,
-    /// Doesn't drop tempdir on testing
+    /// Doesn't drop temporary directory on testing
     pub temp_dir: Vec<tempfile::TempDir>,
 }
 
@@ -311,9 +311,9 @@ impl From<&ConsensusConfig> for LedgerConfig {
     }
 }
 
-/// Communication async channels for the consensus worker
+/// Communication asynchronous channels for the consensus worker
 /// Contains consensus channels associated (protocol & execution)
-/// Contains alse controller async channels (command, manager receivers and event sender)
+/// Contains also controller asynchronous channels (command, manager receivers and event sender)
 /// Contains a sender to the pool worker commands
 pub struct ConsensusWorkerChannels {
     /// Associated protocol command sender.
@@ -349,7 +349,7 @@ impl From<&ConsensusSettings> for ConsensusConfig {
     fn from(settings: &ConsensusSettings) -> Self {
         #[cfg(feature = "testing")]
         /// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialisation.
+        /// test values to be used for a default initialization.
         use massa_models::constants::default_testing::*;
         #[cfg(not(feature = "testing"))]
         use massa_models::constants::*;
@@ -410,7 +410,7 @@ impl From<ConsensusSettings> for ConsensusConfig {
     fn from(settings: ConsensusSettings) -> Self {
         #[cfg(feature = "testing")]
         /// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialisation.
+        /// test values to be used for a default initialization.
         use massa_models::constants::default_testing::*;
         #[cfg(not(feature = "testing"))]
         use massa_models::constants::*;
@@ -472,16 +472,16 @@ impl From<ConsensusSettings> for ConsensusConfig {
 ///
 /// Use the feature testing to load mocked default variable
 /// This is default variable but the configuration is a dynamic
-/// configuration passed as dependences with no particular lifetime
+/// configuration passed as dependencies with no particular lifetime
 #[cfg(feature = "testing")]
 impl Default for ConsensusSettings {
     fn default() -> Self {
         /// If the feature `testing` is activated we force the unit
-        /// test values to be used for a default initialisation.
+        /// test values to be used for a default initialization.
         use massa_models::constants::default_testing::*;
         Self {
             staking_keys_path: Default::default(),
-            max_discarded_blocks: MAX_DISCARED_BLOCKS,
+            max_discarded_blocks: MAX_DISCARDED_BLOCKS,
             future_block_processing_max_periods: FUTURE_BLOCK_PROCESSING_MAX_PERIODS,
             max_future_processing_blocks: MAX_FUTURE_PROCESSING_BLOCK,
             max_dependency_blocks: MAX_DEPENDENCY_BLOCK,
@@ -533,32 +533,32 @@ impl From<&std::path::Path> for ConsensusConfig {
 }
 
 #[cfg(feature = "testing")]
-/**
- * Create the default value of `ConsensusConfig`.
- *
- * Configuration has default values described in crate `massa-models`.
- * The most of `ConsensusConfig` values have in test mode a default value.
- *
- * You can create a ConsensusConfig with classic default values and redefining
- * dynamically the values of desired parameters:
- *
- * ```ignore
- * let cfg = ConsensusConfig {
- *     max_discarded_blocks: 25,
- *     ..Default::default()
- * };
- * ```
- *
- * You can also look at the divers `default()` implementation bellow. For example that
- * one is used to initialise the _default paths_ :
- *
- * ```ignore
- * let cfg = ConensusConfig {
- *     max_discarded_blocks: 21,
- *     ..ConsensusConfig::default_with_paths(),
- * };
- * ```
- */
+///
+/// Create the default value of `ConsensusConfig`.
+///
+/// Configuration has default values described in crate `massa-models`.
+/// The most of `ConsensusConfig` values have in test mode a default value.
+///
+/// You can create a `ConsensusConfig` with classic default values and redefining
+/// dynamically the values of desired parameters:
+///
+/// ```ignore
+/// let cfg = ConsensusConfig {
+///     max_discarded_blocks: 25,
+///     ..Default::default()
+/// };
+/// ```
+///
+/// You can also look at the divers `default()` implementation bellow. For example that
+/// one is used to initialize the _default paths_ :
+///
+/// ```ignore
+/// let cfg = ConsensusConfig {
+///     max_discarded_blocks: 21,
+///     ..ConsensusConfig::default_with_paths(),
+/// };
+/// ```
+///
 impl Default for ConsensusConfig {
     fn default() -> Self {
         use massa_models::constants::default_testing::*;
@@ -577,7 +577,7 @@ impl Default for ConsensusConfig {
             t0: T0,
             genesis_key: *GENESIS_KEY,
             staking_keys_path: Default::default(),
-            max_discarded_blocks: MAX_DISCARED_BLOCKS,
+            max_discarded_blocks: MAX_DISCARDED_BLOCKS,
             future_block_processing_max_periods: FUTURE_BLOCK_PROCESSING_MAX_PERIODS,
             max_future_processing_blocks: MAX_FUTURE_PROCESSING_BLOCK,
             max_dependency_blocks: MAX_DEPENDENCY_BLOCK,
@@ -617,13 +617,13 @@ impl Default for ConsensusConfig {
 /**
  * The following implementation correspond to tools used in unit tests
  * It allow you to get a default `ConsensusConfig` (that isn't possible without
- * the feature *testing*) with already set/default `initial_ledger_path`,
+ * the feature *testing* with already set/default `initial_ledger_path`,
  * `staking_keys_path` and `initial_rolls_path`.
  *
  * Used to radically reduce code duplication in unit tests of Consensus.
  */
 impl ConsensusConfig {
-    /// default consensus config
+    /// default consensus configuration
     pub fn default_with_paths() -> Self {
         use crate::tools::*;
         let staking_keys: Vec<PrivateKey> = (0..1)
@@ -644,7 +644,7 @@ impl ConsensusConfig {
         }
     }
 
-    /// Default consensus config from private staking keys
+    /// Default consensus configuration from private staking keys
     pub fn default_with_staking_keys(staking_keys: &[PrivateKey]) -> Self {
         use crate::tools::*;
         let ledger_file = generate_ledger_file(&std::collections::HashMap::new());
@@ -662,7 +662,7 @@ impl ConsensusConfig {
         }
     }
 
-    /// Default consensus config from staking private keys and ledger
+    /// Default consensus configuration from staking private keys and ledger
     pub fn default_with_staking_keys_and_ledger(
         staking_keys: &[PrivateKey],
         ledger: &std::collections::HashMap<

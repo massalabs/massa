@@ -97,7 +97,7 @@ impl NetworkCommandSender {
     ///
     /// Note: with the current use of shared storage,
     /// sending a header requires having the block stored.
-    /// This matches the current use of send_block_header,
+    /// This matches the current use of `send_block_header`,
     /// which is only used after a block has been integrated in the graph.
     pub async fn send_block_header(
         &self,
@@ -185,11 +185,11 @@ impl NetworkCommandSender {
         Ok(())
     }
 
-    /// Create a new call to the network, sending a announcement of OperationIds to a
+    /// Create a new call to the network, sending a announcement of `OperationIds` to a
     /// target node (`to_node`)
     ///
     /// # Returns
-    /// Can return a [NetworkError::ChannelError] that must be managed by the direct caller of the
+    /// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the
     /// function.
     pub async fn send_operations_batch(
         &self,
@@ -207,24 +207,26 @@ impl NetworkCommandSender {
         Ok(())
     }
 
-    /// Create a new call to the network, sending a `wishlist` of operationIds to a
+    /// Create a new call to the network, sending a `wishlist` of `operationIds` to a
     /// target node (`to_node`) in order to receive the full operations in the future.
     ///
     /// # Returns
-    /// Can return a [NetworkError::ChannelError] that must be managed by the direct caller of the
+    /// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the
     /// function.
-    pub async fn send_ask_for_operations(
+    pub fn send_ask_for_operations(
         &self,
         to_node: NodeId,
         wishlist: OperationIds,
     ) -> Result<(), NetworkError> {
-        self.0
-            .send(NetworkCommand::AskForOperations { to_node, wishlist })
-            .await
-            .map_err(|_| {
-                NetworkError::ChannelError("could not send AskForOperations command".into())
-            })?;
-        Ok(())
+        match self.0.try_reserve() {
+            Ok(permit) => {
+                permit.send(NetworkCommand::AskForOperations { to_node, wishlist });
+                Ok(())
+            }
+            Err(_) => Err(NetworkError::ChannelError(
+                "Failed to acquire permit to send AskForOperations command".into(),
+            )),
+        }
     }
 
     /// send endorsements to node id
@@ -271,7 +273,7 @@ impl NetworkEventReceiver {
         res
     }
 
-    /// drains remaining events and returns them in a VecDeque
+    /// drains remaining events and returns them in a `VecDeque`
     /// note: events are sorted from oldest to newest
     pub async fn drain(mut self) -> VecDeque<NetworkEvent> {
         let mut remaining_events: VecDeque<NetworkEvent> = VecDeque::new();

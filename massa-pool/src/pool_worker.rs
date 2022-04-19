@@ -108,13 +108,13 @@ impl PoolWorker {
     /// Initiates the random selector.
     ///
     /// # Arguments
-    /// * pool_settings: pool configuration.
-    /// * thread_count: number of threads
-    /// * operation_validity_periods : operation validity period
-    /// * protocol_command_sender: associated protocol controller
-    /// * protocol_command_sender protocol pool event receiver
-    /// * controller_command_rx: Channel receiving pool commands.
-    /// * controller_manager_rx: Channel receiving pool management commands.
+    /// * `pool_settings`: pool configuration.
+    /// * `thread_count`: number of threads
+    /// * `operation_validity_periods`: operation validity period
+    /// * `protocol_command_sender`: associated protocol controller
+    /// * `protocol_command_sender`: protocol pool event receiver
+    /// * `controller_command_rx`: Channel receiving pool commands.
+    /// * `controller_manager_rx`: Channel receiving pool management commands.
     pub fn new(
         cfg: &'static PoolConfig,
         protocol_command_sender: ProtocolCommandSender,
@@ -179,7 +179,7 @@ impl PoolWorker {
     /// Manages given pool command.
     ///
     /// # Argument
-    /// * cmd: consensus command to process
+    /// * `cmd`: consensus command to process
     async fn process_pool_command(&mut self, cmd: PoolCommand) -> Result<(), PoolError> {
         match cmd {
             PoolCommand::AddOperations(mut operations) => {

@@ -215,7 +215,7 @@ pub(crate) fn help() {
     Command::iter().map(|c| c.help()).collect()
 }
 
-/// bail a shinny rpc error
+/// bail a shinny RPC error
 macro_rules! rpc_error {
     ($e:expr) => {
         bail!("check if your node is running: {}", $e)
@@ -230,7 +230,7 @@ macro_rules! client_warning {
 }
 
 /// Used to have a shinny json output
-/// TODO refactor me
+/// TODO re-factor me
 #[derive(Debug, Serialize)]
 struct ExtendedWalletEntry {
     /// the private key
@@ -314,7 +314,7 @@ impl Command {
     /// run a given command
     ///
     /// # parameters
-    /// - client: the rpc client
+    /// - client: the RPC client
     /// - wallet: an access to the wallet
     /// - parameters: the parsed parameters
     /// - json: true if --json was passed as an option
@@ -581,7 +581,7 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            client_warning!("this operation may be rejected due to insuffisant balance");
+                                            client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
                                     None => {
@@ -621,7 +621,7 @@ impl Command {
                                 if info.ledger_info.candidate_ledger_info.balance < fee
                                     || roll_count > info.rolls.candidate_rolls
                                 {
-                                    client_warning!("this operation may be rejected due to insuffisant balance or roll count");
+                                    client_warning!("this operation may be rejected due to insufficient balance or roll count");
                                 }
                             }
                             None => client_warning!(format!("address {} not found", addr)),
@@ -658,7 +658,7 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            client_warning!("this operation may be rejected due to insuffisant balance");
+                                            client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
                                     None => {
@@ -694,7 +694,7 @@ impl Command {
                 let mut res = "".to_string();
                 if let Some(e) = end {
                     let (days, hours, mins, secs) =
-                        e.saturating_sub(MassaTime::now()?).days_hours_mins_secs()?; // compensation millis is zero
+                        e.saturating_sub(MassaTime::now()?).days_hours_mins_secs()?; // compensation milliseconds is zero
 
                     res.push_str(&format!("{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs));
                 } else {
@@ -736,7 +736,7 @@ impl Command {
                                 match addresses_info.get(0) {
                                     Some(info) => {
                                         if info.ledger_info.candidate_ledger_info.balance < total {
-                                            client_warning!("this operation may be rejected due to insuffisant balance");
+                                            client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
                                     None => {
@@ -757,7 +757,7 @@ impl Command {
                         Err(e) => bail!("RpcError: {}", e),
                     };
                     if data.len() > max_block_size as usize / 2 {
-                        client_warning!("bytecode size exeeded half of the maximum size of a block, operation will certainly be rejected");
+                        client_warning!("bytecode size exceeded half of the maximum size of a block, operation will certainly be rejected");
                     }
                 }
 
@@ -923,7 +923,7 @@ async fn send_operation(
 }
 
 /// TODO: ugly utilities functions
-/// takes a slice of string and makes it into a vec<T>
+/// takes a slice of string and makes it into a `Vec<T>`
 pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>, T::Err> {
     args.iter().map(|x| x.parse::<T>()).collect()
 }

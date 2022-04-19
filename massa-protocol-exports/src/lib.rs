@@ -16,5 +16,5 @@ pub use protocol_controller::{
 };
 pub use settings::ProtocolSettings;
 
-/// TODO: Add only if test. Removed the cfg test because don't work if running cargo test on an other sub-crate.
+/// TODO: Add only if test. Removed the configuration test because don't work if running cargo test on an other sub-crate.
 pub mod tests;

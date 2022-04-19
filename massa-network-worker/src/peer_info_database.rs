@@ -31,9 +31,9 @@ pub struct PeerInfoDatabase {
     pub(crate) saver_join_handle: JoinHandle<()>,
     /// Monitor changed peers.
     pub(crate) saver_watch_tx: watch::Sender<HashMap<IpAddr, PeerInfo>>,
-    /// Connections count for each PeerType
+    /// Connections count for each `PeerType`
     pub(crate) peer_types_connection_count: EnumMap<PeerType, ConnectionCount>,
-    /// Every wakeup_interval we try to establish a connection with known inactive peers
+    /// Every `wakeup_interval` we try to establish a connection with known inactive peers
     pub(crate) wakeup_interval: MassaTime,
     /// Clock compensation.
     pub(crate) clock_compensation: i64,
@@ -42,8 +42,8 @@ pub struct PeerInfoDatabase {
 /// Saves advertised and non standard peers to a file.
 ///
 /// # Arguments
-/// * peers: peers to save
-/// * file_path : path to the file
+/// * `peers`: peers to save
+/// * `file_path`: path to the file
 async fn dump_peers(
     peers: &HashMap<IpAddr, PeerInfo>,
     file_path: &Path,
@@ -69,17 +69,17 @@ async fn dump_peers(
 }
 
 /// Cleans up the peer database using max values
-/// provided by NetworkConfig.ProtocolConfig.
-/// If opt_new_peers is provided, adds its contents as well.
+/// provided by `NetworkConfig.ProtocolConfig`.
+/// If `opt_new_peers` is provided, adds its contents as well.
 ///
 /// Note: only standard non-active peers are counted when clipping to size limits.
 ///
 /// Arguments :
-/// * cfg : NetworkSettings
-/// * peers : peers to clean up
-/// * opt_new_peers : optional peers to add to the database
-/// * clock_compensation: to be sync with server time
-/// * ban_timeout: after that time we forget we banned a peer
+/// * `cfg`: `NetworkSettings`
+/// * `peers`: peers to clean up
+/// * `opt_new_peers`: optional peers to add to the database
+/// * `clock_compensation`: to be sync with server time
+/// * `ban_timeout`: after that time we forget we banned a peer
 pub(crate) fn cleanup_peers(
     cfg: &NetworkSettings,
     peers: &mut HashMap<IpAddr, PeerInfo>,
@@ -168,12 +168,12 @@ pub(crate) fn cleanup_peers(
 }
 
 impl PeerInfoDatabase {
-    /// Creates new peerInfoDatabase from NetworkConfig.
+    /// Creates new `PeerInfoDatabase` from `NetworkConfig`.
     /// will only emit a warning if peers dumping failed.
     ///
     /// # Argument
-    /// * cfg : network configuration
-    /// * clock_compensation: sync with server
+    /// * `cfg`: network configuration
+    /// * `clock_compensation`: sync with server
     pub async fn new(cfg: &NetworkSettings, clock_compensation: i64) -> Result<Self, NetworkError> {
         // wakeup interval
         let wakeup_interval = cfg.wakeup_interval;
@@ -248,7 +248,7 @@ impl PeerInfoDatabase {
         })
     }
 
-    /// Cleanly closes peerInfoDatabase, performing one last peer dump.
+    /// Cleanly closes `peerInfoDatabase`, performing one last peer dump.
     /// A warning is raised on dump failure.
     pub async fn stop(self) -> Result<(), NetworkError> {
         drop(self.saver_watch_tx);
@@ -264,8 +264,8 @@ impl PeerInfoDatabase {
     //////////////////////
 
     /// total in connection count, considering all peer types
-    /// quite similar to get_out_connection_count
-    /// todo https://github.com/massalabs/massa/issues/2319
+    /// quite similar to `get_out_connection_count`
+    /// todo `https://github.com/massalabs/massa/issues/2319`
     #[inline]
     pub fn get_in_connection_count(&self) -> u64 {
         self.peer_types_connection_count
@@ -276,8 +276,8 @@ impl PeerInfoDatabase {
     }
 
     /// total out connections count, considering all peer types
-    /// quite similar to get_in_connection_count
-    /// todo https://github.com/massalabs/massa/issues/2319
+    /// quite similar to `get_in_connection_count`
+    /// todo `https://github.com/massalabs/massa/issues/2319`
     #[inline]
     pub fn get_out_connection_count(&self) -> u64 {
         self.peer_types_connection_count
@@ -315,11 +315,11 @@ impl PeerInfoDatabase {
         res
     }
 
-    /// Merges new_peers with our peers using the cleanup_peers function.
+    /// Merges `new_peers` with our peers using the `cleanup_peers` function.
     /// A dump is requested afterwards.
     ///
     /// # Argument
-    /// new_peers: peers we are trying to merge
+    /// `new_peers`: peers we are trying to merge
     pub fn merge_candidate_peers(&mut self, new_peers: &[IpAddr]) -> Result<(), NetworkError> {
         if new_peers.is_empty() {
             return Ok(());
@@ -338,7 +338,7 @@ impl PeerInfoDatabase {
     // high level peer management //
     ////////////////////////////////
 
-    /// Unbans a list of ip
+    /// Unban a list of ip
     pub fn unban(&mut self, ips: Vec<IpAddr>) -> Result<(), NetworkError> {
         let mut update_happened = false;
         for ip in ips.into_iter() {
@@ -430,7 +430,7 @@ impl PeerInfoDatabase {
     /// Acknowledges a new out connection attempt to ip.
     ///
     /// # Argument
-    /// ip: ipAddr we are now connected to
+    /// `ip`: `IpAddr` we are now connected to
     pub fn new_out_connection_attempt(&mut self, ip: &IpAddr) -> Result<(), NetworkError> {
         let ip = ip.to_canonical();
         if !ip.is_global() {
@@ -598,7 +598,7 @@ impl PeerInfoDatabase {
         Ok(())
     }
 
-    /// Yay an out connection attempt succeeded.
+    /// An out connection attempt succeeded.
     /// returns false if there are no slots left for out connections.
     /// The peer is set to advertised.
     ///
@@ -731,7 +731,7 @@ impl PeerInfoDatabase {
             .or_insert_with(|| PeerInfo::new(ip, false))
             .peer_type;
 
-        // we need to first check if there is a global slot avaible
+        // we need to first check if there is a global slot available
         if self.is_max_in_connection_count_reached(peer_type) {
             return Err(NetworkError::PeerConnectionError(
                 NetworkConnectionErrorType::MaxPeersConnectionReached(ip),
@@ -745,7 +745,7 @@ impl PeerInfoDatabase {
                 )
             })?; // peer was inserted just before
 
-            // is there a attempt slot avaible
+            // is there a attempt slot available
             if peer.banned {
                 massa_trace!("in_connection_refused_peer_banned", {"ip": peer.ip});
                 peer.last_failure = Some(MassaTime::compensated_now(self.clock_compensation)?);
@@ -774,7 +774,7 @@ impl PeerInfoDatabase {
     // public getters //
     ////////////////////
 
-    /// Sorts peers by ( last_failure, rev(last_success) )
+    /// Sorts peers by `( last_failure, rev(last_success) )`
     /// and returns as many peers as there are available slots to attempt outgoing connections to.
     pub fn get_out_connection_candidate_ips(&self) -> Result<Vec<IpAddr>, NetworkError> {
         let mut connections = vec![];
@@ -794,12 +794,12 @@ impl PeerInfoDatabase {
         Ok(connections)
     }
 
-    /// returns Hashmap of ipAddrs -> Peerinfo
+    /// returns Hashmap of `IpAddrs` -> `PeerInfo`
     pub fn get_peers(&self) -> &HashMap<IpAddr, PeerInfo> {
         &self.peers
     }
 
-    /// Returns a vec of advertisable IpAddrs sorted by ( last_failure, rev(last_success) )
+    /// Returns a vector of advertisable `IpAddr` sorted by `( last_failure, rev(last_success) )`
     pub fn get_advertisable_peer_ips(&self) -> Vec<IpAddr> {
         let mut sorted_peers: Vec<PeerInfo> = self
             .peers
@@ -843,9 +843,9 @@ impl PeerInfoDatabase {
     /// Get ips we want to connect to for a given peer type
     ///
     /// # Arguments
-    /// * peer_type: which type to consider
-    /// * count: what is the current connection count for that type
-    /// * cfg: settings for that peer type
+    /// * `peer_type`: which type to consider
+    /// * `count`: what is the current connection count for that type
+    /// * `cfg`: settings for that peer type
     ///
     /// Returns an iterator
     fn get_out_connection_candidate_ips_for_type(
@@ -854,7 +854,7 @@ impl PeerInfoDatabase {
         count: &ConnectionCount,
         cfg: &PeerTypeConnectionConfig,
     ) -> Result<Vec<IpAddr>, NetworkError> {
-        let avaible_slots = count.get_available_out_connection_attempts(cfg);
+        let available_slots = count.get_available_out_connection_attempts(cfg);
         let now = MassaTime::compensated_now(self.clock_compensation)?;
         let f = move |p: &&PeerInfo| {
             if p.peer_type != peer_type || !p.advertised || p.is_active() || p.banned {
@@ -862,7 +862,12 @@ impl PeerInfoDatabase {
             }
             p.is_peer_ready(self.wakeup_interval, now)
         };
-        let mut res: Vec<_> = self.peers.values().filter(f).take(avaible_slots).collect();
+        let mut res: Vec<_> = self
+            .peers
+            .values()
+            .filter(f)
+            .take(available_slots)
+            .collect();
         res.sort_unstable_by_key(|&p| (p.last_failure, std::cmp::Reverse(p.last_alive)));
         Ok(res.into_iter().map(|p| p.ip).collect())
     }
@@ -959,22 +964,22 @@ impl PeerInfoDatabase {
         Ok(())
     }
 
-    /// similar to get_global_active_out_connection_count and get_global_active_in_connection_count
-    /// todo https://github.com/massalabs/massa/issues/2319
+    /// similar to `get_global_active_out_connection_count` and `get_global_active_in_connection_count`
+    /// todo `https://github.com/massalabs/massa/issues/2319`
     #[inline]
     fn get_global_active_out_connection_attempt_count(&self, peer_type: PeerType) -> usize {
         self.peer_types_connection_count[peer_type].active_out_connection_attempts
     }
 
-    /// similar to get_global_active_out_connection_attempt_count and get_global_active_in_connection_count
-    /// todo https://github.com/massalabs/massa/issues/2319
+    /// similar to `get_global_active_out_connection_attempt_count` and `get_global_active_in_connection_count`
+    /// todo `https://github.com/massalabs/massa/issues/2319`
     #[inline]
     fn get_global_active_out_connection_count(&self, peer_type: PeerType) -> usize {
         self.peer_types_connection_count[peer_type].active_out_connections
     }
 
-    /// similar to get_global_active_out_connection_count and get_global_active_out_connection_attempt_count
-    /// todo https://github.com/massalabs/massa/issues/2319
+    /// similar to `get_global_active_out_connection_count` and `get_global_active_out_connection_attempt_count`
+    /// todo `https://github.com/massalabs/massa/issues/2319`
     #[inline]
     fn get_global_active_in_connection_count(&self, peer_type: PeerType) -> usize {
         self.peer_types_connection_count[peer_type].active_in_connections

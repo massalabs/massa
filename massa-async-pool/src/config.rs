@@ -1,8 +1,8 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! This file defines a config structure containing all settings for the async message pool system
+//! This file defines a configuration structure containing all settings for the asynchronous message pool system
 
-/// Async pool configuration
+/// Asynchronous pool configuration
 #[derive(Debug, Clone)]
 pub struct AsyncPoolConfig {
     /// max number of messages in the pool
