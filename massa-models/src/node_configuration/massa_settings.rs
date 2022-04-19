@@ -67,7 +67,9 @@ pub fn build_massa_settings<T: Deserialize<'static>>(app_name: &str, env_prefix:
             let path_str = user_config_path.to_str().unwrap();
             settings
                 .merge(config::File::with_name(path_str))
-                .unwrap_or_else(|error| panic!("failed to read {} user config: {}", path_str, error));
+                .unwrap_or_else(|error| {
+                    panic!("failed to read {} user config: {}", path_str, error)
+                });
         }
     }
     settings
