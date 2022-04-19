@@ -47,7 +47,7 @@ Now that the npm project is created, install the `as-pect` and `massa-sc-std` de
 
 .. code-block:: shell
 
-   npm install --save-dev @as-pect/cli massa-sc-std
+   npm install --save-dev @as-pect/cli massa-sc-std massa-sc-scripts
 
 You have now installed AssemblyScript and as-pect modules. The first one will be used to generate bytecode from AssemblyScript code and the second one will let you perform unit tests.
 
@@ -103,7 +103,7 @@ Now that everything is in place, we can start the compilation step by running th
 
 .. code-block:: shell
 
-   yarn run asc assembly/helloworld.ts --target release --exportRuntime --binaryFile build/helloworld.wasm
+   npx massa-sc-scripts build-sc assembly/helloworld.ts
 
 Congratulations! You have generated your first smart contract: the `helloworld.wasm` file in `build` directory.
 
