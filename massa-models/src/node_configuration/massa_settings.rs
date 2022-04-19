@@ -38,11 +38,12 @@ pub fn build_massa_settings<T: Deserialize<'static>>(app_name: &str, env_prefix:
         .unwrap_or_else(|_| "base_config/config.toml".to_string());
     settings
         .merge(config::File::with_name(&config_path))
-        .unwrap_or_else(|_| {
+        .unwrap_or_else(|error| {
             panic!(
-                "failed to read {} config {}",
+                "failed to read {} config {}: {}",
                 config_path,
-                std::env::current_dir().unwrap().as_path().to_str().unwrap()
+                std::env::current_dir().unwrap().as_path().to_str().unwrap(),
+                error
             )
         });
     let config_override_path = std::env::var("MASSA_CONFIG_OVERRIDE_PATH")
@@ -50,11 +51,12 @@ pub fn build_massa_settings<T: Deserialize<'static>>(app_name: &str, env_prefix:
     if Path::new(&config_override_path).is_file() {
         settings
             .merge(config::File::with_name(&config_override_path))
-            .unwrap_or_else(|_| {
+            .unwrap_or_else(|error| {
                 panic!(
-                    "failed to read {} override config {}",
+                    "failed to read {} override config {}: {}",
                     config_override_path,
-                    std::env::current_dir().unwrap().as_path().to_str().unwrap()
+                    std::env::current_dir().unwrap().as_path().to_str().unwrap(),
+                    error
                 )
             });
     }
@@ -65,7 +67,7 @@ pub fn build_massa_settings<T: Deserialize<'static>>(app_name: &str, env_prefix:
             let path_str = user_config_path.to_str().unwrap();
             settings
                 .merge(config::File::with_name(path_str))
-                .unwrap_or_else(|_| panic!("failed to read {} user config", path_str));
+                .unwrap_or_else(|error| panic!("failed to read {} user config: {}", path_str, error));
         }
     }
     settings
