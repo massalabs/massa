@@ -2,6 +2,7 @@
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+#![feature(ip)]
 
 pub use commands::{
     NetworkCommand, NetworkEvent, NetworkManagementCommand, NodeCommand, NodeEvent, NodeEventType,

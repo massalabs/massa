@@ -36,7 +36,7 @@ pub const CHANNEL_SIZE: usize = 256;
 
 lazy_static::lazy_static! {
     /// Time in millis when the blockclique started.
-    pub static ref GENESIS_TIMESTAMP: MassaTime = 1649343933531.into();
+    pub static ref GENESIS_TIMESTAMP: MassaTime = 1649804027198.into();
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = None;
@@ -81,7 +81,7 @@ pub const DELTA_F0: u64 = 640;
 /// Maximum number of operations per block
 pub const MAX_OPERATIONS_PER_BLOCK: u32 = 204800;
 /// Maximum block size in bytes
-pub const MAX_BLOCK_SIZE: u32 = 204800;
+pub const MAX_BLOCK_SIZE: u32 = 100000000;
 /// Maximum capacity of the asynchronous messages pool
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 /// Maximum operation validity period count
@@ -121,9 +121,9 @@ pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 //
 
 /// Maximum of GAS allowed for a block
-pub const MAX_GAS_PER_BLOCK: u64 = 100_000_000;
+pub const MAX_GAS_PER_BLOCK: u64 = 2000000000;
 /// Maximum of GAS allowed for async messages exection on one slot
-pub const MAX_ASYNC_GAS: u64 = 100_000_000;
+pub const MAX_ASYNC_GAS: u64 = 2000000000;
 
 //
 // Constants used in network

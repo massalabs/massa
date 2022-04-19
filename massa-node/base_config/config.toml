@@ -1,5 +1,5 @@
 [logging]
-level = 2
+level = 3
 
 [api]
 draw_lookahead_period_count = 10
@@ -29,7 +29,7 @@ ledger_cache_capacity = 1048576
 ledger_flush_interval = 10000
 ledger_reset_at_startup = true
 initial_ledger_path = "base_config/initial_ledger.json"
-max_send_wait = 500
+max_send_wait = 0
 block_db_prune_interval = 5000
 initial_rolls_path = "base_config/initial_rolls.json"
 pos_draw_cached_cycles = 10
@@ -43,7 +43,7 @@ ask_block_timeout = 10000
 max_node_known_blocks_size = 1024
 max_node_wanted_blocks_size = 1024
 max_simultaneous_ask_blocks_per_node = 128
-max_send_wait = 500
+max_send_wait = 0
 max_known_ops_size = 10024
 max_known_endorsements_size = 1024
 operation_batch_buffer_capacity = 10024
@@ -70,7 +70,7 @@ private_key_file = "config/node_privkey.key"
 max_ask_blocks_per_message = 128
 max_operations_per_message = 1024
 max_endorsements_per_message = 1024
-max_send_wait = 500
+max_send_wait = 0
 ban_timeout = 3600000
 peer_list_send_timeout = 100
 max_in_connection_overflow = 100
@@ -96,9 +96,9 @@ max_endorsement_count = 10000
 max_item_return_count = 100
 
 [network.peer_types_config.Standard]
-target_out_connections = 15
+target_out_connections = 10
 max_out_attempts = 10
-max_in_connections = 5
+max_in_connections = 15
 
 [network.peer_types_config.Bootstrap]
 target_out_connections = 1
@@ -106,6 +106,6 @@ max_out_attempts = 1
 max_in_connections = 1
 
 [network.peer_types_config.WhiteListed]
-target_out_connections = 3
+target_out_connections = 2
 max_out_attempts = 2
-max_in_connections = 2
+max_in_connections = 3
