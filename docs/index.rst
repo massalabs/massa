@@ -65,18 +65,10 @@ protocol in the `FAQ <https://github.com/massalabs/massa/wiki/faq>`_.
 Don't hesitate to ask questions in the
 `Discord <https://discord.com/invite/massa>`_ testnet channel.
 
-Technical documentation
------------------------
-
--   `API <https://github.com/massalabs/massa/wiki/api)>`_
--   `Concurrency <https://github.com/massalabs/massa/wiki/concurrency)>`_
--   `Smart contract VM block feed process <https://github.com/massalabs/massa/wiki/vm-block-feed)>`_
--   `Dummy network generation <https://github.com/massalabs/massa/wiki/Dummy-network-generation)>`_
-
 
 .. toctree::
    :maxdepth: 2
-   :caption: Smart-contracts
+   :caption: Smart-contracts documentation
 
    smart-contracts/introduction.rst
    smart-contracts/getting-started.rst
@@ -86,7 +78,7 @@ Technical documentation
 
 .. toctree::
    :maxdepth: 2
-   :caption: Testnet
+   :caption: Testnet documentation
 
    testnet/install.rst
    testnet/running.rst
@@ -94,6 +86,7 @@ Technical documentation
    testnet/staking.rst
    testnet/routability.rst
    testnet/rewards.rst
+   testnet/faq.rst
 
 .. toctree::
    :maxdepth: 2
