@@ -513,17 +513,14 @@ impl Command {
                         bail!("invalid parameter");
                     }
                 }
-                match client
-                    .public
-                    .get_filtered_sc_output_event(EventFilter {
-                        start: parse_value(&p, p_list[0]),
-                        end: parse_value(&p, p_list[1]),
-                        emitter_address: parse_value(&p, p_list[2]),
-                        original_caller_address: parse_value(&p, p_list[3]),
-                        original_operation_id: parse_value(&p, p_list[4]),
-                    })
-                    .await
-                {
+                let filter = EventFilter {
+                    start: parse_value(&p, p_list[0]),
+                    end: parse_value(&p, p_list[1]),
+                    emitter_address: parse_value(&p, p_list[2]),
+                    original_caller_address: parse_value(&p, p_list[3]),
+                    original_operation_id: parse_value(&p, p_list[4]),
+                };
+                match client.public.get_filtered_sc_output_event(filter).await {
                     Ok(events) => Ok(Box::new(events)),
                     Err(e) => rpc_error!(e),
                 }
@@ -973,6 +970,7 @@ async fn get_file_as_byte_vec(filename: &std::path::Path) -> Result<Vec<u8>> {
     Ok(tokio::fs::read(filename).await?)
 }
 
+// chains get_key_value with its parsing and displays a warning on parsing error
 pub fn parse_value<T: std::str::FromStr>(p: &HashMap<&str, &str>, key: &str) -> Option<T> {
     p.get_key_value(key).and_then(|x| {
         x.1.parse::<T>()

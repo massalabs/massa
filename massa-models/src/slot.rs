@@ -44,9 +44,7 @@ impl std::fmt::Display for Slot {
 impl FromStr for Slot {
     type Err = ModelsError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // check this
-        let s2 = s.replace(&['(', ')'], "");
-        let v: Vec<_> = s2.split(',').collect();
+        let v: Vec<_> = s.split(',').collect();
         if v.len() != 2 {
             Err(ModelsError::DeserializeError(
                 "invalid slot format".to_string(),
@@ -55,7 +53,6 @@ impl FromStr for Slot {
             Ok(Slot::new(
                 v[0].parse::<u64>()
                     .map_err(|_| ModelsError::DeserializeError("invalid period".to_string()))?,
-                // check this
                 v[1].parse::<u8>()
                     .map_err(|_| ModelsError::DeserializeError("invalid thread".to_string()))?,
             ))

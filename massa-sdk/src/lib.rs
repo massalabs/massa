@@ -195,8 +195,12 @@ impl RpcClient {
         &self,
         filter: EventFilter,
     ) -> RpcResult<Vec<SCOutputEvent>> {
-        self.call_method("get_filtered_sc_output_event", "Vec<SCOutputEvent>", filter)
-            .await
+        self.call_method(
+            "get_filtered_sc_output_event",
+            "Vec<SCOutputEvent>",
+            vec![filter],
+        )
+        .await
     }
 
     /// Get the block graph within the specified time interval.
