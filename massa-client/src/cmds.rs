@@ -187,6 +187,13 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
+        props(args = "TargetAddress FunctionName Parameter MaxGas GasPrice Coins Fee",),
+        message = "create and send an operation to call a function of a smart contract"
+    )]
+    call_smart_contract,
+
+    #[strum(
+        ascii_case_insensitive,
         props(args = "PathToBytecode MaxGas GasPrice Address",),
         message = "execute byte code, address is optional. Nothing is really executed on chain"
     )]
@@ -772,6 +779,62 @@ impl Command {
                     },
                     fee,
                     addr,
+                    json,
+                )
+                .await
+            }
+            Command::call_smart_contract => {
+                if parameters.len() != 7 {
+                    bail!("wrong number of parameters");
+                }
+                let target_addr = parameters[0].parse::<Address>()?;
+                let target_func = parameters[1].clone();
+                let param = parameters[2].clone();
+                let max_gas = parameters[3].parse::<u64>()?;
+                let gas_price = parameters[4].parse::<Amount>()?;
+                let coins = parameters[5].parse::<Amount>()?;
+                let fee = parameters[6].parse::<Amount>()?;
+                if !json {
+                    match gas_price
+                        .checked_mul_u64(max_gas)
+                        .and_then(|x| x.checked_add(coins))
+                        .and_then(|x| x.checked_add(fee))
+                    {
+                        Some(total) => {
+                            if let Ok(addresses_info) =
+                                client.public.get_addresses(vec![target_addr]).await
+                            {
+                                match addresses_info.get(0) {
+                                    Some(info) => {
+                                        if info.ledger_info.candidate_ledger_info.balance < total {
+                                            client_warning!("this operation may be rejected due to insufficient balance");
+                                        }
+                                    }
+                                    None => {
+                                        client_warning!(format!("address {} not found", target_addr));
+                                    }
+                                }
+                            }
+                        }
+                        None => {
+                            client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
+                        }
+                    }
+                };
+                send_operation(
+                    client,
+                    wallet,
+                    OperationType::CallSC {
+                        target_addr,
+                        target_func,
+                        param,
+                        max_gas,
+                        sequential_coins: coins, // TODO : Change before merge
+                        parallel_coins: coins, // TODO : Change before merge
+                        gas_price,
+                    },
+                    fee,
+                    target_addr,
                     json,
                 )
                 .await
