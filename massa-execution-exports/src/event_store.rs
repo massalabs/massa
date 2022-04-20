@@ -55,30 +55,24 @@ impl EventStore {
                     }
                 }
                 if let Some(end) = filter.end {
-                    if x.context.slot > end {
+                    if x.context.slot >= end {
                         return false;
                     }
                 }
-                if let (Some(addr1), Some(addr2)) =
-                    (filter.emitter_address, x.context.call_stack.front())
-                {
-                    if addr1 != *addr2 {
-                        return false;
-                    }
+                match (filter.emitter_address, x.context.call_stack.front()) {
+                    (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
+                    (Some(_), None) => return false,
+                    _ => (),
                 }
-                if let (Some(addr1), Some(addr2)) =
-                    (filter.original_caller_address, x.context.call_stack.back())
-                {
-                    if addr1 != *addr2 {
-                        return false;
-                    }
+                match (filter.original_caller_address, x.context.call_stack.back()) {
+                    (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
+                    (Some(_), None) => return false,
+                    _ => (),
                 }
-                if let (Some(id1), Some(id2)) =
-                    (filter.original_operation_id, x.context.origin_operation_id)
-                {
-                    if id1 != id2 {
-                        return false;
-                    }
+                match (filter.original_operation_id, x.context.origin_operation_id) {
+                    (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
+                    (Some(_), None) => return false,
+                    _ => (),
                 }
                 true
             })

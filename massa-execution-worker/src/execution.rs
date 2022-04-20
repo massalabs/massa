@@ -145,6 +145,7 @@ impl ExecutionState {
 
         // append generated events to the final event store
         self.final_events.extend(exec_out.events);
+        self.final_events.prune(self.config.max_final_events);
     }
 
     /// Applies an execution output to the active (non-final) state
