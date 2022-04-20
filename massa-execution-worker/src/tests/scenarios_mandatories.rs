@@ -314,7 +314,6 @@ fn generate_events() {
     manager.stop();
     let events = controller.get_filtered_sc_output_event(EventFilter {
         start: Some(slot),
-        end: Some(slot),
         emitter_address: Some(sender_address),
         ..Default::default()
     });
