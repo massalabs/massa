@@ -87,9 +87,10 @@ pub struct EventStore {
 pub struct EventStore2(VecDeque<SCOutputEvent>);
 
 impl EventStore2 {
+    /// Push a new smart contract event to the store
     pub fn push(&mut self, event: SCOutputEvent) {
         if self.0.iter().any(|x| x.id == event.id) {
-            // push front to avoid reversing the queue when truncating
+            // push on front to avoid reversing the queue when truncating
             self.0.push_front(event);
         } else {
             // emit a warning when the event already exists
@@ -97,24 +98,34 @@ impl EventStore2 {
         }
     }
 
+    /// Take the event store
     pub fn take(&mut self) -> VecDeque<SCOutputEvent> {
         std::mem::take(&mut self.0)
     }
 
+    /// Clear the event store
     pub fn clear(&mut self) {
         self.0.clear()
     }
 
+    /// Truncate the event store if its size is over the given limit
     pub fn truncate(&mut self, max_final_events: usize) {
         if self.0.len() > max_final_events {
             self.truncate(max_final_events);
         }
     }
 
+    /// Extend the event store with another store
     pub fn extend(&mut self, other: VecDeque<SCOutputEvent>) {
         self.0.extend(other.into_iter());
     }
 
+    /// Get events optionally filtered by:
+    /// * start slot
+    /// * end slot
+    /// * emitter address
+    /// * original caller address
+    /// * operation id
     pub fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
         let list = self.0.clone();
         list.retain(|x| {
@@ -122,7 +133,7 @@ impl EventStore2 {
             let p: u64 = x.context.slot.period;
             let t: u8 = x.context.slot.thread;
             let stack: VecDeque<Address> = x.context.call_stack;
-            let origin_operation_id: Option<OperationId> = x.context.origin_operation_id;
+            let operation_id: Option<OperationId> = x.context.origin_operation_id;
             match filter.start {
                 Some(start) if p < start.period || (p == start.period && t < start.thread) => {
                     state = false
@@ -139,7 +150,7 @@ impl EventStore2 {
             if filter.original_caller_address != stack.back() {
                 state = false;
             }
-            if filter.original_operation_id != origin_operation_id {
+            if filter.original_operation_id != operation_id {
                 state = false;
             }
         });
