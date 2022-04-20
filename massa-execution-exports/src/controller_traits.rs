@@ -6,6 +6,7 @@ use crate::types::ExecutionOutput;
 use crate::types::ReadOnlyExecutionRequest;
 use crate::ExecutionError;
 use massa_ledger::LedgerEntry;
+use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::Address;
 use massa_models::BlockId;
@@ -34,11 +35,7 @@ pub trait ExecutionController: Send + Sync {
     /// * operation id
     fn get_filtered_sc_output_event(
         &self,
-        start: Option<Slot>,
-        end: Option<Slot>,
-        emitter_address: Option<Address>,
-        original_caller_address: Option<Address>,
-        original_operation_id: Option<OperationId>,
+        filter: EventFilter,
     ) -> Vec<SCOutputEvent>;
 
     /// Get a copy of a full ledger entry with its final and active values

@@ -424,7 +424,7 @@ impl Interface for InterfaceImpl {
         execution_context.created_event_index += 1;
 
         // Add the event to the context store
-        execution_context.events.insert(id, event);
+        execution_context.events.push(event);
 
         Ok(())
     }

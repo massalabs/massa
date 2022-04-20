@@ -822,10 +822,8 @@ impl ExecutionState {
     /// * original caller address
     /// * operation id
     pub fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
-        // let start = start.unwrap_or_else(Slot::min);
-        // let end = end.unwrap_or_else(Slot::max);
         self.final_events
-            .get_filtered_sc_output_event(filter)
+            .get_filtered_sc_output_event(filter.clone())
             .into_iter()
             .chain(
                 self.active_history

@@ -42,8 +42,8 @@ impl EventStore {
     }
 
     /// Extend the event store with another store
-    pub fn extend(&mut self, other: VecDeque<SCOutputEvent>) {
-        self.0.extend(other.into_iter());
+    pub fn extend(&mut self, other: EventStore) {
+        self.0.extend(other.0.into_iter());
     }
 
     /// Get events optionally filtered by:
