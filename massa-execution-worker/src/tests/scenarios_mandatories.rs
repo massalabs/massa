@@ -8,6 +8,7 @@ use massa_final_state::{FinalState, FinalStateConfig};
 use massa_hash::Hash;
 use massa_ledger::{LedgerConfig, LedgerError};
 use massa_models::{
+    api::EventFilter,
     constants::{AMOUNT_DECIMAL_FACTOR, FINAL_HISTORY_LENGTH, THREAD_COUNT},
     Block, BlockHeader, BlockId, Operation, OperationType, SerializeCompact, SignedHeader,
     SignedOperation,
@@ -147,13 +148,11 @@ fn test_nested_call_gas_usage() {
     // sleep for 300ms to reach the message execution period
     std::thread::sleep(Duration::from_millis(10));
     // retrieve events emitted by smart contracts
-    let events = controller.get_filtered_sc_output_event(
-        Some(Slot::new(0, 1)),
-        Some(Slot::new(20, 1)),
-        None,
-        None,
-        None,
-    );
+    let events = controller.get_filtered_sc_output_event(EventFilter {
+        start: Some(Slot::new(0, 1)),
+        end: Some(Slot::new(20, 1)),
+        ..Default::default()
+    });
     // match the events
     assert!(!events.is_empty(), "One event was expected");
     let address = events[0].clone().data;
@@ -177,8 +176,10 @@ fn test_nested_call_gas_usage() {
     controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(300));
     // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
-    let events =
-        controller.get_filtered_sc_output_event(Some(Slot::new(1, 1)), None, None, None, None);
+    let events = controller.get_filtered_sc_output_event(EventFilter {
+        start: Some(Slot::new(1, 1)),
+        ..Default::default()
+    });
     // Check that we always subtract gas through the execution (even in sub calls)
     assert!(
         events.is_sorted_by_key(|event| Reverse(event.data.parse::<u64>().unwrap())),
@@ -264,13 +265,11 @@ fn send_and_receive_async_message() {
     // stop the execution controller
     manager.stop();
     // retrieve events emitted by smart contracts
-    let events = controller.get_filtered_sc_output_event(
-        Some(Slot::new(1, 1)),
-        Some(Slot::new(20, 1)),
-        None,
-        None,
-        None,
-    );
+    let events = controller.get_filtered_sc_output_event(EventFilter {
+        start: Some(Slot::new(1, 1)),
+        end: Some(Slot::new(20, 1)),
+        ..Default::default()
+    });
     // match the events
     assert!(!events.is_empty(), "One event was expected");
     assert_eq!(events[0].data, "message received: hello my good friend!")
@@ -313,13 +312,11 @@ fn generate_events() {
 
     std::thread::sleep(Duration::from_millis(1000));
     manager.stop();
-    let events = controller.get_filtered_sc_output_event(
-        Some(slot),
-        Some(slot),
-        Some(sender_address),
-        None,
-        None,
-    );
+    let events = controller.get_filtered_sc_output_event(EventFilter {
+        start: Some(slot),
+        emitter_address: Some(sender_address),
+        ..Default::default()
+    });
     assert!(!events.is_empty(), "At least one event was expected")
 }
 

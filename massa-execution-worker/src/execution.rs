@@ -17,6 +17,7 @@ use massa_execution_exports::{
 };
 use massa_final_state::{FinalState, StateChanges};
 use massa_ledger::{Applicable, LedgerEntry, SetUpdateOrDelete};
+use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::signed::Signable;
 use massa_models::Slot;
@@ -144,6 +145,7 @@ impl ExecutionState {
 
         // append generated events to the final event store
         self.final_events.extend(exec_out.events);
+        self.final_events.prune(self.config.max_final_events);
     }
 
     /// Applies an execution output to the active (non-final) state
@@ -820,42 +822,14 @@ impl ExecutionState {
     /// * emitter address
     /// * original caller address
     /// * operation id
-    pub fn get_filtered_sc_output_event(
-        &self,
-        start: Option<Slot>,
-        end: Option<Slot>,
-        emitter_address: Option<Address>,
-        original_caller_address: Option<Address>,
-        original_operation_id: Option<OperationId>,
-    ) -> Vec<SCOutputEvent> {
-        // iter on step history chained with final events
-        let start = start.unwrap_or_else(Slot::min);
-        let end = end.unwrap_or_else(Slot::max);
+    pub fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
         self.final_events
-            .get_filtered_sc_output_event(
-                start,
-                end,
-                emitter_address,
-                original_caller_address,
-                original_operation_id,
-            )
+            .get_filtered_sc_output_event(&filter)
             .into_iter()
             .chain(
-                // TODO note that active history is made of consecutive slots,
-                // so this algo does not need to scan all history items as iteration bounds can be derived a priori
-                // https://github.com/massalabs/massa/issues/2335
                 self.active_history
                     .iter()
-                    .filter(|item| item.slot >= start && item.slot <= end)
-                    .flat_map(|item| {
-                        item.events.get_filtered_sc_output_event(
-                            start,
-                            end,
-                            emitter_address,
-                            original_caller_address,
-                            original_operation_id,
-                        )
-                    }),
+                    .flat_map(|item| item.events.get_filtered_sc_output_event(&filter)),
             )
             .collect()
     }

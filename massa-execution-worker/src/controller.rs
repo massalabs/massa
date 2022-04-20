@@ -10,9 +10,9 @@ use massa_execution_exports::{
     ReadOnlyExecutionRequest,
 };
 use massa_ledger::LedgerEntry;
+use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::Address;
-use massa_models::OperationId;
 use massa_models::{BlockId, Slot};
 use parking_lot::{Condvar, Mutex, RwLock};
 use std::collections::HashMap;
@@ -88,21 +88,10 @@ impl ExecutionController for ExecutionControllerImpl {
     /// * emitter address
     /// * original caller address
     /// * operation id
-    fn get_filtered_sc_output_event(
-        &self,
-        start: Option<Slot>,
-        end: Option<Slot>,
-        emitter_address: Option<Address>,
-        original_caller_address: Option<Address>,
-        original_operation_id: Option<OperationId>,
-    ) -> Vec<SCOutputEvent> {
-        self.execution_state.read().get_filtered_sc_output_event(
-            start,
-            end,
-            emitter_address,
-            original_caller_address,
-            original_operation_id,
-        )
+    fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
+        self.execution_state
+            .read()
+            .get_filtered_sc_output_event(filter)
     }
 
     /// gets a copy of a full ledger entry

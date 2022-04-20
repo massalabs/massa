@@ -480,7 +480,7 @@ pub struct TimeInterval {
 }
 
 /// filter used when retrieving SC output events
-#[derive(Debug, Deserialize, Clone, Serialize)]
+#[derive(Default, Debug, Deserialize, Clone, Serialize)]
 pub struct EventFilter {
     /// optional start slot
     pub start: Option<Slot>,
