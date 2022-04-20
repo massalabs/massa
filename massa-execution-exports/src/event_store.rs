@@ -34,10 +34,10 @@ impl EventStore {
         self.0.clear()
     }
 
-    /// Truncate the event store if its size is over the given limit
-    pub fn truncate(&mut self, max_final_events: usize) {
-        if self.0.len() > max_final_events {
-            self.0.truncate(max_final_events);
+    /// Prune the event store if its size is over the given limit
+    pub fn prune(&mut self, max_events: usize) {
+        if self.0.len() > max_events {
+            self.0.truncate(max_events);
         }
     }
 
@@ -95,7 +95,7 @@ impl EventStore {
 }
 
 #[test]
-fn test_truncate() {
+fn test_prune() {
     use massa_hash::Hash;
     use massa_models::output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId};
     use massa_models::Slot;
@@ -116,7 +116,7 @@ fn test_truncate() {
         });
     }
     assert_eq!(store.0.len(), 10);
-    store.truncate(3);
+    store.prune(3);
     assert_eq!(store.0.len(), 3);
     assert_eq!(store.0[2].data, "7");
     assert_eq!(store.0[1].data, "8");
