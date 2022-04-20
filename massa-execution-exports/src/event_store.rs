@@ -3,13 +3,15 @@
 //! This module represents an event store allowing to store, search and retrieve
 //! a config-limited number of execution-generated events
 
+use massa_models::api::EventFilter;
 use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
 use massa_models::prehash::{Map, PreHashed, Set};
 /// Define types used while executing block bytecodes
 use massa_models::{Address, OperationId, Slot};
 use std::cmp;
 use std::collections::hash_map::Entry;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
+use std::fs::File;
 use tracing::warn;
 
 #[inline]
@@ -79,6 +81,70 @@ pub struct EventStore {
 
     /// maps operation id to a set of event ids
     operation_id_to_event_id: Map<OperationId, Set<SCOutputEventId>>,
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct EventStore2(VecDeque<SCOutputEvent>);
+
+impl EventStore2 {
+    pub fn push(&mut self, event: SCOutputEvent) {
+        if self.0.iter().any(|x| x.id == event.id) {
+            // push front to avoid reversing the queue when truncating
+            self.0.push_front(event);
+        } else {
+            // emit a warning when the event already exists
+            warn!("event store already contains this event: {}", event.id);
+        }
+    }
+
+    pub fn take(&mut self) -> VecDeque<SCOutputEvent> {
+        std::mem::take(&mut self.0)
+    }
+
+    pub fn clear(&mut self) {
+        self.0.clear()
+    }
+
+    pub fn truncate(&mut self, max_final_events: usize) {
+        if self.0.len() > max_final_events {
+            self.truncate(max_final_events);
+        }
+    }
+
+    pub fn extend(&mut self, other: VecDeque<SCOutputEvent>) {
+        self.0.extend(other.into_iter());
+    }
+
+    pub fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
+        let list = self.0.clone();
+        list.retain(|x| {
+            let mut state = true;
+            let p: u64 = x.context.slot.period;
+            let t: u8 = x.context.slot.thread;
+            let stack: VecDeque<Address> = x.context.call_stack;
+            let origin_operation_id: Option<OperationId> = x.context.origin_operation_id;
+            match filter.start {
+                Some(start) if p < start.period || (p == start.period && t < start.thread) => {
+                    state = false
+                }
+                _ => (),
+            };
+            match filter.end {
+                Some(end) if p > end.period || (p == end.period && t > end.thread) => state = false,
+                _ => (),
+            };
+            if filter.emitter_address != stack.front() {
+                state = false;
+            }
+            if filter.original_caller_address != stack.back() {
+                state = false;
+            }
+            if filter.original_operation_id != origin_operation_id {
+                state = false;
+            }
+        });
+        list
+    }
 }
 
 impl EventStore {
