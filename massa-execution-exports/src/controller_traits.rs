@@ -10,7 +10,6 @@ use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_models::Address;
 use massa_models::BlockId;
-use massa_models::OperationId;
 use massa_models::Slot;
 use std::collections::HashMap;
 
@@ -33,10 +32,7 @@ pub trait ExecutionController: Send + Sync {
     /// * emitter address
     /// * original caller address
     /// * operation id
-    fn get_filtered_sc_output_event(
-        &self,
-        filter: EventFilter,
-    ) -> Vec<SCOutputEvent>;
+    fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent>;
 
     /// Get a copy of a full ledger entry with its final and active values
     ///

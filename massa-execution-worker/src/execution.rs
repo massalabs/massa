@@ -823,12 +823,12 @@ impl ExecutionState {
     /// * operation id
     pub fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
         self.final_events
-            .get_filtered_sc_output_event(filter.clone())
+            .get_filtered_sc_output_event(&filter)
             .into_iter()
             .chain(
                 self.active_history
                     .iter()
-                    .flat_map(|item| item.events.get_filtered_sc_output_event(filter)),
+                    .flat_map(|item| item.events.get_filtered_sc_output_event(&filter)),
             )
             .collect()
     }

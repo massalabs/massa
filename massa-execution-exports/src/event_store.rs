@@ -52,7 +52,7 @@ impl EventStore {
     /// * emitter address
     /// * original caller address
     /// * operation id
-    pub fn get_filtered_sc_output_event(&self, filter: EventFilter) -> VecDeque<SCOutputEvent> {
+    pub fn get_filtered_sc_output_event(&self, filter: &EventFilter) -> VecDeque<SCOutputEvent> {
         let mut filtered = self.0.clone();
         filtered.retain(|x| {
             let mut state = true;
