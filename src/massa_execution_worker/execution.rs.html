@@ -839,32 +839,6 @@
 <span id="834">834</span>
 <span id="835">835</span>
 <span id="836">836</span>
-<span id="837">837</span>
-<span id="838">838</span>
-<span id="839">839</span>
-<span id="840">840</span>
-<span id="841">841</span>
-<span id="842">842</span>
-<span id="843">843</span>
-<span id="844">844</span>
-<span id="845">845</span>
-<span id="846">846</span>
-<span id="847">847</span>
-<span id="848">848</span>
-<span id="849">849</span>
-<span id="850">850</span>
-<span id="851">851</span>
-<span id="852">852</span>
-<span id="853">853</span>
-<span id="854">854</span>
-<span id="855">855</span>
-<span id="856">856</span>
-<span id="857">857</span>
-<span id="858">858</span>
-<span id="859">859</span>
-<span id="860">860</span>
-<span id="861">861</span>
-<span id="862">862</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.</span>
@@ -884,6 +858,7 @@
 };
 <span class="kw">use</span> <span class="ident">massa_final_state</span>::{<span class="ident">FinalState</span>, <span class="ident">StateChanges</span>};
 <span class="kw">use</span> <span class="ident">massa_ledger</span>::{<span class="ident">Applicable</span>, <span class="ident">LedgerEntry</span>, <span class="ident">SetUpdateOrDelete</span>};
+<span class="kw">use</span> <span class="ident">massa_models::api::EventFilter</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::signed::Signable</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Slot</span>;
@@ -1011,6 +986,7 @@
 
         <span class="comment">// append generated events to the final event store</span>
         <span class="self">self</span>.<span class="ident">final_events</span>.<span class="ident">extend</span>(<span class="ident">exec_out</span>.<span class="ident">events</span>);
+        <span class="self">self</span>.<span class="ident">final_events</span>.<span class="ident">prune</span>(<span class="self">self</span>.<span class="ident">config</span>.<span class="ident">max_final_events</span>);
     }
 
     <span class="doccomment">/// Applies an execution output to the active (non-final) state</span>
@@ -1687,42 +1663,14 @@
     <span class="doccomment">/// * emitter address</span>
     <span class="doccomment">/// * original caller address</span>
     <span class="doccomment">/// * operation id</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">start</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
-        <span class="ident">end</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
-        <span class="ident">emitter_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-        <span class="ident">original_caller_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-        <span class="ident">original_operation_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span> {
-        <span class="comment">// iter on step history chained with final events</span>
-        <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">start</span>.<span class="ident">unwrap_or_else</span>(<span class="ident">Slot::min</span>);
-        <span class="kw">let</span> <span class="ident">end</span> <span class="op">=</span> <span class="ident">end</span>.<span class="ident">unwrap_or_else</span>(<span class="ident">Slot::max</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">EventFilter</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">final_events</span>
-            .<span class="ident">get_filtered_sc_output_event</span>(
-                <span class="ident">start</span>,
-                <span class="ident">end</span>,
-                <span class="ident">emitter_address</span>,
-                <span class="ident">original_caller_address</span>,
-                <span class="ident">original_operation_id</span>,
-            )
+            .<span class="ident">get_filtered_sc_output_event</span>(<span class="kw-2">&amp;</span><span class="ident">filter</span>)
             .<span class="ident">into_iter</span>()
             .<span class="ident">chain</span>(
-                <span class="comment">// TODO note that active history is made of consecutive slots,</span>
-                <span class="comment">// so this algo does not need to scan all history items as iteration bounds can be derived a priori</span>
-                <span class="comment">// https://github.com/massalabs/massa/issues/2335</span>
                 <span class="self">self</span>.<span class="ident">active_history</span>
                     .<span class="ident">iter</span>()
-                    .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">item</span><span class="op">|</span> <span class="ident">item</span>.<span class="ident">slot</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">start</span> <span class="op">&amp;&amp;</span> <span class="ident">item</span>.<span class="ident">slot</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">end</span>)
-                    .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">item</span><span class="op">|</span> {
-                        <span class="ident">item</span>.<span class="ident">events</span>.<span class="ident">get_filtered_sc_output_event</span>(
-                            <span class="ident">start</span>,
-                            <span class="ident">end</span>,
-                            <span class="ident">emitter_address</span>,
-                            <span class="ident">original_caller_address</span>,
-                            <span class="ident">original_operation_id</span>,
-                        )
-                    }),
+                    .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">item</span><span class="op">|</span> <span class="ident">item</span>.<span class="ident">events</span>.<span class="ident">get_filtered_sc_output_event</span>(<span class="kw-2">&amp;</span><span class="ident">filter</span>)),
             )
             .<span class="ident">collect</span>()
     }

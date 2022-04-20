@@ -729,16 +729,6 @@
 <span id="724">724</span>
 <span id="725">725</span>
 <span id="726">726</span>
-<span id="727">727</span>
-<span id="728">728</span>
-<span id="729">729</span>
-<span id="730">730</span>
-<span id="731">731</span>
-<span id="732">732</span>
-<span id="733">733</span>
-<span id="734">734</span>
-<span id="735">735</span>
-<span id="736">736</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ApiError</span>;
@@ -874,7 +864,7 @@
                     <span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="ident">ReadOnlyResult::Error</span>(<span class="macro">format!</span>(<span class="string">&quot;readonly call failed: {}&quot;</span>, <span class="ident">err</span>)),
                     <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ReadOnlyResult::Ok</span>,
                 ),
-                <span class="ident">output_events</span>: <span class="ident">result</span>.<span class="ident">map_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Default::default</span>(), <span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">events</span>.<span class="ident">export</span>()),
+                <span class="ident">output_events</span>: <span class="ident">result</span>.<span class="ident">map_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Default::default</span>(), <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">events</span>.<span class="ident">take</span>()),
             };
 
             <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">result</span>);
@@ -948,7 +938,7 @@
                     <span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="ident">ReadOnlyResult::Error</span>(<span class="macro">format!</span>(<span class="string">&quot;readonly call failed: {}&quot;</span>, <span class="ident">err</span>)),
                     <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ReadOnlyResult::Ok</span>,
                 ),
-                <span class="ident">output_events</span>: <span class="ident">result</span>.<span class="ident">map_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Default::default</span>(), <span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">events</span>.<span class="ident">export</span>()),
+                <span class="ident">output_events</span>: <span class="ident">result</span>.<span class="ident">map_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Default::default</span>(), <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">events</span>.<span class="ident">take</span>()),
             };
 
             <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">result</span>);
@@ -1445,24 +1435,14 @@
     <span class="doccomment">/// * operation id</span>
     <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">EventFilter</span> {
-            <span class="ident">start</span>,
-            <span class="ident">end</span>,
-            <span class="ident">emitter_address</span>,
-            <span class="ident">original_caller_address</span>,
-            <span class="ident">original_operation_id</span>,
-        }: <span class="ident">EventFilter</span>,
+        <span class="ident">filter</span>: <span class="ident">EventFilter</span>,
     ) -&gt; <span class="ident">BoxFuture</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span>, <span class="ident">ApiError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="comment">// get events</span>
-        <span class="kw">let</span> <span class="ident">events</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">execution_controller</span>.<span class="ident">get_filtered_sc_output_event</span>(
-            <span class="ident">start</span>,
-            <span class="ident">end</span>,
-            <span class="ident">emitter_address</span>,
-            <span class="ident">original_caller_address</span>,
-            <span class="ident">original_operation_id</span>,
-        );
+        <span class="kw">let</span> <span class="ident">events</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="number">0</span>
+            .<span class="ident">execution_controller</span>
+            .<span class="ident">get_filtered_sc_output_event</span>(<span class="ident">filter</span>);
 
-        <span class="comment">// TODO get rid of the async part</span>
+        <span class="comment">// TODO: get rid of the async part</span>
         <span class="kw">let</span> <span class="ident">closure</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="ident">events</span>);
         <span class="ident">Box::pin</span>(<span class="ident">closure</span>())
     }

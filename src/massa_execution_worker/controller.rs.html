@@ -190,17 +190,6 @@
 <span id="185">185</span>
 <span id="186">186</span>
 <span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
-<span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
-<span id="195">195</span>
-<span id="196">196</span>
-<span id="197">197</span>
-<span id="198">198</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This module implements an execution controller.</span>
@@ -213,9 +202,9 @@
     <span class="ident">ReadOnlyExecutionRequest</span>,
 };
 <span class="kw">use</span> <span class="ident">massa_ledger::LedgerEntry</span>;
+<span class="kw">use</span> <span class="ident">massa_models::api::EventFilter</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Address</span>;
-<span class="kw">use</span> <span class="ident">massa_models::OperationId</span>;
 <span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">BlockId</span>, <span class="ident">Slot</span>};
 <span class="kw">use</span> <span class="ident">parking_lot</span>::{<span class="ident">Condvar</span>, <span class="ident">Mutex</span>, <span class="ident">RwLock</span>};
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
@@ -291,21 +280,10 @@
     <span class="doccomment">/// * emitter address</span>
     <span class="doccomment">/// * original caller address</span>
     <span class="doccomment">/// * operation id</span>
-    <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">start</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
-        <span class="ident">end</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
-        <span class="ident">emitter_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-        <span class="ident">original_caller_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-        <span class="ident">original_operation_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">execution_state</span>.<span class="ident">read</span>().<span class="ident">get_filtered_sc_output_event</span>(
-            <span class="ident">start</span>,
-            <span class="ident">end</span>,
-            <span class="ident">emitter_address</span>,
-            <span class="ident">original_caller_address</span>,
-            <span class="ident">original_operation_id</span>,
-        )
+    <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">EventFilter</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">execution_state</span>
+            .<span class="ident">read</span>()
+            .<span class="ident">get_filtered_sc_output_event</span>(<span class="ident">filter</span>)
     }
 
     <span class="doccomment">/// gets a copy of a full ledger entry</span>

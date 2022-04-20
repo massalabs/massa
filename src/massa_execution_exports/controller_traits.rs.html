@@ -82,13 +82,6 @@
 <span id="77">77</span>
 <span id="78">78</span>
 <span id="79">79</span>
-<span id="80">80</span>
-<span id="81">81</span>
-<span id="82">82</span>
-<span id="83">83</span>
-<span id="84">84</span>
-<span id="85">85</span>
-<span id="86">86</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! This module exports generic traits representing interfaces for interacting with the Execution worker</span>
@@ -97,10 +90,10 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::types::ReadOnlyExecutionRequest</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ExecutionError</span>;
 <span class="kw">use</span> <span class="ident">massa_ledger::LedgerEntry</span>;
+<span class="kw">use</span> <span class="ident">massa_models::api::EventFilter</span>;
 <span class="kw">use</span> <span class="ident">massa_models::output_event::SCOutputEvent</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Address</span>;
 <span class="kw">use</span> <span class="ident">massa_models::BlockId</span>;
-<span class="kw">use</span> <span class="ident">massa_models::OperationId</span>;
 <span class="kw">use</span> <span class="ident">massa_models::Slot</span>;
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 
@@ -123,14 +116,7 @@
     <span class="doccomment">/// * emitter address</span>
     <span class="doccomment">/// * original caller address</span>
     <span class="doccomment">/// * operation id</span>
-    <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">start</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
-        <span class="ident">end</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slot</span><span class="op">&gt;</span>,
-        <span class="ident">emitter_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-        <span class="ident">original_caller_address</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>,
-        <span class="ident">original_operation_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">get_filtered_sc_output_event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">EventFilter</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SCOutputEvent</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// Get a copy of a full ledger entry with its final and active values</span>
     <span class="doccomment">///</span>
