@@ -89,14 +89,12 @@ impl EventStore {
 
 #[test]
 fn test_prune() {
-    use massa_hash::Hash;
-    use massa_models::output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId};
+    use massa_models::output_event::{EventExecutionContext, SCOutputEvent};
     use massa_models::Slot;
 
     let mut store = EventStore(VecDeque::new());
     for i in 0..10 {
         store.push(SCOutputEvent {
-            id: SCOutputEventId(Hash::compute_from(i.to_string().as_bytes())),
             context: EventExecutionContext {
                 slot: Slot::new(i, 0),
                 block: None,
@@ -111,7 +109,7 @@ fn test_prune() {
     assert_eq!(store.0.len(), 10);
     store.prune(3);
     assert_eq!(store.0.len(), 3);
-    assert_eq!(store.0[2].data, "7");
+    assert_eq!(store.0[2].data, "9");
     assert_eq!(store.0[1].data, "8");
-    assert_eq!(store.0[0].data, "9");
+    assert_eq!(store.0[0].data, "7");
 }

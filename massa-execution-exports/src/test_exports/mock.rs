@@ -4,7 +4,7 @@
 
 use crate::{ExecutionController, ExecutionError, ExecutionOutput, ReadOnlyExecutionRequest};
 use massa_ledger::LedgerEntry;
-use massa_models::{output_event::SCOutputEvent, Address, BlockId, OperationId, Slot};
+use massa_models::{api::EventFilter, output_event::SCOutputEvent, Address, BlockId, Slot};
 use std::{
     collections::HashMap,
     sync::{
@@ -29,16 +29,8 @@ pub enum MockExecutionControllerMessage {
     },
     /// filter for smart contract output event request
     GetFilteredScOutputEvent {
-        /// start slot
-        start: Option<Slot>,
-        /// end slot
-        end: Option<Slot>,
-        /// emitter address
-        emitter_address: Option<Address>,
-        /// original caller address
-        original_caller_address: Option<Address>,
-        /// original operation id
-        original_operation_id: Option<OperationId>,
+        /// filter
+        filter: EventFilter,
         /// response channel
         response_tx: mpsc::Sender<Vec<SCOutputEvent>>,
     },
@@ -101,24 +93,13 @@ impl ExecutionController for MockExecutionController {
             .unwrap();
     }
 
-    fn get_filtered_sc_output_event(
-        &self,
-        start: Option<Slot>,
-        end: Option<Slot>,
-        emitter_address: Option<Address>,
-        original_caller_address: Option<Address>,
-        original_operation_id: Option<OperationId>,
-    ) -> Vec<SCOutputEvent> {
+    fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
         let (response_tx, response_rx) = mpsc::channel();
         self.0
             .lock()
             .unwrap()
             .send(MockExecutionControllerMessage::GetFilteredScOutputEvent {
-                start,
-                end,
-                emitter_address,
-                original_caller_address,
-                original_operation_id,
+                filter,
                 response_tx,
             })
             .unwrap();
