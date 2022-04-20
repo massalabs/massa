@@ -9,7 +9,6 @@ edition = "2021"
 [dependencies]
 displaydoc = "0.2"
 thiserror = "1.0"
-tracing = "0.1"
 # custom modules
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models" }

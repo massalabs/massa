@@ -6,7 +6,6 @@
 use massa_models::api::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use std::collections::VecDeque;
-use tracing::warn;
 
 /// Store for events emitted by smart contracts
 #[derive(Default, Debug, Clone)]
@@ -15,13 +14,7 @@ pub struct EventStore(VecDeque<SCOutputEvent>);
 impl EventStore {
     /// Push a new smart contract event to the store
     pub fn push(&mut self, event: SCOutputEvent) {
-        if self.0.iter().any(|x| x.id == event.id) {
-            // emit a warning when the event already exists
-            warn!("event store already contains this event: {}", event.id);
-        } else {
-            // push on front to avoid reversing the queue when truncating
-            self.0.push_front(event);
-        }
+        self.0.push_back(event);
     }
 
     /// Take the event store
@@ -36,8 +29,8 @@ impl EventStore {
 
     /// Prune the event store if its size is over the given limit
     pub fn prune(&mut self, max_events: usize) {
-        if self.0.len() > max_events {
-            self.0.truncate(max_events);
+        while self.0.len() > max_events {
+            self.0.pop_front();
         }
     }
 
@@ -53,44 +46,44 @@ impl EventStore {
     /// * original caller address
     /// * operation id
     pub fn get_filtered_sc_output_event(&self, filter: &EventFilter) -> VecDeque<SCOutputEvent> {
-        let mut filtered = self.0.clone();
-        filtered.retain(|x| {
-            let mut state = true;
-            let p: u64 = x.context.slot.period;
-            let t: u8 = x.context.slot.thread;
-            match filter.start {
-                Some(start) if p < start.period || (p == start.period && t < start.thread) => {
-                    state = false;
+        self.0
+            .iter()
+            .filter(|x| {
+                if let Some(start) = filter.start {
+                    if x.context.slot < start {
+                        return false;
+                    }
                 }
-                _ => (),
-            };
-            match filter.end {
-                Some(end) if p > end.period || (p == end.period && t > end.thread) => {
-                    state = false;
+                if let Some(end) = filter.end {
+                    if x.context.slot > end {
+                        return false;
+                    }
                 }
-                _ => (),
-            };
-            match (filter.emitter_address, x.context.call_stack.front()) {
-                (Some(addr1), Some(addr2)) if addr1 != *addr2 => {
-                    state = false;
+                if let (Some(addr1), Some(addr2)) =
+                    (filter.emitter_address, x.context.call_stack.front())
+                {
+                    if addr1 != *addr2 {
+                        return false;
+                    }
                 }
-                _ => (),
-            }
-            match (filter.original_caller_address, x.context.call_stack.back()) {
-                (Some(addr1), Some(addr2)) if addr1 != *addr2 => {
-                    state = false;
+                if let (Some(addr1), Some(addr2)) =
+                    (filter.original_caller_address, x.context.call_stack.back())
+                {
+                    if addr1 != *addr2 {
+                        return false;
+                    }
                 }
-                _ => (),
-            }
-            match (filter.original_operation_id, x.context.origin_operation_id) {
-                (Some(id1), Some(id2)) if id1 != id2 => {
-                    state = false;
+                if let (Some(id1), Some(id2)) =
+                    (filter.original_operation_id, x.context.origin_operation_id)
+                {
+                    if id1 != id2 {
+                        return false;
+                    }
                 }
-                _ => (),
-            }
-            state
-        });
-        filtered
+                true
+            })
+            .cloned()
+            .collect()
     }
 }
 
