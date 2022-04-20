@@ -811,7 +811,10 @@ impl Command {
                                         }
                                     }
                                     None => {
-                                        client_warning!(format!("address {} not found", target_addr));
+                                        client_warning!(format!(
+                                            "address {} not found",
+                                            target_addr
+                                        ));
                                     }
                                 }
                             }
@@ -830,7 +833,7 @@ impl Command {
                         param,
                         max_gas,
                         sequential_coins: coins, // TODO : Change before merge
-                        parallel_coins: coins, // TODO : Change before merge
+                        parallel_coins: coins,   // TODO : Change before merge
                         gas_price,
                     },
                     fee,
