@@ -4,7 +4,7 @@
 //! a config-limited number of execution-generated events
 
 use massa_models::api::EventFilter;
-use massa_models::output_event::{EventExecutionContext, SCOutputEvent};
+use massa_models::output_event::SCOutputEvent;
 use std::collections::VecDeque;
 use tracing::warn;
 
@@ -97,7 +97,7 @@ impl EventStore {
 #[test]
 fn test_truncate() {
     use massa_hash::Hash;
-    use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
+    use massa_models::output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId};
     use massa_models::Slot;
 
     let mut store = EventStore(VecDeque::new());
