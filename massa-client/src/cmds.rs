@@ -3,7 +3,7 @@
 use crate::repl::Output;
 use anyhow::{anyhow, bail, Result};
 use console::style;
-use massa_models::api::{AddressInfo, CompactAddressInfo};
+use massa_models::api::{AddressInfo, CompactAddressInfo, EventFilter};
 use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 use massa_models::prehash::Map;
 use massa_models::timeslots::get_current_latest_block_slot;
@@ -123,6 +123,15 @@ pub enum Command {
         message = "show info about a list of operations(content, finality ...) "
     )]
     get_operations,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(
+            args = "start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId"
+        ),
+        message = "show events emitted by smart contracts with various filters"
+    )]
+    get_filtered_sc_output_event,
 
     #[strum(
         ascii_case_insensitive,
@@ -485,6 +494,36 @@ impl Command {
                 let operations = parse_vec::<OperationId>(parameters)?;
                 match client.public.get_operations(operations).await {
                     Ok(operations_info) => Ok(Box::new(operations_info)),
+                    Err(e) => rpc_error!(e),
+                }
+            }
+
+            Command::get_filtered_sc_output_event => {
+                let p_list: [&str; 5] = [
+                    "start",
+                    "end",
+                    "emitter_address",
+                    "caller_address",
+                    "operation_id",
+                ];
+                let mut p: HashMap<&str, &str> = HashMap::new();
+                for v in parameters {
+                    let s: Vec<&str> = v.split('=').collect();
+                    if s.len() == 2 && p_list.contains(&s[0]) {
+                        p.insert(s[0], s[1]);
+                    } else {
+                        bail!("invalid parameter");
+                    }
+                }
+                let filter = EventFilter {
+                    start: parse_value(&p, p_list[0]),
+                    end: parse_value(&p, p_list[1]),
+                    emitter_address: parse_value(&p, p_list[2]),
+                    original_caller_address: parse_value(&p, p_list[3]),
+                    original_operation_id: parse_value(&p, p_list[4]),
+                };
+                match client.public.get_filtered_sc_output_event(filter).await {
+                    Ok(events) => Ok(Box::new(events)),
                     Err(e) => rpc_error!(e),
                 }
             }
@@ -931,4 +970,18 @@ pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>
 /// reads a file
 async fn get_file_as_byte_vec(filename: &std::path::Path) -> Result<Vec<u8>> {
     Ok(tokio::fs::read(filename).await?)
+}
+
+// chains get_key_value with its parsing and displays a warning on parsing error
+pub fn parse_value<T: std::str::FromStr>(p: &HashMap<&str, &str>, key: &str) -> Option<T> {
+    p.get_key_value(key).and_then(|x| {
+        x.1.parse::<T>()
+            .map_err(|_| {
+                client_warning!(format!(
+                    "'{}' parameter was ignored because of wrong corresponding value",
+                    key
+                ))
+            })
+            .ok()
+    })
 }
