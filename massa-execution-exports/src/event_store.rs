@@ -127,8 +127,8 @@ impl EventStore2 {
     /// * original caller address
     /// * operation id
     pub fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
-        let list = self.0.clone();
-        list.retain(|x| {
+        let filtered = self.0.clone();
+        filtered.retain(|x| {
             let mut state = true;
             let p: u64 = x.context.slot.period;
             let t: u8 = x.context.slot.thread;
@@ -154,7 +154,7 @@ impl EventStore2 {
                 state = false;
             }
         });
-        list
+        filtered
     }
 }
 
