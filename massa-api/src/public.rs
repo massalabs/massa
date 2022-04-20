@@ -133,7 +133,6 @@ impl Endpoints for API<Public> {
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
                     |_| ReadOnlyResult::Ok,
                 ),
-                // NOTE: take here
                 output_events: result.map_or_else(|_| Default::default(), |mut v| v.events.take()),
             };
 
@@ -208,7 +207,6 @@ impl Endpoints for API<Public> {
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
                     |_| ReadOnlyResult::Ok,
                 ),
-                // NOTE: take here
                 output_events: result.map_or_else(|_| Default::default(), |mut v| v.events.take()),
             };
 
@@ -713,7 +711,7 @@ impl Endpoints for API<Public> {
             .execution_controller
             .get_filtered_sc_output_event(filter);
 
-        // TODO get rid of the async part
+        // TODO: get rid of the async part
         let closure = async move || Ok(events);
         Box::pin(closure())
     }

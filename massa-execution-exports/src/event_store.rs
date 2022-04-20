@@ -4,7 +4,7 @@
 //! a config-limited number of execution-generated events
 
 use massa_models::api::EventFilter;
-use massa_models::output_event::SCOutputEvent;
+use massa_models::output_event::{EventExecutionContext, SCOutputEvent};
 use std::collections::VecDeque;
 use tracing::warn;
 
@@ -16,11 +16,11 @@ impl EventStore {
     /// Push a new smart contract event to the store
     pub fn push(&mut self, event: SCOutputEvent) {
         if self.0.iter().any(|x| x.id == event.id) {
-            // push on front to avoid reversing the queue when truncating
-            self.0.push_front(event);
-        } else {
             // emit a warning when the event already exists
             warn!("event store already contains this event: {}", event.id);
+        } else {
+            // push on front to avoid reversing the queue when truncating
+            self.0.push_front(event);
         }
     }
 
@@ -37,7 +37,7 @@ impl EventStore {
     /// Truncate the event store if its size is over the given limit
     pub fn truncate(&mut self, max_final_events: usize) {
         if self.0.len() > max_final_events {
-            self.truncate(max_final_events);
+            self.0.truncate(max_final_events);
         }
     }
 
@@ -65,20 +65,60 @@ impl EventStore {
                 _ => (),
             };
             match filter.end {
-                Some(end) if p > end.period || (p == end.period && t > end.thread) => state = false,
+                Some(end) if p > end.period || (p == end.period && t > end.thread) => {
+                    state = false;
+                }
                 _ => (),
             };
-            if filter.emitter_address.as_ref() != x.context.call_stack.front() {
-                state = false;
+            match (filter.emitter_address, x.context.call_stack.front()) {
+                (Some(addr1), Some(addr2)) if addr1 != *addr2 => {
+                    state = false;
+                }
+                _ => (),
             }
-            if filter.original_caller_address.as_ref() != x.context.call_stack.back() {
-                state = false;
+            match (filter.original_caller_address, x.context.call_stack.back()) {
+                (Some(addr1), Some(addr2)) if addr1 != *addr2 => {
+                    state = false;
+                }
+                _ => (),
             }
-            if filter.original_operation_id != x.context.origin_operation_id {
-                state = false;
+            match (filter.original_operation_id, x.context.origin_operation_id) {
+                (Some(id1), Some(id2)) if id1 != id2 => {
+                    state = false;
+                }
+                _ => (),
             }
             state
         });
         filtered
     }
+}
+
+#[test]
+fn test_truncate() {
+    use massa_hash::Hash;
+    use massa_models::output_event::{SCOutputEvent, SCOutputEventId};
+    use massa_models::Slot;
+
+    let mut store = EventStore(VecDeque::new());
+    for i in 0..10 {
+        store.push(SCOutputEvent {
+            id: SCOutputEventId(Hash::compute_from(i.to_string().as_bytes())),
+            context: EventExecutionContext {
+                slot: Slot::new(i, 0),
+                block: None,
+                read_only: false,
+                index_in_slot: 1,
+                call_stack: VecDeque::new(),
+                origin_operation_id: None,
+            },
+            data: i.to_string(),
+        });
+    }
+    assert_eq!(store.0.len(), 10);
+    store.truncate(3);
+    assert_eq!(store.0.len(), 3);
+    assert_eq!(store.0[2].data, "7");
+    assert_eq!(store.0[1].data, "8");
+    assert_eq!(store.0[0].data, "9");
 }
