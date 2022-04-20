@@ -937,12 +937,65 @@
 <span id="932">932</span>
 <span id="933">933</span>
 <span id="934">934</span>
+<span id="935">935</span>
+<span id="936">936</span>
+<span id="937">937</span>
+<span id="938">938</span>
+<span id="939">939</span>
+<span id="940">940</span>
+<span id="941">941</span>
+<span id="942">942</span>
+<span id="943">943</span>
+<span id="944">944</span>
+<span id="945">945</span>
+<span id="946">946</span>
+<span id="947">947</span>
+<span id="948">948</span>
+<span id="949">949</span>
+<span id="950">950</span>
+<span id="951">951</span>
+<span id="952">952</span>
+<span id="953">953</span>
+<span id="954">954</span>
+<span id="955">955</span>
+<span id="956">956</span>
+<span id="957">957</span>
+<span id="958">958</span>
+<span id="959">959</span>
+<span id="960">960</span>
+<span id="961">961</span>
+<span id="962">962</span>
+<span id="963">963</span>
+<span id="964">964</span>
+<span id="965">965</span>
+<span id="966">966</span>
+<span id="967">967</span>
+<span id="968">968</span>
+<span id="969">969</span>
+<span id="970">970</span>
+<span id="971">971</span>
+<span id="972">972</span>
+<span id="973">973</span>
+<span id="974">974</span>
+<span id="975">975</span>
+<span id="976">976</span>
+<span id="977">977</span>
+<span id="978">978</span>
+<span id="979">979</span>
+<span id="980">980</span>
+<span id="981">981</span>
+<span id="982">982</span>
+<span id="983">983</span>
+<span id="984">984</span>
+<span id="985">985</span>
+<span id="986">986</span>
+<span id="987">987</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
 <span class="kw">use</span> <span class="ident">anyhow</span>::{<span class="ident">anyhow</span>, <span class="ident">bail</span>, <span class="prelude-ty">Result</span>};
 <span class="kw">use</span> <span class="ident">console::style</span>;
-<span class="kw">use</span> <span class="ident">massa_models::api</span>::{<span class="ident">AddressInfo</span>, <span class="ident">CompactAddressInfo</span>};
+<span class="kw">use</span> <span class="ident">massa_models::api</span>::{<span class="ident">AddressInfo</span>, <span class="ident">CompactAddressInfo</span>, <span class="ident">EventFilter</span>};
 <span class="kw">use</span> <span class="ident">massa_models::api</span>::{<span class="ident">ReadOnlyBytecodeExecution</span>, <span class="ident">ReadOnlyCall</span>};
 <span class="kw">use</span> <span class="ident">massa_models::prehash::Map</span>;
 <span class="kw">use</span> <span class="ident">massa_models::timeslots::get_current_latest_block_slot</span>;
@@ -1062,6 +1115,15 @@
         <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;show info about a list of operations(content, finality ...) &quot;</span>
     )]</span>
     <span class="ident">get_operations</span>,
+
+    <span class="attribute">#[<span class="ident">strum</span>(
+        <span class="ident">ascii_case_insensitive</span>,
+        <span class="ident">props</span>(
+            <span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId&quot;</span>
+        ),
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;show events emitted by smart contracts with various filters&quot;</span>
+    )]</span>
+    <span class="ident">get_filtered_sc_output_event</span>,
 
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
@@ -1424,6 +1486,36 @@
                 <span class="kw">let</span> <span class="ident">operations</span> <span class="op">=</span> <span class="ident">parse_vec</span>::<span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>(<span class="ident">parameters</span>)<span class="question-mark">?</span>;
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">public</span>.<span class="ident">get_operations</span>(<span class="ident">operations</span>).<span class="kw">await</span> {
                     <span class="prelude-val">Ok</span>(<span class="ident">operations_info</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">operations_info</span>)),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">rpc_error!</span>(<span class="ident">e</span>),
+                }
+            }
+
+            <span class="ident">Command::get_filtered_sc_output_event</span> =&gt; {
+                <span class="kw">let</span> <span class="ident">p_list</span>: [<span class="kw-2">&amp;</span><span class="ident">str</span>; <span class="number">5</span>] <span class="op">=</span> [
+                    <span class="string">&quot;start&quot;</span>,
+                    <span class="string">&quot;end&quot;</span>,
+                    <span class="string">&quot;emitter_address&quot;</span>,
+                    <span class="string">&quot;caller_address&quot;</span>,
+                    <span class="string">&quot;operation_id&quot;</span>,
+                ];
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">p</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
+                <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="ident">parameters</span> {
+                    <span class="kw">let</span> <span class="ident">s</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">split</span>(<span class="string">&#39;=&#39;</span>).<span class="ident">collect</span>();
+                    <span class="kw">if</span> <span class="ident">s</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span> <span class="op">&amp;&amp;</span> <span class="ident">p_list</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>[<span class="number">0</span>]) {
+                        <span class="ident">p</span>.<span class="ident">insert</span>(<span class="ident">s</span>[<span class="number">0</span>], <span class="ident">s</span>[<span class="number">1</span>]);
+                    } <span class="kw">else</span> {
+                        <span class="macro">bail!</span>(<span class="string">&quot;invalid parameter&quot;</span>);
+                    }
+                }
+                <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">EventFilter</span> {
+                    <span class="ident">start</span>: <span class="ident">parse_value</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>, <span class="ident">p_list</span>[<span class="number">0</span>]),
+                    <span class="ident">end</span>: <span class="ident">parse_value</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>, <span class="ident">p_list</span>[<span class="number">1</span>]),
+                    <span class="ident">emitter_address</span>: <span class="ident">parse_value</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>, <span class="ident">p_list</span>[<span class="number">2</span>]),
+                    <span class="ident">original_caller_address</span>: <span class="ident">parse_value</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>, <span class="ident">p_list</span>[<span class="number">3</span>]),
+                    <span class="ident">original_operation_id</span>: <span class="ident">parse_value</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>, <span class="ident">p_list</span>[<span class="number">4</span>]),
+                };
+                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">public</span>.<span class="ident">get_filtered_sc_output_event</span>(<span class="ident">filter</span>).<span class="kw">await</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">events</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Box::new</span>(<span class="ident">events</span>)),
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">rpc_error!</span>(<span class="ident">e</span>),
                 }
             }
@@ -1871,6 +1963,20 @@
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_file_as_byte_vec</span>(<span class="ident">filename</span>: <span class="kw-2">&amp;</span><span class="ident">std::path::Path</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
     <span class="prelude-val">Ok</span>(<span class="ident">tokio::fs::read</span>(<span class="ident">filename</span>).<span class="kw">await</span><span class="question-mark">?</span>)
 }
+
+<span class="comment">// chains get_key_value with its parsing and displays a warning on parsing error</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parse_value</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">std::str::FromStr</span><span class="op">&gt;</span>(<span class="ident">p</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
+    <span class="ident">p</span>.<span class="ident">get_key_value</span>(<span class="ident">key</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> {
+        <span class="ident">x</span>.<span class="number">1</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>()
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                <span class="macro">client_warning!</span>(<span class="macro">format!</span>(
+                    <span class="string">&quot;&#39;{}&#39; parameter was ignored because of wrong corresponding value&quot;</span>,
+                    <span class="ident">key</span>
+                ))
+            })
+            .<span class="ident">ok</span>()
+    })
+}
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (311e2683e 2022-04-18)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4ca19e09d 2022-04-19)" ></div>
 </body></html>
