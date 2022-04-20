@@ -7,12 +7,13 @@
 use jsonrpc_core_client::transports::http;
 use jsonrpc_core_client::{RpcChannel, RpcError, RpcResult, TypedClient};
 use massa_models::api::{
-    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, NodeStatus, OperationInfo,
+    AddressInfo, BlockInfo, BlockSummary, EndorsementInfo, EventFilter, NodeStatus, OperationInfo,
     ReadOnlyBytecodeExecution, ReadOnlyCall, TimeInterval,
 };
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
 use massa_models::execution::ExecuteReadOnlyResponse;
+use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::{Map, Set};
 use massa_models::{Address, BlockId, EndorsementId, OperationId, SignedOperation};
 use massa_signature::PrivateKey;
@@ -187,6 +188,19 @@ impl RpcClient {
     pub async fn get_block(&self, block_id: BlockId) -> RpcResult<BlockInfo> {
         self.call_method("get_block", "BlockInfo", vec![block_id])
             .await
+    }
+
+    /// Get events emitted by smart contracts with various filters
+    pub async fn get_filtered_sc_output_event(
+        &self,
+        filter: EventFilter,
+    ) -> RpcResult<Vec<SCOutputEvent>> {
+        self.call_method(
+            "get_filtered_sc_output_event",
+            "Vec<SCOutputEvent>",
+            vec![filter],
+        )
+        .await
     }
 
     /// Get the block graph within the specified time interval.
