@@ -176,7 +176,10 @@ fn test_nested_call_gas_usage() {
     controller.update_blockclique_status(finalized_blocks, Default::default());
     std::thread::sleep(Duration::from_millis(300));
     // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
-    let events = controller.get_filtered_sc_output_event(EventFilter::default());
+    let events = controller.get_filtered_sc_output_event(EventFilter {
+        start: Some(Slot::new(1, 1)),
+        ..Default::default()
+    });
     // Check that we always subtract gas through the execution (even in sub calls)
     assert!(
         events.is_sorted_by_key(|event| Reverse(event.data.parse::<u64>().unwrap())),

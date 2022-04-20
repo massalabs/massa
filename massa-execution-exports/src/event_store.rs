@@ -70,7 +70,7 @@ impl EventStore {
                     _ => (),
                 }
                 match (filter.original_operation_id, x.context.origin_operation_id) {
-                    (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
+                    (Some(addr1), Some(addr2)) if addr1 != addr2 => return false,
                     (Some(_), None) => return false,
                     _ => (),
                 }
