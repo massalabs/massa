@@ -196,7 +196,9 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "TargetAddress FunctionName Parameter MaxGas GasPrice Coins Fee",),
+        props(
+            args = "SenderAddress TargetAddress FunctionName Parameter MaxGas GasPrice Coins Fee",
+        ),
         message = "create and send an operation to call a function of a smart contract"
     )]
     call_smart_contract,
@@ -823,16 +825,17 @@ impl Command {
                 .await
             }
             Command::call_smart_contract => {
-                if parameters.len() != 7 {
+                if parameters.len() != 8 {
                     bail!("wrong number of parameters");
                 }
-                let target_addr = parameters[0].parse::<Address>()?;
-                let target_func = parameters[1].clone();
-                let param = parameters[2].clone();
-                let max_gas = parameters[3].parse::<u64>()?;
-                let gas_price = parameters[4].parse::<Amount>()?;
-                let coins = parameters[5].parse::<Amount>()?;
-                let fee = parameters[6].parse::<Amount>()?;
+                let addr = parameters[0].parse::<Address>()?;
+                let target_addr = parameters[1].parse::<Address>()?;
+                let target_func = parameters[2].clone();
+                let param = parameters[3].clone();
+                let max_gas = parameters[4].parse::<u64>()?;
+                let gas_price = parameters[5].parse::<Amount>()?;
+                let coins = parameters[6].parse::<Amount>()?;
+                let fee = parameters[7].parse::<Amount>()?;
                 if !json {
                     match gas_price
                         .checked_mul_u64(max_gas)
@@ -871,12 +874,12 @@ impl Command {
                         target_func,
                         param,
                         max_gas,
-                        sequential_coins: coins, // TODO : Change before merge
-                        parallel_coins: coins,   // TODO : Change before merge
+                        sequential_coins: Amount::from_raw(0),
+                        parallel_coins: coins,
                         gas_price,
                     },
                     fee,
-                    target_addr,
+                    addr,
                     json,
                 )
                 .await
