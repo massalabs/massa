@@ -94,6 +94,12 @@ Don't hesitate to ask questions in the
 
    technical-doc/api.rst
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Hackathon onboarding
+
+   hackathon.rst
+
 
 * :ref:`genindex`
 * :ref:`modindex`
