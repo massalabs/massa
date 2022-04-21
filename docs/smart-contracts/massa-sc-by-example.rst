@@ -52,7 +52,7 @@ This command will initialize a new folder with a hello-world smart-contract exam
 Writing the smart-contract
 --------------------------
 
-Smart-contracts are in the `src` directory. We will write the tic-tac-toe smart-contract `smart-contract.ts` file. The `main.ts` file is used to create a smart-contract that is used to create the tic-tac-toe smart-contract on the Massa blockchain. It may be confusing right now, but we'll go through all these steps in the following.
+Smart-contracts are in the `src` directory. We will write the tic-tac-toe smart-contract `smart-contract.ts` file. The `deploy.ts` file is used to create a smart-contract that is used to create the tic-tac-toe smart-contract on the Massa blockchain. It may be confusing right now, but we'll go through all these steps in the following.
 
 smart-contract.ts
 -----------------
@@ -153,30 +153,28 @@ The `play` function is used to update the state of the game when each player pla
 
 The `_checkWin` function is used to check whether the game ended or not. Private, as it does not use the `export` prefix, it cannot be called by anyone. It can only be called internally by the smart-contract.
 
-main.ts
+deploy.ts
 
 .. code-block:: typescript
 
-    import { Storage, Context, include_base64, call, print, create_sc } from "massa-sc-std";
-    import { JSON } from "json-as";
-    import { PlayArgs } from "./tic_tac_toe";
+    import { generate_event, include_base64, create_sc } from "massa-sc-std";
 
     function createContract(): string {
-        const bytes = include_base64('./build/tictactoe_play.wasm');
+        const bytes = include_base64('./build/smart-contract.wasm');
         const sc_address = create_sc(bytes);
         return sc_address;
     }
 
     export function main(_args: string): i32 {
         const sc_address = createContract();
-        print("Created tictactoe smart-contract at:" + sc_address);
+        generate_event("Created tictactoe smart-contract at:" + sc_address);
         return 0;
     }
 
 Compiling your smart-contract
 -----------------------------
 
-Smart-contract can be compiled using the `massa-sc-scripts` command: `yarn run build`.
+Smart-contract can be compiled using the `massa-sc-scripts` command: `yarn run build:deploy`.
 
 .. _sending-sc:
 
@@ -192,7 +190,7 @@ Sending the smart-contract to the Massa blockchain is done using the `send_smart
 
 .. code-block::
 
-    send_smart_contract <your_address> main.wasm 100000000 0 0 0
+    send_smart_contract <your_address> deploy.wasm 100000000 0 0 0
 
 Where `<your_address>` should obviously be replaced by an address from your wallet. If the operation was successfully sent, you should receive a message similar to this:
 
@@ -216,16 +214,37 @@ You can now track the state of your operation using the `get_operations` command
 
 This command allows you to see if the operation is in the pool, in which blocks it is included and various properties.
 
-TODO : ADD EVENTS
+You can also check that your smart-contract has been well deployed by fetching the events it produced with this command on the client :
+
+.. code-block::
+
+    get_filtered_sc_output_event caller_address=<your_address>
+
+You should see one event with a data field which contains the address of your tic-tac-toe that has been deployed with his address:
+
+.. code-block::
+
+    Context: Slot: (period: 4, thread: 15) at index: 0
+    On chain execution
+    Block id: 2K5b2b8pFKASTtmMWPwqTTyChAKjBtJPxAreK2Yug6yqPQCshF
+    Origin operation id: 2mRuf5Jv9kTGoRT11FB7x2fzQHnUhCw4rN4chB1KMn5Bq7zxf3
+    Call stack: xh1fXpp7VuciaCwejMF7ufF19SWv7dFPJ7U6HiTQaeNEFBiV3
+
+    Data: Created tictactoe smart-contract at:XKHuwsLn2A1TCEP46NQbWydAjmEzLzqAGPQcmZSc8UmjdZBJ8
+
+The data will be different but the format should be the same.
+
+NOTE: The tic-tac-toe is deployed to a new address each time you deploy it because in the `deploy.ts`` we use `create_sc`` to deploy the bytecode of the smart-contract to an address.
+Instead we could use the `Context.set_bytecode` which will set the bytecode directly on your address. An example of GoL is using it : https://github.com/massalabs/game-of-life
 
 .. _interacting:
 
 Interacting with your smart-contract
 ====================================
 
-We can try further our smart-contract by calling the different functions and looking at the state of the game. For this, we create a new smart-contract `main.ts`.
+We can try further our smart-contract by calling the different functions and looking at the state of the game. For this, we can look to the `play.ts`.
 
-main.ts
+play.ts
 =======
 
 .. code-block:: typescript
@@ -251,17 +270,39 @@ main.ts
         return 0;
     }
 
+NOTE: Don't forget to change `YOUR_SMART_CONTRACT` by the address in the data of the event fetched just before.
+
 This smart-contract initialize a new game and then play a whole game by performing a series of actions. Of course, in a real-world example this would probably be done by different players, each using a smart-contract with their specific action.
 
-TODO : ADD EVENTS 
-
-As before, you should compile your smart-contract, send it to the blockchain using the `send_smart_contract` command. Once this is done and the operation is included in a block, you should see the operations being performed by your node in the logs:
+As before, you should compile your smart-contract with `yarn run build:play`, send it to the blockchain using the `send_smart_contract` command. Once this is done and the operation is included in a block (few seconds), you should see the operations being performed by your node in the events:
 
 .. code-block::
 
-    2022-03-17T16:18:42.015501Z DEBUG massa_execution_worker::interface_impl: SC print: Current player:O
-    2022-03-17T16:18:42.015528Z DEBUG massa_execution_worker::interface_impl: SC print: Game state:X,X,X,O,O,n,n,n,n
-    2022-03-17T16:18:42.015543Z DEBUG massa_execution_worker::interface_impl: SC print: Game winner:X
+    Context: Slot: (period: 137, thread: 15) at index: 1
+    On chain execution
+    Block id: 2u6tEVN6biZQJi5AsH6aeL1WugaJnng2SjRfDU8hbbV4FZyPGc
+    Origin operation id: 2AvA1sPc3uhGKtNMBMujpaeZDy35xdFkpt96RWfCBCJoKaCnDu
+    Call stack: xh1fXpp7VuciaCwejMF7ufF19SWv7dFPJ7U6HiTQaeNEFBiV3
+
+    Data: Current player:O
+
+    Context: Slot: (period: 137, thread: 15) at index: 2
+    On chain execution
+    Block id: 2u6tEVN6biZQJi5AsH6aeL1WugaJnng2SjRfDU8hbbV4FZyPGc
+    Origin operation id: 2AvA1sPc3uhGKtNMBMujpaeZDy35xdFkpt96RWfCBCJoKaCnDu
+    Call stack: xh1fXpp7VuciaCwejMF7ufF19SWv7dFPJ7U6HiTQaeNEFBiV3
+
+    Data: Game state:X,X,X,O,O,n,n,n,n
+
+    Context: Slot: (period: 137, thread: 15) at index: 3
+    On chain execution
+    Block id: 2u6tEVN6biZQJi5AsH6aeL1WugaJnng2SjRfDU8hbbV4FZyPGc
+    Origin operation id: 2AvA1sPc3uhGKtNMBMujpaeZDy35xdFkpt96RWfCBCJoKaCnDu
+    Call stack: xh1fXpp7VuciaCwejMF7ufF19SWv7dFPJ7U6HiTQaeNEFBiV3
+
+    Data: Game winner:X
+
+The data will be different but the format should be the same.
 
 .. _dapp:
 
@@ -275,16 +316,29 @@ We'll see in this part how you can host your dApp on a website and how to enable
 The front
 ---------
 
-Now let's start building out the client-side application that will talk to our smart-contract. We'll do this by modifying the HTML and JavaScript files made by `React for their tutorial <https://reactjs.org/tutorial/tutorial.html>`_. What we'll essentially do is replace the standard functions used to play the game and store the state of the game with smart-contracts actions.
+We have designed a website for the tic-tac-toe that you can clone from here : https://github.com/massalabs/tictactoe-poc
 
-You do not have to be a front-end expert to follow along with this part of the tutorial. I have intentionally kept the HTML and JavaScript code simple, and we will not spend much time focusing on it.
+You will have to modify some data in order to make it works.
 
-We'll be using the front end made by `React for their tutorial <https://reactjs.org/tutorial/tutorial.html>`_.
+Setup
+~~~~~
+
+Modify the file the `baseAccount` variable in the `src/App.tsx` file with our credentials that you get from the client using the command:
+
+.. code-block::
+
+    wallet_info
+
+Also, in the same file, you have to modify the `sc_addr` variable with the address of your tic-tac-toe that you fetched on the first event.
+
+Then you can run `npm install --leagacy-peer-deps` and `yarn run start` to launch the front and you will be able to play with tic-tac-toe.
 
 .. _hosting:
 
 Hosting your dApp on Massa decentralized web
 ============================================
+
+Not yet ready.
 
 Going further
 =============
