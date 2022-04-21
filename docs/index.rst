@@ -26,8 +26,16 @@ to install and stake with your node on our testnet :ref:`here <testnet-install>`
 
 Smart-contracts
 ---------------
-If you are interested in building on Massa, you'll find documentation on our
-smart-contract engine :ref:`here <sc-introduction>`.
+
+If you are interested in Massa smart-contract engine, you'll find a general
+introduction to the Massa's smart-contract engine :ref:`here <sc-introduction>`.
+
+If you want to build smart-contract or interact with smart-contracts on the Massa
+blockchain we recommend the following ressources:
+
+- :ref:`Getting started<sc-getting-started>` tutorial, which will get you through the various steps needed to compile and upload smart-contracts.
+- :ref:`Massa's smart-contract by example <sc-example>` a more advanced tutorial, that goes through all the steps needed to build a decentralized application using Massa's smart-contracts and Massa's decentralized web.
+- :ref:`Massa's decentralized web <sc-example>` tutorial which explains how you can use the Massa blockchain to host decentralized websites.
 
 Community
 ---------
@@ -38,6 +46,9 @@ free to reach us on our community channels:
 - `Telegram <https://t.me/massanetwork>`_
 - `Twitter <https://twitter.com/MassaLabs>`_
 - `Discord <https://discord.com/invite/massa>`_
+
+Contents
+========
 
 .. toctree::
    :maxdepth: 2
@@ -67,7 +78,4 @@ free to reach us on our community channels:
 
    technical-doc/api.rst
 
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+:ref:`Keyword Index <genindex>`, :ref:`Search Page <search>`
