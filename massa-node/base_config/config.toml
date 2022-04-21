@@ -88,7 +88,7 @@
     # max milliseconds to wait while sending an event before dropping it
     max_send_wait = 0
     # max cache size for which operations a foreign node knows about
-    max_known_ops_size = 10024
+    max_known_ops_size = 2048
     # max cache size for which endorsements a foreign node knows about
     max_known_endorsements_size = 1024
     # Maximum number of batches in the memory buffer.
