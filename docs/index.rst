@@ -33,9 +33,9 @@ introduction to the Massa's smart-contract engine :ref:`here <sc-introduction>`.
 If you want to build smart-contract or interact with smart-contracts on the Massa
 blockchain we recommend the following ressources:
 
-- :ref:`Getting started<sc-getting-started>` tutorial, which will get you through the various steps needed to compile and upload smart-contracts.
+- :ref:`Getting started<sc-getting-started>` tutorial, will get you through the various steps needed to compile and upload smart-contracts.
 - :ref:`Massa's smart-contract by example <sc-example>` a more advanced tutorial, that goes through all the steps needed to build a decentralized application using Massa's smart-contracts and Massa's decentralized web.
-- :ref:`Massa's decentralized web <sc-example>` tutorial which explains how you can use the Massa blockchain to host decentralized websites.
+- :ref:`Massa's decentralized web <sc-example>` tutorial explains how the Massa blockchain can be used to host decentralized websites.
 
 Community
 ---------
