@@ -49,7 +49,13 @@ Now that you have your first smart-contract and you know how to deploy and inter
 Test your smart-contract
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-TODO
+You can test your smart-contract without publishing it on the blockchain by using `this tester <https://github.com/massalabs/massa-sc-tester>`__. You have a complete documentation on the README.md of the tester but to test specifically the tic-tac-toe you can run:
+
+.. code-block:: shell
+
+    cargo run path/to/deploy.wasm
+    cargo run path/to/play.wasm
+
 
 Create your frontend
 ^^^^^^^^^^^^^^^^^^^^

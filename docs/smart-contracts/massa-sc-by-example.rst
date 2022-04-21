@@ -190,7 +190,7 @@ Sending the smart-contract to the Massa blockchain is done using the `send_smart
 
 .. code-block::
 
-    send_smart_contract <your_address> deploy.wasm 100000000 0 0 0
+    send_smart_contract <your_address> path/to/deploy.wasm 100000000 0 0 0
 
 Where `<your_address>` should obviously be replaced by an address from your wallet. If the operation was successfully sent, you should receive a message similar to this:
 
