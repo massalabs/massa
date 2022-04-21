@@ -1,3 +1,5 @@
+.. _testnet-running:
+
 ==============
 Running a node
 ==============

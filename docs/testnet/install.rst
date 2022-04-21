@@ -1,19 +1,18 @@
+.. _testnet-install:
+
 =================
 Installing a node
 =================
 
-..
-   TODO: point to correct link
-
 .. note::
 
-    Right now 4 cores and 8 GB of RAM should be enough to run a node, but it might increase in the future. More info in the [FAQ](faq).
+    Right now 4 cores and 8 GB of RAM should be enough to run a node, but it might increase in the future. More info in the :ref:`FAQ <testnet-faq>`.
 
 From binaries
 =============
 
 If you just wish to run a Massa node without compiling it yourself, you
-can simply get the latest binary (download below and go the the next step: [Running a node](run))
+can simply download the latest binary below and go the the next step: :ref:`Running a node <testnet-running>`.
 
 - `Windows executable <https://github.com/massalabs/massa/releases/download/TEST.8.0/massa_TEST.8.0_release_windows.zip>`_
 - `Linux binary <https://github.com/massalabs/massa/releases/download/TEST.8.0/massa_TEST.8.0_release_linux.tar.gz>`_ - only work with libc2.28 at least (for example Ubuntu 20.04 and higher)
@@ -62,10 +61,3 @@ On Windows
 
   - Clone the latest distributed version: :code:`git clone --branch testnet https://github.com/massalabs/massa.git`
   - Change default Rust to nightly: :code:`rustup default nightly`
-
-*Next step*
-
-..
-   TODO: point to correct link
-
-- `Running a node <https://github.com/massalabs/massa/wiki/run>`_

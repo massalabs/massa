@@ -1,3 +1,5 @@
+.. _testnet-faq:
+
 ==========================
 Frequently Asked Questions
 ==========================
@@ -62,11 +64,11 @@ API, and 33035 for the new public API (API v2).
 How to restart the Node?
 ------------------------
 
--   Ubuntu : ctrl + c for killing the process and
-    cargo run --release |& tee logs.txt`
--   Windows : ctrl + c for killing the process and `cargo run --release`
--   Mac Os : ctrl + c for killing the process and
-    cargo run --release > logs.txt 2>&1`
+- Ubuntu : ctrl + c for killing the process and
+    :code:`cargo run --release |& tee logs.txt`
+- Windows : ctrl + c for killing the process and :code:`cargo run --release`
+- Mac Os : ctrl + c for killing the process and
+    :code:`cargo run --release > logs.txt 2>&1`
 
 How secure are the private keys?
 --------------------------------
@@ -135,14 +137,19 @@ selected to do so. Most frequent reasons:
 
 Diagnostic process:
 
--   make sure the node is running on a computer that matches hardware requirements and that no other software is hogging ressources
--   type `wallet_info` and make sure that at least one address has active rolls > 0
-    -   if there are no addresses listed, create a new one by calling `wallet_generate_private_key` and try the diagnostic process again
-    -   if none of the listed addresses has non-zero active rolls, perform a new roll buy (see tutorials) and try the diagnostic process again
--   type `node_get_staking_addresses` in the client:
-    -   if the list is empty or if none of the addresses listed matches addresses that have active rolls in `wallet_info`:
-        -   call `node_add_staking_private_keys` with the private key matching an address that has non-zero active rolls in `wallet_info`
--   check your address with the online explorer: if there is a mismatch between the number of active rolls displayed in the online interface and what is returned by `wallet_info`, it might be that your node is desynchronized. Try restarting it.
+- make sure the node is running on a computer that matches hardware requirements and that no other software is hogging ressources
+- type `wallet_info` and make sure that at least one address has active rolls > 0
+
+  - if there are no addresses listed, create a new one by calling `wallet_generate_private_key` and try the diagnostic process again
+  - if none of the listed addresses has non-zero active rolls, perform a new roll buy (see tutorials) and try the diagnostic process again
+
+- type `node_get_staking_addresses` in the client:
+
+  - if the list is empty or if none of the addresses listed matches addresses that have active rolls in `wallet_info`:
+
+    - call `node_add_staking_private_keys` with the private key matching an address that has non-zero active rolls in `wallet_info`
+
+- check your address with the online explorer: if there is a mismatch between the number of active rolls displayed in the online interface and what is returned by `wallet_info`, it might be that your node is desynchronized. Try restarting it.
 
 Why are rolls automatically sold? Is it some kind of penalty/slashing?
 ----------------------------------------------------------------------
@@ -282,11 +289,12 @@ Disable IPV6 support
 If your OS, virtual machine or provider does not support IPV6, try disabling IPV6 support on your Massa node.
 
 To do this, edit (or create if absent) the file `massa-node/config/config.toml` with the following contents:
-```toml
-[network]
-    bind = "0.0.0.0:31244"
+.. code-block:: toml
 
-[bootstrap]
-    bind = "0.0.0.0:31245"
-```
+    [network]
+        bind = "0.0.0.0:31244"
+
+    [bootstrap]
+        bind = "0.0.0.0:31245"
+
 then restart your node.
