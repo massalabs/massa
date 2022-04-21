@@ -1,3 +1,7 @@
+.. index:: library, types
+
+.. _sc-types:
+
 Types
 =====
 
@@ -47,7 +51,7 @@ Usage
     import {Amount} from 'mscl-type';
 
     const euro = new Currency("Euro", 2);
-    
+
     const price = new Amount(500, euro);
     const accountBalance = new Amount(100, euro);
 

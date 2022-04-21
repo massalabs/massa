@@ -36,6 +36,12 @@ blockchain we recommend the following ressources:
 - :ref:`Getting started<sc-getting-started>` tutorial, will get you through the various steps needed to compile and upload smart-contracts.
 - :ref:`Massa's smart-contract by example <sc-example>` a more advanced tutorial, that goes through all the steps needed to build a decentralized application using Massa's smart-contracts and Massa's decentralized web.
 - :ref:`Massa's decentralized web <sc-example>` tutorial explains how the Massa blockchain can be used to host decentralized websites.
+- :ref:`Types <sc-types>` a collection of useful types for smart-contracts.
+
+Technical ressources
+--------------------
+
+You'll find :ref:`here <technical-api>` the documentation of the various JSON-RPC API endpoints exposed by a Massa node.
 
 Community
 ---------
