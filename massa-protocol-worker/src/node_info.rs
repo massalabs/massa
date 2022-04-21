@@ -132,14 +132,23 @@ impl NodeInfo {
 
     pub fn insert_known_ops(&mut self, ops: Set<OperationId>, max_ops_nb: usize) {
         for operation_id in ops.into_iter() {
-            if self.known_operations.insert(operation_id) {
-                self.known_operations_queue.push_front(operation_id);
-                if self.known_operations_queue.len() > max_ops_nb {
-                    if let Some(op_id) = self.known_operations_queue.pop_back() {
-                        self.known_operations.remove(&op_id);
-                    }
-                }
+            if self.known_operations.contains(&operation_id) {
+                // Ignore operations the node already knowns about.
+                continue;
             }
+
+            // If capacity has been reached,
+            // remove the last known op before inserting the new one,
+            // to prevent memory allocations.
+            if self.known_operations.len() == max_ops_nb {
+                let to_remove = self
+                    .known_operations_queue
+                    .pop_back()
+                    .expect("Empty known operations queue, when known operations is full.");
+                self.known_operations.remove(&to_remove);
+            }
+            self.known_operations.insert(operation_id);
+            self.known_operations_queue.push_front(operation_id);
         }
     }
 
