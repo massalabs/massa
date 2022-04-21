@@ -19,4 +19,39 @@ Now you have created a wallet you can check the address, balance, etc... with th
 
 Now that you have an address you can create and deploy your first smart contract. 
 
+Smart contracts
+===============
+
+Setting up your working environment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Install node and npm by following `this tutorial <https://heynode.com/tutorial/install-nodejs-locally-nvm/>`__ and make sure you have `yarn` and `npx` installed:
+
+.. code-block:: shell
+
+    npm install --global yarn npx
+
+
+Discover your first smart contract
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 You can follow `this guide <smart-contracts/massa-sc-by-example.html>`__ to deploy and interact with a tic-tac-toe.
+
+Create your smart contract
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Now that you have your first smart-contract and you know how to deploy and interact you can create your by using the template of an `hello-world` using this command:
+
+.. code-block:: shell
+
+    npx massa-sc-create massa-sc-template
+
+Create your frontend
+^^^^^^^^^^^^^^^^^^^^
+
+As you saw in the tec-tac-toe example, you can create a website to interact with the smart-contract using our `massa-web3 <https://github.com/massalabs/massa-web3>`__ library.
+
+We have two example for websites:
+- In JS you have the example of the `game of life <https://github.com/massalabs/game-of-life>`__
+- In React you have the template `create-react-app-massa <https://github.com/massalabs/create-react-app-massa>`__
+
