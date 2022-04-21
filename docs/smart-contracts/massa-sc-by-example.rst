@@ -73,7 +73,7 @@ Let's start with tic-tac-toe smart-contract. As the main goal of this tutorial i
         Storage.set_data("gameWinner", "n");
     }
 
-The `initialize` function is used to start a new tic-tac-toe game. This function is used to instantiate the different variables that will be used to track the state of the game: `currentPlayer`, `gameState` and `gameWinner`. Note that smart-contract data is stored in a hash map where keys and values must be string. For more details, we refer to the documentation: TODO.
+The `initialize` function is used to start a new tic-tac-toe game. This function is used to instantiate the different variables that will be used to track the state of the game: `currentPlayer`, `gameState` and `gameWinner`. Note that smart-contract data is stored in a hash map where keys and values must be string.
 
 Notice that in this example, the `initialize` function is public (see the `export`). It means that anyone can call it. In a real-world example, you will probably want to design a more complex mechanism!
 
@@ -316,7 +316,7 @@ We'll see in this part how you can host your dApp on a website and how to enable
 The front
 ---------
 
-We have designed a website for the tic-tac-toe that you can clone from here : https://github.com/massalabs/tictactoe-poc
+We have designed a website for the tic-tac-toe that you can find under the folder `html`.
 
 You will have to modify some data in order to make it works.
 

@@ -46,12 +46,17 @@ Now that you have your first smart-contract and you know how to deploy and inter
 
     npx massa-sc-create massa-sc-template
 
+Test your smart-contract
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+TODO
+
 Create your frontend
 ^^^^^^^^^^^^^^^^^^^^
 
 As you saw in the tec-tac-toe example, you can create a website to interact with the smart-contract using our `massa-web3 <https://github.com/massalabs/massa-web3>`__ library.
 
 We have two example for websites:
-- In JS you have the example of the `game of life <https://github.com/massalabs/game-of-life>`__
+- In JS you have the example of the `game of life <https://github.com/massalabs/massa-sc-examples/tree/main/games/game-of-life>`__
 - In React you have the template `create-react-app-massa <https://github.com/massalabs/create-react-app-massa>`__
 
