@@ -10,10 +10,7 @@ use anyhow::{bail, Result};
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
-use massa_models::{
-    timeslots::get_block_slot_timestamp,
-    Address, Amount, Slot,
-};
+use massa_models::{timeslots::get_block_slot_timestamp, Address, Amount, Slot};
 use massa_sc_runtime::{Interface, InterfaceClone};
 use parking_lot::Mutex;
 use rand::Rng;

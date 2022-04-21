@@ -14,7 +14,10 @@ use massa_execution_exports::{EventStore, ExecutionError, ExecutionOutput, Execu
 use massa_final_state::{FinalState, StateChanges};
 use massa_hash::Hash;
 use massa_ledger::LedgerChanges;
-use massa_models::{Address, Amount, BlockId, OperationId, Slot, output_event::{SCOutputEvent, EventExecutionContext}};
+use massa_models::{
+    output_event::{EventExecutionContext, SCOutputEvent},
+    Address, Amount, BlockId, OperationId, Slot,
+};
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
