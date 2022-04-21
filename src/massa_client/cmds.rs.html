@@ -990,6 +990,76 @@
 <span id="985">985</span>
 <span id="986">986</span>
 <span id="987">987</span>
+<span id="988">988</span>
+<span id="989">989</span>
+<span id="990">990</span>
+<span id="991">991</span>
+<span id="992">992</span>
+<span id="993">993</span>
+<span id="994">994</span>
+<span id="995">995</span>
+<span id="996">996</span>
+<span id="997">997</span>
+<span id="998">998</span>
+<span id="999">999</span>
+<span id="1000">1000</span>
+<span id="1001">1001</span>
+<span id="1002">1002</span>
+<span id="1003">1003</span>
+<span id="1004">1004</span>
+<span id="1005">1005</span>
+<span id="1006">1006</span>
+<span id="1007">1007</span>
+<span id="1008">1008</span>
+<span id="1009">1009</span>
+<span id="1010">1010</span>
+<span id="1011">1011</span>
+<span id="1012">1012</span>
+<span id="1013">1013</span>
+<span id="1014">1014</span>
+<span id="1015">1015</span>
+<span id="1016">1016</span>
+<span id="1017">1017</span>
+<span id="1018">1018</span>
+<span id="1019">1019</span>
+<span id="1020">1020</span>
+<span id="1021">1021</span>
+<span id="1022">1022</span>
+<span id="1023">1023</span>
+<span id="1024">1024</span>
+<span id="1025">1025</span>
+<span id="1026">1026</span>
+<span id="1027">1027</span>
+<span id="1028">1028</span>
+<span id="1029">1029</span>
+<span id="1030">1030</span>
+<span id="1031">1031</span>
+<span id="1032">1032</span>
+<span id="1033">1033</span>
+<span id="1034">1034</span>
+<span id="1035">1035</span>
+<span id="1036">1036</span>
+<span id="1037">1037</span>
+<span id="1038">1038</span>
+<span id="1039">1039</span>
+<span id="1040">1040</span>
+<span id="1041">1041</span>
+<span id="1042">1042</span>
+<span id="1043">1043</span>
+<span id="1044">1044</span>
+<span id="1045">1045</span>
+<span id="1046">1046</span>
+<span id="1047">1047</span>
+<span id="1048">1048</span>
+<span id="1049">1049</span>
+<span id="1050">1050</span>
+<span id="1051">1051</span>
+<span id="1052">1052</span>
+<span id="1053">1053</span>
+<span id="1054">1054</span>
+<span id="1055">1055</span>
+<span id="1056">1056</span>
+<span id="1057">1057</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::Output</span>;
@@ -1185,6 +1255,15 @@
         <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;create and send an operation containing byte code&quot;</span>
     )]</span>
     <span class="ident">send_smart_contract</span>,
+
+    <span class="attribute">#[<span class="ident">strum</span>(
+        <span class="ident">ascii_case_insensitive</span>,
+        <span class="ident">props</span>(
+            <span class="ident">args</span> <span class="op">=</span> <span class="string">&quot;SenderAddress TargetAddress FunctionName Parameter MaxGas GasPrice Coins Fee&quot;</span>,
+        ),
+        <span class="ident">message</span> <span class="op">=</span> <span class="string">&quot;create and send an operation to call a function of a smart contract&quot;</span>
+    )]</span>
+    <span class="ident">call_smart_contract</span>,
 
     <span class="attribute">#[<span class="ident">strum</span>(
         <span class="ident">ascii_case_insensitive</span>,
@@ -1807,6 +1886,67 @@
                 )
                 .<span class="kw">await</span>
             }
+            <span class="ident">Command::call_smart_contract</span> =&gt; {
+                <span class="kw">if</span> <span class="ident">parameters</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="number">8</span> {
+                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                }
+                <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">parameters</span>[<span class="number">0</span>].<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">target_addr</span> <span class="op">=</span> <span class="ident">parameters</span>[<span class="number">1</span>].<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">Address</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">target_func</span> <span class="op">=</span> <span class="ident">parameters</span>[<span class="number">2</span>].<span class="ident">clone</span>();
+                <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="ident">parameters</span>[<span class="number">3</span>].<span class="ident">clone</span>();
+                <span class="kw">let</span> <span class="ident">max_gas</span> <span class="op">=</span> <span class="ident">parameters</span>[<span class="number">4</span>].<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">gas_price</span> <span class="op">=</span> <span class="ident">parameters</span>[<span class="number">5</span>].<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">coins</span> <span class="op">=</span> <span class="ident">parameters</span>[<span class="number">6</span>].<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">fee</span> <span class="op">=</span> <span class="ident">parameters</span>[<span class="number">7</span>].<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">Amount</span><span class="op">&gt;</span>()<span class="question-mark">?</span>;
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">json</span> {
+                    <span class="kw">match</span> <span class="ident">gas_price</span>
+                        .<span class="ident">checked_mul_u64</span>(<span class="ident">max_gas</span>)
+                        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">checked_add</span>(<span class="ident">fee</span>))
+                    {
+                        <span class="prelude-val">Some</span>(<span class="ident">total</span>) =&gt; {
+                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">addresses_info</span>) <span class="op">=</span>
+                                <span class="ident">client</span>.<span class="ident">public</span>.<span class="ident">get_addresses</span>(<span class="macro">vec!</span>[<span class="ident">target_addr</span>]).<span class="kw">await</span>
+                            {
+                                <span class="kw">match</span> <span class="ident">addresses_info</span>.<span class="ident">get</span>(<span class="number">0</span>) {
+                                    <span class="prelude-val">Some</span>(<span class="ident">info</span>) =&gt; {
+                                        <span class="kw">if</span> <span class="ident">info</span>.<span class="ident">ledger_info</span>.<span class="ident">candidate_ledger_info</span>.<span class="ident">balance</span> <span class="op">&lt;</span> <span class="ident">total</span>
+                                            <span class="op">|</span><span class="op">|</span> <span class="ident">info</span>.<span class="ident">candidate_sce_ledger_info</span>.<span class="ident">balance</span> <span class="op">&lt;</span> <span class="ident">coins</span>
+                                        {
+                                            <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
+                                        }
+                                    }
+                                    <span class="prelude-val">None</span> =&gt; {
+                                        <span class="macro">client_warning!</span>(<span class="macro">format!</span>(
+                                            <span class="string">&quot;address {} not found&quot;</span>,
+                                            <span class="ident">target_addr</span>
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                        <span class="prelude-val">None</span> =&gt; {
+                            <span class="macro">client_warning!</span>(<span class="string">&quot;the total amount hit the limit overflow, operation will certainly be rejected&quot;</span>);
+                        }
+                    }
+                };
+                <span class="ident">send_operation</span>(
+                    <span class="ident">client</span>,
+                    <span class="ident">wallet</span>,
+                    <span class="ident">OperationType::CallSC</span> {
+                        <span class="ident">target_addr</span>,
+                        <span class="ident">target_func</span>,
+                        <span class="ident">param</span>,
+                        <span class="ident">max_gas</span>,
+                        <span class="ident">sequential_coins</span>: <span class="ident">Amount::from_raw</span>(<span class="number">0</span>),
+                        <span class="ident">parallel_coins</span>: <span class="ident">coins</span>,
+                        <span class="ident">gas_price</span>,
+                    },
+                    <span class="ident">fee</span>,
+                    <span class="ident">addr</span>,
+                    <span class="ident">json</span>,
+                )
+                .<span class="kw">await</span>
+            }
             <span class="ident">Command::wallet_sign</span> =&gt; {
                 <span class="kw">if</span> <span class="ident">parameters</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="number">2</span> {
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
@@ -1978,5 +2118,5 @@
     })
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (4ca19e09d 2022-04-19)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_client" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (879aff385 2022-04-20)" ></div>
 </body></html>
