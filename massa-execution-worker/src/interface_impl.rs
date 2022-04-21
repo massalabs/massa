@@ -10,9 +10,8 @@ use anyhow::{bail, Result};
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
-use massa_hash::Hash;
 use massa_models::{
-    output_event::{EventExecutionContext, SCOutputEvent, SCOutputEventId},
+    output_event::{EventExecutionContext, SCOutputEvent},
     timeslots::get_block_slot_timestamp,
     Address, Amount, Slot,
 };
@@ -404,8 +403,6 @@ impl Interface for InterfaceImpl {
         // Append 0u8 if the context is readonly, 1u8 otherwise
         // This is used to allow event ID collisions between readonly and active executions
         to_hash.push(!execution_context.read_only as u8);
-        // Hash the seed to generate the ID
-        let id = SCOutputEventId(Hash::compute_from(&to_hash));
 
         // Gather contextual information from the execution context
         let context = EventExecutionContext {
@@ -418,13 +415,13 @@ impl Interface for InterfaceImpl {
         };
 
         // Generate the event
-        let event = SCOutputEvent { id, context, data };
+        let event = SCOutputEvent { context, data };
 
         // Increment the event counter fot this slot
         execution_context.created_event_index += 1;
 
         // Add the event to the context store
-        execution_context.events.insert(id, event);
+        execution_context.events.push(event);
 
         Ok(())
     }
