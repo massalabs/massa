@@ -839,7 +839,6 @@ impl Command {
                 if !json {
                     match gas_price
                         .checked_mul_u64(max_gas)
-                        .and_then(|x| x.checked_add(coins))
                         .and_then(|x| x.checked_add(fee))
                     {
                         Some(total) => {
@@ -848,7 +847,9 @@ impl Command {
                             {
                                 match addresses_info.get(0) {
                                     Some(info) => {
-                                        if info.ledger_info.candidate_ledger_info.balance < total {
+                                        if info.ledger_info.candidate_ledger_info.balance < total
+                                            || info.candidate_sce_ledger_info.balance < coins
+                                        {
                                             client_warning!("this operation may be rejected due to insufficient balance");
                                         }
                                     }
