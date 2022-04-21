@@ -199,6 +199,8 @@
 <span id="194">194</span>
 <span id="195">195</span>
 <span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Only public for the protocol worker.</span>
 <span class="doccomment">//! Contains all what we know for each node we are connected or we used to</span>
 <span class="doccomment">//! know in the network.</span>
@@ -254,10 +256,12 @@
             <span class="ident">asked_blocks</span>: <span class="ident">Default::default</span>(),
             <span class="ident">connection_instant</span>: <span class="ident">Instant::now</span>(),
             <span class="ident">known_operations</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span><span class="ident">::with_capacity_and_hasher</span>(
-                <span class="ident">pool_settings</span>.<span class="ident">max_known_ops_size</span>,
+                <span class="ident">pool_settings</span>.<span class="ident">max_known_ops_size</span>.<span class="ident">saturating_add</span>(<span class="number">1</span>),
                 <span class="ident">BuildMap::default</span>(),
             ),
-            <span class="ident">known_operations_queue</span>: <span class="ident">VecDeque::with_capacity</span>(<span class="ident">pool_settings</span>.<span class="ident">max_known_ops_size</span>),
+            <span class="ident">known_operations_queue</span>: <span class="ident">VecDeque::with_capacity</span>(
+                <span class="ident">pool_settings</span>.<span class="ident">max_known_ops_size</span>.<span class="ident">saturating_add</span>(<span class="number">1</span>),
+            ),
             <span class="ident">known_endorsements</span>: <span class="ident">Set</span>::<span class="op">&lt;</span><span class="ident">EndorsementId</span><span class="op">&gt;</span><span class="ident">::with_capacity_and_hasher</span>(
                 <span class="ident">pool_settings</span>.<span class="ident">max_known_endorsements_size</span>,
                 <span class="ident">BuildMap::default</span>(),
@@ -334,9 +338,9 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert_known_ops</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ops</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">OperationId</span><span class="op">&gt;</span>, <span class="ident">max_ops_nb</span>: <span class="ident">usize</span>) {
         <span class="kw">for</span> <span class="ident">operation_id</span> <span class="kw">in</span> <span class="ident">ops</span>.<span class="ident">into_iter</span>() {
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">known_operations</span>.<span class="ident">insert</span>(<span class="ident">operation_id</span>) {
-                <span class="self">self</span>.<span class="ident">known_operations_queue</span>.<span class="ident">push_front</span>(<span class="ident">operation_id</span>);
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">known_operations_queue</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">max_ops_nb</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">op_id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">known_operations_queue</span>.<span class="ident">pop_back</span>() {
+                <span class="self">self</span>.<span class="ident">known_operations_queue</span>.<span class="ident">push_back</span>(<span class="ident">operation_id</span>);
+                <span class="kw">while</span> <span class="self">self</span>.<span class="ident">known_operations_queue</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">max_ops_nb</span> {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">op_id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">known_operations_queue</span>.<span class="ident">pop_front</span>() {
                         <span class="self">self</span>.<span class="ident">known_operations</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">op_id</span>);
                     }
                 }
