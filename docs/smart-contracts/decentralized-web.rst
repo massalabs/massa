@@ -1,3 +1,7 @@
+.. index:: web; decentralized, decentralized web
+
+.. _sc-decentralized-web:
+
 =========================
 Massa's decentralized web
 =========================
@@ -37,7 +41,7 @@ To claim a DNS address for you smart-contract you can use the following smart-co
 
     import { call } from "massa-sc-std";
     import { JSON } from "json-as";
-    
+
     @json
     export class SetResolverArgs {
         name: string = "";

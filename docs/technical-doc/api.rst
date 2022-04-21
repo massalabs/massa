@@ -1,3 +1,7 @@
+.. index:: api
+
+.. _technical-api:
+
 ==================
 Massa JSON-RPC API
 ==================

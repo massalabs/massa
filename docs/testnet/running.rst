@@ -1,3 +1,5 @@
+.. _testnet-running:
+
 ==============
 Running a node
 ==============
@@ -73,9 +75,3 @@ You should leave the window opened.
     - Type: :code:`cargo run --release`
 
 Please wait until the directories are built before moving to the next step.
-
-Next step
-=========
-
-TODO:
-- `Creating a wallet <https://github.com/massalabs/massa/wiki/wallet>`_

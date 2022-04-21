@@ -31,7 +31,7 @@ buy, and the operation fee (you can put 0):
 
     buy_rolls <address> <roll count> <fee>
 
-As an example, the command for buying 1 roll with 0 fee for the address `VkUQ5MA4niNBhAEP7uVf89tvPfUHcbgy6BrdLM9SAuFSyy9DE` 
+As an example, the command for buying 1 roll with 0 fee for the address `VkUQ5MA4niNBhAEP7uVf89tvPfUHcbgy6BrdLM9SAuFSyy9DE`
 is: `buy_rolls VkUQ5MA4niNBhAEP7uVf89tvPfUHcbgy6BrdLM9SAuFSyy9DE 1 0`
 
 
@@ -67,8 +67,8 @@ You can check if your rolls are active with the same command:
 
     wallet_info
 
-When your rolls become active, that's it! You're staking! Please note, having one 
-roll is enough. On the testnet, we don't value how many rolls you have, but how reliable is your node. 
+When your rolls become active, that's it! You're staking! Please note, having one
+roll is enough. On the testnet, we don't value how many rolls you have, but how reliable is your node.
 
 You should be selected to create blocks in the different threads.
 
@@ -99,8 +99,3 @@ will be frozen for 1 cycle before you can spend them, again check with:
 .. code-block::
 
     wallet_info
-
-Next step
-=========
-
--   [Routability tutorial](https://github.com/massalabs/massa/wiki/routability) (Optionnal)

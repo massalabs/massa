@@ -1,3 +1,5 @@
+.. _testnet-rewards:
+
 ===============================
 Testnet Staking Rewards Program
 ===============================
