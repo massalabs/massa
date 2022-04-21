@@ -176,7 +176,7 @@ main.ts
 Compiling your smart-contract
 -----------------------------
 
-Smart-contract can be compiled using the `massa-sc-scripts` command: TODO.
+Smart-contract can be compiled using the `massa-sc-scripts` command: `yarn run build`.
 
 .. _sending-sc:
 
@@ -185,18 +185,6 @@ Putting your smart-contract on the blockchain
 
 We'll now turn to the process of putting the smart-contract on the Massa blockchain.
 
-Setup
-~~~~~
-
-To put your smart-contract on the Massa blockchain, you need to run a node and use the client. If this is something that you have never done, all the steps are detailed in the `tutorials <https://github.com/massalabs/massa#tutorials-to-join-the-testnet>`_.
-
-To be able to be able to read the different prints when you execute the smart-contracts, you should set the logging level to debug. Edit (or create) the `massa/massa-node/config/config.toml` file and add the following line:
-
-.. code-block:: toml
-
-    [logging]
-        level = 3
-
 Sending the smart-contract
 ==========================
 
@@ -204,7 +192,7 @@ Sending the smart-contract to the Massa blockchain is done using the `send_smart
 
 .. code-block::
 
-    send_smart_contract <your_address> main.wasm 1000000 0 0 0
+    send_smart_contract <your_address> main.wasm 100000000 0 0 0
 
 Where `<your_address>` should obviously be replaced by an address from your wallet. If the operation was successfully sent, you should receive a message similar to this:
 
@@ -228,11 +216,7 @@ You can now track the state of your operation using the `get_operations` command
 
 This command allows you to see if the operation is in the pool, in which blocks it is included and various properties.
 
-Once the operation is included in a block, it is immediately executed. Now, looking at the logs of the node, you should see something similar to this:
-
-.. code-block::
-
-    2022-03-17T16:18:42.002581Z DEBUG massa_execution_worker::interface_impl: SC print: Initialized, address:yqQMHYoWoD569AzuqT97HW8bTuZu44yx5z6W1wRtQP9u715r4
+TODO : ADD EVENTS
 
 .. _interacting:
 
@@ -268,6 +252,8 @@ main.ts
     }
 
 This smart-contract initialize a new game and then play a whole game by performing a series of actions. Of course, in a real-world example this would probably be done by different players, each using a smart-contract with their specific action.
+
+TODO : ADD EVENTS 
 
 As before, you should compile your smart-contract, send it to the blockchain using the `send_smart_contract` command. Once this is done and the operation is included in a block, you should see the operations being performed by your node in the logs:
 

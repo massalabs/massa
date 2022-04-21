@@ -17,4 +17,6 @@ Now you have created a wallet you can check the address, balance, etc... with th
 
     wallet_info
 
-Now that you have an address you can create and deploy your first smart contract.
+Now that you have an address you can create and deploy your first smart contract. 
+
+You can follow `this guide <smart-contracts/massa-sc-by-example.html>`__ to deploy and interact with a tic-tac-toe.
