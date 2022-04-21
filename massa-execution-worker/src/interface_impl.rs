@@ -11,7 +11,6 @@ use massa_async_pool::AsyncMessage;
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_models::{
-    output_event::{EventExecutionContext, SCOutputEvent},
     timeslots::get_block_slot_timestamp,
     Address, Amount, Slot,
 };
@@ -393,36 +392,7 @@ impl Interface for InterfaceImpl {
     /// # Arguments:
     /// data: the string data that is the payload of the event
     fn generate_event(&self, data: String) -> Result<()> {
-        let mut execution_context = context_guard!(self);
-
-        // Generate a unique event ID
-        // Initialize a seed from the current slot
-        let mut to_hash: Vec<u8> = execution_context.slot.to_bytes_key().to_vec();
-        // Append the index of the emitted event during the current slot
-        to_hash.append(&mut execution_context.created_event_index.to_be_bytes().to_vec());
-        // Append 0u8 if the context is readonly, 1u8 otherwise
-        // This is used to allow event ID collisions between readonly and active executions
-        to_hash.push(!execution_context.read_only as u8);
-
-        // Gather contextual information from the execution context
-        let context = EventExecutionContext {
-            slot: execution_context.slot,
-            block: execution_context.opt_block_id,
-            call_stack: execution_context.stack.iter().map(|e| e.address).collect(),
-            read_only: execution_context.read_only,
-            index_in_slot: execution_context.created_event_index,
-            origin_operation_id: execution_context.origin_operation_id,
-        };
-
-        // Generate the event
-        let event = SCOutputEvent { context, data };
-
-        // Increment the event counter fot this slot
-        execution_context.created_event_index += 1;
-
-        // Add the event to the context store
-        execution_context.events.push(event);
-
+        context_guard!(self).generate_event(data)?;
         Ok(())
     }
 
