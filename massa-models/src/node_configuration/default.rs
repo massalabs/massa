@@ -36,7 +36,7 @@ pub const CHANNEL_SIZE: usize = 1024;
 
 lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
-    pub static ref GENESIS_TIMESTAMP: MassaTime = 1650632033079.into();
+    pub static ref GENESIS_TIMESTAMP: MassaTime = 1650633388302.into();
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = None;
