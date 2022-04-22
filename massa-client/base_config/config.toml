@@ -3,6 +3,6 @@ history_file_path = "config/.massa_history"
 timeout = 1000
 
 [default_node]
-ip = "127.0.0.1"
+ip = "145.239.66.206"
 private_port = 33034
 public_port = 33035
