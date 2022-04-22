@@ -349,7 +349,7 @@ Setup
 
 Massa offer you the possibility to host your dApp on a decentralized web. This means that your website will be hosted directly on the blockchain and we provide a chrome/firefox extension to access to those websites:
 
-You can download the extension here : https://github.com/massalabs/massa-wallet TODO replace with pre-build
+You can download the extension here : https://github.com/massalabs/massa-wallet and follow the README.md to install it on your browser.
 
 And after a click on `Connect wallet` you will be able to access to the massa wallet and also DNS part. In this tutorial we will focus on the DNS part.
 
@@ -381,12 +381,9 @@ Now you can upload it on the blockchain using the client and running this comman
 
 Now your website should be uploaded to access it on the browser you have to link it to a dns entry. To add a dns entry you have to use this command in the folder of the client :
 
-
-TODO CHANGE DNS ADDRESS
-
 .. code-block::
 
-    cargo run call_smart_contract <your address> 8ZmTMdpawAYRrTRvsyDvTJgoNTr3krjuHG3JhGU3g1SYpqJiB setResolver '{"name": "<name_of_your_website>", "address": "<your_address>"}' 1000000000 0 0 0
+    cargo run call_smart_contract <your address> 2R4zRvGc5GcX4eCWrM5zsboFKodCUuWa7X8biiDBQMoLohwH4N setResolver '{"name": "<name_of_your_website>", "address": "<your_address>"}' 1000000000 0 0 0
 
 
 Accessing your website
