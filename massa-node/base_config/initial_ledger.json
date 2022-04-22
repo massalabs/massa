@@ -1,13 +1,4 @@
 {
-<<<<<<< HEAD
-    "2VUTX7rcxeNs7tT1o367jrGNE3KWrAZFdMp6tDG7qfLN278KoA": {
-        "balance": "250000000"
-    },
-    "6uftrCuUk2BsT6Dy71Q7TwyTpfyMfuFKqXN19cj7ReZfhmczc": {
-        "balance": "250000000"
-    },
-    "9mvJfA4761u1qT8QwSWcJ4gTDaFP5iSgjQzKMaqTbrWCFo1QM": {
-=======
     "5qKy2mn2UVr1gaTvGHaDEZ3xBp1YBrPHA6bfMjcos8DKdpWeq": {
         "balance": "250000000"
     },
@@ -70,12 +61,10 @@
     "6HbNj5dQwA43NM5mEHzNdMvy614tXjZ3hG3ErKviPfkHPh2hN": {
         "balance": "250000000"
     },
-
     "9mvJfA4761u1qT8QwSWcJ4gTDaFP5iSgjQzKMaqTbrWCFo1QM": {
         "balance": "250000000"
     },
     "rhQEm76zFDzW7bkWGoRccgaLGrFwQsik5aXXqbEokQ7DkHUkX": {
->>>>>>> c7bc09b1e8e3cf852b0ebe1169696e4db28333a2
         "balance": "250000000"
     }
 }
