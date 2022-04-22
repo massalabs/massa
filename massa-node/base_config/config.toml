@@ -150,8 +150,8 @@
     max_in_connection_overflow = 100
 
     [network.peer_types_config]
-    Standard = { target_out_connections = 10, max_out_attempts = 10, max_in_connections = 15}
-    Bootstrap = { target_out_connections = 1, max_out_attempts = 1, max_in_connections = 1}
+    Standard = { target_out_connections = 2, max_out_attempts = 2, max_in_connections = 2}
+    Bootstrap = { target_out_connections = 4, max_out_attempts = 4, max_in_connections = 4}
     WhiteListed = { target_out_connections = 2, max_out_attempts = 2, max_in_connections = 3}
 
 [bootstrap]
