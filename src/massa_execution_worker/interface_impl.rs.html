@@ -503,39 +503,6 @@
 <span id="498">498</span>
 <span id="499">499</span>
 <span id="500">500</span>
-<span id="501">501</span>
-<span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
-<span id="512">512</span>
-<span id="513">513</span>
-<span id="514">514</span>
-<span id="515">515</span>
-<span id="516">516</span>
-<span id="517">517</span>
-<span id="518">518</span>
-<span id="519">519</span>
-<span id="520">520</span>
-<span id="521">521</span>
-<span id="522">522</span>
-<span id="523">523</span>
-<span id="524">524</span>
-<span id="525">525</span>
-<span id="526">526</span>
-<span id="527">527</span>
-<span id="528">528</span>
-<span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
-<span id="532">532</span>
-<span id="533">533</span>
 </pre><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;</span>
 
 <span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.</span>
@@ -548,11 +515,7 @@
 <span class="kw">use</span> <span class="ident">massa_async_pool::AsyncMessage</span>;
 <span class="kw">use</span> <span class="ident">massa_execution_exports::ExecutionConfig</span>;
 <span class="kw">use</span> <span class="ident">massa_execution_exports::ExecutionStackElement</span>;
-<span class="kw">use</span> <span class="ident">massa_models</span>::{
-    <span class="ident">output_event</span>::{<span class="ident">EventExecutionContext</span>, <span class="ident">SCOutputEvent</span>},
-    <span class="ident">timeslots::get_block_slot_timestamp</span>,
-    <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Slot</span>,
-};
+<span class="kw">use</span> <span class="ident">massa_models</span>::{<span class="ident">timeslots::get_block_slot_timestamp</span>, <span class="ident">Address</span>, <span class="ident">Amount</span>, <span class="ident">Slot</span>};
 <span class="kw">use</span> <span class="ident">massa_sc_runtime</span>::{<span class="ident">Interface</span>, <span class="ident">InterfaceClone</span>};
 <span class="kw">use</span> <span class="ident">parking_lot::Mutex</span>;
 <span class="kw">use</span> <span class="ident">rand::Rng</span>;
@@ -931,36 +894,7 @@
     <span class="doccomment">/// # Arguments:</span>
     <span class="doccomment">/// data: the string data that is the payload of the event</span>
     <span class="kw">fn</span> <span class="ident">generate_event</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">data</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">execution_context</span> <span class="op">=</span> <span class="macro">context_guard!</span>(<span class="self">self</span>);
-
-        <span class="comment">// Generate a unique event ID</span>
-        <span class="comment">// Initialize a seed from the current slot</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">to_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">execution_context</span>.<span class="ident">slot</span>.<span class="ident">to_bytes_key</span>().<span class="ident">to_vec</span>();
-        <span class="comment">// Append the index of the emitted event during the current slot</span>
-        <span class="ident">to_hash</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">execution_context</span>.<span class="ident">created_event_index</span>.<span class="ident">to_be_bytes</span>().<span class="ident">to_vec</span>());
-        <span class="comment">// Append 0u8 if the context is readonly, 1u8 otherwise</span>
-        <span class="comment">// This is used to allow event ID collisions between readonly and active executions</span>
-        <span class="ident">to_hash</span>.<span class="ident">push</span>(<span class="op">!</span><span class="ident">execution_context</span>.<span class="ident">read_only</span> <span class="kw">as</span> <span class="ident">u8</span>);
-
-        <span class="comment">// Gather contextual information from the execution context</span>
-        <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="ident">EventExecutionContext</span> {
-            <span class="ident">slot</span>: <span class="ident">execution_context</span>.<span class="ident">slot</span>,
-            <span class="ident">block</span>: <span class="ident">execution_context</span>.<span class="ident">opt_block_id</span>,
-            <span class="ident">call_stack</span>: <span class="ident">execution_context</span>.<span class="ident">stack</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">address</span>).<span class="ident">collect</span>(),
-            <span class="ident">read_only</span>: <span class="ident">execution_context</span>.<span class="ident">read_only</span>,
-            <span class="ident">index_in_slot</span>: <span class="ident">execution_context</span>.<span class="ident">created_event_index</span>,
-            <span class="ident">origin_operation_id</span>: <span class="ident">execution_context</span>.<span class="ident">origin_operation_id</span>,
-        };
-
-        <span class="comment">// Generate the event</span>
-        <span class="kw">let</span> <span class="ident">event</span> <span class="op">=</span> <span class="ident">SCOutputEvent</span> { <span class="ident">context</span>, <span class="ident">data</span> };
-
-        <span class="comment">// Increment the event counter fot this slot</span>
-        <span class="ident">execution_context</span>.<span class="ident">created_event_index</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-
-        <span class="comment">// Add the event to the context store</span>
-        <span class="ident">execution_context</span>.<span class="ident">events</span>.<span class="ident">push</span>(<span class="ident">event</span>);
-
+        <span class="macro">context_guard!</span>(<span class="self">self</span>).<span class="ident">generate_event</span>(<span class="ident">data</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1070,5 +1004,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (879aff385 2022-04-20)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="massa_execution_worker" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0-nightly (de1bc0008 2022-04-21)" ></div>
 </body></html>
