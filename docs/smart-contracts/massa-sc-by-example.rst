@@ -39,7 +39,7 @@ Smart-contract in Massa are written in `Assembly Script <https://www.assemblyscr
 Setup
 -----
 
-You need `node`, `yarn` and `npx` to initialize the project!
+You need `node`, `yarn` and `git` to initialize the project!
 
 .. code-block:: shell
 
@@ -56,7 +56,7 @@ This command will initialize a new folder with a hello-world smart-contract exam
 Writing the smart-contract
 --------------------------
 
-Smart-contracts are in the `src` directory. We will write the tic-tac-toe smart-contract `smart-contract.ts` file. The `deploy.ts` file is used to create a smart-contract that is used to create the tic-tac-toe smart-contract on the Massa blockchain. It may be confusing right now, but we'll go through all these steps in the following.
+Smart-contracts are in the `src` directory. We will write the tic-tac-toe smart-contract `smart-contract.ts` file. The `main.ts` file is used to create a smart-contract that is used to create the tic-tac-toe smart-contract on the Massa blockchain. It may be confusing right now, but we'll go through all these steps in the following.
 
 smart-contract.ts
 -----------------
@@ -157,7 +157,7 @@ The `play` function is used to update the state of the game when each player pla
 
 The `_checkWin` function is used to check whether the game ended or not. Private, as it does not use the `export` prefix, it cannot be called by anyone. It can only be called internally by the smart-contract.
 
-deploy.ts
+main.ts
 
 .. code-block:: typescript
 
@@ -178,7 +178,7 @@ deploy.ts
 Compiling your smart-contract
 -----------------------------
 
-Smart-contract can be compiled using the `massa-sc-scripts` command: `yarn run build:deploy`.
+Smart-contract can be compiled using the `massa-sc-scripts` command: `yarn run build`.
 
 .. _sending-sc:
 
@@ -194,7 +194,7 @@ Sending the smart-contract to the Massa blockchain is done using the `send_smart
 
 .. code-block::
 
-    send_smart_contract <your_address> path/to/deploy.wasm 100000000 0 0 0
+    send_smart_contract <your_address> path/to/main.wasm 100000000 0 0 0
 
 Where `<your_address>` should obviously be replaced by an address from your wallet. If the operation was successfully sent, you should receive a message similar to this:
 
@@ -246,7 +246,7 @@ Instead we could use the `Context.set_bytecode` which will set the bytecode dire
 Interacting with your smart-contract
 ====================================
 
-We can try further our smart-contract by calling the different functions and looking at the state of the game. For this, we can look to the `play.ts`.
+We can try further our smart-contract by calling the different functions and looking at the state of the game. For this, you can create a `play.ts` under `smart-contract` repository.
 
 play.ts
 =======
@@ -268,9 +268,9 @@ play.ts
         call(sc_address, "play", JSON.stringify<PlayArgs>({index: 1}), 0)
         call(sc_address, "play", JSON.stringify<PlayArgs>({index: 4}), 0)
         call(sc_address, "play", JSON.stringify<PlayArgs>({index: 2}), 0)
-        print("Current player:" + Storage.get_data_for(sc_address, "currentPlayer"))
-        print("Game state:" + Storage.get_data_for(sc_address, "gameState"))
-        print("Game winner:" + Storage.get_data_for(sc_address, "gameWinner"))
+        generate_event("Current player:" + Storage.get_data_for(sc_address, "currentPlayer"))
+        generate_event("Game state:" + Storage.get_data_for(sc_address, "gameState"))
+        generate_event("Game winner:" + Storage.get_data_for(sc_address, "gameWinner"))
         return 0;
     }
 
@@ -278,7 +278,13 @@ NOTE: Don't forget to change `YOUR_SMART_CONTRACT` by the address in the data of
 
 This smart-contract initialize a new game and then play a whole game by performing a series of actions. Of course, in a real-world example this would probably be done by different players, each using a smart-contract with their specific action.
 
-As before, you should compile your smart-contract with `yarn run build:play`, send it to the blockchain using the `send_smart_contract` command. Once this is done and the operation is included in a block (few seconds), you should see the operations being performed by your node in the events:
+As before, you should add a line in your package.json:
+
+.. code-block::
+
+    "build:play": "massa-sc-scripts build-sc src/play.ts",
+
+Then you can run `yarn run build:play`, send it to the blockchain using the `send_smart_contract` command. Once this is done and the operation is included in a block (few seconds), you should see the operations being performed by your node in the events:
 
 .. code-block::
 
@@ -320,7 +326,7 @@ We'll see in this part how you can host your dApp on a website and how to enable
 The front
 ---------
 
-We have designed a website for the tic-tac-toe that you can find under the folder `html`.
+We have designed a website for the tic-tac-toe that you can find in this repository: https://github.com/massalabs/massa-sc-examples under the folder `games/tictactoe/html`.
 
 You will have to modify some data in order to make it works.
 
