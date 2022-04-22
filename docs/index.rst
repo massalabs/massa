@@ -17,6 +17,12 @@ even in a fully decentralized network with thousands of nodes.
 An easy-to-read blog post introduction with videos is written
 `here <https://massa.net/blog/post/0/>`_.
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Hackathon onboarding
+
+   hackathon.rst
+
 Testnet
 -------
 
@@ -84,4 +90,8 @@ Contents
 
    technical-doc/api.rst
 
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
 :ref:`Keyword Index <genindex>`, :ref:`Search Page <search>`
