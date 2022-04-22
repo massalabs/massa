@@ -14,7 +14,10 @@ use massa_execution_exports::{EventStore, ExecutionError, ExecutionOutput, Execu
 use massa_final_state::{FinalState, StateChanges};
 use massa_hash::Hash;
 use massa_ledger::LedgerChanges;
-use massa_models::{Address, Amount, BlockId, OperationId, Slot};
+use massa_models::{
+    output_event::{EventExecutionContext, SCOutputEvent},
+    Address, Amount, BlockId, OperationId, Slot,
+};
 use parking_lot::RwLock;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256PlusPlus;
@@ -453,7 +456,7 @@ impl ExecutionContext {
     pub fn cancel_async_message(&mut self, msg: &AsyncMessage) {
         if let Err(e) = self.transfer_parallel_coins(None, Some(msg.sender), msg.coins) {
             debug!(
-                "async message cancel: reimbursment of {} failed: {}",
+                "async message cancel: reimbursement of {} failed: {}",
                 msg.sender, e
             );
         }
@@ -507,5 +510,32 @@ impl ExecutionContext {
 
         // set data entry
         self.speculative_ledger.set_bytecode(address, bytecode)
+    }
+
+    /// Emits an execution event to be stored.
+    ///
+    /// # Arguments:
+    /// data: the string data that is the payload of the event
+    pub fn generate_event(&mut self, data: String) -> Result<(), ExecutionError> {
+        // Gather contextual information from the execution context
+        let context = EventExecutionContext {
+            slot: self.slot,
+            block: self.opt_block_id,
+            call_stack: self.stack.iter().map(|e| e.address).collect(),
+            read_only: self.read_only,
+            index_in_slot: self.created_event_index,
+            origin_operation_id: self.origin_operation_id,
+        };
+
+        // Generate the event
+        let event = SCOutputEvent { context, data };
+
+        // Increment the event counter fot this slot
+        self.created_event_index += 1;
+
+        // Add the event to the context store
+        self.events.push(event);
+
+        Ok(())
     }
 }
