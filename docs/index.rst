@@ -69,8 +69,15 @@ Contents
    smart-contracts/introduction.rst
    smart-contracts/getting-started.rst
    smart-contracts/massa-sc-by-example.rst
-   smart-contracts/decentralized-web.rst
    smart-contracts/types.rst
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Massa's decentrlized web
+
+   decentralized-web/decentralized-web.rst
+   decentralized-web/hosting.rst
+   decentralized-web/browser-plugin.rst
 
 .. toctree::
    :maxdepth: 2

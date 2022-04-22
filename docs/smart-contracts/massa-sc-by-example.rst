@@ -313,9 +313,14 @@ The data will be different but the format should be the same.
 Creating your first dApp
 ========================
 
-Interacting with smart-contracts through the command line client is usually cumbersome, and you are probably more used to interact with smart-contracts through regular websites such as `sushi.com <https://www.sushi.com/>`_.
+Interacting with smart-contracts through the command line client is usually cumbersome,
+and you are probably more used to interact with smart-contracts through regular websites such as `sushi.com <https://www.sushi.com/>`_.
 
-We'll see in this part how you can host your dApp on a website and how to enable people to interact with your smart-contract directly from the browser using the web3 Massa library.
+We'll see in this part how you can host your dApp on a website and how to enable people
+to interact with your smart-contract directly from the browser using the `web3 Massa library <https://github.com/massalabs/massa-web3>`_.
+
+If you want to directly dive into the code, the front-end code is available in the html folder
+of `this repository <https://github.com/massalabs/massa-sc-examples/tree/main/games/tictactoe>`_.
 
 The front
 ---------
@@ -344,7 +349,65 @@ This website use our TS library to interact with the API which is `massa-web3 <h
 Hosting your dApp on Massa decentralized web
 ============================================
 
-Not yet ready.
+Uploading your website
+----------------------
+
+Before uploading your website, you need to zip it. Here we'll be zipping the `build` folder obtained after running `npm run build`:
+
+.. code-block:: bash
+
+    zip site.zip build/*
+
+You can now use the following smart-contract to upload your zipped website to Massa's decentralized web.
+If you want latter want to be able to access to your website through the Massa browser plugin
+it's important to use the entry `massa_web` for your website.
+
+.. code-block:: typescript
+
+    import { include_base64, print, Storage } from "massa-sc-std";
+
+    function createWebsite(): void {
+        const bytes = include_base64('./site.zip');
+        Storage.set_data("massa_web", bytes);
+    }
+
+    export function main(_args: string): i32 {
+        createWebsite();
+        print("Uploaded site");
+        return 0;
+    }
+
+This smart-contract and the dependencies are available `here <https://github.com/massalabs/massa-sc-examples/tree/main/website>`_.
+
+Setting the DNS
+---------------
+
+We'll now want to buy a DNS address for our smart-contract. This will allow us to access
+to our smart-contract using instead of using the address of the smart-contract which is
+a hash and thus not really convenient.
+
+To claim a DNS address for you smart-contract you can use the following smart-contract:
+
+.. code-block:: typescript
+
+    import { call } from "massa-sc-std";
+    import { JSON } from "json-as";
+
+    @json
+    export class SetResolverArgs {
+        name: string = "";
+        address: string = "";
+    }
+
+    export function main(_args: string): i32 {
+        const sc_address = "YOUR_WEBSITE_ADDRESS"
+        call(sc_address, "setResolver", JSON.stringify<SetResolverArgs>({name: "DNS_NAME", address: "DNS_ADDRESS"}), 0);
+        return 0;
+    }
+
+Where `YOUR_WEBSITE_ADDRESS` should be replaced by the address you used in the previous step to upload
+your website and `DNS_ADDRESS` should be replaced by the address of the DNS smart-contract. Right now the
+address of the DNS smart-contract is the following: `DNS_ADDRESS = TODO`.
 
 Going further
 =============
