@@ -1,3 +1,5 @@
+.. _sc-getting-started:
+
 Getting started
 ===============
 
@@ -8,7 +10,7 @@ Setting up a new project
 .. collapse:: Wait, I know npm. Just give me the commands!
 
     Here you go:
-    
+
    .. code-block:: shell
 
        npm init
@@ -82,7 +84,7 @@ Your first smart contract will be no exception!
 .. note::
 
    I'm told that it has nothing to do with the beginning of mankind but Brian Kernighan used it for the first time in *a tutorial introduction to the language B* published in 1972.
-   
+
 Create and open a new file called `helloworld.ts` in `assembly` directory at the root of your project. In this file, write or copy/paste the following code:
 
 .. code-block:: typescript

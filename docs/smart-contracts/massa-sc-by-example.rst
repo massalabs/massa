@@ -1,3 +1,7 @@
+.. index:: tictactoe
+
+.. _sc-example:
+
 ==================================
 Massa's smart-contracts by example
 ==================================

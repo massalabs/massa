@@ -32,7 +32,7 @@ pub const HANDSHAKE_RANDOMNESS_SIZE_BYTES: usize = 32;
 /// Consensus static parameters (defined by protocol used)
 /// Changing one of the following values is considered as a breaking change
 /// Values differ in `test` flavor building for faster CI and simpler scenarios
-pub const CHANNEL_SIZE: usize = 256;
+pub const CHANNEL_SIZE: usize = 1024;
 
 lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.

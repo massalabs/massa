@@ -71,8 +71,3 @@ their associated thread and balance.
 
 Also, if you want to save this wallet and be able to restore it later,
 click `Save wallet`, and next time directly do `Load wallet`.
-
-Next step
-=========
-
--   [Staking](https://github.com/massalabs/massa/wiki/staking) your coins to receive rewards.
