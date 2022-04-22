@@ -20,7 +20,7 @@ This tutorial is divided into several parts:
 - :ref:`dapp` will get you through the process of creating your first dApp
 - :ref:`hosting` will show you how to host your dApp on Massa's decentralized web
 
-You can find the complete project `here <https://github.com/massalabs/tictactoe-poc>`__.
+You can find the complete project `here <https://github.com/massalabs/massa-sc-examples/tree/main/games/tictactoe>`__.
 
 Prerequisites
 =============
@@ -34,7 +34,7 @@ For the decentralized website part, we'll assume that you have some familiarity 
 Writing your smart-contract
 ===========================
 
-Smart-contract in Massa are written in `Assembly Script <https://www.assemblyscript.org/>`_ and then compiled to `WebAssembly <https://webassembly.org/>`_ (WASM). We chose WebAssembly as it is efficient and can be compiled from several languages, including Assembly Script. If you want to have more details on how the Massa smart-contract engine was built, have a look `here <https://github.com/massalabs/massa-sc-runtime/issues/93>`__.
+Smart-contract in Massa are written in `Assembly Script <https://www.assemblyscript.org/>`_ and then compiled to `WebAssembly <https://webassembly.org/>`_ (WASM). We chose WebAssembly as it is efficient and can be compiled from several languages, including Assembly Script.
 
 Setup
 -----
