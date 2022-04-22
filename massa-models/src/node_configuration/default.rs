@@ -36,15 +36,7 @@ pub const CHANNEL_SIZE: usize = 1024;
 
 lazy_static::lazy_static! {
     /// Time in milliseconds when the blockclique started.
-    pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
-        std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
-            MassaTime::now()
-                .unwrap()
-                .saturating_add(MassaTime::from(1000 * 60 * 3))
-        )
-    } else {
-        1649358000000.into()  //  	Thu Apr 07 2022 19:00:00 GMT+0000
-    };
+    pub static ref GENESIS_TIMESTAMP: MassaTime = 1650622035390.into();
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = None;
