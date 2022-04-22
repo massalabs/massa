@@ -386,7 +386,7 @@ TODO CHANGE DNS ADDRESS
 
 .. code-block::
 
-    cargo run call_smart_contract <your address> 8ZmTMdpawAYRrTRvsyDvTJgoNTr3krjuHG3JhGU3g1SYpqJiB setResolver '{"name": <name_of_your_website>, "address": <your_address>}' 1000000000 0 0 0
+    cargo run call_smart_contract <your address> 8ZmTMdpawAYRrTRvsyDvTJgoNTr3krjuHG3JhGU3g1SYpqJiB setResolver '{"name": "<name_of_your_website>", "address": "<your_address>"}' 1000000000 0 0 0
 
 
 Accessing your website
