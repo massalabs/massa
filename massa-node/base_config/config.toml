@@ -1,5 +1,6 @@
 [logging]
-level = 3
+    # Logging level. High log levels might impact performance. 0: ERROR, 1: WARN, 2: INFO, 3: DEBUG, 4: TRACE
+    level = 3
 
 [api]
 draw_lookahead_period_count = 10
@@ -38,6 +39,7 @@ stats_timespan = 60000
 max_item_return_count = 100
 
 [protocol]
+<<<<<<< HEAD
 message_timeout = 5000
 ask_block_timeout = 10000
 max_node_known_blocks_size = 1024
@@ -88,6 +90,117 @@ cache_duration = 15000
 max_simultaneous_bootstraps = 2
 ip_list_max_size = 10000
 per_ip_min_interval = 1000
+=======
+    # timeout after which without answer a hanshake is ended
+    message_timeout = 5000
+    # timeout after whick we consider a node does not have the block we asked for
+    ask_block_timeout = 10000
+    # max cache size for which blocks a foreign node knows about
+    max_node_known_blocks_size = 1024
+    # max cache size for which blocks a foreign node asked for
+    max_node_wanted_blocks_size = 1024
+    # max number of blocks we can ask simultaneously per node
+    max_simultaneous_ask_blocks_per_node = 128
+    # max milliseconds to wait while sending an event before dropping it
+    max_send_wait = 0
+    # max cache size for which operations a foreign node knows about
+    max_known_ops_size = 2048
+    # max cache size for which endorsements a foreign node knows about
+    max_known_endorsements_size = 1024
+    # Maximum number of batches in the memory buffer.
+    # Dismiss the new batches if overflow
+    operation_batch_buffer_capacity = 10024 
+    # Start processing batches in the buffer each `operation_batch_proc_period` in millisecond
+    operation_batch_proc_period = 500
+    # All operations asked are prune each `operation_asked_pruning_period` millisecond
+    asked_operations_pruning_period = 100000
+    # Max number of operation per message, same as network param but can be smaller
+    max_operations_per_message = 1024
+    
+[network]
+    # port on which to listen for protocol communication
+    bind = "[::]:31244"
+    # port used by protocol
+    protocol_port = 31244
+    # timeout for connection establishment
+    connect_timeout = 3000
+    # attempt a connection to available peers when needed every wakeup_interval milliseconds
+    wakeup_interval = 5000
+    # path to the local peers storage file
+    peers_file = "storage/peers.json"
+    # path to the initial peers file
+    initial_peers_file = "base_config/initial_peers.json"
+    # max number of inbound connections per ip
+    max_in_connections_per_ip = 5
+    # max number of stored idle peers
+    max_idle_peers = 10000
+    # max number of stored banned peers
+    max_banned_peers = 100
+    # max number of advertized peers
+    max_advertise_length = 10000
+    # peers are dumped to file every peers_file_dump_interval milliseconds
+    peers_file_dump_interval = 10000
+    # max size of sent messages
+    max_message_size = 1048576000
+    # timeout when waiting for a message from a foreign node
+    message_timeout = 5000
+    # interval in milliseconds for asking peer lists from peers we are connected to
+    ask_peer_list_interval = 30000
+    # path to the node private key (not the staking key)
+    private_key_file = "config/node_privkey.key"
+    # max number of asked blocks per message
+    max_ask_blocks_per_message = 128
+    # max number of operations per message
+    max_operations_per_message = 1024
+    # max number of endorsements per message
+    max_endorsements_per_message = 1024
+    # max milliseconds to wait while sending an event before dropping it
+    max_send_wait = 0
+    # we forget we banned a node after ban_timeout milliseconds
+    ban_timeout = 3600000
+    # Timeout duration when in handshake we respond with a PeerList
+    # (on max in connection reached we send a list of peers)
+    peer_list_send_timeout = 100
+    # Max number of in connection overflowed managed by the handshake
+    # that send a list of peers
+    max_in_connection_overflow = 100
+
+    [network.peer_types_config]
+    Standard = { target_out_connections = 2, max_out_attempts = 2, max_in_connections = 2}
+    Bootstrap = { target_out_connections = 1, max_out_attempts = 1, max_in_connections = 1}
+    WhiteListed = { target_out_connections = 2, max_out_attempts = 2, max_in_connections = 3}
+
+[bootstrap]
+    # list of bootstrap (ip, node id)
+    bootstrap_list = [
+        ["145.239.66.206:31245", "6Y6Yswzum8fXeFGud9TTaDT2ufqwRdJnKs5XSQKvQapdeRDq44"],
+        ["51.75.131.129:31245", "7x9JZ6VggiwiXcUwfyDQNMyNgD5V6XHsCQS7o4HpLvA82koJzx"],
+        ["198.27.74.5:31245", "7zzAVHHGbvMvqoo5q6xSpyhDXcJJhaoaan5hJ6SV7eiKmAhgWo"],
+        ["198.27.74.52:31245", "63dWPqeF4AZghmejrokiDRZpZ5jrfcf25BjaJTHmPnR8rqapYe"]
+    ]
+    # [optionnal] port on which to listen for incoming bootstrap requests
+    bind = "[::]:31245"
+    # timeout to establish a bootstrap connection
+    connect_timeout = 15000
+    # delay in milliseconds to wait between consecutive bootstrap attempts
+    retry_delay = 2000
+    # if ping is too high bootstrap will be interrupted after max_ping milliseconds
+    max_ping = 10000
+    # timeout for incoming message readout
+    read_timeout = 10000
+    # timeout for message sending
+    write_timeout = 10000
+    # when enabled, apply a correction to the local computer clock to match bootstrap server time
+    enable_clock_synchronization = false
+    # [server] data is cached for cache duration milliseconds
+    cache_duration = 15000
+    # max number of simulataneous bootstraps for server
+    max_simultaneous_bootstraps = 2
+    # max size of recently bootstrapped IP cache
+    ip_list_max_size = 10000
+    # refuse consecutive bootstrap attempts from a given IP when the interval between them is lower than per_ip_min_interval milliseconds
+    per_ip_min_interval = 1000
+>>>>>>> c7bc09b1e8e3cf852b0ebe1169696e4db28333a2
 
 [pool]
 max_pool_size_per_thread = 25000

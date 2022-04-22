@@ -32,22 +32,30 @@ pub const HANDSHAKE_RANDOMNESS_SIZE_BYTES: usize = 32;
 /// Consensus static parameters (defined by protocol used)
 /// Changing one of the following values is considered as a breaking change
 /// Values differ in `test` flavor building for faster CI and simpler scenarios
-pub const CHANNEL_SIZE: usize = 256;
+pub const CHANNEL_SIZE: usize = 1024;
 
 lazy_static::lazy_static! {
-    /// Time in millis when the blockclique started.
-    pub static ref GENESIS_TIMESTAMP: MassaTime = 1649804027198.into();
+    /// Time in milliseconds when the blockclique started.
+    pub static ref GENESIS_TIMESTAMP: MassaTime = 1650629082424.into();
 
     /// TESTNET: time when the blockclique is ended.
     pub static ref END_TIMESTAMP: Option<MassaTime> = None;
-    /// Private_key to sign genesis blocks.
+    /// `PrivateKey` to sign genesis blocks.
     pub static ref GENESIS_KEY: PrivateKey = "SGoTK5TJ9ZcCgQVmdfma88UdhS6GK94aFEYAsU3F1inFayQ6S"
         .parse()
         .unwrap();
     /// number of cycle misses (strictly) above which stakers are deactivated
     pub static ref POS_MISS_RATE_DEACTIVATION_THRESHOLD: Ratio<u64> = Ratio::new(7, 10);
     /// node version
-    pub static ref VERSION: Version = "LABN.0.0".parse().unwrap();
+    pub static ref VERSION: Version = {
+        if cfg!(feature = "sandbox") {
+            "SAND.0.0"
+        } else {
+            "LABN.0.0"
+        }
+        .parse()
+        .unwrap()
+    };
 }
 
 #[cfg(feature = "sandbox")]
@@ -81,7 +89,7 @@ pub const DELTA_F0: u64 = 640;
 /// Maximum number of operations per block
 pub const MAX_OPERATIONS_PER_BLOCK: u32 = 204800;
 /// Maximum block size in bytes
-pub const MAX_BLOCK_SIZE: u32 = 100000000;
+pub const MAX_BLOCK_SIZE: u32 = 20000000;
 /// Maximum capacity of the asynchronous messages pool
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 /// Maximum operation validity period count
@@ -121,9 +129,9 @@ pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 //
 
 /// Maximum of GAS allowed for a block
-pub const MAX_GAS_PER_BLOCK: u64 = 2000000000;
-/// Maximum of GAS allowed for async messages exection on one slot
-pub const MAX_ASYNC_GAS: u64 = 2000000000;
+pub const MAX_GAS_PER_BLOCK: u64 = 2_000_000_000;
+/// Maximum of GAS allowed for asynchronous messages execution on one slot
+pub const MAX_ASYNC_GAS: u64 = 2_000_000_000;
 
 //
 // Constants used in network

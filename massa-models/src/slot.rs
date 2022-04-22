@@ -10,6 +10,7 @@ use crate::constants::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
 use massa_hash::Hash;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use std::{cmp::Ordering, convert::TryInto};
 
 /// a point in time where a block is expected
@@ -37,6 +38,25 @@ impl std::fmt::Display for Slot {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "(period: {}, thread: {})", self.period, self.thread)?;
         Ok(())
+    }
+}
+
+impl FromStr for Slot {
+    type Err = ModelsError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let v: Vec<_> = s.split(',').collect();
+        if v.len() != 2 {
+            Err(ModelsError::DeserializeError(
+                "invalid slot format".to_string(),
+            ))
+        } else {
+            Ok(Slot::new(
+                v[0].parse::<u64>()
+                    .map_err(|_| ModelsError::DeserializeError("invalid period".to_string()))?,
+                v[1].parse::<u8>()
+                    .map_err(|_| ModelsError::DeserializeError("invalid thread".to_string()))?,
+            ))
+        }
     }
 }
 

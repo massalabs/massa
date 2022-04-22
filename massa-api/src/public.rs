@@ -133,7 +133,7 @@ impl Endpoints for API<Public> {
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
                     |_| ReadOnlyResult::Ok,
                 ),
-                output_events: result.map_or_else(|_| Default::default(), |v| v.events.export()),
+                output_events: result.map_or_else(|_| Default::default(), |mut v| v.events.take()),
             };
 
             res.push(result);
@@ -207,7 +207,7 @@ impl Endpoints for API<Public> {
                     |err| ReadOnlyResult::Error(format!("readonly call failed: {}", err)),
                     |_| ReadOnlyResult::Ok,
                 ),
-                output_events: result.map_or_else(|_| Default::default(), |v| v.events.export()),
+                output_events: result.map_or_else(|_| Default::default(), |mut v| v.events.take()),
             };
 
             res.push(result);
@@ -704,24 +704,14 @@ impl Endpoints for API<Public> {
     /// * operation id
     fn get_filtered_sc_output_event(
         &self,
-        EventFilter {
-            start,
-            end,
-            emitter_address,
-            original_caller_address,
-            original_operation_id,
-        }: EventFilter,
+        filter: EventFilter,
     ) -> BoxFuture<Result<Vec<SCOutputEvent>, ApiError>> {
-        // get events
-        let events = self.0.execution_controller.get_filtered_sc_output_event(
-            start,
-            end,
-            emitter_address,
-            original_caller_address,
-            original_operation_id,
-        );
+        let events = self
+            .0
+            .execution_controller
+            .get_filtered_sc_output_event(filter);
 
-        // TODO get rid of the async part
+        // TODO: get rid of the async part
         let closure = async move || Ok(events);
         Box::pin(closure())
     }

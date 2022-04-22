@@ -1505,7 +1505,6 @@ dependencies = [
  "massa_models",
  "massa_time",
  "thiserror",
- "tracing",
 ]
 
 [[package]]

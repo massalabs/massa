@@ -3,7 +3,7 @@
 use crate::repl::Output;
 use anyhow::{anyhow, bail, Result};
 use console::style;
-use massa_models::api::{AddressInfo, CompactAddressInfo};
+use massa_models::api::{AddressInfo, CompactAddressInfo, EventFilter};
 use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 use massa_models::prehash::Map;
 use massa_models::timeslots::get_current_latest_block_slot;
@@ -126,6 +126,15 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
+        props(
+            args = "start=Slot end=Slot emitter_address=Address caller_address=Address operation_id=OperationId"
+        ),
+        message = "show events emitted by smart contracts with various filters"
+    )]
+    get_filtered_sc_output_event,
+
+    #[strum(
+        ascii_case_insensitive,
         message = "show wallet info (private keys, public keys, addresses, balances ...)"
     )]
     wallet_info,
@@ -184,6 +193,15 @@ pub enum Command {
         message = "create and send an operation containing byte code"
     )]
     send_smart_contract,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(
+            args = "SenderAddress TargetAddress FunctionName Parameter MaxGas GasPrice Coins Fee",
+        ),
+        message = "create and send an operation to call a function of a smart contract"
+    )]
+    call_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
@@ -489,6 +507,36 @@ impl Command {
                 }
             }
 
+            Command::get_filtered_sc_output_event => {
+                let p_list: [&str; 5] = [
+                    "start",
+                    "end",
+                    "emitter_address",
+                    "caller_address",
+                    "operation_id",
+                ];
+                let mut p: HashMap<&str, &str> = HashMap::new();
+                for v in parameters {
+                    let s: Vec<&str> = v.split('=').collect();
+                    if s.len() == 2 && p_list.contains(&s[0]) {
+                        p.insert(s[0], s[1]);
+                    } else {
+                        bail!("invalid parameter");
+                    }
+                }
+                let filter = EventFilter {
+                    start: parse_value(&p, p_list[0]),
+                    end: parse_value(&p, p_list[1]),
+                    emitter_address: parse_value(&p, p_list[2]),
+                    original_caller_address: parse_value(&p, p_list[3]),
+                    original_operation_id: parse_value(&p, p_list[4]),
+                };
+                match client.public.get_filtered_sc_output_event(filter).await {
+                    Ok(events) => Ok(Box::new(events)),
+                    Err(e) => rpc_error!(e),
+                }
+            }
+
             Command::wallet_info => {
                 if !json {
                     client_warning!("do not share your private key");
@@ -776,6 +824,67 @@ impl Command {
                 )
                 .await
             }
+            Command::call_smart_contract => {
+                if parameters.len() != 8 {
+                    bail!("wrong number of parameters");
+                }
+                let addr = parameters[0].parse::<Address>()?;
+                let target_addr = parameters[1].parse::<Address>()?;
+                let target_func = parameters[2].clone();
+                let param = parameters[3].clone();
+                let max_gas = parameters[4].parse::<u64>()?;
+                let gas_price = parameters[5].parse::<Amount>()?;
+                let coins = parameters[6].parse::<Amount>()?;
+                let fee = parameters[7].parse::<Amount>()?;
+                if !json {
+                    match gas_price
+                        .checked_mul_u64(max_gas)
+                        .and_then(|x| x.checked_add(fee))
+                    {
+                        Some(total) => {
+                            if let Ok(addresses_info) =
+                                client.public.get_addresses(vec![target_addr]).await
+                            {
+                                match addresses_info.get(0) {
+                                    Some(info) => {
+                                        if info.ledger_info.candidate_ledger_info.balance < total
+                                            || info.candidate_sce_ledger_info.balance < coins
+                                        {
+                                            client_warning!("this operation may be rejected due to insufficient balance");
+                                        }
+                                    }
+                                    None => {
+                                        client_warning!(format!(
+                                            "address {} not found",
+                                            target_addr
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                        None => {
+                            client_warning!("the total amount hit the limit overflow, operation will certainly be rejected");
+                        }
+                    }
+                };
+                send_operation(
+                    client,
+                    wallet,
+                    OperationType::CallSC {
+                        target_addr,
+                        target_func,
+                        param,
+                        max_gas,
+                        sequential_coins: Amount::from_raw(0),
+                        parallel_coins: coins,
+                        gas_price,
+                    },
+                    fee,
+                    addr,
+                    json,
+                )
+                .await
+            }
             Command::wallet_sign => {
                 if parameters.len() != 2 {
                     bail!("wrong number of parameters");
@@ -931,4 +1040,18 @@ pub fn parse_vec<T: std::str::FromStr>(args: &[String]) -> anyhow::Result<Vec<T>
 /// reads a file
 async fn get_file_as_byte_vec(filename: &std::path::Path) -> Result<Vec<u8>> {
     Ok(tokio::fs::read(filename).await?)
+}
+
+// chains get_key_value with its parsing and displays a warning on parsing error
+pub fn parse_value<T: std::str::FromStr>(p: &HashMap<&str, &str>, key: &str) -> Option<T> {
+    p.get_key_value(key).and_then(|x| {
+        x.1.parse::<T>()
+            .map_err(|_| {
+                client_warning!(format!(
+                    "'{}' parameter was ignored because of wrong corresponding value",
+                    key
+                ))
+            })
+            .ok()
+    })
 }

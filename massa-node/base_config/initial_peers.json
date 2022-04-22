@@ -1,18 +1,50 @@
 [
-  {
-    "advertised": true,
-    "banned": false,
-    "peer_type": "Bootstrap",
-    "ip": "145.239.66.206",
-    "last_alive": null,
-    "last_failure": null
-  },
-  {
-    "advertised": true,
-    "banned": false,
-    "peer_type": "Bootstrap",
-    "ip": "51.75.131.129",
-    "last_alive": null,
-    "last_failure": null
-  }
+    {
+        "advertised": true,
+        "banned": false,
+        "peer_type": "Bootstrap",
+        "ip": "145.239.66.206",
+        "last_alive": null,
+        "last_failure": null
+    },
+    {
+        "advertised": true,
+        "banned": false,
+        "peer_type": "Bootstrap",
+        "ip": "51.75.131.129",
+        "last_alive": null,
+        "last_failure": null
+    },
+    {
+        "advertised": true,
+        "banned": false,
+        "peer_type": "Bootstrap",
+        "ip": "198.27.74.5",
+        "last_alive": null,
+        "last_failure": null
+    },
+    {
+        "advertised": true,
+        "banned": false,
+        "peer_type": "Bootstrap",
+        "ip": "198.27.74.52",
+        "last_alive": null,
+        "last_failure": null
+    },
+    {
+        "advertised": true,
+        "banned": false,
+        "peer_type": "Bootstrap",
+        "ip": "54.36.174.177",
+        "last_alive": null,
+        "last_failure": null
+    },
+    {
+        "advertised": true,
+        "banned": false,
+        "peer_type": "Bootstrap",
+        "ip": "51.75.60.228",
+        "last_alive": null,
+        "last_failure": null
+    }
 ]
