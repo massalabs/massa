@@ -344,7 +344,60 @@ This website use our TS library to interact with the API which is `massa-web3 <h
 Hosting your dApp on Massa decentralized web
 ============================================
 
-Not yet ready.
+Setup
+^^^^^
+
+Massa offer you the possibility to host your dApp on a decentralized web. This means that your website will be hosted directly on the blockchain and we provide a chrome/firefox extension to access to those websites:
+
+You can download the extension here : https://github.com/massalabs/massa-wallet TODO replace with pre-build
+
+And after a click on `Connect wallet` you will be able to access to the massa wallet and also DNS part. In this tutorial we will focus on the DNS part.
+
+To access to an address with the DNS, you have to use the prefix `massa://` in the URL bar.
+For example you should have access to the following websites: 
+- `massa://gol` which is a GoL on the blockchain. You can click to interact with it.
+- `massa://` TODO ADD MORE.
+
+If you have access to those websites it's that your extension is well configured.
+
+Deploy your website
+^^^^^^^^^^^^^^^^^^^
+
+Now that you have the extension well configured you can deploy your superb website of tic-tac-toe on the blockchain.
+
+First of all you have to turn your website into bytecode that can be inserted in the blockchain.
+Here is the list of the command you need to make under the `tictactoe/html` folder:
+
+.. code-block::
+
+    yarn run build
+    cd build && zip -r site.zip * && cd .. && npx massa-sc-scripts build-website-sc build/site.zip
+
+Now you can upload it on the blockchain using the client and running this command
+
+.. code-block::
+
+    send_smart_contract <your_address> /path/to/tictactoe/html/build/website.wasm 100000000 0 0 0
+
+Now your website should be uploaded to access it on the browser you have to link it to a dns entry. To add a dns entry you have to use this command in the folder of the client :
+
+
+TODO CHANGE DNS ADDRESS
+
+.. code-block::
+
+    cargo run call_smart_contract <your address> 8ZmTMdpawAYRrTRvsyDvTJgoNTr3krjuHG3JhGU3g1SYpqJiB setResolver '{"name": <name_of_your_website>, "address": <your_address>}' 1000000000 0 0 0
+
+
+Accessing your website
+^^^^^^^^^^^^^^^^^^^^^^
+
+Note that before accessing to a website you have to make sure you are connected in the extension. 
+To be connected go on the icon of the extension and click on it if you have the `Connect wallet` button then click it otherwise you are already connected.
+
+Now you can type in the url : `massa://<your_website_name>` and you will be able to access to your website.
+
+When you will code your proper website you can follow the steps just above, re-deploy over the current example and keep your DNS entry.
 
 Going further
 =============
