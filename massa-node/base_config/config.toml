@@ -2,7 +2,7 @@
 
 [logging]
     # Logging level. High log levels might impact performance. 0: ERROR, 1: WARN, 2: INFO, 3: DEBUG, 4: TRACE
-    level = 2
+    level = 3
 
 [api]
     # max number of future periods considered during requests
@@ -157,17 +157,17 @@
 [bootstrap]
     # list of bootstrap (ip, node id)
     bootstrap_list = [
-        ["149.202.86.103:31245", "5GcSNukkKePWpNSjx9STyoEZniJAN4U4EUzdsQyqhuP3WYf6nj"],
-        ["149.202.89.125:31245", "5wDwi2GYPniGLzpDfKjXJrmHV3p1rLRmm4bQ9TUWNVkpYmd4Zm"],
-        ["158.69.120.215:31245", "5QbsTjSoKzYc8uBbwPCap392CoMQfZ2jviyq492LZPpijctb9c"],
-        ["158.69.23.120:31245", "8139kbee951YJdwK99odM7e6V3eW7XShCfX5E2ovG3b9qxqqrq"]
+        ["145.239.66.206:31245", "6Y6Yswzum8fXeFGud9TTaDT2ufqwRdJnKs5XSQKvQapdeRDq44"],
+        ["51.75.131.129:31245", "7x9JZ6VggiwiXcUwfyDQNMyNgD5V6XHsCQS7o4HpLvA82koJzx"],
+        ["198.27.74.5:31245", "7zzAVHHGbvMvqoo5q6xSpyhDXcJJhaoaan5hJ6SV7eiKmAhgWo"],
+        ["198.27.74.52:31245", "63dWPqeF4AZghmejrokiDRZpZ5jrfcf25BjaJTHmPnR8rqapYe"]
     ]
     # [optionnal] port on which to listen for incoming bootstrap requests
     bind = "[::]:31245"
     # timeout to establish a bootstrap connection
     connect_timeout = 15000
     # delay in milliseconds to wait between consecutive bootstrap attempts
-    retry_delay = 600000
+    retry_delay = 2000
     # if ping is too high bootstrap will be interrupted after max_ping milliseconds
     max_ping = 10000
     # timeout for incoming message readout
@@ -183,7 +183,7 @@
     # max size of recently bootstrapped IP cache
     ip_list_max_size = 10000
     # refuse consecutive bootstrap attempts from a given IP when the interval between them is lower than per_ip_min_interval milliseconds
-    per_ip_min_interval = 180000
+    per_ip_min_interval = 1000
 
 [pool]
     # max number of operations kept per thread

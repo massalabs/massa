@@ -3,7 +3,7 @@
         "advertised": true,
         "banned": false,
         "peer_type": "Bootstrap",
-        "ip": "149.202.86.103",
+        "ip": "145.239.66.206",
         "last_alive": null,
         "last_failure": null
     },
@@ -11,7 +11,7 @@
         "advertised": true,
         "banned": false,
         "peer_type": "Bootstrap",
-        "ip": "149.202.89.125",
+        "ip": "51.75.131.129",
         "last_alive": null,
         "last_failure": null
     },
@@ -19,15 +19,31 @@
         "advertised": true,
         "banned": false,
         "peer_type": "Bootstrap",
-        "ip": "158.69.120.215",
+        "ip": "198.27.74.5",
         "last_alive": null,
         "last_failure": null
     },
     {
-        "advertised": false,
+        "advertised": true,
         "banned": false,
         "peer_type": "Bootstrap",
-        "ip": "158.69.23.120",
+        "ip": "198.27.74.52",
+        "last_alive": null,
+        "last_failure": null
+    },
+    {
+        "advertised": true,
+        "banned": false,
+        "peer_type": "Bootstrap",
+        "ip": "54.36.174.177",
+        "last_alive": null,
+        "last_failure": null
+    },
+    {
+        "advertised": true,
+        "banned": false,
+        "peer_type": "Bootstrap",
+        "ip": "51.75.60.228",
         "last_alive": null,
         "last_failure": null
     }
