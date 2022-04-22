@@ -362,7 +362,7 @@ And after a click on `Connect wallet` you will be able to access to the massa wa
 To access to an address with the DNS, you have to use the prefix `massa://` in the URL bar.
 For example you should have access to the following websites: 
 - `massa://gol` which is a GoL on the blockchain. You can click to interact with it.
-- `massa://` TODO ADD MORE.
+- `massa://ttt` a tic-tac-toe.
 
 If you have access to those websites it's that your extension is well configured.
 
