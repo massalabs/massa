@@ -415,7 +415,7 @@ To add a DNS entry you can use the following helper command in the folder of you
 
 .. code-block::
 
-    cargo run call_smart_contract <your address> 2R4zRvGc5GcX4eCWrM5zsboFKodCUuWa7X8biiDBQMoLohwH4N setResolver '{"name": "<name_of_your_website>", "address": "<your_address>"}' 1000000000 0 0 0
+    ./massa-client call_smart_contract <your address> 2R4zRvGc5GcX4eCWrM5zsboFKodCUuWa7X8biiDBQMoLohwH4N setResolver '{"name": "<name_of_your_website>", "address": "<your_address>"}' 1000000000 0 0 0
 
 Where you should replace `<name_of_your_website>` by the address that you want for your website,
 and `<your address>` by the wallet address that you used in the previous steps.
