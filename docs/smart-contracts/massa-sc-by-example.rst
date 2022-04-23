@@ -253,7 +253,7 @@ play.ts
 
 .. code-block:: typescript
 
-    import { Storage, Context, include_base64, call, print, create_sc } from "massa-sc-std";
+    import { Storage, Context, include_base64, call, print, create_sc, generate_event } from "massa-sc-std";
     import { JSON } from "json-as";
     import { PlayArgs } from "./tic_tac_toe";
 
