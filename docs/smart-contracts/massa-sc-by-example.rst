@@ -374,7 +374,8 @@ Once installed, to access to decentralized websites you must first connect the w
 clicking on `Connect wallet`.
 
 To access to an address with the DNS, you have to use the prefix `massa://` in the URL bar.
-For example you should have access to the following websites: 
+For example you should have access to the following websites:
+
 - `massa://gol` which is a Game-of-Life on the blockchain. You can click to interact with it.
 - `massa://ttt` a tic-tac-toe.
 
