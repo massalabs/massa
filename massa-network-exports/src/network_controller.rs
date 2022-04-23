@@ -213,20 +213,18 @@ impl NetworkCommandSender {
     /// # Returns
     /// Can return a `[NetworkError::ChannelError]` that must be managed by the direct caller of the
     /// function.
-    pub fn send_ask_for_operations(
+    pub async fn send_ask_for_operations(
         &self,
         to_node: NodeId,
         wishlist: OperationIds,
     ) -> Result<(), NetworkError> {
-        match self.0.try_reserve() {
-            Ok(permit) => {
-                permit.send(NetworkCommand::AskForOperations { to_node, wishlist });
-                Ok(())
-            }
-            Err(_) => Err(NetworkError::ChannelError(
-                "Failed to acquire permit to send AskForOperations command".into(),
-            )),
-        }
+        self.0
+            .send(NetworkCommand::AskForOperations { to_node, wishlist })
+            .await
+            .map_err(|_| {
+                NetworkError::ChannelError("could not send AskForOperations command".into())
+            })?;
+        Ok(())
     }
 
     /// send endorsements to node id
