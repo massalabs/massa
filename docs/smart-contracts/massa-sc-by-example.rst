@@ -319,31 +319,41 @@ The data will be different but the format should be the same.
 Creating your first dApp
 ========================
 
-Interacting with smart-contracts through the command line client is usually cumbersome, and you are probably more used to interact with smart-contracts through regular websites such as `sushi.com <https://www.sushi.com/>`_.
+Interacting with smart-contracts through the command line client is usually cumbersome,
+and you are probably more used to interact with smart-contracts through regular websites such as `sushi.com <https://www.sushi.com/>`_.
 
-We'll see in this part how you can host your dApp on a website and how to enable people to interact with your smart-contract directly from the browser using the web3 Massa library.
+We'll see in this part how you can host your dApp on a website and how to enable people
+to interact with your smart-contract directly from the browser using the `web3 Massa library <https://github.com/massalabs/massa-web3>`_.
+
+If you want to directly dive into the code, the front-end code is available in the html folder
+of `this repository <https://github.com/massalabs/massa-sc-examples/tree/main/games/tictactoe>`_.
 
 The front
 ---------
 
-We have designed a website for the tic-tac-toe that you can find in this repository: https://github.com/massalabs/massa-sc-examples under the folder `games/tictactoe/html`.
+We have designed a website for the tic-tac-toe that you can find in this repository:
+https://github.com/massalabs/massa-sc-examples under the folder `games/tictactoe/html`.
 
-You will have to modify some data in order to make it works.
+You will have to modify some data in order to make it work.
 
 Setup
 ~~~~~
 
-Modify the file the `baseAccount` variable in the `src/App.tsx` file with our credentials that you get from the client using the command:
+Modify the file the `baseAccount` variable in the `src/App.tsx` file with our
+credentials that you get from the client using the command:
 
 .. code-block::
 
     wallet_info
 
-Also, in the same file, you have to modify the `sc_addr` variable with the address of your tic-tac-toe that you fetched on the first event.
+Also, in the same file, you have to modify the `sc_addr` variable with the address of
+your tic-tac-toe that you fetched on the first event.
 
-Then you can run `npm install --leagacy-peer-deps` and `yarn run start` to launch the front and you will be able to play with tic-tac-toe.
+Then you can run `npm install --leagacy-peer-deps` and `yarn run start` to launch the
+front and you will be able to play with tic-tac-toe.
 
-This website use our TS library to interact with the API which is `massa-web3 <https://github.com/massalabs/massa-web3>`__ it works with node, frontend framework and have a browserify version.
+This website use our `massa-web3 <https://github.com/massalabs/massa-web3>`_ TS library to interact
+with the API and fetch the relevant informations. It can be used with a local or remote node.
 
 .. _hosting:
 
@@ -351,25 +361,33 @@ Hosting your dApp on Massa decentralized web
 ============================================
 
 Setup
-^^^^^
+-----
 
-Massa offer you the possibility to host your dApp on a decentralized web. This means that your website will be hosted directly on the blockchain and we provide a chrome/firefox extension to access to those websites:
+Massa offers you the possibility to host your dApp directly on a decentralized web.
+This means that your website will be hosted directly on the blockchain. Decentralized
+websites can then be accessed using a browser extension:
 
-You can download the extension here : https://github.com/massalabs/massa-wallet and follow the README.md to install it on your browser.
+The browser extension can be downloaded `here <https://github.com/massalabs/massa-wallet>`_.
+To install it on your browser, just follow the instructions of the README.md.
 
-And after a click on `Connect wallet` you will be able to access to the massa wallet and also DNS part. In this tutorial we will focus on the DNS part.
+Once installed, to access to decentralized websites you must first connect the wallet by
+clicking on `Connect wallet`.
 
 To access to an address with the DNS, you have to use the prefix `massa://` in the URL bar.
 For example you should have access to the following websites: 
-- `massa://gol` which is a GoL on the blockchain. You can click to interact with it.
+- `massa://gol` which is a Game-of-Life on the blockchain. You can click to interact with it.
 - `massa://ttt` a tic-tac-toe.
 
 If you have access to those websites it's that your extension is well configured.
 
-Deploy your website
-^^^^^^^^^^^^^^^^^^^
+In this tutorial we will show you how to deploy a decentralized website and how to
+setup the Massa DNS to be able to access your website using the wallet extension.
 
-Now that you have the extension well configured you can deploy your superb website of tic-tac-toe on the blockchain.
+Uploading your website
+----------------------
+
+Now that you have the extension well configured you can deploy your superb website of tic-tac-toe
+on the blockchain.
 
 First of all you have to turn your website into bytecode that can be inserted in the blockchain.
 Here is the list of the command you need to make under the `tictactoe/html` folder:
@@ -379,28 +397,40 @@ Here is the list of the command you need to make under the `tictactoe/html` fold
     yarn run build
     cd build && zip -r site.zip * && cd .. && npx massa-sc-scripts build-website-sc build/site.zip
 
-Now you can upload it on the blockchain using the client and running this command
+Now you can upload it on the blockchain running the following command on the client:
 
 .. code-block::
 
     send_smart_contract <your_address> /path/to/tictactoe/html/build/website.wasm 100000000 0 0 0
 
-Now your website should be uploaded to access it on the browser you have to link it to a dns entry. To add a dns entry you have to use this command in the folder of the client :
+Setting the DNS
+---------------
+
+Now your website should be uploaded on the blockchain. We'll now want to add a DNS address
+to our smart-contract. This will allow us to access to our decentralized website using a
+regular address and not the address of the smart-contract which is a hash and thus not really convenient.
+
+To access it on the browser you have to link it to a DNS entry.
+To add a DNS entry you can use the following helper command in the folder of your client:
 
 .. code-block::
 
     cargo run call_smart_contract <your address> 2R4zRvGc5GcX4eCWrM5zsboFKodCUuWa7X8biiDBQMoLohwH4N setResolver '{"name": "<name_of_your_website>", "address": "<your_address>"}' 1000000000 0 0 0
 
+Where you should replace `<name_of_your_website>` by the address that you want for your website,
+and `<your address>` by the wallet address that you used in the previous steps.
 
 Accessing your website
-^^^^^^^^^^^^^^^^^^^^^^
+----------------------
 
 Note that before accessing to a website you have to make sure you are connected in the extension. 
-To be connected go on the icon of the extension and click on it if you have the `Connect wallet` button then click it otherwise you are already connected.
+To be connected go on the icon of the extension and click on it if you have the `Connect wallet`
+button then click it otherwise you are already connected.
 
 Now you can type in the url : `massa://<your_website_name>` and you will be able to access to your website.
 
-When you will code your proper website you can follow the steps just above, re-deploy over the current example and keep your DNS entry.
+When you will code your proper website you can follow the steps just above, re-deploy over the
+current example and keep your DNS entry.
 
 Going further
 =============
