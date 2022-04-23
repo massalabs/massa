@@ -10,11 +10,11 @@ https://github.com/massalabs/massa/releases/tag/LABN.0.0
 The zip will contains two folders one called `massa-node` and the other `massa-client`. We will only with the client in this tutorial.
 In the folder `massa-client` you will find an executable `massa-client` that will be your client for the whole Hackathon.
 
-When you have this client you can insert the private key we gave you with this command in the client :
+When you have this client you can insert the private key we gave you using this command in the client:
 
     wallet_add_private_keys <private_key>
 
-Now you have created a wallet you can check the address, balance, etc... with this command :
+Now you have created a wallet you can check the address, balance, etc... with this command:
 
     wallet_info
 
