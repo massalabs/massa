@@ -20,7 +20,7 @@ This tutorial is divided into several parts:
 - :ref:`dapp` will get you through the process of creating your first dApp
 - :ref:`hosting` will show you how to host your dApp on Massa's decentralized web
 
-You can find the complete project `here <https://github.com/massalabs/tictactoe-poc>`__.
+You can find the complete project `here <https://github.com/massalabs/massa-sc-examples/tree/main/games/tictactoe>`__.
 
 Prerequisites
 =============
@@ -34,12 +34,12 @@ For the decentralized website part, we'll assume that you have some familiarity 
 Writing your smart-contract
 ===========================
 
-Smart-contract in Massa are written in `Assembly Script <https://www.assemblyscript.org/>`_ and then compiled to `WebAssembly <https://webassembly.org/>`_ (WASM). We chose WebAssembly as it is efficient and can be compiled from several languages, including Assembly Script. If you want to have more details on how the Massa smart-contract engine was built, have a look `here <https://github.com/massalabs/massa-sc-runtime/issues/93>`__.
+Smart-contract in Massa are written in `Assembly Script <https://www.assemblyscript.org/>`_ and then compiled to `WebAssembly <https://webassembly.org/>`_ (WASM). We chose WebAssembly as it is efficient and can be compiled from several languages, including Assembly Script.
 
 Setup
 -----
 
-You need `node`, `yarn` and `npx` to initialize the project!
+You need `node`, `yarn` and `git` to initialize the project!
 
 .. code-block:: shell
 
@@ -56,7 +56,7 @@ This command will initialize a new folder with a hello-world smart-contract exam
 Writing the smart-contract
 --------------------------
 
-Smart-contracts are in the `src` directory. We will write the tic-tac-toe smart-contract `smart-contract.ts` file. The `deploy.ts` file is used to create a smart-contract that is used to create the tic-tac-toe smart-contract on the Massa blockchain. It may be confusing right now, but we'll go through all these steps in the following.
+Smart-contracts are in the `src` directory. We will write the tic-tac-toe smart-contract `smart-contract.ts` file. The `main.ts` file is used to create a smart-contract that is used to create the tic-tac-toe smart-contract on the Massa blockchain. It may be confusing right now, but we'll go through all these steps in the following.
 
 smart-contract.ts
 -----------------
@@ -157,7 +157,7 @@ The `play` function is used to update the state of the game when each player pla
 
 The `_checkWin` function is used to check whether the game ended or not. Private, as it does not use the `export` prefix, it cannot be called by anyone. It can only be called internally by the smart-contract.
 
-deploy.ts
+main.ts
 
 .. code-block:: typescript
 
@@ -178,7 +178,7 @@ deploy.ts
 Compiling your smart-contract
 -----------------------------
 
-Smart-contract can be compiled using the `massa-sc-scripts` command: `yarn run build:deploy`.
+Smart-contract can be compiled using the `massa-sc-scripts` command: `yarn run build`.
 
 .. _sending-sc:
 
@@ -194,7 +194,7 @@ Sending the smart-contract to the Massa blockchain is done using the `send_smart
 
 .. code-block::
 
-    send_smart_contract <your_address> path/to/deploy.wasm 100000000 0 0 0
+    send_smart_contract <your_address> path/to/main.wasm 100000000 0 0 0
 
 Where `<your_address>` should obviously be replaced by an address from your wallet. If the operation was successfully sent, you should receive a message similar to this:
 
@@ -246,7 +246,7 @@ Instead we could use the `Context.set_bytecode` which will set the bytecode dire
 Interacting with your smart-contract
 ====================================
 
-We can try further our smart-contract by calling the different functions and looking at the state of the game. For this, we can look to the `play.ts`.
+We can try further our smart-contract by calling the different functions and looking at the state of the game. For this, you can create a `play.ts` under `smart-contract` repository.
 
 play.ts
 =======
@@ -268,9 +268,9 @@ play.ts
         call(sc_address, "play", JSON.stringify<PlayArgs>({index: 1}), 0)
         call(sc_address, "play", JSON.stringify<PlayArgs>({index: 4}), 0)
         call(sc_address, "play", JSON.stringify<PlayArgs>({index: 2}), 0)
-        print("Current player:" + Storage.get_data_for(sc_address, "currentPlayer"))
-        print("Game state:" + Storage.get_data_for(sc_address, "gameState"))
-        print("Game winner:" + Storage.get_data_for(sc_address, "gameWinner"))
+        generate_event("Current player:" + Storage.get_data_for(sc_address, "currentPlayer"))
+        generate_event("Game state:" + Storage.get_data_for(sc_address, "gameState"))
+        generate_event("Game winner:" + Storage.get_data_for(sc_address, "gameWinner"))
         return 0;
     }
 
@@ -278,7 +278,13 @@ NOTE: Don't forget to change `YOUR_SMART_CONTRACT` by the address in the data of
 
 This smart-contract initialize a new game and then play a whole game by performing a series of actions. Of course, in a real-world example this would probably be done by different players, each using a smart-contract with their specific action.
 
-As before, you should compile your smart-contract with `yarn run build:play`, send it to the blockchain using the `send_smart_contract` command. Once this is done and the operation is included in a block (few seconds), you should see the operations being performed by your node in the events:
+As before, you should add a line in your package.json:
+
+.. code-block::
+
+    "build:play": "massa-sc-scripts build-sc src/play.ts",
+
+Then you can run `yarn run build:play`, send it to the blockchain using the `send_smart_contract` command. Once this is done and the operation is included in a block (few seconds), you should see the operations being performed by your node in the events:
 
 .. code-block::
 
@@ -325,89 +331,106 @@ of `this repository <https://github.com/massalabs/massa-sc-examples/tree/main/ga
 The front
 ---------
 
-We have designed a website for the tic-tac-toe that you can find under the folder `html`.
+We have designed a website for the tic-tac-toe that you can find in this repository:
+https://github.com/massalabs/massa-sc-examples under the folder `games/tictactoe/html`.
 
-You will have to modify some data in order to make it works.
+You will have to modify some data in order to make it work.
 
 Setup
 ~~~~~
 
-Modify the file the `baseAccount` variable in the `src/App.tsx` file with our credentials that you get from the client using the command:
+Modify the file the `baseAccount` variable in the `src/App.tsx` file with our
+credentials that you get from the client using the command:
 
 .. code-block::
 
     wallet_info
 
-Also, in the same file, you have to modify the `sc_addr` variable with the address of your tic-tac-toe that you fetched on the first event.
+Also, in the same file, you have to modify the `sc_addr` variable with the address of
+your tic-tac-toe that you fetched on the first event.
 
-Then you can run `npm install --leagacy-peer-deps` and `yarn run start` to launch the front and you will be able to play with tic-tac-toe.
+Then you can run `npm install --leagacy-peer-deps` and `yarn run start` to launch the
+front and you will be able to play with tic-tac-toe.
 
-This website use our TS library to interact with the API which is `massa-web3 <https://github.com/massalabs/massa-web3>`__ it works with node, frontend framework and have a browserify version.
+This website use our `massa-web3 <https://github.com/massalabs/massa-web3>`_ TS library to interact
+with the API and fetch the relevant informations. It can be used with a local or remote node.
 
 .. _hosting:
 
 Hosting your dApp on Massa decentralized web
 ============================================
 
+Setup
+-----
+
+Massa offers you the possibility to host your dApp directly on a decentralized web.
+This means that your website will be hosted directly on the blockchain. Decentralized
+websites can then be accessed using a browser extension:
+
+The browser extension can be downloaded `here <https://github.com/massalabs/massa-wallet>`_.
+To install it on your browser, just follow the instructions of the README.md.
+
+Once installed, to access to decentralized websites you must first connect the wallet by
+clicking on `Connect wallet`.
+
+To access to an address with the DNS, you have to use the prefix `massa://` in the URL bar.
+For example you should have access to the following websites: 
+- `massa://gol` which is a Game-of-Life on the blockchain. You can click to interact with it.
+- `massa://ttt` a tic-tac-toe.
+
+If you have access to those websites it's that your extension is well configured.
+
+In this tutorial we will show you how to deploy a decentralized website and how to
+setup the Massa DNS to be able to access your website using the wallet extension.
+
 Uploading your website
 ----------------------
 
-Before uploading your website, you need to zip it. Here we'll be zipping the `build` folder obtained after running `npm run build`:
+Now that you have the extension well configured you can deploy your superb website of tic-tac-toe
+on the blockchain.
 
-.. code-block:: bash
+First of all you have to turn your website into bytecode that can be inserted in the blockchain.
+Here is the list of the command you need to make under the `tictactoe/html` folder:
 
-    zip site.zip build/*
+.. code-block::
 
-You can now use the following smart-contract to upload your zipped website to Massa's decentralized web.
-If you want latter want to be able to access to your website through the Massa browser plugin
-it's important to use the entry `massa_web` for your website.
+    yarn run build
+    cd build && zip -r site.zip * && cd .. && npx massa-sc-scripts build-website-sc build/site.zip
 
-.. code-block:: typescript
+Now you can upload it on the blockchain running the following command on the client:
 
-    import { include_base64, print, Storage } from "massa-sc-std";
+.. code-block::
 
-    function createWebsite(): void {
-        const bytes = include_base64('./site.zip');
-        Storage.set_data("massa_web", bytes);
-    }
-
-    export function main(_args: string): i32 {
-        createWebsite();
-        print("Uploaded site");
-        return 0;
-    }
-
-This smart-contract and the dependencies are available `here <https://github.com/massalabs/massa-sc-examples/tree/main/website>`_.
+    send_smart_contract <your_address> /path/to/tictactoe/html/build/website.wasm 100000000 0 0 0
 
 Setting the DNS
 ---------------
 
-We'll now want to buy a DNS address for our smart-contract. This will allow us to access
-to our smart-contract using instead of using the address of the smart-contract which is
-a hash and thus not really convenient.
+Now your website should be uploaded on the blockchain. We'll now want to add a DNS address
+to our smart-contract. This will allow us to access to our decentralized website using a
+regular address and not the address of the smart-contract which is a hash and thus not really convenient.
 
-To claim a DNS address for you smart-contract you can use the following smart-contract:
+To access it on the browser you have to link it to a DNS entry.
+To add a DNS entry you can use the following helper command in the folder of your client:
 
-.. code-block:: typescript
+.. code-block::
 
-    import { call } from "massa-sc-std";
-    import { JSON } from "json-as";
+    cargo run call_smart_contract <your address> 2R4zRvGc5GcX4eCWrM5zsboFKodCUuWa7X8biiDBQMoLohwH4N setResolver '{"name": "<name_of_your_website>", "address": "<your_address>"}' 1000000000 0 0 0
 
-    @json
-    export class SetResolverArgs {
-        name: string = "";
-        address: string = "";
-    }
+Where you should replace `<name_of_your_website>` by the address that you want for your website,
+and `<your address>` by the wallet address that you used in the previous steps.
 
-    export function main(_args: string): i32 {
-        const sc_address = "YOUR_WEBSITE_ADDRESS"
-        call(sc_address, "setResolver", JSON.stringify<SetResolverArgs>({name: "DNS_NAME", address: "DNS_ADDRESS"}), 0);
-        return 0;
-    }
+Accessing your website
+----------------------
 
-Where `YOUR_WEBSITE_ADDRESS` should be replaced by the address you used in the previous step to upload
-your website and `DNS_ADDRESS` should be replaced by the address of the DNS smart-contract. Right now the
-address of the DNS smart-contract is the following: `DNS_ADDRESS = TODO`.
+Note that before accessing to a website you have to make sure you are connected in the extension. 
+To be connected go on the icon of the extension and click on it if you have the `Connect wallet`
+button then click it otherwise you are already connected.
+
+Now you can type in the url : `massa://<your_website_name>` and you will be able to access to your website.
+
+When you will code your proper website you can follow the steps just above, re-deploy over the
+current example and keep your DNS entry.
 
 Going further
 =============

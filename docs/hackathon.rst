@@ -5,18 +5,20 @@ Welcome to the main technical documentation for the Hackathon. You will find eve
 
 First of all you need to have a client to interact with the node of the network for this weekend we have prepared some pre-build :
 
-- Windows: ee
-- Mac: ee
-- Linux: eee
+https://github.com/massalabs/massa/releases/tag/LABN.0.0
 
-When you have this client you can create an address by tying this command on the client :
+The zip will contains two folders one called `massa-node` and the other `massa-client`. We will only with the client in this tutorial.
+In the folder `massa-client` you will find an executable `massa-client` that will be your client for the whole Hackathon.
 
-    wallet_generate_private_key
+When you have this client you can insert the private key we gave you with this command in the client :
+
+    wallet_add_private_keys <private_key>
 
 Now you have created a wallet you can check the address, balance, etc... with this command :
 
     wallet_info
 
+You should see coins on your address.
 Now that you have an address you can create and deploy your first smart contract. 
 
 Smart contracts
