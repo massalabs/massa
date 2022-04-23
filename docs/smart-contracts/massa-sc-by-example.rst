@@ -20,7 +20,7 @@ This tutorial is divided into several parts:
 - :ref:`dapp` will get you through the process of creating your first dApp
 - :ref:`hosting` will show you how to host your dApp on Massa's decentralized web
 
-You can find the complete project `here <https://github.com/massalabs/massa-sc-examples/tree/main/games/tictactoe>`__.
+You can find the complete project on this `Github repository <https://github.com/massalabs/massa-sc-examples/tree/main/games/tictactoe>`__.
 
 Prerequisites
 =============
@@ -349,7 +349,7 @@ credentials that you get from the client using the command:
 Also, in the same file, you have to modify the `sc_addr` variable with the address of
 your tic-tac-toe that you fetched on the first event.
 
-Then you can run `npm install --leagacy-peer-deps` and `yarn run start` to launch the
+Then you can run :code:`npm install --leagacy-peer-deps` and :code:`yarn run start` to launch the
 front and you will be able to play with tic-tac-toe.
 
 This website use our `massa-web3 <https://github.com/massalabs/massa-web3>`_ TS library to interact
@@ -374,7 +374,8 @@ Once installed, to access to decentralized websites you must first connect the w
 clicking on `Connect wallet`.
 
 To access to an address with the DNS, you have to use the prefix `massa://` in the URL bar.
-For example you should have access to the following websites: 
+For example you should have access to the following websites:
+
 - `massa://gol` which is a Game-of-Life on the blockchain. You can click to interact with it.
 - `massa://ttt` a tic-tac-toe.
 
@@ -427,7 +428,7 @@ Note that before accessing to a website you have to make sure you are connected 
 To be connected go on the icon of the extension and click on it if you have the `Connect wallet`
 button then click it otherwise you are already connected.
 
-Now you can type in the url : `massa://<your_website_name>` and you will be able to access to your website.
+You can now type `massa://<your_website_name>` in the address bar of your navigator to be able to access to your website.
 
 When you will code your proper website you can follow the steps just above, re-deploy over the
 current example and keep your DNS entry.
