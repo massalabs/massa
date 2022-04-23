@@ -155,7 +155,7 @@ We now turn to the game logic:
 
 The `play` function is used to update the state of the game when each player plays. As the `initialize` function, it is a public function: anyone can call it and play the next move. Public functions of Massa smart-contracts can only take strings as arguments. To pass several arguments, we thus have to rely on `json-as` and to define the possible arguments using `PlayArgs`.
 
-The `_checkWin` function is used to check whether the game ended or not. Private, as it does not use the `export` prefix, it cannot be called by anyone. It can only be called internally by the smart-contract.
+The `_checkWin` function is used to check whether the game ended or not. This function is private, as it does not use the `export` prefix. As such, it cannot be executed by external calls and can only be called internally by the smart-contract.
 
 main.ts
 
