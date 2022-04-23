@@ -349,7 +349,7 @@ credentials that you get from the client using the command:
 Also, in the same file, you have to modify the `sc_addr` variable with the address of
 your tic-tac-toe that you fetched on the first event.
 
-Then you can run `npm install --leagacy-peer-deps` and `yarn run start` to launch the
+Then you can run :code:`npm install --leagacy-peer-deps` and :code:`yarn run start` to launch the
 front and you will be able to play with tic-tac-toe.
 
 This website use our `massa-web3 <https://github.com/massalabs/massa-web3>`_ TS library to interact
