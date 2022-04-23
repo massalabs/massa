@@ -428,7 +428,7 @@ Note that before accessing to a website you have to make sure you are connected 
 To be connected go on the icon of the extension and click on it if you have the `Connect wallet`
 button then click it otherwise you are already connected.
 
-Now you can type in the url : `massa://<your_website_name>` and you will be able to access to your website.
+You can now type `massa://<your_website_name>` in the address bar of your navigator to be able to access to your website.
 
 When you will code your proper website you can follow the steps just above, re-deploy over the
 current example and keep your DNS entry.
