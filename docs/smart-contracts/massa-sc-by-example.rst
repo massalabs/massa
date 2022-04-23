@@ -20,7 +20,7 @@ This tutorial is divided into several parts:
 - :ref:`dapp` will get you through the process of creating your first dApp
 - :ref:`hosting` will show you how to host your dApp on Massa's decentralized web
 
-You can find the complete project `here <https://github.com/massalabs/massa-sc-examples/tree/main/games/tictactoe>`__.
+You can find the complete project on this `Github repository <https://github.com/massalabs/massa-sc-examples/tree/main/games/tictactoe>`__.
 
 Prerequisites
 =============
