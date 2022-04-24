@@ -117,7 +117,7 @@ Congratulations! You have generated your first smart contract: the `helloworld.w
    * do a couple a internet research,
    * look for any similare issue (open or closed) in `this <https://github.com/massalabs/massa-sc-std/>`_ project.
 
-   If you find nothing, feel free to contact us on Discord `TODO <https://discord.gg/massa>`_ or directly open an issue `here <https://github.com/massalabs/massa-sc-std/>`_.
+   If you find nothing, feel free to contact us on `Discord <https://discord.gg/massa>`_ or directly open an issue `here <https://github.com/massalabs/massa-sc-std/>`_.
 
 Execute your smart contract on a node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
