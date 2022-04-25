@@ -3,6 +3,7 @@
 use crate::repl::Output;
 use anyhow::{anyhow, bail, Result};
 use console::style;
+use fork::{daemon, Fork};
 use massa_models::api::{AddressInfo, CompactAddressInfo, EventFilter};
 use massa_models::api::{ReadOnlyBytecodeExecution, ReadOnlyCall};
 use massa_models::prehash::Map;
@@ -20,6 +21,7 @@ use std::fmt::{Debug, Display};
 use std::net::IpAddr;
 use std::path::PathBuf;
 use std::process;
+use std::process::Command;
 use strum::{EnumMessage, EnumProperty, IntoEnumIterator};
 use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty, EnumString};
 
@@ -406,11 +408,13 @@ impl Command {
                 Ok(Box::new(()))
             }
 
-            // TODO: process spawn should be detached
-            Command::node_start => match process::Command::new("massa-node").spawn() {
-                Ok(_) => repl_ok!("Node successfully started!"),
-                Err(e) => repl_err!(e),
-            },
+            Command::node_start => {
+                if let Ok(Fork::Child) = daemon(false, false) {
+                    Command::new("massa-node").output()?;
+                    println!("Node successfully started!");
+                }
+                Ok(Box::new(()))
+            }
 
             Command::node_get_staking_addresses => {
                 match client.private.get_staking_addresses().await {
