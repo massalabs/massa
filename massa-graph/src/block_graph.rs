@@ -2489,7 +2489,7 @@ impl BlockGraph {
         }
 
         // initialize block state accumulator
-        let mut state_accu = match self.block_state_accumulator_init(&block_to_check, pos) {
+        let mut state_accu = match self.block_state_accumulator_init(block_to_check, pos) {
             Ok(accu) => accu,
             Err(err) => {
                 warn!(
