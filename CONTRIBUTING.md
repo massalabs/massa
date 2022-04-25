@@ -4,6 +4,7 @@
 - [ ] reduce the code size in macro arguments and in matching patterns
 - [ ] code should be exempt of `clippy` lints (and function size should not exempt 50 lines)
 - [ ] code should not `panic!` an `Err` variant should be propagated and captured by top-level `async main() -> Result<()>`
+- [ ] I have used a spell checker on my code and comments.
 
 In addition, as a reviewer, if you can make a code suggestion to accelerate the process it'll be greatly appreciated!
 
