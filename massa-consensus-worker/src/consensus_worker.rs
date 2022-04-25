@@ -8,7 +8,6 @@ use massa_consensus_exports::{
 };
 use massa_graph::{BlockGraph, BlockGraphExport};
 use massa_hash::Hash;
-use massa_models::prehash::{BuildMap, Map, Set};
 use massa_models::timeslots::{get_block_slot_timestamp, get_latest_block_slot_at_timestamp};
 use massa_models::{address::AddressCycleProductionStats, stats::ConsensusStats, OperationId};
 use massa_models::{address::AddressState, signed::Signed};
@@ -17,6 +16,10 @@ use massa_models::{
     SignedEndorsement,
 };
 use massa_models::{ledger_models::LedgerData, SignedOperation};
+use massa_models::{
+    prehash::{BuildMap, Map, Set},
+    signed::Signable,
+};
 use massa_models::{
     Address, Block, BlockHeader, BlockId, Endorsement, EndorsementId, SerializeCompact, Slot,
 };
@@ -466,13 +469,14 @@ impl ConsensusWorker {
                 slot: cur_slot,
                 parents: parents.iter().map(|(b, _p)| *b).collect(),
                 operation_merkle_root: Hash::compute_from(&Vec::new()[..]),
-                endorsements: endorsements.clone(),
+                endorsement_merkle_root: Hash::compute_from(&Vec::new()[..]),
             },
             creator_private_key,
         )?;
         let block = Block {
             header,
             operations: Vec::new(),
+            endorsements: endorsements.clone(),
         };
 
         let serialized_block = block.to_bytes_compact()?;
@@ -518,7 +522,7 @@ impl ConsensusWorker {
         // init block state accumulator
         let mut state_accu = self
             .block_db
-            .block_state_accumulator_init(&block.header, &mut self.pos)?;
+            .block_state_accumulator_init(&block, &mut self.pos)?;
 
         // gather operations
         let mut total_hash: Vec<u8> = Vec::new();
@@ -591,6 +595,12 @@ impl ConsensusWorker {
             }
         }
 
+        let endorsement_merkle_root = Hash::compute_from(
+            &endorsements.iter().fold(Vec::new(), |acc, v| {
+                [acc, v.content.compute_id().unwrap().to_bytes().to_vec()].concat()
+            })[..],
+        );
+
         // compile resulting block
         let (block_id, header) = Signed::new_signed(
             BlockHeader {
@@ -598,11 +608,15 @@ impl ConsensusWorker {
                 slot: cur_slot,
                 parents: parents.iter().map(|(b, _p)| *b).collect(),
                 operation_merkle_root: Hash::compute_from(&total_hash),
-                endorsements,
+                endorsement_merkle_root,
             },
             creator_private_key,
         )?;
-        let block = Block { header, operations };
+        let block = Block {
+            header,
+            operations,
+            endorsements,
+        };
         let slot = block.header.content.slot;
         massa_trace!("create block", { "block": block });
 

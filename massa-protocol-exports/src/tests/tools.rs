@@ -64,7 +64,7 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
                 BlockId(Hash::compute_from("Genesis 1".as_bytes())),
             ],
             operation_merkle_root: Hash::compute_from(&Vec::new()),
-            endorsements: Vec::new(),
+            endorsement_merkle_root: Hash::compute_from(&Vec::new()),
         },
         private_key,
     )
@@ -73,6 +73,7 @@ pub fn create_block(private_key: &PrivateKey, public_key: &PublicKey) -> Block {
     Block {
         header,
         operations: Vec::new(),
+        endorsements: Vec::new(),
     }
 }
 
@@ -102,13 +103,17 @@ pub fn create_block_with_operations(
                 BlockId(Hash::compute_from("Genesis 1".as_bytes())),
             ],
             operation_merkle_root,
-            endorsements: Vec::new(),
+            endorsement_merkle_root: Hash::compute_from(&Vec::new()),
         },
         private_key,
     )
     .unwrap();
 
-    Block { header, operations }
+    Block {
+        header,
+        operations,
+        endorsements: Vec::new(),
+    }
 }
 
 /// create a block with no operation
@@ -123,6 +128,11 @@ pub fn create_block_with_endorsements(
     slot: Slot,
     endorsements: Vec<SignedEndorsement>,
 ) -> Block {
+    let endorsement_merkle_root = Hash::compute_from(
+        &endorsements.iter().fold(Vec::new(), |acc, v| {
+            [acc, v.content.compute_id().unwrap().to_bytes().to_vec()].concat()
+        })[..],
+    );
     let (_, header) = Signed::new_signed(
         BlockHeader {
             creator: *public_key,
@@ -132,7 +142,7 @@ pub fn create_block_with_endorsements(
                 BlockId(Hash::compute_from("Genesis 1".as_bytes())),
             ],
             operation_merkle_root: Hash::compute_from(&Vec::new()),
-            endorsements,
+            endorsement_merkle_root,
         },
         private_key,
     )
@@ -141,6 +151,7 @@ pub fn create_block_with_endorsements(
     Block {
         header,
         operations: Default::default(),
+        endorsements,
     }
 }
 

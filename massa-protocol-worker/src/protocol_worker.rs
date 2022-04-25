@@ -803,7 +803,7 @@ impl ProtocolWorker {
         &mut self,
         header: &SignedHeader,
         source_node_id: &NodeId,
-    ) -> Result<Option<(BlockId, Map<EndorsementId, u32>, bool)>, ProtocolError> {
+    ) -> Result<Option<(BlockId, bool)>, ProtocolError> {
         massa_trace!("protocol.protocol_worker.note_header_from_node", { "node": source_node_id, "header": header });
 
         // check header integrity
@@ -846,10 +846,6 @@ impl ProtocolWorker {
                     now,
                     self.protocol_settings.max_node_known_blocks_size,
                 );
-                node_info.insert_known_endorsements(
-                    block_info.endorsements.keys().copied().collect(),
-                    self.protocol_settings.max_known_endorsements_size,
-                );
                 if let Some(operations) = block_info.operations.as_ref() {
                     node_info.insert_known_ops(
                         operations.iter().cloned().collect(),
@@ -857,30 +853,7 @@ impl ProtocolWorker {
                     );
                 }
             }
-            return Ok(Some((block_id, block_info.endorsements.clone(), false)));
-        }
-
-        let (endorsement_ids, endorsements_reused) = match self
-            .note_endorsements_from_node(header.content.endorsements.clone(), source_node_id, false)
-            .await
-        {
-            Err(_) => {
-                warn!(
-                    "node {} sent us a header containing critically incorrect endorsements",
-                    source_node_id
-                );
-                return Ok(None);
-            }
-            Ok(id) => id,
-        };
-
-        // check if some endorsements are duplicated in the header
-        if endorsements_reused {
-            massa_trace!(
-                "protocol.protocol_worker.check_header.err_endorsement_reused",
-                { "header": header }
-            );
-            return Ok(None);
+            return Ok(Some((block_id, false)));
         }
 
         // check header signature
@@ -889,36 +862,11 @@ impl ProtocolWorker {
             return Ok(None);
         };
 
-        // check endorsement in header integrity
-        let mut used_endorsement_indices: HashSet<u32> =
-            HashSet::with_capacity(header.content.endorsements.len());
-        for endorsement in header.content.endorsements.iter() {
-            // check index reuse
-            if !used_endorsement_indices.insert(endorsement.content.index) {
-                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_index_reused", { "header": header, "endorsement": endorsement});
-                return Ok(None);
-            }
-            // check slot
-            if (endorsement.content.slot.thread != header.content.slot.thread)
-                || (endorsement.content.slot >= header.content.slot)
-            {
-                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_slot", { "header": header, "endorsement": endorsement});
-                return Ok(None);
-            }
-            // check endorsed block
-            if endorsement.content.endorsed_block
-                != header.content.parents[header.content.slot.thread as usize]
-            {
-                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_endorsed_block", { "header": header, "endorsement": endorsement});
-                return Ok(None);
-            }
-        }
-
         if self
             .checked_headers
             .insert(
                 block_id,
-                BlockInfo::new(endorsement_ids.clone(), Default::default()),
+                BlockInfo::new(Default::default(), Default::default()),
             )
             .is_none()
         {
@@ -939,7 +887,7 @@ impl ProtocolWorker {
                 self.protocol_settings.max_node_known_blocks_size,
             );
             massa_trace!("protocol.protocol_worker.note_header_from_node.ok", { "node": source_node_id,"block_id":block_id, "header": header});
-            return Ok(Some((block_id, endorsement_ids, true)));
+            return Ok(Some((block_id, true)));
         }
         Ok(None)
     }
@@ -991,17 +939,18 @@ impl ProtocolWorker {
     > {
         massa_trace!("protocol.protocol_worker.note_block_from_node", { "node": source_node_id, "block": block });
 
-        let (header, operations, operation_merkle_root, slot) = {
+        let (header, operations, operation_merkle_root, endorsement_merkle_root, slot) = {
             (
                 block.header.clone(),
                 block.operations.clone(),
                 block.header.content.operation_merkle_root,
+                block.header.content.endorsement_merkle_root,
                 block.header.content.slot,
             )
         };
 
         // check header
-        let (block_id, endorsement_ids, _is_header_new) =
+        let (block_id, _is_header_new) =
             match self.note_header_from_node(&header, source_node_id).await {
                 Ok(Some(v)) => v,
                 Ok(None) => return Ok(None),
@@ -1010,6 +959,54 @@ impl ProtocolWorker {
 
         let serialization_context =
             massa_models::with_serialization_context(|context| context.clone());
+
+        let (endorsement_ids, endorsements_reused) = match self
+            .note_endorsements_from_node(block.endorsements.clone(), source_node_id, false)
+            .await
+        {
+            Err(_) => {
+                warn!(
+                    "node {} sent us a header containing critically incorrect endorsements",
+                    source_node_id
+                );
+                return Ok(None);
+            }
+            Ok(id) => id,
+        };
+
+        // check if some endorsements are duplicated in the header
+        if endorsements_reused {
+            massa_trace!(
+                "protocol.protocol_worker.check_header.err_endorsement_reused",
+                { "header": header }
+            );
+            return Ok(None);
+        }
+
+        // check endorsement in header integrity
+        let mut used_endorsement_indices: HashSet<u32> =
+            HashSet::with_capacity(block.endorsements.len());
+        for endorsement in block.endorsements.iter() {
+            // check index reuse
+            if !used_endorsement_indices.insert(endorsement.content.index) {
+                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_index_reused", { "header": header, "endorsement": endorsement});
+                return Ok(None);
+            }
+            // check slot
+            if (endorsement.content.slot.thread != header.content.slot.thread)
+                || (endorsement.content.slot >= header.content.slot)
+            {
+                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_slot", { "header": header, "endorsement": endorsement});
+                return Ok(None);
+            }
+            // check endorsed block
+            if endorsement.content.endorsed_block
+                != header.content.parents[header.content.slot.thread as usize]
+            {
+                massa_trace!("protocol.protocol_worker.check_header.err_endorsement_invalid_endorsed_block", { "header": header, "endorsement": endorsement});
+                return Ok(None);
+            }
+        }
 
         // Perform general checks on the operations, note them into caches and send them to pool
         // but do not propagate as they are already propagating within a block
@@ -1050,7 +1047,7 @@ impl ProtocolWorker {
             }
         }
 
-        // check root hash
+        // check operation root hash
         {
             let concat_bytes = seen_ops
                 .iter()
@@ -1059,6 +1056,19 @@ impl ProtocolWorker {
             if operation_merkle_root != Hash::compute_from(&concat_bytes) {
                 massa_trace!("protocol.protocol_worker.note_block_from_node.err_op_root_hash",
                     { "node": source_node_id,"block_id":block_id});
+                return Ok(None);
+            }
+        }
+
+        // check endorsement root hash
+        {
+            let concat_bytes = endorsement_ids
+                .iter()
+                .map(|op_id| op_id.0.to_bytes().to_vec())
+                .concat();
+            if endorsement_merkle_root != Hash::compute_from(&concat_bytes) {
+                massa_trace!("protocol.protocol_worker.note_block_from_node.err_endorsement_root_hash",
+                            { "node": source_node_id,"block_id":block_id});
                 return Ok(None);
             }
         }
@@ -1293,7 +1303,7 @@ impl ProtocolWorker {
                 header,
             } => {
                 massa_trace!("protocol.protocol_worker.on_network_event.received_block_header", { "node": source_node_id, "header": header});
-                if let Some((block_id, _endorsement_ids, is_new)) =
+                if let Some((block_id, is_new)) =
                     self.note_header_from_node(&header, &source_node_id).await?
                 {
                     if is_new {

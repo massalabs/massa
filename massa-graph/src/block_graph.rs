@@ -412,7 +412,7 @@ pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> Result<(Blo
             slot: Slot::new(0, thread_number),
             parents: Vec::new(),
             operation_merkle_root: Hash::compute_from(&Vec::new()),
-            endorsements: Vec::new(),
+            endorsement_merkle_root: Hash::compute_from(&Vec::new()),
         },
         &private_key,
     )?;
@@ -422,6 +422,7 @@ pub fn create_genesis_block(cfg: &GraphConfig, thread_number: u8) -> Result<(Blo
         Block {
             header,
             operations: Vec::new(),
+            endorsements: Vec::new(),
         },
     ))
 }
@@ -889,20 +890,24 @@ impl BlockGraph {
     /// initializes a block state accumulator from a block header
     pub fn block_state_accumulator_init(
         &self,
-        header: &SignedHeader,
+        block: &Block,
         pos: &mut ProofOfStake,
     ) -> Result<BlockStateAccumulator> {
-        let block_thread = header.content.slot.thread;
-        let block_cycle = header.content.slot.get_cycle(self.cfg.periods_per_cycle);
-        let block_creator_address = Address::from_public_key(&header.content.creator);
+        let block_thread = block.header.content.slot.thread;
+        let block_cycle = block
+            .header
+            .content
+            .slot
+            .get_cycle(self.cfg.periods_per_cycle);
+        let block_creator_address = Address::from_public_key(&block.header.content.creator);
 
         // get same thread parent cycle
         let same_thread_parent = &self
-            .get_active_block(&header.content.parents[block_thread as usize])
+            .get_active_block(&block.header.content.parents[block_thread as usize])
             .ok_or_else(|| {
                 GraphError::MissingBlock(format!(
                     "missing block in block_state_accumulator_init: {}",
-                    &header.content.parents[block_thread as usize]
+                    &block.header.content.parents[block_thread as usize]
                 ))
             })?;
 
@@ -912,8 +917,7 @@ impl BlockGraph {
 
         let same_thread_parent_creator = same_thread_parent.creator_address;
 
-        let endorsers_addresses: Vec<Address> = header
-            .content
+        let endorsers_addresses: Vec<Address> = block
             .endorsements
             .iter()
             .map(|ed| Address::from_public_key(&ed.content.sender_public_key))
@@ -943,7 +947,13 @@ impl BlockGraph {
             self.cfg.endorsement_count,
         )?;
 
-        self.block_state_try_apply(&mut accu, header, Some(reward_ledger_changes), None, pos)?;
+        self.block_state_try_apply(
+            &mut accu,
+            &block.header,
+            Some(reward_ledger_changes),
+            None,
+            pos,
+        )?;
 
         // apply roll lock funds release
         if accu.same_thread_parent_cycle != block_cycle {
@@ -964,7 +974,7 @@ impl BlockGraph {
             // apply to block state
             self.block_state_try_apply(
                 &mut accu,
-                header,
+                &block.header,
                 Some(roll_unlock_ledger_changes),
                 None,
                 pos,
@@ -980,7 +990,7 @@ impl BlockGraph {
             let deactivate_addrs = pos.get_roll_deactivations(block_cycle, block_thread)?;
 
             // load missing address info (because we need to read roll counts)
-            self.block_state_sync_rolls(&mut accu, header, pos, &deactivate_addrs)?;
+            self.block_state_sync_rolls(&mut accu, &block.header, pos, &deactivate_addrs)?;
 
             // accumulate roll updates
             for addr in deactivate_addrs {
@@ -995,7 +1005,7 @@ impl BlockGraph {
             }
 
             // apply changes to block state
-            self.block_state_try_apply(&mut accu, header, None, Some(roll_updates), pos)?;
+            self.block_state_try_apply(&mut accu, &block.header, None, Some(roll_updates), pos)?;
         }
 
         Ok(accu)
@@ -2141,15 +2151,6 @@ impl BlockGraph {
             ))
         })?;
 
-        // check endorsements
-        match self.check_endorsements(header, pos, parent_in_own_thread)? {
-            EndorsementsCheckOutcome::Proceed => {}
-            EndorsementsCheckOutcome::Discard(reason) => {
-                return Ok(HeaderCheckOutcome::Discard(reason))
-            }
-            EndorsementsCheckOutcome::WaitForSlot => return Ok(HeaderCheckOutcome::WaitForSlot),
-        }
-
         // thread incompatibility test
         parent_in_own_thread.children[header.content.slot.thread as usize]
             .keys()
@@ -2273,7 +2274,7 @@ impl BlockGraph {
     /// * endorsed slot is `parent_in_own_thread` slot
     fn check_endorsements(
         &self,
-        header: &SignedHeader,
+        block: &Block,
         pos: &mut ProofOfStake,
         parent_in_own_thread: &ActiveBlock,
     ) -> Result<EndorsementsCheckOutcome> {
@@ -2286,7 +2287,7 @@ impl BlockGraph {
             }
             Err(err) => return Err(err.into()),
         };
-        for endorsement in header.content.endorsements.iter() {
+        for endorsement in block.endorsements.iter() {
             // check that the draw is correct
             if Address::from_public_key(&endorsement.content.sender_public_key)
                 != endorsement_draws[endorsement.content.index as usize]
@@ -2294,7 +2295,7 @@ impl BlockGraph {
                 return Ok(EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(
                     format!(
                         "endorser draw mismatch for header in slot: {}",
-                        header.content.slot
+                        block.header.content.slot
                     ),
                 )));
             }
@@ -2322,6 +2323,7 @@ impl BlockGraph {
     ///
     /// Checks performed:
     /// - See `check_header`.
+    /// - See `check_endorsements`.
     /// - See `check_operations`.
     fn check_block(
         &self,
@@ -2361,6 +2363,27 @@ impl BlockGraph {
                 return Ok(BlockCheckOutcome::WaitForDependencies(deps))
             }
             HeaderCheckOutcome::WaitForSlot => return Ok(BlockCheckOutcome::WaitForSlot),
+        }
+
+        // get parent in own thread
+        let parent_in_own_thread = BlockGraph::get_full_active_block(
+            &self.block_statuses,
+            parents[block.header.content.slot.thread as usize].0,
+        )
+        .ok_or_else(|| {
+            GraphError::ContainerInconsistency(format!(
+                "inconsistency inside block statuses searching parent {} in own thread of block {}",
+                parents[block.header.content.slot.thread as usize].0, block_id
+            ))
+        })?;
+
+        // check endorsements
+        match self.check_endorsements(block, pos, parent_in_own_thread)? {
+            EndorsementsCheckOutcome::Proceed => {}
+            EndorsementsCheckOutcome::Discard(reason) => {
+                return Ok(BlockCheckOutcome::Discard(reason))
+            }
+            EndorsementsCheckOutcome::WaitForSlot => return Ok(BlockCheckOutcome::WaitForSlot),
         }
 
         // check operations
@@ -2466,7 +2489,7 @@ impl BlockGraph {
         }
 
         // initialize block state accumulator
-        let mut state_accu = match self.block_state_accumulator_init(&block_to_check.header, pos) {
+        let mut state_accu = match self.block_state_accumulator_init(&block_to_check, pos) {
             Ok(accu) => accu,
             Err(err) => {
                 warn!(
@@ -3778,7 +3801,7 @@ impl BlockGraph {
                             b_id
                         ))
                     })?;
-                    let endorsements = block.read().block.header.content.endorsements.clone();
+                    let endorsements = block.read().block.endorsements.clone();
                     for e in endorsements {
                         let id = e.content.compute_id()?;
                         if eds.contains(&id) {
@@ -3814,7 +3837,7 @@ impl BlockGraph {
                     .collect::<HashSet<_>>()
                     .is_empty()
                 {
-                    for e in stored_block.block.header.content.endorsements.iter() {
+                    for e in stored_block.block.endorsements.iter() {
                         let id = e.content.compute_id()?;
                         if endorsements.contains(&id) {
                             res.entry(id)

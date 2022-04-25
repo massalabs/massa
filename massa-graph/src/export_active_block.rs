@@ -50,8 +50,6 @@ impl TryFrom<ExportActiveBlock> for ActiveBlock {
 
         let endorsement_ids = a_block
             .block
-            .header
-            .content
             .endorsements
             .iter()
             .map(|endo| Ok((endo.content.compute_id()?, endo.content.index)))

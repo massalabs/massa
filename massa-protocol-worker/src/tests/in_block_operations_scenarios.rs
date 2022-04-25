@@ -118,6 +118,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
 
                 let block = {
                     let operation_merkle_root = Hash::compute_from("merkle root".as_bytes());
+                    let endorsement_merkle_root = Hash::compute_from("merkle root".as_bytes());
 
                     let (_, header) = Signed::new_signed(
                         BlockHeader {
@@ -125,7 +126,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                             slot: slot_a,
                             parents: Vec::new(),
                             operation_merkle_root,
-                            endorsements: Vec::new(),
+                            endorsement_merkle_root,
                         },
                         &creator_node.private_key,
                     )
@@ -134,6 +135,7 @@ async fn test_protocol_sends_blocks_with_operations_to_consensus() {
                     Block {
                         header,
                         operations: vec![op.clone()],
+                        endorsements: Vec::new(),
                     }
                 };
 
