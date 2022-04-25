@@ -104,14 +104,17 @@ pub async fn start_protocol_controller(
 /// Info about a block we've seen
 struct BlockInfo {
     /// Endorsements contained in the block header.
-    endorsements: Map<EndorsementId, u32>,
+    endorsements: Option<Map<EndorsementId, u32>>,
     /// Operations contained in the block,
     /// if we've received them already, and none otherwise.
     operations: Option<Vec<OperationId>>,
 }
 
 impl BlockInfo {
-    fn new(endorsements: Map<EndorsementId, u32>, operations: Option<Vec<OperationId>>) -> Self {
+    fn new(
+        endorsements: Option<Map<EndorsementId, u32>>,
+        operations: Option<Vec<OperationId>>,
+    ) -> Self {
         BlockInfo {
             endorsements,
             operations,
@@ -1080,6 +1083,13 @@ impl ProtocolWorker {
             }
         }
 
+        // Add operations to block info if found in the cache.
+        if let Some(mut block_info) = self.checked_headers.get_mut(&block_id) {
+            if block_info.endorsements.is_none() {
+                block_info.endorsements = Some(endorsement_ids.clone());
+            }
+        }
+
         // Note: block already added to node's view in `note_header_from_node`.
 
         Ok(Some((block_id, received_operations_ids, endorsement_ids)))
@@ -1159,7 +1169,7 @@ impl ProtocolWorker {
     }
 
     /// Note endorsements coming from a given node,
-    /// and propagate them when they were received outside of a header.
+    /// and propagate them when they were received outside of a block.
     ///
     /// Caches knowledge of valid ones.
     ///

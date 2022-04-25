@@ -5,9 +5,8 @@ use crate::prehash::{Map, PreHashed, Set};
 use crate::signed::{Id, Signable, Signed};
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
-    DeserializeMinBEInt, DeserializeVarInt, Endorsement, EndorsementId, ModelsError, Operation,
-    OperationId, SerializeCompact, SerializeMinBEInt, SerializeVarInt, SignedEndorsement,
-    SignedOperation, Slot,
+    DeserializeMinBEInt, Endorsement, EndorsementId, ModelsError, Operation, OperationId,
+    SerializeCompact, SerializeMinBEInt, SignedEndorsement, SignedOperation, Slot,
 };
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
