@@ -9,7 +9,6 @@ use super::{
 use crate::constants::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
 use massa_hash::Hash;
-use nom_varint::take_varint;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::{cmp::Ordering, convert::TryInto};
@@ -156,7 +155,7 @@ impl Slot {
 
 use crate::serialization::DeserializeVarIntV2;
 use nom::{
-    bytes::complete::take, combinator::all_consuming, error::context, sequence::tuple, Err, IResult,
+    bytes::complete::take, error::context, sequence::tuple, IResult,
 };
 
 fn take1(s: &[u8]) -> IResult<&[u8], u8> {
@@ -167,6 +166,7 @@ fn take1(s: &[u8]) -> IResult<&[u8], u8> {
 }
 
 impl Slot {
+    /// Test for new deserializing using nom
     pub fn from_bytes_compact_v2(buffer: &[u8]) -> Result<(Self, &[u8]), ModelsError> {
         match tuple((
             context("period", u64::from_varint_bytes_v2),
@@ -177,6 +177,30 @@ impl Slot {
             Ok((rest, (period, thread))) => Ok((Slot::new(period, thread), rest)),
             Err(e) => Err(e),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{slot::Slot, SerializeCompact};
+
+    #[test]
+    fn test_new_deserialize() {
+        // Test that the serialize and deserialize works and there is no rest
+        let slot = Slot::new(3000000, 23);
+        let mut serialized = slot.to_bytes_compact().unwrap();
+        let deserialized =  Slot::from_bytes_compact_v2(&serialized).unwrap();
+        assert_eq!(slot, deserialized.0);
+        assert!(deserialized.1.is_empty());
+
+        // Test the rest
+        serialized.extend(slot.to_bytes_compact().unwrap());
+        let deserialized =  Slot::from_bytes_compact_v2(&serialized).unwrap();
+        assert_eq!(slot, deserialized.0);
+        assert!(!deserialized.1.is_empty());
+        let rest_deserialized =  Slot::from_bytes_compact_v2(&deserialized.1).unwrap();
+        assert_eq!(slot, rest_deserialized.0);
+        assert!(rest_deserialized.1.is_empty());
     }
 }
 

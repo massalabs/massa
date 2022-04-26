@@ -5,7 +5,6 @@ use crate::Amount;
 use integer_encoding::VarInt;
 use massa_time::MassaTime;
 use nom::IResult;
-use nom_varint::take_varint;
 use std::convert::TryInto;
 use std::net::IpAddr;
 
@@ -100,7 +99,7 @@ impl DeserializeVarIntV2 for u64 {
     fn from_varint_bytes_v2(buffer: &[u8]) -> IResult<&[u8], Self> {
         match unsigned_varint::decode::u64(buffer) {
             Ok((v, rest)) => Ok((rest, v)),
-            Err(e) => Err(nom::Err::Failure(nom::error::Error::new(
+            Err(_) => Err(nom::Err::Failure(nom::error::Error::new(
                 buffer,
                 nom::error::ErrorKind::Fail,
             ))),
