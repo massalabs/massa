@@ -4,6 +4,8 @@ use crate::error::ModelsError;
 use crate::Amount;
 use integer_encoding::VarInt;
 use massa_time::MassaTime;
+use nom::IResult;
+use nom_varint::take_varint;
 use std::convert::TryInto;
 use std::net::IpAddr;
 
@@ -47,6 +49,13 @@ pub trait DeserializeVarInt: Sized {
     ) -> Result<(Self, usize), ModelsError>;
 }
 
+pub trait DeserializeVarIntV2: Sized {
+    /// Deserialize variable size integer to Self from the provided buffer.
+    /// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.
+    /// In case of success, return the deserialized data and the number of bytes read
+    fn from_varint_bytes_v2(buffer: &[u8]) -> IResult<&[u8], Self>;
+}
+
 impl DeserializeVarInt for u16 {
     fn from_varint_bytes(buffer: &[u8]) -> Result<(Self, usize), ModelsError> {
         u16::decode_var(buffer)
@@ -84,6 +93,18 @@ impl DeserializeVarInt for u32 {
             ));
         }
         Ok((res, res_size))
+    }
+}
+
+impl DeserializeVarIntV2 for u64 {
+    fn from_varint_bytes_v2(buffer: &[u8]) -> IResult<&[u8], Self> {
+        match unsigned_varint::decode::u64(buffer) {
+            Ok((v, rest)) => Ok((rest, v)),
+            Err(e) => Err(nom::Err::Failure(nom::error::Error::new(
+                buffer,
+                nom::error::ErrorKind::Fail,
+            ))),
+        }
     }
 }
 

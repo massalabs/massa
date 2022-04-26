@@ -15,6 +15,9 @@ thiserror = "1.0"
 num = { version = "0.4", features = ["serde"] }
 directories = "4.0"
 config = "0.11"
+nom = "7.1"
+nom-varint = { git = "https://github.com/AurelienFT/nom-varint" }
+unsigned-varint = "0.7.1"
 
 # custom modules
 massa_hash = { path = "../massa-hash" }

@@ -9,6 +9,7 @@ use super::{
 use crate::constants::SLOT_KEY_SIZE;
 use crate::error::ModelsError;
 use massa_hash::Hash;
+use nom_varint::take_varint;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::{cmp::Ordering, convert::TryInto};
@@ -149,6 +150,32 @@ impl Slot {
                     .checked_add(1u8)
                     .ok_or(ModelsError::ThreadOverflowError)?,
             ))
+        }
+    }
+}
+
+use crate::serialization::DeserializeVarIntV2;
+use nom::{
+    bytes::complete::take, combinator::all_consuming, error::context, sequence::tuple, Err, IResult,
+};
+
+fn take1(s: &[u8]) -> IResult<&[u8], u8> {
+    match take(1usize)(s) {
+        Ok((rest, v)) => Ok((rest, v[0])),
+        Err(e) => Err(e),
+    }
+}
+
+impl Slot {
+    pub fn from_bytes_compact_v2(buffer: &[u8]) -> Result<(Self, &[u8]), ModelsError> {
+        match tuple((
+            context("period", u64::from_varint_bytes_v2),
+            context("thread", take1),
+        ))(buffer)
+        .map_err(|e| ModelsError::DeserializeError(e.to_string()))
+        {
+            Ok((rest, (period, thread))) => Ok((Slot::new(period, thread), rest)),
+            Err(e) => Err(e),
         }
     }
 }
