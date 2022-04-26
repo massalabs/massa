@@ -195,7 +195,7 @@ mod tests {
     #[test]
     fn test_new_deserialize() {
         // Test that the serialize and deserialize works and there is no rest
-        let slot = Slot::new(3000000, 23);
+        let slot = Slot::new(3000000, 1);
         let mut serialized = slot.to_bytes_compact().unwrap();
         let deserialized = Slot::from_bytes_compact_v2(&serialized).unwrap();
         assert_eq!(slot, deserialized.0);
