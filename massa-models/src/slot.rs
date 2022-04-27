@@ -175,16 +175,12 @@ fn take_thread_number(s: &[u8]) -> IResult<&[u8], u8> {
 
 impl Slot {
     /// Test for new deserializing using nom
-    pub fn from_bytes_compact_v2(buffer: &[u8]) -> Result<(Self, &[u8]), ModelsError> {
-        match tuple((
+    fn from_bytes_compact_v2(buffer: &[u8]) -> IResult<&[u8], Self> {
+        tuple((
             context("period", u64::from_varint_bytes_v2),
             context("thread", take_thread_number),
         ))(buffer)
-        .map_err(|e| ModelsError::DeserializeError(e.to_string()))
-        {
-            Ok((rest, (period, thread))) => Ok((Slot::new(period, thread), rest)),
-            Err(e) => Err(e),
-        }
+        .map(|(rest, (period, thread))| (rest, Slot::new(period, thread)))
     }
 }
 
@@ -198,17 +194,17 @@ mod tests {
         let slot = Slot::new(3000000, 1);
         let mut serialized = slot.to_bytes_compact().unwrap();
         let deserialized = Slot::from_bytes_compact_v2(&serialized).unwrap();
-        assert_eq!(slot, deserialized.0);
-        assert!(deserialized.1.is_empty());
+        assert_eq!(slot, deserialized.1);
+        assert!(deserialized.0.is_empty());
 
         // Test the rest
         serialized.extend(slot.to_bytes_compact().unwrap());
         let deserialized = Slot::from_bytes_compact_v2(&serialized).unwrap();
-        assert_eq!(slot, deserialized.0);
-        assert!(!deserialized.1.is_empty());
-        let rest_deserialized = Slot::from_bytes_compact_v2(&deserialized.1).unwrap();
-        assert_eq!(slot, rest_deserialized.0);
-        assert!(rest_deserialized.1.is_empty());
+        assert_eq!(slot, deserialized.1);
+        assert!(!deserialized.0.is_empty());
+        let rest_deserialized = Slot::from_bytes_compact_v2(&deserialized.0).unwrap();
+        assert_eq!(slot, rest_deserialized.1);
+        assert!(rest_deserialized.0.is_empty());
 
         // Test error
         let slot = Slot::new(3000000, 43);
