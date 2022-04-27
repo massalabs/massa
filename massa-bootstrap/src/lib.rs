@@ -11,6 +11,7 @@
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 #![feature(ip)]
+#![feature(map_first_last)]
 use crate::client_binder::BootstrapClientBinder;
 use crate::establisher::types::Duplex;
 use crate::server_binder::BootstrapServerBinder;
@@ -211,7 +212,35 @@ async fn get_state_internal(
         Ok(Ok(msg)) => return Err(BootstrapError::UnexpectedMessage(msg)),
     };
 
-    info!("Successful bootstrap");
+    info!("Start bootstrap consensus ledger");
+
+    let write_timeout: std::time::Duration = cfg.write_timeout.into();
+    let mut server = BootstrapServerBinder::new(socket, private_key);
+
+    let last_address = graph
+        .ledger
+        .0
+        .last_key_value()
+        .ok_or(BootstrapError::GeneralError(
+            "First part of the ledger sent be peer is empty".to_string(),
+        ))?
+        .0;
+    loop {
+        info!("Asking for a new batch of addresses in the ledger");
+        send_timeout(
+            write_timeout,
+            server.send(messages::BootstrapMessage::AskConsensusLedgerPart {
+                address: *last_address,
+            }),
+            "bootstrap clock send timed out",
+        )
+        .await?;
+        break;
+    }
+
+    info!("End bootstrap consensus ledger");
+
+    info!("Successful state bootstrap");
 
     Ok(GlobalBootstrapState {
         pos: Some(pos),
@@ -479,7 +508,7 @@ async fn manage_bootstrap(
     let mut server = BootstrapServerBinder::new(duplex, private_key);
 
     // Handshake
-    send_state_timeout(
+    send_timeout(
         bootstrap_settings.read_timeout.into(),
         server.handshake(),
         "bootstrap handshake send timed out",
@@ -491,7 +520,7 @@ async fn manage_bootstrap(
     // First, sync clocks.
     let server_time = MassaTime::compensated_now(compensation_millis)?;
 
-    send_state_timeout(
+    send_timeout(
         write_timeout,
         server.send(messages::BootstrapMessage::BootstrapTime {
             server_time,
@@ -502,7 +531,7 @@ async fn manage_bootstrap(
     .await?;
 
     // Second, send peers
-    send_state_timeout(
+    send_timeout(
         write_timeout,
         server.send(messages::BootstrapMessage::BootstrapPeers { peers: data_peers }),
         "bootstrap clock send timed out",
@@ -510,7 +539,7 @@ async fn manage_bootstrap(
     .await?;
 
     // Third, send consensus state
-    send_state_timeout(
+    send_timeout(
         write_timeout,
         server.send(messages::BootstrapMessage::ConsensusState {
             pos: data_pos,
@@ -521,7 +550,7 @@ async fn manage_bootstrap(
     .await?;
 
     // Fourth, send final state
-    send_state_timeout(
+    send_timeout(
         write_timeout,
         server.send(messages::BootstrapMessage::FinalState { final_state }),
         "bootstrap ledger state send timed out",
@@ -530,7 +559,7 @@ async fn manage_bootstrap(
 }
 
 /// Tooling, Send a future with a timeout, print error if timeout reached
-async fn send_state_timeout(
+async fn send_timeout(
     duration: std::time::Duration,
     future: impl futures::Future<Output = Result<(), BootstrapError>>,
     error: &str,
