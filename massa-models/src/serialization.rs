@@ -3,6 +3,7 @@
 use crate::error::ModelsError;
 use crate::Amount;
 use integer_encoding::VarInt;
+use massa_signature::PublicKey;
 use massa_time::MassaTime;
 use nom::IResult;
 use std::convert::TryInto;
@@ -53,6 +54,9 @@ pub trait DeserializeVarIntV2: Sized {
     /// The data to deserialize starts at the beginning of the buffer but the buffer can be larger than needed.
     /// In case of success, return the deserialized data and the number of bytes read
     fn from_varint_bytes_v2(buffer: &[u8]) -> IResult<&[u8], Self>;
+
+    // HERE
+    // fn from_varint_bytes_bounded(buffer: &[u8], max_value: Self) -> IResult<&[u8], Self>;
 }
 
 impl DeserializeVarInt for u16 {
@@ -95,6 +99,20 @@ impl DeserializeVarInt for u32 {
     }
 }
 
+// HERE
+impl DeserializeVarIntV2 for u32 {
+    fn from_varint_bytes_v2(buffer: &[u8]) -> IResult<&[u8], Self> {
+        match unsigned_varint::decode::u32(buffer) {
+            Ok((v, rest)) => Ok((rest, v)),
+            Err(_) => Err(nom::Err::Failure(nom::error::Error::new(
+                buffer,
+                nom::error::ErrorKind::Fail,
+            ))),
+        }
+    }
+}
+
+// HERE
 impl DeserializeVarIntV2 for u64 {
     fn from_varint_bytes_v2(buffer: &[u8]) -> IResult<&[u8], Self> {
         match unsigned_varint::decode::u64(buffer) {
@@ -103,6 +121,24 @@ impl DeserializeVarIntV2 for u64 {
                 buffer,
                 nom::error::ErrorKind::Fail,
             ))),
+        }
+    }
+}
+
+// HERE
+impl DeserializeCompactV2 for PublicKey {
+    fn from_bytes_compact_v2(buffer: &[u8]) -> IResult<&[u8], Self> {
+        let error = Err(nom::Err::Failure(nom::error::Error::new(
+            buffer,
+            nom::error::ErrorKind::Fail,
+        )));
+        if let Ok(slice) = array_from_slice(&buffer) {
+            match PublicKey::from_bytes(&slice) {
+                Ok(pub_key) => Ok((&buffer[slice.len()..], pub_key)),
+                _ => error,
+            }
+        } else {
+            error
         }
     }
 }

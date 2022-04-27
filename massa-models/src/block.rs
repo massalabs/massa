@@ -2,6 +2,7 @@
 
 use crate::constants::{BLOCK_ID_SIZE_BYTES, SLOT_KEY_SIZE};
 use crate::prehash::{Map, PreHashed, Set};
+use crate::serialization::DeserializeCompactV2;
 use crate::signed::{Id, Signable, Signed};
 use crate::{
     array_from_slice, u8_from_slice, with_serialization_context, Address, DeserializeCompact,
@@ -12,6 +13,7 @@ use crate::{
 use massa_hash::Hash;
 use massa_hash::HASH_SIZE_BYTES;
 use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
+use nom::IResult;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::Formatter;
@@ -101,6 +103,24 @@ impl BlockId {
     /// first bit of the hashed block
     pub fn get_first_bit(&self) -> bool {
         Hash::compute_from(&self.to_bytes()).to_bytes()[0] >> 7 == 1
+    }
+}
+
+// HERE
+impl DeserializeCompactV2 for BlockId {
+    fn from_bytes_compact_v2(buffer: &[u8]) -> IResult<&[u8], Self> {
+        let error = Err(nom::Err::Failure(nom::error::Error::new(
+            buffer,
+            nom::error::ErrorKind::Fail,
+        )));
+        if let Ok(slice) = array_from_slice(&buffer) {
+            match BlockId::from_bytes(&slice) {
+                Ok(block_id) => Ok((&buffer[slice.len()..], block_id)),
+                _ => error,
+            }
+        } else {
+            error
+        }
     }
 }
 

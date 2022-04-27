@@ -2,7 +2,7 @@
 
 use crate::constants::{BLOCK_ID_SIZE_BYTES, ENDORSEMENT_ID_SIZE_BYTES};
 use crate::prehash::PreHashed;
-use crate::serialization::DeserializeCompactV2;
+use crate::serialization::{DeserializeCompactV2, DeserializeVarIntV2};
 use crate::signed::{Id, Signable, Signed};
 use crate::{
     serialization::{
@@ -206,14 +206,20 @@ impl DeserializeCompactV2 for Endorsement {
         let max_block_endorsements =
             with_serialization_context(|context| context.endorsement_count);
         tuple((
-            // context("sender_public_key", PublicKey::from_bytes),
+            context("sender_public_key", PublicKey::from_bytes_compact_v2),
             context("slot", Slot::from_bytes_compact_v2),
+            // use varint bounded here
+            context("index", u32::from_varint_bytes_v2),
+            context("endorsed_block", BlockId::from_bytes_compact_v2),
         ))(buffer)
-        .map(|(rest, slot)| {
+        .map(|(rest, (sender_public_key, slot, index, endorsed_block))| {
             (
                 rest,
                 Endorsement {
-                    ..Default::default()
+                    sender_public_key,
+                    slot,
+                    index,
+                    endorsed_block,
                 },
             )
         })
