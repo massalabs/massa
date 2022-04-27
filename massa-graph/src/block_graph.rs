@@ -5,7 +5,7 @@ use crate::{
     bootstrapable_graph::BootstrapableGraph,
     error::{GraphError, GraphResult as Result},
     export_active_block::ExportActiveBlock,
-    ledger::{read_genesis_ledger, Ledger, LedgerSubset, OperationLedgerInterface},
+    ledger::{read_genesis_ledger, ConsensusLedgerSubset, Ledger, OperationLedgerInterface},
     settings::GraphConfig,
     LedgerConfig,
 };
@@ -66,7 +66,7 @@ pub struct BlockStateAccumulator {
     /// Addresses impacted by ledger updates
     pub loaded_ledger_addrs: Set<Address>,
     /// Subset of the ledger. Contains only data in the thread of the given block
-    pub ledger_thread_subset: LedgerSubset,
+    pub ledger_thread_subset: ConsensusLedgerSubset,
     /// Cumulative changes made during that block execution
     pub ledger_changes: LedgerChanges,
     /// Addresses impacted by roll updates
@@ -268,9 +268,9 @@ pub struct BlockGraphExport {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LedgerDataExport {
     /// Candidate data
-    pub candidate_data: LedgerSubset,
+    pub candidate_data: ConsensusLedgerSubset,
     /// Final data
-    pub final_data: LedgerSubset,
+    pub final_data: ConsensusLedgerSubset,
 }
 
 /// Graph management
@@ -625,7 +625,7 @@ impl BlockGraph {
             latest_final_blocks_periods: self.latest_final_blocks_periods.clone(),
             gi_head: self.gi_head.clone(),
             max_cliques: self.max_cliques.clone(),
-            ledger: LedgerSubset::try_from(&self.ledger)?,
+            ledger: ConsensusLedgerSubset::try_from(&self.ledger)?,
         })
     }
 
@@ -858,7 +858,7 @@ impl BlockGraph {
                 Default::default(),
                 Default::default(),
                 Default::default(),
-                LedgerSubset::default(),
+                ConsensusLedgerSubset::default(),
                 Default::default(),
             )
         };
@@ -2521,7 +2521,7 @@ impl BlockGraph {
         &self,
         parents: &[BlockId],
         query_addrs: &Set<Address>,
-    ) -> Result<LedgerSubset> {
+    ) -> Result<ConsensusLedgerSubset> {
         // check that all addresses belong to threads with parents later or equal to the latest_final_block of that thread
         let involved_threads: HashSet<u8> = query_addrs
             .iter()

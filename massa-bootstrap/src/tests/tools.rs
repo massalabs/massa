@@ -8,7 +8,7 @@ use massa_final_state::{
     test_exports::make_bootstrap_state as make_final_state_bootstrap, FinalStateBootstrap,
 };
 use massa_graph::{
-    export_active_block::ExportActiveBlock, ledger::LedgerSubset, BootstrapableGraph,
+    export_active_block::ExportActiveBlock, ledger::ConsensusLedgerSubset, BootstrapableGraph,
 };
 use massa_hash::Hash;
 use massa_ledger::LedgerEntry;
@@ -328,7 +328,7 @@ pub fn get_boot_state() -> (ExportProofOfStake, BootstrapableGraph) {
     let public_key = derive_public_key(&private_key);
     let address = Address::from_public_key(&public_key);
 
-    let mut ledger_subset = LedgerSubset::default();
+    let mut ledger_subset = ConsensusLedgerSubset::default();
     ledger_subset.0.insert(
         address,
         LedgerData {

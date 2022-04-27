@@ -3,7 +3,7 @@
 use super::tools::*;
 use massa_consensus_exports::ConsensusConfig;
 
-use massa_graph::{ledger::LedgerSubset, BootstrapableGraph};
+use massa_graph::{ledger::ConsensusLedgerSubset, BootstrapableGraph};
 use massa_models::signed::Signable;
 use massa_models::SignedOperation;
 use massa_models::{
@@ -56,7 +56,7 @@ async fn test_get_operation() {
         op5.clone(),
     ];
 
-    let boot_ledger = LedgerSubset(
+    let boot_ledger = ConsensusLedgerSubset(
         vec![(address_a, LedgerData::new(Amount::from_str("100").unwrap()))]
             .into_iter()
             .collect(),
@@ -151,7 +151,7 @@ async fn test_get_operation() {
 fn get_bootgraph(
     creator: PublicKey,
     operations: Vec<SignedOperation>,
-    ledger: LedgerSubset,
+    ledger: ConsensusLedgerSubset,
 ) -> (BootstrapableGraph, BlockId, BlockId) {
     let (g0_id, genesis_0) =
         get_export_active_test_block(creator, vec![], vec![], Slot::new(0, 0), true);

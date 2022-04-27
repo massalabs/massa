@@ -2,12 +2,15 @@
 
 //! This file defines the final ledger associating addresses to their balances, bytecode and data.
 
+use crate::bootstrap::BootstrapableLedger;
 use crate::ledger_changes::LedgerChanges;
 use crate::ledger_entry::LedgerEntry;
 use crate::types::{Applicable, SetUpdateOrDelete};
 use crate::{FinalLedgerBootstrapState, LedgerConfig, LedgerError};
 use massa_hash::Hash;
-use massa_models::{Address, Amount};
+use massa_models::constants::ADDRESS_SIZE_BYTES;
+use massa_models::{array_from_slice, Address, Amount, DeserializeCompact, SerializeCompact};
+use massa_models::{DeserializeVarInt, SerializeVarInt};
 use std::collections::BTreeMap;
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
@@ -183,5 +186,70 @@ impl FinalLedger {
         self.sorted_ledger
             .get(addr)
             .map_or(false, |v| v.datastore.contains_key(key))
+    }
+}
+
+/// Part of the ledger of execution
+#[derive(Debug)]
+pub struct ExecutionLedgerSubset(pub BTreeMap<Address, LedgerEntry>);
+
+impl SerializeCompact for ExecutionLedgerSubset {
+    fn to_bytes_compact(&self) -> Result<Vec<u8>, massa_models::ModelsError> {
+        let mut res: Vec<u8> = Vec::new();
+
+        let entry_count: u64 = self.0.len().try_into().map_err(|err| {
+            massa_models::ModelsError::SerializeError(format!(
+                "too many entries in ConsensusLedgerSubset: {}",
+                err
+            ))
+        })?;
+        res.extend(entry_count.to_varint_bytes());
+        for (address, data) in self.0.iter() {
+            res.extend(&address.to_bytes());
+            res.extend(&data.to_bytes_compact()?);
+        }
+
+        Ok(res)
+    }
+}
+
+impl DeserializeCompact for ExecutionLedgerSubset {
+    fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), massa_models::ModelsError> {
+        let mut cursor = 0usize;
+
+        let (entry_count, delta) = u64::from_varint_bytes(&buffer[cursor..])?;
+        // TODO: add entry_count checks ... see #1200
+        cursor += delta;
+
+        let mut ledger_subset = ExecutionLedgerSubset(BTreeMap::new());
+        for _ in 0..entry_count {
+            let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+            cursor += ADDRESS_SIZE_BYTES;
+
+            let (data, delta) = LedgerEntry::from_bytes_compact(&buffer[cursor..])?;
+            cursor += delta;
+
+            ledger_subset.0.insert(address, data);
+        }
+
+        Ok((ledger_subset, cursor))
+    }
+}
+
+impl BootstrapableLedger<ExecutionLedgerSubset> for FinalLedger {
+    fn get_ledger_part(
+        &self,
+        start_address: Address,
+        address_batch_size: usize,
+    ) -> ExecutionLedgerSubset {
+        // Need to dereference because Prehashed trait is not implemented for &Address
+        // TODO: Try to remove a clone
+        ExecutionLedgerSubset(
+            self.sorted_ledger
+                .range(start_address..)
+                .take(address_batch_size)
+                .map(|(k, v)| (*k, v.clone()))
+                .collect(),
+        )
     }
 }

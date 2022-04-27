@@ -40,7 +40,7 @@ lazy_static::lazy_static! {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| timestamp.parse::<u64>().unwrap().into()).unwrap_or_else(|_|
             MassaTime::now()
                 .unwrap()
-                .saturating_add(MassaTime::from(1000 * 60 * 3))
+                .saturating_add(MassaTime::from(1000 * 10))
         )
     } else {
         1649358000000.into()  //  	Thu Apr 07 2022 19:00:00 GMT+0000
@@ -133,6 +133,9 @@ pub const MAX_BOOTSTRAP_POS_CYCLES: u32 = 5;
 pub const MAX_BOOTSTRAP_POS_ENTRIES: u32 = 1000000000;
 /// Max size of the IP list
 pub const IP_LIST_MAX_SIZE: usize = 10000;
+/// Batch size of ledger entries sent by the bootstrap
+/// TODO: Define value
+pub const BOOTSTRAP_LEDGER_ENTRY_SIZE: u32 = 10;
 /// Size of the random bytes array used for the bootstrap, safe to import
 pub const BOOTSTRAP_RANDOMNESS_SIZE_BYTES: usize = 32;
 

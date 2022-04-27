@@ -8,7 +8,7 @@ use massa_models::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{export_active_block::ExportActiveBlock, ledger::LedgerSubset};
+use crate::{export_active_block::ExportActiveBlock, ledger::ConsensusLedgerSubset};
 
 /// Bootstrap graph
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,7 +24,7 @@ pub struct BootstrapableGraph {
     /// List of maximal cliques of compatible blocks.
     pub max_cliques: Vec<Clique>,
     /// Ledger at last final blocks
-    pub ledger: LedgerSubset,
+    pub ledger: ConsensusLedgerSubset,
 }
 
 impl SerializeCompact for BootstrapableGraph {
@@ -201,7 +201,7 @@ impl DeserializeCompact for BootstrapableGraph {
         }
 
         // ledger
-        let (ledger, delta) = LedgerSubset::from_bytes_compact(&buffer[cursor..])?;
+        let (ledger, delta) = ConsensusLedgerSubset::from_bytes_compact(&buffer[cursor..])?;
         cursor += delta;
 
         Ok((

@@ -1,19 +1,20 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_final_state::FinalStateBootstrap;
-use massa_graph::BootstrapableGraph;
+use massa_graph::{ledger::ConsensusLedgerSubset, BootstrapableGraph};
+use massa_ledger::ExecutionLedgerSubset;
 use massa_models::{
-    DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt, Version,
+    Address, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
+    Version,
 };
 use massa_network_exports::BootstrapPeers;
 use massa_proof_of_stake_exports::ExportProofOfStake;
 use massa_time::MassaTime;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
 /// Messages used during bootstrap
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub enum BootstrapMessage {
     /// Sync clocks
     BootstrapTime {
@@ -33,10 +34,30 @@ pub enum BootstrapMessage {
         /// block graph
         graph: BootstrapableGraph,
     },
+    /// Ask for a part of the ledger of consensus
+    AskConsensusLedgerPart {
+        /// Last address sent
+        address: Address,
+    },
+    /// Part of the ledger of consensus
+    ResponseConsensusLedgerPart {
+        /// Part of the consensus ledger sent
+        ledger: ConsensusLedgerSubset,
+    },
     /// Final execution state
     FinalState {
         /// final execution state bootstrap
         final_state: FinalStateBootstrap,
+    },
+    /// Ask for a part of the ledger of execution
+    AskExecutionLedgerPart {
+        /// Last address sent
+        address: Address,
+    },
+    /// Part of the ledger of execution
+    ResponseExecutionLedgerPart {
+        /// Part of the execution ledger sent
+        ledger: ExecutionLedgerSubset,
     },
 }
 
@@ -73,6 +94,18 @@ impl SerializeCompact for BootstrapMessage {
             BootstrapMessage::FinalState { final_state } => {
                 res.extend(u32::from(MessageTypeId::FinalState).to_varint_bytes());
                 res.extend(&final_state.to_bytes_compact()?);
+            }
+            BootstrapMessage::AskConsensusLedgerPart { address } => {
+                res.extend(address.to_bytes());
+            }
+            BootstrapMessage::AskExecutionLedgerPart { address } => {
+                res.extend(address.to_bytes());
+            }
+            BootstrapMessage::ResponseConsensusLedgerPart { ledger } => {
+                res.extend(ledger.to_bytes_compact()?);
+            }
+            BootstrapMessage::ResponseExecutionLedgerPart { ledger } => {
+                res.extend(ledger.to_bytes_compact()?);
             }
         }
         Ok(res)

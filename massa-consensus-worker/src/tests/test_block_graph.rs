@@ -1,7 +1,7 @@
 use crate::tests::tools::get_dummy_block_id;
 use massa_consensus_exports::ConsensusConfig;
 use massa_graph::{
-    create_genesis_block, export_active_block::ExportActiveBlock, ledger::LedgerSubset,
+    create_genesis_block, export_active_block::ExportActiveBlock, ledger::ConsensusLedgerSubset,
     settings::GraphConfig, BlockGraph, BootstrapableGraph,
 };
 use massa_hash::Hash;
@@ -530,7 +530,7 @@ pub async fn test_get_ledger_at_parents() {
         /// List of maximal cliques of compatible blocks.
         max_cliques: vec![],
         /// Ledger at last final blocks
-        ledger: LedgerSubset(
+        ledger: ConsensusLedgerSubset(
             vec![
                 (
                     address_a,
