@@ -252,6 +252,11 @@ pub trait DeserializeCompact: Sized {
     fn from_bytes_compact(buffer: &[u8]) -> Result<(Self, usize), ModelsError>;
 }
 
+/// HERE
+pub trait DeserializeCompactV2: Sized {
+    fn from_bytes_compact_v2(buffer: &[u8]) -> IResult<&[u8], Self>;
+}
+
 /// Checks performed:
 /// - Buffer contains a valid `u8`(implicit check).
 impl SerializeCompact for IpAddr {

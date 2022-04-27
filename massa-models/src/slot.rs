@@ -6,8 +6,8 @@ use super::{
     },
     with_serialization_context,
 };
-use crate::error::ModelsError;
 use crate::{constants::SLOT_KEY_SIZE, node_configuration::THREAD_COUNT};
+use crate::{error::ModelsError, serialization::DeserializeCompactV2};
 use massa_hash::Hash;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -173,8 +173,8 @@ fn take_thread_number(s: &[u8]) -> IResult<&[u8], u8> {
     }
 }
 
-impl Slot {
-    /// Test for new deserializing using nom
+// HERE
+impl DeserializeCompactV2 for Slot {
     fn from_bytes_compact_v2(buffer: &[u8]) -> IResult<&[u8], Self> {
         tuple((
             context("period", u64::from_varint_bytes_v2),
@@ -186,7 +186,7 @@ impl Slot {
 
 #[cfg(test)]
 mod tests {
-    use crate::{slot::Slot, SerializeCompact};
+    use crate::{serialization::DeserializeCompactV2, slot::Slot, SerializeCompact};
 
     #[test]
     fn test_new_deserialize() {

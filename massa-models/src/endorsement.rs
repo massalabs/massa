@@ -2,6 +2,7 @@
 
 use crate::constants::{BLOCK_ID_SIZE_BYTES, ENDORSEMENT_ID_SIZE_BYTES};
 use crate::prehash::PreHashed;
+use crate::serialization::DeserializeCompactV2;
 use crate::signed::{Id, Signable, Signed};
 use crate::{
     serialization::{
@@ -12,6 +13,7 @@ use crate::{
 use massa_hash::Hash;
 use massa_signature::{sign, Signature};
 use massa_signature::{PublicKey, PUBLIC_KEY_SIZE_BYTES};
+use nom::{bytes::complete::take, error::context, sequence::tuple, IResult};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 
@@ -195,6 +197,26 @@ impl DeserializeCompact for Endorsement {
             },
             cursor,
         ))
+    }
+}
+
+/// HERE
+impl DeserializeCompactV2 for Endorsement {
+    fn from_bytes_compact_v2(buffer: &[u8]) -> IResult<&[u8], Self> {
+        let max_block_endorsements =
+            with_serialization_context(|context| context.endorsement_count);
+        tuple((
+            // context("sender_public_key", PublicKey::from_bytes),
+            context("slot", Slot::from_bytes_compact_v2),
+        ))(buffer)
+        .map(|(rest, slot)| {
+            (
+                rest,
+                Endorsement {
+                    ..Default::default()
+                },
+            )
+        })
     }
 }
 
