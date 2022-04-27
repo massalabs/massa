@@ -200,7 +200,13 @@ impl DeserializeCompact for Endorsement {
     }
 }
 
-/// HERE
+// HERE
+// pub struct ShortEndorsement {
+//     pub sender_pub_key: PublicKey,
+//     pub signature: Signature,
+// }
+
+// HERE
 impl DeserializeCompactV2 for Endorsement {
     fn from_bytes_compact_v2(buffer: &[u8]) -> IResult<&[u8], Self> {
         let max_block_endorsements =
