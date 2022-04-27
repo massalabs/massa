@@ -5,7 +5,7 @@ use massa_graph::{ledger::ConsensusLedgerSubset, BootstrapableGraph};
 use massa_ledger::ExecutionLedgerSubset;
 use massa_models::{
     Address, DeserializeCompact, DeserializeVarInt, ModelsError, SerializeCompact, SerializeVarInt,
-    Version,
+    Version, array_from_slice, constants::ADDRESS_SIZE_BYTES,
 };
 use massa_network_exports::BootstrapPeers;
 use massa_proof_of_stake_exports::ExportProofOfStake;
@@ -67,7 +67,11 @@ enum MessageTypeId {
     BootstrapTime = 0u32,
     Peers = 1u32,
     ConsensusState = 2u32,
-    FinalState = 3u32,
+    AskConsensusLedgerPart = 3u32,
+    ResponseConsensusLedgerPart = 4u32,
+    FinalState = 5u32,
+    AskExecutionLedgerPart = 6u32,
+    ResponseExecutionLedgerPart = 7u32,
 }
 
 impl SerializeCompact for BootstrapMessage {
@@ -148,7 +152,19 @@ impl DeserializeCompact for BootstrapMessage {
                 cursor += delta;
 
                 BootstrapMessage::ConsensusState { pos, graph }
-            }
+            },
+            MessageTypeId::AskConsensusLedgerPart => {
+                let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += ADDRESS_SIZE_BYTES;
+                
+                BootstrapMessage::AskConsensusLedgerPart { address }
+            },
+            MessageTypeId::ResponseConsensusLedgerPart => {
+                let (ledger, delta) = ConsensusLedgerSubset::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+
+                BootstrapMessage::ResponseConsensusLedgerPart { ledger }
+            },
             MessageTypeId::FinalState => {
                 let (final_state, delta) =
                     FinalStateBootstrap::from_bytes_compact(&buffer[cursor..])?;
@@ -156,6 +172,18 @@ impl DeserializeCompact for BootstrapMessage {
 
                 BootstrapMessage::FinalState { final_state }
             }
+            MessageTypeId::AskExecutionLedgerPart => {
+                let address = Address::from_bytes(&array_from_slice(&buffer[cursor..])?)?;
+                cursor += ADDRESS_SIZE_BYTES;
+                
+                BootstrapMessage::AskExecutionLedgerPart { address }
+            },
+            MessageTypeId::ResponseExecutionLedgerPart => {
+                let (ledger, delta) = ExecutionLedgerSubset::from_bytes_compact(&buffer[cursor..])?;
+                cursor += delta;
+
+                BootstrapMessage::ResponseExecutionLedgerPart { ledger }
+            },
         };
         Ok((res, cursor))
     }
