@@ -134,6 +134,7 @@ impl BootstrapClientBinder {
         Ok(message)
     }
 
+    #[allow(dead_code)]
     /// Send a message to the bootstrap server
     pub async fn send(&mut self, msg: BootstrapMessage) -> Result<(), BootstrapError> {
         let msg_bytes = msg.to_bytes_compact()?;

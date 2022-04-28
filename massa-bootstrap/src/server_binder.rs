@@ -107,6 +107,7 @@ impl BootstrapServerBinder {
         Ok(())
     }
 
+    #[allow(dead_code)]
     /// Read a message sent from the client (not signed). NOT cancel-safe
     pub async fn next(&mut self) -> Result<BootstrapMessage, BootstrapError> {
         // read prev signature
