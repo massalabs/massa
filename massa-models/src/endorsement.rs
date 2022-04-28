@@ -300,7 +300,8 @@ mod tests {
         let ser_content = content.to_bytes_compact().unwrap();
 
         b.iter(|| {
-            Endorsement::from_bytes_compact(&ser_content).unwrap();
+            let used = test::black_box(&ser_content);
+            Endorsement::from_bytes_compact(&&used).unwrap()
         })
     }
 
@@ -316,7 +317,8 @@ mod tests {
         let ser_content = content.to_bytes_compact().unwrap();
 
         b.iter(|| {
-            Endorsement::from_bytes_compact_v2(&ser_content).unwrap();
+            let used = test::black_box(&ser_content);
+            Endorsement::from_bytes_compact_v2(used).unwrap()
         })
     }
 }
