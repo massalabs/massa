@@ -208,13 +208,15 @@ impl DeserializeCompact for Endorsement {
 
 // HERE
 impl DeserializeCompactV2 for Endorsement {
-    fn from_bytes_compact_v2(buffer: &[u8]) -> IResult<&[u8], Self> {
-        let max_block_endorsements =
-            with_serialization_context(|context| context.endorsement_count);
+    fn from_bytes_compact_v2<'a>(buffer: &'a [u8]) -> IResult<&[u8], Self> {
         tuple((
             context("sender_public_key", PublicKey::from_bytes_compact_v2),
             context("slot", Slot::from_bytes_compact_v2),
-            context("index", |buffer: &[u8]| u32::from_varint_bytes_v2(buffer, None, Some(max_block_endorsements))),
+            |buffer: &'a [u8]| {
+                let max_block_endorsements =
+                    with_serialization_context(|context| context.endorsement_count);
+                u32::from_varint_bytes_v2(buffer, None, Some(max_block_endorsements))
+            },
             context("endorsed_block", BlockId::from_bytes_compact_v2),
         ))(buffer)
         .map(|(rest, (sender_public_key, slot, index, endorsed_block))| {
